@@ -1,0 +1,52 @@
+export interface MasterResumeExperience {
+  company: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  location: string;
+  bullets: Array<{ text: string; source: string }>;
+}
+
+export interface MasterResumeEducation {
+  institution: string;
+  degree: string;
+  field: string;
+  year: string;
+}
+
+export interface MasterResumeCertification {
+  name: string;
+  issuer: string;
+  year: string;
+}
+
+export interface MasterResume {
+  id: string;
+  user_id: string;
+  summary: string;
+  experience: MasterResumeExperience[];
+  skills: Record<string, string[]>;
+  education: MasterResumeEducation[];
+  certifications: MasterResumeCertification[];
+  raw_text: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinalResume {
+  summary: string;
+  experience: MasterResumeExperience[];
+  skills: Record<string, string[]>;
+  education: MasterResumeEducation[];
+  certifications: MasterResumeCertification[];
+  ats_score: number;
+}
+
+export interface ExportData {
+  resume: FinalResume;
+  company: string;
+  title: string;
+  requirements_addressed: number;
+  sections_rewritten: number;
+}
