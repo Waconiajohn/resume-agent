@@ -57,17 +57,23 @@ Return ONLY valid JSON:
     ],
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
 
   let content = currentContent;
   let changesMade: string[] = [];
 
+  // Claude sometimes wraps JSON in markdown code fences — strip them before parsing
+  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
   try {
-    const parsed = JSON.parse(text);
-    content = parsed.content ?? currentContent;
-    changesMade = parsed.changes_made ?? [];
+    const parsed = JSON.parse(jsonText);
+    // Ensure content is always a plain string, never an object
+    const rawContent = parsed.content ?? currentContent;
+    content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
+    changesMade = Array.isArray(parsed.changes_made) ? parsed.changes_made : [];
   } catch {
-    content = text || currentContent;
+    // If parsing still fails, use raw text but strip any JSON wrapper artifacts
+    content = rawText || currentContent;
     changesMade = ['Section rewritten (raw format)'];
   }
 

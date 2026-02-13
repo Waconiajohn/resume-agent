@@ -49,6 +49,8 @@ export interface TailoredSections {
   summary?: string;
   experience?: Record<string, unknown>[];
   skills?: Record<string, string[]>;
+  education?: string;
+  certifications?: string;
   title_adjustments?: Record<string, string>;
 }
 

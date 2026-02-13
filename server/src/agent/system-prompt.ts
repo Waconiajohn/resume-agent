@@ -86,10 +86,11 @@ You have research, analysis, and interview data. Time to write. Your goals:
 1. Use generate_section for each section that needs work
 2. Start with summary (most impactful)
 3. Then experience bullets, skills, title adjustments
-4. Match company language throughout
-5. Quantify everything possible
-6. Save checkpoint after each section
-7. Transition to "review" once all sections are generated`,
+4. Then education and certifications — highlight relevant coursework, degrees, and credentials that match the role
+5. Match company language throughout
+6. Quantify everything possible
+7. Save checkpoint after each section
+8. Transition to "review" once all sections are generated`,
 
   review: `## Current Phase: Adversarial Review
 The tailored resume is ready for scrutiny. Your goals:
