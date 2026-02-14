@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, FitClassification, RequirementFit } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 
@@ -61,16 +62,16 @@ Return ONLY valid JSON:
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
 
   let reqs: RequirementFit[] = [];
-  try {
-    const parsed = JSON.parse(text);
-    reqs = (parsed.requirements ?? []).map((r: Record<string, string>) => ({
+  const parsed = repairJSON<{ requirements?: Array<Record<string, string>> }>(text);
+  if (parsed?.requirements) {
+    reqs = parsed.requirements.map((r) => ({
       requirement: r.requirement,
       classification: r.classification as 'strong' | 'partial' | 'gap',
       importance: (r.importance as 'critical' | 'important' | 'nice_to_have') || undefined,
       evidence: r.evidence,
       strategy: r.strategy,
     }));
-  } catch {
+  } else {
     reqs = requirements.map((r) => ({
       requirement: r,
       classification: 'gap' as const,

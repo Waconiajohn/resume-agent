@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, BenchmarkCandidate } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 
@@ -65,26 +66,25 @@ Create a detailed profile of exactly who this company wants to hire. Return ONLY
   });
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
-  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
   let benchmark: BenchmarkCandidate;
-  try {
-    const parsed = JSON.parse(jsonText);
+  const parsed = repairJSON<Record<string, unknown>>(rawText);
+  if (parsed) {
     benchmark = {
-      required_skills: (parsed.required_skills ?? []).map((s: Record<string, string>) => ({
+      required_skills: (Array.isArray(parsed.required_skills) ? parsed.required_skills : []).map((s: Record<string, string>) => ({
         requirement: s.requirement,
         importance: s.importance as 'critical' | 'important' | 'nice_to_have',
         category: s.category,
       })),
-      experience_expectations: parsed.experience_expectations ?? '',
-      culture_fit_traits: parsed.culture_fit_traits ?? [],
-      communication_style: parsed.communication_style ?? '',
-      industry_standards: parsed.industry_standards ?? [],
-      competitive_differentiators: parsed.competitive_differentiators ?? [],
-      language_keywords: parsed.language_keywords ?? [],
-      ideal_candidate_summary: parsed.ideal_candidate_summary ?? '',
+      experience_expectations: (parsed.experience_expectations as string) ?? '',
+      culture_fit_traits: (parsed.culture_fit_traits as string[]) ?? [],
+      communication_style: (parsed.communication_style as string) ?? '',
+      industry_standards: (parsed.industry_standards as string[]) ?? [],
+      competitive_differentiators: (parsed.competitive_differentiators as string[]) ?? [],
+      language_keywords: (parsed.language_keywords as string[]) ?? [],
+      ideal_candidate_summary: (parsed.ideal_candidate_summary as string) ?? '',
     };
-  } catch {
+  } else {
     benchmark = {
       required_skills: [],
       experience_expectations: '',

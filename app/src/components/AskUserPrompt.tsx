@@ -16,7 +16,7 @@ export function AskUserPrompt({ prompt, onSubmit }: AskUserPromptProps) {
     return (
       <GlassCard className="mx-4 p-4">
         <p className="mb-1 text-sm font-medium text-white/90">{prompt.question}</p>
-        <p className="mb-4 text-xs text-white/40">{prompt.context}</p>
+        <p className="mb-4 text-xs text-white/60">{prompt.context}</p>
         <div className="space-y-2">
           {prompt.choices.map((choice) => (
             <GlassButton
@@ -28,7 +28,7 @@ export function AskUserPrompt({ prompt, onSubmit }: AskUserPromptProps) {
               <div>
                 <div className="text-sm text-white/80">{choice.label}</div>
                 {choice.description && (
-                  <div className="text-xs text-white/40">{choice.description}</div>
+                  <div className="text-xs text-white/60">{choice.description}</div>
                 )}
               </div>
             </GlassButton>
@@ -50,7 +50,7 @@ export function AskUserPrompt({ prompt, onSubmit }: AskUserPromptProps) {
   return (
     <GlassCard className="mx-4 p-4">
       <p className="mb-1 text-sm font-medium text-white/90">{prompt.question}</p>
-      <p className="mb-3 text-xs text-white/40">{prompt.context}</p>
+      <p className="mb-3 text-xs text-white/60">{prompt.context}</p>
       <div className="flex gap-2">
         <GlassTextarea
           value={textAnswer}

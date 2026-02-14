@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 import { SECTION_GUIDANCE, SECTION_ORDER_KEYS } from '../resume-guide.js';
@@ -101,16 +102,15 @@ Return ONLY valid JSON:
   });
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
-  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
   let proposedContent = currentContent;
   let changes: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }> = [];
 
-  try {
-    const parsed = JSON.parse(jsonText);
+  const parsed = repairJSON<Record<string, unknown>>(rawText);
+  if (parsed) {
     proposedContent = typeof parsed.proposed_content === 'string' ? parsed.proposed_content : currentContent;
     changes = Array.isArray(parsed.changes) ? parsed.changes : [];
-  } catch {
+  } else {
     proposedContent = rawText || currentContent;
     changes = [{ original: '', proposed: '', reasoning: 'Section rewritten', jd_requirements: [] }];
   }

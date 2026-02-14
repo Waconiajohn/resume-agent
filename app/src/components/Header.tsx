@@ -17,7 +17,7 @@ export function Header({ email, onSignOut }: HeaderProps) {
 
         {email && (
           <div className="flex items-center gap-3">
-            <span className="text-xs text-white/40">{email}</span>
+            <span className="text-xs text-white/60">{email}</span>
             <GlassButton variant="ghost" onClick={onSignOut} className="h-8 px-2">
               <LogOut className="h-4 w-4" />
             </GlassButton>

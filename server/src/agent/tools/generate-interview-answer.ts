@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 
@@ -51,16 +52,15 @@ Return ONLY valid JSON:
   });
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
-  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
   let whyAsked = '';
   let starFramework = { situation: '', task: '', action: '', result: '' };
 
-  try {
-    const parsed = JSON.parse(jsonText);
-    whyAsked = parsed.why_asked ?? '';
-    starFramework = parsed.star_framework ?? starFramework;
-  } catch {
+  const parsed = repairJSON<Record<string, unknown>>(rawText);
+  if (parsed) {
+    whyAsked = (parsed.why_asked as string) ?? '';
+    starFramework = (parsed.star_framework as typeof starFramework) ?? starFramework;
+  } else {
     whyAsked = 'Unable to generate framework — please try again';
   }
 

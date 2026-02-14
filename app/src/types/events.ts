@@ -6,6 +6,10 @@ export type SSEEventType =
   | 'tool_complete'
   | 'ask_user'
   | 'phase_change'
+  | 'phase_gate'
+  | 'right_panel_update'
+  | 'transparency'
+  | 'section_status'
   | 'resume_update'
   | 'export_ready'
   | 'checkpoint'
@@ -94,6 +98,32 @@ export interface CompleteEvent {
   sections_rewritten: number;
 }
 
+export interface PhaseGateEvent {
+  type: 'phase_gate';
+  from: string;
+  to: string;
+  blocked: boolean;
+  reason?: string;
+}
+
+export interface RightPanelUpdateEvent {
+  type: 'right_panel_update';
+  panel_type: string;
+  data: Record<string, unknown>;
+}
+
+export interface TransparencyEvent {
+  type: 'transparency';
+  message: string;
+}
+
+export interface SectionStatusEvent {
+  type: 'section_status';
+  section: string;
+  status: string;
+  score?: number;
+}
+
 export type SSEEvent =
   | TextDeltaEvent
   | TextCompleteEvent
@@ -104,4 +134,8 @@ export type SSEEvent =
   | ResumeUpdateEvent
   | ExportReadyEvent
   | ErrorEvent
-  | CompleteEvent;
+  | CompleteEvent
+  | PhaseGateEvent
+  | RightPanelUpdateEvent
+  | TransparencyEvent
+  | SectionStatusEvent;

@@ -6,12 +6,32 @@ import { SessionContext } from '../agent/context.js';
 import type { CoachSession } from '../agent/context.js';
 import { runAgentLoop } from '../agent/loop.js';
 import type { SSEEvent } from '../agent/loop.js';
+import { withSessionLock } from '../lib/session-lock.js';
 
 const sessions = new Hono();
 
 const sseConnections = new Map<string, Array<(event: SSEEvent) => void>>();
 
-// SSE endpoint — auth via query param since EventSource can't set headers
+// Idempotency: track recent message keys to reject duplicates
+const recentIdempotencyKeys = new Map<string, number>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Cleanup expired keys every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, timestamp] of recentIdempotencyKeys) {
+    if (now - timestamp > IDEMPOTENCY_TTL_MS) {
+      recentIdempotencyKeys.delete(key);
+    }
+  }
+}, 60_000);
+
+// SSE endpoint — auth via query param since EventSource can't set headers.
+// Known limitation: the EventSource API does not support custom headers, so we
+// pass the JWT as a query parameter. This means the token may appear in server
+// logs and browser history. Short-lived JWTs (Supabase default ~1hr) mitigate
+// the exposure window. Consider upgrading to fetch-based streaming if the
+// EventSource constraint becomes a security concern.
 sessions.get('/:id/sse', async (c) => {
   const sessionId = c.req.param('id');
   const token = c.req.query('token');
@@ -56,6 +76,7 @@ sessions.get('/:id/sse', async (c) => {
 
     const heartbeat = setInterval(() => {
       stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
+        console.warn('SSE heartbeat failed for session', sessionId);
         clearInterval(heartbeat);
       });
     }, 15000);
@@ -135,10 +156,17 @@ sessions.post('/:id/messages', async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('id');
   const body = await c.req.json();
-  const { content } = body as { content: string };
+  const { content, idempotency_key } = body as { content: string; idempotency_key?: string };
 
   if (!content?.trim()) {
     return c.json({ error: 'Message content is required' }, 400);
+  }
+
+  if (idempotency_key) {
+    if (recentIdempotencyKeys.has(idempotency_key)) {
+      return c.json({ error: 'Duplicate message', code: 'DUPLICATE' }, 409);
+    }
+    recentIdempotencyKeys.set(idempotency_key, Date.now());
   }
 
   const { data: sessionData, error: loadError } = await supabaseAdmin
@@ -149,6 +177,10 @@ sessions.post('/:id/messages', async (c) => {
     .single();
 
   if (loadError || !sessionData) {
+    if (loadError && loadError.code !== 'PGRST116') {
+      console.error('DB error loading session:', loadError);
+      return c.json({ error: 'Database error' }, 503);
+    }
     return c.json({ error: 'Session not found' }, 404);
   }
 
@@ -173,22 +205,25 @@ sessions.post('/:id/messages', async (c) => {
     }
   }
 
-  runAgentLoop(ctx, content, emit)
-    .then(async () => {
-      const checkpoint = ctx.toCheckpoint();
-      await supabaseAdmin
-        .from('coach_sessions')
-        .update(checkpoint)
-        .eq('id', sessionId);
-    })
-    .catch((error) => {
+  withSessionLock(sessionId, async () => {
+    try {
+      await runAgentLoop(ctx, content, emit);
+    } catch (error) {
       console.error('Agent loop error:', error);
       emit({
         type: 'error',
         message: error instanceof Error ? error.message : 'Agent error',
         recoverable: true,
       });
-    });
+    } finally {
+      const checkpoint = ctx.toCheckpoint();
+      await supabaseAdmin
+        .from('coach_sessions')
+        .update(checkpoint)
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+    }
+  });
 
   return c.json({ status: 'processing' });
 });

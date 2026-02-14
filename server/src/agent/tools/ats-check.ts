@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import { ATS_FORMATTING_RULES } from '../resume-guide.js';
 
@@ -69,26 +70,24 @@ Return ONLY valid JSON:
   });
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
-  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
-  try {
-    const parsed = JSON.parse(jsonText);
+  const parsed = repairJSON<Record<string, unknown>>(rawText);
+  if (parsed) {
     return {
-      ats_score: parsed.ats_score ?? 50,
-      keyword_matches: parsed.keyword_matches ?? [],
-      format_issues: parsed.format_issues ?? [],
-      recommendations: parsed.recommendations ?? [],
-      keyword_coverage_pct: parsed.keyword_coverage_pct ?? 0,
-      section_header_issues: parsed.section_header_issues ?? [],
-    };
-  } catch {
-    return {
-      ats_score: 50,
-      keyword_matches: [],
-      format_issues: [],
-      recommendations: ['Unable to complete ATS check — please try again'],
-      keyword_coverage_pct: 0,
-      section_header_issues: [],
+      ats_score: (parsed.ats_score as number) ?? 50,
+      keyword_matches: (parsed.keyword_matches as Array<{ keyword: string; found: boolean; context?: string }>) ?? [],
+      format_issues: (parsed.format_issues as string[]) ?? [],
+      recommendations: (parsed.recommendations as string[]) ?? [],
+      keyword_coverage_pct: (parsed.keyword_coverage_pct as number) ?? 0,
+      section_header_issues: (parsed.section_header_issues as string[]) ?? [],
     };
   }
+  return {
+    ats_score: 50,
+    keyword_matches: [],
+    format_issues: [],
+    recommendations: ['Unable to complete ATS check — please try again'],
+    keyword_coverage_pct: 0,
+    section_header_issues: [],
+  };
 }

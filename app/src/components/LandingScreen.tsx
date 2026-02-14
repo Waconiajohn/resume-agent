@@ -47,7 +47,7 @@ export function LandingScreen({
 
         {sessions.length > 0 && (
           <div className="w-full">
-            <h2 className="mb-4 text-left text-sm font-medium text-white/40">
+            <h2 className="mb-4 text-left text-sm font-medium text-white/60">
               Recent Sessions
             </h2>
             <div className="space-y-2">

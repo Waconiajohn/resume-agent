@@ -176,6 +176,7 @@ export interface CoachSession {
   design_choices: DesignChoice[];
   messages: ConversationMessage[];
   pending_tool_call_id: string | null;
+  pending_phase_transition: string | null;
   last_checkpoint_phase: string | null;
   last_checkpoint_at: string | null;
   total_tokens_used: number;
@@ -225,7 +226,7 @@ export class SessionContext {
     this.designChoices = session.design_choices ?? [];
     this.messages = session.messages ?? [];
     this.pendingToolCallId = session.pending_tool_call_id;
-    this.pendingPhaseTransition = (session as unknown as Record<string, unknown>).pending_phase_transition as string | null ?? null;
+    this.pendingPhaseTransition = session.pending_phase_transition ?? null;
     this.totalTokensUsed = session.total_tokens_used ?? 0;
   }
 
@@ -236,6 +237,7 @@ export class SessionContext {
       .from('master_resumes')
       .select('summary, experience, skills, education, certifications, raw_text')
       .eq('id', this.masterResumeId)
+      .eq('user_id', this.userId)
       .single();
 
     if (error || !data) {
@@ -347,6 +349,25 @@ export class SessionContext {
     }
 
     return parts.join('\n');
+  }
+
+  getApiMessages(): ConversationMessage[] {
+    const KEEP_FIRST = 2;
+    const KEEP_LAST = 40;
+    const total = this.messages.length;
+
+    if (total <= KEEP_FIRST + KEEP_LAST) {
+      return this.messages;
+    }
+
+    const head = this.messages.slice(0, KEEP_FIRST);
+    const tail = this.messages.slice(total - KEEP_LAST);
+    const truncationNote: ConversationMessage = {
+      role: 'user',
+      content: '[...earlier messages truncated for context window...]',
+    };
+
+    return [...head, truncationNote, ...tail];
   }
 
   toCheckpoint() {

@@ -1,4 +1,5 @@
 import { queryPerplexity } from '../../lib/perplexity.js';
+import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext, CompanyResearch } from '../context.js';
 
 export async function executeResearchCompany(
@@ -9,14 +10,7 @@ export async function executeResearchCompany(
   const jobTitle = input.job_title as string;
   const additionalContext = (input.additional_context as string) || '';
 
-  const researchText = await queryPerplexity([
-    {
-      role: 'system',
-      content: 'You are a company research analyst. Return detailed, structured information about companies, focusing on culture, values, leadership style, and what they look for in senior hires.',
-    },
-    {
-      role: 'user',
-      content: `Research ${companyName} for a ${jobTitle} candidate. I need:
+  const researchPrompt = `Research ${companyName} for a ${jobTitle} candidate. I need:
 
 1. **Company Culture**: What is their internal culture like?
 2. **Core Values**: What are their stated and practiced values?
@@ -28,9 +22,27 @@ export async function executeResearchCompany(
 
 ${additionalContext ? `Additional context: ${additionalContext}` : ''}
 
-Be specific and factual. If you're not sure about something, say so.`,
-    },
-  ]);
+Be specific and factual. If you're not sure about something, say so.`;
+
+  let researchText: string;
+  try {
+    researchText = await queryPerplexity([
+      {
+        role: 'system',
+        content: 'You are a company research analyst. Return detailed, structured information about companies, focusing on culture, values, leadership style, and what they look for in senior hires.',
+      },
+      { role: 'user', content: researchPrompt },
+    ]);
+  } catch (perplexityError) {
+    console.warn('Perplexity API unavailable, falling back to Claude:', perplexityError instanceof Error ? perplexityError.message : perplexityError);
+    const fallbackResponse = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      system: 'You are a company research analyst. Return detailed, structured information about companies, focusing on culture, values, leadership style, and what they look for in senior hires. Note: you are answering from training data, not live search. Flag any information that may be outdated.',
+      messages: [{ role: 'user', content: researchPrompt }],
+    });
+    researchText = fallbackResponse.content[0].type === 'text' ? fallbackResponse.content[0].text : '';
+  }
 
   const research: CompanyResearch = {
     company_name: companyName,

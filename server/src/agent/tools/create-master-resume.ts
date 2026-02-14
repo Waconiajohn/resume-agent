@@ -1,5 +1,6 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, MasterResumeData } from '../context.js';
 
 const STRUCTURING_PROMPT = `You are a resume parser. Extract structured data from the following resume text and return ONLY valid JSON with this exact shape:
@@ -37,11 +38,11 @@ Rules:
 export async function executeCreateMasterResume(
   input: Record<string, unknown>,
   ctx: SessionContext,
-): Promise<{ success: boolean; master_resume_id?: string; error?: string }> {
+): Promise<{ success: boolean; master_resume_id?: string; error?: string; code?: string; recoverable?: boolean }> {
   const rawText = input.raw_text as string;
 
   if (!rawText?.trim()) {
-    return { success: false, error: 'No resume text provided' };
+    return { success: false, error: 'No resume text provided', code: 'MISSING_INPUT', recoverable: false };
   }
 
   let structured: Omit<MasterResumeData, 'raw_text'>;
@@ -54,16 +55,21 @@ export async function executeCreateMasterResume(
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {
-      return { success: false, error: 'Failed to parse resume — no text response' };
+      return { success: false, error: 'Failed to parse resume — no text response', code: 'AI_PARSE_FAILED', recoverable: true };
     }
 
-    const jsonText = textBlock.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-    structured = JSON.parse(jsonText);
+    const repaired = repairJSON<Omit<MasterResumeData, 'raw_text'>>(textBlock.text);
+    if (!repaired) {
+      return { success: false, error: 'Failed to parse structured resume from AI response', code: 'JSON_PARSE_FAILED', recoverable: true };
+    }
+    structured = repaired;
   } catch (err) {
     console.error('Resume structuring error:', err);
     return {
       success: false,
       error: `Failed to structure resume: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      code: 'AI_ERROR',
+      recoverable: true,
     };
   }
 
@@ -84,7 +90,7 @@ export async function executeCreateMasterResume(
 
   if (insertError || !data) {
     console.error('Master resume insert error:', insertError);
-    return { success: false, error: 'Failed to save resume to database' };
+    return { success: false, error: 'Failed to save resume to database', code: 'DB_INSERT_FAILED', recoverable: true };
   }
 
   const resumeId = data.id as string;
@@ -95,7 +101,8 @@ export async function executeCreateMasterResume(
   await supabaseAdmin
     .from('coach_sessions')
     .update({ master_resume_id: resumeId })
-    .eq('id', ctx.sessionId);
+    .eq('id', ctx.sessionId)
+    .eq('user_id', ctx.userId);
 
   return { success: true, master_resume_id: resumeId };
 }

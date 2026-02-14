@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import { RESUME_ANTI_PATTERNS } from '../resume-guide.js';
 
@@ -68,22 +69,20 @@ Return ONLY valid JSON:
   });
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
-  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
-  try {
-    const parsed = JSON.parse(jsonText);
+  const parsed = repairJSON<Record<string, unknown>>(rawText);
+  if (parsed) {
     return {
-      authenticity_score: parsed.authenticity_score ?? 50,
-      issues: parsed.issues ?? [],
-      overall_assessment: parsed.overall_assessment ?? '',
-      age_sensitive_flags: parsed.age_sensitive_flags ?? [],
-    };
-  } catch {
-    return {
-      authenticity_score: 50,
-      issues: [],
-      overall_assessment: 'Unable to complete humanization check — please try again',
-      age_sensitive_flags: [],
+      authenticity_score: (parsed.authenticity_score as number) ?? 50,
+      issues: (parsed.issues as Array<{ pattern: string; location: string; suggestion: string }>) ?? [],
+      overall_assessment: (parsed.overall_assessment as string) ?? '',
+      age_sensitive_flags: (parsed.age_sensitive_flags as string[]) ?? [],
     };
   }
+  return {
+    authenticity_score: 50,
+    issues: [],
+    overall_assessment: 'Unable to complete humanization check — please try again',
+    age_sensitive_flags: [],
+  };
 }

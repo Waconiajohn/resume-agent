@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, JDAnalysis } from '../context.js';
 
 export async function executeAnalyzeJD(
@@ -43,18 +44,18 @@ Return ONLY valid JSON:
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
 
   let analysis: JDAnalysis;
-  try {
-    const parsed = JSON.parse(text);
+  const parsed = repairJSON<Record<string, unknown>>(text);
+  if (parsed) {
     analysis = {
-      job_title: parsed.job_title,
-      must_haves: parsed.must_haves ?? [],
-      nice_to_haves: parsed.nice_to_haves ?? [],
-      hidden_signals: parsed.hidden_signals ?? [],
-      seniority_level: parsed.seniority_level,
-      culture_cues: parsed.culture_cues ?? [],
+      job_title: (parsed.job_title as string) ?? 'Unknown',
+      must_haves: (parsed.must_haves as string[]) ?? [],
+      nice_to_haves: (parsed.nice_to_haves as string[]) ?? [],
+      hidden_signals: (parsed.hidden_signals as string[]) ?? [],
+      seniority_level: (parsed.seniority_level as string) ?? 'unknown',
+      culture_cues: (parsed.culture_cues as string[]) ?? [],
       raw_jd: jobDescription,
     };
-  } catch {
+  } else {
     analysis = {
       job_title: 'Unknown',
       must_haves: [],

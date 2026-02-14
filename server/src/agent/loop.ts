@@ -3,11 +3,13 @@ import { anthropic, MODEL, MAX_TOKENS } from '../lib/anthropic.js';
 import { buildSystemPrompt } from './system-prompt.js';
 import { getToolsForPhase } from './tools/index.js';
 import { executeToolCall } from './tool-executor.js';
+import { withRetry } from '../lib/retry.js';
 import type { SessionContext, ContentBlock, CoachPhase } from './context.js';
 
 type MessageParam = Anthropic.MessageParam;
 
 const MAX_TOOL_ROUNDS = 20;
+const LOOP_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface SSEEvent {
   type: string;
@@ -26,6 +28,7 @@ export async function runAgentLoop(
     if (ctx.pendingPhaseTransition) {
       const fromPhase = ctx.currentPhase;
       const nextPhase = ctx.pendingPhaseTransition as CoachPhase;
+      console.log(`[agent-loop] phase_transition from=${fromPhase} to=${nextPhase}`);
       ctx.pendingPhaseTransition = null;
       ctx.setPhase(nextPhase);
       emit({
@@ -54,175 +57,205 @@ export async function runAgentLoop(
     });
   }
 
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const systemPrompt = buildSystemPrompt(ctx);
-    const phaseTools = getToolsForPhase(ctx.currentPhase);
+  console.log(`[agent-loop] start phase=${ctx.currentPhase} messages=${ctx.messages.length}`);
 
-    const apiMessages: MessageParam[] = ctx.messages.map((msg) => ({
-      role: msg.role as 'user' | 'assistant',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      content: msg.content as any,
-    }));
+  const loopBody = async () => {
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      console.log(`[agent-loop] round=${round} phase=${ctx.currentPhase}`);
+      const systemPrompt = buildSystemPrompt(ctx);
+      const phaseTools = getToolsForPhase(ctx.currentPhase);
 
-    try {
-      const stream = anthropic.messages.stream({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: systemPrompt,
-        messages: apiMessages,
-        tools: phaseTools as Parameters<typeof anthropic.messages.stream>[0]['tools'],
-      });
+      const truncatedMessages = ctx.getApiMessages();
+      const apiMessages: MessageParam[] = truncatedMessages.map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content as Anthropic.MessageParam['content'],
+      }));
 
-      let fullText = '';
-      const toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
+      try {
+        let fullText = '';
+        const toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
-      stream.on('text', (text) => {
-        fullText += text;
-        emit({ type: 'text_delta', content: text });
-      });
+        const response = await withRetry(
+          () => {
+            fullText = '';
+            toolUses.length = 0;
+            const s = anthropic.messages.stream({
+              model: MODEL,
+              max_tokens: MAX_TOKENS,
+              system: systemPrompt,
+              messages: apiMessages,
+              tools: phaseTools as Parameters<typeof anthropic.messages.stream>[0]['tools'],
+            });
+            s.on('text', (text: string) => {
+              fullText += text;
+              emit({ type: 'text_delta', content: text });
+            });
+            return s.finalMessage();
+          },
+          {
+            onRetry: (attempt, error) => {
+              console.log(`[agent-loop] retry attempt=${attempt} error=${error.message}`);
+              emit({ type: 'transparency', message: `Retrying API call (attempt ${attempt + 1})...`, phase: ctx.currentPhase });
+            },
+          },
+        );
 
-      const response = await stream.finalMessage();
+        ctx.addTokens(
+          (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0),
+        );
 
-      ctx.addTokens(
-        (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0),
-      );
+        for (const block of response.content) {
+          if (block.type === 'tool_use') {
+            toolUses.push({
+              id: block.id,
+              name: block.name,
+              input: block.input as Record<string, unknown>,
+            });
+          }
+        }
 
-      for (const block of response.content) {
-        if (block.type === 'tool_use') {
-          toolUses.push({
-            id: block.id,
-            name: block.name,
-            input: block.input as Record<string, unknown>,
+        if (fullText) {
+          emit({ type: 'text_complete', content: fullText });
+        }
+
+        const assistantContent: ContentBlock[] = [];
+        if (fullText) {
+          assistantContent.push({ type: 'text', text: fullText });
+        }
+        for (const tool of toolUses) {
+          assistantContent.push({
+            type: 'tool_use',
+            id: tool.id,
+            name: tool.name,
+            input: tool.input,
           });
         }
-      }
-
-      if (fullText) {
-        emit({ type: 'text_complete', content: fullText });
-      }
-
-      const assistantContent: ContentBlock[] = [];
-      if (fullText) {
-        assistantContent.push({ type: 'text', text: fullText });
-      }
-      for (const tool of toolUses) {
-        assistantContent.push({
-          type: 'tool_use',
-          id: tool.id,
-          name: tool.name,
-          input: tool.input,
+        ctx.messages.push({
+          role: 'assistant',
+          content: assistantContent,
         });
-      }
-      ctx.messages.push({
-        role: 'assistant',
-        content: assistantContent,
-      });
 
-      if (toolUses.length === 0) {
-        return;
-      }
-
-      const toolResults: ContentBlock[] = [];
-
-      for (const tool of toolUses) {
-        if (tool.name === 'ask_user') {
-          const askInput = tool.input as {
-            question: string;
-            context: string;
-            input_type: 'text' | 'multiple_choice';
-            choices?: Array<{ label: string; description?: string }>;
-            skip_allowed?: boolean;
-          };
-
-          ctx.pendingToolCallId = tool.id;
-
-          emit({
-            type: 'ask_user',
-            tool_call_id: tool.id,
-            question: askInput.question,
-            context: askInput.context,
-            input_type: askInput.input_type,
-            choices: askInput.choices,
-            skip_allowed: askInput.skip_allowed ?? true,
-          });
-
-          ctx.addInterviewResponse(askInput.question, '[awaiting response]', askInput.context);
+        if (toolUses.length === 0) {
+          console.log(`[agent-loop] complete phase=${ctx.currentPhase} rounds=${round + 1}`);
           return;
         }
 
-        if (tool.name === 'confirm_phase_complete') {
-          const gateInput = tool.input as {
-            current_phase: string;
-            next_phase: string;
-            phase_summary: string;
-            next_phase_preview: string;
-          };
+        const toolResults: ContentBlock[] = [];
 
-          // Quality gate validation — soft gates that tell the AI what to fix
-          const gateError = validatePhaseGate(gateInput.current_phase, gateInput.next_phase, ctx);
-          if (gateError) {
+        for (const tool of toolUses) {
+          if (tool.name === 'ask_user') {
+            const askInput = tool.input as {
+              question: string;
+              context: string;
+              input_type: 'text' | 'multiple_choice';
+              choices?: Array<{ label: string; description?: string }>;
+              skip_allowed?: boolean;
+            };
+
+            ctx.pendingToolCallId = tool.id;
+
+            emit({
+              type: 'ask_user',
+              tool_call_id: tool.id,
+              question: askInput.question,
+              context: askInput.context,
+              input_type: askInput.input_type,
+              choices: askInput.choices,
+              skip_allowed: askInput.skip_allowed ?? true,
+            });
+
+            ctx.addInterviewResponse(askInput.question, '[awaiting response]', askInput.context);
+            return;
+          }
+
+          if (tool.name === 'confirm_phase_complete') {
+            const gateInput = tool.input as {
+              current_phase: string;
+              next_phase: string;
+              phase_summary: string;
+              next_phase_preview: string;
+            };
+
+            // Quality gate validation — soft gates that tell the AI what to fix
+            const gateError = validatePhaseGate(gateInput.current_phase, gateInput.next_phase, ctx);
+            if (gateError) {
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: tool.id,
+                content: JSON.stringify({ error: gateError }),
+              });
+              emit({ type: 'tool_complete', tool_name: tool.name, summary: `Gate blocked: ${gateError.substring(0, 80)}` });
+              continue;
+            }
+
+            ctx.pendingToolCallId = tool.id;
+            ctx.pendingPhaseTransition = gateInput.next_phase;
+
+            emit({
+              type: 'phase_gate',
+              tool_call_id: tool.id,
+              current_phase: gateInput.current_phase,
+              next_phase: gateInput.next_phase,
+              phase_summary: gateInput.phase_summary,
+              next_phase_preview: gateInput.next_phase_preview,
+            });
+
+            return;
+          }
+
+          console.log(`[agent-loop] tool=${tool.name}`);
+          emit({ type: 'tool_start', tool_name: tool.name, description: getToolDescription(tool.name) });
+
+          try {
+            const result = await executeToolCall(tool.name, tool.input, ctx, emit);
             toolResults.push({
               type: 'tool_result',
               tool_use_id: tool.id,
-              content: JSON.stringify({ error: gateError }),
+              content: JSON.stringify(result),
             });
-            emit({ type: 'tool_complete', tool_name: tool.name, summary: `Gate blocked: ${gateError.substring(0, 80)}` });
-            continue;
+            emit({ type: 'tool_complete', tool_name: tool.name, summary: summarizeToolResult(tool.name, result) });
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: tool.id,
+              content: JSON.stringify({ error: errorMessage }),
+            });
+            emit({ type: 'tool_complete', tool_name: tool.name, summary: `Error: ${errorMessage}` });
           }
-
-          ctx.pendingToolCallId = tool.id;
-          ctx.pendingPhaseTransition = gateInput.next_phase;
-
-          emit({
-            type: 'phase_gate',
-            tool_call_id: tool.id,
-            current_phase: gateInput.current_phase,
-            next_phase: gateInput.next_phase,
-            phase_summary: gateInput.phase_summary,
-            next_phase_preview: gateInput.next_phase_preview,
-          });
-
-          return;
         }
 
-        emit({ type: 'tool_start', tool_name: tool.name, description: getToolDescription(tool.name) });
-
-        try {
-          const result = await executeToolCall(tool.name, tool.input, ctx, emit);
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: tool.id,
-            content: JSON.stringify(result),
-          });
-          emit({ type: 'tool_complete', tool_name: tool.name, summary: summarizeToolResult(tool.name, result) });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: tool.id,
-            content: JSON.stringify({ error: errorMessage }),
-          });
-          emit({ type: 'tool_complete', tool_name: tool.name, summary: `Error: ${errorMessage}` });
-        }
+        ctx.messages.push({
+          role: 'user',
+          content: toolResults,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Agent loop error';
+        emit({ type: 'error', message, recoverable: true, retry_action: 'resend_last_message' });
+        return;
       }
-
-      ctx.messages.push({
-        role: 'user',
-        content: toolResults,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Agent loop error';
-      emit({ type: 'error', message, recoverable: true, retry_action: 'resend_last_message' });
-      return;
     }
-  }
 
-  emit({
-    type: 'error',
-    message: 'Agent reached maximum tool call rounds. Progress has been saved.',
-    recoverable: true,
-    retry_action: 'continue_session',
-  });
+    emit({
+      type: 'error',
+      message: 'Agent reached maximum tool call rounds. Progress has been saved.',
+      recoverable: true,
+      retry_action: 'continue_session',
+    });
+  };
+
+  // 2E: Timeout guard
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('Agent loop timed out after 5 minutes')), LOOP_TIMEOUT_MS),
+  );
+
+  try {
+    await Promise.race([loopBody(), timeout]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Agent loop timeout';
+    console.log(`[agent-loop] timeout phase=${ctx.currentPhase}`);
+    emit({ type: 'error', message, recoverable: true, retry_action: 'continue_session' });
+  }
 }
 
 function getToolDescription(toolName: string): string {
@@ -273,6 +306,18 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     }
   }
 
+  // section_craft → quality_review: check all sections confirmed
+  if (currentPhase === 'section_craft' && nextPhase === 'quality_review') {
+    const allConfirmed = ctx.sectionStatuses.length > 0 &&
+      ctx.sectionStatuses.every(s => s.status === 'confirmed');
+    if (!allConfirmed) {
+      const unconfirmed = ctx.sectionStatuses
+        .filter(s => s.status !== 'confirmed')
+        .map(s => s.section);
+      return `Cannot advance: ${unconfirmed.length} section(s) not yet confirmed: ${unconfirmed.join(', ')}. Use confirm_section for each.`;
+    }
+  }
+
   // quality_review → cover_letter: check quality thresholds
   if (currentPhase === 'quality_review' && nextPhase === 'cover_letter') {
     if (!ctx.adversarialReview.overall_assessment ||
@@ -286,6 +331,15 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
     if (biasRisks.length > 0) {
       return `Cannot advance: ${biasRisks.length} unaddressed age-bias risk(s): ${biasRisks.join(', ')}. Fix these before proceeding.`;
+    }
+  }
+
+  // cover_letter → interview_prep: soft gate — warn but allow
+  if (currentPhase === 'cover_letter' && nextPhase === 'interview_prep') {
+    const hasCoverContent = ctx.tailoredSections &&
+      Object.values(ctx.tailoredSections).some(v => typeof v === 'string' && v.length > 0);
+    if (!hasCoverContent) {
+      console.warn('[agent-loop] Advancing cover_letter → interview_prep without cover letter content');
     }
   }
 

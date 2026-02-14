@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 import { SECTION_GUIDANCE, SECTION_ORDER_KEYS } from '../resume-guide.js';
@@ -91,11 +92,8 @@ Return ONLY valid JSON:
   let content = currentContent;
   let changesMade: string[] = [];
 
-  // Claude sometimes wraps JSON in markdown code fences — strip them before parsing
-  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-
-  try {
-    const parsed = JSON.parse(jsonText);
+  const parsed = repairJSON<Record<string, unknown>>(rawText);
+  if (parsed) {
     // Ensure content is always a plain string, never an object
     const rawContent = parsed.content ?? currentContent;
     content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
@@ -111,7 +109,7 @@ Return ONLY valid JSON:
         changesMade.push('Trimmed selected accomplishments to 6 bullets (maximum per resume guide)');
       }
     }
-  } catch {
+  } else {
     // If parsing still fails, use raw text but strip any JSON wrapper artifacts
     content = rawText || currentContent;
     changesMade = ['Section rewritten (raw format)'];

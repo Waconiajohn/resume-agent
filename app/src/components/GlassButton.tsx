@@ -14,7 +14,7 @@ export function GlassButton({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-400/50',
         variant === 'primary' &&
           'bg-gradient-to-b from-blue-500 to-blue-600 text-white rounded-2xl border border-blue-400/30 backdrop-blur-lg hover:from-blue-400 hover:to-blue-500 shadow-lg shadow-blue-500/25',
         variant === 'ghost' &&

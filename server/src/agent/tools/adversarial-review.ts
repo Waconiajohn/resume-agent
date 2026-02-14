@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import { QUALITY_CHECKLIST } from '../resume-guide.js';
 
@@ -74,20 +75,16 @@ Return ONLY valid JSON:
     checklist_total: 0,
   };
 
-  const jsonText = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-
-  try {
-    const parsed = JSON.parse(jsonText);
+  const parsed = repairJSON<Record<string, unknown>>(text);
+  if (parsed) {
     result = {
-      overall_assessment: parsed.overall_assessment ?? result.overall_assessment,
-      risk_flags: parsed.risk_flags ?? [],
-      pass: parsed.pass ?? false,
-      age_bias_risks: parsed.age_bias_risks ?? [],
-      checklist_scores: parsed.checklist_scores ?? {},
-      checklist_total: parsed.checklist_total ?? 0,
+      overall_assessment: (parsed.overall_assessment as string) ?? result.overall_assessment,
+      risk_flags: (parsed.risk_flags as typeof result.risk_flags) ?? [],
+      pass: (parsed.pass as boolean) ?? false,
+      age_bias_risks: (parsed.age_bias_risks as string[]) ?? [],
+      checklist_scores: (parsed.checklist_scores as Record<string, number>) ?? {},
+      checklist_total: (parsed.checklist_total as number) ?? 0,
     };
-  } catch {
-    // Use defaults
   }
 
   ctx.adversarialReview = {

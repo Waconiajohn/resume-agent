@@ -63,14 +63,14 @@ export function ChatPanel({
     <div className="flex h-full flex-col">
       {/* Phase indicator bar */}
       <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2">
-        <span className="text-[10px] uppercase tracking-wider text-white/30">Phase</span>
+        <span className="text-[10px] uppercase tracking-wider text-white/50">Phase</span>
         <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-xs font-medium text-blue-300">
           {PHASE_LABELS[currentPhase] ?? currentPhase}
         </span>
         {isBusy && (
           <div className="ml-auto flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
-            <span className="text-[10px] text-white/40">Working...</span>
+            <span className="text-[10px] text-white/60">Working...</span>
           </div>
         )}
       </div>

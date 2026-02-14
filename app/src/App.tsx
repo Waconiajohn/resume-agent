@@ -33,6 +33,8 @@ export default function App() {
     currentPhase,
     isProcessing,
     resume,
+    connected,
+    error: agentError,
     panelType,
     panelData,
     addUserMessage,
@@ -102,7 +104,16 @@ export default function App() {
         />
       )}
 
-      {view === 'coach' && (
+      {view === 'coach' && !connected && !agentError && currentSession && (
+        <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-blue-400" />
+            <span className="text-sm text-white/50">Connecting to session...</span>
+          </div>
+        </div>
+      )}
+
+      {view === 'coach' && (connected || agentError) && (
         <CoachScreen
           messages={messages}
           streamingText={streamingText}
@@ -114,6 +125,7 @@ export default function App() {
           resume={resume}
           panelType={panelType}
           panelData={panelData}
+          error={agentError}
           onSendMessage={handleSendMessage}
         />
       )}

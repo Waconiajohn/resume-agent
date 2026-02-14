@@ -1,4 +1,5 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 
@@ -58,16 +59,15 @@ Return ONLY valid JSON:
   });
 
   const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
-  const jsonText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
   let content = '';
   let reasoning = '';
 
-  try {
-    const parsed = JSON.parse(jsonText);
-    content = parsed.content ?? '';
-    reasoning = parsed.reasoning ?? '';
-  } catch {
+  const parsed = repairJSON<Record<string, unknown>>(rawText);
+  if (parsed) {
+    content = (parsed.content as string) ?? '';
+    reasoning = (parsed.reasoning as string) ?? '';
+  } else {
     content = rawText;
     reasoning = 'Generated paragraph';
   }

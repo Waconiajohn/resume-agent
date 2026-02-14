@@ -366,6 +366,6 @@ export const PHASE_TOOLS: Record<string, string[]> = {
 
 export function getToolsForPhase(phase: string): ToolDefinition[] {
   const allowedNames = PHASE_TOOLS[phase];
-  if (!allowedNames) return toolDefinitions;
+  if (!allowedNames) return [];
   return toolDefinitions.filter(t => allowedNames.includes(t.name));
 }

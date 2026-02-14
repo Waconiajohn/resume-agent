@@ -5,13 +5,13 @@ export async function executeExportResume(
   input: Record<string, unknown>,
   ctx: SessionContext,
   emit: SSEEmitter,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; code?: string; recoverable?: boolean }> {
   const atsScore = (input.ats_score as number) || 0;
   const requirementsAddressed = (input.requirements_addressed as number) || 0;
   const sectionsRewritten = (input.sections_rewritten as number) || 0;
 
   if (!ctx.masterResumeData) {
-    return { success: false, error: 'No master resume data available for export' };
+    return { success: false, error: 'No master resume data available for export', code: 'MISSING_RESUME', recoverable: false };
   }
 
   const base = ctx.masterResumeData;

@@ -159,13 +159,13 @@ export interface InterviewPrepData {
   categories: InterviewCategory[];
 }
 
-// Union type for all panel data
+// Discriminated union type for all panel data (type field matches PanelType)
 export type PanelData =
-  | OnboardingSummaryData
-  | ResearchDashboardData
-  | GapAnalysisData
-  | DesignOptionsData
-  | LiveResumeData
-  | QualityDashboardData
-  | CoverLetterData
-  | InterviewPrepData;
+  | { type: 'onboarding_summary' } & OnboardingSummaryData
+  | { type: 'research_dashboard' } & ResearchDashboardData
+  | { type: 'gap_analysis' } & GapAnalysisData
+  | { type: 'design_options' } & DesignOptionsData
+  | { type: 'live_resume' } & LiveResumeData
+  | { type: 'quality_dashboard' } & QualityDashboardData
+  | { type: 'cover_letter' } & CoverLetterData
+  | { type: 'interview_prep' } & InterviewPrepData;

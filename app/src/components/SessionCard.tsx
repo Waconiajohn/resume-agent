@@ -27,7 +27,7 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
           <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/70 w-fit">
             {phaseLabels[session.current_phase] ?? session.current_phase}
           </span>
-          <div className="flex items-center gap-1.5 text-xs text-white/40">
+          <div className="flex items-center gap-1.5 text-xs text-white/60">
             <Clock className="h-3 w-3" />
             {timeAgo}
           </div>

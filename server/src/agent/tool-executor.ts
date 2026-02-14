@@ -1,5 +1,6 @@
 import type { SessionContext } from './context.js';
 import type { SSEEmitter } from './loop.js';
+import { toolSchemas } from './tool-schemas.js';
 import { executeResearchCompany } from './tools/research-company.js';
 import { executeAnalyzeJD } from './tools/analyze-jd.js';
 import { executeClassifyFit } from './tools/classify-fit.js';
@@ -26,6 +27,16 @@ export async function executeToolCall(
   ctx: SessionContext,
   emit: SSEEmitter,
 ): Promise<unknown> {
+  // Validate tool input with Zod schema if available
+  const schema = toolSchemas[toolName];
+  if (schema) {
+    const result = schema.safeParse(input);
+    if (!result.success) {
+      const issues = result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return { error: `Invalid input for ${toolName}: ${issues}` };
+    }
+  }
+
   switch (toolName) {
     case 'research_company':
       return executeResearchCompany(input, ctx);
@@ -76,13 +87,24 @@ export async function executeToolCall(
 
       // Persist design options so gate validation + section ordering can use them
       if (panel_type === 'design_options' && Array.isArray(data.options)) {
-        ctx.designChoices = (data.options as Array<Record<string, unknown>>).map((opt) => ({
+        const incoming = (data.options as Array<Record<string, unknown>>).map((opt) => ({
           id: (opt.id as string) ?? '',
           name: (opt.name as string) ?? '',
           description: (opt.description as string) ?? '',
           section_order: (opt.section_order as string[]) ?? [],
           selected: (opt.selected as boolean) ?? false,
         }));
+
+        // Merge: preserve selected state from existing choices
+        const existingById = new Map(ctx.designChoices.map(c => [c.id, c]));
+        for (const choice of incoming) {
+          const prev = existingById.get(choice.id);
+          if (prev) {
+            choice.selected = choice.selected || prev.selected;
+          }
+        }
+        ctx.designChoices = incoming;
+
         if (data.selected_id) {
           for (const choice of ctx.designChoices) {
             choice.selected = choice.id === data.selected_id;

@@ -4,7 +4,7 @@ import type { SessionContext } from '../context.js';
 export async function executeUpdateMasterResume(
   input: Record<string, unknown>,
   ctx: SessionContext,
-): Promise<{ success: boolean; changes_applied: number; new_version: number }> {
+): Promise<{ success: boolean; changes_applied: number; new_version: number; error?: string; code?: string; recoverable?: boolean }> {
   const masterResumeId = input.master_resume_id as string;
   const changes = input.changes as Array<{
     section: string;
@@ -18,10 +18,11 @@ export async function executeUpdateMasterResume(
     .from('master_resumes')
     .select('*')
     .eq('id', masterResumeId)
+    .eq('user_id', ctx.userId)
     .single();
 
   if (loadError || !resume) {
-    return { success: false, changes_applied: 0, new_version: 0 };
+    return { success: false, changes_applied: 0, new_version: 0, error: 'Master resume not found', code: 'RESUME_NOT_FOUND', recoverable: false };
   }
 
   let appliedCount = 0;
@@ -49,11 +50,12 @@ export async function executeUpdateMasterResume(
       version: newVersion,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', masterResumeId);
+    .eq('id', masterResumeId)
+    .eq('user_id', ctx.userId);
 
   if (saveError) {
     console.error('Master resume update error:', saveError);
-    return { success: false, changes_applied: 0, new_version: (resume as Record<string, unknown>).version as number };
+    return { success: false, changes_applied: 0, new_version: (resume as Record<string, unknown>).version as number, error: 'Failed to save resume updates', code: 'RESUME_UPDATE_FAILED', recoverable: true };
   }
 
   await supabaseAdmin.from('master_resume_history').insert({
@@ -105,5 +107,66 @@ function applyChange(
       }
     }
     resume.skills = skills;
+  }
+
+  if (section === 'education') {
+    const education = (resume.education ?? []) as Array<Record<string, string>>;
+    if (action === 'add') {
+      try {
+        const entry = JSON.parse(content) as Record<string, string>;
+        education.push({
+          institution: entry.institution ?? '',
+          degree: entry.degree ?? '',
+          field: entry.field ?? '',
+          year: entry.year ?? '',
+        });
+      } catch {
+        education.push({ institution: content, degree: '', field: '', year: '' });
+      }
+    } else if (action === 'update') {
+      const indexMatch = change.path.match(/education\[(\d+)\]/);
+      if (indexMatch) {
+        const idx = parseInt(indexMatch[1]);
+        if (idx < education.length) {
+          try {
+            const entry = JSON.parse(content) as Record<string, string>;
+            education[idx] = { ...education[idx], ...entry };
+          } catch {
+            // If content isn't JSON, skip
+          }
+        }
+      }
+    }
+    resume.education = education;
+  }
+
+  if (section === 'certifications') {
+    const certifications = (resume.certifications ?? []) as Array<Record<string, string>>;
+    if (action === 'add') {
+      try {
+        const entry = JSON.parse(content) as Record<string, string>;
+        certifications.push({
+          name: entry.name ?? '',
+          issuer: entry.issuer ?? '',
+          year: entry.year ?? '',
+        });
+      } catch {
+        certifications.push({ name: content, issuer: '', year: '' });
+      }
+    } else if (action === 'update') {
+      const indexMatch = change.path.match(/certifications\[(\d+)\]/);
+      if (indexMatch) {
+        const idx = parseInt(indexMatch[1]);
+        if (idx < certifications.length) {
+          try {
+            const entry = JSON.parse(content) as Record<string, string>;
+            certifications[idx] = { ...certifications[idx], ...entry };
+          } catch {
+            // If content isn't JSON, skip
+          }
+        }
+      }
+    }
+    resume.certifications = certifications;
   }
 }

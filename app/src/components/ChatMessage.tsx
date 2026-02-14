@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 import { Bot, User } from 'lucide-react';
 
 interface ChatMessageProps {
@@ -37,6 +38,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
         )}
       >
         <ReactMarkdown
+          rehypePlugins={[rehypeSanitize]}
           components={{
             p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
             strong: ({ children }) => <strong className="font-semibold text-white/90">{children}</strong>,

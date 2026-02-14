@@ -9,25 +9,15 @@ import { LiveResumePanel } from './LiveResumePanel';
 import { QualityDashboardPanel } from './QualityDashboardPanel';
 import { CoverLetterPanel } from './CoverLetterPanel';
 import { InterviewPrepPanel } from './InterviewPrepPanel';
-import type { PanelType } from '@/types/panels';
-import type {
-  OnboardingSummaryData,
-  ResearchDashboardData,
-  GapAnalysisData,
-  DesignOptionsData,
-  LiveResumeData,
-  QualityDashboardData,
-  CoverLetterData,
-  InterviewPrepData,
-} from '@/types/panels';
+import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
 // Error boundary to prevent panel crashes from black-screening the app
 class PanelErrorBoundary extends Component<
-  { children: ReactNode; fallback: ReactNode },
+  { children: ReactNode; fallback: ReactNode; resetKey: string },
   { hasError: boolean }
 > {
-  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+  constructor(props: { children: ReactNode; fallback: ReactNode; resetKey: string }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -40,9 +30,9 @@ class PanelErrorBoundary extends Component<
     console.error('[RightPanel] Panel render error:', error);
   }
 
-  componentDidUpdate(prevProps: { children: ReactNode }) {
-    // Reset error state when children change (new panel data)
-    if (prevProps.children !== this.props.children && this.state.hasError) {
+  componentDidUpdate(prevProps: { children: ReactNode; resetKey: string }) {
+    // 3N: Reset error state when resetKey changes (new data)
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
       this.setState({ hasError: false });
     }
   }
@@ -60,7 +50,7 @@ function PanelError() {
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-3 text-center">
         <AlertTriangle className="h-8 w-8 text-amber-400/40" />
-        <p className="text-sm text-white/40">
+        <p className="text-sm text-white/50">
           Panel data couldn't be displayed. It will update on the next event.
         </p>
       </div>
@@ -70,31 +60,41 @@ function PanelError() {
 
 interface RightPanelProps {
   panelType: PanelType | null;
-  panelData: Record<string, unknown> | null;
+  panelData: PanelData | null;
   resume: FinalResume | null;
   onSendMessage?: (content: string) => void;
 }
 
-function PanelContent({ panelType, panelData, resume, onSendMessage }: RightPanelProps) {
-  // If we have panel data for a specific type, render that panel
-  if (panelType && panelData) {
-    switch (panelType) {
+function PanelContent({ panelData, resume, onSendMessage }: RightPanelProps) {
+  // If we have typed panel data, use the discriminated union switch
+  if (panelData) {
+    switch (panelData.type) {
       case 'onboarding_summary':
-        return <OnboardingSummaryPanel data={panelData as unknown as OnboardingSummaryData} />;
+        return <OnboardingSummaryPanel data={panelData} />;
       case 'research_dashboard':
-        return <ResearchDashboardPanel data={panelData as unknown as ResearchDashboardData} />;
+        return <ResearchDashboardPanel data={panelData} />;
       case 'gap_analysis':
-        return <GapAnalysisPanel data={panelData as unknown as GapAnalysisData} />;
+        return <GapAnalysisPanel data={panelData} />;
       case 'design_options':
-        return <DesignOptionsPanel data={panelData as unknown as DesignOptionsData} />;
+        return <DesignOptionsPanel data={panelData} />;
       case 'live_resume':
-        return <LiveResumePanel data={panelData as unknown as LiveResumeData} onSendMessage={onSendMessage} />;
+        return <LiveResumePanel data={panelData} onSendMessage={onSendMessage} />;
       case 'quality_dashboard':
-        return <QualityDashboardPanel data={panelData as unknown as QualityDashboardData} />;
+        return <QualityDashboardPanel data={panelData} />;
       case 'cover_letter':
-        return <CoverLetterPanel data={panelData as unknown as CoverLetterData} />;
+        return <CoverLetterPanel data={panelData} />;
       case 'interview_prep':
-        return <InterviewPrepPanel data={panelData as unknown as InterviewPrepData} />;
+        return <InterviewPrepPanel data={panelData} />;
+      default: {
+        // 3G: Exhaustive check — compile-time safety for unhandled panel types
+        const _exhaustive: never = panelData;
+        console.warn('Unhandled panel type:', (_exhaustive as PanelData).type);
+        return (
+          <div className="flex h-full items-center justify-center p-8">
+            <p className="text-sm text-white/50">Unknown panel type</p>
+          </div>
+        );
+      }
     }
   }
 
@@ -102,10 +102,23 @@ function PanelContent({ panelType, panelData, resume, onSendMessage }: RightPane
   return <ResumePanel resume={resume} />;
 }
 
+// 3N: Simple hash for error boundary reset key
+function simpleHash(data: unknown): string {
+  try {
+    return String(JSON.stringify(data).length);
+  } catch {
+    return '0';
+  }
+}
+
 export function RightPanel(props: RightPanelProps) {
+  // 3N: Include data hash in key so error boundary resets on new data
+  const resetKey = `${props.panelType ?? 'resume'}-${simpleHash(props.panelData)}`;
+
   return (
     <PanelErrorBoundary
       key={props.panelType ?? 'resume'}
+      resetKey={resetKey}
       fallback={<PanelError />}
     >
       <PanelContent {...props} />
