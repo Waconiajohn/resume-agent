@@ -130,6 +130,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
     es.addEventListener('resume_update', (e) => {
       const data = JSON.parse(e.data);
+      // Only apply raw string content to string-valued sections (e.g. summary).
+      // Structured sections (experience, skills, education, certifications) expect
+      // arrays/objects — replacing them with a string crashes ResumePanel.
+      const structuredSections = new Set(['experience', 'skills', 'education', 'certifications']);
+      if (structuredSections.has(data.section) && typeof data.content === 'string') {
+        return;
+      }
       setResume((prev) => {
         const base = prev ?? {
           summary: '',
