@@ -18,11 +18,11 @@ function ChangeBlock({ change }: { change: SectionChange }) {
       {/* Original → Proposed */}
       <div className="space-y-2">
         {change.original && (
-          <div className="rounded-lg border border-red-500/10 bg-red-500/[0.04] p-3">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-red-400/60">
+          <div className="rounded-lg border border-red-500/10 bg-red-500/[0.08] p-3">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-red-400">
               Original
             </span>
-            <p className="text-xs text-white/50 leading-relaxed line-through decoration-red-400/30">
+            <p className="text-xs text-white/70 leading-relaxed line-through decoration-red-400/30">
               {change.original}
             </p>
           </div>
@@ -35,18 +35,18 @@ function ChangeBlock({ change }: { change: SectionChange }) {
         )}
 
         {change.proposed && (
-          <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/[0.04] p-3">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-emerald-400/60">
+          <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/[0.08] p-3">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
               Proposed
             </span>
-            <p className="text-xs text-white/80 leading-relaxed">{change.proposed}</p>
+            <p className="text-xs text-white/90 leading-relaxed">{change.proposed}</p>
           </div>
         )}
       </div>
 
       {/* Reasoning */}
       {change.reasoning && (
-        <p className="text-xs text-white/40 italic">{change.reasoning}</p>
+        <p className="text-xs text-white/60 italic">{change.reasoning}</p>
       )}
 
       {/* JD Requirement Tags */}
@@ -73,9 +73,9 @@ export function LiveResumePanel({ data }: LiveResumePanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-white/[0.06] px-4 py-3">
+      <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-white/70">Live Changes</span>
+          <span className="text-sm font-medium text-white/85">Live Changes</span>
           <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-medium text-blue-300">
             {sectionTitle(active_section)}
           </span>

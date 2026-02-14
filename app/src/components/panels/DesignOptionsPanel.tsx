@@ -22,18 +22,18 @@ const sectionLabels: Record<string, { short: string; height: string }> = {
 
 function MiniWireframe({ sections }: { sections: string[] }) {
   return (
-    <div className="space-y-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
+    <div className="space-y-1 rounded-lg border border-white/[0.12] bg-white/[0.05] p-2">
       {/* Header bar */}
       <div className="h-3 w-2/3 rounded-sm bg-white/20" />
       <div className="h-1.5 w-1/3 rounded-sm bg-white/10" />
-      <div className="my-1 h-px bg-white/[0.06]" />
+      <div className="my-1 h-px bg-white/[0.12]" />
       {/* Section blocks */}
       {sections.map((section, i) => {
         const config = sectionLabels[section.toLowerCase()] ?? { short: section, height: 'h-5' };
         return (
           <div key={i} className="flex items-center gap-2">
-            <div className={cn('flex-1 rounded-sm bg-white/[0.06]', config.height)} />
-            <span className="w-16 text-right text-[9px] text-white/30 shrink-0">
+            <div className={cn('flex-1 rounded-sm bg-white/[0.10]', config.height)} />
+            <span className="w-16 text-right text-[9px] text-white/50 shrink-0">
               {config.short}
             </span>
           </div>
@@ -55,8 +55,8 @@ function DesignCard({ option, isSelected }: { option: DesignOption; isSelected: 
       hover={!isSelected}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Layout className="h-3.5 w-3.5 text-blue-400/70" />
-        <span className="text-sm font-medium text-white/90">{option.name}</span>
+        <Layout className="h-3.5 w-3.5 text-blue-400" />
+        <span className="text-sm font-medium text-white">{option.name}</span>
         {isSelected && (
           <span className="ml-auto rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-medium text-blue-300">
             Selected
@@ -64,14 +64,14 @@ function DesignCard({ option, isSelected }: { option: DesignOption; isSelected: 
         )}
       </div>
 
-      <p className="text-xs text-white/50 mb-3">{option.description}</p>
+      <p className="text-xs text-white/70 mb-3">{option.description}</p>
 
       {option.section_order?.length > 0 && (
         <MiniWireframe sections={option.section_order} />
       )}
 
       {option.rationale && (
-        <p className="mt-3 text-xs text-blue-300/60 italic">{option.rationale}</p>
+        <p className="mt-3 text-xs text-blue-300 italic">{option.rationale}</p>
       )}
     </GlassCard>
   );
@@ -83,8 +83,8 @@ export function DesignOptionsPanel({ data }: DesignOptionsPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-white/[0.06] px-4 py-3">
-        <span className="text-sm font-medium text-white/70">Resume Design</span>
+      <div className="border-b border-white/[0.12] px-4 py-3">
+        <span className="text-sm font-medium text-white/85">Resume Design</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">

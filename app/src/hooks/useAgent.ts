@@ -111,8 +111,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       const data = JSON.parse(e.data);
       setCurrentPhase(data.to_phase);
       setPhaseGate(null);
-      setPanelType(null);
-      setPanelData(null);
     });
 
     es.addEventListener('transparency', (e) => {

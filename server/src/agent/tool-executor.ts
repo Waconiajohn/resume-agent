@@ -73,6 +73,23 @@ export async function executeToolCall(
     case 'update_right_panel': {
       const { panel_type, data } = input as { panel_type: string; data: Record<string, unknown> };
       emit({ type: 'right_panel_update', panel_type, data });
+
+      // Persist design options so gate validation + section ordering can use them
+      if (panel_type === 'design_options' && Array.isArray(data.options)) {
+        ctx.designChoices = (data.options as Array<Record<string, unknown>>).map((opt) => ({
+          id: (opt.id as string) ?? '',
+          name: (opt.name as string) ?? '',
+          description: (opt.description as string) ?? '',
+          section_order: (opt.section_order as string[]) ?? [],
+          selected: (opt.selected as boolean) ?? false,
+        }));
+        if (data.selected_id) {
+          for (const choice of ctx.designChoices) {
+            choice.selected = choice.id === data.selected_id;
+          }
+        }
+      }
+
       return { success: true };
     }
     default:

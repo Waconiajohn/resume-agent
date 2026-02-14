@@ -9,7 +9,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
       <input
         ref={ref}
         className={cn(
-          'w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm text-white/90 placeholder:text-white/30 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-colors',
+          'w-full rounded-xl border border-white/[0.12] bg-white/[0.06] backdrop-blur-xl px-4 py-2.5 text-sm text-white/90 placeholder:text-white/50 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-colors',
           className,
         )}
         {...props}
@@ -28,7 +28,7 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
       <textarea
         ref={ref}
         className={cn(
-          'w-full rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm text-white/90 placeholder:text-white/30 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-colors resize-none',
+          'w-full rounded-xl border border-white/[0.12] bg-white/[0.06] backdrop-blur-xl px-4 py-2.5 text-sm text-white/90 placeholder:text-white/50 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-colors resize-none',
           className,
         )}
         {...props}

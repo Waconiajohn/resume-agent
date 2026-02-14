@@ -34,7 +34,7 @@ export function CoachScreen({
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       {/* Chat side */}
-      <div className="flex-1 border-r border-white/[0.06]">
+      <div className="flex-1 border-r border-white/[0.12]">
         <ChatPanel
           messages={messages}
           streamingText={streamingText}

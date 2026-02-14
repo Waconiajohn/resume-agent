@@ -399,3 +399,8 @@ export const SECTION_ORDER = [
   'Certifications',
   'Title Adjustments',
 ] as const;
+
+export const SECTION_ORDER_KEYS = [
+  'summary', 'skills', 'selected_accomplishments',
+  'experience', 'education', 'certifications', 'title_adjustments',
+] as const;

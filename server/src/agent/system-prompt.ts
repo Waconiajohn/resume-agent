@@ -139,7 +139,12 @@ Your goals:
 4. Ask the candidate which they prefer using ask_user (multiple_choice)
 5. Use confirm_phase_complete to advance to section_craft
 
-Keep this phase focused and quick. The goal is alignment on structure before writing.`,
+Keep this phase focused and quick. The goal is alignment on structure before writing.
+
+IMPORTANT: After the user selects a design option:
+1. Call update_right_panel with panel_type "design_options" and set selected_id to the chosen option's id
+2. Then call confirm_phase_complete
+The section_craft phase gate WILL REJECT advancement if no design option is marked as selected.`,
 
   section_craft: `## Current Phase: Section-by-Section Craft
 This is the heart of the process. Work ONE section at a time, collaboratively.

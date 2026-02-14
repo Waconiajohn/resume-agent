@@ -1,7 +1,7 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
-import { SECTION_GUIDANCE } from '../resume-guide.js';
+import { SECTION_GUIDANCE, SECTION_ORDER_KEYS } from '../resume-guide.js';
 
 export async function executeProposeSectionEdit(
   input: Record<string, unknown>,
@@ -16,6 +16,23 @@ export async function executeProposeSectionEdit(
   const currentContent = input.current_content as string;
   const requirements = (input.requirements as string[]) || [];
   const instructions = (input.instructions as string) || '';
+
+  // Section order enforcement
+  const selected = ctx.designChoices.find(d => d.selected);
+  const effectiveOrder: string[] = selected?.section_order?.length
+    ? selected.section_order
+    : [...SECTION_ORDER_KEYS];
+
+  const confirmed = new Set(
+    ctx.sectionStatuses.filter(s => s.status === 'confirmed' || s.status === 'proposed').map(s => s.section)
+  );
+  const targetIdx = effectiveOrder.indexOf(section);
+  if (targetIdx > 0) {
+    const prev = effectiveOrder[targetIdx - 1];
+    if (!confirmed.has(prev)) {
+      return { section, proposed_content: currentContent ?? '', changes: [{ original: '', proposed: '', reasoning: `BLOCKED: Complete "${prev}" before "${section}". Order: ${effectiveOrder.join(' → ')}`, jd_requirements: [] }] };
+    }
+  }
 
   const companyContext = ctx.companyResearch.company_name
     ? `Target company: ${ctx.companyResearch.company_name}

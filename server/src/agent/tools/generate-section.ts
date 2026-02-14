@@ -1,7 +1,7 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
-import { SECTION_GUIDANCE } from '../resume-guide.js';
+import { SECTION_GUIDANCE, SECTION_ORDER_KEYS } from '../resume-guide.js';
 
 export async function executeGenerateSection(
   input: Record<string, unknown>,
@@ -12,6 +12,23 @@ export async function executeGenerateSection(
   const currentContent = input.current_content as string;
   const requirements = input.requirements as string[];
   const instructions = input.instructions as string;
+
+  // Section order enforcement
+  const selected = ctx.designChoices.find(d => d.selected);
+  const effectiveOrder: string[] = selected?.section_order?.length
+    ? selected.section_order
+    : [...SECTION_ORDER_KEYS];
+
+  const confirmed = new Set(
+    ctx.sectionStatuses.filter(s => s.status === 'confirmed' || s.status === 'proposed').map(s => s.section)
+  );
+  const targetIdx = effectiveOrder.indexOf(section);
+  if (targetIdx > 0) {
+    const prev = effectiveOrder[targetIdx - 1];
+    if (!confirmed.has(prev)) {
+      return { section, content: currentContent ?? '', changes_made: [`BLOCKED: Complete "${prev}" before "${section}". Order: ${effectiveOrder.join(' → ')}`] };
+    }
+  }
 
   const companyContext = ctx.companyResearch.company_name
     ? `Target company: ${ctx.companyResearch.company_name}
@@ -83,6 +100,17 @@ Return ONLY valid JSON:
     const rawContent = parsed.content ?? currentContent;
     content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
     changesMade = Array.isArray(parsed.changes_made) ? parsed.changes_made : [];
+
+    if (section === 'selected_accomplishments') {
+      const bulletLines = content.split('\n').filter(line => /^\s*[•\-\*]/.test(line));
+      if (bulletLines.length > 6) {
+        const trimmed = bulletLines.slice(0, 6);
+        // Replace content keeping only first 6 bullets
+        const nonBulletPrefix = content.split('\n').filter(line => !/^\s*[•\-\*]/.test(line) && line.trim()).join('\n');
+        content = nonBulletPrefix ? nonBulletPrefix + '\n' + trimmed.join('\n') : trimmed.join('\n');
+        changesMade.push('Trimmed selected accomplishments to 6 bullets (maximum per resume guide)');
+      }
+    }
   } catch {
     // If parsing still fails, use raw text but strip any JSON wrapper artifacts
     content = rawText || currentContent;
@@ -97,6 +125,20 @@ Return ONLY valid JSON:
     section,
     content,
     change_type: 'rewrite',
+  });
+
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'live_resume',
+    data: {
+      active_section: section,
+      changes: changesMade.map((change) => ({
+        original: '',
+        proposed: content,
+        reasoning: change,
+        jd_requirements: [],
+      })),
+    },
   });
 
   return { section, content, changes_made: changesMade };

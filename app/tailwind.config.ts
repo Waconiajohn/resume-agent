@@ -5,7 +5,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        surface: 'hsl(225 25% 8%)',
+        surface: {
+          DEFAULT: 'hsl(225 25% 8%)',
+          raised: 'hsl(225 25% 12%)',
+          overlay: 'hsl(225 25% 16%)',
+        },
       },
     },
   },

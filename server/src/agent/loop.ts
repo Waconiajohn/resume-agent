@@ -263,8 +263,22 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     }
   }
 
+  // resume_design → section_craft: check design options were presented and selected
+  if (currentPhase === 'resume_design' && nextPhase === 'section_craft') {
+    if (ctx.designChoices.length === 0) {
+      return 'Cannot advance: no design options were presented. Use update_right_panel with panel_type "design_options" and ask_user to let the candidate choose a layout.';
+    }
+    if (!ctx.designChoices.some(d => d.selected)) {
+      return 'Cannot advance: no design option selected. Use ask_user to let the candidate choose.';
+    }
+  }
+
   // quality_review → cover_letter: check quality thresholds
   if (currentPhase === 'quality_review' && nextPhase === 'cover_letter') {
+    if (!ctx.adversarialReview.overall_assessment ||
+        ctx.adversarialReview.overall_assessment === 'Unable to complete review') {
+      return 'Cannot advance: adversarial_review has not been run. Run it before completing quality review.';
+    }
     const total = ctx.adversarialReview.checklist_total ?? 0;
     if (total > 0 && total < 35) {
       return `Cannot advance: checklist total is ${total}/50 (minimum 35 required). Address quality issues before proceeding.`;

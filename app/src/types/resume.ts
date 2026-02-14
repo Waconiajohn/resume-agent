@@ -40,6 +40,7 @@ export interface FinalResume {
   skills: Record<string, string[]>;
   education: MasterResumeEducation[];
   certifications: MasterResumeCertification[];
+  selected_accomplishments?: string;
   ats_score: number;
 }
 

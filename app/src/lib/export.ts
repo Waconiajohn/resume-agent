@@ -9,6 +9,12 @@ export function resumeToText(resume: FinalResume): string {
     lines.push('');
   }
 
+  if (resume.selected_accomplishments) {
+    lines.push('SELECTED ACCOMPLISHMENTS');
+    lines.push(resume.selected_accomplishments);
+    lines.push('');
+  }
+
   if (resume.experience) {
     if (Array.isArray(resume.experience) && resume.experience.length > 0) {
       lines.push('EXPERIENCE');
