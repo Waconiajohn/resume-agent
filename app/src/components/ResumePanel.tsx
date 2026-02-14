@@ -27,6 +27,17 @@ export function ResumePanel({ resume }: ResumePanelProps) {
     downloadAsText(text, 'tailored-resume.txt');
   };
 
+  // Safely check arrays — resume_update may replace arrays with strings
+  const experienceIsArray = Array.isArray(resume.experience);
+  const educationIsArray = Array.isArray(resume.education);
+  const certificationsIsArray = Array.isArray(resume.certifications);
+  const skillsIsObject = resume.skills && typeof resume.skills === 'object' && !Array.isArray(resume.skills);
+
+  const hasExperience = experienceIsArray ? resume.experience.length > 0 : !!resume.experience;
+  const hasSkills = skillsIsObject ? Object.keys(resume.skills).length > 0 : !!resume.skills;
+  const hasEducation = educationIsArray ? resume.education.length > 0 : !!resume.education;
+  const hasCertifications = certificationsIsArray ? resume.certifications.length > 0 : !!resume.certifications;
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
@@ -53,74 +64,100 @@ export function ResumePanel({ resume }: ResumePanelProps) {
           </GlassCard>
         )}
 
-        {resume.experience.length > 0 && (
+        {hasExperience && (
           <GlassCard className="p-4">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">
               Experience
             </h3>
-            <div className="space-y-4">
-              {resume.experience.map((exp, i) => (
-                <div key={i}>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-medium text-white/90">{exp.title}</span>
-                    <span className="text-xs text-white/40">
-                      {exp.start_date} – {exp.end_date}
-                    </span>
+            {experienceIsArray ? (
+              <div className="space-y-4">
+                {resume.experience.map((exp, i) => (
+                  <div key={i}>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm font-medium text-white/90">{exp.title}</span>
+                      <span className="text-xs text-white/40">
+                        {exp.start_date} – {exp.end_date}
+                      </span>
+                    </div>
+                    <div className="text-xs text-white/50">{exp.company} | {exp.location}</div>
+                    <ul className="mt-2 space-y-1">
+                      {(exp.bullets ?? []).map((b, j) => (
+                        <li key={j} className="flex gap-2 text-sm text-white/70">
+                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white/30" />
+                          {b.text}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div className="text-xs text-white/50">{exp.company} | {exp.location}</div>
-                  <ul className="mt-2 space-y-1">
-                    {exp.bullets.map((b, j) => (
-                      <li key={j} className="flex gap-2 text-sm text-white/70">
-                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white/30" />
-                        {b.text}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                {String(resume.experience)}
+              </p>
+            )}
           </GlassCard>
         )}
 
-        {Object.keys(resume.skills).length > 0 && (
+        {hasSkills && (
           <GlassCard className="p-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
               Skills
             </h3>
-            <div className="space-y-2">
-              {Object.entries(resume.skills).map(([category, items]) => (
-                <div key={category}>
-                  <span className="text-xs font-medium text-white/50">{category}: </span>
-                  <span className="text-xs text-white/70">{items.join(', ')}</span>
-                </div>
-              ))}
-            </div>
+            {skillsIsObject ? (
+              <div className="space-y-2">
+                {Object.entries(resume.skills).map(([category, items]) => (
+                  <div key={category}>
+                    <span className="text-xs font-medium text-white/50">{category}: </span>
+                    <span className="text-xs text-white/70">
+                      {Array.isArray(items) ? items.join(', ') : String(items)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                {String(resume.skills)}
+              </p>
+            )}
           </GlassCard>
         )}
 
-        {resume.education.length > 0 && (
+        {hasEducation && (
           <GlassCard className="p-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
               Education
             </h3>
-            {resume.education.map((edu, i) => (
-              <div key={i} className="text-sm text-white/70">
-                {edu.degree} in {edu.field}, {edu.institution} ({edu.year})
-              </div>
-            ))}
+            {educationIsArray ? (
+              resume.education.map((edu, i) => (
+                <div key={i} className="text-sm text-white/70">
+                  {edu.degree} in {edu.field}, {edu.institution} ({edu.year})
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                {String(resume.education)}
+              </p>
+            )}
           </GlassCard>
         )}
 
-        {resume.certifications.length > 0 && (
+        {hasCertifications && (
           <GlassCard className="p-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
               Certifications
             </h3>
-            {resume.certifications.map((cert, i) => (
-              <div key={i} className="text-sm text-white/70">
-                {cert.name} — {cert.issuer} ({cert.year})
-              </div>
-            ))}
+            {certificationsIsArray ? (
+              resume.certifications.map((cert, i) => (
+                <div key={i} className="text-sm text-white/70">
+                  {cert.name} — {cert.issuer} ({cert.year})
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                {String(resume.certifications)}
+              </p>
+            )}
           </GlassCard>
         )}
       </div>
