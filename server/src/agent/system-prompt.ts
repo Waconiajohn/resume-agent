@@ -282,7 +282,34 @@ This is the finish line. Make them feel confident and prepared.`,
 
 export function buildSystemPrompt(ctx: SessionContext): string {
   const parts = [BASE_PROMPT];
-  parts.push(PHASE_INSTRUCTIONS[ctx.currentPhase]);
+
+  let phaseText = PHASE_INSTRUCTIONS[ctx.currentPhase];
+
+  if (ctx.currentPhase === 'section_craft') {
+    // Change 1: Inject user-selected section order from design choices
+    const selected = ctx.designChoices.find(d => d.selected);
+    if (selected?.section_order?.length) {
+      const customOrder = selected.section_order.join(' → ');
+      phaseText = phaseText.replace(
+        `Section order: ${SECTION_ORDER.join(' → ')}`,
+        `Section order (user selected "${selected.name}"): ${customOrder}\nDesign rationale: ${selected.description}`,
+      );
+    }
+
+    // Change 5: Pre-generation checklist for inline enforcement
+    phaseText += `
+
+## Pre-Generation Checklist (verify BEFORE generating each section)
+1. Am I using the user-selected section order? (Check design choice above)
+2. Does every bullet have a REAL metric from the candidate's data? (If not, use ask_user FIRST — NEVER fabricate)
+3. Am I matching the company's language style? (Reference company research language_style)
+4. Have I avoided ALL anti-patterns? (No "responsible for", "proven track record", "team player", "dynamic leader", etc.)
+5. For experience: am I using CAR/RAS/STAR frameworks with front-loaded results?
+6. For skills: am I hitting 60-80% JD keyword coverage with exact JD terminology?
+7. For age 45+: have I removed graduation years 20+ years old, obsolete tech, and dating language?`;
+  }
+
+  parts.push(phaseText);
 
   const contextSummary = ctx.buildContextSummary();
   if (contextSummary) {

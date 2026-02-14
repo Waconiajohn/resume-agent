@@ -158,6 +158,18 @@ export async function runAgentLoop(
             next_phase_preview: string;
           };
 
+          // Quality gate validation — soft gates that tell the AI what to fix
+          const gateError = validatePhaseGate(gateInput.current_phase, gateInput.next_phase, ctx);
+          if (gateError) {
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: tool.id,
+              content: JSON.stringify({ error: gateError }),
+            });
+            emit({ type: 'tool_complete', tool_name: tool.name, summary: `Gate blocked: ${gateError.substring(0, 80)}` });
+            continue;
+          }
+
           ctx.pendingToolCallId = tool.id;
           ctx.pendingPhaseTransition = gateInput.next_phase;
 
@@ -239,6 +251,31 @@ function getToolDescription(toolName: string): string {
     generate_interview_answer: 'Preparing interview answer framework...',
   };
   return descriptions[toolName] ?? `Running ${toolName}...`;
+}
+
+function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: SessionContext): string | null {
+  // gap_analysis → resume_design: check for unresolved critical gaps
+  if (currentPhase === 'gap_analysis' && nextPhase === 'resume_design') {
+    const reqs = ctx.fitClassification.requirements ?? [];
+    const criticalGaps = reqs.filter(r => r.classification === 'gap' && r.importance === 'critical');
+    if (criticalGaps.length > 0) {
+      return `Cannot advance: ${criticalGaps.length} critical requirement(s) still have gaps: ${criticalGaps.map(r => r.requirement).join(', ')}. Address these first using ask_user.`;
+    }
+  }
+
+  // quality_review → cover_letter: check quality thresholds
+  if (currentPhase === 'quality_review' && nextPhase === 'cover_letter') {
+    const total = ctx.adversarialReview.checklist_total ?? 0;
+    if (total > 0 && total < 35) {
+      return `Cannot advance: checklist total is ${total}/50 (minimum 35 required). Address quality issues before proceeding.`;
+    }
+    const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
+    if (biasRisks.length > 0) {
+      return `Cannot advance: ${biasRisks.length} unaddressed age-bias risk(s): ${biasRisks.join(', ')}. Fix these before proceeding.`;
+    }
+  }
+
+  return null;
 }
 
 function summarizeToolResult(toolName: string, result: unknown): string {

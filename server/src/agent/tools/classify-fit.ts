@@ -10,21 +10,35 @@ export async function executeClassifyFit(
   const resumeExperience = input.resume_experience as string;
   const resumeSkills = input.resume_skills as string;
 
+  // Build benchmark context for prioritized classification
+  const benchmarkContext = ctx.benchmarkCandidate
+    ? `BENCHMARK CANDIDATE PROFILE:
+Ideal candidate: ${ctx.benchmarkCandidate.ideal_candidate_summary}
+Experience expectations: ${ctx.benchmarkCandidate.experience_expectations}
+Culture fit traits: ${ctx.benchmarkCandidate.culture_fit_traits.join(', ')}
+Communication style: ${ctx.benchmarkCandidate.communication_style}
+Language keywords to echo: ${ctx.benchmarkCandidate.language_keywords.join(', ')}
+Prioritized requirements:
+${ctx.benchmarkCandidate.required_skills.map(s => `- [${s.importance.toUpperCase()}] ${s.requirement} (${s.category})`).join('\n')}`
+    : '';
+
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 8192,
     messages: [
       {
         role: 'user',
-        content: `Classify how well this candidate matches each requirement.
+        content: `Classify how well this candidate matches each requirement. Use the benchmark profile to assign importance levels and inform positioning strategies with the company's language keywords.
 
 RESUME:
 Summary: ${resumeSummary}
 Experience: ${resumeExperience}
 Skills: ${resumeSkills}
 
-REQUIREMENTS TO CLASSIFY:
+${benchmarkContext ? `${benchmarkContext}\n` : ''}REQUIREMENTS TO CLASSIFY:
 ${requirements.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+
+For each requirement, classify the match strength AND assign an importance level based on the benchmark profile. Use the benchmark's language keywords in strategy suggestions. Prioritize critical requirements.
 
 Return ONLY valid JSON:
 {
@@ -32,8 +46,9 @@ Return ONLY valid JSON:
     {
       "requirement": "The requirement text",
       "classification": "strong" | "partial" | "gap",
+      "importance": "critical" | "important" | "nice_to_have",
       "evidence": "What in the resume supports this",
-      "strategy": "For partial/gap: how to position this"
+      "strategy": "For partial/gap: how to position this using the company's language keywords"
     }
   ]
 }`,
@@ -49,6 +64,7 @@ Return ONLY valid JSON:
     reqs = (parsed.requirements ?? []).map((r: Record<string, string>) => ({
       requirement: r.requirement,
       classification: r.classification as 'strong' | 'partial' | 'gap',
+      importance: (r.importance as 'critical' | 'important' | 'nice_to_have') || undefined,
       evidence: r.evidence,
       strategy: r.strategy,
     }));

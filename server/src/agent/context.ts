@@ -80,6 +80,7 @@ export interface InterviewResponse {
 export interface RequirementFit {
   requirement: string;
   classification: 'strong' | 'partial' | 'gap';
+  importance?: 'critical' | 'important' | 'nice_to_have';
   evidence: string;
   strategy?: string;
 }

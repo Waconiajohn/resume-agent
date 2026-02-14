@@ -58,6 +58,8 @@ CRITICAL RULES:
 - Match the company's language and voice throughout
 - Flag and fix any age-bias signals (graduation years 20+ years old, "30 years of experience", obsolete tech references)
 
+METRIC INTEGRITY RULE: If you need a specific number (percentage, dollar amount, team size, timeframe, etc.) that is NOT explicitly stated in the candidate's resume, interview responses, or provided data above, DO NOT estimate or fabricate it. Instead, use placeholder format [ASK: description of what metric is needed] in the content and include "NEEDS_USER_INPUT: description" in the changes_made list. The coaching system will prompt the user for this information.
+
 Return ONLY valid JSON:
 {
   "content": "The rewritten section content",
