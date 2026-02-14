@@ -29,6 +29,9 @@ export default function App() {
     streamingText,
     tools,
     askPrompt,
+    phaseGate,
+    currentPhase,
+    isProcessing,
     resume,
     addUserMessage,
   } = useAgent(currentSession?.id ?? null, accessToken);
@@ -103,6 +106,9 @@ export default function App() {
           streamingText={streamingText}
           tools={tools}
           askPrompt={askPrompt}
+          phaseGate={phaseGate}
+          currentPhase={currentPhase}
+          isProcessing={isProcessing}
           resume={resume}
           onSendMessage={handleSendMessage}
         />

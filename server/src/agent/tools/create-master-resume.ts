@@ -57,7 +57,8 @@ export async function executeCreateMasterResume(
       return { success: false, error: 'Failed to parse resume — no text response' };
     }
 
-    structured = JSON.parse(textBlock.text);
+    const jsonText = textBlock.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    structured = JSON.parse(jsonText);
   } catch (err) {
     console.error('Resume structuring error:', err);
     return {

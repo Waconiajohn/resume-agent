@@ -41,3 +41,11 @@ export interface AskUserPromptData {
   choices?: Array<{ label: string; description?: string }>;
   skipAllowed: boolean;
 }
+
+export interface PhaseGateData {
+  toolCallId: string;
+  currentPhase: string;
+  nextPhase: string;
+  phaseSummary: string;
+  nextPhasePreview: string;
+}

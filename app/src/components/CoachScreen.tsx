@@ -1,6 +1,6 @@
 import { ChatPanel } from './ChatPanel';
 import { ResumePanel } from './ResumePanel';
-import type { ChatMessage, ToolStatus, AskUserPromptData } from '@/types/session';
+import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 
 interface CoachScreenProps {
@@ -8,6 +8,9 @@ interface CoachScreenProps {
   streamingText: string;
   tools: ToolStatus[];
   askPrompt: AskUserPromptData | null;
+  phaseGate: PhaseGateData | null;
+  currentPhase: string;
+  isProcessing: boolean;
   resume: FinalResume | null;
   onSendMessage: (content: string) => void;
 }
@@ -17,6 +20,9 @@ export function CoachScreen({
   streamingText,
   tools,
   askPrompt,
+  phaseGate,
+  currentPhase,
+  isProcessing,
   resume,
   onSendMessage,
 }: CoachScreenProps) {
@@ -29,6 +35,9 @@ export function CoachScreen({
           streamingText={streamingText}
           tools={tools}
           askPrompt={askPrompt}
+          phaseGate={phaseGate}
+          currentPhase={currentPhase}
+          isProcessing={isProcessing}
           onSendMessage={onSendMessage}
         />
       </div>

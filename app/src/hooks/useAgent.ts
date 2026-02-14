@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ChatMessage, ToolStatus, AskUserPromptData } from '@/types/session';
+import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 
 export function useAgent(sessionId: string | null, accessToken: string | null) {
@@ -7,6 +7,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [streamingText, setStreamingText] = useState('');
   const [tools, setTools] = useState<ToolStatus[]>([]);
   const [askPrompt, setAskPrompt] = useState<AskUserPromptData | null>(null);
+  const [phaseGate, setPhaseGate] = useState<PhaseGateData | null>(null);
+  const [currentPhase, setCurrentPhase] = useState<string>('onboarding');
+  const [isProcessing, setIsProcessing] = useState(false);
   const [resume, setResume] = useState<FinalResume | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
     es.addEventListener('text_delta', (e) => {
       const data = JSON.parse(e.data);
+      setIsProcessing(false);
       setStreamingText((prev) => prev + data.content);
     });
 
@@ -47,6 +51,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         },
       ]);
       setStreamingText('');
+      setIsProcessing(false);
     });
 
     es.addEventListener('tool_start', (e) => {
@@ -70,6 +75,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
     es.addEventListener('ask_user', (e) => {
       const data = JSON.parse(e.data);
+      setIsProcessing(false);
       setAskPrompt({
         toolCallId: data.tool_call_id,
         question: data.question,
@@ -78,6 +84,38 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         choices: data.choices,
         skipAllowed: data.skip_allowed,
       });
+    });
+
+    es.addEventListener('phase_gate', (e) => {
+      const data = JSON.parse(e.data);
+      setIsProcessing(false);
+      setPhaseGate({
+        toolCallId: data.tool_call_id,
+        currentPhase: data.current_phase,
+        nextPhase: data.next_phase,
+        phaseSummary: data.phase_summary,
+        nextPhasePreview: data.next_phase_preview,
+      });
+    });
+
+    es.addEventListener('phase_change', (e) => {
+      const data = JSON.parse(e.data);
+      setCurrentPhase(data.to_phase);
+      setPhaseGate(null);
+    });
+
+    es.addEventListener('transparency', (e) => {
+      const data = JSON.parse(e.data);
+      setIsProcessing(true);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextId(),
+          role: 'system',
+          content: data.message,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
     });
 
     es.addEventListener('resume_update', (e) => {
@@ -132,10 +170,16 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     // Clear previous tool statuses for new round
     setTools([]);
     setAskPrompt(null);
+    setPhaseGate(null);
+    setIsProcessing(true);
   }, [nextId]);
 
   const clearAskPrompt = useCallback(() => {
     setAskPrompt(null);
+  }, []);
+
+  const clearPhaseGate = useCallback(() => {
+    setPhaseGate(null);
   }, []);
 
   return {
@@ -143,10 +187,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     streamingText,
     tools,
     askPrompt,
+    phaseGate,
+    currentPhase,
+    isProcessing,
     resume,
     connected,
     error,
     addUserMessage,
     clearAskPrompt,
+    clearPhaseGate,
   };
 }
