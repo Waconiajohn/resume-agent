@@ -1,7 +1,8 @@
 import { ChatPanel } from './ChatPanel';
-import { ResumePanel } from './ResumePanel';
+import { RightPanel } from './panels/RightPanel';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
+import type { PanelType } from '@/types/panels';
 
 interface CoachScreenProps {
   messages: ChatMessage[];
@@ -12,6 +13,8 @@ interface CoachScreenProps {
   currentPhase: string;
   isProcessing: boolean;
   resume: FinalResume | null;
+  panelType: PanelType | null;
+  panelData: Record<string, unknown> | null;
   onSendMessage: (content: string) => void;
 }
 
@@ -24,6 +27,8 @@ export function CoachScreen({
   currentPhase,
   isProcessing,
   resume,
+  panelType,
+  panelData,
   onSendMessage,
 }: CoachScreenProps) {
   return (
@@ -42,9 +47,9 @@ export function CoachScreen({
         />
       </div>
 
-      {/* Resume preview side */}
+      {/* Dynamic right panel */}
       <div className="hidden w-[45%] lg:block">
-        <ResumePanel resume={resume} />
+        <RightPanel panelType={panelType} panelData={panelData} resume={resume} />
       </div>
     </div>
   );

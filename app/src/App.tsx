@@ -33,6 +33,8 @@ export default function App() {
     currentPhase,
     isProcessing,
     resume,
+    panelType,
+    panelData,
     addUserMessage,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
@@ -110,6 +112,8 @@ export default function App() {
           currentPhase={currentPhase}
           isProcessing={isProcessing}
           resume={resume}
+          panelType={panelType}
+          panelData={panelData}
           onSendMessage={handleSendMessage}
         />
       )}

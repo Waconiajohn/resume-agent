@@ -1,0 +1,181 @@
+import { ShieldCheck, ScanSearch, Fingerprint, AlertTriangle, Flag } from 'lucide-react';
+import { GlassCard } from '../GlassCard';
+import type { QualityDashboardData } from '@/types/panels';
+
+interface QualityDashboardPanelProps {
+  data: QualityDashboardData;
+}
+
+function ScoreRing({ score, max, label, color }: { score: number; max: number; label: string; color: string }) {
+  const pct = max > 0 ? Math.round((score / max) * 100) : 0;
+  const circumference = 2 * Math.PI * 28;
+  const offset = circumference - (pct / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="relative h-16 w-16">
+        <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3" className="text-white/[0.06]" />
+          <circle
+            cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3"
+            strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+            className={color}
+            style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white/80">
+          {pct}%
+        </span>
+      </div>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">{label}</span>
+    </div>
+  );
+}
+
+export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
+  const {
+    hiring_manager,
+    ats_score,
+    keyword_coverage,
+    authenticity_score,
+    risk_flags,
+    age_bias_risks,
+    overall_assessment,
+  } = data;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-white/[0.06] px-4 py-3">
+        <span className="text-sm font-medium text-white/70">Quality Dashboard</span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Score rings */}
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-around">
+            {hiring_manager && (
+              <ScoreRing
+                score={hiring_manager.checklist_total ?? 0}
+                max={hiring_manager.checklist_max ?? 50}
+                label="Hiring Mgr"
+                color={hiring_manager.pass ? 'text-emerald-400' : 'text-red-400'}
+              />
+            )}
+            {ats_score != null && (
+              <ScoreRing
+                score={ats_score}
+                max={100}
+                label="ATS"
+                color={ats_score >= 70 ? 'text-emerald-400' : ats_score >= 50 ? 'text-amber-400' : 'text-red-400'}
+              />
+            )}
+            {authenticity_score != null && (
+              <ScoreRing
+                score={authenticity_score}
+                max={100}
+                label="Authenticity"
+                color={authenticity_score >= 70 ? 'text-emerald-400' : 'text-amber-400'}
+              />
+            )}
+          </div>
+
+          {keyword_coverage != null && (
+            <div className="mt-3 flex items-center justify-between text-xs">
+              <span className="text-white/40">Keyword Coverage</span>
+              <span className="text-white/70">{keyword_coverage}%</span>
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Hiring Manager Checklist */}
+        {hiring_manager?.checklist_scores && Object.keys(hiring_manager.checklist_scores).length > 0 && (
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck className="h-3.5 w-3.5 text-blue-400/70" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">
+                Checklist Breakdown
+              </h3>
+              {hiring_manager.pass != null && (
+                <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  hiring_manager.pass
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                }`}>
+                  {hiring_manager.pass ? 'Pass' : 'Needs Work'}
+                </span>
+              )}
+            </div>
+            <div className="space-y-2">
+              {Object.entries(hiring_manager.checklist_scores).map(([key, score]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-xs text-white/50 capitalize">{key.replace(/_/g, ' ')}</span>
+                  <span className="text-xs font-medium text-white/70">{score}</span>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Overall Assessment */}
+        {overall_assessment && (
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ScanSearch className="h-3.5 w-3.5 text-blue-400/70" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">
+                Assessment
+              </h3>
+            </div>
+            <p className="text-xs text-white/70 leading-relaxed">{overall_assessment}</p>
+          </GlassCard>
+        )}
+
+        {/* Risk Flags */}
+        {risk_flags && risk_flags.length > 0 && (
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Flag className="h-3.5 w-3.5 text-amber-400/70" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">
+                Risk Flags
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {risk_flags.map((rf, i) => {
+                const severityColor = {
+                  low: 'border-white/10 bg-white/[0.03]',
+                  medium: 'border-amber-500/20 bg-amber-500/[0.05]',
+                  high: 'border-red-500/20 bg-red-500/[0.05]',
+                }[rf.severity];
+                return (
+                  <div key={i} className={`rounded-lg border p-2.5 ${severityColor}`}>
+                    <p className="text-xs text-white/70">{rf.flag}</p>
+                    <p className="mt-1 text-[10px] text-white/40">{rf.recommendation}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Age Bias Risks */}
+        {age_bias_risks && age_bias_risks.length > 0 && (
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-400/70" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">
+                Age-Bias Risks
+              </h3>
+            </div>
+            <div className="space-y-1.5">
+              {age_bias_risks.map((risk, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400/60" />
+                  <span className="text-xs text-white/60">{risk}</span>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
+      </div>
+    </div>
+  );
+}

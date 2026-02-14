@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
+import type { PanelType } from '@/types/panels';
 
 export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -13,6 +14,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [resume, setResume] = useState<FinalResume | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [panelType, setPanelType] = useState<PanelType | null>(null);
+  const [panelData, setPanelData] = useState<Record<string, unknown> | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const messageIdRef = useRef(0);
 
@@ -98,10 +101,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
     });
 
+    es.addEventListener('right_panel_update', (e) => {
+      const data = JSON.parse(e.data);
+      setPanelType(data.panel_type as PanelType);
+      setPanelData(data.data);
+    });
+
     es.addEventListener('phase_change', (e) => {
       const data = JSON.parse(e.data);
       setCurrentPhase(data.to_phase);
       setPhaseGate(null);
+      setPanelData(null);
     });
 
     es.addEventListener('transparency', (e) => {
@@ -193,6 +203,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     resume,
     connected,
     error,
+    panelType,
+    panelData,
     addUserMessage,
     clearAskPrompt,
     clearPhaseGate,
