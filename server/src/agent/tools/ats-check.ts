@@ -1,5 +1,6 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
+import { ATS_FORMATTING_RULES } from '../resume-guide.js';
 
 export async function executeAtsCheck(
   input: Record<string, unknown>,
@@ -9,6 +10,8 @@ export async function executeAtsCheck(
   keyword_matches: Array<{ keyword: string; found: boolean; context?: string }>;
   format_issues: string[];
   recommendations: string[];
+  keyword_coverage_pct: number;
+  section_header_issues: string[];
 }> {
   const resumeContent = input.resume_content as string;
 
@@ -25,7 +28,9 @@ export async function executeAtsCheck(
     messages: [
       {
         role: 'user',
-        content: `Perform a detailed ATS (Applicant Tracking System) compatibility check on this resume.
+        content: `Perform a detailed ATS (Applicant Tracking System) compatibility check on this resume using expert formatting standards.
+
+${ATS_FORMATTING_RULES}
 
 RESUME CONTENT:
 ${resumeContent}
@@ -37,10 +42,12 @@ ADDITIONAL KEYWORDS TO ECHO:
 ${benchmarkKeywords.join(', ')}
 
 Check for:
-1. Keyword presence and density — are the key terms from the JD present?
-2. Format compatibility — section headers, date formats, bullet structure
-3. ATS-unfriendly elements — tables, images, special characters, unusual formatting
-4. Keyword context — are keywords used in meaningful context or just stuffed?
+1. Keyword presence and density — target 60-80% coverage of JD keywords
+2. Keyword placement by section — 3-5 in summary, 10-15 in skills, naturally in experience bullets
+3. Format compatibility — section headers must use standard terms (see rules above)
+4. ATS-unfriendly elements — tables, images, special characters, unusual formatting
+5. Keyword context — keywords must be used in meaningful context, not stuffed
+6. Section header compliance — compare against the standard terms listed above
 
 Return ONLY valid JSON:
 {
@@ -53,7 +60,9 @@ Return ONLY valid JSON:
     }
   ],
   "format_issues": ["Any formatting problems for ATS"],
-  "recommendations": ["Specific actions to improve ATS score"]
+  "recommendations": ["Specific actions to improve ATS score"],
+  "keyword_coverage_pct": 72,
+  "section_header_issues": ["Any non-standard section headers that should be renamed"]
 }`,
       },
     ],
@@ -69,6 +78,8 @@ Return ONLY valid JSON:
       keyword_matches: parsed.keyword_matches ?? [],
       format_issues: parsed.format_issues ?? [],
       recommendations: parsed.recommendations ?? [],
+      keyword_coverage_pct: parsed.keyword_coverage_pct ?? 0,
+      section_header_issues: parsed.section_header_issues ?? [],
     };
   } catch {
     return {
@@ -76,6 +87,8 @@ Return ONLY valid JSON:
       keyword_matches: [],
       format_issues: [],
       recommendations: ['Unable to complete ATS check — please try again'],
+      keyword_coverage_pct: 0,
+      section_header_issues: [],
     };
   }
 }

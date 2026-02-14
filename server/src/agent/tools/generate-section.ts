@@ -1,6 +1,7 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
+import { SECTION_GUIDANCE } from '../resume-guide.js';
 
 export async function executeGenerateSection(
   input: Record<string, unknown>,
@@ -29,10 +30,11 @@ Culture: ${ctx.companyResearch.culture || 'Not researched'}`
     messages: [
       {
         role: 'user',
-        content: `Rewrite this resume section. Match the company's language and voice. Quantify everything possible.
+        content: `You are an expert executive resume writer specializing in professionals aged 45+. Rewrite this section following the expert guidance below. Apply every rule rigorously and reference which guidance rules you followed in your changes_made list.
 
 SECTION: ${section}
 
+${SECTION_GUIDANCE[section] ? `EXPERT SECTION GUIDANCE:\n${SECTION_GUIDANCE[section]}\n` : ''}
 CURRENT CONTENT:
 ${currentContent}
 
@@ -48,10 +50,18 @@ ${interviewContext}
 SPECIFIC INSTRUCTIONS:
 ${instructions}
 
+CRITICAL RULES:
+- Never use "responsible for" — replace with strong action verbs
+- Every bullet must have a NUMBER or METRIC
+- Front-load bullets with results/impact
+- Use CAR/RAS/STAR frameworks for bullet construction
+- Match the company's language and voice throughout
+- Flag and fix any age-bias signals (graduation years 20+ years old, "30 years of experience", obsolete tech references)
+
 Return ONLY valid JSON:
 {
   "content": "The rewritten section content",
-  "changes_made": ["List of specific changes and why each was made"]
+  "changes_made": ["List of specific changes, why each was made, and which guide rule it follows"]
 }`,
       },
     ],

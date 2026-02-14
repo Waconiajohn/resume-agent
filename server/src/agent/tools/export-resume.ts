@@ -18,6 +18,7 @@ export async function executeExportResume(
   const tailored = ctx.tailoredSections;
 
   const summary = tailored?.summary ?? base.summary;
+  const selectedAccomplishments = tailored?.selected_accomplishments ?? undefined;
 
   const experience = (tailored?.experience?.length
     ? (tailored.experience as Array<Record<string, unknown>>)
@@ -65,7 +66,7 @@ export async function executeExportResume(
 
   emit({
     type: 'export_ready',
-    resume: { summary, experience, skills, education, certifications, ats_score: atsScore },
+    resume: { summary, selected_accomplishments: selectedAccomplishments, experience, skills, education, certifications, ats_score: atsScore },
   });
 
   emit({

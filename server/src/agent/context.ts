@@ -93,6 +93,7 @@ export interface FitClassification {
 
 export interface TailoredSections {
   summary?: string;
+  selected_accomplishments?: string;
   experience?: Record<string, unknown>[];
   skills?: Record<string, string[]>;
   education?: string;
@@ -104,6 +105,9 @@ export interface AdversarialReviewResult {
   overall_assessment?: string;
   risk_flags?: Array<{ flag: string; severity: 'low' | 'medium' | 'high'; recommendation: string }>;
   pass?: boolean;
+  age_bias_risks?: string[];
+  checklist_scores?: Record<string, number>;
+  checklist_total?: number;
 }
 
 export interface ContentBlock {

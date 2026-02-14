@@ -1,6 +1,7 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
+import { SECTION_GUIDANCE } from '../resume-guide.js';
 
 export async function executeProposeSectionEdit(
   input: Record<string, unknown>,
@@ -37,10 +38,11 @@ Keywords to echo: ${ctx.benchmarkCandidate.language_keywords.join(', ')}`
     messages: [
       {
         role: 'user',
-        content: `Propose changes to this resume section. For EACH change, explain what you changed, why, and which JD requirements it addresses.
+        content: `You are an expert executive resume writer specializing in professionals aged 45+. Propose changes to this resume section following the expert guidance below. For EACH change, explain what you changed, why, and which JD requirements it addresses. Flag any anti-patterns found in the original text (cliches like "responsible for," "proven track record," weak verbs, missing metrics, age-bias signals).
 
 SECTION: ${section}
 
+${SECTION_GUIDANCE[section] ? `EXPERT SECTION GUIDANCE:\n${SECTION_GUIDANCE[section]}\n` : ''}
 CURRENT CONTENT:
 ${currentContent}
 
@@ -56,6 +58,13 @@ ${interviewContext ? `CANDIDATE INTERVIEW DATA:\n${interviewContext}` : ''}
 
 ${instructions ? `SPECIFIC INSTRUCTIONS:\n${instructions}` : ''}
 
+CRITICAL RULES:
+- Never use "responsible for" — replace with strong action verbs
+- Every bullet must have a NUMBER or METRIC
+- Front-load bullets with results/impact using CAR/RAS/STAR frameworks
+- Match the company's language and voice throughout
+- Flag and fix any age-bias signals
+
 Return ONLY valid JSON:
 {
   "proposed_content": "The full rewritten section",
@@ -63,7 +72,7 @@ Return ONLY valid JSON:
     {
       "original": "The original text that was changed",
       "proposed": "The new text",
-      "reasoning": "Why this change was made",
+      "reasoning": "Why this change was made and which guide rule it follows",
       "jd_requirements": ["Which requirements this change addresses"]
     }
   ]

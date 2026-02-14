@@ -72,7 +72,7 @@ export const toolDefinitions: ToolDefinition[] = [
     input_schema: {
       type: 'object',
       properties: {
-        section: { type: 'string', enum: ['summary', 'experience', 'skills', 'education', 'certifications', 'title_adjustments'], description: 'Which resume section to generate' },
+        section: { type: 'string', enum: ['summary', 'selected_accomplishments', 'experience', 'skills', 'education', 'certifications', 'title_adjustments'], description: 'Which resume section to generate' },
         current_content: { type: 'string', description: 'The current content of this section' },
         requirements: { type: 'array', items: { type: 'string' }, description: 'Key requirements this section should address' },
         instructions: { type: 'string', description: 'Specific instructions for how to rewrite this section' },
@@ -198,7 +198,7 @@ export const toolDefinitions: ToolDefinition[] = [
     input_schema: {
       type: 'object',
       properties: {
-        section: { type: 'string', enum: ['summary', 'experience', 'skills', 'education', 'certifications', 'title_adjustments'], description: 'Which resume section to propose edits for' },
+        section: { type: 'string', enum: ['summary', 'selected_accomplishments', 'experience', 'skills', 'education', 'certifications', 'title_adjustments'], description: 'Which resume section to propose edits for' },
         current_content: { type: 'string', description: 'The current content of this section' },
         requirements: { type: 'array', items: { type: 'string' }, description: 'Key requirements this section should address' },
         instructions: { type: 'string', description: 'Specific instructions for the edit' },

@@ -1,5 +1,6 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
+import { RESUME_ANTI_PATTERNS } from '../resume-guide.js';
 
 export async function executeHumanizeCheck(
   input: Record<string, unknown>,
@@ -8,6 +9,7 @@ export async function executeHumanizeCheck(
   authenticity_score: number;
   issues: Array<{ pattern: string; location: string; suggestion: string }>;
   overall_assessment: string;
+  age_sensitive_flags: string[];
 }> {
   const resumeContent = input.resume_content as string;
 
@@ -25,11 +27,25 @@ export async function executeHumanizeCheck(
 - Too many quantified metrics in a row without narrative
 - Corporate-speak that no human would naturally write
 
-Be specific about locations and suggest natural-sounding alternatives.`,
+Be specific about locations and suggest natural-sounding alternatives.
+
+${RESUME_ANTI_PATTERNS}`,
     messages: [
       {
         role: 'user',
-        content: `Review this resume for AI-generated patterns. Score its authenticity (0-100, where 100 is fully human-sounding).
+        content: `Review this resume for AI-generated patterns AND resume-specific anti-patterns. Score its authenticity (0-100, where 100 is fully human-sounding).
+
+Pay special attention to these cliches (flag every occurrence):
+- "results-oriented leader," "proven track record," "team player"
+- "responsible for" (should be replaced with strong action verbs)
+- "helped with," "assisted in," "worked on"
+- "dynamic leader," "seasoned professional," "self-starter"
+
+Also flag age-sensitive signals separately:
+- Graduation years from 20+ years ago
+- "30+ years of experience" or similar
+- Obsolete technology references
+- "References available upon request"
 
 RESUME CONTENT:
 ${resumeContent}
@@ -39,12 +55,13 @@ Return ONLY valid JSON:
   "authenticity_score": 85,
   "issues": [
     {
-      "pattern": "The specific AI pattern detected",
+      "pattern": "The specific AI pattern or anti-pattern detected",
       "location": "Where in the resume (section/bullet)",
       "suggestion": "A more natural-sounding alternative"
     }
   ],
-  "overall_assessment": "Brief overall assessment of how natural the resume sounds"
+  "overall_assessment": "Brief overall assessment of how natural the resume sounds",
+  "age_sensitive_flags": ["Any age-bias signals found, listed separately"]
 }`,
       },
     ],
@@ -59,12 +76,14 @@ Return ONLY valid JSON:
       authenticity_score: parsed.authenticity_score ?? 50,
       issues: parsed.issues ?? [],
       overall_assessment: parsed.overall_assessment ?? '',
+      age_sensitive_flags: parsed.age_sensitive_flags ?? [],
     };
   } catch {
     return {
       authenticity_score: 50,
       issues: [],
       overall_assessment: 'Unable to complete humanization check — please try again',
+      age_sensitive_flags: [],
     };
   }
 }
