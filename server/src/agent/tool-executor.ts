@@ -9,6 +9,16 @@ import { executeSaveCheckpoint } from './tools/save-checkpoint.js';
 import { executeUpdateMasterResume } from './tools/update-master-resume.js';
 import { executeCreateMasterResume } from './tools/create-master-resume.js';
 import { executeExportResume } from './tools/export-resume.js';
+import { executeResearchIndustry } from './tools/research-industry.js';
+import { executeBuildBenchmark } from './tools/build-benchmark.js';
+import { executeUpdateRequirementStatus } from './tools/update-requirement-status.js';
+import { executeEmitScore } from './tools/emit-score.js';
+import { executeProposeSectionEdit } from './tools/propose-section-edit.js';
+import { executeConfirmSection } from './tools/confirm-section.js';
+import { executeHumanizeCheck } from './tools/humanize-check.js';
+import { executeAtsCheck } from './tools/ats-check.js';
+import { executeGenerateCoverLetterSection } from './tools/generate-cover-letter-section.js';
+import { executeGenerateInterviewAnswer } from './tools/generate-interview-answer.js';
 
 export async function executeToolCall(
   toolName: string,
@@ -35,6 +45,36 @@ export async function executeToolCall(
       return executeCreateMasterResume(input, ctx);
     case 'export_resume':
       return executeExportResume(input, ctx, emit);
+    case 'research_industry':
+      return executeResearchIndustry(input, ctx);
+    case 'build_benchmark':
+      return executeBuildBenchmark(input, ctx, emit);
+    case 'update_requirement_status':
+      return executeUpdateRequirementStatus(input, ctx, emit);
+    case 'emit_score':
+      return executeEmitScore(input, ctx, emit);
+    case 'propose_section_edit':
+      return executeProposeSectionEdit(input, ctx, emit);
+    case 'confirm_section':
+      return executeConfirmSection(input, ctx, emit);
+    case 'humanize_check':
+      return executeHumanizeCheck(input, ctx);
+    case 'ats_check':
+      return executeAtsCheck(input, ctx);
+    case 'generate_cover_letter_section':
+      return executeGenerateCoverLetterSection(input, ctx, emit);
+    case 'generate_interview_answer':
+      return executeGenerateInterviewAnswer(input, ctx, emit);
+    case 'emit_transparency': {
+      const { message, phase } = input as { message: string; phase: string };
+      emit({ type: 'transparency', message, phase });
+      return { success: true };
+    }
+    case 'update_right_panel': {
+      const { panel_type, data } = input as { panel_type: string; data: Record<string, unknown> };
+      emit({ type: 'right_panel_update', panel_type, data });
+      return { success: true };
+    }
     default:
       throw new Error(`Unknown tool: ${toolName}`);
   }

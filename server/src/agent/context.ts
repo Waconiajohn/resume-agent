@@ -1,7 +1,53 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type CoachPhase = 'setup' | 'research' | 'analysis' | 'interview' | 'tailoring' | 'review' | 'export';
+export type CoachPhase =
+  | 'onboarding'
+  | 'deep_research'
+  | 'gap_analysis'
+  | 'resume_design'
+  | 'section_craft'
+  | 'quality_review'
+  | 'cover_letter'
+  | 'interview_prep';
+
 export type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
+
+// Benchmark candidate profile synthesized from JD + research
+export interface BenchmarkRequirement {
+  requirement: string;
+  importance: 'critical' | 'important' | 'nice_to_have';
+  category: string; // e.g. 'technical', 'leadership', 'domain', 'soft_skills'
+}
+
+export interface BenchmarkCandidate {
+  required_skills: BenchmarkRequirement[];
+  experience_expectations: string;
+  culture_fit_traits: string[];
+  communication_style: string;
+  industry_standards: string[];
+  competitive_differentiators: string[];
+  language_keywords: string[];
+  ideal_candidate_summary: string;
+}
+
+// Section-by-section tracking for Phase 5
+export type SectionCraftStatus = 'pending' | 'proposed' | 'revising' | 'confirmed';
+
+export interface SectionStatus {
+  section: string;
+  status: SectionCraftStatus;
+  score?: number; // 0-100
+  jd_requirements_addressed: string[];
+}
+
+// Design choices for Phase 4
+export interface DesignChoice {
+  id: string;
+  name: string;
+  description: string;
+  section_order: string[];
+  selected: boolean;
+}
 
 export interface CompanyResearch {
   company_name?: string;
@@ -119,6 +165,10 @@ export interface CoachSession {
   fit_classification: FitClassification;
   tailored_sections: TailoredSections;
   adversarial_review: AdversarialReviewResult;
+  benchmark_candidate: BenchmarkCandidate | null;
+  section_statuses: SectionStatus[];
+  overall_score: number;
+  design_choices: DesignChoice[];
   messages: ConversationMessage[];
   pending_tool_call_id: string | null;
   last_checkpoint_phase: string | null;
@@ -142,8 +192,13 @@ export class SessionContext {
   fitClassification: FitClassification;
   tailoredSections: TailoredSections;
   adversarialReview: AdversarialReviewResult;
+  benchmarkCandidate: BenchmarkCandidate | null;
+  sectionStatuses: SectionStatus[];
+  overallScore: number;
+  designChoices: DesignChoice[];
   messages: ConversationMessage[];
   pendingToolCallId: string | null;
+  pendingPhaseTransition: string | null;
   totalTokensUsed: number;
 
   constructor(session: CoachSession) {
@@ -159,8 +214,13 @@ export class SessionContext {
     this.fitClassification = session.fit_classification ?? {};
     this.tailoredSections = session.tailored_sections ?? {};
     this.adversarialReview = session.adversarial_review ?? {};
+    this.benchmarkCandidate = session.benchmark_candidate ?? null;
+    this.sectionStatuses = session.section_statuses ?? [];
+    this.overallScore = session.overall_score ?? 0;
+    this.designChoices = session.design_choices ?? [];
     this.messages = session.messages ?? [];
     this.pendingToolCallId = session.pending_tool_call_id;
+    this.pendingPhaseTransition = (session as unknown as Record<string, unknown>).pending_phase_transition as string | null ?? null;
     this.totalTokensUsed = session.total_tokens_used ?? 0;
   }
 
@@ -248,11 +308,37 @@ export class SessionContext {
       parts.push(`Strong: ${this.fitClassification.strong_count ?? 0}, Partial: ${this.fitClassification.partial_count ?? 0}, Gaps: ${this.fitClassification.gap_count ?? 0}`);
     }
 
+    if (this.benchmarkCandidate) {
+      parts.push('\n## Benchmark Candidate Profile');
+      parts.push(`Ideal candidate: ${this.benchmarkCandidate.ideal_candidate_summary}`);
+      parts.push(`Experience expectations: ${this.benchmarkCandidate.experience_expectations}`);
+      if (this.benchmarkCandidate.required_skills.length > 0) {
+        const critical = this.benchmarkCandidate.required_skills.filter(s => s.importance === 'critical');
+        const important = this.benchmarkCandidate.required_skills.filter(s => s.importance === 'important');
+        if (critical.length) parts.push(`Critical skills: ${critical.map(s => s.requirement).join(', ')}`);
+        if (important.length) parts.push(`Important skills: ${important.map(s => s.requirement).join(', ')}`);
+      }
+      if (this.benchmarkCandidate.language_keywords.length > 0) {
+        parts.push(`Keywords to echo: ${this.benchmarkCandidate.language_keywords.join(', ')}`);
+      }
+    }
+
     if (this.interviewResponses.length > 0) {
       parts.push(`\n## Interview Responses (${this.interviewResponses.length} answers collected)`);
       for (const r of this.interviewResponses) {
         parts.push(`Q: ${r.question}\nA: ${r.answer}`);
       }
+    }
+
+    if (this.sectionStatuses.length > 0) {
+      parts.push('\n## Section Status');
+      for (const s of this.sectionStatuses) {
+        parts.push(`- ${s.section}: ${s.status}${s.score != null ? ` (score: ${s.score})` : ''} — addresses: ${s.jd_requirements_addressed.join(', ') || 'none yet'}`);
+      }
+    }
+
+    if (this.overallScore > 0) {
+      parts.push(`\n## Overall Score: ${this.overallScore}/100`);
     }
 
     return parts.join('\n');
@@ -267,8 +353,13 @@ export class SessionContext {
       fit_classification: this.fitClassification,
       tailored_sections: this.tailoredSections,
       adversarial_review: this.adversarialReview,
+      benchmark_candidate: this.benchmarkCandidate,
+      section_statuses: this.sectionStatuses,
+      overall_score: this.overallScore,
+      design_choices: this.designChoices,
       messages: this.messages,
       pending_tool_call_id: this.pendingToolCallId,
+      pending_phase_transition: this.pendingPhaseTransition,
       total_tokens_used: this.totalTokensUsed,
       last_checkpoint_phase: this.currentPhase,
       last_checkpoint_at: new Date().toISOString(),

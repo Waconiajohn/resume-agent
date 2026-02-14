@@ -98,7 +98,7 @@ sessions.post('/', async (c) => {
       master_resume_id: master_resume_id ?? null,
       job_application_id: job_application_id ?? null,
       status: 'active',
-      current_phase: 'setup',
+      current_phase: 'onboarding',
       messages: [],
     })
     .select()

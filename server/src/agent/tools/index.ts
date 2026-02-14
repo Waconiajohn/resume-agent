@@ -144,6 +144,132 @@ export const toolDefinitions: ToolDefinition[] = [
     },
   },
   {
+    name: 'research_industry',
+    description: 'Research industry benchmarks and standards for a specific role type. Returns typical qualifications, salary ranges, key skills, career paths, and competitive differentiators.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        industry: { type: 'string', description: 'The industry to research (e.g., "enterprise SaaS", "fintech", "healthcare")' },
+        role_type: { type: 'string', description: 'The type of role (e.g., "VP of Engineering", "Product Manager")' },
+        seniority_level: { type: 'string', description: 'The seniority level (e.g., "senior", "director", "vp")' },
+      },
+      required: ['industry', 'role_type'],
+    },
+  },
+  {
+    name: 'build_benchmark',
+    description: 'Synthesize company research, JD analysis, and industry research into a Benchmark Candidate Profile — the ideal candidate the company is looking for. Updates the right panel with the research dashboard.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        industry_research: { type: 'string', description: 'Industry research text from research_industry tool' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'update_requirement_status',
+    description: 'Mark a requirement as addressed with new evidence. Updates the gap analysis dashboard on the right panel.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        requirement: { type: 'string', description: 'The requirement text to update' },
+        new_classification: { type: 'string', enum: ['strong', 'partial', 'gap'], description: 'The new classification' },
+        evidence: { type: 'string', description: 'New evidence supporting this classification' },
+      },
+      required: ['requirement', 'new_classification'],
+    },
+  },
+  {
+    name: 'emit_score',
+    description: 'Calculate and emit the overall readiness score. Can also set a section-specific score.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        section_name: { type: 'string', description: 'Optional section to set score for' },
+        section_score: { type: 'number', description: 'Score for the section (0-100)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'propose_section_edit',
+    description: 'Generate a diff-annotated section proposal showing original vs proposed text with per-change reasoning and JD requirement tags. Updates the live resume editor on the right panel.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        section: { type: 'string', enum: ['summary', 'experience', 'skills', 'education', 'certifications', 'title_adjustments'], description: 'Which resume section to propose edits for' },
+        current_content: { type: 'string', description: 'The current content of this section' },
+        requirements: { type: 'array', items: { type: 'string' }, description: 'Key requirements this section should address' },
+        instructions: { type: 'string', description: 'Specific instructions for the edit' },
+      },
+      required: ['section', 'current_content'],
+    },
+  },
+  {
+    name: 'confirm_section',
+    description: 'Mark a section as user-confirmed after they approve it. Tracks progress through section craft.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        section: { type: 'string', description: 'The section name that was confirmed' },
+      },
+      required: ['section'],
+    },
+  },
+  {
+    name: 'humanize_check',
+    description: 'Check resume content for AI-generated patterns. Returns authenticity score and specific suggestions for making the text sound more natural and human.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        resume_content: { type: 'string', description: 'The full resume content to check' },
+      },
+      required: ['resume_content'],
+    },
+  },
+  {
+    name: 'ats_check',
+    description: 'Perform detailed ATS compatibility analysis. Checks keyword presence, format compatibility, and provides specific recommendations.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        resume_content: { type: 'string', description: 'The full resume content to check' },
+      },
+      required: ['resume_content'],
+    },
+  },
+  {
+    name: 'generate_cover_letter_section',
+    description: 'Generate a single paragraph of a cover letter. Works paragraph by paragraph for collaborative iteration.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        paragraph_type: { type: 'string', enum: ['opening', 'body_1', 'body_2', 'closing'], description: 'Which paragraph to generate' },
+        instructions: { type: 'string', description: 'Specific instructions for this paragraph' },
+        previous_paragraphs: { type: 'array', items: { type: 'string' }, description: 'Previously confirmed paragraphs for flow continuity' },
+      },
+      required: ['paragraph_type'],
+    },
+  },
+  {
+    name: 'generate_interview_answer',
+    description: 'Generate a STAR-format answer framework for an interview question using the candidate\'s actual experience.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'The interview question' },
+        category: { type: 'string', description: 'Question category (e.g., "technical", "behavioral", "leadership")' },
+        existing_questions: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'Previously generated questions for right panel continuity',
+        },
+      },
+      required: ['question'],
+    },
+  },
+  {
     name: 'save_checkpoint',
     description: 'Save the current session state to the database. Call this at natural boundaries.',
     input_schema: {
@@ -154,4 +280,92 @@ export const toolDefinitions: ToolDefinition[] = [
       required: ['phase'],
     },
   },
+  {
+    name: 'confirm_phase_complete',
+    description: 'Request user confirmation before advancing to the next phase. This pauses the agent loop until the user confirms. Present a summary of what was accomplished in this phase and what the next phase will cover.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        current_phase: { type: 'string', description: 'The phase being completed' },
+        next_phase: { type: 'string', description: 'The phase to advance to' },
+        phase_summary: { type: 'string', description: 'Summary of what was accomplished in this phase' },
+        next_phase_preview: { type: 'string', description: 'Brief preview of what the next phase will cover' },
+      },
+      required: ['current_phase', 'next_phase', 'phase_summary', 'next_phase_preview'],
+    },
+  },
+  {
+    name: 'emit_transparency',
+    description: 'Show the user what you are doing and why it matters. Use before expensive operations to build trust and set expectations. Use Margaret-friendly language (tailored, strengthened, positioned, aligned).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'The transparency message explaining what is happening and why' },
+        phase: { type: 'string', description: 'The current phase for context' },
+      },
+      required: ['message', 'phase'],
+    },
+  },
+  {
+    name: 'update_right_panel',
+    description: 'Send data to the right panel for the current phase. The panel_type determines which sub-component renders the data.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        panel_type: {
+          type: 'string',
+          enum: ['onboarding_summary', 'research_dashboard', 'gap_analysis', 'design_options', 'live_resume', 'quality_dashboard', 'cover_letter', 'interview_prep'],
+          description: 'Which panel sub-component to target',
+        },
+        data: {
+          type: 'object',
+          description: 'The data payload for the panel. Shape depends on panel_type.',
+        },
+      },
+      required: ['panel_type', 'data'],
+    },
+  },
 ];
+
+// Phase-scoped tool availability
+export const PHASE_TOOLS: Record<string, string[]> = {
+  onboarding: [
+    'ask_user', 'create_master_resume', 'save_checkpoint',
+    'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
+  ],
+  deep_research: [
+    'ask_user', 'research_company', 'analyze_jd', 'research_industry', 'build_benchmark',
+    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
+  ],
+  gap_analysis: [
+    'ask_user', 'classify_fit', 'update_requirement_status', 'emit_score',
+    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
+  ],
+  resume_design: [
+    'ask_user', 'save_checkpoint',
+    'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
+  ],
+  section_craft: [
+    'ask_user', 'generate_section', 'propose_section_edit', 'confirm_section', 'emit_score',
+    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
+  ],
+  quality_review: [
+    'ask_user', 'adversarial_review', 'humanize_check', 'ats_check',
+    'generate_section', 'propose_section_edit', 'emit_score',
+    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
+  ],
+  cover_letter: [
+    'ask_user', 'generate_cover_letter_section',
+    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
+  ],
+  interview_prep: [
+    'ask_user', 'generate_interview_answer', 'export_resume', 'update_master_resume',
+    'save_checkpoint', 'emit_transparency', 'update_right_panel',
+  ],
+};
+
+export function getToolsForPhase(phase: string): ToolDefinition[] {
+  const allowedNames = PHASE_TOOLS[phase];
+  if (!allowedNames) return toolDefinitions;
+  return toolDefinitions.filter(t => allowedNames.includes(t.name));
+}

@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { anthropic, MODEL, MAX_TOKENS } from '../lib/anthropic.js';
 import { buildSystemPrompt } from './system-prompt.js';
-import { toolDefinitions } from './tools/index.js';
+import { getToolsForPhase } from './tools/index.js';
 import { executeToolCall } from './tool-executor.js';
-import type { SessionContext, ContentBlock } from './context.js';
+import type { SessionContext, ContentBlock, CoachPhase } from './context.js';
 
 type MessageParam = Anthropic.MessageParam;
 
@@ -22,6 +22,20 @@ export async function runAgentLoop(
   emit: SSEEmitter,
 ): Promise<void> {
   if (ctx.pendingToolCallId) {
+    // Check if this was a phase gate confirmation — advance the phase
+    if (ctx.pendingPhaseTransition) {
+      const fromPhase = ctx.currentPhase;
+      const nextPhase = ctx.pendingPhaseTransition as CoachPhase;
+      ctx.pendingPhaseTransition = null;
+      ctx.setPhase(nextPhase);
+      emit({
+        type: 'phase_change',
+        from_phase: fromPhase,
+        to_phase: nextPhase,
+        summary: `Moving to ${nextPhase.replace(/_/g, ' ')} phase`,
+      });
+    }
+
     ctx.messages.push({
       role: 'user',
       content: [
@@ -42,6 +56,7 @@ export async function runAgentLoop(
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const systemPrompt = buildSystemPrompt(ctx);
+    const phaseTools = getToolsForPhase(ctx.currentPhase);
 
     const apiMessages: MessageParam[] = ctx.messages.map((msg) => ({
       role: msg.role as 'user' | 'assistant',
@@ -55,7 +70,7 @@ export async function runAgentLoop(
         max_tokens: MAX_TOKENS,
         system: systemPrompt,
         messages: apiMessages,
-        tools: toolDefinitions as Parameters<typeof anthropic.messages.stream>[0]['tools'],
+        tools: phaseTools as Parameters<typeof anthropic.messages.stream>[0]['tools'],
       });
 
       let fullText = '';
@@ -135,6 +150,29 @@ export async function runAgentLoop(
           return;
         }
 
+        if (tool.name === 'confirm_phase_complete') {
+          const gateInput = tool.input as {
+            current_phase: string;
+            next_phase: string;
+            phase_summary: string;
+            next_phase_preview: string;
+          };
+
+          ctx.pendingToolCallId = tool.id;
+          ctx.pendingPhaseTransition = gateInput.next_phase;
+
+          emit({
+            type: 'phase_gate',
+            tool_call_id: tool.id,
+            current_phase: gateInput.current_phase,
+            next_phase: gateInput.next_phase,
+            phase_summary: gateInput.phase_summary,
+            next_phase_preview: gateInput.next_phase_preview,
+          });
+
+          return;
+        }
+
         emit({ type: 'tool_start', tool_name: tool.name, description: getToolDescription(tool.name) });
 
         try {
@@ -186,6 +224,19 @@ function getToolDescription(toolName: string): string {
     update_master_resume: 'Updating your master resume...',
     create_master_resume: 'Processing your resume...',
     export_resume: 'Preparing your resume for download...',
+    emit_transparency: 'Sharing what I\'m working on...',
+    update_right_panel: 'Updating your dashboard...',
+    confirm_phase_complete: 'Checking in before moving forward...',
+    research_industry: 'Researching industry benchmarks...',
+    build_benchmark: 'Building ideal candidate profile...',
+    update_requirement_status: 'Updating requirement status...',
+    emit_score: 'Calculating your readiness score...',
+    propose_section_edit: 'Preparing section changes for your review...',
+    confirm_section: 'Confirming section...',
+    humanize_check: 'Checking for natural, authentic language...',
+    ats_check: 'Running ATS compatibility check...',
+    generate_cover_letter_section: 'Drafting cover letter paragraph...',
+    generate_interview_answer: 'Preparing interview answer framework...',
   };
   return descriptions[toolName] ?? `Running ${toolName}...`;
 }
@@ -221,6 +272,32 @@ function summarizeToolResult(toolName: string, result: unknown): string {
       return 'Resume created and loaded';
     case 'export_resume':
       return 'Resume ready for download';
+    case 'emit_transparency':
+      return 'Status shared';
+    case 'update_right_panel':
+      return 'Dashboard updated';
+    case 'confirm_phase_complete':
+      return 'Awaiting confirmation';
+    case 'research_industry':
+      return 'Industry research complete';
+    case 'build_benchmark':
+      return 'Benchmark candidate profile built';
+    case 'update_requirement_status':
+      return `Requirement ${(r as Record<string, string>).new_classification ?? 'updated'}`;
+    case 'emit_score':
+      return `Score: ${(r as Record<string, number>).score ?? 0}`;
+    case 'propose_section_edit':
+      return `Proposed changes for ${(r as Record<string, string>).section ?? 'section'}`;
+    case 'confirm_section':
+      return `${(r as Record<string, string>).section ?? 'Section'} confirmed`;
+    case 'humanize_check':
+      return `Authenticity: ${(r as Record<string, number>).authenticity_score ?? 0}%`;
+    case 'ats_check':
+      return `ATS score: ${(r as Record<string, number>).ats_score ?? 0}%`;
+    case 'generate_cover_letter_section':
+      return `${(r as Record<string, string>).paragraph_type ?? 'Paragraph'} drafted`;
+    case 'generate_interview_answer':
+      return 'Answer framework ready';
     default:
       return 'Done';
   }
