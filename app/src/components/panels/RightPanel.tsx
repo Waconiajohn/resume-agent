@@ -72,9 +72,10 @@ interface RightPanelProps {
   panelType: PanelType | null;
   panelData: Record<string, unknown> | null;
   resume: FinalResume | null;
+  onSendMessage?: (content: string) => void;
 }
 
-function PanelContent({ panelType, panelData, resume }: RightPanelProps) {
+function PanelContent({ panelType, panelData, resume, onSendMessage }: RightPanelProps) {
   // If we have panel data for a specific type, render that panel
   if (panelType && panelData) {
     switch (panelType) {
@@ -87,7 +88,7 @@ function PanelContent({ panelType, panelData, resume }: RightPanelProps) {
       case 'design_options':
         return <DesignOptionsPanel data={panelData as unknown as DesignOptionsData} />;
       case 'live_resume':
-        return <LiveResumePanel data={panelData as unknown as LiveResumeData} />;
+        return <LiveResumePanel data={panelData as unknown as LiveResumeData} onSendMessage={onSendMessage} />;
       case 'quality_dashboard':
         return <QualityDashboardPanel data={panelData as unknown as QualityDashboardData} />;
       case 'cover_letter':

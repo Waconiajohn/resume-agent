@@ -1,9 +1,11 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext, FitClassification, RequirementFit } from '../context.js';
+import type { SSEEmitter } from '../loop.js';
 
 export async function executeClassifyFit(
   input: Record<string, unknown>,
   ctx: SessionContext,
+  emit: SSEEmitter,
 ): Promise<{ classification: FitClassification }> {
   const requirements = input.requirements as string[];
   const resumeSummary = input.resume_summary as string;
@@ -84,5 +86,20 @@ Return ONLY valid JSON:
   };
 
   ctx.fitClassification = classification;
+
+  // Auto-emit gap analysis to right panel so it populates immediately
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'gap_analysis',
+    data: {
+      requirements: reqs,
+      strong_count: classification.strong_count,
+      partial_count: classification.partial_count,
+      gap_count: classification.gap_count,
+      total: reqs.length,
+      addressed: classification.strong_count,
+    },
+  });
+
   return { classification };
 }

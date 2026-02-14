@@ -49,7 +49,7 @@ export function CoachScreen({
 
       {/* Dynamic right panel */}
       <div className="hidden w-[45%] lg:block">
-        <RightPanel panelType={panelType} panelData={panelData} resume={resume} />
+        <RightPanel panelType={panelType} panelData={panelData} resume={resume} onSendMessage={onSendMessage} />
       </div>
     </div>
   );

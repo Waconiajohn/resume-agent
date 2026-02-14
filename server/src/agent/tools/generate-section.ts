@@ -120,11 +120,31 @@ Return ONLY valid JSON:
   if (!ctx.tailoredSections) ctx.tailoredSections = {};
   (ctx.tailoredSections as Record<string, unknown>)[section] = content;
 
+  // Update section status so ordering enforcement allows the next section
+  const existing = ctx.sectionStatuses.find(s => s.section === section);
+  if (existing) {
+    existing.status = 'proposed';
+  } else {
+    ctx.sectionStatuses.push({
+      section,
+      status: 'proposed',
+      jd_requirements_addressed: [],
+    });
+  }
+
   emit({
     type: 'resume_update',
     section,
     content,
     change_type: 'rewrite',
+  });
+
+  // Emit section status so frontend can track progress
+  emit({
+    type: 'section_status',
+    section,
+    status: 'proposed',
+    jd_requirements_addressed: [],
   });
 
   emit({

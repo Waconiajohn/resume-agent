@@ -32,7 +32,7 @@ export async function executeToolCall(
     case 'analyze_jd':
       return executeAnalyzeJD(input, ctx);
     case 'classify_fit':
-      return executeClassifyFit(input, ctx);
+      return executeClassifyFit(input, ctx, emit);
     case 'generate_section':
       return executeGenerateSection(input, ctx, emit);
     case 'adversarial_review':

@@ -1,9 +1,11 @@
-import { ArrowRight, Tag } from 'lucide-react';
+import { ArrowRight, Tag, Check, MessageSquare } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { GlassButton } from '../GlassButton';
 import type { LiveResumeData, SectionChange } from '@/types/panels';
 
 interface LiveResumePanelProps {
   data: LiveResumeData;
+  onSendMessage?: (content: string) => void;
 }
 
 function sectionTitle(section: string): string {
@@ -67,9 +69,17 @@ function ChangeBlock({ change }: { change: SectionChange }) {
   );
 }
 
-export function LiveResumePanel({ data }: LiveResumePanelProps) {
+export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
   const active_section = data.active_section ?? '';
   const changes = data.changes ?? [];
+
+  const handleAccept = () => {
+    onSendMessage?.(`I approve the proposed changes to the ${sectionTitle(active_section)} section. Please confirm and move on.`);
+  };
+
+  const handleRequestChanges = () => {
+    onSendMessage?.(`I'd like some changes to the ${sectionTitle(active_section)} section. `);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -87,6 +97,22 @@ export function LiveResumePanel({ data }: LiveResumePanelProps) {
           <ChangeBlock key={i} change={change} />
         ))}
       </div>
+
+      {/* Accept / Request Changes action bar */}
+      {changes.length > 0 && onSendMessage && (
+        <div className="border-t border-white/[0.12] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <GlassButton variant="primary" className="flex-1" onClick={handleAccept}>
+              <Check className="mr-1.5 h-3.5 w-3.5" />
+              Looks Good
+            </GlassButton>
+            <GlassButton variant="ghost" className="flex-1" onClick={handleRequestChanges}>
+              <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+              Request Changes
+            </GlassButton>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
