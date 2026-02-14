@@ -21,7 +21,9 @@ function importanceBadge(importance: BenchmarkSkill['importance']) {
 }
 
 export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
-  const { company, jd_requirements, benchmark } = data;
+  const company = data.company ?? {};
+  const jd_requirements = data.jd_requirements ?? {};
+  const benchmark = data.benchmark ?? { required_skills: [], language_keywords: [] };
 
   return (
     <div className="flex h-full flex-col">
@@ -124,7 +126,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             </p>
           )}
 
-          {benchmark.required_skills.length > 0 && (
+          {benchmark.required_skills?.length > 0 && (
             <div className="space-y-1.5 mb-3">
               {benchmark.required_skills.map((skill, i) => (
                 <div key={i} className="flex items-center justify-between gap-2">
@@ -135,7 +137,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             </div>
           )}
 
-          {benchmark.language_keywords.length > 0 && (
+          {benchmark.language_keywords?.length > 0 && (
             <div>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-1.5 block">
                 Keywords to Echo

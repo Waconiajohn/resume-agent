@@ -62,7 +62,7 @@ function QuestionItem({ q }: { q: InterviewQuestion }) {
 }
 
 export function InterviewPrepPanel({ data }: InterviewPrepPanelProps) {
-  const { categories } = data;
+  const categories = data.categories ?? [];
 
   return (
     <div className="flex h-full flex-col">

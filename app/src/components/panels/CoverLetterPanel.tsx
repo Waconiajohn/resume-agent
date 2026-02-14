@@ -7,7 +7,8 @@ interface CoverLetterPanelProps {
 }
 
 export function CoverLetterPanel({ data }: CoverLetterPanelProps) {
-  const { paragraphs, company_name, role_title } = data;
+  const paragraphs = data.paragraphs ?? [];
+  const { company_name, role_title } = data;
 
   return (
     <div className="flex h-full flex-col">

@@ -50,7 +50,7 @@ function ChangeBlock({ change }: { change: SectionChange }) {
       )}
 
       {/* JD Requirement Tags */}
-      {change.jd_requirements.length > 0 && (
+      {change.jd_requirements?.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {change.jd_requirements.map((req, i) => (
             <span
@@ -68,7 +68,8 @@ function ChangeBlock({ change }: { change: SectionChange }) {
 }
 
 export function LiveResumePanel({ data }: LiveResumePanelProps) {
-  const { active_section, changes } = data;
+  const active_section = data.active_section ?? '';
+  const changes = data.changes ?? [];
 
   return (
     <div className="flex h-full flex-col">

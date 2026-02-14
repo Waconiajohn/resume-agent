@@ -66,7 +66,7 @@ function DesignCard({ option, isSelected }: { option: DesignOption; isSelected: 
 
       <p className="text-xs text-white/50 mb-3">{option.description}</p>
 
-      {option.section_order.length > 0 && (
+      {option.section_order?.length > 0 && (
         <MiniWireframe sections={option.section_order} />
       )}
 
@@ -78,7 +78,8 @@ function DesignCard({ option, isSelected }: { option: DesignOption; isSelected: 
 }
 
 export function DesignOptionsPanel({ data }: DesignOptionsPanelProps) {
-  const { options, selected_id } = data;
+  const options = data.options ?? [];
+  const selected_id = data.selected_id;
 
   return (
     <div className="flex h-full flex-col">

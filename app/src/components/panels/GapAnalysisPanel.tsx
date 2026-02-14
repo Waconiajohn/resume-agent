@@ -31,7 +31,7 @@ const classificationConfig = {
 };
 
 function RequirementRow({ item }: { item: RequirementFitItem }) {
-  const config = classificationConfig[item.classification];
+  const config = classificationConfig[item.classification] ?? classificationConfig.gap;
   const Icon = config.icon;
 
   return (
@@ -53,7 +53,8 @@ function RequirementRow({ item }: { item: RequirementFitItem }) {
 }
 
 export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
-  const { requirements, strong_count, partial_count, gap_count, total, addressed } = data;
+  const requirements = data.requirements ?? [];
+  const { strong_count = 0, partial_count = 0, gap_count = 0, total = 0, addressed = 0 } = data;
 
   const progressPct = total > 0 ? Math.round((addressed / total) * 100) : 0;
 
