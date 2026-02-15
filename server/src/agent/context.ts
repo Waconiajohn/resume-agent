@@ -7,8 +7,7 @@ export type CoachPhase =
   | 'resume_design'
   | 'section_craft'
   | 'quality_review'
-  | 'cover_letter'
-  | 'interview_prep';
+  | 'cover_letter';
 
 export type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
 
@@ -274,7 +273,6 @@ export class SessionContext {
       'Section Craft': 'section_craft',
       'Quality Review': 'quality_review',
       'Cover Letter': 'cover_letter',
-      'Interview Prep': 'interview_prep',
       'Getting Started': 'onboarding',
       'Onboarding': 'onboarding',
     };

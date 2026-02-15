@@ -253,23 +253,6 @@ export const toolDefinitions: ToolDefinition[] = [
     },
   },
   {
-    name: 'generate_interview_answer',
-    description: 'Generate a STAR-format answer framework for an interview question using the candidate\'s actual experience.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        question: { type: 'string', description: 'The interview question' },
-        category: { type: 'string', description: 'Question category (e.g., "technical", "behavioral", "leadership")' },
-        existing_questions: {
-          type: 'array',
-          items: { type: 'object' },
-          description: 'Previously generated questions for right panel continuity',
-        },
-      },
-      required: ['question'],
-    },
-  },
-  {
     name: 'save_checkpoint',
     description: 'Save the current session state to the database. Call this at natural boundaries.',
     input_schema: {
@@ -314,7 +297,7 @@ export const toolDefinitions: ToolDefinition[] = [
       properties: {
         panel_type: {
           type: 'string',
-          enum: ['onboarding_summary', 'research_dashboard', 'gap_analysis', 'design_options', 'live_resume', 'quality_dashboard', 'cover_letter', 'interview_prep'],
+          enum: ['onboarding_summary', 'research_dashboard', 'gap_analysis', 'design_options', 'live_resume', 'quality_dashboard', 'cover_letter'],
           description: 'Which panel sub-component to target',
         },
         data: {
@@ -355,11 +338,7 @@ export const PHASE_TOOLS: Record<string, string[]> = {
     'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
   ],
   cover_letter: [
-    'ask_user', 'generate_cover_letter_section',
-    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
-  ],
-  interview_prep: [
-    'ask_user', 'generate_interview_answer', 'export_resume', 'update_master_resume',
+    'ask_user', 'generate_cover_letter_section', 'export_resume', 'update_master_resume',
     'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
   ],
 };

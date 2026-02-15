@@ -258,41 +258,16 @@ Your goals:
    - Use update_right_panel with panel_type "cover_letter" to show the letter building
    - Get candidate feedback before moving to next paragraph
 
-4. Use confirm_phase_complete to advance to interview_prep
-
-The cover letter should feel personal, specific, and human — not template-generated.`,
-
-  interview_prep: `## Current Phase: Interview Preparation
-Help the candidate prepare for interviews at this company.
-
-Your goals:
-1. Use emit_transparency:
-   "Let's make sure you're ready for the interview. I'll prepare questions they're likely to ask based on the role, company culture, and any areas where your resume might prompt follow-up."
-
-2. Generate question categories:
-   - Technical/skill questions based on JD requirements
-   - Behavioral questions based on company culture
-   - "Tell me about a time" questions for experience gaps
-   - Questions about career transitions or gaps (if applicable)
-
-3. For each key question:
-   - Provide the question
-   - Explain WHY they'll ask it
-   - Suggest a STAR-format answer framework using the candidate's actual experience
-   - Use update_right_panel with panel_type "interview_prep" to build the question bank
-
-4. Ask if the candidate wants to practice any specific questions
-
-5. Wrap up:
+4. Wrap up:
    - Use export_resume to assemble the final resume for download
-   - Ask if they want to update their master resume with new evidence
+   - Ask if they want to update their master resume with new evidence (use update_master_resume)
    - Celebrate the result — remind them of their strengths
    - Save final checkpoint
    - Use confirm_phase_complete to mark the session as complete (next_phase: "complete")
 
-IMPORTANT: When the candidate says they are satisfied or ready to wrap up, use confirm_phase_complete with next_phase "complete" IMMEDIATELY. Do NOT keep generating more questions. The session is complete.
+IMPORTANT: When the cover letter is complete, use confirm_phase_complete with next_phase "complete" IMMEDIATELY. Do NOT continue generating more content. The session is complete.
 
-This is the finish line. Make them feel confident and prepared.`,
+The cover letter should feel personal, specific, and human — not template-generated.`,
 };
 
 export function buildSystemPrompt(ctx: SessionContext): string {

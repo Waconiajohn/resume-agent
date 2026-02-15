@@ -6,8 +6,7 @@ export type PanelType =
   | 'design_options'
   | 'live_resume'
   | 'quality_dashboard'
-  | 'cover_letter'
-  | 'interview_prep';
+  | 'cover_letter';
 
 // --- Onboarding Summary ---
 export interface OnboardingSummaryData {
@@ -138,27 +137,6 @@ export interface CoverLetterData {
   role_title?: string;
 }
 
-// --- Interview Prep ---
-export interface InterviewQuestion {
-  question: string;
-  why_asked: string;
-  star_framework: {
-    situation: string;
-    task: string;
-    action: string;
-    result: string;
-  };
-}
-
-export interface InterviewCategory {
-  category: string;
-  questions: InterviewQuestion[];
-}
-
-export interface InterviewPrepData {
-  categories: InterviewCategory[];
-}
-
 // Discriminated union type for all panel data (type field matches PanelType)
 export type PanelData =
   | { type: 'onboarding_summary' } & OnboardingSummaryData
@@ -167,5 +145,4 @@ export type PanelData =
   | { type: 'design_options' } & DesignOptionsData
   | { type: 'live_resume' } & LiveResumeData
   | { type: 'quality_dashboard' } & QualityDashboardData
-  | { type: 'cover_letter' } & CoverLetterData
-  | { type: 'interview_prep' } & InterviewPrepData;
+  | { type: 'cover_letter' } & CoverLetterData;

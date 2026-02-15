@@ -19,7 +19,6 @@ import { executeConfirmSection } from './tools/confirm-section.js';
 import { executeHumanizeCheck } from './tools/humanize-check.js';
 import { executeAtsCheck } from './tools/ats-check.js';
 import { executeGenerateCoverLetterSection } from './tools/generate-cover-letter-section.js';
-import { executeGenerateInterviewAnswer } from './tools/generate-interview-answer.js';
 
 export async function executeToolCall(
   toolName: string,
@@ -74,8 +73,6 @@ export async function executeToolCall(
       return executeAtsCheck(input, ctx);
     case 'generate_cover_letter_section':
       return executeGenerateCoverLetterSection(input, ctx, emit);
-    case 'generate_interview_answer':
-      return executeGenerateInterviewAnswer(input, ctx, emit);
     case 'emit_transparency': {
       const { message, phase } = input as { message: string; phase: string };
       emit({ type: 'transparency', message, phase });

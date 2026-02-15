@@ -8,7 +8,6 @@ import { DesignOptionsPanel } from './DesignOptionsPanel';
 import { LiveResumePanel } from './LiveResumePanel';
 import { QualityDashboardPanel } from './QualityDashboardPanel';
 import { CoverLetterPanel } from './CoverLetterPanel';
-import { InterviewPrepPanel } from './InterviewPrepPanel';
 import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
@@ -83,8 +82,6 @@ function PanelContent({ panelData, resume, onSendMessage }: RightPanelProps) {
         return <QualityDashboardPanel data={panelData} />;
       case 'cover_letter':
         return <CoverLetterPanel data={panelData} />;
-      case 'interview_prep':
-        return <InterviewPrepPanel data={panelData} />;
       default: {
         // 3G: Exhaustive check — compile-time safety for unhandled panel types
         const _exhaustive: never = panelData;

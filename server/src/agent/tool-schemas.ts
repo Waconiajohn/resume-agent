@@ -109,12 +109,6 @@ export const toolSchemas: Record<string, z.ZodType> = {
     previous_paragraphs: z.array(z.string()).optional(),
   }),
 
-  generate_interview_answer: z.object({
-    question: z.string(),
-    category: z.string().optional(),
-    existing_questions: z.array(z.record(z.string(), z.unknown())).optional(),
-  }),
-
   save_checkpoint: z.object({
     phase: z.string().optional(),
   }),
@@ -135,7 +129,7 @@ export const toolSchemas: Record<string, z.ZodType> = {
     panel_type: z.enum([
       'onboarding_summary', 'research_dashboard', 'gap_analysis',
       'design_options', 'live_resume', 'quality_dashboard',
-      'cover_letter', 'interview_prep',
+      'cover_letter',
     ]),
     data: z.record(z.string(), z.unknown()),
   }),

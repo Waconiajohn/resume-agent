@@ -312,7 +312,6 @@ function getToolDescription(toolName: string): string {
     humanize_check: 'Checking for natural, authentic language...',
     ats_check: 'Running ATS compatibility check...',
     generate_cover_letter_section: 'Drafting cover letter paragraph...',
-    generate_interview_answer: 'Preparing interview answer framework...',
   };
   return descriptions[toolName] ?? `Running ${toolName}...`;
 }
@@ -376,12 +375,12 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     }
   }
 
-  // cover_letter → interview_prep: soft gate — warn but allow
-  if (currentPhase === 'cover_letter' && nextPhase === 'interview_prep') {
+  // cover_letter → complete: soft gate — warn but allow
+  if (currentPhase === 'cover_letter' && nextPhase === 'complete') {
     const hasCoverContent = ctx.tailoredSections &&
       Object.values(ctx.tailoredSections).some(v => typeof v === 'string' && v.length > 0);
     if (!hasCoverContent) {
-      console.warn('[agent-loop] Advancing cover_letter → interview_prep without cover letter content');
+      console.warn('[agent-loop] Advancing cover_letter → complete without cover letter content');
     }
   }
 
@@ -443,8 +442,6 @@ function summarizeToolResult(toolName: string, result: unknown): string {
       return `ATS score: ${(r as Record<string, number>).ats_score ?? 0}%`;
     case 'generate_cover_letter_section':
       return `${(r as Record<string, string>).paragraph_type ?? 'Paragraph'} drafted`;
-    case 'generate_interview_answer':
-      return 'Answer framework ready';
     default:
       return 'Done';
   }
