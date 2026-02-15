@@ -2,6 +2,7 @@ import { anthropic, MODEL } from '../../lib/anthropic.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, MasterResumeData } from '../context.js';
+import { createSessionLogger } from '../../lib/logger.js';
 
 const STRUCTURING_PROMPT = `You are a resume parser. Extract structured data from the following resume text and return ONLY valid JSON with this exact shape:
 
@@ -64,7 +65,8 @@ export async function executeCreateMasterResume(
     }
     structured = repaired;
   } catch (err) {
-    console.error('Resume structuring error:', err);
+    const log = createSessionLogger(ctx.sessionId);
+    log.error({ err }, 'Resume structuring error');
     return {
       success: false,
       error: `Failed to structure resume: ${err instanceof Error ? err.message : 'Unknown error'}`,
@@ -89,7 +91,8 @@ export async function executeCreateMasterResume(
     .single();
 
   if (insertError || !data) {
-    console.error('Master resume insert error:', insertError);
+    const log = createSessionLogger(ctx.sessionId);
+    log.error({ error: insertError?.message }, 'Master resume insert error');
     return { success: false, error: 'Failed to save resume to database', code: 'DB_INSERT_FAILED', recoverable: true };
   }
 

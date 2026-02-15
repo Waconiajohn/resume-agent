@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
+import logger from '../lib/logger.js';
 
 const resumes = new Hono();
 
@@ -75,7 +76,7 @@ resumes.post('/', async (c) => {
     .single();
 
   if (error) {
-    console.error('Failed to create resume:', error.message);
+    logger.error({ error: error.message }, 'Failed to create resume');
     return c.json({ error: 'Failed to create resume' }, 500);
   }
 

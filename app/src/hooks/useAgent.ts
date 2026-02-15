@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
+import { parseSSEStream } from '@/lib/sse-parser';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_TOOL_STATUS_ENTRIES = 20;
@@ -29,17 +30,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [panelType, setPanelType] = useState<PanelType | null>(null);
   const [panelData, setPanelData] = useState<PanelData | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const messageIdRef = useRef(0);
 
-  // 3C: Track last text_complete content to deduplicate
+  // Track last text_complete content to deduplicate
   const lastTextCompleteRef = useRef<string>('');
 
-  // 3B: Reconnection tracking
+  // Reconnection tracking
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 3L: text_delta batching with requestAnimationFrame
+  // text_delta batching with requestAnimationFrame
   const deltaBufferRef = useRef('');
   const rafIdRef = useRef<number | null>(null);
 
@@ -54,7 +55,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     return `msg-${messageIdRef.current}`;
   }, []);
 
-  // 3L: Flush delta buffer to state
+  // Flush delta buffer to state
   const flushDeltaBuffer = useCallback(() => {
     if (deltaBufferRef.current) {
       const buffered = deltaBufferRef.current;
@@ -64,245 +65,322 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     rafIdRef.current = null;
   }, []);
 
-  // Connect to SSE with reconnection (3B)
+  // Reconnect with exponential backoff
+  const handleDisconnect = useCallback((connectFn: () => void) => {
+    setConnected(false);
+
+    if (!mountedRef.current) return;
+
+    if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+      const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000; // 1s, 2s, 4s, 8s, 16s
+      reconnectAttemptsRef.current += 1;
+      reconnectTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) {
+          connectFn();
+        }
+      }, delay);
+    } else {
+      setError('Connection lost');
+    }
+  }, []);
+
+  // Connect to SSE with fetch-based streaming
   useEffect(() => {
     if (!sessionId || !accessToken) return;
 
     function connectSSE() {
-      const es = new EventSource(`/api/sessions/${sessionId}/sse?token=${accessToken}`);
-      eventSourceRef.current = es;
+      // Abort any existing connection
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
 
-      es.addEventListener('connected', () => {
-        setConnected(true);
-        setError(null);
-        // 3B: Reset reconnect counter on successful connect
-        reconnectAttemptsRef.current = 0;
-      });
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
-      // Restore historical messages and state when reconnecting to an existing session
-      es.addEventListener('session_restore', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        if (data.current_phase) {
-          setCurrentPhase(data.current_phase as string);
-        }
-        if (Array.isArray(data.messages) && data.messages.length) {
-          const restored: ChatMessage[] = (data.messages as Array<{ role: string; content: string }>).map((msg, i) => ({
-            id: `restored-${i}`,
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content,
-            timestamp: new Date().toISOString(),
-          }));
-          setMessages(restored);
-          messageIdRef.current = restored.length;
-        }
-        if (data.last_panel_type && data.last_panel_data) {
-          setPanelType(data.last_panel_type as PanelType);
-          setPanelData({ type: data.last_panel_type, ...(data.last_panel_data as Record<string, unknown>) } as PanelData);
-        }
-        // On restore, clear processing state — the agent loop isn't running
-        setIsProcessing(false);
-        // Restore pending phase gate so the user can confirm/reject after reconnect
-        if (data.pending_phase_transition && data.pending_tool_call_id) {
-          setPhaseGate({
-            toolCallId: data.pending_tool_call_id as string,
-            currentPhase: data.current_phase as string,
-            nextPhase: data.pending_phase_transition as string,
-            phaseSummary: 'Phase complete (restored after reconnect)',
-            nextPhasePreview: '',
-          });
-        }
-      });
-
-      es.addEventListener('text_delta', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        setIsProcessing(false);
-        // 3L: Accumulate deltas in buffer, flush via rAF
-        deltaBufferRef.current += data.content;
-        if (rafIdRef.current === null) {
-          rafIdRef.current = requestAnimationFrame(flushDeltaBuffer);
-        }
-      });
-
-      es.addEventListener('text_complete', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        // 3C: Deduplicate text_complete events
-        if (data.content === lastTextCompleteRef.current) return;
-        lastTextCompleteRef.current = data.content;
-
-        // 3L: Flush any remaining buffered deltas before completing
-        if (deltaBufferRef.current) {
-          deltaBufferRef.current = '';
-          if (rafIdRef.current !== null) {
-            cancelAnimationFrame(rafIdRef.current);
-            rafIdRef.current = null;
+      fetch(`/api/sessions/${sessionId}/sse`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            console.error('[useAgent] SSE fetch failed:', response.status, response.statusText);
+            setError(`Connection failed (${response.status})`);
+            handleDisconnect(connectSSE);
+            return;
           }
-        }
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: 'assistant',
-            content: data.content,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-        setStreamingText('');
-        setIsProcessing(false);
-      });
+          if (!response.body) {
+            console.error('[useAgent] SSE response has no body');
+            setError('Connection failed (no response body)');
+            handleDisconnect(connectSSE);
+            return;
+          }
 
-      es.addEventListener('tool_start', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        // 3M: Cap tool status array
-        setTools((prev) => {
-          const next = [
-            ...prev,
-            { name: data.tool_name, description: data.description, status: 'running' as const },
-          ];
-          return next.length > MAX_TOOL_STATUS_ENTRIES ? next.slice(-MAX_TOOL_STATUS_ENTRIES) : next;
-        });
-      });
+          try {
+            for await (const msg of parseSSEStream(response.body)) {
+              if (controller.signal.aborted) break;
 
-      es.addEventListener('tool_complete', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        const toolName = data.tool_name as string;
-        setTools((prev) =>
-          prev.map((t) =>
-            t.name === toolName && t.status === 'running'
-              ? { ...t, status: 'complete' as const, summary: data.summary as string }
-              : t,
-          ),
-        );
-        // Auto-remove completed tool after 3s
-        const timer = setTimeout(() => {
-          setTools((prev) => prev.filter((t) => !(t.name === toolName && t.status === 'complete')));
-          toolCleanupTimersRef.current.delete(timer);
-        }, 3000);
-        toolCleanupTimersRef.current.add(timer);
-      });
+              switch (msg.event) {
+                case 'connected': {
+                  setConnected(true);
+                  setError(null);
+                  reconnectAttemptsRef.current = 0;
+                  break;
+                }
 
-      es.addEventListener('ask_user', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        setIsProcessing(false);
-        setAskPrompt({
-          toolCallId: data.tool_call_id,
-          question: data.question,
-          context: data.context,
-          inputType: data.input_type,
-          choices: data.choices,
-          skipAllowed: data.skip_allowed,
-        });
-      });
+                case 'session_restore': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  if (data.current_phase) {
+                    setCurrentPhase(data.current_phase as string);
+                  }
+                  if (Array.isArray(data.messages) && data.messages.length) {
+                    const restored: ChatMessage[] = (data.messages as Array<{ role: string; content: string }>).map((m, i) => ({
+                      id: `restored-${i}`,
+                      role: m.role as 'user' | 'assistant',
+                      content: m.content,
+                      timestamp: new Date().toISOString(),
+                    }));
+                    setMessages(restored);
+                    messageIdRef.current = restored.length;
+                  }
+                  if (data.last_panel_type && data.last_panel_data) {
+                    setPanelType(data.last_panel_type as PanelType);
+                    setPanelData({ type: data.last_panel_type, ...(data.last_panel_data as Record<string, unknown>) } as PanelData);
+                  }
+                  // On restore, clear processing state — the agent loop isn't running
+                  setIsProcessing(false);
+                  // Restore pending phase gate so the user can confirm/reject after reconnect
+                  if (data.pending_phase_transition && data.pending_tool_call_id) {
+                    setPhaseGate({
+                      toolCallId: data.pending_tool_call_id as string,
+                      currentPhase: data.current_phase as string,
+                      nextPhase: data.pending_phase_transition as string,
+                      phaseSummary: 'Phase complete (restored after reconnect)',
+                      nextPhasePreview: '',
+                    });
+                  }
+                  break;
+                }
 
-      es.addEventListener('phase_gate', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        setIsProcessing(false);
-        setPhaseGate({
-          toolCallId: data.tool_call_id,
-          currentPhase: data.current_phase,
-          nextPhase: data.next_phase,
-          phaseSummary: data.phase_summary,
-          nextPhasePreview: data.next_phase_preview,
-        });
-      });
+                case 'text_delta': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  // Accumulate deltas in buffer, flush via rAF
+                  deltaBufferRef.current += data.content;
+                  if (rafIdRef.current === null) {
+                    rafIdRef.current = requestAnimationFrame(flushDeltaBuffer);
+                  }
+                  break;
+                }
 
-      es.addEventListener('right_panel_update', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        setPanelType(data.panel_type as PanelType);
-        // 3A: Tag panel data with type for discriminated union
-        setPanelData({ type: data.panel_type, ...data.data } as PanelData);
-      });
+                case 'text_complete': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  // Deduplicate text_complete events
+                  if (data.content === lastTextCompleteRef.current) break;
+                  lastTextCompleteRef.current = data.content;
 
-      es.addEventListener('phase_change', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        setCurrentPhase(data.to_phase);
-        setPhaseGate(null);
-        // 3P: Clear stale state on phase change
-        setAskPrompt(null);
-        setTools([]);
-      });
+                  // Flush any remaining buffered deltas before completing
+                  if (deltaBufferRef.current) {
+                    deltaBufferRef.current = '';
+                    if (rafIdRef.current !== null) {
+                      cancelAnimationFrame(rafIdRef.current);
+                      rafIdRef.current = null;
+                    }
+                  }
 
-      es.addEventListener('transparency', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        setIsProcessing(true);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: 'system',
-            content: data.message,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-      });
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: nextId(),
+                      role: 'assistant',
+                      content: data.content,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ]);
+                  setStreamingText('');
+                  setIsProcessing(false);
+                  break;
+                }
 
-      es.addEventListener('resume_update', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        // 3O: Normalize content - coerce object to string
-        const content =
-          typeof data.content === 'object' && data.content !== null
-            ? JSON.stringify(data.content)
-            : data.content;
-        setResume((prev) => {
-          const base = prev ?? {
-            summary: '',
-            experience: [],
-            skills: {},
-            education: [],
-            certifications: [],
-            ats_score: 0,
-          };
-          return { ...base, [data.section]: content };
-        });
-      });
+                case 'tool_start': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  // Cap tool status array
+                  setTools((prev) => {
+                    const next = [
+                      ...prev,
+                      { name: data.tool_name, description: data.description, status: 'running' as const },
+                    ];
+                    return next.length > MAX_TOOL_STATUS_ENTRIES ? next.slice(-MAX_TOOL_STATUS_ENTRIES) : next;
+                  });
+                  break;
+                }
 
-      es.addEventListener('export_ready', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        if (!data) return;
-        setResume(data.resume);
-      });
+                case 'tool_complete': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  const toolName = data.tool_name as string;
+                  setTools((prev) =>
+                    prev.map((t) =>
+                      t.name === toolName && t.status === 'running'
+                        ? { ...t, status: 'complete' as const, summary: data.summary as string }
+                        : t,
+                    ),
+                  );
+                  // Auto-remove completed tool after 3s
+                  const timer = setTimeout(() => {
+                    setTools((prev) => prev.filter((t) => !(t.name === toolName && t.status === 'complete')));
+                    toolCleanupTimersRef.current.delete(timer);
+                  }, 3000);
+                  toolCleanupTimersRef.current.add(timer);
+                  break;
+                }
 
-      // 3Q: Close EventSource on session complete
-      es.addEventListener('complete', () => {
-        es.close();
-        eventSourceRef.current = null;
-        setConnected(false);
-      });
+                case 'ask_user': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setAskPrompt({
+                    toolCallId: data.tool_call_id,
+                    question: data.question,
+                    context: data.context,
+                    inputType: data.input_type,
+                    choices: data.choices,
+                    skipAllowed: data.skip_allowed,
+                  });
+                  break;
+                }
 
-      es.addEventListener('error', (e) => {
-        const data = safeParse((e as MessageEvent).data);
-        setError(data?.message as string ?? 'Connection lost');
-      });
+                case 'phase_gate': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setPhaseGate({
+                    toolCallId: data.tool_call_id,
+                    currentPhase: data.current_phase,
+                    nextPhase: data.next_phase,
+                    phaseSummary: data.phase_summary,
+                    nextPhasePreview: data.next_phase_preview,
+                  });
+                  break;
+                }
 
-      // 3B: Reconnect with exponential backoff on connection error
-      es.onerror = () => {
-        setConnected(false);
-        es.close();
-        eventSourceRef.current = null;
+                case 'right_panel_update': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setPanelType(data.panel_type as PanelType);
+                  // Tag panel data with type for discriminated union
+                  setPanelData({ type: data.panel_type, ...data.data } as PanelData);
+                  break;
+                }
 
-        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-          const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000; // 1s, 2s, 4s, 8s, 16s
-          reconnectAttemptsRef.current += 1;
-          reconnectTimerRef.current = setTimeout(() => {
-            if (mountedRef.current) {
-              connectSSE();
+                case 'phase_change': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setCurrentPhase(data.to_phase);
+                  setPhaseGate(null);
+                  // Clear stale state on phase change
+                  setAskPrompt(null);
+                  setTools([]);
+                  break;
+                }
+
+                case 'transparency': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(true);
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: nextId(),
+                      role: 'system',
+                      content: data.message,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'resume_update': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  // Normalize content - coerce object to string
+                  const content =
+                    typeof data.content === 'object' && data.content !== null
+                      ? JSON.stringify(data.content)
+                      : data.content;
+                  setResume((prev) => {
+                    const base = prev ?? {
+                      summary: '',
+                      experience: [],
+                      skills: {},
+                      education: [],
+                      certifications: [],
+                      ats_score: 0,
+                    };
+                    return { ...base, [data.section]: content };
+                  });
+                  break;
+                }
+
+                case 'export_ready': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setResume(data.resume);
+                  break;
+                }
+
+                case 'complete': {
+                  // Abort the connection on session complete
+                  controller.abort();
+                  abortControllerRef.current = null;
+                  setConnected(false);
+                  break;
+                }
+
+                case 'error': {
+                  const data = safeParse(msg.data);
+                  setError(data?.message as string ?? 'Connection lost');
+                  break;
+                }
+
+                case 'heartbeat': {
+                  // No-op, just keeps connection alive
+                  break;
+                }
+
+                default: {
+                  console.warn('[useAgent] Unknown SSE event:', msg.event);
+                  break;
+                }
+              }
             }
-          }, delay);
-        } else {
-          setError('Connection lost');
-        }
-      };
+          } catch (err) {
+            // AbortError is expected when we intentionally close the connection
+            if (err instanceof DOMException && err.name === 'AbortError') {
+              return;
+            }
+            console.error('[useAgent] SSE stream error:', err);
+          }
+
+          // Stream ended (server closed connection or network drop) — attempt reconnect
+          if (!controller.signal.aborted && mountedRef.current) {
+            handleDisconnect(connectSSE);
+          }
+        })
+        .catch((err) => {
+          // AbortError is expected during cleanup
+          if (err instanceof DOMException && err.name === 'AbortError') {
+            return;
+          }
+          console.error('[useAgent] SSE fetch error:', err);
+          handleDisconnect(connectSSE);
+        });
     }
 
     mountedRef.current = true;
@@ -310,17 +388,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
     return () => {
       mountedRef.current = false;
-      // Clean up EventSource
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      // Clean up fetch connection
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
       // Clean up reconnect timer
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
-      // 3L: Clean up animation frame
+      // Clean up animation frame
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
@@ -332,7 +410,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       toolCleanupTimersRef.current.clear();
       reconnectAttemptsRef.current = 0;
     };
-  }, [sessionId, accessToken, nextId, flushDeltaBuffer]);
+  }, [sessionId, accessToken, nextId, flushDeltaBuffer, handleDisconnect]);
 
   const addUserMessage = useCallback((content: string) => {
     setMessages((prev) => [

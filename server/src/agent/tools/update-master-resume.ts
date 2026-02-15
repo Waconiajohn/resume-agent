@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../lib/supabase.js';
 import type { SessionContext } from '../context.js';
+import { createSessionLogger } from '../../lib/logger.js';
 
 export async function executeUpdateMasterResume(
   input: Record<string, unknown>,
@@ -25,6 +26,8 @@ export async function executeUpdateMasterResume(
     return { success: false, changes_applied: 0, new_version: 0, error: 'Master resume not found', code: 'RESUME_NOT_FOUND', recoverable: false };
   }
 
+  const log = createSessionLogger(ctx.sessionId);
+
   let appliedCount = 0;
   const resumeData = { ...resume } as Record<string, unknown>;
 
@@ -33,7 +36,7 @@ export async function executeUpdateMasterResume(
       applyChange(resumeData, change);
       appliedCount++;
     } catch (e) {
-      console.error(`Failed to apply change to ${change.path}:`, e);
+      log.error({ path: change.path, err: e }, 'Failed to apply resume change');
     }
   }
 
@@ -54,7 +57,7 @@ export async function executeUpdateMasterResume(
     .eq('user_id', ctx.userId);
 
   if (saveError) {
-    console.error('Master resume update error:', saveError);
+    log.error({ error: saveError.message }, 'Master resume update error');
     return { success: false, changes_applied: 0, new_version: (resume as Record<string, unknown>).version as number, error: 'Failed to save resume updates', code: 'RESUME_UPDATE_FAILED', recoverable: true };
   }
 
@@ -65,7 +68,7 @@ export async function executeUpdateMasterResume(
     changes_detail: { changes, session_id: ctx.sessionId },
   });
   if (historyError) {
-    console.error('Failed to save resume change history:', historyError.message);
+    log.error({ error: historyError.message }, 'Failed to save resume change history');
   }
 
   return { success: true, changes_applied: appliedCount, new_version: newVersion };
@@ -97,7 +100,7 @@ function applyChange(
         const parsed = JSON.parse(content) as Array<{ text: string; source: string }>;
         experience[expIndex].bullets = parsed;
       } catch {
-        console.warn(`[update-master-resume] Failed to parse bullets content for ${change.path}, skipping`);
+        // Failed to parse bullets content — skip this change
       }
     } else if (action === 'add' && change.path.includes('bullets')) {
       const bullets = (experience[expIndex].bullets ?? []) as Array<{ text: string; source: string }>;
@@ -142,7 +145,7 @@ function applyChange(
             const entry = JSON.parse(content) as Record<string, string>;
             education[idx] = { ...education[idx], ...entry };
           } catch {
-            console.warn(`[update-master-resume] Failed to parse education update content: ${content.substring(0, 100)}`);
+            // Failed to parse education update content — skip
           }
         }
       }
@@ -172,7 +175,7 @@ function applyChange(
             const entry = JSON.parse(content) as Record<string, string>;
             certifications[idx] = { ...certifications[idx], ...entry };
           } catch {
-            console.warn(`[update-master-resume] Failed to parse certification update content: ${content.substring(0, 100)}`);
+            // Failed to parse certification update content — skip
           }
         }
       }

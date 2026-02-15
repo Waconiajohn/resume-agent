@@ -1,6 +1,7 @@
 import { queryPerplexity } from '../../lib/perplexity.js';
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
+import { createSessionLogger } from '../../lib/logger.js';
 
 export async function executeResearchIndustry(
   input: Record<string, unknown>,
@@ -32,7 +33,8 @@ Be specific with numbers and data where possible.`;
     ]);
     return { industry_research: researchText };
   } catch (error) {
-    console.warn('[research-industry] Perplexity failed, falling back to Claude:', error instanceof Error ? error.message : error);
+    const log = createSessionLogger(ctx.sessionId);
+    log.warn({ error: error instanceof Error ? error.message : String(error) }, 'Perplexity failed, falling back to Claude');
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 4096,

@@ -8,6 +8,7 @@ import { runAgentLoop } from '../agent/loop.js';
 import type { SSEEvent } from '../agent/loop.js';
 import { withSessionLock } from '../lib/session-lock.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
+import logger, { createSessionLogger } from '../lib/logger.js';
 
 const sessions = new Hono();
 
@@ -27,18 +28,24 @@ setInterval(() => {
   }
 }, 60_000);
 
-// SSE endpoint — auth via query param since EventSource can't set headers.
-// Known limitation: the EventSource API does not support custom headers, so we
-// pass the JWT as a query parameter. This means the token may appear in server
-// logs and browser history. Short-lived JWTs (Supabase default ~1hr) mitigate
-// the exposure window. Consider upgrading to fetch-based streaming if the
-// EventSource constraint becomes a security concern.
+// SSE endpoint — accepts Authorization header (preferred) or query param (deprecated fallback)
 sessions.get('/:id/sse', async (c) => {
   const sessionId = c.req.param('id');
-  const token = c.req.query('token');
+
+  // Prefer Authorization header; fall back to query param for legacy EventSource clients
+  const authHeader = c.req.header('Authorization');
+  let token: string | undefined;
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else {
+    token = c.req.query('token');
+    if (token) {
+      logger.warn({ sessionId }, 'DEPRECATED: JWT in query string. Use Authorization header instead.');
+    }
+  }
 
   if (!token) {
-    return c.json({ error: 'Missing token query parameter' }, 401);
+    return c.json({ error: 'Missing authentication token' }, 401);
   }
 
   const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
@@ -78,7 +85,7 @@ sessions.get('/:id/sse', async (c) => {
     // Replay historical messages and session state on reconnect
     // Lightweight validation before casting
     if (!session.id || !session.user_id || !session.current_phase) {
-      console.error('SSE: Invalid session data for', sessionId);
+      logger.error({ sessionId }, 'SSE: Invalid session data');
     }
     const typedSession = session as CoachSession;
     const chatMessages: Array<{ role: string; content: string }> = [];
@@ -120,7 +127,7 @@ sessions.get('/:id/sse', async (c) => {
 
     const heartbeat = setInterval(() => {
       stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
-        console.warn('SSE heartbeat failed for session', sessionId);
+        logger.warn({ sessionId }, 'SSE heartbeat failed');
         clearInterval(heartbeat);
       });
     }, 15000);
@@ -170,7 +177,7 @@ sessions.post('/', async (c) => {
     .single();
 
   if (error) {
-    console.error('Failed to create session:', error.message);
+    logger.error({ error: error.message }, 'Failed to create session');
     return c.json({ error: 'Failed to create session' }, 500);
   }
 
@@ -231,7 +238,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   if (loadError || !sessionData) {
     if (loadError && loadError.code !== 'PGRST116') {
-      console.error('DB error loading session:', loadError);
+      logger.error({ sessionId, error: loadError.message }, 'DB error loading session');
       return c.json({ error: 'Database error' }, 503);
     }
     return c.json({ error: 'Session not found' }, 404);
@@ -262,11 +269,13 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     }
   }
 
+  const log = createSessionLogger(sessionId);
+
   withSessionLock(sessionId, async () => {
     try {
       await runAgentLoop(ctx, content, emit);
     } catch (error) {
-      console.error('Agent loop error:', error instanceof Error ? error.message : error);
+      log.error({ error: error instanceof Error ? error.message : error }, 'Agent loop error');
       emit({
         type: 'error',
         message: 'Something went wrong processing your message. Please try again.',
@@ -280,11 +289,11 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
         .eq('id', sessionId)
         .eq('user_id', user.id);
       if (checkpointError) {
-        console.error('Failed to save session checkpoint:', checkpointError.message);
+        log.error({ error: checkpointError.message }, 'Failed to save session checkpoint');
       }
     }
   }).catch((error) => {
-    console.error('Session lock error:', error instanceof Error ? error.message : error);
+    log.error({ error: error instanceof Error ? error.message : error }, 'Session lock error');
     emit({
       type: 'error',
       message: 'Failed to process message — please try again.',
@@ -307,7 +316,7 @@ sessions.get('/', async (c) => {
     .limit(10);
 
   if (error) {
-    console.error('Failed to load sessions:', error.message);
+    logger.error({ error: error.message }, 'Failed to load sessions');
     return c.json({ error: 'Failed to load sessions' }, 500);
   }
 

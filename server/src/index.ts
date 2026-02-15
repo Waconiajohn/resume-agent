@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
+import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
 import { supabaseAdmin } from './lib/supabase.js';
+import logger from './lib/logger.js';
 
 const app = new Hono();
 
@@ -12,8 +14,10 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
 if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
-  console.warn('[SECURITY] ALLOWED_ORIGINS not set in production — falling back to localhost origins');
+  logger.warn('ALLOWED_ORIGINS not set in production — falling back to localhost origins');
 }
+
+app.use('*', requestIdMiddleware);
 
 app.use('*', cors({
   origin: allowedOrigins,
@@ -42,14 +46,14 @@ app.notFound((c) => {
 });
 
 app.onError((err, c) => {
-  console.error('Unhandled error:', err);
+  logger.error({ err, requestId: c.get('requestId') }, 'Unhandled error');
   return c.json({ error: 'Internal server error' }, 500);
 });
 
 const port = parseInt(process.env.PORT ?? '3001');
 
-console.log(`Resume Agent server starting on port ${port}...`);
+logger.info({ port }, 'Resume Agent server starting');
 
 serve({ fetch: app.fetch, port });
 
-console.log(`Server running at http://localhost:${port}`);
+logger.info({ port }, `Server running at http://localhost:${port}`);

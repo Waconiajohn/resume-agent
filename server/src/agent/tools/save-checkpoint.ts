@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../lib/supabase.js';
 import type { SessionContext } from '../context.js';
+import { createSessionLogger } from '../../lib/logger.js';
 
 export async function executeSaveCheckpoint(
   input: Record<string, unknown>,
@@ -16,7 +17,8 @@ export async function executeSaveCheckpoint(
     .eq('user_id', ctx.userId);
 
   if (error) {
-    console.error('Checkpoint save error:', error);
+    const log = createSessionLogger(ctx.sessionId);
+    log.error({ error: error.message }, 'Checkpoint save error');
     return { success: false, phase, error: 'Failed to save checkpoint', code: 'CHECKPOINT_SAVE_FAILED', recoverable: true };
   }
 

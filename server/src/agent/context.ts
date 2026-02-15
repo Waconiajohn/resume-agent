@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import logger from '../lib/logger.js';
 
 export type CoachPhase =
   | 'onboarding'
@@ -181,6 +182,8 @@ export interface CoachSession {
   last_checkpoint_phase: string | null;
   last_checkpoint_at: string | null;
   total_tokens_used: number;
+  system_prompt_version: string | null;
+  system_prompt_hash: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -209,6 +212,12 @@ export class SessionContext {
   lastPanelType: string | null;
   lastPanelData: Record<string, unknown> | null;
   totalTokensUsed: number;
+  systemPromptVersion: string | null;
+  systemPromptHash: string | null;
+
+  // Runtime-only token tracking (not persisted in checkpoint — resets on server restart)
+  lastInputTokens: number = 0;
+  lastOutputTokens: number = 0;
 
   constructor(session: CoachSession) {
     this.sessionId = session.id;
@@ -235,6 +244,8 @@ export class SessionContext {
     this.lastPanelType = session.last_panel_type ?? null;
     this.lastPanelData = session.last_panel_data ?? null;
     this.totalTokensUsed = session.total_tokens_used ?? 0;
+    this.systemPromptVersion = session.system_prompt_version ?? null;
+    this.systemPromptHash = session.system_prompt_hash ?? null;
   }
 
   async loadMasterResume(supabase: SupabaseClient): Promise<void> {
@@ -248,13 +259,13 @@ export class SessionContext {
       .single();
 
     if (error || !data) {
-      console.error('Failed to load master resume:', error?.message);
+      logger.error({ sessionId: this.sessionId, error: error?.message }, 'Failed to load master resume');
       return;
     }
 
     // Lightweight validation before casting
     if (typeof data !== 'object' || data === null || !('summary' in data) || !('experience' in data)) {
-      console.error('Master resume data missing expected fields');
+      logger.error({ sessionId: this.sessionId }, 'Master resume data missing expected fields');
       return;
     }
     this.masterResumeData = data as MasterResumeData;
@@ -419,7 +430,7 @@ export class SessionContext {
       const orphanedIds = toolUseIds.filter(id => !existingResultIds.has(id));
       if (orphanedIds.length === 0) continue;
 
-      console.warn(`[context] Repairing ${orphanedIds.length} orphaned tool_use block(s) after message ${i}`);
+      logger.warn({ sessionId: this.sessionId, orphanCount: orphanedIds.length, afterMessage: i }, 'Repairing orphaned tool_use blocks');
 
       const syntheticResults: ContentBlock[] = orphanedIds.map(id => ({
         type: 'tool_result' as const,
@@ -453,7 +464,18 @@ export class SessionContext {
     this.repairOrphanedToolUse();
 
     const KEEP_FIRST = 2;
-    const KEEP_LAST = 40;
+
+    // Adaptive truncation based on last observed input token count
+    let keepLast = 40;
+    if (this.lastInputTokens > 150_000) {
+      keepLast = 15;
+      logger.warn({ sessionId: this.sessionId, lastInputTokens: this.lastInputTokens, keepLast }, 'Aggressive truncation');
+    } else if (this.lastInputTokens > 120_000) {
+      keepLast = 25;
+      logger.info({ sessionId: this.sessionId, lastInputTokens: this.lastInputTokens, keepLast }, 'Moderate truncation');
+    }
+
+    const KEEP_LAST = keepLast;
     const total = this.messages.length;
 
     if (total <= KEEP_FIRST + KEEP_LAST) {
@@ -524,6 +546,8 @@ export class SessionContext {
       last_panel_type: this.lastPanelType,
       last_panel_data: this.lastPanelData,
       total_tokens_used: this.totalTokensUsed,
+      system_prompt_version: this.systemPromptVersion,
+      system_prompt_hash: this.systemPromptHash,
       last_checkpoint_phase: this.currentPhase,
       last_checkpoint_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

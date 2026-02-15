@@ -1,10 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { anthropic, MODEL, MAX_TOKENS } from '../lib/anthropic.js';
-import { buildSystemPrompt } from './system-prompt.js';
+import { buildSystemPrompt, getPromptFingerprint } from './system-prompt.js';
 import { getToolsForPhase } from './tools/index.js';
 import { executeToolCall } from './tool-executor.js';
 import { withRetry } from '../lib/retry.js';
 import type { SessionContext, ContentBlock, CoachPhase } from './context.js';
+import { createSessionLogger } from '../lib/logger.js';
 
 type MessageParam = Anthropic.MessageParam;
 
@@ -23,12 +24,14 @@ export async function runAgentLoop(
   userMessage: string,
   emit: SSEEmitter,
 ): Promise<void> {
+  const log = createSessionLogger(ctx.sessionId);
+
   if (ctx.pendingToolCallId) {
     // Check if this was a phase gate confirmation — advance the phase
     if (ctx.pendingPhaseTransition) {
       const fromPhase = ctx.currentPhase;
       const nextPhase = ctx.pendingPhaseTransition;
-      console.log(`[agent-loop] phase_transition from=${fromPhase} to=${nextPhase}`);
+      log.info({ fromPhase, nextPhase }, 'Phase transition');
       ctx.pendingPhaseTransition = null;
 
       if (nextPhase === 'complete') {
@@ -67,7 +70,7 @@ export async function runAgentLoop(
     });
   }
 
-  console.log(`[agent-loop] start phase=${ctx.currentPhase} messages=${ctx.messages.length}`);
+  log.info({ phase: ctx.currentPhase, messageCount: ctx.messages.length }, 'Agent loop start');
 
   // AbortController for the entire loop — used by the timeout to actually kill streaming API calls
   const loopAbort = new AbortController();
@@ -78,9 +81,27 @@ export async function runAgentLoop(
         throw new Error('Agent loop timed out after 5 minutes');
       }
 
-      console.log(`[agent-loop] round=${round} phase=${ctx.currentPhase}`);
+      log.debug({ round, phase: ctx.currentPhase }, 'Agent loop round');
+
+      // Stamp or verify system prompt version/hash
+      const fingerprint = getPromptFingerprint();
+      if (ctx.systemPromptHash === null) {
+        ctx.systemPromptVersion = fingerprint.version;
+        ctx.systemPromptHash = fingerprint.hash;
+        log.info({ version: fingerprint.version, hash: fingerprint.hash }, 'System prompt stamped');
+      } else if (ctx.systemPromptHash !== fingerprint.hash) {
+        log.warn({ sessionHash: ctx.systemPromptHash, currentHash: fingerprint.hash, version: fingerprint.version }, 'Prompt drift detected');
+        ctx.systemPromptVersion = fingerprint.version;
+        ctx.systemPromptHash = fingerprint.hash;
+      }
+
       const systemPrompt = buildSystemPrompt(ctx);
       const phaseTools = getToolsForPhase(ctx.currentPhase);
+
+      // Warn user when context is very large and will be aggressively trimmed
+      if (ctx.lastInputTokens > 180_000) {
+        emit({ type: 'transparency', message: 'Optimizing conversation context...', phase: ctx.currentPhase });
+      }
 
       const truncatedMessages = ctx.getApiMessages();
       const apiMessages: MessageParam[] = truncatedMessages.map((msg) => ({
@@ -124,11 +145,15 @@ export async function runAgentLoop(
           },
           {
             onRetry: (attempt, error) => {
-              console.log(`[agent-loop] retry attempt=${attempt} error=${error.message}`);
+              log.warn({ attempt, error: error.message }, 'API call retry');
               emit({ type: 'transparency', message: `Retrying API call (attempt ${attempt + 1})...`, phase: ctx.currentPhase });
             },
           },
         );
+
+        // Track per-round token usage for adaptive truncation
+        ctx.lastInputTokens = response.usage?.input_tokens ?? 0;
+        ctx.lastOutputTokens = response.usage?.output_tokens ?? 0;
 
         ctx.addTokens(
           (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0),
@@ -166,7 +191,7 @@ export async function runAgentLoop(
         });
 
         if (toolUses.length === 0) {
-          console.log(`[agent-loop] complete phase=${ctx.currentPhase} rounds=${round + 1}`);
+          log.info({ phase: ctx.currentPhase, rounds: round + 1 }, 'Agent loop complete');
           return;
         }
 
@@ -233,7 +258,7 @@ export async function runAgentLoop(
             return;
           }
 
-          console.log(`[agent-loop] tool=${tool.name}`);
+          log.debug({ tool: tool.name }, 'Executing tool');
           emit({ type: 'tool_start', tool_name: tool.name, description: getToolDescription(tool.name) });
 
           try {
@@ -276,7 +301,7 @@ export async function runAgentLoop(
 
   // 2E: Timeout guard — uses AbortController to actually kill streaming API calls
   const timeoutId = setTimeout(() => {
-    console.log(`[agent-loop] aborting — timeout after ${LOOP_TIMEOUT_MS / 1000}s phase=${ctx.currentPhase}`);
+    log.warn({ timeoutSec: LOOP_TIMEOUT_MS / 1000, phase: ctx.currentPhase }, 'Agent loop aborting — timeout');
     loopAbort.abort();
   }, LOOP_TIMEOUT_MS);
 
@@ -284,7 +309,7 @@ export async function runAgentLoop(
     await loopBody();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Agent loop timeout';
-    console.log(`[agent-loop] error phase=${ctx.currentPhase}: ${message}`);
+    log.error({ phase: ctx.currentPhase, error: message }, 'Agent loop error');
     emit({ type: 'error', message, recoverable: true, retry_action: 'continue_session' });
   } finally {
     clearTimeout(timeoutId);
@@ -394,7 +419,8 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     // The agent should address them but they should not create an unbreakable deadlock
     const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
     if (biasRisks.length > 0) {
-      console.warn(`[phase-gate] quality_review: ${biasRisks.length} age-bias risk(s) noted but allowing advancement: ${biasRisks.join(', ')}`);
+      const gateLog = createSessionLogger(ctx.sessionId);
+      gateLog.warn({ biasRisks, count: biasRisks.length }, 'Age-bias risks noted but allowing advancement');
     }
   }
 
@@ -403,7 +429,8 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     const hasCoverContent = ctx.tailoredSections &&
       Object.values(ctx.tailoredSections).some(v => typeof v === 'string' && v.length > 0);
     if (!hasCoverContent) {
-      console.warn('[agent-loop] Advancing cover_letter → complete without cover letter content');
+      const gateLog = createSessionLogger(ctx.sessionId);
+      gateLog.warn('Advancing cover_letter → complete without cover letter content');
     }
   }
 

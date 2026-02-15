@@ -1,5 +1,10 @@
+import { createHash } from 'node:crypto';
 import type { CoachPhase, SessionContext } from './context.js';
 import { AGE_AWARENESS_RULES, SECTION_ORDER, QUALITY_CHECKLIST } from './resume-guide.js';
+
+export const SYSTEM_PROMPT_VERSION = '1.0.0';
+
+let cachedFingerprint: { version: string; hash: string } | null = null;
 
 const BASE_PROMPT = `You are an elite team of AI resume coaches — not a tool, but real coaches who research, analyze, design, and write alongside the candidate.
 
@@ -52,6 +57,17 @@ Before expensive or complex work, use emit_transparency to tell the candidate wh
 - Use update_right_panel to keep the right panel alive with relevant content throughout
 
 ${AGE_AWARENESS_RULES}`;
+
+export function getPromptFingerprint(): { version: string; hash: string } {
+  if (!cachedFingerprint) {
+    const digest = createHash('sha256').update(BASE_PROMPT).digest('hex');
+    cachedFingerprint = {
+      version: SYSTEM_PROMPT_VERSION,
+      hash: digest.substring(0, 12),
+    };
+  }
+  return cachedFingerprint;
+}
 
 const PHASE_INSTRUCTIONS: Record<CoachPhase, string> = {
   onboarding: `## Current Phase: Onboarding

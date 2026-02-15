@@ -1,6 +1,7 @@
 import { queryPerplexity } from '../../lib/perplexity.js';
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext, CompanyResearch } from '../context.js';
+import { createSessionLogger } from '../../lib/logger.js';
 
 export async function executeResearchCompany(
   input: Record<string, unknown>,
@@ -34,7 +35,8 @@ Be specific and factual. If you're not sure about something, say so.`;
       { role: 'user', content: researchPrompt },
     ]);
   } catch (perplexityError) {
-    console.warn('Perplexity API unavailable, falling back to Claude:', perplexityError instanceof Error ? perplexityError.message : perplexityError);
+    const log = createSessionLogger(ctx.sessionId);
+    log.warn({ error: perplexityError instanceof Error ? perplexityError.message : String(perplexityError) }, 'Perplexity API unavailable, falling back to Claude');
     const fallbackResponse = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 4096,

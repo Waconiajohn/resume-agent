@@ -1,3 +1,5 @@
+import logger from './logger.js';
+
 /**
  * Multi-step JSON repair for LLM outputs that may include markdown fences,
  * surrounding text, or trailing commas.
@@ -52,6 +54,6 @@ export function repairJSON<T>(text: string): T | null {
   }
 
   // Step 5: Give up — log raw snippet for debugging
-  console.warn(`[json-repair] Failed to repair JSON. Raw input (first 200 chars): ${text.substring(0, 200)}`);
+  logger.warn({ rawSnippet: text.substring(0, 200) }, 'Failed to repair JSON');
   return null;
 }
