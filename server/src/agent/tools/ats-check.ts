@@ -1,11 +1,13 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
+import type { SSEEmitter } from '../loop.js';
 import { ATS_FORMATTING_RULES } from '../resume-guide.js';
 
 export async function executeAtsCheck(
   input: Record<string, unknown>,
   ctx: SessionContext,
+  emit: SSEEmitter,
 ): Promise<{
   ats_score: number;
   keyword_matches: Array<{ keyword: string; found: boolean; context?: string }>;
@@ -73,8 +75,17 @@ Return ONLY valid JSON:
   const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
 
   const parsed = repairJSON<Record<string, unknown>>(rawText);
+  let result = {
+    ats_score: 50,
+    keyword_matches: [] as Array<{ keyword: string; found: boolean; context?: string }>,
+    format_issues: [] as string[],
+    recommendations: ['Unable to complete ATS check — please try again'],
+    keyword_coverage_pct: 0,
+    section_header_issues: [] as string[],
+  };
+
   if (parsed) {
-    return {
+    result = {
       ats_score: (parsed.ats_score as number) ?? 50,
       keyword_matches: (parsed.keyword_matches as Array<{ keyword: string; found: boolean; context?: string }>) ?? [],
       format_issues: (parsed.format_issues as string[]) ?? [],
@@ -83,12 +94,18 @@ Return ONLY valid JSON:
       section_header_issues: (parsed.section_header_issues as string[]) ?? [],
     };
   }
-  return {
-    ats_score: 50,
-    keyword_matches: [],
-    format_issues: [],
-    recommendations: ['Unable to complete ATS check — please try again'],
-    keyword_coverage_pct: 0,
-    section_header_issues: [],
+
+  // Progressive quality dashboard emit
+  ctx.qualityDashboardData = {
+    ...ctx.qualityDashboardData,
+    ats_score: result.ats_score,
+    keyword_coverage: result.keyword_coverage_pct,
   };
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'quality_dashboard',
+    data: ctx.qualityDashboardData,
+  });
+
+  return result;
 }

@@ -100,6 +100,7 @@ export interface SectionChange {
 export interface LiveResumeData {
   active_section: string;
   changes: SectionChange[];
+  proposed_content?: string;
 }
 
 // --- Quality Dashboard ---

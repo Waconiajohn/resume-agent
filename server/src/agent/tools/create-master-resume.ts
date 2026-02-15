@@ -2,6 +2,7 @@ import { anthropic, MODEL } from '../../lib/anthropic.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, MasterResumeData } from '../context.js';
+import type { SSEEmitter } from '../loop.js';
 import { createSessionLogger } from '../../lib/logger.js';
 
 const STRUCTURING_PROMPT = `You are a resume parser. Extract structured data from the following resume text and return ONLY valid JSON with this exact shape:
@@ -39,6 +40,7 @@ Rules:
 export async function executeCreateMasterResume(
   input: Record<string, unknown>,
   ctx: SessionContext,
+  emit: SSEEmitter,
 ): Promise<{ success: boolean; master_resume_id?: string; error?: string; code?: string; recoverable?: boolean }> {
   const rawText = (input.raw_text as string)?.slice(0, 30_000);
 
@@ -100,6 +102,25 @@ export async function executeCreateMasterResume(
 
   ctx.masterResumeId = resumeId;
   ctx.masterResumeData = { ...structured, raw_text: rawText };
+
+  // Emit onboarding summary panel with parsed resume stats
+  const experienceYears = structured.experience?.length
+    ? Math.max(...structured.experience.map(e => {
+        const year = parseInt(e.start_date);
+        return isNaN(year) ? 0 : new Date().getFullYear() - year;
+      }))
+    : undefined;
+
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'onboarding_summary',
+    data: {
+      years_of_experience: experienceYears,
+      companies_count: structured.experience?.length ?? 0,
+      skills_count: Object.values(structured.skills ?? {}).flat().length,
+      strengths: structured.experience?.slice(0, 3).map(e => `${e.title} at ${e.company}`) ?? [],
+    },
+  });
 
   await supabaseAdmin
     .from('coach_sessions')

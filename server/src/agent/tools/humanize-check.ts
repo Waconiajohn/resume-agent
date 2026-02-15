@@ -1,11 +1,13 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
+import type { SSEEmitter } from '../loop.js';
 import { RESUME_ANTI_PATTERNS } from '../resume-guide.js';
 
 export async function executeHumanizeCheck(
   input: Record<string, unknown>,
   ctx: SessionContext,
+  emit: SSEEmitter,
 ): Promise<{
   authenticity_score: number;
   issues: Array<{ pattern: string; location: string; suggestion: string }>;
@@ -72,18 +74,32 @@ Return ONLY valid JSON:
   const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
 
   const parsed = repairJSON<Record<string, unknown>>(rawText);
+  let result = {
+    authenticity_score: 50,
+    issues: [] as Array<{ pattern: string; location: string; suggestion: string }>,
+    overall_assessment: 'Unable to complete humanization check — please try again',
+    age_sensitive_flags: [] as string[],
+  };
+
   if (parsed) {
-    return {
+    result = {
       authenticity_score: (parsed.authenticity_score as number) ?? 50,
       issues: (parsed.issues as Array<{ pattern: string; location: string; suggestion: string }>) ?? [],
       overall_assessment: (parsed.overall_assessment as string) ?? '',
       age_sensitive_flags: (parsed.age_sensitive_flags as string[]) ?? [],
     };
   }
-  return {
-    authenticity_score: 50,
-    issues: [],
-    overall_assessment: 'Unable to complete humanization check — please try again',
-    age_sensitive_flags: [],
+
+  // Progressive quality dashboard emit
+  ctx.qualityDashboardData = {
+    ...ctx.qualityDashboardData,
+    authenticity_score: result.authenticity_score,
   };
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'quality_dashboard',
+    data: ctx.qualityDashboardData,
+  });
+
+  return result;
 }

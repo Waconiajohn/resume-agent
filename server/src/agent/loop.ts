@@ -117,7 +117,8 @@ export async function runAgentLoop(
         const forceToolUse = round === 0 && (
           ctx.currentPhase === 'deep_research' ||
           ctx.currentPhase === 'gap_analysis' ||
-          ctx.currentPhase === 'quality_review'
+          ctx.currentPhase === 'quality_review' ||
+          ctx.currentPhase === 'cover_letter'
         );
 
         const response = await withRetry(

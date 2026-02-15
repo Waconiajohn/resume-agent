@@ -150,13 +150,14 @@ Return ONLY valid JSON:
     jd_requirements_addressed: [...new Set(jdReqs)],
   });
 
-  // Emit to right panel with diff data
+  // Emit to right panel with diff data + WYSIWYG content
   emit({
     type: 'right_panel_update',
     panel_type: 'live_resume',
     data: {
       active_section: section,
       changes,
+      proposed_content: proposedContent,
     },
   });
 

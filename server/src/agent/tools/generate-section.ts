@@ -157,6 +157,7 @@ Return ONLY valid JSON:
         reasoning: change,
         jd_requirements: [],
       })),
+      proposed_content: content,
     },
   });
 

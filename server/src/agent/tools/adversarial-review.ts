@@ -1,11 +1,13 @@
 import { anthropic, MODEL } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
+import type { SSEEmitter } from '../loop.js';
 import { QUALITY_CHECKLIST } from '../resume-guide.js';
 
 export async function executeAdversarialReview(
   input: Record<string, unknown>,
   ctx: SessionContext,
+  emit: SSEEmitter,
 ): Promise<{
   overall_assessment: string;
   risk_flags: Array<{ flag: string; severity: string; recommendation: string }>;
@@ -100,6 +102,25 @@ Return ONLY valid JSON:
     checklist_scores: result.checklist_scores,
     checklist_total: result.checklist_total,
   };
+
+  // Progressive quality dashboard emit
+  ctx.qualityDashboardData = {
+    ...ctx.qualityDashboardData,
+    hiring_manager: {
+      pass: result.pass,
+      checklist_total: result.checklist_total,
+      checklist_max: 50,
+      checklist_scores: result.checklist_scores,
+    },
+    risk_flags: result.risk_flags,
+    age_bias_risks: result.age_bias_risks,
+    overall_assessment: result.overall_assessment,
+  };
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'quality_dashboard',
+    data: ctx.qualityDashboardData,
+  });
 
   return result;
 }

@@ -219,6 +219,9 @@ export class SessionContext {
   lastInputTokens: number = 0;
   lastOutputTokens: number = 0;
 
+  // Runtime-only accumulator for quality dashboard (not persisted — quality_review is single-pass)
+  qualityDashboardData: Record<string, unknown> = {};
+
   constructor(session: CoachSession) {
     this.sessionId = session.id;
     this.userId = session.user_id;

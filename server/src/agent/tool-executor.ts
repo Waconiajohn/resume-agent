@@ -46,13 +46,13 @@ export async function executeToolCall(
     case 'generate_section':
       return executeGenerateSection(input, ctx, emit);
     case 'adversarial_review':
-      return executeAdversarialReview(input, ctx);
+      return executeAdversarialReview(input, ctx, emit);
     case 'save_checkpoint':
       return executeSaveCheckpoint(input, ctx);
     case 'update_master_resume':
       return executeUpdateMasterResume(input, ctx);
     case 'create_master_resume':
-      return executeCreateMasterResume(input, ctx);
+      return executeCreateMasterResume(input, ctx, emit);
     case 'export_resume':
       return executeExportResume(input, ctx, emit);
     case 'research_industry':
@@ -68,9 +68,9 @@ export async function executeToolCall(
     case 'confirm_section':
       return executeConfirmSection(input, ctx, emit);
     case 'humanize_check':
-      return executeHumanizeCheck(input, ctx);
+      return executeHumanizeCheck(input, ctx, emit);
     case 'ats_check':
-      return executeAtsCheck(input, ctx);
+      return executeAtsCheck(input, ctx, emit);
     case 'generate_cover_letter_section':
       return executeGenerateCoverLetterSection(input, ctx, emit);
     case 'emit_transparency': {
