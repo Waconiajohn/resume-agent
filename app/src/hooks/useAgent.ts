@@ -43,6 +43,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const deltaBufferRef = useRef('');
   const rafIdRef = useRef<number | null>(null);
 
+  // Guard against reconnect firing after unmount
+  const mountedRef = useRef(true);
+
   // Track timeout IDs for auto-removing completed tools
   const toolCleanupTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
@@ -292,7 +295,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000; // 1s, 2s, 4s, 8s, 16s
           reconnectAttemptsRef.current += 1;
           reconnectTimerRef.current = setTimeout(() => {
-            connectSSE();
+            if (mountedRef.current) {
+              connectSSE();
+            }
           }, delay);
         } else {
           setError('Connection lost');
@@ -300,9 +305,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       };
     }
 
+    mountedRef.current = true;
     connectSSE();
 
     return () => {
+      mountedRef.current = false;
       // Clean up EventSource
       if (eventSourceRef.current) {
         eventSourceRef.current.close();

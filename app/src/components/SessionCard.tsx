@@ -1,21 +1,12 @@
 import { Clock, ArrowRight } from 'lucide-react';
 import { GlassCard } from './GlassCard';
+import { PHASE_LABELS } from '@/constants/phases';
 import type { CoachSession } from '@/types/session';
 
 interface SessionCardProps {
   session: CoachSession;
   onClick: () => void;
 }
-
-const phaseLabels: Record<string, string> = {
-  onboarding: 'Getting Started',
-  deep_research: 'Deep Research',
-  gap_analysis: 'Gap Analysis',
-  resume_design: 'Resume Design',
-  section_craft: 'Section Craft',
-  quality_review: 'Quality Review',
-  cover_letter: 'Cover Letter',
-};
 
 export function SessionCard({ session, onClick }: SessionCardProps) {
   const timeAgo = getTimeAgo(session.updated_at);
@@ -25,7 +16,7 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/70 w-fit">
-            {phaseLabels[session.current_phase] ?? session.current_phase}
+            {PHASE_LABELS[session.current_phase] ?? session.current_phase}
           </span>
           <div className="flex items-center gap-1.5 text-xs text-white/60">
             <Clock className="h-3 w-3" />

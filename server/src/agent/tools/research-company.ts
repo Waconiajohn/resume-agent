@@ -6,9 +6,9 @@ export async function executeResearchCompany(
   input: Record<string, unknown>,
   ctx: SessionContext,
 ): Promise<{ research: CompanyResearch }> {
-  const companyName = input.company_name as string;
-  const jobTitle = input.job_title as string;
-  const additionalContext = (input.additional_context as string) || '';
+  const companyName = (input.company_name as string).slice(0, 200);
+  const jobTitle = (input.job_title as string).slice(0, 200);
+  const additionalContext = ((input.additional_context as string) || '').slice(0, 2000);
 
   const researchPrompt = `Research ${companyName} for a ${jobTitle} candidate. I need:
 

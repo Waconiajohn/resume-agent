@@ -27,7 +27,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
       : await onSignIn(email, password);
 
     if (error) {
-      setError(String(error));
+      setError((error as { message?: string })?.message ?? String(error));
     }
     setLoading(false);
   };

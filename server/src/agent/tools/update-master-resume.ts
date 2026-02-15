@@ -92,7 +92,14 @@ function applyChange(
     const expIndex = parseInt(indexMatch[1]);
     if (expIndex >= experience.length) return;
 
-    if (action === 'add' && change.path.includes('bullets')) {
+    if (action === 'update' && change.path.includes('bullets')) {
+      try {
+        const parsed = JSON.parse(content) as Array<{ text: string; source: string }>;
+        experience[expIndex].bullets = parsed;
+      } catch {
+        console.warn(`[update-master-resume] Failed to parse bullets content for ${change.path}, skipping`);
+      }
+    } else if (action === 'add' && change.path.includes('bullets')) {
       const bullets = (experience[expIndex].bullets ?? []) as Array<{ text: string; source: string }>;
       bullets.push({ text: content, source: 'coach_session' });
       experience[expIndex].bullets = bullets;
@@ -135,7 +142,7 @@ function applyChange(
             const entry = JSON.parse(content) as Record<string, string>;
             education[idx] = { ...education[idx], ...entry };
           } catch {
-            // If content isn't JSON, skip
+            console.warn(`[update-master-resume] Failed to parse education update content: ${content.substring(0, 100)}`);
           }
         }
       }
@@ -165,7 +172,7 @@ function applyChange(
             const entry = JSON.parse(content) as Record<string, string>;
             certifications[idx] = { ...certifications[idx], ...entry };
           } catch {
-            // If content isn't JSON, skip
+            console.warn(`[update-master-resume] Failed to parse certification update content: ${content.substring(0, 100)}`);
           }
         }
       }

@@ -51,6 +51,7 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
-  // Step 5: Give up
+  // Step 5: Give up — log raw snippet for debugging
+  console.warn(`[json-repair] Failed to repair JSON. Raw input (first 200 chars): ${text.substring(0, 200)}`);
   return null;
 }

@@ -6,7 +6,7 @@ export async function executeAnalyzeJD(
   input: Record<string, unknown>,
   ctx: SessionContext,
 ): Promise<{ analysis: JDAnalysis }> {
-  const jobDescription = input.job_description as string;
+  const jobDescription = (input.job_description as string).slice(0, 30_000);
 
   const companyContext = ctx.companyResearch.company_name
     ? `\nCompany context: ${ctx.companyResearch.company_name}

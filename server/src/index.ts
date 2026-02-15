@@ -11,28 +11,27 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
+if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
+  console.warn('[SECURITY] ALLOWED_ORIGINS not set in production — falling back to localhost origins');
+}
+
 app.use('*', cors({
   origin: allowedOrigins,
   credentials: true,
 }));
 
 app.get('/health', async (c) => {
-  const checks: Record<string, string> = {};
-
-  // Check Supabase connectivity
+  // Lightweight public health check — no config details exposed
+  let dbOk = false;
   try {
     const { error } = await supabaseAdmin.from('coach_sessions').select('id').limit(1);
-    checks.database = error ? 'degraded' : 'ok';
+    dbOk = !error;
   } catch {
-    checks.database = 'down';
+    // db down
   }
 
-  // Check Anthropic API key is set
-  checks.anthropic = process.env.ANTHROPIC_API_KEY ? 'configured' : 'missing';
-
-  const overallStatus = Object.values(checks).every(v => v === 'ok' || v === 'configured') ? 'ok' : 'degraded';
-
-  return c.json({ status: overallStatus, checks, timestamp: new Date().toISOString() });
+  const status = dbOk && process.env.ANTHROPIC_API_KEY ? 'ok' : 'degraded';
+  return c.json({ status, timestamp: new Date().toISOString() });
 });
 
 app.route('/api/sessions', sessions);

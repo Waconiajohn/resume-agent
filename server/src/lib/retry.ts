@@ -38,7 +38,7 @@ export async function withRetry<T>(
 
       options?.onRetry?.(attempt, lastError);
 
-      const delay = baseDelay * Math.pow(2, attempt - 1);
+      const delay = baseDelay * Math.pow(2, attempt - 1) * (0.5 + Math.random());
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }

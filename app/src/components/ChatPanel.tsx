@@ -1,20 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, ArrowRight, CheckCircle } from 'lucide-react';
 import { GlassTextarea } from './GlassInput';
 import { GlassButton } from './GlassButton';
 import { ChatMessage } from './ChatMessage';
 import { AskUserPrompt } from './AskUserPrompt';
+import { PHASE_LABELS } from '@/constants/phases';
 import type { ChatMessage as ChatMessageType, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
-
-const PHASE_LABELS: Record<string, string> = {
-  onboarding: 'Getting Started',
-  deep_research: 'Deep Research',
-  gap_analysis: 'Gap Analysis',
-  resume_design: 'Resume Design',
-  section_craft: 'Section Craft',
-  quality_review: 'Quality Review',
-  cover_letter: 'Cover Letter',
-};
 
 interface ChatPanelProps {
   messages: ChatMessageType[];
@@ -39,10 +30,20 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const userScrolledUpRef = useRef(false);
   const isBusy = isProcessing || streamingText.length > 0 || tools.some((t) => t.status === 'running');
 
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Consider "near bottom" if within 100px of the bottom
+    userScrolledUpRef.current = el.scrollHeight - el.scrollTop - el.clientHeight > 100;
+  }, []);
+
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    if (!userScrolledUpRef.current) {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }
   }, [messages, streamingText, tools, askPrompt, phaseGate]);
 
   const handleSubmit = () => {
@@ -75,7 +76,7 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden py-4 space-y-1">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden py-4 space-y-1">
         {messages.map((msg) => (
           <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
         ))}
@@ -98,7 +99,9 @@ export function ChatPanel({
 
         {/* Streaming text */}
         {streamingText && (
-          <ChatMessage role="assistant" content={streamingText} />
+          <div aria-live="polite">
+            <ChatMessage role="assistant" content={streamingText} />
+          </div>
         )}
 
         {/* Phase gate confirmation */}

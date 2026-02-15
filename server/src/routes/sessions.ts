@@ -76,6 +76,10 @@ sessions.get('/:id/sse', async (c) => {
     });
 
     // Replay historical messages and session state on reconnect
+    // Lightweight validation before casting
+    if (!session.id || !session.user_id || !session.current_phase) {
+      console.error('SSE: Invalid session data for', sessionId);
+    }
     const typedSession = session as CoachSession;
     const chatMessages: Array<{ role: string; content: string }> = [];
     for (const msg of typedSession.messages ?? []) {
@@ -209,6 +213,9 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
   }
 
   if (idempotency_key) {
+    if (idempotency_key.length > 128) {
+      return c.json({ error: 'Idempotency key too long (max 128 chars)' }, 400);
+    }
     if (recentIdempotencyKeys.has(idempotency_key)) {
       return c.json({ error: 'Duplicate message', code: 'DUPLICATE' }, 409);
     }
@@ -230,6 +237,10 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     return c.json({ error: 'Session not found' }, 404);
   }
 
+  // Lightweight validation before casting
+  if (!sessionData.id || !sessionData.user_id || !sessionData.current_phase) {
+    return c.json({ error: 'Invalid session data' }, 500);
+  }
   const session = sessionData as CoachSession;
   const ctx = new SessionContext(session);
 
@@ -274,6 +285,11 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     }
   }).catch((error) => {
     console.error('Session lock error:', error instanceof Error ? error.message : error);
+    emit({
+      type: 'error',
+      message: 'Failed to process message — please try again.',
+      recoverable: true,
+    });
   });
 
   return c.json({ status: 'processing' });
@@ -291,6 +307,7 @@ sessions.get('/', async (c) => {
     .limit(10);
 
   if (error) {
+    console.error('Failed to load sessions:', error.message);
     return c.json({ error: 'Failed to load sessions' }, 500);
   }
 

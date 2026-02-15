@@ -39,7 +39,7 @@ export async function executeCreateMasterResume(
   input: Record<string, unknown>,
   ctx: SessionContext,
 ): Promise<{ success: boolean; master_resume_id?: string; error?: string; code?: string; recoverable?: boolean }> {
-  const rawText = input.raw_text as string;
+  const rawText = (input.raw_text as string)?.slice(0, 30_000);
 
   if (!rawText?.trim()) {
     return { success: false, error: 'No resume text provided', code: 'MISSING_INPUT', recoverable: false };
