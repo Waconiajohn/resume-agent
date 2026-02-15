@@ -382,7 +382,72 @@ export class SessionContext {
     return parts.join('\n');
   }
 
+  /**
+   * Detect and repair orphaned tool_use blocks in the message history.
+   * An orphan occurs when an assistant message ends with tool_use blocks
+   * but the following user message doesn't contain matching tool_result blocks
+   * (e.g. server restarted mid-tool-call). We inject synthetic tool_result
+   * blocks so the Anthropic API doesn't reject the conversation.
+   */
+  private repairOrphanedToolUse(): void {
+    for (let i = 0; i < this.messages.length; i++) {
+      const msg = this.messages[i];
+      if (msg.role !== 'assistant' || !Array.isArray(msg.content)) continue;
+
+      const toolUseIds = msg.content
+        .filter((b: ContentBlock) => b.type === 'tool_use' && b.id)
+        .map((b: ContentBlock) => b.id as string);
+
+      if (toolUseIds.length === 0) continue;
+
+      // Check the next message for matching tool_results
+      const nextMsg = this.messages[i + 1];
+      const existingResultIds = new Set<string>();
+
+      if (nextMsg?.role === 'user' && Array.isArray(nextMsg.content)) {
+        for (const b of nextMsg.content as ContentBlock[]) {
+          if (b.type === 'tool_result' && b.tool_use_id) {
+            existingResultIds.add(b.tool_use_id);
+          }
+        }
+      }
+
+      const orphanedIds = toolUseIds.filter(id => !existingResultIds.has(id));
+      if (orphanedIds.length === 0) continue;
+
+      console.warn(`[context] Repairing ${orphanedIds.length} orphaned tool_use block(s) after message ${i}`);
+
+      const syntheticResults: ContentBlock[] = orphanedIds.map(id => ({
+        type: 'tool_result' as const,
+        tool_use_id: id,
+        content: JSON.stringify({ error: 'Tool call interrupted by server restart. Please retry.' }),
+      }));
+
+      if (nextMsg?.role === 'user' && Array.isArray(nextMsg.content)) {
+        // Append synthetic results to existing user message
+        nextMsg.content = [...(nextMsg.content as ContentBlock[]), ...syntheticResults];
+      } else if (nextMsg?.role === 'user') {
+        // Next message is a plain text user message — insert synthetic results before it
+        this.messages.splice(i + 1, 0, {
+          role: 'user',
+          content: syntheticResults,
+        });
+      } else {
+        // No next message or next is assistant — insert a new user message
+        this.messages.splice(i + 1, 0, {
+          role: 'user',
+          content: syntheticResults,
+        });
+      }
+    }
+  }
+
   getApiMessages(): ConversationMessage[] {
+    // Repair orphaned tool_use blocks (e.g. after server restart mid-tool-call).
+    // The Anthropic API requires every assistant tool_use to be followed by a user
+    // message containing the matching tool_result.
+    this.repairOrphanedToolUse();
+
     const KEEP_FIRST = 2;
     const KEEP_LAST = 40;
     const total = this.messages.length;

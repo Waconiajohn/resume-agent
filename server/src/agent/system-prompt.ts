@@ -288,6 +288,9 @@ Your goals:
    - Ask if they want to update their master resume with new evidence
    - Celebrate the result — remind them of their strengths
    - Save final checkpoint
+   - Use confirm_phase_complete to mark the session as complete (next_phase: "complete")
+
+IMPORTANT: When the candidate says they are satisfied or ready to wrap up, use confirm_phase_complete with next_phase "complete" IMMEDIATELY. Do NOT keep generating more questions. The session is complete.
 
 This is the finish line. Make them feel confident and prepared.`,
 };

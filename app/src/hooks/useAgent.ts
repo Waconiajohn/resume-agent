@@ -97,6 +97,18 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           setPanelType(data.last_panel_type as PanelType);
           setPanelData({ type: data.last_panel_type, ...(data.last_panel_data as Record<string, unknown>) } as PanelData);
         }
+        // On restore, clear processing state — the agent loop isn't running
+        setIsProcessing(false);
+        // Restore pending phase gate so the user can confirm/reject after reconnect
+        if (data.pending_phase_transition && data.pending_tool_call_id) {
+          setPhaseGate({
+            toolCallId: data.pending_tool_call_id as string,
+            currentPhase: data.current_phase as string,
+            nextPhase: data.pending_phase_transition as string,
+            phaseSummary: 'Phase complete (restored after reconnect)',
+            nextPhasePreview: '',
+          });
+        }
       });
 
       es.addEventListener('text_delta', (e) => {

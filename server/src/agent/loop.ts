@@ -67,8 +67,15 @@ export async function runAgentLoop(
 
   console.log(`[agent-loop] start phase=${ctx.currentPhase} messages=${ctx.messages.length}`);
 
+  // AbortController for the entire loop — used by the timeout to actually kill streaming API calls
+  const loopAbort = new AbortController();
+
   const loopBody = async () => {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      if (loopAbort.signal.aborted) {
+        throw new Error('Agent loop timed out after 5 minutes');
+      }
+
       console.log(`[agent-loop] round=${round} phase=${ctx.currentPhase}`);
       const systemPrompt = buildSystemPrompt(ctx);
       const phaseTools = getToolsForPhase(ctx.currentPhase);
@@ -109,6 +116,8 @@ export async function runAgentLoop(
               fullText += text;
               emit({ type: 'text_delta', content: text });
             });
+            // Abort the stream when the loop timeout fires
+            loopAbort.signal.addEventListener('abort', () => s.abort(), { once: true });
             return s.finalMessage();
           },
           {
@@ -263,17 +272,20 @@ export async function runAgentLoop(
     });
   };
 
-  // 2E: Timeout guard
-  const timeout = new Promise<void>((_, reject) =>
-    setTimeout(() => reject(new Error('Agent loop timed out after 5 minutes')), LOOP_TIMEOUT_MS),
-  );
+  // 2E: Timeout guard — uses AbortController to actually kill streaming API calls
+  const timeoutId = setTimeout(() => {
+    console.log(`[agent-loop] aborting — timeout after ${LOOP_TIMEOUT_MS / 1000}s phase=${ctx.currentPhase}`);
+    loopAbort.abort();
+  }, LOOP_TIMEOUT_MS);
 
   try {
-    await Promise.race([loopBody(), timeout]);
+    await loopBody();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Agent loop timeout';
-    console.log(`[agent-loop] timeout phase=${ctx.currentPhase}`);
+    console.log(`[agent-loop] error phase=${ctx.currentPhase}: ${message}`);
     emit({ type: 'error', message, recoverable: true, retry_action: 'continue_session' });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -356,9 +368,11 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     if (total < 35) {
       return `Cannot advance: checklist total is ${total}/50 (minimum 35 required). Address quality issues before proceeding.`;
     }
+    // Age-bias risks are advisory only — warn but allow advancement
+    // The agent should address them but they should not create an unbreakable deadlock
     const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
     if (biasRisks.length > 0) {
-      return `Cannot advance: ${biasRisks.length} unaddressed age-bias risk(s): ${biasRisks.join(', ')}. Fix these before proceeding.`;
+      console.warn(`[phase-gate] quality_review: ${biasRisks.length} age-bias risk(s) noted but allowing advancement: ${biasRisks.join(', ')}`);
     }
   }
 
