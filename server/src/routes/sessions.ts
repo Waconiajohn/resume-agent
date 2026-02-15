@@ -107,6 +107,8 @@ sessions.get('/:id/sse', async (c) => {
           current_phase: typedSession.current_phase,
           pending_tool_call_id: typedSession.pending_tool_call_id,
           pending_phase_transition: typedSession.pending_phase_transition,
+          last_panel_type: typedSession.last_panel_type ?? null,
+          last_panel_data: typedSession.last_panel_data ?? null,
         }),
       });
     }
@@ -163,7 +165,8 @@ sessions.post('/', async (c) => {
     .single();
 
   if (error) {
-    return c.json({ error: 'Failed to create session', details: error.message }, 500);
+    console.error('Failed to create session:', error.message);
+    return c.json({ error: 'Failed to create session' }, 500);
   }
 
   return c.json({ session: data });
@@ -197,6 +200,10 @@ sessions.post('/:id/messages', async (c) => {
 
   if (!content?.trim()) {
     return c.json({ error: 'Message content is required' }, 400);
+  }
+
+  if (content.length > 50_000) {
+    return c.json({ error: 'Message too long' }, 400);
   }
 
   if (idempotency_key) {
@@ -246,10 +253,10 @@ sessions.post('/:id/messages', async (c) => {
     try {
       await runAgentLoop(ctx, content, emit);
     } catch (error) {
-      console.error('Agent loop error:', error);
+      console.error('Agent loop error:', error instanceof Error ? error.message : error);
       emit({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Agent error',
+        message: 'Something went wrong processing your message. Please try again.',
         recoverable: true,
       });
     } finally {

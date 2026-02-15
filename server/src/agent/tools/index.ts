@@ -360,7 +360,7 @@ export const PHASE_TOOLS: Record<string, string[]> = {
   ],
   interview_prep: [
     'ask_user', 'generate_interview_answer', 'export_resume', 'update_master_resume',
-    'save_checkpoint', 'emit_transparency', 'update_right_panel',
+    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
   ],
 };
 

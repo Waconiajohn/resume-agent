@@ -7,6 +7,9 @@ export function useSession(accessToken: string | null) {
   const [sessions, setSessions] = useState<CoachSession[]>([]);
   const [currentSession, setCurrentSession] = useState<CoachSession | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const clearError = useCallback(() => setError(null), []);
 
   const headers = useCallback(() => ({
     'Content-Type': 'application/json',
@@ -16,10 +19,18 @@ export function useSession(accessToken: string | null) {
   const listSessions = useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/sessions`, { headers: headers() });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to load sessions (${res.status})`);
+        return;
+      }
       const data = await res.json();
       setSessions(data.sessions ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error loading sessions');
     } finally {
       setLoading(false);
     }
@@ -28,16 +39,25 @@ export function useSession(accessToken: string | null) {
   const createSession = useCallback(async (masterResumeId?: string) => {
     if (!accessToken) return null;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/sessions`, {
         method: 'POST',
         headers: headers(),
         body: JSON.stringify({ master_resume_id: masterResumeId }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to create session (${res.status})`);
+        return null;
+      }
       const data = await res.json();
       const session = data.session as CoachSession;
       setCurrentSession(session);
       return session;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error creating session');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -46,12 +66,21 @@ export function useSession(accessToken: string | null) {
   const loadSession = useCallback(async (sessionId: string) => {
     if (!accessToken) return null;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/sessions/${sessionId}`, { headers: headers() });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to load session (${res.status})`);
+        return null;
+      }
       const data = await res.json();
       const session = data.session as CoachSession;
       setCurrentSession(session);
       return session;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error loading session');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -59,17 +88,28 @@ export function useSession(accessToken: string | null) {
 
   const sendMessage = useCallback(async (sessionId: string, content: string) => {
     if (!accessToken) return;
-    await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
-      method: 'POST',
-      headers: headers(),
-      body: JSON.stringify({ content }),
-    });
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to send message (${res.status})`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error sending message');
+    }
   }, [accessToken, headers]);
 
   return {
     sessions,
     currentSession,
     loading,
+    error,
+    clearError,
     listSessions,
     createSession,
     loadSession,

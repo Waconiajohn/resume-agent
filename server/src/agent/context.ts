@@ -177,6 +177,8 @@ export interface CoachSession {
   messages: ConversationMessage[];
   pending_tool_call_id: string | null;
   pending_phase_transition: string | null;
+  last_panel_type: string | null;
+  last_panel_data: Record<string, unknown> | null;
   last_checkpoint_phase: string | null;
   last_checkpoint_at: string | null;
   total_tokens_used: number;
@@ -205,6 +207,8 @@ export class SessionContext {
   messages: ConversationMessage[];
   pendingToolCallId: string | null;
   pendingPhaseTransition: string | null;
+  lastPanelType: string | null;
+  lastPanelData: Record<string, unknown> | null;
   totalTokensUsed: number;
 
   constructor(session: CoachSession) {
@@ -229,6 +233,8 @@ export class SessionContext {
     this.messages = session.messages ?? [];
     this.pendingToolCallId = session.pending_tool_call_id;
     this.pendingPhaseTransition = session.pending_phase_transition ?? null;
+    this.lastPanelType = session.last_panel_type ?? null;
+    this.lastPanelData = session.last_panel_data ?? null;
     this.totalTokensUsed = session.total_tokens_used ?? 0;
   }
 
@@ -446,6 +452,8 @@ export class SessionContext {
       messages: this.messages,
       pending_tool_call_id: this.pendingToolCallId,
       pending_phase_transition: this.pendingPhaseTransition,
+      last_panel_type: this.lastPanelType,
+      last_panel_data: this.lastPanelData,
       total_tokens_used: this.totalTokensUsed,
       last_checkpoint_phase: this.currentPhase,
       last_checkpoint_at: new Date().toISOString(),

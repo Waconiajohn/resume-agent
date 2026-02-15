@@ -6,6 +6,7 @@ import { Header } from '@/components/Header';
 import { AuthGate } from '@/components/AuthGate';
 import { LandingScreen } from '@/components/LandingScreen';
 import { CoachScreen } from '@/components/CoachScreen';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 type View = 'landing' | 'coach';
 
@@ -91,6 +92,7 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="h-screen bg-surface">
       <Header email={user.email} onSignOut={handleSignOut} />
 
@@ -130,5 +132,6 @@ export default function App() {
         />
       )}
     </div>
+    </ErrorBoundary>
   );
 }

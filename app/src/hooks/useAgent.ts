@@ -6,6 +6,16 @@ import type { PanelType, PanelData } from '@/types/panels';
 const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_TOOL_STATUS_ENTRIES = 20;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeParse(data: string): Record<string, any> | null {
+  try {
+    return JSON.parse(data);
+  } catch {
+    console.warn('[useAgent] Failed to parse SSE data:', data?.substring(0, 200));
+    return null;
+  }
+}
+
 export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState('');
@@ -32,6 +42,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // 3L: text_delta batching with requestAnimationFrame
   const deltaBufferRef = useRef('');
   const rafIdRef = useRef<number | null>(null);
+
+  // Track timeout IDs for auto-removing completed tools
+  const toolCleanupTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   const nextId = useCallback(() => {
     messageIdRef.current += 1;
@@ -65,12 +78,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
       // Restore historical messages and state when reconnecting to an existing session
       es.addEventListener('session_restore', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         if (data.current_phase) {
-          setCurrentPhase(data.current_phase);
+          setCurrentPhase(data.current_phase as string);
         }
-        if (data.messages?.length) {
-          const restored: ChatMessage[] = data.messages.map((msg: { role: string; content: string }, i: number) => ({
+        if (Array.isArray(data.messages) && data.messages.length) {
+          const restored: ChatMessage[] = (data.messages as Array<{ role: string; content: string }>).map((msg, i) => ({
             id: `restored-${i}`,
             role: msg.role as 'user' | 'assistant',
             content: msg.content,
@@ -79,10 +93,15 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           setMessages(restored);
           messageIdRef.current = restored.length;
         }
+        if (data.last_panel_type && data.last_panel_data) {
+          setPanelType(data.last_panel_type as PanelType);
+          setPanelData({ type: data.last_panel_type, ...(data.last_panel_data as Record<string, unknown>) } as PanelData);
+        }
       });
 
       es.addEventListener('text_delta', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         setIsProcessing(false);
         // 3L: Accumulate deltas in buffer, flush via rAF
         deltaBufferRef.current += data.content;
@@ -92,7 +111,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('text_complete', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         // 3C: Deduplicate text_complete events
         if (data.content === lastTextCompleteRef.current) return;
         lastTextCompleteRef.current = data.content;
@@ -120,7 +140,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('tool_start', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         // 3M: Cap tool status array
         setTools((prev) => {
           const next = [
@@ -132,18 +153,27 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('tool_complete', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
+        const toolName = data.tool_name as string;
         setTools((prev) =>
           prev.map((t) =>
-            t.name === data.tool_name && t.status === 'running'
-              ? { ...t, status: 'complete' as const, summary: data.summary }
+            t.name === toolName && t.status === 'running'
+              ? { ...t, status: 'complete' as const, summary: data.summary as string }
               : t,
           ),
         );
+        // Auto-remove completed tool after 3s
+        const timer = setTimeout(() => {
+          setTools((prev) => prev.filter((t) => !(t.name === toolName && t.status === 'complete')));
+          toolCleanupTimersRef.current.delete(timer);
+        }, 3000);
+        toolCleanupTimersRef.current.add(timer);
       });
 
       es.addEventListener('ask_user', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         setIsProcessing(false);
         setAskPrompt({
           toolCallId: data.tool_call_id,
@@ -156,7 +186,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('phase_gate', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         setIsProcessing(false);
         setPhaseGate({
           toolCallId: data.tool_call_id,
@@ -168,14 +199,16 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('right_panel_update', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         setPanelType(data.panel_type as PanelType);
         // 3A: Tag panel data with type for discriminated union
         setPanelData({ type: data.panel_type, ...data.data } as PanelData);
       });
 
       es.addEventListener('phase_change', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         setCurrentPhase(data.to_phase);
         setPhaseGate(null);
         // 3P: Clear stale state on phase change
@@ -184,7 +217,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('transparency', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         setIsProcessing(true);
         setMessages((prev) => [
           ...prev,
@@ -198,7 +232,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('resume_update', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         // 3O: Normalize content - coerce object to string
         const content =
           typeof data.content === 'object' && data.content !== null
@@ -218,7 +253,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('export_ready', (e) => {
-        const data = JSON.parse(e.data);
+        const data = safeParse((e as MessageEvent).data);
+        if (!data) return;
         setResume(data.resume);
       });
 
@@ -230,12 +266,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       });
 
       es.addEventListener('error', (e) => {
-        try {
-          const data = JSON.parse((e as MessageEvent).data);
-          setError(data.message);
-        } catch {
-          setError('Connection lost');
-        }
+        const data = safeParse((e as MessageEvent).data);
+        setError(data?.message as string ?? 'Connection lost');
       });
 
       // 3B: Reconnect with exponential backoff on connection error
@@ -274,6 +306,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
       }
+      // Clean up tool removal timers
+      for (const timer of toolCleanupTimersRef.current) {
+        clearTimeout(timer);
+      }
+      toolCleanupTimersRef.current.clear();
       reconnectAttemptsRef.current = 0;
     };
   }, [sessionId, accessToken, nextId, flushDeltaBuffer]);

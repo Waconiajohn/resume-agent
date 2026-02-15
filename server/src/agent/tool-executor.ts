@@ -84,6 +84,8 @@ export async function executeToolCall(
     case 'update_right_panel': {
       const { panel_type, data } = input as { panel_type: string; data: Record<string, unknown> };
       emit({ type: 'right_panel_update', panel_type, data });
+      ctx.lastPanelType = panel_type;
+      ctx.lastPanelData = data;
 
       // Persist design options so gate validation + section ordering can use them
       if (panel_type === 'design_options' && Array.isArray(data.options)) {

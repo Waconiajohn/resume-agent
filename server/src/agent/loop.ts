@@ -27,10 +27,18 @@ export async function runAgentLoop(
     // Check if this was a phase gate confirmation — advance the phase
     if (ctx.pendingPhaseTransition) {
       const fromPhase = ctx.currentPhase;
-      const nextPhase = ctx.pendingPhaseTransition as CoachPhase;
+      const nextPhase = ctx.pendingPhaseTransition;
       console.log(`[agent-loop] phase_transition from=${fromPhase} to=${nextPhase}`);
       ctx.pendingPhaseTransition = null;
-      ctx.setPhase(nextPhase);
+
+      if (nextPhase === 'complete') {
+        // Session complete — clean up pending state and emit completion
+        ctx.pendingToolCallId = null;
+        emit({ type: 'complete', session_id: ctx.sessionId });
+        return;
+      }
+
+      ctx.setPhase(nextPhase as CoachPhase);
       emit({
         type: 'phase_change',
         from_phase: fromPhase,
@@ -317,15 +325,24 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     }
   }
 
-  // section_craft → quality_review: check all sections confirmed
+  // section_craft → quality_review: check all sections from design choice are confirmed
   if (currentPhase === 'section_craft' && nextPhase === 'quality_review') {
-    const allConfirmed = ctx.sectionStatuses.length > 0 &&
-      ctx.sectionStatuses.every(s => s.status === 'confirmed');
-    if (!allConfirmed) {
-      const unconfirmed = ctx.sectionStatuses
-        .filter(s => s.status !== 'confirmed')
-        .map(s => s.section);
-      return `Cannot advance: ${unconfirmed.length} section(s) not yet confirmed: ${unconfirmed.join(', ')}. Use confirm_section for each.`;
+    const selectedDesign = ctx.designChoices.find(d => d.selected);
+    const requiredSections = selectedDesign?.section_order ?? [];
+
+    if (requiredSections.length === 0) {
+      return 'Cannot advance: no design choice selected or section_order is empty. Go back to resume_design and select a layout.';
+    }
+
+    const confirmedSections = new Set(
+      ctx.sectionStatuses
+        .filter(s => s.status === 'confirmed')
+        .map(s => s.section),
+    );
+
+    const missingSections = requiredSections.filter(s => !confirmedSections.has(s));
+    if (missingSections.length > 0) {
+      return `Cannot advance: ${missingSections.length} required section(s) not yet confirmed: ${missingSections.join(', ')}. Use confirm_section for each.`;
     }
   }
 
@@ -336,7 +353,7 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
       return 'Cannot advance: adversarial_review has not been run. Run it before completing quality review.';
     }
     const total = ctx.adversarialReview.checklist_total ?? 0;
-    if (total > 0 && total < 35) {
+    if (total < 35) {
       return `Cannot advance: checklist total is ${total}/50 (minimum 35 required). Address quality issues before proceeding.`;
     }
     const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
