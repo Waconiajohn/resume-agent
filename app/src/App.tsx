@@ -35,6 +35,7 @@ export default function App() {
     isProcessing,
     resume,
     connected,
+    sessionComplete,
     error: agentError,
     panelType,
     panelData,
@@ -106,7 +107,7 @@ export default function App() {
         />
       )}
 
-      {view === 'coach' && !connected && !agentError && currentSession && (
+      {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && (
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-blue-400" />
@@ -115,7 +116,7 @@ export default function App() {
         </div>
       )}
 
-      {view === 'coach' && (connected || agentError) && (
+      {view === 'coach' && (connected || sessionComplete || agentError) && (
         <CoachScreen
           messages={messages}
           streamingText={streamingText}

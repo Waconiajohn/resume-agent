@@ -27,6 +27,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [resume, setResume] = useState<FinalResume | null>(null);
   const [connected, setConnected] = useState(false);
+  const [sessionComplete, setSessionComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [panelType, setPanelType] = useState<PanelType | null>(null);
   const [panelData, setPanelData] = useState<PanelData | null>(null);
@@ -335,8 +336,20 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'section_status': {
+                  // Emitted by confirm_section and propose_section_edit — tracked server-side
+                  break;
+                }
+
+                case 'score_change': {
+                  // Emitted by emit_score — tracked server-side
+                  break;
+                }
+
                 case 'complete': {
-                  // Abort the connection on session complete
+                  // Session finished — stop processing, mark complete, close connection
+                  setIsProcessing(false);
+                  setSessionComplete(true);
                   controller.abort();
                   abortControllerRef.current = null;
                   setConnected(false);
@@ -447,6 +460,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     isProcessing,
     resume,
     connected,
+    sessionComplete,
     error,
     panelType,
     panelData,

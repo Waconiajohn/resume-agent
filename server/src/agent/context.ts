@@ -546,11 +546,21 @@ export class SessionContext {
       last_panel_type: this.lastPanelType,
       last_panel_data: this.lastPanelData,
       total_tokens_used: this.totalTokensUsed,
-      system_prompt_version: this.systemPromptVersion,
-      system_prompt_hash: this.systemPromptHash,
       last_checkpoint_phase: this.currentPhase,
       last_checkpoint_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Extended checkpoint including prompt versioning columns.
+   * Falls back to base checkpoint if migration 005 hasn't been applied.
+   */
+  toCheckpointWithPromptVersion() {
+    return {
+      ...this.toCheckpoint(),
+      system_prompt_version: this.systemPromptVersion,
+      system_prompt_hash: this.systemPromptHash,
     };
   }
 }

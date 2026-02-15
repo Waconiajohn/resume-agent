@@ -282,12 +282,23 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
         recoverable: true,
       });
     } finally {
-      const checkpoint = ctx.toCheckpoint();
-      const { error: checkpointError } = await supabaseAdmin
+      // Try with prompt versioning columns first; fall back to base checkpoint
+      // if migration 005 hasn't been applied yet (schema cache error).
+      let checkpoint = ctx.toCheckpointWithPromptVersion();
+      let { error: checkpointError } = await supabaseAdmin
         .from('coach_sessions')
         .update(checkpoint)
         .eq('id', sessionId)
         .eq('user_id', user.id);
+      if (checkpointError?.message?.includes('schema cache')) {
+        log.warn('Prompt versioning columns missing, saving without them');
+        checkpoint = ctx.toCheckpoint() as typeof checkpoint;
+        ({ error: checkpointError } = await supabaseAdmin
+          .from('coach_sessions')
+          .update(checkpoint)
+          .eq('id', sessionId)
+          .eq('user_id', user.id));
+      }
       if (checkpointError) {
         log.error({ error: checkpointError.message }, 'Failed to save session checkpoint');
       }

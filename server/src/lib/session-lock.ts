@@ -29,8 +29,10 @@ async function acquireLock(sessionId: string): Promise<boolean> {
   // 23505 = unique_violation — lock is held by another instance
   if (error.code === '23505') return false;
 
-  logger.error({ sessionId, error: error.message }, 'Failed to acquire session lock');
-  return false;
+  // For any other error (table missing, network issue, etc.), log and proceed
+  // rather than blocking the session forever. The lock is a best-effort safeguard.
+  logger.error({ sessionId, error: error.message, code: error.code }, 'Failed to acquire session lock, proceeding without lock');
+  return true;
 }
 
 /**
