@@ -350,6 +350,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   // Session finished — stop processing, mark complete, close connection
                   setIsProcessing(false);
                   setSessionComplete(true);
+                  setCurrentPhase('complete');
                   controller.abort();
                   abortControllerRef.current = null;
                   setConnected(false);

@@ -6,6 +6,75 @@ interface GapAnalysisPanelProps {
   data: GapAnalysisData;
 }
 
+/**
+ * Map agent status strings to classification buckets.
+ * classify_fit emits: "strong" | "partial" | "gap"
+ * Agent update_right_panel emits: "strong_match" | "exceptional_match" | "needs_strengthening" | "partial_match" | "meets_minimum" | "gap" | "missing"
+ */
+function mapStatus(status: string): 'strong' | 'partial' | 'gap' {
+  switch (status) {
+    case 'strong':
+    case 'strong_match':
+    case 'exceptional_match':
+      return 'strong';
+    case 'partial':
+    case 'partial_match':
+    case 'needs_strengthening':
+    case 'meets_minimum':
+      return 'partial';
+    case 'gap':
+    case 'missing':
+    default:
+      return 'gap';
+  }
+}
+
+/**
+ * Normalize data from two possible shapes:
+ * 1. Flat (from classify_fit emit): { requirements, strong_count, partial_count, gap_count, total, addressed }
+ * 2. Nested (from agent update_right_panel): { requirements_analysis: [{ requirement, status, your_evidence, gap_or_action }], ... }
+ */
+function normalizeData(data: GapAnalysisData & Record<string, unknown>) {
+  // Already in expected shape (from classify_fit)
+  if (Array.isArray(data.requirements) && data.requirements.length > 0) {
+    return {
+      requirements: data.requirements,
+      strong_count: data.strong_count ?? 0,
+      partial_count: data.partial_count ?? 0,
+      gap_count: data.gap_count ?? 0,
+      total: data.total ?? data.requirements.length,
+      addressed: data.addressed ?? 0,
+    };
+  }
+
+  // Agent shape: requirements_analysis array
+  const analysis = data.requirements_analysis as Array<Record<string, string>> | undefined;
+  if (Array.isArray(analysis) && analysis.length > 0) {
+    const requirements: RequirementFitItem[] = analysis.map((item) => ({
+      requirement: item.requirement ?? '',
+      classification: mapStatus(item.status ?? 'gap'),
+      evidence: item.your_evidence ?? item.evidence,
+      strategy: item.gap_or_action ?? item.strategy,
+    }));
+
+    const strong_count = requirements.filter(r => r.classification === 'strong').length;
+    const partial_count = requirements.filter(r => r.classification === 'partial').length;
+    const gap_count = requirements.filter(r => r.classification === 'gap').length;
+
+    return {
+      requirements,
+      strong_count,
+      partial_count,
+      gap_count,
+      total: requirements.length,
+      addressed: strong_count,
+    };
+  }
+
+  // Fallback: empty
+  return { requirements: [], strong_count: 0, partial_count: 0, gap_count: 0, total: 0, addressed: 0 };
+}
+
 const classificationConfig = {
   strong: {
     icon: CheckCircle,
@@ -53,8 +122,7 @@ function RequirementRow({ item }: { item: RequirementFitItem }) {
 }
 
 export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
-  const requirements = data.requirements ?? [];
-  const { strong_count = 0, partial_count = 0, gap_count = 0, total = 0, addressed = 0 } = data;
+  const { requirements, strong_count, partial_count, gap_count, total, addressed } = normalizeData(data as GapAnalysisData & Record<string, unknown>);
 
   const progressPct = total > 0 ? Math.round((addressed / total) * 100) : 0;
 

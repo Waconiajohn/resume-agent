@@ -35,8 +35,14 @@ export async function runAgentLoop(
       ctx.pendingPhaseTransition = null;
 
       if (nextPhase === 'complete') {
-        // Session complete — clean up pending state and emit completion
+        // Session complete — emit phase_change for frontend, then completion event
         ctx.pendingToolCallId = null;
+        emit({
+          type: 'phase_change',
+          from_phase: fromPhase,
+          to_phase: 'complete',
+          summary: 'Session complete',
+        });
         emit({ type: 'complete', session_id: ctx.sessionId });
         return;
       }
