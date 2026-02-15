@@ -214,6 +214,8 @@ export class SessionContext {
     this.masterResumeId = session.master_resume_id;
     this.masterResumeData = null;
     this.currentPhase = session.current_phase;
+    // Normalize in case a display name was persisted
+    this.setPhase(this.currentPhase);
     this.companyResearch = session.company_research ?? {};
     this.jdAnalysis = session.jd_analysis ?? {};
     this.interviewResponses = session.interview_responses ?? [];
@@ -258,7 +260,19 @@ export class SessionContext {
   }
 
   setPhase(phase: CoachPhase) {
-    this.currentPhase = phase;
+    // Normalize display names (e.g. "Deep Research") to internal keys (e.g. "deep_research")
+    const PHASE_ALIASES: Record<string, CoachPhase> = {
+      'Deep Research': 'deep_research',
+      'Gap Analysis': 'gap_analysis',
+      'Resume Design': 'resume_design',
+      'Section Craft': 'section_craft',
+      'Quality Review': 'quality_review',
+      'Cover Letter': 'cover_letter',
+      'Interview Prep': 'interview_prep',
+      'Getting Started': 'onboarding',
+      'Onboarding': 'onboarding',
+    };
+    this.currentPhase = PHASE_ALIASES[phase] ?? phase;
   }
 
   addTokens(count: number) {
@@ -337,6 +351,17 @@ export class SessionContext {
       }
     }
 
+    // Surface key data from conversation for deep_research phase
+    if (this.currentPhase === 'deep_research' && !this.companyResearch.company_name) {
+      const userTexts = this.messages
+        .filter(m => m.role === 'user' && typeof m.content === 'string')
+        .map(m => m.content as string)
+        .join('\n');
+      if (userTexts) {
+        parts.push(`\n## Raw User Input (extract company name, job title, and JD from this):\n${userTexts.substring(0, 3000)}`);
+      }
+    }
+
     if (this.sectionStatuses.length > 0) {
       parts.push('\n## Section Status');
       for (const s of this.sectionStatuses) {
@@ -360,8 +385,43 @@ export class SessionContext {
       return this.messages;
     }
 
-    const head = this.messages.slice(0, KEEP_FIRST);
-    const tail = this.messages.slice(total - KEEP_LAST);
+    // Determine safe head boundary: don't end on an assistant message with tool_use
+    let headEnd = KEEP_FIRST;
+    const lastHead = this.messages[headEnd - 1];
+    if (lastHead?.role === 'assistant' && Array.isArray(lastHead.content)) {
+      const hasToolUse = lastHead.content.some(
+        (b: ContentBlock) => b.type === 'tool_use',
+      );
+      if (hasToolUse) {
+        // Include the next message (which should be the tool_result)
+        headEnd = Math.min(headEnd + 1, total - KEEP_LAST);
+      }
+    }
+
+    // Determine safe tail boundary: don't start on a tool_result message
+    let tailStart = total - KEEP_LAST;
+    while (tailStart < total) {
+      const msg = this.messages[tailStart];
+      if (msg?.role === 'user' && Array.isArray(msg.content)) {
+        const hasToolResult = msg.content.some(
+          (b: ContentBlock) => b.type === 'tool_result',
+        );
+        if (hasToolResult) {
+          // Back up to include the preceding assistant tool_use message
+          tailStart = Math.max(tailStart - 1, headEnd);
+          break;
+        }
+      }
+      break;
+    }
+
+    // If boundaries overlap, just return all messages
+    if (tailStart <= headEnd) {
+      return this.messages;
+    }
+
+    const head = this.messages.slice(0, headEnd);
+    const tail = this.messages.slice(tailStart);
     const truncationNote: ConversationMessage = {
       role: 'user',
       content: '[...earlier messages truncated for context window...]',

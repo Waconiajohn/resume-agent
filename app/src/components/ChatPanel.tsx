@@ -76,7 +76,7 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto py-4 space-y-1">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden py-4 space-y-1">
         {messages.map((msg) => (
           <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
         ))}

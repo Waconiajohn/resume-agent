@@ -44,7 +44,7 @@ export function CoachScreen({
 
       <div className="flex flex-1 min-h-0">
         {/* Chat side */}
-        <div className="flex-1 border-r border-white/[0.12]">
+        <div className="flex-1 min-w-0 border-r border-white/[0.12]">
           <ChatPanel
             messages={messages}
             streamingText={streamingText}
@@ -58,7 +58,7 @@ export function CoachScreen({
         </div>
 
         {/* Dynamic right panel */}
-        <div className="hidden w-[45%] lg:block">
+        <div className="hidden w-[45%] min-w-0 overflow-x-hidden lg:block">
           <RightPanel panelType={panelType} panelData={panelData} resume={resume} onSendMessage={onSendMessage} />
         </div>
       </div>

@@ -47,7 +47,7 @@ sessions.get('/:id/sse', async (c) => {
 
   const { data: session, error } = await supabaseAdmin
     .from('coach_sessions')
-    .select('id, user_id')
+    .select('*')
     .eq('id', sessionId)
     .eq('user_id', user.id)
     .single();
@@ -73,6 +73,43 @@ sessions.get('/:id/sse', async (c) => {
       event: 'connected',
       data: JSON.stringify({ session_id: sessionId }),
     });
+
+    // Replay historical messages and session state on reconnect
+    const typedSession = session as CoachSession;
+    const chatMessages: Array<{ role: string; content: string }> = [];
+    for (const msg of typedSession.messages ?? []) {
+      if (msg.role === 'user') {
+        if (typeof msg.content === 'string') {
+          chatMessages.push({ role: 'user', content: msg.content });
+        }
+        // Skip tool_result arrays — they're internal
+      } else if (msg.role === 'assistant') {
+        if (typeof msg.content === 'string') {
+          chatMessages.push({ role: 'assistant', content: msg.content });
+        } else if (Array.isArray(msg.content)) {
+          const textParts = msg.content
+            .filter((b: { type: string; text?: string }) => b.type === 'text' && b.text)
+            .map((b: { text?: string }) => b.text)
+            .join('');
+          if (textParts) {
+            chatMessages.push({ role: 'assistant', content: textParts });
+          }
+        }
+      }
+    }
+
+    if (chatMessages.length > 0 || typedSession.current_phase !== 'onboarding') {
+      await stream.writeSSE({
+        event: 'session_restore',
+        data: JSON.stringify({
+          type: 'session_restore',
+          messages: chatMessages,
+          current_phase: typedSession.current_phase,
+          pending_tool_call_id: typedSession.pending_tool_call_id,
+          pending_phase_transition: typedSession.pending_phase_transition,
+        }),
+      });
+    }
 
     const heartbeat = setInterval(() => {
       stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {

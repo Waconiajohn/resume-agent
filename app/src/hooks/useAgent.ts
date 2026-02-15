@@ -63,6 +63,24 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         reconnectAttemptsRef.current = 0;
       });
 
+      // Restore historical messages and state when reconnecting to an existing session
+      es.addEventListener('session_restore', (e) => {
+        const data = JSON.parse(e.data);
+        if (data.current_phase) {
+          setCurrentPhase(data.current_phase);
+        }
+        if (data.messages?.length) {
+          const restored: ChatMessage[] = data.messages.map((msg: { role: string; content: string }, i: number) => ({
+            id: `restored-${i}`,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: new Date().toISOString(),
+          }));
+          setMessages(restored);
+          messageIdRef.current = restored.length;
+        }
+      });
+
       es.addEventListener('text_delta', (e) => {
         const data = JSON.parse(e.data);
         setIsProcessing(false);

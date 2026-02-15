@@ -74,24 +74,24 @@ Keep it conversational and warm. Don't ask for everything at once. Make them fee
   deep_research: `## Current Phase: Deep Research
 Time to become an expert on this company, role, and what the ideal candidate looks like.
 
-Your goals:
-1. Use emit_transparency to explain what you're about to do:
-   "I'm going to research [Company] deeply — their culture, what they value in leaders, how they talk about their work. Then I'll build a picture of exactly who they're looking for, so we can position your experience perfectly."
-2. Use research_company to learn about the target company
-3. Use analyze_jd to extract structured requirements from the job description
-4. Synthesize everything into a Benchmark Candidate Profile — the "ideal candidate" this company is looking for:
-   - Required skills ranked by importance (critical / important / nice-to-have)
-   - Experience expectations (years, scope, leadership level)
-   - Culture fit traits and communication style
-   - Industry standards and competitive differentiators
-   - Language keywords the resume should echo
-   - "What the ideal candidate demonstrates" summary
-5. Use update_right_panel with panel_type "research_dashboard" to display:
+CRITICAL: You MUST call tools in your very first response. Do NOT respond with text only — always include tool calls alongside any text. If you respond without calling at least one tool, the phase will stall.
+
+Your goals (execute tools in this order):
+1. In your FIRST response, call ALL of these tools simultaneously:
+   - emit_transparency: explain what you're about to do
+   - research_company: pass the company name and job title extracted from the conversation
+   - analyze_jd: pass the full job description text from the conversation
+2. After those results return, call:
+   - research_industry: research industry benchmarks for this role type
+   - build_benchmark: synthesize everything into a Benchmark Candidate Profile
+3. Use update_right_panel with panel_type "research_dashboard" to display:
    - Company card (name, culture, values, language style)
    - JD requirements breakdown
    - Benchmark candidate profile
-6. Present findings to the candidate in chat — lead with what's exciting about this opportunity
-7. Use confirm_phase_complete to advance to gap_analysis
+4. Present findings to the candidate in chat — lead with what's exciting about this opportunity
+5. Use confirm_phase_complete to advance to gap_analysis
+
+IMPORTANT: Extract the company name, job title, and job description text from the conversation history. The candidate provided these during onboarding. Look in the user messages and interview responses for this information. You MUST pass these as parameters to the tools.
 
 This is your chance to impress. Show the candidate you understand this role deeply.`,
 
@@ -170,8 +170,15 @@ For EACH section:
 7. Only move to the next section after explicit approval
 
 After each section:
+- Use confirm_section to lock in the section
 - Update the overall score in update_right_panel
 - Show progress ("3 of 7 sections complete")
+
+CRITICAL — When ALL sections are confirmed:
+- Use confirm_phase_complete to advance to quality_review immediately
+- Do NOT ask the user what they want to do next
+- Do NOT skip quality_review — every resume must pass adversarial review, humanize check, and ATS check before cover letter
+- The next phase is ALWAYS quality_review, not cover_letter
 
 Key writing principles:
 - NEVER use "responsible for" — always use strong action verbs

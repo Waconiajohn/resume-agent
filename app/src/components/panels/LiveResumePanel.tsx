@@ -24,7 +24,7 @@ function ChangeBlock({ change }: { change: SectionChange }) {
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-red-400">
               Original
             </span>
-            <p className="text-xs text-white/70 leading-relaxed line-through decoration-red-400/30">
+            <p className="text-xs text-white/70 leading-relaxed line-through decoration-red-400/30 break-words">
               {change.original}
             </p>
           </div>
@@ -41,14 +41,14 @@ function ChangeBlock({ change }: { change: SectionChange }) {
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
               Proposed
             </span>
-            <p className="text-xs text-white/90 leading-relaxed">{change.proposed}</p>
+            <p className="text-xs text-white/90 leading-relaxed break-words">{change.proposed}</p>
           </div>
         )}
       </div>
 
       {/* Reasoning */}
       {change.reasoning && (
-        <p className="text-xs text-white/60 italic">{change.reasoning}</p>
+        <p className="text-xs text-white/60 italic break-words">{change.reasoning}</p>
       )}
 
       {/* JD Requirement Tags */}

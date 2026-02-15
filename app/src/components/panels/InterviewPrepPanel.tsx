@@ -23,7 +23,7 @@ function QuestionItem({ q }: { q: InterviewQuestion }) {
         ) : (
           <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/50" />
         )}
-        <span className="text-sm text-white/90">{q.question}</span>
+        <span className="text-sm text-white/90 break-words min-w-0">{q.question}</span>
       </button>
 
       {expanded && (
@@ -50,7 +50,7 @@ function QuestionItem({ q }: { q: InterviewQuestion }) {
                   <span className={`mt-0.5 shrink-0 rounded border px-1 py-px text-[9px] font-bold uppercase ${colors[step]}`}>
                     {step[0]}
                   </span>
-                  <p className="text-xs text-white/85 leading-relaxed">{value}</p>
+                  <p className="text-xs text-white/85 leading-relaxed break-words">{value}</p>
                 </div>
               );
             })}

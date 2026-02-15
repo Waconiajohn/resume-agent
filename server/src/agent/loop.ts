@@ -75,17 +75,28 @@ export async function runAgentLoop(
         let fullText = '';
         const toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
+        // Force tool calling on first round of phases that require research tools
+        const forceToolUse = round === 0 && (
+          ctx.currentPhase === 'deep_research' ||
+          ctx.currentPhase === 'gap_analysis' ||
+          ctx.currentPhase === 'quality_review'
+        );
+
         const response = await withRetry(
           () => {
             fullText = '';
             toolUses.length = 0;
-            const s = anthropic.messages.stream({
+            const streamParams: Parameters<typeof anthropic.messages.stream>[0] = {
               model: MODEL,
               max_tokens: MAX_TOKENS,
               system: systemPrompt,
               messages: apiMessages,
               tools: phaseTools as Parameters<typeof anthropic.messages.stream>[0]['tools'],
-            });
+            };
+            if (forceToolUse) {
+              streamParams.tool_choice = { type: 'any' };
+            }
+            const s = anthropic.messages.stream(streamParams);
             s.on('text', (text: string) => {
               fullText += text;
               emit({ type: 'text_delta', content: text });

@@ -52,7 +52,7 @@ export function CoverLetterPanel({ data }: CoverLetterPanelProps) {
                     ) : (
                       <CheckCircle className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
                     )}
-                    <p className="text-sm text-white/90 leading-relaxed">{para.content}</p>
+                    <p className="text-sm text-white/90 leading-relaxed break-words">{para.content}</p>
                   </div>
                 </div>
               );
