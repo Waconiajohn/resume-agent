@@ -158,6 +158,7 @@ export function ChatPanel({
             onClick={handleSubmit}
             disabled={!input.trim()}
             className="self-end"
+            aria-label="Send message"
           >
             {isBusy ? (
               <Loader2 className="h-4 w-4 animate-spin" />

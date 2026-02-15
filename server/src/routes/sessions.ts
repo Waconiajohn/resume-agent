@@ -7,6 +7,7 @@ import type { CoachSession } from '../agent/context.js';
 import { runAgentLoop } from '../agent/loop.js';
 import type { SSEEvent } from '../agent/loop.js';
 import { withSessionLock } from '../lib/session-lock.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 
 const sessions = new Hono();
 
@@ -192,10 +193,11 @@ sessions.get('/:id', async (c) => {
 });
 
 // POST /sessions/:id/messages — Send a message to the agent
-sessions.post('/:id/messages', async (c) => {
+// Rate limit: 20 messages per user per minute
+sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('id');
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => ({}));
   const { content, idempotency_key } = body as { content: string; idempotency_key?: string };
 
   if (!content?.trim()) {
@@ -261,12 +263,17 @@ sessions.post('/:id/messages', async (c) => {
       });
     } finally {
       const checkpoint = ctx.toCheckpoint();
-      await supabaseAdmin
+      const { error: checkpointError } = await supabaseAdmin
         .from('coach_sessions')
         .update(checkpoint)
         .eq('id', sessionId)
         .eq('user_id', user.id);
+      if (checkpointError) {
+        console.error('Failed to save session checkpoint:', checkpointError.message);
+      }
     }
+  }).catch((error) => {
+    console.error('Session lock error:', error instanceof Error ? error.message : error);
   });
 
   return c.json({ status: 'processing' });

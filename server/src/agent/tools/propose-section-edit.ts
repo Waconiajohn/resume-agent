@@ -101,7 +101,8 @@ Return ONLY valid JSON:
     ],
   });
 
-  const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
+  const firstBlock = response.content[0];
+  const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
 
   let proposedContent = currentContent;
   let changes: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }> = [];

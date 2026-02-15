@@ -260,7 +260,7 @@ export const toolDefinitions: ToolDefinition[] = [
       properties: {
         phase: { type: 'string', description: 'The current phase to checkpoint' },
       },
-      required: ['phase'],
+      required: [],
     },
   },
   {

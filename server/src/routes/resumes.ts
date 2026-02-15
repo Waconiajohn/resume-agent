@@ -45,7 +45,7 @@ resumes.get('/:id', async (c) => {
 // POST /resumes — Upload/create a master resume (raw text)
 resumes.post('/', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => ({}));
   const { raw_text, summary, experience, skills, education, certifications } = body as {
     raw_text: string;
     summary?: string;
@@ -75,7 +75,8 @@ resumes.post('/', async (c) => {
     .single();
 
   if (error) {
-    return c.json({ error: 'Failed to create resume', details: error.message }, 500);
+    console.error('Failed to create resume:', error.message);
+    return c.json({ error: 'Failed to create resume' }, 500);
   }
 
   return c.json({ resume: data }, 201);

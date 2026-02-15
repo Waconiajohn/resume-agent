@@ -8,13 +8,13 @@ interface SessionCardProps {
 }
 
 const phaseLabels: Record<string, string> = {
-  setup: 'Getting Started',
-  research: 'Researching',
-  analysis: 'Analyzing',
-  interview: 'Interviewing',
-  tailoring: 'Tailoring',
-  review: 'Reviewing',
-  export: 'Complete',
+  onboarding: 'Getting Started',
+  deep_research: 'Deep Research',
+  gap_analysis: 'Gap Analysis',
+  resume_design: 'Resume Design',
+  section_craft: 'Section Craft',
+  quality_review: 'Quality Review',
+  cover_letter: 'Cover Letter',
 };
 
 export function SessionCard({ session, onClick }: SessionCardProps) {

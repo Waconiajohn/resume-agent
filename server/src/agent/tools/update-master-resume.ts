@@ -58,12 +58,15 @@ export async function executeUpdateMasterResume(
     return { success: false, changes_applied: 0, new_version: (resume as Record<string, unknown>).version as number, error: 'Failed to save resume updates', code: 'RESUME_UPDATE_FAILED', recoverable: true };
   }
 
-  await supabaseAdmin.from('master_resume_history').insert({
+  const { error: historyError } = await supabaseAdmin.from('master_resume_history').insert({
     master_resume_id: masterResumeId,
     job_application_id: ctx.jobApplicationId,
     changes_summary: `Applied ${appliedCount} changes from coach session`,
     changes_detail: { changes, session_id: ctx.sessionId },
   });
+  if (historyError) {
+    console.error('Failed to save resume change history:', historyError.message);
+  }
 
   return { success: true, changes_applied: appliedCount, new_version: newVersion };
 }

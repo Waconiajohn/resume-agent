@@ -15,6 +15,7 @@ export type SSEEventType =
   | 'checkpoint'
   | 'error'
   | 'complete'
+  | 'session_restore'
   | 'heartbeat';
 
 export interface TextDeltaEvent {
@@ -56,6 +57,15 @@ export interface PhaseChangeEvent {
   summary: string;
 }
 
+export interface PhaseGateEvent {
+  type: 'phase_gate';
+  tool_call_id: string;
+  current_phase: string;
+  next_phase: string;
+  phase_summary: string;
+  next_phase_preview: string;
+}
+
 export interface ResumeUpdateEvent {
   type: 'resume_update';
   section: string;
@@ -93,17 +103,17 @@ export interface ErrorEvent {
 
 export interface CompleteEvent {
   type: 'complete';
-  ats_score: number;
-  requirements_addressed: number;
-  sections_rewritten: number;
+  session_id: string;
 }
 
-export interface PhaseGateEvent {
-  type: 'phase_gate';
-  from: string;
-  to: string;
-  blocked: boolean;
-  reason?: string;
+export interface SessionRestoreEvent {
+  type: 'session_restore';
+  messages: Array<{ role: string; content: string }>;
+  current_phase: string;
+  pending_tool_call_id: string | null;
+  pending_phase_transition: string | null;
+  last_panel_type: string | null;
+  last_panel_data: Record<string, unknown> | null;
 }
 
 export interface RightPanelUpdateEvent {
@@ -131,11 +141,12 @@ export type SSEEvent =
   | ToolCompleteEvent
   | AskUserEvent
   | PhaseChangeEvent
+  | PhaseGateEvent
   | ResumeUpdateEvent
   | ExportReadyEvent
   | ErrorEvent
   | CompleteEvent
-  | PhaseGateEvent
+  | SessionRestoreEvent
   | RightPanelUpdateEvent
   | TransparencyEvent
   | SectionStatusEvent;

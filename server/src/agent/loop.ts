@@ -38,7 +38,9 @@ export async function runAgentLoop(
         return;
       }
 
-      ctx.setPhase(nextPhase as CoachPhase);
+      if (VALID_PHASES.has(nextPhase) && nextPhase !== 'complete') {
+        ctx.setPhase(nextPhase as CoachPhase);
+      }
       emit({
         type: 'phase_change',
         from_phase: fromPhase,
@@ -316,7 +318,28 @@ function getToolDescription(toolName: string): string {
   return descriptions[toolName] ?? `Running ${toolName}...`;
 }
 
+const VALID_PHASES = new Set(['onboarding', 'deep_research', 'gap_analysis', 'resume_design', 'section_craft', 'quality_review', 'cover_letter', 'complete']);
+
 function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: SessionContext): string | null {
+  // Validate nextPhase is a known phase
+  if (!VALID_PHASES.has(nextPhase)) {
+    return `Cannot advance: "${nextPhase}" is not a valid phase. Valid phases: ${[...VALID_PHASES].join(', ')}`;
+  }
+
+  // onboarding → deep_research: check that resume + JD data exist
+  if (currentPhase === 'onboarding' && nextPhase === 'deep_research') {
+    if (!ctx.masterResumeData && !ctx.masterResumeId) {
+      return 'Cannot advance: no master resume loaded. Ask the candidate to upload or paste their resume first.';
+    }
+  }
+
+  // deep_research → gap_analysis: check that research has been done
+  if (currentPhase === 'deep_research' && nextPhase === 'gap_analysis') {
+    if (!ctx.companyResearch.company_name && !ctx.jdAnalysis.job_title) {
+      return 'Cannot advance: company research and JD analysis have not been completed. Run research_company and analyze_jd first.';
+    }
+  }
+
   // gap_analysis → resume_design: check for unresolved critical gaps
   if (currentPhase === 'gap_analysis' && nextPhase === 'resume_design') {
     const reqs = ctx.fitClassification.requirements ?? [];

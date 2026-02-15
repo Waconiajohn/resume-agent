@@ -16,7 +16,6 @@ export async function executeUpdateRequirementStatus(
       (r) => r.requirement.toLowerCase() === requirement.toLowerCase()
     );
     if (req) {
-      const oldClassification = req.classification;
       req.classification = newClassification;
       if (evidence) req.evidence = evidence;
 

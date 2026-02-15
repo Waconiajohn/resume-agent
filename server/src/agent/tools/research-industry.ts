@@ -1,4 +1,5 @@
 import { queryPerplexity } from '../../lib/perplexity.js';
+import { anthropic, MODEL } from '../../lib/anthropic.js';
 import type { SessionContext } from '../context.js';
 
 export async function executeResearchIndustry(
@@ -9,14 +10,7 @@ export async function executeResearchIndustry(
   const roleType = input.role_type as string;
   const seniorityLevel = (input.seniority_level as string) || 'senior';
 
-  const researchText = await queryPerplexity([
-    {
-      role: 'system',
-      content: 'You are an industry research analyst specializing in career benchmarking. Provide specific, data-driven insights about what top candidates look like in a given industry and role.',
-    },
-    {
-      role: 'user',
-      content: `Research industry standards for a ${seniorityLevel} ${roleType} in ${industry}. I need:
+  const prompt = `Research industry standards for a ${seniorityLevel} ${roleType} in ${industry}. I need:
 
 1. **Typical Qualifications**: What education, certifications, and experience are standard?
 2. **Salary Benchmarks**: What's the typical compensation range?
@@ -26,9 +20,26 @@ export async function executeResearchIndustry(
 6. **Competitive Differentiators**: What makes a candidate stand out?
 7. **Common Interview Topics**: What do companies typically assess?
 
-Be specific with numbers and data where possible.`,
-    },
-  ]);
+Be specific with numbers and data where possible.`;
 
-  return { industry_research: researchText };
+  try {
+    const researchText = await queryPerplexity([
+      {
+        role: 'system',
+        content: 'You are an industry research analyst specializing in career benchmarking. Provide specific, data-driven insights about what top candidates look like in a given industry and role.',
+      },
+      { role: 'user', content: prompt },
+    ]);
+    return { industry_research: researchText };
+  } catch (error) {
+    console.warn('[research-industry] Perplexity failed, falling back to Claude:', error instanceof Error ? error.message : error);
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const firstBlock = response.content[0];
+    const text = firstBlock?.type === 'text' ? firstBlock.text : '';
+    return { industry_research: text };
+  }
 }

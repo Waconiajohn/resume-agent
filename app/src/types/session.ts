@@ -1,11 +1,11 @@
 export type CoachPhase =
-  | 'setup'
-  | 'research'
-  | 'analysis'
-  | 'interview'
-  | 'tailoring'
-  | 'review'
-  | 'export';
+  | 'onboarding'
+  | 'deep_research'
+  | 'gap_analysis'
+  | 'resume_design'
+  | 'section_craft'
+  | 'quality_review'
+  | 'cover_letter';
 
 export type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
 

@@ -6,5 +6,5 @@ if (!apiKey) {
 }
 
 export const anthropic = new Anthropic({ apiKey });
-export const MODEL = 'claude-sonnet-4-5-20250929';
-export const MAX_TOKENS = 8192;
+export const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5-20250929';
+export const MAX_TOKENS = parseInt(process.env.MAX_TOKENS ?? '8192', 10);

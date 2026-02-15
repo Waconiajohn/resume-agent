@@ -65,7 +65,8 @@ Create a detailed profile of exactly who this company wants to hire. Return ONLY
     ],
   });
 
-  const rawText = response.content[0].type === 'text' ? response.content[0].text : '';
+  const firstBlock = response.content[0];
+  const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
 
   let benchmark: BenchmarkCandidate;
   const parsed = repairJSON<Record<string, unknown>>(rawText);

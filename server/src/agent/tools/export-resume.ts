@@ -22,7 +22,7 @@ export async function executeExportResume(
 
   const experience = (tailored?.experience?.length
     ? (tailored.experience as Array<Record<string, unknown>>)
-    : base.experience
+    : base.experience ?? []
   ).map((exp) => ({
     company: (exp.company as string) ?? '',
     title: (exp.title as string) ?? '',
@@ -35,7 +35,7 @@ export async function executeExportResume(
     })),
   }));
 
-  const skills = { ...base.skills };
+  const skills = { ...(base.skills ?? {}) };
   if (tailored?.skills) {
     for (const [category, items] of Object.entries(tailored.skills)) {
       skills[category] = items;
@@ -51,14 +51,14 @@ export async function executeExportResume(
     }
   }
 
-  const education = base.education.map((edu) => ({
+  const education = (base.education ?? []).map((edu) => ({
     institution: edu.institution ?? '',
     degree: edu.degree ?? '',
     field: edu.field ?? '',
     year: edu.year ?? '',
   }));
 
-  const certifications = base.certifications.map((cert) => ({
+  const certifications = (base.certifications ?? []).map((cert) => ({
     name: cert.name ?? '',
     issuer: cert.issuer ?? '',
     year: cert.year ?? '',

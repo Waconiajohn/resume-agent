@@ -41,7 +41,8 @@ Return ONLY valid JSON:
     ],
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  const firstBlock = response.content[0];
+  const text = firstBlock?.type === 'text' ? firstBlock.text : '';
 
   let analysis: JDAnalysis;
   const parsed = repairJSON<Record<string, unknown>>(text);
