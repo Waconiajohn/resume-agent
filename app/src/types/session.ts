@@ -1,4 +1,4 @@
-export type CoachPhase =
+type CoachPhase =
   | 'onboarding'
   | 'deep_research'
   | 'gap_analysis'
@@ -7,7 +7,7 @@ export type CoachPhase =
   | 'quality_review'
   | 'cover_letter';
 
-export type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
+type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
 
 export interface CoachSession {
   id: string;

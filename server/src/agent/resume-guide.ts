@@ -390,16 +390,6 @@ LANGUAGE:
 /**
  * Recommended section order for the section_craft phase.
  */
-export const SECTION_ORDER = [
-  'Summary',
-  'Core Competencies / Skills',
-  'Selected Accomplishments',
-  'Experience (each role)',
-  'Education',
-  'Certifications',
-  'Title Adjustments',
-] as const;
-
 export const SECTION_ORDER_KEYS = [
   'summary', 'skills', 'selected_accomplishments',
   'experience', 'education', 'certifications', 'title_adjustments',

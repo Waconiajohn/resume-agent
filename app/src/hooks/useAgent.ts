@@ -443,14 +443,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsProcessing(true);
   }, [nextId]);
 
-  const clearAskPrompt = useCallback(() => {
-    setAskPrompt(null);
-  }, []);
-
-  const clearPhaseGate = useCallback(() => {
-    setPhaseGate(null);
-  }, []);
-
   return {
     messages,
     streamingText,
@@ -466,7 +458,5 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     panelType,
     panelData,
     addUserMessage,
-    clearAskPrompt,
-    clearPhaseGate,
   };
 }

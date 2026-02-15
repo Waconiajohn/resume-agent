@@ -43,11 +43,3 @@ export interface FinalResume {
   selected_accomplishments?: string;
   ats_score: number;
 }
-
-export interface ExportData {
-  resume: FinalResume;
-  company: string;
-  title: string;
-  requirements_addressed: number;
-  sections_rewritten: number;
-}

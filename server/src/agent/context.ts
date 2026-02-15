@@ -10,10 +10,10 @@ export type CoachPhase =
   | 'quality_review'
   | 'cover_letter';
 
-export type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
+type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
 
 // Benchmark candidate profile synthesized from JD + research
-export interface BenchmarkRequirement {
+interface BenchmarkRequirement {
   requirement: string;
   importance: 'critical' | 'important' | 'nice_to_have';
   category: string; // e.g. 'technical', 'leadership', 'domain', 'soft_skills'
@@ -31,7 +31,7 @@ export interface BenchmarkCandidate {
 }
 
 // Section-by-section tracking for Phase 5
-export type SectionCraftStatus = 'pending' | 'proposed' | 'revising' | 'confirmed';
+type SectionCraftStatus = 'pending' | 'proposed' | 'revising' | 'confirmed';
 
 export interface SectionStatus {
   section: string;

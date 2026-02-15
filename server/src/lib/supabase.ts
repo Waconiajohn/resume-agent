@@ -8,11 +8,3 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-export function createUserClient(accessToken: string) {
-  return createClient(supabaseUrl!, process.env.SUPABASE_ANON_KEY!, {
-    global: {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  });
-}

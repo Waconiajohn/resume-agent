@@ -2,7 +2,7 @@ const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const PERPLEXITY_URL = 'https://api.perplexity.ai/chat/completions';
 const MODEL = 'sonar-pro';
 
-export interface PerplexityMessage {
+interface PerplexityMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }

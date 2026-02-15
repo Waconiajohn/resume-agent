@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { CoachPhase, SessionContext } from './context.js';
-import { AGE_AWARENESS_RULES, SECTION_ORDER, QUALITY_CHECKLIST } from './resume-guide.js';
+import { AGE_AWARENESS_RULES, SECTION_ORDER_KEYS, QUALITY_CHECKLIST } from './resume-guide.js';
 
 export const SYSTEM_PROMPT_VERSION = '1.0.0';
 
@@ -179,7 +179,7 @@ IMPORTANT: The section_craft phase gate WILL REJECT advancement if no design opt
   section_craft: `## Current Phase: Section-by-Section Craft
 This is the heart of the process. Work ONE section at a time, collaboratively.
 
-Section order: ${SECTION_ORDER.join(' → ')}
+Section order: ${SECTION_ORDER_KEYS.join(' → ')}
 
 ## ⚠️ CRITICAL: MANDATORY TOOL PROTOCOL — FOLLOW EXACTLY
 You MUST use tools to create section content. NEVER write full section content as plain chat text.
@@ -334,7 +334,7 @@ export function buildSystemPrompt(ctx: SessionContext): string {
     if (selected?.section_order?.length) {
       const customOrder = selected.section_order.join(' → ');
       phaseText = phaseText.replace(
-        `Section order: ${SECTION_ORDER.join(' → ')}`,
+        `Section order: ${SECTION_ORDER_KEYS.join(' → ')}`,
         `Section order (user selected "${selected.name}"): ${customOrder}\nDesign rationale: ${selected.description}`,
       );
     }
