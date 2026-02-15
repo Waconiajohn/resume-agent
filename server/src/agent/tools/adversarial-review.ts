@@ -4,6 +4,19 @@ import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 import { QUALITY_CHECKLIST } from '../resume-guide.js';
 
+const CHECKLIST_LABELS = [
+  'quantified',
+  'achievement_focused',
+  'business_impact',
+  'keywords_integrated',
+  'recent_relevant',
+  'leadership_at_scale',
+  'strong_language',
+  'board_level',
+  'ats_friendly',
+  'forward_positioned',
+];
+
 export async function executeAdversarialReview(
   input: Record<string, unknown>,
   ctx: SessionContext,
@@ -80,12 +93,21 @@ Return ONLY valid JSON:
 
   const parsed = repairJSON<Record<string, unknown>>(text);
   if (parsed) {
+    // Remap numeric checklist keys to readable labels
+    const rawScores = (parsed.checklist_scores as Record<string, number>) ?? {};
+    const labeledScores: Record<string, number> = {};
+    for (const [key, score] of Object.entries(rawScores)) {
+      const idx = parseInt(key) - 1;
+      const label = Number.isNaN(idx) || idx < 0 ? key : (CHECKLIST_LABELS[idx] ?? key);
+      labeledScores[label] = score as number;
+    }
+
     result = {
       overall_assessment: (parsed.overall_assessment as string) ?? result.overall_assessment,
       risk_flags: (parsed.risk_flags as typeof result.risk_flags) ?? [],
       pass: (parsed.pass as boolean) ?? false,
       age_bias_risks: (parsed.age_bias_risks as string[]) ?? [],
-      checklist_scores: (parsed.checklist_scores as Record<string, number>) ?? {},
+      checklist_scores: labeledScores,
       checklist_total: (parsed.checklist_total as number) ?? 0,
     };
   }

@@ -222,6 +222,9 @@ export class SessionContext {
   // Runtime-only accumulator for quality dashboard (not persisted — quality_review is single-pass)
   qualityDashboardData: Record<string, unknown> = {};
 
+  // Runtime-only accumulator for cover letter paragraphs (not persisted — cover_letter is single-pass)
+  coverLetterParagraphs: Array<{ type: string; content: string; status: string }> = [];
+
   constructor(session: CoachSession) {
     this.sessionId = session.id;
     this.userId = session.user_id;

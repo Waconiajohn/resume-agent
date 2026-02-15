@@ -293,6 +293,14 @@ Your goals:
    - Body 2: A story that demonstrates fit (culture + skills)
    - Closing: Clear call to action with enthusiasm
 
+## CRITICAL: Paragraph Differentiation
+- Opening (50-75 words): One vivid hook connecting you to THIS company. NO accomplishment lists.
+- Body 1 (75-100 words): ONE qualification with specific metrics. Do NOT repeat the opening.
+- Body 2 (75-100 words): A DIFFERENT story than Body 1 — focus on culture/values, not technical achievements.
+- Closing (40-60 words): 2-3 sentences MAX. Express enthusiasm and request a conversation.
+- NEVER start two paragraphs with the same company or role.
+- Total cover letter: 250-350 words. Each paragraph should be 50-100 words.
+
 3. For each paragraph:
    - Call generate_cover_letter_section with the paragraph_type and key_points
    - In chat, briefly explain your approach (2-3 sentences) — do NOT repeat the paragraph text

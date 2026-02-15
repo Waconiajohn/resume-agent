@@ -26,17 +26,17 @@ Key requirements: ${ctx.jdAnalysis.must_haves?.slice(0, 5).join(', ') || 'Not sp
 
   const response = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 2048,
+    max_tokens: 800,
     messages: [
       {
         role: 'user',
-        content: `Write a single paragraph for a cover letter. This should feel personal, specific, and human — never template-generated.
+        content: `Write a single paragraph for a cover letter. Total cover letter target: 250-350 words. This is ONE of 4 paragraphs — keep it tight and punchy. This should feel personal, specific, and human — never template-generated.
 
 PARAGRAPH TYPE: ${paragraphType}
-- opening: Hook with a specific connection to the company. Show you know them.
-- body_1: Your strongest qualification for this role. Be specific.
-- body_2: A story that demonstrates culture fit + skills. Make it memorable.
-- closing: Clear call to action with genuine enthusiasm.
+- opening (50-75 words): Hook with a specific connection to the company. Show you know them. One vivid detail.
+- body_1 (75-100 words): Your strongest qualification for this role. One specific metric.
+- body_2 (75-100 words): A story that demonstrates culture fit + skills. Different from body_1.
+- closing (40-60 words): Clear call to action with genuine enthusiasm. 2-3 sentences MAX.
 
 ${companyContext ? `COMPANY CONTEXT:\n${companyContext}` : ''}
 
@@ -73,23 +73,34 @@ Return ONLY valid JSON:
     reasoning = 'Generated paragraph';
   }
 
-  // Emit to right panel
+  // Sync previous_paragraphs into context accumulator
+  if (previousParagraphs.length > 0) {
+    const types = ['opening', 'body_1', 'body_2', 'closing'];
+    previousParagraphs.forEach((p, i) => {
+      const type = types[i] ?? `body_${i}`;
+      const existing = ctx.coverLetterParagraphs.findIndex(pp => pp.type === type);
+      if (existing >= 0) {
+        ctx.coverLetterParagraphs[existing] = { type, content: p, status: 'confirmed' };
+      } else {
+        ctx.coverLetterParagraphs.push({ type, content: p, status: 'confirmed' });
+      }
+    });
+  }
+
+  // Upsert current paragraph
+  const existingIdx = ctx.coverLetterParagraphs.findIndex(pp => pp.type === paragraphType);
+  if (existingIdx >= 0) {
+    ctx.coverLetterParagraphs[existingIdx] = { type: paragraphType, content, status: 'draft' };
+  } else {
+    ctx.coverLetterParagraphs.push({ type: paragraphType, content, status: 'draft' });
+  }
+
+  // Emit ALL accumulated paragraphs to right panel
   emit({
     type: 'right_panel_update',
     panel_type: 'cover_letter',
     data: {
-      paragraphs: [
-        ...previousParagraphs.map((p, i) => ({
-          type: i === 0 ? 'opening' : `body_${i}`,
-          content: p,
-          status: 'confirmed',
-        })),
-        {
-          type: paragraphType,
-          content,
-          status: 'draft',
-        },
-      ],
+      paragraphs: ctx.coverLetterParagraphs,
       company_name: ctx.companyResearch.company_name,
       role_title: ctx.jdAnalysis.job_title,
     },
