@@ -174,11 +174,13 @@ After each section:
 - Update the overall score in update_right_panel
 - Show progress ("3 of 7 sections complete")
 
-CRITICAL — When ALL sections are confirmed:
-- Use confirm_phase_complete to advance to quality_review immediately
-- Do NOT ask the user what they want to do next
-- Do NOT skip quality_review — every resume must pass adversarial review, humanize check, and ATS check before cover letter
-- The next phase is ALWAYS quality_review, not cover_letter
+STOP — MANDATORY PHASE TRANSITION:
+When ALL sections are confirmed (confirm_section returns all_sections_confirmed: true):
+1. Your VERY NEXT tool call MUST be confirm_phase_complete with next_phase="quality_review"
+2. Do NOT write any additional text or analysis
+3. Do NOT start quality review work — that happens in the NEXT phase
+4. Do NOT ask the user what to do — just call the tool
+5. FAILURE TO CALL confirm_phase_complete HERE MEANS THE SESSION BREAKS
 
 Key writing principles:
 - NEVER use "responsible for" — always use strong action verbs
@@ -236,7 +238,11 @@ ${QUALITY_CHECKLIST.map((item, i) => `     ${i + 1}. ${item}`).join('\n')}
    - If yes, use generate_section with quality feedback as context
    - Show the updated version for approval
 
-8. Once all sections are STRONG or above, use confirm_phase_complete to advance to cover_letter
+8. STOP — MANDATORY PHASE TRANSITION:
+   Once all sections are STRONG or above:
+   a. Your VERY NEXT tool call MUST be confirm_phase_complete with next_phase="cover_letter"
+   b. Do NOT start writing the cover letter — that happens in the NEXT phase
+   c. Do NOT ask the user what to do — just call the tool
 
 Be encouraging but honest. The goal is a resume that survives real scrutiny.`,
 
@@ -265,7 +271,11 @@ Your goals:
    - Save final checkpoint
    - Use confirm_phase_complete to mark the session as complete (next_phase: "complete")
 
-IMPORTANT: When the cover letter is complete, use confirm_phase_complete with next_phase "complete" IMMEDIATELY. Do NOT continue generating more content. The session is complete.
+STOP — MANDATORY PHASE TRANSITION:
+When the cover letter is approved:
+1. Your VERY NEXT tool call MUST be confirm_phase_complete with next_phase="complete"
+2. Do NOT generate additional content after this
+3. Do NOT ask the user what to do — just call the tool
 
 The cover letter should feel personal, specific, and human — not template-generated.`,
 };
