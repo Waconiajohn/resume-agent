@@ -152,7 +152,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   }
                   if (data.last_panel_type && data.last_panel_data) {
                     setPanelType(data.last_panel_type as PanelType);
-                    setPanelData({ type: data.last_panel_type, ...(data.last_panel_data as Record<string, unknown>) } as PanelData);
+                    const panelPayload = data.last_panel_data as Record<string, unknown>;
+                    setPanelData({ type: data.last_panel_type, ...panelPayload } as PanelData);
+                    // Restore resume data from completion panel (persisted by export_resume)
+                    if (data.last_panel_type === 'completion' && panelPayload.resume) {
+                      setResume(panelPayload.resume as FinalResume);
+                    }
                   }
                   // On restore, clear processing state — the agent loop isn't running
                   setIsProcessing(false);

@@ -68,22 +68,30 @@ export async function executeExportResume(
   const selectedDesign = ctx.designChoices.find(d => d.selected);
   const sectionOrder = selectedDesign?.section_order;
 
-  emit({
-    type: 'export_ready',
-    resume: {
-      summary,
-      selected_accomplishments: selectedAccomplishments,
-      experience,
-      skills,
-      education,
-      certifications,
-      ats_score: atsScore,
-      contact_info: ctx.masterResumeData.contact_info,
-      section_order: sectionOrder,
-      company_name: ctx.companyResearch.company_name,
-      job_title: ctx.jdAnalysis.job_title,
-    },
-  });
+  const resumeData = {
+    summary,
+    selected_accomplishments: selectedAccomplishments,
+    experience,
+    skills,
+    education,
+    certifications,
+    ats_score: atsScore,
+    contact_info: ctx.masterResumeData.contact_info,
+    section_order: sectionOrder,
+    company_name: ctx.companyResearch.company_name,
+    job_title: ctx.jdAnalysis.job_title,
+  };
+
+  emit({ type: 'export_ready', resume: resumeData });
+
+  // Persist resume in panel data so it survives SSE reconnect
+  ctx.lastPanelType = 'completion';
+  ctx.lastPanelData = {
+    resume: resumeData,
+    ats_score: atsScore,
+    requirements_addressed: requirementsAddressed,
+    sections_rewritten: sectionsRewritten,
+  };
 
   emit({
     type: 'complete',

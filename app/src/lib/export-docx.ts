@@ -352,7 +352,17 @@ const DEFAULT_SECTION_ORDER = ['summary', 'selected_accomplishments', 'skills', 
 // Resume DOCX export
 // ---------------------------------------------------------------------------
 
-export async function exportDocx(resume: FinalResume): Promise<void> {
+export async function exportDocx(resume: FinalResume): Promise<{ success: boolean; error?: string }> {
+ try {
+  return await _exportDocxInner(resume);
+ } catch (err) {
+  const message = err instanceof Error ? err.message : 'Unknown error generating DOCX';
+  console.error('[export-docx] Resume export failed:', message);
+  return { success: false, error: message };
+ }
+}
+
+async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean }> {
   const children: Paragraph[] = [];
 
   // Contact header in document body (NOT in Word header — ATS requirement)
@@ -413,6 +423,7 @@ export async function exportDocx(resume: FinalResume): Promise<void> {
   const blob = await Packer.toBlob(doc);
   const filename = buildFilename(resume.contact_info, resume.company_name, 'Resume');
   saveAs(blob, filename);
+  return { success: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -424,7 +435,8 @@ export async function exportCoverLetterDocx(
   companyName?: string,
   roleTitle?: string,
   contactInfo?: ContactInfo,
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
+ try {
   const children: Paragraph[] = [];
 
   // Sender contact block
@@ -538,4 +550,10 @@ export async function exportCoverLetterDocx(
   const blob = await Packer.toBlob(doc);
   const filename = buildFilename(contactInfo, companyName, 'Cover_Letter');
   saveAs(blob, filename);
+  return { success: true };
+ } catch (err) {
+  const message = err instanceof Error ? err.message : 'Unknown error generating cover letter DOCX';
+  console.error('[export-docx] Cover letter export failed:', message);
+  return { success: false, error: message };
+ }
 }

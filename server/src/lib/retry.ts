@@ -13,6 +13,24 @@ function isTransient(error: Error): boolean {
   return TRANSIENT_PATTERNS.some((p) => msg.includes(p));
 }
 
+/**
+ * Extract Retry-After delay from Anthropic API error headers.
+ * Returns delay in milliseconds, or 0 if not present.
+ */
+function getRetryAfterMs(error: unknown): number {
+  // Anthropic SDK attaches headers to the error object
+  const headers = (error as { headers?: Record<string, string> })?.headers;
+  const retryAfter = headers?.['retry-after'];
+  if (!retryAfter) return 0;
+
+  const seconds = parseFloat(retryAfter);
+  if (!isNaN(seconds) && seconds > 0) {
+    // Cap at 60s to prevent absurd waits
+    return Math.min(seconds, 60) * 1000;
+  }
+  return 0;
+}
+
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options?: {
@@ -38,7 +56,11 @@ export async function withRetry<T>(
 
       options?.onRetry?.(attempt, lastError);
 
-      const delay = baseDelay * Math.pow(2, attempt - 1) * (0.5 + Math.random());
+      // Prefer server-specified Retry-After delay; fall back to exponential backoff
+      const retryAfterMs = getRetryAfterMs(err);
+      const delay = retryAfterMs > 0
+        ? retryAfterMs
+        : baseDelay * Math.pow(2, attempt - 1) * (0.5 + Math.random());
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }

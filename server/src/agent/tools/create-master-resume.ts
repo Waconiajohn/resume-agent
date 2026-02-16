@@ -1,9 +1,27 @@
 import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { repairJSON } from '../../lib/json-repair.js';
-import type { SessionContext, MasterResumeData } from '../context.js';
+import type { SessionContext, MasterResumeData, ContactInfo } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 import { createSessionLogger } from '../../lib/logger.js';
+
+/**
+ * Validate and sanitize contact_info extracted by AI.
+ * Returns a safe ContactInfo object even if AI output is malformed.
+ */
+function validateContactInfo(raw: unknown): ContactInfo {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { name: '' };
+  }
+  const obj = raw as Record<string, unknown>;
+  return {
+    name: typeof obj.name === 'string' ? obj.name.trim().slice(0, 200) : '',
+    email: typeof obj.email === 'string' ? obj.email.trim().slice(0, 200) : undefined,
+    phone: typeof obj.phone === 'string' ? obj.phone.trim().slice(0, 50) : undefined,
+    linkedin: typeof obj.linkedin === 'string' ? obj.linkedin.trim().slice(0, 300) : undefined,
+    location: typeof obj.location === 'string' ? obj.location.trim().slice(0, 200) : undefined,
+  };
+}
 
 const STRUCTURING_PROMPT = `You are a resume parser. Extract structured data from the following resume text and return ONLY valid JSON with this exact shape:
 
@@ -94,7 +112,7 @@ export async function executeCreateMasterResume(
       skills: structured.skills,
       education: structured.education,
       certifications: structured.certifications,
-      contact_info: (structured as Record<string, unknown>).contact_info ?? {},
+      contact_info: validateContactInfo((structured as Record<string, unknown>).contact_info),
       raw_text: rawText,
       version: 1,
     })
@@ -110,7 +128,7 @@ export async function executeCreateMasterResume(
   const resumeId = data.id as string;
 
   ctx.masterResumeId = resumeId;
-  const contactInfo = (structured as Record<string, unknown>).contact_info as MasterResumeData['contact_info'] | undefined;
+  const contactInfo = validateContactInfo((structured as Record<string, unknown>).contact_info);
   ctx.masterResumeData = { ...structured, contact_info: contactInfo, raw_text: rawText };
 
   // Emit onboarding summary panel with parsed resume stats

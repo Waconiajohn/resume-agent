@@ -54,6 +54,29 @@ const port = parseInt(process.env.PORT ?? '3001');
 
 logger.info({ port }, 'Resume Agent server starting');
 
-serve({ fetch: app.fetch, port });
+const server = serve({ fetch: app.fetch, port });
 
 logger.info({ port }, `Server running at http://localhost:${port}`);
+
+// Graceful shutdown
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal }, 'Graceful shutdown initiated');
+
+  // Close HTTP server (stop accepting new connections)
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+
+  // Force exit after 10s if connections don't drain
+  setTimeout(() => {
+    logger.warn('Forcing exit after shutdown timeout');
+    process.exit(1);
+  }, 10_000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

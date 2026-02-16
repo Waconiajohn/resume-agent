@@ -15,6 +15,10 @@ const sessions = new Hono();
 
 const sseConnections = new Map<string, Array<(event: SSEEvent) => void>>();
 
+// Track SSE connections per user to prevent resource exhaustion
+const sseConnectionsByUser = new Map<string, number>();
+const MAX_SSE_PER_USER = 5;
+
 // Idempotency: track recent message keys to reject duplicates
 const recentIdempotencyKeys = new Map<string, number>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -65,6 +69,12 @@ sessions.get('/:id/sse', async (c) => {
     return c.json({ error: 'Session not found' }, 404);
   }
 
+  // Enforce per-user SSE connection limit
+  const currentUserConns = sseConnectionsByUser.get(user.id) ?? 0;
+  if (currentUserConns >= MAX_SSE_PER_USER) {
+    return c.json({ error: 'Too many open connections. Please close other tabs.' }, 429);
+  }
+
   return streamSSE(c, async (stream) => {
     const emitter = (event: SSEEvent) => {
       stream.writeSSE({
@@ -77,6 +87,7 @@ sessions.get('/:id/sse', async (c) => {
       sseConnections.set(sessionId, []);
     }
     sseConnections.get(sessionId)!.push(emitter);
+    sseConnectionsByUser.set(user.id, (sseConnectionsByUser.get(user.id) ?? 0) + 1);
 
     await stream.writeSSE({
       event: 'connected',
@@ -146,6 +157,13 @@ sessions.get('/:id/sse', async (c) => {
         const idx = emitters.indexOf(emitter);
         if (idx !== -1) emitters.splice(idx, 1);
         if (emitters.length === 0) sseConnections.delete(sessionId);
+      }
+      // Decrement per-user connection count
+      const count = sseConnectionsByUser.get(user.id) ?? 1;
+      if (count <= 1) {
+        sseConnectionsByUser.delete(user.id);
+      } else {
+        sseConnectionsByUser.set(user.id, count - 1);
       }
     }
   });

@@ -50,12 +50,17 @@ export function CompletionPanel({
 }: CompletionPanelProps) {
   const [exportingResume, setExportingResume] = useState(false);
   const [exportingCover, setExportingCover] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const handleResumeDocx = async () => {
     if (!resume) return;
     setExportingResume(true);
+    setExportError(null);
     try {
-      await exportDocx(resume);
+      const result = await exportDocx(resume);
+      if (!result.success) {
+        setExportError(result.error ?? 'Failed to generate resume DOCX');
+      }
     } finally {
       setExportingResume(false);
     }
@@ -70,8 +75,12 @@ export function CompletionPanel({
   const handleCoverDocx = async () => {
     if (!coverLetterParagraphs?.length) return;
     setExportingCover(true);
+    setExportError(null);
     try {
-      await exportCoverLetterDocx(coverLetterParagraphs, coverLetterCompany, coverLetterRole, resume?.contact_info);
+      const result = await exportCoverLetterDocx(coverLetterParagraphs, coverLetterCompany, coverLetterRole, resume?.contact_info);
+      if (!result.success) {
+        setExportError(result.error ?? 'Failed to generate cover letter DOCX');
+      }
     } finally {
       setExportingCover(false);
     }
@@ -126,6 +135,13 @@ export function CompletionPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Export error banner */}
+        {exportError && (
+          <div className="rounded-lg bg-red-500/20 border border-red-500/30 px-3 py-2 text-xs text-red-300">
+            {exportError}
+          </div>
+        )}
+
         {/* Stats */}
         {(data.ats_score != null || data.requirements_addressed != null) && (
           <div className="grid grid-cols-3 gap-2">

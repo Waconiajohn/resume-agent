@@ -559,6 +559,20 @@ export class SessionContext {
   }
 
   toCheckpoint() {
+    // Cap persisted messages to prevent unbounded DB growth.
+    // Keep the first 4 messages (initial context) and the last 96 for continuity.
+    const MAX_PERSISTED_MESSAGES = 100;
+    let persistedMessages = this.messages;
+    if (this.messages.length > MAX_PERSISTED_MESSAGES) {
+      const KEEP_HEAD = 4;
+      const keepTail = MAX_PERSISTED_MESSAGES - KEEP_HEAD;
+      persistedMessages = [
+        ...this.messages.slice(0, KEEP_HEAD),
+        ...this.messages.slice(-keepTail),
+      ];
+      logger.info({ sessionId: this.sessionId, total: this.messages.length, persisted: persistedMessages.length }, 'Capped persisted messages');
+    }
+
     return {
       current_phase: this.currentPhase,
       company_research: this.companyResearch,
@@ -571,7 +585,7 @@ export class SessionContext {
       section_statuses: this.sectionStatuses,
       overall_score: this.overallScore,
       design_choices: this.designChoices,
-      messages: this.messages,
+      messages: persistedMessages,
       pending_tool_call_id: this.pendingToolCallId,
       pending_phase_transition: this.pendingPhaseTransition,
       last_panel_type: this.lastPanelType,

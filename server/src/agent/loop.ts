@@ -146,9 +146,12 @@ export async function runAgentLoop(
               fullText += text;
               emit({ type: 'text_delta', content: text });
             });
-            // Abort the stream when the loop timeout fires
-            loopAbort.signal.addEventListener('abort', () => s.abort(), { once: true });
-            return s.finalMessage();
+            // Abort the stream when the loop timeout fires — store handler for cleanup
+            const abortHandler = () => s.abort();
+            loopAbort.signal.addEventListener('abort', abortHandler, { once: true });
+            return s.finalMessage().finally(() => {
+              loopAbort.signal.removeEventListener('abort', abortHandler);
+            });
           },
           {
             onRetry: (attempt, error) => {
