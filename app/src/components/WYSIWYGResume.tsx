@@ -1,10 +1,9 @@
 import type { FinalResume } from '@/types/resume';
+import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 
 interface WYSIWYGResumeProps {
   resume: FinalResume;
 }
-
-const DEFAULT_SECTION_ORDER = ['summary', 'selected_accomplishments', 'skills', 'experience', 'education', 'certifications'];
 
 /** Strip HTML tags to prevent XSS if content is ever rendered with innerHTML in future refactors. */
 function stripHtml(text: string): string {
@@ -216,6 +215,8 @@ export function WYSIWYGResume({ resume }: WYSIWYGResumeProps) {
     if (Component) {
       orderedSections.push(<Component key={sectionName} resume={resume} />);
       rendered.add(sectionName);
+    } else if (import.meta.env.DEV) {
+      console.warn(`[WYSIWYGResume] Unknown section in section_order: ${sectionName}`);
     }
   }
 

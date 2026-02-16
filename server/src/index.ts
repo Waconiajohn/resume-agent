@@ -67,8 +67,9 @@ app.notFound((c) => {
 });
 
 app.onError((err, c) => {
-  logger.error({ err, requestId: c.get('requestId') }, 'Unhandled error');
-  return c.json({ error: 'Internal server error' }, 500);
+  const requestId = c.get('requestId');
+  logger.error({ err, requestId }, 'Unhandled error');
+  return c.json({ error: 'Internal server error', request_id: requestId }, 500);
 });
 
 const port = parseInt(process.env.PORT ?? '3001');

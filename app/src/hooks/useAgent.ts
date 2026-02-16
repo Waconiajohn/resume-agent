@@ -141,14 +141,20 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     setCurrentPhase(data.current_phase as string);
                   }
                   if (Array.isArray(data.messages) && data.messages.length) {
-                    const restored: ChatMessage[] = (data.messages as Array<{ role: string; content: string }>).map((m, i) => ({
-                      id: `restored-${i}`,
-                      role: m.role as 'user' | 'assistant',
-                      content: m.content,
-                      timestamp: new Date().toISOString(),
-                    }));
-                    setMessages(restored);
-                    messageIdRef.current = restored.length;
+                    try {
+                      const restored: ChatMessage[] = (data.messages as Array<{ role: string; content: string }>)
+                        .filter((m) => m && typeof m.role === 'string' && typeof m.content === 'string')
+                        .map((m, i) => ({
+                          id: `restored-${i}`,
+                          role: m.role as 'user' | 'assistant',
+                          content: m.content,
+                          timestamp: new Date().toISOString(),
+                        }));
+                      setMessages(restored);
+                      messageIdRef.current = restored.length;
+                    } catch (err) {
+                      console.error('[useAgent] Failed to restore messages:', err);
+                    }
                   }
                   if (data.last_panel_type && data.last_panel_data) {
                     setPanelType(data.last_panel_type as PanelType);
@@ -243,6 +249,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   );
                   // Auto-remove completed tool after 3s
                   const timer = setTimeout(() => {
+                    if (!mountedRef.current) return;
                     setTools((prev) => prev.filter((t) => !(t.name === toolName && t.status === 'complete')));
                     toolCleanupTimersRef.current.delete(timer);
                   }, 3000);

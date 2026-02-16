@@ -5,6 +5,7 @@ import {
 import { saveAs } from 'file-saver';
 import type { FinalResume, ContactInfo } from '@/types/resume';
 import type { CoverLetterParagraph } from '@/types/panels';
+import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -354,8 +355,6 @@ const sectionRenderers: Record<string, SectionRenderer> = {
   },
 };
 
-const DEFAULT_SECTION_ORDER = ['summary', 'selected_accomplishments', 'skills', 'experience', 'education', 'certifications'];
-
 // ---------------------------------------------------------------------------
 // Resume DOCX export
 // ---------------------------------------------------------------------------
@@ -387,6 +386,8 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     if (renderer) {
       children.push(...renderer(resume));
       rendered.add(sectionName);
+    } else {
+      console.warn(`[export-docx] Unknown section in section_order: ${sectionName}`);
     }
   }
 

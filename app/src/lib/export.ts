@@ -1,6 +1,5 @@
 import type { FinalResume, ContactInfo } from '@/types/resume';
-
-const DEFAULT_SECTION_ORDER = ['summary', 'selected_accomplishments', 'experience', 'skills', 'education', 'certifications'];
+import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 
 type TextSectionRenderer = (resume: FinalResume) => string[];
 
@@ -103,6 +102,8 @@ export function resumeToText(resume: FinalResume): string {
     if (renderer) {
       lines.push(...renderer(resume));
       rendered.add(sectionName);
+    } else {
+      console.warn(`[export] Unknown section in section_order: ${sectionName}`);
     }
   }
 

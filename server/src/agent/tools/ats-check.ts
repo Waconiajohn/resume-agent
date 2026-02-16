@@ -84,8 +84,9 @@ Return ONLY valid JSON:
   };
 
   if (parsed) {
+    const rawScore = typeof parsed.ats_score === 'number' ? parsed.ats_score : 50;
     result = {
-      ats_score: (parsed.ats_score as number) ?? 50,
+      ats_score: Math.max(0, Math.min(100, rawScore)),
       keyword_matches: (parsed.keyword_matches as Array<{ keyword: string; found: boolean; context?: string }>) ?? [],
       format_issues: (parsed.format_issues as string[]) ?? [],
       recommendations: (parsed.recommendations as string[]) ?? [],

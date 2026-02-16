@@ -24,7 +24,7 @@ export async function runAgentLoop(
   userMessage: string,
   emit: SSEEmitter,
 ): Promise<void> {
-  const log = createSessionLogger(ctx.sessionId);
+  const log = createSessionLogger(ctx.sessionId, { userId: ctx.userId });
 
   if (ctx.pendingToolCallId) {
     // Check if this was a phase gate confirmation — advance the phase

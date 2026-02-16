@@ -2,6 +2,7 @@ import type { SessionContext } from './context.js';
 import type { SSEEmitter } from './loop.js';
 import { toolSchemas } from './tool-schemas.js';
 import { createSessionLogger } from '../lib/logger.js';
+import { PHASE_TOOLS } from './tools/index.js';
 import { executeResearchCompany } from './tools/research-company.js';
 import { executeAnalyzeJD } from './tools/analyze-jd.js';
 import { executeClassifyFit } from './tools/classify-fit.js';
@@ -28,6 +29,13 @@ export async function executeToolCall(
   emit: SSEEmitter,
 ): Promise<unknown> {
   const log = createSessionLogger(ctx.sessionId);
+
+  // Enforce phase-scoped tool availability
+  const allowedTools = PHASE_TOOLS[ctx.currentPhase];
+  if (allowedTools && !allowedTools.includes(toolName)) {
+    log.warn({ tool: toolName, phase: ctx.currentPhase }, 'Tool not allowed in current phase');
+    return { error: `Tool ${toolName} is not available in the ${ctx.currentPhase} phase` };
+  }
 
   // Validate tool input with Zod schema if available
   const schema = toolSchemas[toolName];
