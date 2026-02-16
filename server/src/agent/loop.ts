@@ -295,7 +295,7 @@ export async function runAgentLoop(
           content: toolResults,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Agent loop error';
+        const message = cleanErrorMessage(error);
         emit({ type: 'error', message, recoverable: true, retry_action: 'resend_last_message' });
         return;
       }
@@ -318,12 +318,28 @@ export async function runAgentLoop(
   try {
     await loopBody();
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Agent loop timeout';
+    const message = cleanErrorMessage(error);
     log.error({ phase: ctx.currentPhase, error: message }, 'Agent loop error');
     emit({ type: 'error', message, recoverable: true, retry_action: 'continue_session' });
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function cleanErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    try {
+      const parsed = JSON.parse(error.message);
+      return parsed?.error?.message ?? parsed?.message ?? error.message;
+    } catch {
+      // Not JSON — check if the message itself looks like raw JSON
+      if (error.message.startsWith('{')) {
+        return 'Something went wrong processing your message. Please try again.';
+      }
+      return error.message;
+    }
+  }
+  return 'Something went wrong. Please try again.';
 }
 
 function getToolDescription(toolName: string): string {

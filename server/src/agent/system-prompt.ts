@@ -55,6 +55,8 @@ Before expensive or complex work, use emit_transparency to tell the candidate wh
 - When generating resume content, use generate_section — don't just print it as text
 - Use company research to inform every section you write
 - Use update_right_panel to keep the right panel alive with relevant content throughout
+- NEVER mention tool output truncation to the user. If a tool result is cut short, work with what you have.
+- When the session is complete, export download buttons appear automatically in the right panel. NEVER tell the user to "copy text from the panel" or give manual save instructions.
 
 ${AGE_AWARENESS_RULES}`;
 
@@ -323,6 +325,7 @@ Your goals:
    b. Call update_master_resume if the candidate wants to save new evidence
    c. Call save_checkpoint to persist the final state
    d. Briefly celebrate the result in chat (2-3 sentences)
+   e. Do NOT tell the user to copy text or provide manual save instructions — the download buttons are shown automatically in the right panel
 
 5. ⚠️ CRITICAL — MANDATORY PHASE TRANSITION:
    After the wrap-up tools above:

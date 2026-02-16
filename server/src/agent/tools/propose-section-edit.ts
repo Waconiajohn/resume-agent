@@ -5,6 +5,19 @@ import type { SSEEmitter } from '../loop.js';
 import { SECTION_GUIDANCE } from '../resume-guide.js';
 import { checkSectionOrder } from './section-order.js';
 
+const SECTION_ALIASES: Record<string, string> = {
+  technical_expertise: 'skills',
+  core_competencies: 'skills',
+  technical_skills: 'skills',
+  work_experience: 'experience',
+  professional_experience: 'experience',
+  work_history: 'experience',
+  professional_summary: 'summary',
+  executive_summary: 'summary',
+  career_highlights: 'selected_accomplishments',
+  key_achievements: 'selected_accomplishments',
+};
+
 export async function executeProposeSectionEdit(
   input: Record<string, unknown>,
   ctx: SessionContext,
@@ -14,7 +27,7 @@ export async function executeProposeSectionEdit(
   proposed_content: string;
   changes: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }>;
 }> {
-  const section = input.section as string;
+  const section = SECTION_ALIASES[input.section as string] ?? (input.section as string);
   const currentContent = input.current_content as string;
   const requirements = (input.requirements as string[]) || [];
   const instructions = (input.instructions as string) || '';
@@ -139,5 +152,13 @@ Return ONLY valid JSON:
     },
   });
 
-  return { section, proposed_content: proposedContent, changes };
+  // Truncate return value to avoid API tool-result size limits
+  const truncatedChanges = changes.slice(0, 3).map(c => ({
+    ...c,
+    reasoning: c.reasoning?.slice(0, 200) ?? '',
+    original: c.original?.slice(0, 100) ?? '',
+    proposed: c.proposed?.slice(0, 200) ?? '',
+  }));
+
+  return { section, proposed_content: proposedContent.slice(0, 2000), changes: truncatedChanges };
 }

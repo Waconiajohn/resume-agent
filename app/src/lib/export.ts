@@ -1,6 +1,26 @@
 import type { FinalResume, ContactInfo } from '@/types/resume';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 
+/**
+ * Extract clean text from a string that may contain a JSON wrapper
+ * (e.g., AI response with ```json fences, proposed_content, changes, etc.)
+ */
+function extractProposedContent(text: string): string {
+  // Strip markdown fences
+  let cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '').trim();
+  // Try to parse as JSON and extract proposed_content
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (typeof parsed?.proposed_content === 'string') return parsed.proposed_content;
+    if (typeof parsed?.content === 'string') return parsed.content;
+  } catch {
+    // Not JSON — use as-is but strip common wrapper artifacts
+  }
+  // Strip leading { "proposed_content": " and trailing artifacts if present
+  cleaned = cleaned.replace(/^\s*\{\s*"proposed_content"\s*:\s*"/, '').replace(/"\s*,\s*"changes"\s*:[\s\S]*$/, '');
+  return cleaned;
+}
+
 type TextSectionRenderer = (resume: FinalResume) => string[];
 
 const textSectionRenderers: Record<string, TextSectionRenderer> = {
@@ -14,7 +34,9 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
   },
   experience: (resume) => {
     if (!Array.isArray(resume.experience) || resume.experience.length === 0) {
-      if (typeof resume.experience === 'string') return ['EXPERIENCE', resume.experience, ''];
+      if (typeof resume.experience === 'string') {
+        return ['EXPERIENCE', extractProposedContent(resume.experience), ''];
+      }
       return [];
     }
     const lines = ['EXPERIENCE'];

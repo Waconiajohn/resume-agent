@@ -1,6 +1,19 @@
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
 
+const SECTION_ALIASES: Record<string, string> = {
+  technical_expertise: 'skills',
+  core_competencies: 'skills',
+  technical_skills: 'skills',
+  work_experience: 'experience',
+  professional_experience: 'experience',
+  work_history: 'experience',
+  professional_summary: 'summary',
+  executive_summary: 'summary',
+  career_highlights: 'selected_accomplishments',
+  key_achievements: 'selected_accomplishments',
+};
+
 export async function executeConfirmSection(
   input: Record<string, unknown>,
   ctx: SessionContext,
@@ -13,7 +26,7 @@ export async function executeConfirmSection(
   all_sections_confirmed: boolean;
   next_action?: string;
 }> {
-  const section = input.section as string;
+  const section = SECTION_ALIASES[input.section as string] ?? (input.section as string);
 
   const entry = ctx.upsertSectionStatus(section, 'confirmed');
 

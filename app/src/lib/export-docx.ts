@@ -2,7 +2,6 @@ import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle,
   AlignmentType, Header, PageNumber, TabStopType, TabStopPosition,
 } from 'docx';
-import { saveAs } from 'file-saver';
 import type { FinalResume, ContactInfo } from '@/types/resume';
 import type { CoverLetterParagraph } from '@/types/panels';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
@@ -14,6 +13,20 @@ import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 function sanitizeFilenameSegment(s: string): string {
   // Preserve Unicode letters/numbers (accented chars like é, ñ, ü)
   return s.replace(/[^\p{L}\p{N}]/gu, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
 }
 
 function buildFilename(contactInfo?: ContactInfo, companyName?: string, suffix?: string, ext = 'docx'): string {
@@ -429,9 +442,12 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     ],
   });
 
-  const blob = await Packer.toBlob(doc);
+  const rawBlob = await Packer.toBlob(doc);
+  const blob = new Blob([rawBlob], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
   const filename = buildFilename(resume.contact_info, resume.company_name, 'Resume');
-  saveAs(blob, filename);
+  downloadBlob(blob, filename);
   return { success: true };
 }
 
@@ -557,9 +573,12 @@ export async function exportCoverLetterDocx(
     ],
   });
 
-  const blob = await Packer.toBlob(doc);
+  const rawBlob = await Packer.toBlob(doc);
+  const blob = new Blob([rawBlob], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
   const filename = buildFilename(contactInfo, companyName, 'Cover_Letter');
-  saveAs(blob, filename);
+  downloadBlob(blob, filename);
   return { success: true };
  } catch (err) {
   const message = err instanceof Error ? err.message : 'Unknown error generating cover letter DOCX';

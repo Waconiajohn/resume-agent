@@ -30,7 +30,7 @@ export const toolSchemas: Record<string, z.ZodType> = {
   }),
 
   generate_section: z.object({
-    section: z.enum(['summary', 'selected_accomplishments', 'experience', 'skills', 'education', 'certifications', 'title_adjustments']),
+    section: z.string().describe('Section name (e.g. summary, selected_accomplishments, experience, skills, education, certifications, title_adjustments)'),
     current_content: z.string(),
     requirements: z.array(z.string()),
     instructions: z.string(),
@@ -85,7 +85,7 @@ export const toolSchemas: Record<string, z.ZodType> = {
   }),
 
   propose_section_edit: z.object({
-    section: z.enum(['summary', 'selected_accomplishments', 'experience', 'skills', 'education', 'certifications', 'title_adjustments']),
+    section: z.string().describe('Section name (e.g. summary, selected_accomplishments, experience, skills, education, certifications, title_adjustments)'),
     current_content: z.string(),
     requirements: z.array(z.string()).optional(),
     instructions: z.string().optional(),

@@ -5,12 +5,25 @@ import type { SSEEmitter } from '../loop.js';
 import { SECTION_GUIDANCE } from '../resume-guide.js';
 import { checkSectionOrder } from './section-order.js';
 
+const SECTION_ALIASES: Record<string, string> = {
+  technical_expertise: 'skills',
+  core_competencies: 'skills',
+  technical_skills: 'skills',
+  work_experience: 'experience',
+  professional_experience: 'experience',
+  work_history: 'experience',
+  professional_summary: 'summary',
+  executive_summary: 'summary',
+  career_highlights: 'selected_accomplishments',
+  key_achievements: 'selected_accomplishments',
+};
+
 export async function executeGenerateSection(
   input: Record<string, unknown>,
   ctx: SessionContext,
   emit: SSEEmitter,
 ): Promise<{ section: string; content: string; changes_made: string[] }> {
-  const section = input.section as string;
+  const section = SECTION_ALIASES[input.section as string] ?? (input.section as string);
   const currentContent = input.current_content as string;
   const requirements = input.requirements as string[];
   const instructions = input.instructions as string;
@@ -140,5 +153,8 @@ Return ONLY valid JSON:
     },
   });
 
-  return { section, content, changes_made: changesMade };
+  // Truncate return value to avoid API tool-result size limits
+  const truncatedChangesMade = changesMade.slice(0, 5).map(c => c.slice(0, 200));
+
+  return { section, content: content.slice(0, 2000), changes_made: truncatedChangesMade };
 }

@@ -423,7 +423,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
                 case 'error': {
                   const data = safeParse(msg.data);
-                  setError(data?.message as string ?? 'Connection lost');
+                  let errorMsg = data?.message ?? data?.error?.message ?? 'Something went wrong';
+                  // Strip raw JSON that may have leaked through
+                  if (typeof errorMsg === 'string' && errorMsg.startsWith('{')) {
+                    errorMsg = 'Something went wrong processing your message. Please try again.';
+                  }
+                  setError(errorMsg as string);
                   break;
                 }
 

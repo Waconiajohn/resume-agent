@@ -56,7 +56,7 @@ const STRUCTURING_PROMPT = `You are a resume parser. Extract structured data fro
 }
 
 Rules:
-- Extract contact_info from the resume header (name, email, phone, LinkedIn URL, location). Use empty string for name if not found.
+- CRITICAL: Extract contact_info from the resume header. The name is typically the FIRST LINE of the resume in large/bold text or all caps. Email, phone, LinkedIn URL, and location are usually on the next line(s). Use empty string for name ONLY if truly absent.
 - Extract ALL experience entries, ordered most recent first
 - Every bullet should have "source": "original"
 - Group skills into logical categories
@@ -129,6 +129,16 @@ export async function executeCreateMasterResume(
 
   ctx.masterResumeId = resumeId;
   const contactInfo = validateContactInfo((structured as Record<string, unknown>).contact_info);
+
+  // Fallback: if name is empty, try to extract from the first line of the resume text
+  if (!contactInfo.name && rawText) {
+    const firstLine = rawText.split('\n').find(l => l.trim())?.trim() ?? '';
+    // Heuristic: first line is likely a name if it's short, title-case or all-caps, and no email/phone/URL
+    if (firstLine.length > 1 && firstLine.length < 60 && !/[@()\d{4,}http]/.test(firstLine)) {
+      contactInfo.name = firstLine;
+    }
+  }
+
   ctx.masterResumeData = { ...structured, contact_info: contactInfo, raw_text: rawText };
 
   // Emit onboarding summary panel with parsed resume stats
