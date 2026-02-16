@@ -239,7 +239,7 @@ export async function runAgentLoop(
             };
 
             // Quality gate validation — soft gates that tell the AI what to fix
-            const gateError = validatePhaseGate(gateInput.current_phase, gateInput.next_phase, ctx);
+            const gateError = validatePhaseGate(gateInput.current_phase, gateInput.next_phase, ctx, log);
             if (gateError) {
               toolResults.push({
                 type: 'tool_result',
@@ -352,7 +352,7 @@ function getToolDescription(toolName: string): string {
 
 const VALID_PHASES = new Set(['onboarding', 'deep_research', 'gap_analysis', 'resume_design', 'section_craft', 'quality_review', 'cover_letter', 'complete']);
 
-function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: SessionContext): string | null {
+function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: SessionContext, log: ReturnType<typeof createSessionLogger>): string | null {
   // Validate nextPhase is a known phase
   if (!VALID_PHASES.has(nextPhase)) {
     return `Cannot advance: "${nextPhase}" is not a valid phase. Valid phases: ${[...VALID_PHASES].join(', ')}`;
@@ -426,8 +426,7 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     // The agent should address them but they should not create an unbreakable deadlock
     const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
     if (biasRisks.length > 0) {
-      const gateLog = createSessionLogger(ctx.sessionId);
-      gateLog.warn({ biasRisks, count: biasRisks.length }, 'Age-bias risks noted but allowing advancement');
+      log.warn({ biasRisks, count: biasRisks.length }, 'Age-bias risks noted but allowing advancement');
     }
   }
 
@@ -436,8 +435,7 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     const hasCoverContent = ctx.tailoredSections &&
       Object.values(ctx.tailoredSections).some(v => typeof v === 'string' && v.length > 0);
     if (!hasCoverContent) {
-      const gateLog = createSessionLogger(ctx.sessionId);
-      gateLog.warn('Advancing cover_letter → complete without cover letter content');
+      log.warn('Advancing cover_letter → complete without cover letter content');
     }
   }
 

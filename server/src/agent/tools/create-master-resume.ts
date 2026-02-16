@@ -1,4 +1,4 @@
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, MasterResumeData } from '../context.js';
@@ -56,12 +56,12 @@ export async function executeCreateMasterResume(
       messages: [{ role: 'user', content: `${STRUCTURING_PROMPT}\n\n---\n\nRESUME TEXT:\n${rawText}` }],
     });
 
-    const textBlock = response.content.find((b) => b.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
+    const rawResponse = extractResponseText(response);
+    if (!rawResponse) {
       return { success: false, error: 'Failed to parse resume — no text response', code: 'AI_PARSE_FAILED', recoverable: true };
     }
 
-    const repaired = repairJSON<Omit<MasterResumeData, 'raw_text'>>(textBlock.text);
+    const repaired = repairJSON<Omit<MasterResumeData, 'raw_text'>>(rawResponse);
     if (!repaired) {
       return { success: false, error: 'Failed to parse structured resume from AI response', code: 'JSON_PARSE_FAILED', recoverable: true };
     }

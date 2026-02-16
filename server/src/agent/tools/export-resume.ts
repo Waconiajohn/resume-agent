@@ -18,7 +18,7 @@ export async function executeExportResume(
   const tailored = ctx.tailoredSections;
 
   const summary = tailored?.summary ?? base.summary;
-  const selectedAccomplishments = tailored?.selected_accomplishments ?? undefined;
+  const selectedAccomplishments = tailored?.selected_accomplishments;
 
   const experience = (tailored?.experience?.length
     ? (tailored.experience as Array<Record<string, unknown>>)

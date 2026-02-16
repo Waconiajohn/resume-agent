@@ -15,16 +15,7 @@ export async function executeConfirmSection(
 }> {
   const section = input.section as string;
 
-  const existing = ctx.sectionStatuses.find(s => s.section === section);
-  if (existing) {
-    existing.status = 'confirmed';
-  } else {
-    ctx.sectionStatuses.push({
-      section,
-      status: 'confirmed',
-      jd_requirements_addressed: [],
-    });
-  }
+  const entry = ctx.upsertSectionStatus(section, 'confirmed');
 
   const confirmedCount = ctx.sectionStatuses.filter(s => s.status === 'confirmed').length;
   const totalCount = ctx.sectionStatuses.length;
@@ -33,7 +24,7 @@ export async function executeConfirmSection(
     type: 'section_status',
     section,
     status: 'confirmed',
-    jd_requirements_addressed: existing?.jd_requirements_addressed ?? [],
+    jd_requirements_addressed: entry.jd_requirements_addressed,
   });
 
   // Check if all required sections from the selected design are now confirmed

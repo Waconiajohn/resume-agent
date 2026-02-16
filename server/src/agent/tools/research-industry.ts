@@ -1,7 +1,5 @@
-import { queryPerplexity } from '../../lib/perplexity.js';
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { queryWithFallback } from '../../lib/perplexity.js';
 import type { SessionContext } from '../context.js';
-import { createSessionLogger } from '../../lib/logger.js';
 
 export async function executeResearchIndustry(
   input: Record<string, unknown>,
@@ -10,6 +8,8 @@ export async function executeResearchIndustry(
   const industry = input.industry as string;
   const roleType = input.role_type as string;
   const seniorityLevel = (input.seniority_level as string) || 'senior';
+
+  const systemMessage = 'You are an industry research analyst specializing in career benchmarking. Provide specific, data-driven insights about what top candidates look like in a given industry and role.';
 
   const prompt = `Research industry standards for a ${seniorityLevel} ${roleType} in ${industry}. I need:
 
@@ -23,25 +23,14 @@ export async function executeResearchIndustry(
 
 Be specific with numbers and data where possible.`;
 
-  try {
-    const researchText = await queryPerplexity([
-      {
-        role: 'system',
-        content: 'You are an industry research analyst specializing in career benchmarking. Provide specific, data-driven insights about what top candidates look like in a given industry and role.',
-      },
+  const researchText = await queryWithFallback(
+    ctx.sessionId,
+    [
+      { role: 'system', content: systemMessage },
       { role: 'user', content: prompt },
-    ]);
-    return { industry_research: researchText };
-  } catch (error) {
-    const log = createSessionLogger(ctx.sessionId);
-    log.warn({ error: error instanceof Error ? error.message : String(error) }, 'Perplexity failed, falling back to Claude');
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const firstBlock = response.content[0];
-    const text = firstBlock?.type === 'text' ? firstBlock.text : '';
-    return { industry_research: text };
-  }
+    ],
+    { prompt },
+  );
+
+  return { industry_research: researchText };
 }

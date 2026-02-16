@@ -1,7 +1,5 @@
-import { queryPerplexity } from '../../lib/perplexity.js';
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { queryWithFallback } from '../../lib/perplexity.js';
 import type { SessionContext, CompanyResearch } from '../context.js';
-import { createSessionLogger } from '../../lib/logger.js';
 
 export async function executeResearchCompany(
   input: Record<string, unknown>,
@@ -25,26 +23,19 @@ ${additionalContext ? `Additional context: ${additionalContext}` : ''}
 
 Be specific and factual. If you're not sure about something, say so.`;
 
-  let researchText: string;
-  try {
-    researchText = await queryPerplexity([
-      {
-        role: 'system',
-        content: 'You are a company research analyst. Return detailed, structured information about companies, focusing on culture, values, leadership style, and what they look for in senior hires.',
-      },
+  const systemMessage = 'You are a company research analyst. Return detailed, structured information about companies, focusing on culture, values, leadership style, and what they look for in senior hires.';
+
+  const researchText = await queryWithFallback(
+    ctx.sessionId,
+    [
+      { role: 'system', content: systemMessage },
       { role: 'user', content: researchPrompt },
-    ]);
-  } catch (perplexityError) {
-    const log = createSessionLogger(ctx.sessionId);
-    log.warn({ error: perplexityError instanceof Error ? perplexityError.message : String(perplexityError) }, 'Perplexity API unavailable, falling back to Claude');
-    const fallbackResponse = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      system: 'You are a company research analyst. Return detailed, structured information about companies, focusing on culture, values, leadership style, and what they look for in senior hires. Note: you are answering from training data, not live search. Flag any information that may be outdated.',
-      messages: [{ role: 'user', content: researchPrompt }],
-    });
-    researchText = fallbackResponse.content[0].type === 'text' ? fallbackResponse.content[0].text : '';
-  }
+    ],
+    {
+      system: `${systemMessage} Note: you are answering from training data, not live search. Flag any information that may be outdated.`,
+      prompt: researchPrompt,
+    },
+  );
 
   const research: CompanyResearch = {
     company_name: companyName,

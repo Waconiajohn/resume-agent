@@ -1,4 +1,4 @@
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -58,8 +58,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const firstBlock = response.content[0];
-  const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
+  const rawText = extractResponseText(response);
 
   let content = '';
   let reasoning = '';

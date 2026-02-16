@@ -1,3 +1,6 @@
+import { anthropic, MODEL as CLAUDE_MODEL, extractResponseText } from './anthropic.js';
+import { createSessionLogger } from './logger.js';
+
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const PERPLEXITY_URL = 'https://api.perplexity.ai/chat/completions';
 const MODEL = 'sonar-pro';
@@ -42,4 +45,31 @@ export async function queryPerplexity(
 
   const data = (await response.json()) as PerplexityResponse;
   return data.choices[0]?.message?.content ?? '';
+}
+
+/**
+ * Query Perplexity for research, falling back to Claude if Perplexity is unavailable.
+ * Consolidates the try-Perplexity/catch-use-Claude pattern used by research tools.
+ */
+export async function queryWithFallback(
+  sessionId: string,
+  messages: PerplexityMessage[],
+  claudeOptions?: { system?: string; prompt: string },
+): Promise<string> {
+  try {
+    return await queryPerplexity(messages);
+  } catch (error) {
+    const log = createSessionLogger(sessionId);
+    log.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Perplexity API unavailable, falling back to Claude',
+    );
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 4096,
+      ...(claudeOptions?.system ? { system: claudeOptions.system } : {}),
+      messages: [{ role: 'user', content: claudeOptions?.prompt ?? messages[messages.length - 1].content }],
+    });
+    return extractResponseText(response);
+  }
 }

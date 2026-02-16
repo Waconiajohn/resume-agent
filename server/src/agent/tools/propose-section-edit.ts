@@ -1,8 +1,9 @@
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
-import { SECTION_GUIDANCE, SECTION_ORDER_KEYS } from '../resume-guide.js';
+import { SECTION_GUIDANCE } from '../resume-guide.js';
+import { checkSectionOrder } from './section-order.js';
 
 export async function executeProposeSectionEdit(
   input: Record<string, unknown>,
@@ -19,20 +20,9 @@ export async function executeProposeSectionEdit(
   const instructions = (input.instructions as string) || '';
 
   // Section order enforcement
-  const selected = ctx.designChoices.find(d => d.selected);
-  const effectiveOrder: string[] = selected?.section_order?.length
-    ? selected.section_order
-    : [...SECTION_ORDER_KEYS];
-
-  const confirmed = new Set(
-    ctx.sectionStatuses.filter(s => s.status === 'confirmed' || s.status === 'proposed').map(s => s.section)
-  );
-  const targetIdx = effectiveOrder.indexOf(section);
-  if (targetIdx > 0) {
-    const prev = effectiveOrder[targetIdx - 1];
-    if (!confirmed.has(prev)) {
-      return { section, proposed_content: currentContent ?? '', changes: [{ original: '', proposed: '', reasoning: `BLOCKED: Complete "${prev}" before "${section}". Order: ${effectiveOrder.join(' → ')}`, jd_requirements: [] }] };
-    }
+  const blockMessage = checkSectionOrder(section, ctx);
+  if (blockMessage) {
+    return { section, proposed_content: currentContent ?? '', changes: [{ original: '', proposed: '', reasoning: blockMessage, jd_requirements: [] }] };
   }
 
   const companyContext = ctx.companyResearch.company_name
@@ -101,8 +91,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const firstBlock = response.content[0];
-  const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
+  const rawText = extractResponseText(response);
 
   let proposedContent = currentContent;
   let changes: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }> = [];
@@ -117,22 +106,11 @@ Return ONLY valid JSON:
   }
 
   // Store in tailored sections
-  if (!ctx.tailoredSections) ctx.tailoredSections = {};
   (ctx.tailoredSections as Record<string, unknown>)[section] = proposedContent;
 
   // Update section status
-  const existing = ctx.sectionStatuses.find(s => s.section === section);
-  const jdReqs = changes.flatMap(c => c.jd_requirements);
-  if (existing) {
-    existing.status = 'proposed';
-    existing.jd_requirements_addressed = [...new Set(jdReqs)];
-  } else {
-    ctx.sectionStatuses.push({
-      section,
-      status: 'proposed',
-      jd_requirements_addressed: [...new Set(jdReqs)],
-    });
-  }
+  const jdReqs = [...new Set(changes.flatMap(c => c.jd_requirements))];
+  ctx.upsertSectionStatus(section, 'proposed', jdReqs);
 
   // Emit resume update (for backward compat)
   emit({
@@ -147,7 +125,7 @@ Return ONLY valid JSON:
     type: 'section_status',
     section,
     status: 'proposed',
-    jd_requirements_addressed: [...new Set(jdReqs)],
+    jd_requirements_addressed: jdReqs,
   });
 
   // Emit to right panel with diff data + WYSIWYG content

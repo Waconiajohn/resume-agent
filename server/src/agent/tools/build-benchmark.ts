@@ -1,4 +1,4 @@
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, BenchmarkCandidate } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -65,8 +65,7 @@ Create a detailed profile of exactly who this company wants to hire. Return ONLY
     ],
   });
 
-  const firstBlock = response.content[0];
-  const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
+  const rawText = extractResponseText(response);
 
   let benchmark: BenchmarkCandidate;
   const parsed = repairJSON<Record<string, unknown>>(rawText);

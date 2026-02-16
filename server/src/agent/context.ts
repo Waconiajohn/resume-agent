@@ -305,6 +305,32 @@ export class SessionContext {
     this.totalTokensUsed += count;
   }
 
+  /**
+   * Update a section's status, creating the entry if it doesn't exist.
+   * Returns the (updated or newly created) SectionStatus entry.
+   */
+  upsertSectionStatus(
+    section: string,
+    status: 'pending' | 'proposed' | 'revising' | 'confirmed',
+    jdRequirementsAddressed?: string[],
+  ): SectionStatus {
+    const existing = this.sectionStatuses.find(s => s.section === section);
+    if (existing) {
+      existing.status = status;
+      if (jdRequirementsAddressed !== undefined) {
+        existing.jd_requirements_addressed = jdRequirementsAddressed;
+      }
+      return existing;
+    }
+    const entry: SectionStatus = {
+      section,
+      status,
+      jd_requirements_addressed: jdRequirementsAddressed ?? [],
+    };
+    this.sectionStatuses.push(entry);
+    return entry;
+  }
+
   buildContextSummary(): string {
     const parts: string[] = [];
 

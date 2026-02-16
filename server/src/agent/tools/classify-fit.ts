@@ -1,4 +1,4 @@
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, FitClassification, RequirementFit } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -59,8 +59,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const firstBlock = response.content[0];
-  const text = firstBlock?.type === 'text' ? firstBlock.text : '';
+  const text = extractResponseText(response);
 
   let reqs: RequirementFit[] = [];
   const parsed = repairJSON<{ requirements?: Array<Record<string, string>> }>(text);

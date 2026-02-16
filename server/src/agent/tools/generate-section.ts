@@ -1,8 +1,9 @@
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
-import { SECTION_GUIDANCE, SECTION_ORDER_KEYS } from '../resume-guide.js';
+import { SECTION_GUIDANCE } from '../resume-guide.js';
+import { checkSectionOrder } from './section-order.js';
 
 export async function executeGenerateSection(
   input: Record<string, unknown>,
@@ -15,20 +16,9 @@ export async function executeGenerateSection(
   const instructions = input.instructions as string;
 
   // Section order enforcement
-  const selected = ctx.designChoices.find(d => d.selected);
-  const effectiveOrder: string[] = selected?.section_order?.length
-    ? selected.section_order
-    : [...SECTION_ORDER_KEYS];
-
-  const confirmed = new Set(
-    ctx.sectionStatuses.filter(s => s.status === 'confirmed' || s.status === 'proposed').map(s => s.section)
-  );
-  const targetIdx = effectiveOrder.indexOf(section);
-  if (targetIdx > 0) {
-    const prev = effectiveOrder[targetIdx - 1];
-    if (!confirmed.has(prev)) {
-      return { section, content: currentContent ?? '', changes_made: [`BLOCKED: Complete "${prev}" before "${section}". Order: ${effectiveOrder.join(' → ')}`] };
-    }
+  const blockMessage = checkSectionOrder(section, ctx);
+  if (blockMessage) {
+    return { section, content: currentContent ?? '', changes_made: [blockMessage] };
   }
 
   const companyContext = ctx.companyResearch.company_name
@@ -87,8 +77,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const firstBlock = response.content[0];
-  const rawText = firstBlock?.type === 'text' ? firstBlock.text : '';
+  const rawText = extractResponseText(response);
 
   let content = currentContent;
   let changesMade: string[] = [];
@@ -116,20 +105,10 @@ Return ONLY valid JSON:
     changesMade = ['Section rewritten (raw format)'];
   }
 
-  if (!ctx.tailoredSections) ctx.tailoredSections = {};
   (ctx.tailoredSections as Record<string, unknown>)[section] = content;
 
   // Update section status so ordering enforcement allows the next section
-  const existing = ctx.sectionStatuses.find(s => s.section === section);
-  if (existing) {
-    existing.status = 'proposed';
-  } else {
-    ctx.sectionStatuses.push({
-      section,
-      status: 'proposed',
-      jd_requirements_addressed: [],
-    });
-  }
+  ctx.upsertSectionStatus(section, 'proposed');
 
   emit({
     type: 'resume_update',

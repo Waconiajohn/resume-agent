@@ -1,4 +1,4 @@
-import { anthropic, MODEL } from '../../lib/anthropic.js';
+import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, JDAnalysis } from '../context.js';
 
@@ -41,8 +41,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const firstBlock = response.content[0];
-  const text = firstBlock?.type === 'text' ? firstBlock.text : '';
+  const text = extractResponseText(response);
 
   let analysis: JDAnalysis;
   const parsed = repairJSON<Record<string, unknown>>(text);
