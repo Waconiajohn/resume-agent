@@ -47,7 +47,7 @@ export async function runAgentLoop(
         return;
       }
 
-      if (VALID_PHASES.has(nextPhase) && nextPhase !== 'complete') {
+      if (VALID_PHASES.has(nextPhase)) {
         ctx.setPhase(nextPhase as CoachPhase);
       }
       emit({
@@ -456,21 +456,20 @@ function summarizeToolResult(toolName: string, result: unknown): string {
     }
     case 'analyze_jd': {
       const analysis = r.analysis as Record<string, unknown[]> | undefined;
-      const count = analysis?.must_haves?.length ?? 0;
-      return `Found ${count} key requirements`;
+      return `Found ${analysis?.must_haves?.length ?? 0} key requirements`;
     }
     case 'classify_fit': {
       const cls = r.classification as Record<string, number> | undefined;
       return `${cls?.strong_count ?? 0} strong, ${cls?.partial_count ?? 0} partial, ${cls?.gap_count ?? 0} gaps`;
     }
     case 'generate_section':
-      return `Updated ${(r as Record<string, string>).section ?? 'section'}`;
+      return `Updated ${r.section ?? 'section'}`;
     case 'adversarial_review':
-      return (r as Record<string, boolean>).pass ? 'Resume passed review' : 'Issues found';
+      return r.pass ? 'Resume passed review' : 'Issues found';
     case 'save_checkpoint':
       return 'Progress saved';
     case 'update_master_resume':
-      return `Applied ${(r as Record<string, number>).changes_applied ?? 0} changes`;
+      return `Applied ${r.changes_applied ?? 0} changes`;
     case 'create_master_resume':
       return 'Resume created and loaded';
     case 'export_resume':
@@ -486,19 +485,19 @@ function summarizeToolResult(toolName: string, result: unknown): string {
     case 'build_benchmark':
       return 'Benchmark candidate profile built';
     case 'update_requirement_status':
-      return `Requirement ${(r as Record<string, string>).new_classification ?? 'updated'}`;
+      return `Requirement ${r.new_classification ?? 'updated'}`;
     case 'emit_score':
-      return `Score: ${(r as Record<string, number>).score ?? 0}`;
+      return `Score: ${r.score ?? 0}`;
     case 'propose_section_edit':
-      return `Proposed changes for ${(r as Record<string, string>).section ?? 'section'}`;
+      return `Proposed changes for ${r.section ?? 'section'}`;
     case 'confirm_section':
-      return `${(r as Record<string, string>).section ?? 'Section'} confirmed`;
+      return `${r.section ?? 'Section'} confirmed`;
     case 'humanize_check':
-      return `Authenticity: ${(r as Record<string, number>).authenticity_score ?? 0}%`;
+      return `Authenticity: ${r.authenticity_score ?? 0}%`;
     case 'ats_check':
-      return `ATS score: ${(r as Record<string, number>).ats_score ?? 0}%`;
+      return `ATS score: ${r.ats_score ?? 0}%`;
     case 'generate_cover_letter_section':
-      return `${(r as Record<string, string>).paragraph_type ?? 'Paragraph'} drafted`;
+      return `${r.paragraph_type ?? 'Paragraph'} drafted`;
     default:
       return 'Done';
   }

@@ -445,16 +445,10 @@ export class SessionContext {
       }));
 
       if (nextMsg?.role === 'user' && Array.isArray(nextMsg.content)) {
-        // Append synthetic results to existing user message
+        // Append synthetic results to existing user message with tool_results
         nextMsg.content = [...(nextMsg.content as ContentBlock[]), ...syntheticResults];
-      } else if (nextMsg?.role === 'user') {
-        // Next message is a plain text user message — insert synthetic results before it
-        this.messages.splice(i + 1, 0, {
-          role: 'user',
-          content: syntheticResults,
-        });
       } else {
-        // No next message or next is assistant — insert a new user message
+        // No matching tool_result container — insert a new user message
         this.messages.splice(i + 1, 0, {
           role: 'user',
           content: syntheticResults,
@@ -481,10 +475,9 @@ export class SessionContext {
       logger.info({ sessionId: this.sessionId, lastInputTokens: this.lastInputTokens, keepLast }, 'Moderate truncation');
     }
 
-    const KEEP_LAST = keepLast;
     const total = this.messages.length;
 
-    if (total <= KEEP_FIRST + KEEP_LAST) {
+    if (total <= KEEP_FIRST + keepLast) {
       return this.messages;
     }
 
@@ -497,25 +490,21 @@ export class SessionContext {
       );
       if (hasToolUse) {
         // Include the next message (which should be the tool_result)
-        headEnd = Math.min(headEnd + 1, total - KEEP_LAST);
+        headEnd = Math.min(headEnd + 1, total - keepLast);
       }
     }
 
     // Determine safe tail boundary: don't start on a tool_result message
-    let tailStart = total - KEEP_LAST;
-    while (tailStart < total) {
-      const msg = this.messages[tailStart];
-      if (msg?.role === 'user' && Array.isArray(msg.content)) {
-        const hasToolResult = msg.content.some(
-          (b: ContentBlock) => b.type === 'tool_result',
-        );
-        if (hasToolResult) {
-          // Back up to include the preceding assistant tool_use message
-          tailStart = Math.max(tailStart - 1, headEnd);
-          break;
-        }
+    let tailStart = total - keepLast;
+    const tailMsg = this.messages[tailStart];
+    if (tailMsg?.role === 'user' && Array.isArray(tailMsg.content)) {
+      const hasToolResult = tailMsg.content.some(
+        (b: ContentBlock) => b.type === 'tool_result',
+      );
+      if (hasToolResult) {
+        // Back up to include the preceding assistant tool_use message
+        tailStart = Math.max(tailStart - 1, headEnd);
       }
-      break;
     }
 
     // If boundaries overlap, just return all messages

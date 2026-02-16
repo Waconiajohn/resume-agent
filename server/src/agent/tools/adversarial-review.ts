@@ -82,12 +82,19 @@ Return ONLY valid JSON:
   const firstBlock = response.content[0];
   const text = firstBlock?.type === 'text' ? firstBlock.text : '';
 
-  let result = {
+  let result: {
+    overall_assessment: string;
+    risk_flags: Array<{ flag: string; severity: string; recommendation: string }>;
+    pass: boolean;
+    age_bias_risks: string[];
+    checklist_scores: Record<string, number>;
+    checklist_total: number;
+  } = {
     overall_assessment: 'Unable to complete review',
-    risk_flags: [] as Array<{ flag: string; severity: string; recommendation: string }>,
+    risk_flags: [],
     pass: false,
-    age_bias_risks: [] as string[],
-    checklist_scores: {} as Record<string, number>,
+    age_bias_risks: [],
+    checklist_scores: {},
     checklist_total: 0,
   };
 
@@ -97,8 +104,8 @@ Return ONLY valid JSON:
     const rawScores = (parsed.checklist_scores as Record<string, number>) ?? {};
     const labeledScores: Record<string, number> = {};
     for (const [key, score] of Object.entries(rawScores)) {
-      const idx = parseInt(key) - 1;
-      const label = Number.isNaN(idx) || idx < 0 ? key : (CHECKLIST_LABELS[idx] ?? key);
+      const idx = Number(key) - 1;
+      const label = idx >= 0 && idx < CHECKLIST_LABELS.length ? CHECKLIST_LABELS[idx] : key;
       labeledScores[label] = score as number;
     }
 

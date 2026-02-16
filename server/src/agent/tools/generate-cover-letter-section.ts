@@ -73,27 +73,25 @@ Return ONLY valid JSON:
     reasoning = 'Generated paragraph';
   }
 
+  // Upsert a paragraph entry by type, inserting if not found
+  function upsertParagraph(type: string, paragraphContent: string, status: 'draft' | 'confirmed') {
+    const idx = ctx.coverLetterParagraphs.findIndex(pp => pp.type === type);
+    const entry = { type, content: paragraphContent, status };
+    if (idx >= 0) {
+      ctx.coverLetterParagraphs[idx] = entry;
+    } else {
+      ctx.coverLetterParagraphs.push(entry);
+    }
+  }
+
   // Sync previous_paragraphs into context accumulator
-  if (previousParagraphs.length > 0) {
-    const types = ['opening', 'body_1', 'body_2', 'closing'];
-    previousParagraphs.forEach((p, i) => {
-      const type = types[i] ?? `body_${i}`;
-      const existing = ctx.coverLetterParagraphs.findIndex(pp => pp.type === type);
-      if (existing >= 0) {
-        ctx.coverLetterParagraphs[existing] = { type, content: p, status: 'confirmed' };
-      } else {
-        ctx.coverLetterParagraphs.push({ type, content: p, status: 'confirmed' });
-      }
-    });
+  const PARAGRAPH_TYPES = ['opening', 'body_1', 'body_2', 'closing'];
+  for (let i = 0; i < previousParagraphs.length; i++) {
+    upsertParagraph(PARAGRAPH_TYPES[i] ?? `body_${i}`, previousParagraphs[i], 'confirmed');
   }
 
   // Upsert current paragraph
-  const existingIdx = ctx.coverLetterParagraphs.findIndex(pp => pp.type === paragraphType);
-  if (existingIdx >= 0) {
-    ctx.coverLetterParagraphs[existingIdx] = { type: paragraphType, content, status: 'draft' };
-  } else {
-    ctx.coverLetterParagraphs.push({ type: paragraphType, content, status: 'draft' });
-  }
+  upsertParagraph(paragraphType, content, 'draft');
 
   // Emit ALL accumulated paragraphs to right panel
   emit({

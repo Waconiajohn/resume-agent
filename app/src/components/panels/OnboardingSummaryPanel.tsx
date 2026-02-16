@@ -23,27 +23,27 @@ function normalizeData(data: OnboardingSummaryData & Record<string, unknown>) {
   const cards: StatCard[] = [
     {
       label: 'Years Experience',
-      value: data.years_of_experience ?? stats.years_of_experience as string | number | undefined,
+      value: data.years_of_experience ?? (stats.years_of_experience as string | number | undefined),
       icon: TrendingUp,
     },
     {
       label: 'Companies',
-      value: data.companies_count ?? stats.total_companies as string | number | undefined,
+      value: data.companies_count ?? (stats.total_companies as string | number | undefined),
       icon: Briefcase,
     },
     {
       label: 'Skills Identified',
-      value: data.skills_count ?? stats.total_skills as string | number | undefined,
+      value: data.skills_count ?? (stats.total_skills as string | number | undefined),
       icon: Award,
     },
     {
       label: 'Leadership Span',
-      value: data.leadership_span ?? stats.team_sizes_led as string | undefined,
+      value: data.leadership_span ?? (stats.team_sizes_led as string | undefined),
       icon: Users,
     },
     {
       label: 'Budget Scope',
-      value: data.budget_responsibility ?? stats.budget_experience as string | undefined,
+      value: data.budget_responsibility ?? (stats.budget_experience as string | undefined),
       icon: DollarSign,
     },
   ];
