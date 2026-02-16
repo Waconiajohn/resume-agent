@@ -16,15 +16,18 @@ function sanitizeFilenameSegment(s: string): string {
 
 function buildFilename(contactInfo?: ContactInfo, companyName?: string, suffix?: string, ext = 'docx'): string {
   const parts: string[] = [];
-  if (contactInfo?.name) {
-    const names = contactInfo.name.trim().split(/\s+/);
+  const name = contactInfo?.name?.trim();
+  if (name) {
+    const names = name.split(/\s+/);
     parts.push(names.map(n => sanitizeFilenameSegment(n)).filter(Boolean).join('_'));
   }
   if (companyName) {
     parts.push(sanitizeFilenameSegment(companyName));
   }
   parts.push(suffix ?? 'Resume');
-  return `${parts.join('_')}.${ext}`;
+  // Ensure filename doesn't start with underscore when name is missing
+  const filename = parts.filter(Boolean).join('_');
+  return `${filename}.${ext}`;
 }
 
 // ---------------------------------------------------------------------------

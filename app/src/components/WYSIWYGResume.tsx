@@ -6,6 +6,11 @@ interface WYSIWYGResumeProps {
 
 const DEFAULT_SECTION_ORDER = ['summary', 'selected_accomplishments', 'skills', 'experience', 'education', 'certifications'];
 
+/** Strip HTML tags to prevent XSS if content is ever rendered with innerHTML in future refactors. */
+function stripHtml(text: string): string {
+  return text.replace(/<[^>]*>/g, '');
+}
+
 function ContactHeader({ resume }: { resume: FinalResume }) {
   const ci = resume.contact_info;
   if (!ci?.name) return null;
@@ -34,7 +39,7 @@ function SummarySection({ resume }: { resume: FinalResume }) {
       <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-700">
         Professional Summary
       </h2>
-      <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">{resume.summary}</p>
+      <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">{stripHtml(resume.summary)}</p>
     </section>
   );
 }
@@ -46,7 +51,7 @@ function AccomplishmentsSection({ resume }: { resume: FinalResume }) {
       <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-700">
         Selected Accomplishments
       </h2>
-      <div className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">{resume.selected_accomplishments}</div>
+      <div className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">{stripHtml(resume.selected_accomplishments)}</div>
     </section>
   );
 }
@@ -106,7 +111,7 @@ function ExperienceSection({ resume }: { resume: FinalResume }) {
               {exp.bullets?.length > 0 && (
                 <ul className="mt-1.5 space-y-0.5 pl-4">
                   {exp.bullets.map((b, j) => (
-                    <li key={j} className="text-sm text-gray-800 list-disc">{b.text}</li>
+                    <li key={j} className="text-sm text-gray-800 list-disc">{stripHtml(b.text)}</li>
                   ))}
                 </ul>
               )}

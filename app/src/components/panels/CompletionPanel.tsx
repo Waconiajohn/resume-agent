@@ -157,6 +157,13 @@ export function CompletionPanel({
           </div>
         )}
 
+        {/* Missing contact info warning */}
+        {resume && !resume.contact_info?.name && (
+          <div className="rounded-lg bg-amber-500/20 border border-amber-500/30 px-3 py-2 text-xs text-amber-300">
+            Contact name is missing. Your exports will not include a name header.
+          </div>
+        )}
+
         {/* Resume Export */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">

@@ -64,12 +64,20 @@ export async function queryWithFallback(
       { error: error instanceof Error ? error.message : String(error) },
       'Perplexity API unavailable, falling back to Claude',
     );
-    const response = await anthropic.messages.create({
+
+    // Race the Claude fallback against a 30s timeout to avoid indefinite hangs
+    const FALLBACK_TIMEOUT_MS = 30_000;
+    const claudePromise = anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 4096,
       ...(claudeOptions?.system ? { system: claudeOptions.system } : {}),
       messages: [{ role: 'user', content: claudeOptions?.prompt ?? messages[messages.length - 1].content }],
     });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Claude fallback timed out after 30s')), FALLBACK_TIMEOUT_MS),
+    );
+
+    const response = await Promise.race([claudePromise, timeoutPromise]);
     return extractResponseText(response);
   }
 }

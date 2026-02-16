@@ -137,10 +137,25 @@ sessions.get('/:id/sse', async (c) => {
       });
     }
 
+    let heartbeatFailed = false;
     const heartbeat = setInterval(() => {
       stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
-        logger.warn({ sessionId }, 'SSE heartbeat failed');
+        logger.warn({ sessionId }, 'SSE heartbeat failed — cleaning up zombie connection');
         clearInterval(heartbeat);
+        heartbeatFailed = true;
+        // Trigger connection cleanup for zombie connections
+        const emitters = sseConnections.get(sessionId);
+        if (emitters) {
+          const idx = emitters.indexOf(emitter);
+          if (idx !== -1) emitters.splice(idx, 1);
+          if (emitters.length === 0) sseConnections.delete(sessionId);
+        }
+        const count = sseConnectionsByUser.get(user.id) ?? 1;
+        if (count <= 1) {
+          sseConnectionsByUser.delete(user.id);
+        } else {
+          sseConnectionsByUser.set(user.id, count - 1);
+        }
       });
     }, 15000);
 
@@ -152,18 +167,21 @@ sessions.get('/:id/sse', async (c) => {
       });
     } finally {
       clearInterval(heartbeat);
-      const emitters = sseConnections.get(sessionId);
-      if (emitters) {
-        const idx = emitters.indexOf(emitter);
-        if (idx !== -1) emitters.splice(idx, 1);
-        if (emitters.length === 0) sseConnections.delete(sessionId);
-      }
-      // Decrement per-user connection count
-      const count = sseConnectionsByUser.get(user.id) ?? 1;
-      if (count <= 1) {
-        sseConnectionsByUser.delete(user.id);
-      } else {
-        sseConnectionsByUser.set(user.id, count - 1);
+      // Only clean up if heartbeat failure hasn't already done it
+      if (!heartbeatFailed) {
+        const emitters = sseConnections.get(sessionId);
+        if (emitters) {
+          const idx = emitters.indexOf(emitter);
+          if (idx !== -1) emitters.splice(idx, 1);
+          if (emitters.length === 0) sseConnections.delete(sessionId);
+        }
+        // Decrement per-user connection count
+        const count = sseConnectionsByUser.get(user.id) ?? 1;
+        if (count <= 1) {
+          sseConnectionsByUser.delete(user.id);
+        } else {
+          sseConnectionsByUser.set(user.id, count - 1);
+        }
       }
     }
   });
@@ -222,6 +240,9 @@ sessions.get('/:id', async (c) => {
   return c.json({ session: data });
 });
 
+// Track in-flight processing per session to prevent concurrent submissions
+const processingSessions = new Set<string>();
+
 // POST /sessions/:id/messages — Send a message to the agent
 // Rate limit: 20 messages per user per minute
 sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
@@ -236,6 +257,11 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   if (content.length > 50_000) {
     return c.json({ error: 'Message too long' }, 400);
+  }
+
+  // Reject concurrent submissions for the same session
+  if (processingSessions.has(sessionId)) {
+    return c.json({ error: 'A message is already being processed. Please wait.', code: 'PROCESSING' }, 409);
   }
 
   if (idempotency_key) {
@@ -290,6 +316,8 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   const log = createSessionLogger(sessionId);
 
+  processingSessions.add(sessionId);
+
   withSessionLock(sessionId, async () => {
     try {
       await runAgentLoop(ctx, content, emit);
@@ -304,6 +332,11 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
       const result = await saveSessionCheckpoint(ctx);
       if (!result.success) {
         log.error({ error: result.error }, 'Failed to save session checkpoint');
+        emit({
+          type: 'error',
+          message: 'Failed to save your progress. Your message was processed but changes may not persist. Please retry.',
+          recoverable: true,
+        });
       }
     }
   }).catch((error) => {
@@ -313,6 +346,8 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
       message: 'Failed to process message — please try again.',
       recoverable: true,
     });
+  }).finally(() => {
+    processingSessions.delete(sessionId);
   });
 
   return c.json({ status: 'processing' });

@@ -5,6 +5,7 @@ import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
 import { supabaseAdmin } from './lib/supabase.js';
+import { releaseAllLocks } from './lib/session-lock.js';
 import logger from './lib/logger.js';
 
 const app = new Hono();
@@ -64,6 +65,9 @@ function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info({ signal }, 'Graceful shutdown initiated');
+
+  // Release all session locks so users aren't blocked after restart
+  releaseAllLocks().catch(() => {});
 
   // Close HTTP server (stop accepting new connections)
   server.close(() => {

@@ -3,6 +3,7 @@ import logger from './logger.js';
 
 const POLL_INTERVAL_MS = 500;
 const MAX_WAIT_MS = 30_000;
+const LOCK_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes (reduced from 6 to minimize crash-induced wait)
 
 /**
  * Acquires a distributed session lock backed by the session_locks DB table.
@@ -21,7 +22,7 @@ async function acquireLock(sessionId: string): Promise<boolean> {
     .insert({
       session_id: sessionId,
       locked_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 6 * 60 * 1000).toISOString(),
+      expires_at: new Date(Date.now() + LOCK_EXPIRY_MS).toISOString(),
     });
 
   if (!error) return true;
@@ -50,15 +51,42 @@ async function releaseLock(sessionId: string): Promise<void> {
 }
 
 /**
+ * Release all session locks on this server instance (called during shutdown).
+ */
+export async function releaseAllLocks(): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('session_locks')
+    .delete()
+    .neq('session_id', '');
+
+  if (error) {
+    logger.error({ error: error.message }, 'Failed to release all session locks on shutdown');
+  } else {
+    logger.info('Released all session locks');
+  }
+}
+
+/**
  * Waits until the session lock can be acquired, polling every 500ms.
  * Throws if the lock cannot be acquired within MAX_WAIT_MS.
+ * Fails fast on consecutive DB errors to avoid masking outages.
  */
 async function waitForLock(sessionId: string): Promise<void> {
   const deadline = Date.now() + MAX_WAIT_MS;
+  let consecutiveErrors = 0;
 
   while (Date.now() < deadline) {
-    const acquired = await acquireLock(sessionId);
-    if (acquired) return;
+    try {
+      const acquired = await acquireLock(sessionId);
+      if (acquired) return;
+      consecutiveErrors = 0;
+    } catch (err) {
+      consecutiveErrors++;
+      logger.error({ sessionId, error: err instanceof Error ? err.message : err, consecutiveErrors }, 'Lock acquisition DB error');
+      if (consecutiveErrors >= 3) {
+        throw new Error(`Database unavailable after ${consecutiveErrors} consecutive lock errors`);
+      }
+    }
 
     logger.debug({ sessionId }, 'Session is locked, waiting...');
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
