@@ -11,7 +11,8 @@ import type { CoverLetterParagraph } from '@/types/panels';
 // ---------------------------------------------------------------------------
 
 function sanitizeFilenameSegment(s: string): string {
-  return s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  // Preserve Unicode letters/numbers (accented chars like é, ñ, ü)
+  return s.replace(/[^\p{L}\p{N}]/gu, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
 function buildFilename(contactInfo?: ContactInfo, companyName?: string, suffix?: string, ext = 'docx'): string {
@@ -240,8 +241,10 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     const paras = [sectionHeading('Selected Accomplishments')];
     const lines = resume.selected_accomplishments.split('\n').filter(l => l.trim());
     for (const line of lines) {
-      const clean = line.replace(/^\s*[•\-*]\s*/, '');
-      paras.push(bulletParagraph(clean));
+      const clean = line.replace(/^\s*[•\-*]\s*/, '').trim();
+      if (clean) {
+        paras.push(bulletParagraph(clean));
+      }
     }
     return paras;
   },
@@ -298,7 +301,9 @@ const sectionRenderers: Record<string, SectionRenderer> = {
         }),
       );
       for (const bullet of exp.bullets ?? []) {
-        paras.push(bulletParagraph(bullet.text));
+        if (bullet.text?.trim()) {
+          paras.push(bulletParagraph(bullet.text));
+        }
       }
     }
     return paras;
@@ -507,8 +512,9 @@ export async function exportCoverLetterDocx(
     }),
   );
 
-  // Body paragraphs
+  // Body paragraphs (skip empty)
   for (const para of paragraphs) {
+    if (!para.content?.trim()) continue;
     children.push(
       new Paragraph({
         style: 'BodyText',

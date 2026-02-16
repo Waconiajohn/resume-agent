@@ -16,7 +16,8 @@ interface CompletionPanelProps {
 }
 
 function sanitizeFilenameSegment(s: string): string {
-  return s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  // Preserve Unicode letters/numbers (accented chars like é, ñ, ü)
+  return s.replace(/[^\p{L}\p{N}]/gu, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
 function buildFilename(contactInfo?: FinalResume['contact_info'], companyName?: string, suffix?: string, ext = 'txt'): string {
@@ -111,8 +112,8 @@ export function CompletionPanel({
     lines.push(salutation);
     lines.push('');
 
-    // Body
-    lines.push(coverLetterParagraphs.map(p => p.content).join('\n\n'));
+    // Body (skip empty paragraphs)
+    lines.push(coverLetterParagraphs.filter(p => p.content?.trim()).map(p => p.content).join('\n\n'));
     lines.push('');
 
     // Signature

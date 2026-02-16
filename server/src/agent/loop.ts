@@ -242,7 +242,7 @@ export async function runAgentLoop(
             };
 
             // Quality gate validation — soft gates that tell the AI what to fix
-            const gateError = validatePhaseGate(gateInput.current_phase, gateInput.next_phase, ctx, log);
+            const gateError = validatePhaseGate(gateInput.current_phase, gateInput.next_phase, ctx, log, emit);
             if (gateError) {
               toolResults.push({
                 type: 'tool_result',
@@ -355,7 +355,7 @@ function getToolDescription(toolName: string): string {
 
 const VALID_PHASES = new Set(['onboarding', 'deep_research', 'gap_analysis', 'resume_design', 'section_craft', 'quality_review', 'cover_letter', 'complete']);
 
-function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: SessionContext, log: ReturnType<typeof createSessionLogger>): string | null {
+function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: SessionContext, log: ReturnType<typeof createSessionLogger>, emit: SSEEmitter): string | null {
   // Validate nextPhase is a known phase
   if (!VALID_PHASES.has(nextPhase)) {
     return `Cannot advance: "${nextPhase}" is not a valid phase. Valid phases: ${[...VALID_PHASES].join(', ')}`;
@@ -430,6 +430,12 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
     if (biasRisks.length > 0) {
       log.warn({ biasRisks, count: biasRisks.length }, 'Age-bias risks noted but allowing advancement');
+      // Surface to user so they're aware of potential bias indicators
+      emit({
+        type: 'transparency',
+        message: `Note: ${biasRisks.length} potential age-bias indicator(s) detected in your resume. The agent has been advised to address these.`,
+        phase: ctx.currentPhase,
+      });
     }
   }
 

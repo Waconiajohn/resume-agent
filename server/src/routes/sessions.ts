@@ -33,6 +33,11 @@ setInterval(() => {
   }
 }, 60_000);
 
+// Rate limit SSE connections: max 10 new connections per user per minute
+const sseConnectionTimestamps = new Map<string, number[]>();
+const SSE_RATE_WINDOW_MS = 60_000;
+const SSE_RATE_MAX = 10;
+
 // SSE endpoint — accepts Authorization header (preferred) or query param (deprecated fallback)
 sessions.get('/:id/sse', async (c) => {
   const sessionId = c.req.param('id');
@@ -68,6 +73,16 @@ sessions.get('/:id/sse', async (c) => {
   if (error || !session) {
     return c.json({ error: 'Session not found' }, 404);
   }
+
+  // SSE connection rate limit: prevent rapid reconnection floods
+  const now = Date.now();
+  const timestamps = sseConnectionTimestamps.get(user.id) ?? [];
+  const recentTimestamps = timestamps.filter(t => now - t < SSE_RATE_WINDOW_MS);
+  if (recentTimestamps.length >= SSE_RATE_MAX) {
+    return c.json({ error: 'Too many connection attempts. Please wait a moment.' }, 429);
+  }
+  recentTimestamps.push(now);
+  sseConnectionTimestamps.set(user.id, recentTimestamps);
 
   // Enforce per-user SSE connection limit
   const currentUserConns = sseConnectionsByUser.get(user.id) ?? 0;
@@ -122,12 +137,18 @@ sessions.get('/:id/sse', async (c) => {
       }
     }
 
-    if (chatMessages.length > 0 || typedSession.current_phase !== 'onboarding') {
+    // Cap restored messages to the 20 most recent to avoid huge SSE payloads
+    const MAX_RESTORE_MESSAGES = 20;
+    const restoredMessages = chatMessages.length > MAX_RESTORE_MESSAGES
+      ? chatMessages.slice(-MAX_RESTORE_MESSAGES)
+      : chatMessages;
+
+    if (restoredMessages.length > 0 || typedSession.current_phase !== 'onboarding') {
       await stream.writeSSE({
         event: 'session_restore',
         data: JSON.stringify({
           type: 'session_restore',
-          messages: chatMessages,
+          messages: restoredMessages,
           current_phase: typedSession.current_phase,
           pending_tool_call_id: typedSession.pending_tool_call_id,
           pending_phase_transition: typedSession.pending_phase_transition,
@@ -157,7 +178,7 @@ sessions.get('/:id/sse', async (c) => {
           sseConnectionsByUser.set(user.id, count - 1);
         }
       });
-    }, 15000);
+    }, 10_000);
 
     try {
       await new Promise<void>((resolve) => {

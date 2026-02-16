@@ -1,6 +1,7 @@
 import type { SessionContext } from './context.js';
 import type { SSEEmitter } from './loop.js';
 import { toolSchemas } from './tool-schemas.js';
+import { createSessionLogger } from '../lib/logger.js';
 import { executeResearchCompany } from './tools/research-company.js';
 import { executeAnalyzeJD } from './tools/analyze-jd.js';
 import { executeClassifyFit } from './tools/classify-fit.js';
@@ -26,12 +27,15 @@ export async function executeToolCall(
   ctx: SessionContext,
   emit: SSEEmitter,
 ): Promise<unknown> {
+  const log = createSessionLogger(ctx.sessionId);
+
   // Validate tool input with Zod schema if available
   const schema = toolSchemas[toolName];
   if (schema) {
     const result = schema.safeParse(input);
     if (!result.success) {
       const issues = result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+      log.warn({ tool: toolName, issues, input: JSON.stringify(input).slice(0, 500) }, 'Tool input validation failed');
       return { error: `Invalid input for ${toolName}: ${issues}` };
     }
   }

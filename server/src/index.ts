@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { requestIdMiddleware } from './middleware/request-id.js';
-import { sessions } from './routes/sessions.js';
+import { sessions, sseConnections } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
@@ -10,12 +10,15 @@ import logger from './lib/logger.js';
 
 const app = new Hono();
 
+const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
+  : isProduction
+    ? [] // Block all CORS in production if not configured
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
-if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
-  logger.warn('ALLOWED_ORIGINS not set in production — falling back to localhost origins');
+if (isProduction && !process.env.ALLOWED_ORIGINS) {
+  logger.error('ALLOWED_ORIGINS not set in production — all cross-origin requests will be blocked');
 }
 
 app.use('*', requestIdMiddleware);
@@ -37,6 +40,23 @@ app.get('/health', async (c) => {
 
   const status = dbOk && process.env.ANTHROPIC_API_KEY ? 'ok' : 'degraded';
   return c.json({ status, timestamp: new Date().toISOString() });
+});
+
+const startTime = Date.now();
+
+app.get('/metrics', (c) => {
+  const memUsage = process.memoryUsage();
+  return c.json({
+    uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
+    active_sse_sessions: sseConnections.size,
+    total_sse_emitters: [...sseConnections.values()].reduce((sum, arr) => sum + arr.length, 0),
+    memory: {
+      rss_mb: Math.round(memUsage.rss / 1024 / 1024),
+      heap_used_mb: Math.round(memUsage.heapUsed / 1024 / 1024),
+      heap_total_mb: Math.round(memUsage.heapTotal / 1024 / 1024),
+    },
+    node_version: process.version,
+  });
 });
 
 app.route('/api/sessions', sessions);
