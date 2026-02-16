@@ -1,6 +1,7 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import type { FinalResume } from '@/types/resume';
+import type { CoverLetterParagraph } from '@/types/panels';
 
 function sectionHeading(text: string): Paragraph {
   return new Paragraph({
@@ -146,4 +147,72 @@ export async function exportDocx(resume: FinalResume): Promise<void> {
 
   const blob = await Packer.toBlob(doc);
   saveAs(blob, 'tailored-resume.docx');
+}
+
+export async function exportCoverLetterDocx(
+  paragraphs: CoverLetterParagraph[],
+  companyName?: string,
+  roleTitle?: string,
+): Promise<void> {
+  const children: Paragraph[] = [];
+
+  // Date
+  children.push(
+    new Paragraph({
+      spacing: { after: 200 },
+      children: [
+        new TextRun({
+          text: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          size: 20,
+          font: 'Calibri',
+          color: '666666',
+        }),
+      ],
+    }),
+  );
+
+  // Recipient
+  if (companyName) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [new TextRun({ text: companyName, size: 20, font: 'Calibri' })],
+      }),
+    );
+  }
+  if (roleTitle) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 200 },
+        children: [
+          new TextRun({ text: `Re: ${roleTitle}`, size: 20, font: 'Calibri', italics: true }),
+        ],
+      }),
+    );
+  }
+
+  // Body paragraphs
+  for (const para of paragraphs) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 160 },
+        alignment: AlignmentType.JUSTIFIED,
+        children: [new TextRun({ text: para.content, size: 20, font: 'Calibri' })],
+      }),
+    );
+  }
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: { margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } },
+        },
+        children,
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, 'cover-letter.docx');
 }

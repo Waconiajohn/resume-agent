@@ -171,6 +171,19 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
           </GlassCard>
         </div>
 
+        {/* Legend */}
+        <div className="flex items-center gap-4 px-1">
+          {Object.entries(classificationConfig).map(([key, config]) => {
+            const Icon = config.icon;
+            return (
+              <div key={key} className="flex items-center gap-1.5">
+                <Icon className={`h-3 w-3 ${config.color}`} />
+                <span className="text-[10px] text-white/50">{config.label}</span>
+              </div>
+            );
+          })}
+        </div>
+
         {/* Requirement list */}
         <div className="space-y-2">
           {requirements.map((req, i) => (

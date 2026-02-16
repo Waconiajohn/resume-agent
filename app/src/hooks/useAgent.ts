@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { PanelType, PanelData } from '@/types/panels';
+import type { PanelType, PanelData, CoverLetterParagraph } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -31,6 +31,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [panelType, setPanelType] = useState<PanelType | null>(null);
   const [panelData, setPanelData] = useState<PanelData | null>(null);
+  const [coverLetterParagraphs, setCoverLetterParagraphs] = useState<CoverLetterParagraph[]>([]);
+  const [coverLetterCompany, setCoverLetterCompany] = useState<string | undefined>();
+  const [coverLetterRole, setCoverLetterRole] = useState<string | undefined>();
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageIdRef = useRef(0);
 
@@ -274,9 +277,49 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'right_panel_update': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  setPanelType(data.panel_type as PanelType);
-                  // Tag panel data with type for discriminated union
-                  setPanelData({ type: data.panel_type, ...data.data } as PanelData);
+                  const incomingType = data.panel_type as PanelType;
+                  setPanelType(incomingType);
+
+                  // Merge strategies for specific panel types
+                  setPanelData((prev) => {
+                    const incoming = { type: incomingType, ...data.data } as PanelData;
+
+                    // Merge onboarding_summary to preserve stat cards
+                    if (incomingType === 'onboarding_summary' && prev?.type === 'onboarding_summary') {
+                      return { ...prev, ...incoming } as PanelData;
+                    }
+
+                    // Accumulate live_resume changes for same section
+                    if (incomingType === 'live_resume' && prev?.type === 'live_resume') {
+                      const prevData = prev as PanelData & { active_section?: string; changes?: unknown[] };
+                      const incomingData = incoming as PanelData & { active_section?: string; changes?: unknown[] };
+                      if (prevData.active_section === incomingData.active_section && incomingData.changes) {
+                        const existingChanges = prevData.changes ?? [];
+                        const newChanges = incomingData.changes ?? [];
+                        // Deduplicate by original text
+                        const existingOriginals = new Set(
+                          (existingChanges as Array<{ original?: string }>).map(c => c.original ?? '')
+                        );
+                        const merged = [
+                          ...existingChanges,
+                          ...(newChanges as Array<{ original?: string }>).filter(c => !existingOriginals.has(c.original ?? ''))
+                        ];
+                        return { ...incomingData, changes: merged } as PanelData;
+                      }
+                    }
+
+                    return incoming;
+                  });
+
+                  // Capture cover letter data for later export
+                  if (incomingType === 'cover_letter') {
+                    const clData = data.data as Record<string, unknown>;
+                    if (Array.isArray(clData.paragraphs)) {
+                      setCoverLetterParagraphs(clData.paragraphs as CoverLetterParagraph[]);
+                    }
+                    if (clData.company_name) setCoverLetterCompany(clData.company_name as string);
+                    if (clData.role_title) setCoverLetterRole(clData.role_title as string);
+                  }
                   break;
                 }
 
@@ -348,9 +391,18 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
                 case 'complete': {
                   // Session finished — stop processing, mark complete, close connection
+                  const cData = safeParse(msg.data);
                   setIsProcessing(false);
                   setSessionComplete(true);
                   setCurrentPhase('complete');
+                  // Switch right panel to completion with export buttons
+                  setPanelType('completion');
+                  setPanelData({
+                    type: 'completion',
+                    ats_score: (cData?.ats_score as number) ?? undefined,
+                    requirements_addressed: (cData?.requirements_addressed as number) ?? undefined,
+                    sections_rewritten: (cData?.sections_rewritten as number) ?? undefined,
+                  });
                   controller.abort();
                   abortControllerRef.current = null;
                   setConnected(false);
@@ -457,6 +509,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     error,
     panelType,
     panelData,
+    coverLetterParagraphs,
+    coverLetterCompany,
+    coverLetterRole,
     addUserMessage,
   };
 }

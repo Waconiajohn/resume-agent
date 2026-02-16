@@ -251,17 +251,22 @@ ${QUALITY_CHECKLIST.map((item, i) => `     ${i + 1}. ${item}`).join('\n')}
    - Age-bias risk flags
    - Specific items to address
 
-6. Present findings to the candidate:
-   - Celebrate sections rated EXCEPTIONAL or STRONG
-   - For ADEQUATE or WEAK sections, explain exactly what needs work
-   - Offer to revise any section (loops back to section_craft approach)
+6. AUTO-APPLY obvious fixes without asking:
+   - Typos, grammar errors, formatting inconsistencies → fix silently
+   - Weak verbs ("responsible for", "helped with") → replace with strong action verbs
+   - Missing metrics that can be inferred from context → add them
+   - Cliche phrases ("results-oriented", "proven track record") → rewrite
+   - Age-bias signals (old graduation years, obsolete tech) → remove/modernize
+   Tell the candidate what you fixed after the fact: "I went ahead and fixed X, Y, Z."
 
-7. If any section rates below STRONG:
-   - Ask the candidate if they want to revise it
-   - If yes, use generate_section with quality feedback as context
-   - Show the updated version for approval
+7. ONLY present choices for subjective decisions:
+   - Section ordering or emphasis changes
+   - Tone/voice adjustments (more formal vs conversational)
+   - Whether to include optional sections
+   - Choosing between two valid phrasings
+   Do NOT ask "would you like me to fix this obvious issue?" — just fix it.
 
-8. Present your findings and ask the candidate if they approve the quality review results.
+8. Present your findings and the fixes you've already applied.
 
 9. ⚠️ CRITICAL — MANDATORY PHASE TRANSITION:
    When the candidate approves the quality review (says "looks good", "approved", "ready", etc.):
@@ -300,6 +305,12 @@ Your goals:
 - Closing (40-60 words): 2-3 sentences MAX. Express enthusiasm and request a conversation.
 - NEVER start two paragraphs with the same company or role.
 - Total cover letter: 250-350 words. Each paragraph should be 50-100 words.
+
+## ANTI-FABRICATION (CRITICAL)
+- ONLY reference achievements, metrics, and stories that exist in the candidate's resume or interview answers
+- NEVER invent specific numbers, projects, or anecdotes — the candidate will be asked about these in interviews
+- If no relevant story exists for Body 2, frame a real skill/experience around culture fit instead of inventing a scenario
+- Better to be genuinely vague than specifically false
 
 3. For each paragraph:
    - Call generate_cover_letter_section with the paragraph_type and key_points

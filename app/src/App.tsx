@@ -39,6 +39,9 @@ export default function App() {
     error: agentError,
     panelType,
     panelData,
+    coverLetterParagraphs,
+    coverLetterCompany,
+    coverLetterRole,
     addUserMessage,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
@@ -128,6 +131,9 @@ export default function App() {
           resume={resume}
           panelType={panelType}
           panelData={panelData}
+          coverLetterParagraphs={coverLetterParagraphs}
+          coverLetterCompany={coverLetterCompany}
+          coverLetterRole={coverLetterRole}
           error={agentError}
           onSendMessage={handleSendMessage}
         />

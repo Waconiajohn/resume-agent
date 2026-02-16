@@ -111,6 +111,28 @@ export async function executeCreateMasterResume(
       }))
     : undefined;
 
+  // Derive leadership span from titles with leadership keywords
+  const leadershipRoles = (structured.experience ?? []).filter(e =>
+    /manager|director|vp|vice president|head of|lead|chief|principal|senior/i.test(e.title)
+  );
+  const leadershipSpan = leadershipRoles.length > 0
+    ? (() => {
+        const years = leadershipRoles.map(e => parseInt(e.start_date)).filter(y => !isNaN(y));
+        if (years.length === 0) return undefined;
+        const span = new Date().getFullYear() - Math.min(...years);
+        return span > 0 ? `${span}+ years` : undefined;
+      })()
+    : undefined;
+
+  // Scan bullets for budget/revenue mentions
+  const budgetPattern = /\$[\d,.]+[MBK]|\d+[MBK]\+?\s*(budget|revenue|portfolio|P&L)/i;
+  const budgetBullet = (structured.experience ?? [])
+    .flatMap(e => e.bullets?.map(b => b.text) ?? [])
+    .find(text => budgetPattern.test(text));
+  const budgetResponsibility = budgetBullet
+    ? budgetBullet.match(/\$[\d,.]+[MBK]?/)?.[0] ?? undefined
+    : undefined;
+
   emit({
     type: 'right_panel_update',
     panel_type: 'onboarding_summary',
@@ -118,6 +140,8 @@ export async function executeCreateMasterResume(
       years_of_experience: experienceYears,
       companies_count: structured.experience?.length ?? 0,
       skills_count: Object.values(structured.skills ?? {}).flat().length,
+      leadership_span: leadershipSpan,
+      budget_responsibility: budgetResponsibility,
       strengths: structured.experience?.slice(0, 3).map(e => `${e.title} at ${e.company}`) ?? [],
     },
   });

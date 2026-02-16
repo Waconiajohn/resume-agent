@@ -38,6 +38,14 @@ PARAGRAPH TYPE: ${paragraphType}
 - body_2 (75-100 words): A story that demonstrates culture fit + skills. Different from body_1.
 - closing (40-60 words): Clear call to action with genuine enthusiasm. 2-3 sentences MAX.
 
+## ANTI-FABRICATION RULES (CRITICAL)
+- ONLY use facts, metrics, and stories that appear in the candidate's resume or interview responses below
+- NEVER invent projects, initiatives, achievements, or anecdotes that aren't in the source material
+- NEVER fabricate specific numbers, percentages, dollar amounts, or team sizes not provided by the candidate
+- If the candidate hasn't provided a relevant story for body_2, use a genuine skill/experience and frame it around culture fit — do NOT make up a scenario
+- It's better to be vague ("significant cost savings") than to fabricate a specific number ("$2.3M in savings") that the candidate never mentioned
+- The candidate will be asked about everything in interviews — fabricated content will embarrass them
+
 ${companyContext ? `COMPANY CONTEXT:\n${companyContext}` : ''}
 
 ${roleContext ? `ROLE CONTEXT:\n${roleContext}` : ''}
@@ -51,8 +59,8 @@ ${ctx.buildContextSummary()}
 
 Return ONLY valid JSON:
 {
-  "content": "The paragraph text",
-  "reasoning": "Why this approach was chosen"
+  "content": "The paragraph text (STRICT word count: ${paragraphType === 'opening' ? '50-75' : paragraphType === 'closing' ? '40-60' : '75-100'} words)",
+  "reasoning": "Why this approach was chosen and which candidate data points were used"
 }`,
       },
     ],

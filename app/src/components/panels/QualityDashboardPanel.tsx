@@ -87,34 +87,55 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
           )}
         </GlassCard>
 
-        {/* Hiring Manager Checklist */}
-        {hiring_manager?.checklist_scores && Object.keys(hiring_manager.checklist_scores).length > 0 && (
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldCheck className="h-3.5 w-3.5 text-blue-400" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
-                Checklist Breakdown
-              </h3>
-              {hiring_manager.pass != null && (
-                <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  hiring_manager.pass
-                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-red-500/15 text-red-400 border border-red-500/20'
-                }`}>
-                  {hiring_manager.pass ? 'Pass' : 'Needs Work'}
+        {/* Hiring Manager Checklist — grouped by strength */}
+        {hiring_manager?.checklist_scores && Object.keys(hiring_manager.checklist_scores).length > 0 && (() => {
+          const entries = Object.entries(hiring_manager.checklist_scores);
+          const needsWork = entries.filter(([, s]) => s <= 3);
+          const strong = entries.filter(([, s]) => s >= 4);
+          return (
+            <GlassCard className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ShieldCheck className="h-3.5 w-3.5 text-blue-400" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+                  Checklist Breakdown
+                </h3>
+                <span className="ml-auto text-[10px] text-white/50">
+                  {hiring_manager.checklist_total ?? 0} / {hiring_manager.checklist_max ?? 50}
                 </span>
-              )}
-            </div>
-            <div className="space-y-2">
-              {Object.entries(hiring_manager.checklist_scores).map(([key, score]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span className="text-xs text-white/70 capitalize">{key.replace(/_/g, ' ')}</span>
-                  <span className="text-xs font-medium text-white/85">{score}</span>
+              </div>
+              {needsWork.length > 0 && (
+                <div className="mb-3">
+                  <span className="block mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-red-400/80">
+                    Needs Improvement
+                  </span>
+                  <div className="space-y-1.5">
+                    {needsWork.map(([key, score]) => (
+                      <div key={key} className="flex items-center justify-between rounded bg-red-500/[0.06] px-2 py-1">
+                        <span className="text-xs text-white/70 capitalize">{key.replace(/_/g, ' ')}</span>
+                        <span className="text-xs font-medium text-red-400">{score}/5</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </GlassCard>
-        )}
+              )}
+              {strong.length > 0 && (
+                <div>
+                  <span className="block mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400/80">
+                    Strong
+                  </span>
+                  <div className="space-y-1.5">
+                    {strong.map(([key, score]) => (
+                      <div key={key} className="flex items-center justify-between rounded bg-emerald-500/[0.06] px-2 py-1">
+                        <span className="text-xs text-white/70 capitalize">{key.replace(/_/g, ' ')}</span>
+                        <span className="text-xs font-medium text-emerald-400">{score}/5</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </GlassCard>
+          );
+        })()}
 
         {/* Overall Assessment */}
         {overall_assessment && (

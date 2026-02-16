@@ -118,7 +118,17 @@ function EditableLine({
   );
 }
 
-function ChangeBlock({ change }: { change: SectionChange }) {
+function ChangeBlock({
+  change,
+  index,
+  section,
+  onSendMessage,
+}: {
+  change: SectionChange;
+  index: number;
+  section: string;
+  onSendMessage?: (content: string) => void;
+}) {
   return (
     <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 space-y-2">
       {change.original && (
@@ -143,16 +153,40 @@ function ChangeBlock({ change }: { change: SectionChange }) {
         <p className="text-xs text-white/50 italic break-words">{change.reasoning}</p>
       )}
       {change.jd_requirements?.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {change.jd_requirements.map((req, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300"
-            >
-              <Tag className="h-2.5 w-2.5" />
-              {req}
-            </span>
-          ))}
+        <div className="space-y-1">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">
+            JD Alignment
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {change.jd_requirements.map((req, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300"
+              >
+                <Tag className="h-2.5 w-2.5" />
+                {req}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Per-change approve/reject */}
+      {onSendMessage && (
+        <div className="flex items-center gap-2 pt-1 border-t border-white/[0.06]">
+          <button
+            onClick={() => onSendMessage(`I approve change ${index + 1} in ${sectionTitle(section)}.`)}
+            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+          >
+            <Check className="h-3 w-3" />
+            Approve
+          </button>
+          <button
+            onClick={() => onSendMessage(`I'd like to revise change ${index + 1} in ${sectionTitle(section)}. `)}
+            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/40 hover:bg-white/5 hover:text-white/60 transition-colors"
+          >
+            <X className="h-3 w-3" />
+            Revise
+          </button>
         </div>
       )}
     </div>
@@ -169,7 +203,19 @@ export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
   const [editText, setEditText] = useState('');
 
   // Build WYSIWYG content: prefer proposed_content, fall back to concatenating changes
-  const wysiwygContent = proposedContent
+  // Defensive: if proposed_content is a JSON string, extract the actual content
+  let resolvedContent = proposedContent;
+  if (typeof resolvedContent === 'string' && resolvedContent.trimStart().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(resolvedContent);
+      if (typeof parsed.proposed_content === 'string') {
+        resolvedContent = parsed.proposed_content;
+      }
+    } catch {
+      // Not valid JSON, use as-is
+    }
+  }
+  const wysiwygContent = resolvedContent
     ?? changes.map((c) => c.proposed).filter(Boolean).join('\n\n');
 
   const contentLines = wysiwygContent ? parseContentLines(wysiwygContent) : [];
@@ -247,7 +293,7 @@ export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
         ) : (
           /* Fallback: show diff cards if no WYSIWYG content */
           changes.map((change, i) => (
-            <ChangeBlock key={i} change={change} />
+            <ChangeBlock key={i} change={change} index={i} section={active_section} onSendMessage={onSendMessage} />
           ))
         )}
 
@@ -268,7 +314,7 @@ export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
             {showDiffs && (
               <div className="mt-2 space-y-2">
                 {changes.map((change, i) => (
-                  <ChangeBlock key={i} change={change} />
+                  <ChangeBlock key={i} change={change} index={i} section={active_section} onSendMessage={onSendMessage} />
                 ))}
               </div>
             )}
@@ -282,7 +328,7 @@ export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
           <div className="flex items-center gap-2">
             <GlassButton variant="primary" className="flex-1" onClick={handleAccept}>
               <Check className="mr-1.5 h-3.5 w-3.5" />
-              Looks Good
+              Approve All
             </GlassButton>
             <GlassButton variant="ghost" className="flex-1" onClick={handleRequestChanges}>
               <MessageSquare className="mr-1.5 h-3.5 w-3.5" />

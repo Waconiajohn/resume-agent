@@ -6,7 +6,8 @@ export type PanelType =
   | 'design_options'
   | 'live_resume'
   | 'quality_dashboard'
-  | 'cover_letter';
+  | 'cover_letter'
+  | 'completion';
 
 // --- Onboarding Summary ---
 export interface OnboardingSummaryData {
@@ -138,6 +139,13 @@ export interface CoverLetterData {
   role_title?: string;
 }
 
+// --- Completion ---
+export interface CompletionData {
+  ats_score?: number;
+  requirements_addressed?: number;
+  sections_rewritten?: number;
+}
+
 // Discriminated union type for all panel data (type field matches PanelType)
 export type PanelData =
   | { type: 'onboarding_summary' } & OnboardingSummaryData
@@ -146,4 +154,5 @@ export type PanelData =
   | { type: 'design_options' } & DesignOptionsData
   | { type: 'live_resume' } & LiveResumeData
   | { type: 'quality_dashboard' } & QualityDashboardData
-  | { type: 'cover_letter' } & CoverLetterData;
+  | { type: 'cover_letter' } & CoverLetterData
+  | { type: 'completion' } & CompletionData;

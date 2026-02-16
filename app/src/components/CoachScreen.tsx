@@ -2,7 +2,7 @@ import { ChatPanel } from './ChatPanel';
 import { RightPanel } from './panels/RightPanel';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { PanelType, PanelData } from '@/types/panels';
+import type { PanelType, PanelData, CoverLetterParagraph } from '@/types/panels';
 
 interface CoachScreenProps {
   messages: ChatMessage[];
@@ -15,6 +15,9 @@ interface CoachScreenProps {
   resume: FinalResume | null;
   panelType: PanelType | null;
   panelData: PanelData | null;
+  coverLetterParagraphs?: CoverLetterParagraph[];
+  coverLetterCompany?: string;
+  coverLetterRole?: string;
   error: string | null;
   onSendMessage: (content: string) => void;
 }
@@ -30,6 +33,9 @@ export function CoachScreen({
   resume,
   panelType,
   panelData,
+  coverLetterParagraphs,
+  coverLetterCompany,
+  coverLetterRole,
   error,
   onSendMessage,
 }: CoachScreenProps) {
@@ -59,7 +65,15 @@ export function CoachScreen({
 
         {/* Dynamic right panel */}
         <div className="hidden w-[45%] min-w-0 overflow-x-hidden lg:block">
-          <RightPanel panelType={panelType} panelData={panelData} resume={resume} onSendMessage={onSendMessage} />
+          <RightPanel
+            panelType={panelType}
+            panelData={panelData}
+            resume={resume}
+            coverLetterParagraphs={coverLetterParagraphs}
+            coverLetterCompany={coverLetterCompany}
+            coverLetterRole={coverLetterRole}
+            onSendMessage={onSendMessage}
+          />
         </div>
       </div>
     </div>

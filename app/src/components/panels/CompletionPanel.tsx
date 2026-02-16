@@ -1,0 +1,157 @@
+import { useState } from 'react';
+import { Download, FileText, Mail, CheckCircle, Loader2 } from 'lucide-react';
+import { GlassCard } from '../GlassCard';
+import { GlassButton } from '../GlassButton';
+import { exportDocx, exportCoverLetterDocx } from '@/lib/export-docx';
+import { resumeToText, downloadAsText } from '@/lib/export';
+import type { FinalResume } from '@/types/resume';
+import type { CoverLetterParagraph, CompletionData } from '@/types/panels';
+
+interface CompletionPanelProps {
+  data: CompletionData;
+  resume: FinalResume | null;
+  coverLetterParagraphs?: CoverLetterParagraph[];
+  coverLetterCompany?: string;
+  coverLetterRole?: string;
+}
+
+function StatBadge({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-lg bg-white/[0.04] px-4 py-3">
+      <span className="text-xl font-bold text-white">{value}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">{label}</span>
+    </div>
+  );
+}
+
+export function CompletionPanel({
+  data,
+  resume,
+  coverLetterParagraphs,
+  coverLetterCompany,
+  coverLetterRole,
+}: CompletionPanelProps) {
+  const [exportingResume, setExportingResume] = useState(false);
+  const [exportingCover, setExportingCover] = useState(false);
+
+  const handleResumeDocx = async () => {
+    if (!resume) return;
+    setExportingResume(true);
+    try {
+      await exportDocx(resume);
+    } finally {
+      setExportingResume(false);
+    }
+  };
+
+  const handleResumeTxt = () => {
+    if (!resume) return;
+    downloadAsText(resumeToText(resume), 'tailored-resume.txt');
+  };
+
+  const handleCoverDocx = async () => {
+    if (!coverLetterParagraphs?.length) return;
+    setExportingCover(true);
+    try {
+      await exportCoverLetterDocx(coverLetterParagraphs, coverLetterCompany, coverLetterRole);
+    } finally {
+      setExportingCover(false);
+    }
+  };
+
+  const handleCoverTxt = () => {
+    if (!coverLetterParagraphs?.length) return;
+    const text = coverLetterParagraphs.map(p => p.content).join('\n\n');
+    downloadAsText(text, 'cover-letter.txt');
+  };
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-white/[0.12] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-emerald-400" />
+          <span className="text-sm font-medium text-white/85">Session Complete</span>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Stats */}
+        {(data.ats_score != null || data.requirements_addressed != null) && (
+          <div className="grid grid-cols-3 gap-2">
+            {data.ats_score != null && (
+              <StatBadge label="ATS Score" value={`${data.ats_score}%`} />
+            )}
+            {data.requirements_addressed != null && (
+              <StatBadge label="Reqs Met" value={data.requirements_addressed} />
+            )}
+            {data.sections_rewritten != null && (
+              <StatBadge label="Sections" value={data.sections_rewritten} />
+            )}
+          </div>
+        )}
+
+        {/* Resume Export */}
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-blue-400" />
+            <h3 className="text-sm font-medium text-white/85">Tailored Resume</h3>
+          </div>
+          {resume ? (
+            <div className="space-y-2">
+              <GlassButton variant="primary" className="w-full" onClick={handleResumeDocx} disabled={exportingResume}>
+                {exportingResume ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Download Word (.docx)
+              </GlassButton>
+              <GlassButton variant="ghost" className="w-full" onClick={handleResumeTxt}>
+                <Download className="mr-2 h-4 w-4" />
+                Download Text (.txt)
+              </GlassButton>
+            </div>
+          ) : (
+            <p className="text-xs text-white/50">Resume data not available for export.</p>
+          )}
+        </GlassCard>
+
+        {/* Cover Letter Export */}
+        {coverLetterParagraphs && coverLetterParagraphs.length > 0 && (
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Mail className="h-4 w-4 text-blue-400" />
+              <h3 className="text-sm font-medium text-white/85">Cover Letter</h3>
+            </div>
+            <div className="space-y-2">
+              <GlassButton variant="primary" className="w-full" onClick={handleCoverDocx} disabled={exportingCover}>
+                {exportingCover ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Download Word (.docx)
+              </GlassButton>
+              <GlassButton variant="ghost" className="w-full" onClick={handleCoverTxt}>
+                <Download className="mr-2 h-4 w-4" />
+                Download Text (.txt)
+              </GlassButton>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Preview */}
+        {coverLetterParagraphs && coverLetterParagraphs.length > 0 && (
+          <GlassCard className="p-4">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Cover Letter Preview</h3>
+            <div className="space-y-3">
+              {coverLetterParagraphs.map((para, i) => (
+                <p key={i} className="text-xs text-white/75 leading-relaxed">{para.content}</p>
+              ))}
+            </div>
+          </GlassCard>
+        )}
+      </div>
+    </div>
+  );
+}

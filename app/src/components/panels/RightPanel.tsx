@@ -8,7 +8,8 @@ import { DesignOptionsPanel } from './DesignOptionsPanel';
 import { LiveResumePanel } from './LiveResumePanel';
 import { QualityDashboardPanel } from './QualityDashboardPanel';
 import { CoverLetterPanel } from './CoverLetterPanel';
-import type { PanelType, PanelData } from '@/types/panels';
+import { CompletionPanel } from './CompletionPanel';
+import type { PanelType, PanelData, CoverLetterParagraph } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
 // Error boundary to prevent panel crashes from black-screening the app
@@ -61,10 +62,14 @@ interface RightPanelProps {
   panelType: PanelType | null;
   panelData: PanelData | null;
   resume: FinalResume | null;
+  coverLetterParagraphs?: CoverLetterParagraph[];
+  coverLetterCompany?: string;
+  coverLetterRole?: string;
   onSendMessage?: (content: string) => void;
 }
 
-function PanelContent({ panelData, resume, onSendMessage }: RightPanelProps) {
+function PanelContent(props: RightPanelProps) {
+  const { panelData, resume, onSendMessage } = props;
   // If we have typed panel data, use the discriminated union switch
   if (panelData) {
     switch (panelData.type) {
@@ -82,6 +87,16 @@ function PanelContent({ panelData, resume, onSendMessage }: RightPanelProps) {
         return <QualityDashboardPanel data={panelData} />;
       case 'cover_letter':
         return <CoverLetterPanel data={panelData} />;
+      case 'completion':
+        return (
+          <CompletionPanel
+            data={panelData}
+            resume={resume}
+            coverLetterParagraphs={props.coverLetterParagraphs}
+            coverLetterCompany={props.coverLetterCompany}
+            coverLetterRole={props.coverLetterRole}
+          />
+        );
       default: {
         // 3G: Exhaustive check — compile-time safety for unhandled panel types
         const _exhaustive: never = panelData;
