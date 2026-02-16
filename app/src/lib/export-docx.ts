@@ -1,160 +1,456 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle, AlignmentType } from 'docx';
+import {
+  Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle,
+  AlignmentType, Header, PageNumber, TabStopType, TabStopPosition,
+} from 'docx';
 import { saveAs } from 'file-saver';
-import type { FinalResume } from '@/types/resume';
+import type { FinalResume, ContactInfo } from '@/types/resume';
 import type { CoverLetterParagraph } from '@/types/panels';
 
-function sectionHeading(text: string): Paragraph {
-  return new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: 240, after: 120 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
-    children: [
-      new TextRun({ text: text.toUpperCase(), bold: true, size: 20, font: 'Calibri', color: '444444' }),
-    ],
-  });
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function sanitizeFilenameSegment(s: string): string {
+  return s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
-function bulletParagraph(text: string): Paragraph {
-  return new Paragraph({
-    bullet: { level: 0 },
-    spacing: { after: 60 },
-    children: [new TextRun({ text, size: 20, font: 'Calibri' })],
-  });
+function buildFilename(contactInfo?: ContactInfo, companyName?: string, suffix?: string, ext = 'docx'): string {
+  const parts: string[] = [];
+  if (contactInfo?.name) {
+    const names = contactInfo.name.trim().split(/\s+/);
+    parts.push(names.map(n => sanitizeFilenameSegment(n)).filter(Boolean).join('_'));
+  }
+  if (companyName) {
+    parts.push(sanitizeFilenameSegment(companyName));
+  }
+  parts.push(suffix ?? 'Resume');
+  return `${parts.join('_')}.${ext}`;
 }
 
-export async function exportDocx(resume: FinalResume): Promise<void> {
-  const sections: Paragraph[] = [];
+// ---------------------------------------------------------------------------
+// Reusable paragraph styles (Section X-B of formatting guide)
+// ---------------------------------------------------------------------------
 
-  // Summary
-  if (resume.summary) {
-    sections.push(sectionHeading('Professional Summary'));
-    sections.push(
+const FONT = 'Calibri';
+
+const paragraphStyles = [
+  {
+    id: 'ResumeName',
+    name: 'Resume Name',
+    basedOn: 'Normal',
+    next: 'Normal',
+    quickFormat: true,
+    paragraph: {
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+    },
+    run: { bold: true, size: 44, font: FONT },         // 22pt
+  },
+  {
+    id: 'ContactLine',
+    name: 'Contact Line',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+    },
+    run: { size: 20, font: FONT, color: '666666' },    // 10pt
+  },
+  {
+    id: 'SectionHeading',
+    name: 'Section Heading',
+    basedOn: 'Normal',
+    next: 'Normal',
+    quickFormat: true,
+    paragraph: {
+      keepNext: true,
+      spacing: { before: 300, after: 120 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+    },
+    run: { bold: true, size: 24, font: FONT, color: '444444' },  // 12pt
+  },
+  {
+    id: 'JobTitle',
+    name: 'Job Title',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      keepNext: true,
+      keepLines: true,
+      spacing: { before: 240, after: 40 },
+    },
+    run: { bold: true, size: 22, font: FONT },          // 11pt
+  },
+  {
+    id: 'CompanyLine',
+    name: 'Company Line',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      keepNext: true,
+      spacing: { after: 60 },
+    },
+    run: { size: 20, font: FONT, color: '666666' },     // 10pt
+  },
+  {
+    id: 'BulletItem',
+    name: 'Bullet Item',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      keepLines: true,
+      spacing: { after: 60 },
+      indent: { left: 360, hanging: 360 },
+    },
+    run: { size: 20, font: FONT },                      // 10pt
+  },
+  {
+    id: 'BodyText',
+    name: 'Body Text Resume',
+    basedOn: 'Normal',
+    next: 'Normal',
+    paragraph: {
+      spacing: { after: 120 },
+      widowControl: true,
+    },
+    run: { size: 20, font: FONT },                      // 10pt
+  },
+] as const;
+
+// ---------------------------------------------------------------------------
+// Contact header (document body, page 1 only)
+// ---------------------------------------------------------------------------
+
+function contactHeaderParagraphs(contactInfo: ContactInfo): Paragraph[] {
+  const paras: Paragraph[] = [];
+
+  if (contactInfo.name) {
+    paras.push(
       new Paragraph({
-        spacing: { after: 120 },
-        children: [new TextRun({ text: resume.summary, size: 20, font: 'Calibri' })],
+        style: 'ResumeName',
+        children: [new TextRun({ text: contactInfo.name })],
       }),
     );
   }
 
-  // Selected Accomplishments
-  if (resume.selected_accomplishments) {
-    sections.push(sectionHeading('Selected Accomplishments'));
+  const parts: string[] = [];
+  if (contactInfo.email) parts.push(contactInfo.email);
+  if (contactInfo.phone) parts.push(contactInfo.phone);
+  if (contactInfo.linkedin) parts.push(contactInfo.linkedin);
+  if (contactInfo.location) parts.push(contactInfo.location);
+
+  if (parts.length > 0) {
+    paras.push(
+      new Paragraph({
+        style: 'ContactLine',
+        children: [new TextRun({ text: parts.join(' | ') })],
+      }),
+    );
+  }
+
+  // Horizontal rule
+  paras.push(
+    new Paragraph({
+      spacing: { after: 120 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: '999999' } },
+      children: [],
+    }),
+  );
+
+  return paras;
+}
+
+// ---------------------------------------------------------------------------
+// Page 2+ header (Section X-D)
+// ---------------------------------------------------------------------------
+
+function pageHeader(contactInfo?: ContactInfo): Header {
+  const parts: string[] = [];
+  if (contactInfo?.name) parts.push(contactInfo.name);
+  if (contactInfo?.email) parts.push(contactInfo.email);
+  if (contactInfo?.phone) parts.push(contactInfo.phone);
+
+  const leftText = parts.join(' | ');
+
+  return new Header({
+    children: [
+      new Paragraph({
+        tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+        spacing: { after: 120 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+        children: [
+          new TextRun({ text: leftText, size: 18, font: FONT, color: '999999' }),
+          new TextRun({ children: ['\t'], size: 18, font: FONT }),
+          new TextRun({ text: 'Page ', size: 18, font: FONT, color: '999999' }),
+          new TextRun({ children: [PageNumber.CURRENT], size: 18, font: FONT, color: '999999' }),
+        ],
+      }),
+    ],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Section heading
+// ---------------------------------------------------------------------------
+
+function sectionHeading(text: string): Paragraph {
+  return new Paragraph({
+    style: 'SectionHeading',
+    heading: HeadingLevel.HEADING_2,
+    children: [new TextRun({ text: text.toUpperCase() })],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Bullet paragraph with hanging indent
+// ---------------------------------------------------------------------------
+
+function bulletParagraph(text: string): Paragraph {
+  return new Paragraph({
+    style: 'BulletItem',
+    bullet: { level: 0 },
+    children: [new TextRun({ text })],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Section renderers
+// ---------------------------------------------------------------------------
+
+type SectionRenderer = (resume: FinalResume) => Paragraph[];
+
+const sectionRenderers: Record<string, SectionRenderer> = {
+  summary: (resume) => {
+    if (!resume.summary) return [];
+    return [
+      sectionHeading('Professional Summary'),
+      new Paragraph({
+        style: 'BodyText',
+        children: [new TextRun({ text: resume.summary })],
+      }),
+    ];
+  },
+
+  selected_accomplishments: (resume) => {
+    if (!resume.selected_accomplishments) return [];
+    const paras = [sectionHeading('Selected Accomplishments')];
     const lines = resume.selected_accomplishments.split('\n').filter(l => l.trim());
     for (const line of lines) {
-      const clean = line.replace(/^\s*[•\-\*]\s*/, '');
-      sections.push(bulletParagraph(clean));
+      const clean = line.replace(/^\s*[•\-*]\s*/, '');
+      paras.push(bulletParagraph(clean));
     }
-  }
+    return paras;
+  },
 
-  // Skills
-  if (resume.skills && typeof resume.skills === 'object' && !Array.isArray(resume.skills)) {
-    sections.push(sectionHeading('Core Competencies'));
+  skills: (resume) => {
+    if (!resume.skills || typeof resume.skills !== 'object' || Array.isArray(resume.skills)) return [];
+    if (Object.keys(resume.skills).length === 0) return [];
+    const paras = [sectionHeading('Core Competencies')];
     for (const [category, items] of Object.entries(resume.skills)) {
-      const itemText = Array.isArray(items) ? items.join(', ') : String(items);
-      sections.push(
+      const itemText = Array.isArray(items) ? items.join(' \u2022 ') : String(items);
+      paras.push(
         new Paragraph({
+          style: 'BodyText',
+          keepNext: true,
           spacing: { after: 60 },
           children: [
-            new TextRun({ text: `${category}: `, bold: true, size: 20, font: 'Calibri' }),
-            new TextRun({ text: itemText, size: 20, font: 'Calibri' }),
+            new TextRun({ text: `${category}: `, bold: true, size: 20, font: FONT }),
+            new TextRun({ text: itemText, size: 20, font: FONT }),
           ],
         }),
       );
     }
-  }
+    return paras;
+  },
 
-  // Experience
-  if (Array.isArray(resume.experience) && resume.experience.length > 0) {
-    sections.push(sectionHeading('Professional Experience'));
+  experience: (resume) => {
+    if (!Array.isArray(resume.experience) || resume.experience.length === 0) return [];
+    const paras = [sectionHeading('Professional Experience')];
     for (const exp of resume.experience) {
-      sections.push(
+      // Job title — keepNext so it stays with company line
+      paras.push(
         new Paragraph({
-          spacing: { before: 160, after: 40 },
+          style: 'JobTitle',
+          tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
           children: [
-            new TextRun({ text: exp.title, bold: true, size: 20, font: 'Calibri' }),
+            new TextRun({ text: exp.title }),
+            new TextRun({ children: ['\t'] }),
+            new TextRun({
+              text: `${exp.start_date} \u2013 ${exp.end_date}`,
+              bold: false, size: 20, font: FONT, color: '666666',
+            }),
           ],
         }),
       );
-      sections.push(
+      // Company line — keepNext so it stays with first bullet
+      paras.push(
         new Paragraph({
-          spacing: { after: 40 },
+          style: 'CompanyLine',
           children: [
             new TextRun({
-              text: `${exp.company}${exp.location ? ` | ${exp.location}` : ''} | ${exp.start_date} – ${exp.end_date}`,
-              size: 18,
-              font: 'Calibri',
-              color: '666666',
+              text: `${exp.company}${exp.location ? ` | ${exp.location}` : ''}`,
             }),
           ],
         }),
       );
       for (const bullet of exp.bullets ?? []) {
-        sections.push(bulletParagraph(bullet.text));
+        paras.push(bulletParagraph(bullet.text));
       }
     }
-  }
+    return paras;
+  },
 
-  // Education
-  if (Array.isArray(resume.education) && resume.education.length > 0) {
-    sections.push(sectionHeading('Education'));
+  education: (resume) => {
+    if (!Array.isArray(resume.education) || resume.education.length === 0) return [];
+    const paras = [sectionHeading('Education')];
     for (const edu of resume.education) {
-      sections.push(
+      paras.push(
         new Paragraph({
+          style: 'BodyText',
+          keepLines: true,
           spacing: { after: 60 },
           children: [
             new TextRun({
               text: `${edu.degree} in ${edu.field}, ${edu.institution}${edu.year ? ` (${edu.year})` : ''}`,
               size: 20,
-              font: 'Calibri',
+              font: FONT,
             }),
           ],
         }),
       );
     }
-  }
+    return paras;
+  },
 
-  // Certifications
-  if (Array.isArray(resume.certifications) && resume.certifications.length > 0) {
-    sections.push(sectionHeading('Certifications'));
+  certifications: (resume) => {
+    if (!Array.isArray(resume.certifications) || resume.certifications.length === 0) return [];
+    const paras = [sectionHeading('Certifications')];
     for (const cert of resume.certifications) {
-      sections.push(
+      paras.push(
         new Paragraph({
+          style: 'BodyText',
+          keepLines: true,
           spacing: { after: 60 },
           children: [
             new TextRun({
-              text: `${cert.name} — ${cert.issuer}${cert.year ? ` (${cert.year})` : ''}`,
+              text: `${cert.name} \u2014 ${cert.issuer}${cert.year ? ` (${cert.year})` : ''}`,
               size: 20,
-              font: 'Calibri',
+              font: FONT,
             }),
           ],
         }),
       );
+    }
+    return paras;
+  },
+};
+
+const DEFAULT_SECTION_ORDER = ['summary', 'selected_accomplishments', 'skills', 'experience', 'education', 'certifications'];
+
+// ---------------------------------------------------------------------------
+// Resume DOCX export
+// ---------------------------------------------------------------------------
+
+export async function exportDocx(resume: FinalResume): Promise<void> {
+  const children: Paragraph[] = [];
+
+  // Contact header in document body (NOT in Word header — ATS requirement)
+  if (resume.contact_info?.name) {
+    children.push(...contactHeaderParagraphs(resume.contact_info));
+  }
+
+  // Render sections in design-choice order, falling back to default
+  const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
+  const rendered = new Set<string>();
+
+  for (const sectionName of order) {
+    const renderer = sectionRenderers[sectionName];
+    if (renderer) {
+      children.push(...renderer(resume));
+      rendered.add(sectionName);
+    }
+  }
+
+  // Render any remaining sections not in the order list
+  for (const sectionName of DEFAULT_SECTION_ORDER) {
+    if (!rendered.has(sectionName)) {
+      const renderer = sectionRenderers[sectionName];
+      if (renderer) {
+        children.push(...renderer(resume));
+      }
     }
   }
 
   const doc = new Document({
+    // Document metadata (Section X-F)
+    title: resume.contact_info?.name ? `${resume.contact_info.name} Resume` : 'Resume',
+    creator: 'Resume Agent',
+    description: resume.contact_info?.name
+      ? `Resume for ${resume.contact_info.name}`
+      : 'Tailored executive resume',
+    // Reusable paragraph styles (Section X-B)
+    styles: {
+      paragraphStyles: [...paragraphStyles],
+    },
     sections: [
       {
         properties: {
           page: {
             margin: { top: 720, right: 720, bottom: 720, left: 720 },
           },
+          // Suppress header on page 1 — contact info in body (Section X-D)
+          titlePage: true,
         },
-        children: sections,
+        headers: {
+          default: pageHeader(resume.contact_info),
+        },
+        children,
       },
     ],
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, 'tailored-resume.docx');
+  const filename = buildFilename(resume.contact_info, resume.company_name, 'Resume');
+  saveAs(blob, filename);
 }
+
+// ---------------------------------------------------------------------------
+// Cover Letter DOCX export
+// ---------------------------------------------------------------------------
 
 export async function exportCoverLetterDocx(
   paragraphs: CoverLetterParagraph[],
   companyName?: string,
   roleTitle?: string,
+  contactInfo?: ContactInfo,
 ): Promise<void> {
   const children: Paragraph[] = [];
+
+  // Sender contact block
+  if (contactInfo?.name) {
+    children.push(
+      new Paragraph({
+        style: 'ResumeName',
+        alignment: AlignmentType.LEFT,
+        spacing: { after: 20 },
+        children: [new TextRun({ text: contactInfo.name, bold: true, size: 22, font: FONT })],
+      }),
+    );
+    const contactLine: string[] = [];
+    if (contactInfo.email) contactLine.push(contactInfo.email);
+    if (contactInfo.phone) contactLine.push(contactInfo.phone);
+    if (contactInfo.linkedin) contactLine.push(contactInfo.linkedin);
+    if (contactInfo.location) contactLine.push(contactInfo.location);
+    if (contactLine.length > 0) {
+      children.push(
+        new Paragraph({
+          spacing: { after: 160 },
+          children: [new TextRun({ text: contactLine.join(' | '), size: 20, font: FONT, color: '666666' })],
+        }),
+      );
+    }
+  }
 
   // Date
   children.push(
@@ -163,9 +459,7 @@ export async function exportCoverLetterDocx(
       children: [
         new TextRun({
           text: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-          size: 20,
-          font: 'Calibri',
-          color: '666666',
+          size: 20, font: FONT, color: '666666',
         }),
       ],
     }),
@@ -176,7 +470,7 @@ export async function exportCoverLetterDocx(
     children.push(
       new Paragraph({
         spacing: { after: 40 },
-        children: [new TextRun({ text: companyName, size: 20, font: 'Calibri' })],
+        children: [new TextRun({ text: companyName, size: 20, font: FONT })],
       }),
     );
   }
@@ -184,25 +478,53 @@ export async function exportCoverLetterDocx(
     children.push(
       new Paragraph({
         spacing: { after: 200 },
-        children: [
-          new TextRun({ text: `Re: ${roleTitle}`, size: 20, font: 'Calibri', italics: true }),
-        ],
+        children: [new TextRun({ text: `Re: ${roleTitle}`, size: 20, font: FONT, italics: true })],
       }),
     );
   }
+
+  // Salutation
+  const salutation = companyName ? `Dear ${companyName} Hiring Team,` : 'Dear Hiring Manager,';
+  children.push(
+    new Paragraph({
+      spacing: { after: 160 },
+      children: [new TextRun({ text: salutation, size: 20, font: FONT })],
+    }),
+  );
 
   // Body paragraphs
   for (const para of paragraphs) {
     children.push(
       new Paragraph({
-        spacing: { after: 160 },
+        style: 'BodyText',
         alignment: AlignmentType.JUSTIFIED,
-        children: [new TextRun({ text: para.content, size: 20, font: 'Calibri' })],
+        children: [new TextRun({ text: para.content })],
+      }),
+    );
+  }
+
+  // Signature block
+  children.push(
+    new Paragraph({
+      spacing: { before: 200, after: 40 },
+      children: [new TextRun({ text: 'Sincerely,', size: 20, font: FONT })],
+    }),
+  );
+  if (contactInfo?.name) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [new TextRun({ text: contactInfo.name, size: 20, font: FONT })],
       }),
     );
   }
 
   const doc = new Document({
+    title: contactInfo?.name ? `${contactInfo.name} Cover Letter` : 'Cover Letter',
+    creator: 'Resume Agent',
+    styles: {
+      paragraphStyles: [...paragraphStyles],
+    },
     sections: [
       {
         properties: {
@@ -214,5 +536,6 @@ export async function exportCoverLetterDocx(
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, 'cover-letter.docx');
+  const filename = buildFilename(contactInfo, companyName, 'Cover_Letter');
+  saveAs(blob, filename);
 }

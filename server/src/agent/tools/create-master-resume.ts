@@ -8,6 +8,13 @@ import { createSessionLogger } from '../../lib/logger.js';
 const STRUCTURING_PROMPT = `You are a resume parser. Extract structured data from the following resume text and return ONLY valid JSON with this exact shape:
 
 {
+  "contact_info": {
+    "name": "Full Name",
+    "email": "email@example.com",
+    "phone": "+1-555-123-4567",
+    "linkedin": "linkedin.com/in/username",
+    "location": "City, State"
+  },
   "summary": "A concise professional summary",
   "experience": [
     {
@@ -31,6 +38,7 @@ const STRUCTURING_PROMPT = `You are a resume parser. Extract structured data fro
 }
 
 Rules:
+- Extract contact_info from the resume header (name, email, phone, LinkedIn URL, location). Use empty string for name if not found.
 - Extract ALL experience entries, ordered most recent first
 - Every bullet should have "source": "original"
 - Group skills into logical categories
@@ -86,6 +94,7 @@ export async function executeCreateMasterResume(
       skills: structured.skills,
       education: structured.education,
       certifications: structured.certifications,
+      contact_info: (structured as Record<string, unknown>).contact_info ?? {},
       raw_text: rawText,
       version: 1,
     })
@@ -101,7 +110,8 @@ export async function executeCreateMasterResume(
   const resumeId = data.id as string;
 
   ctx.masterResumeId = resumeId;
-  ctx.masterResumeData = { ...structured, raw_text: rawText };
+  const contactInfo = (structured as Record<string, unknown>).contact_info as MasterResumeData['contact_info'] | undefined;
+  ctx.masterResumeData = { ...structured, contact_info: contactInfo, raw_text: rawText };
 
   // Emit onboarding summary panel with parsed resume stats
   const experienceYears = structured.experience?.length

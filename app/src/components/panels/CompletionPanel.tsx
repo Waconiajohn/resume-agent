@@ -15,6 +15,23 @@ interface CompletionPanelProps {
   coverLetterRole?: string;
 }
 
+function sanitizeFilenameSegment(s: string): string {
+  return s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
+function buildFilename(contactInfo?: FinalResume['contact_info'], companyName?: string, suffix?: string, ext = 'txt'): string {
+  const parts: string[] = [];
+  if (contactInfo?.name) {
+    const names = contactInfo.name.trim().split(/\s+/);
+    parts.push(names.map(n => sanitizeFilenameSegment(n)).filter(Boolean).join('_'));
+  }
+  if (companyName) {
+    parts.push(sanitizeFilenameSegment(companyName));
+  }
+  parts.push(suffix ?? 'Resume');
+  return `${parts.join('_')}.${ext}`;
+}
+
 function StatBadge({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-lg bg-white/[0.04] px-4 py-3">
@@ -46,14 +63,15 @@ export function CompletionPanel({
 
   const handleResumeTxt = () => {
     if (!resume) return;
-    downloadAsText(resumeToText(resume), 'tailored-resume.txt');
+    const filename = buildFilename(resume.contact_info, resume.company_name, 'Resume');
+    downloadAsText(resumeToText(resume), filename);
   };
 
   const handleCoverDocx = async () => {
     if (!coverLetterParagraphs?.length) return;
     setExportingCover(true);
     try {
-      await exportCoverLetterDocx(coverLetterParagraphs, coverLetterCompany, coverLetterRole);
+      await exportCoverLetterDocx(coverLetterParagraphs, coverLetterCompany, coverLetterRole, resume?.contact_info);
     } finally {
       setExportingCover(false);
     }
@@ -61,8 +79,41 @@ export function CompletionPanel({
 
   const handleCoverTxt = () => {
     if (!coverLetterParagraphs?.length) return;
-    const text = coverLetterParagraphs.map(p => p.content).join('\n\n');
-    downloadAsText(text, 'cover-letter.txt');
+    const lines: string[] = [];
+
+    // Sender info
+    if (resume?.contact_info?.name) {
+      lines.push(resume.contact_info.name);
+      const contactParts: string[] = [];
+      if (resume.contact_info.email) contactParts.push(resume.contact_info.email);
+      if (resume.contact_info.phone) contactParts.push(resume.contact_info.phone);
+      if (resume.contact_info.linkedin) contactParts.push(resume.contact_info.linkedin);
+      if (resume.contact_info.location) contactParts.push(resume.contact_info.location);
+      if (contactParts.length > 0) lines.push(contactParts.join(' | '));
+      lines.push('');
+    }
+
+    // Date
+    lines.push(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
+    lines.push('');
+
+    // Salutation
+    const salutation = coverLetterCompany ? `Dear ${coverLetterCompany} Hiring Team,` : 'Dear Hiring Manager,';
+    lines.push(salutation);
+    lines.push('');
+
+    // Body
+    lines.push(coverLetterParagraphs.map(p => p.content).join('\n\n'));
+    lines.push('');
+
+    // Signature
+    lines.push('Sincerely,');
+    if (resume?.contact_info?.name) {
+      lines.push(resume.contact_info.name);
+    }
+
+    const filename = buildFilename(resume?.contact_info, coverLetterCompany, 'Cover_Letter');
+    downloadAsText(lines.join('\n'), filename);
   };
 
   return (

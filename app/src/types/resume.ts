@@ -1,3 +1,11 @@
+export interface ContactInfo {
+  name: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
+  location?: string;
+}
+
 export interface MasterResumeExperience {
   company: string;
   title: string;
@@ -42,4 +50,8 @@ export interface FinalResume {
   certifications: MasterResumeCertification[];
   selected_accomplishments?: string;
   ats_score: number;
+  contact_info?: ContactInfo;
+  section_order?: string[];
+  company_name?: string;
+  job_title?: string;
 }

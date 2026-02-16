@@ -64,9 +64,25 @@ export async function executeExportResume(
     year: cert.year ?? '',
   }));
 
+  // Extract section_order from selected design choice
+  const selectedDesign = ctx.designChoices.find(d => d.selected);
+  const sectionOrder = selectedDesign?.section_order;
+
   emit({
     type: 'export_ready',
-    resume: { summary, selected_accomplishments: selectedAccomplishments, experience, skills, education, certifications, ats_score: atsScore },
+    resume: {
+      summary,
+      selected_accomplishments: selectedAccomplishments,
+      experience,
+      skills,
+      education,
+      certifications,
+      ats_score: atsScore,
+      contact_info: ctx.masterResumeData.contact_info,
+      section_order: sectionOrder,
+      company_name: ctx.companyResearch.company_name,
+      job_title: ctx.jdAnalysis.job_title,
+    },
   });
 
   emit({

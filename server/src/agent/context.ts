@@ -148,6 +148,14 @@ export interface MasterResumeCertification {
   year: string;
 }
 
+export interface ContactInfo {
+  name: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
+  location?: string;
+}
+
 export interface MasterResumeData {
   summary: string;
   experience: MasterResumeExperience[];
@@ -155,6 +163,7 @@ export interface MasterResumeData {
   education: MasterResumeEducation[];
   certifications: MasterResumeCertification[];
   raw_text: string;
+  contact_info?: ContactInfo;
 }
 
 export interface CoachSession {
@@ -259,7 +268,7 @@ export class SessionContext {
 
     const { data, error } = await supabase
       .from('master_resumes')
-      .select('summary, experience, skills, education, certifications, raw_text')
+      .select('summary, experience, skills, education, certifications, raw_text, contact_info')
       .eq('id', this.masterResumeId)
       .eq('user_id', this.userId)
       .single();
@@ -337,6 +346,7 @@ export class SessionContext {
     if (this.masterResumeData) {
       const r = this.masterResumeData;
       parts.push('## Candidate Resume');
+      if (r.contact_info?.name) parts.push(`Candidate: ${r.contact_info.name}`);
       if (r.summary) parts.push(`Summary: ${r.summary}`);
       if (r.experience?.length) {
         parts.push('\nExperience:');

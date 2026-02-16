@@ -26,7 +26,10 @@ export function ResumePanel({ resume }: ResumePanelProps) {
 
   const handleDownloadText = () => {
     const text = resumeToText(resume);
-    downloadAsText(text, 'tailored-resume.txt');
+    const filename = resume.contact_info?.name
+      ? `${resume.contact_info.name.replace(/\s+/g, '_')}_Resume.txt`
+      : 'tailored-resume.txt';
+    downloadAsText(text, filename);
   };
 
   const handleDownloadDocx = () => {
@@ -34,7 +37,7 @@ export function ResumePanel({ resume }: ResumePanelProps) {
   };
 
   const handleDownloadPdf = () => {
-    exportPdf();
+    exportPdf(resume.contact_info, resume.company_name);
   };
 
   return (

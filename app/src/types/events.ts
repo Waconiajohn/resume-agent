@@ -92,6 +92,11 @@ export interface ExportResumeData {
   education: Array<{ institution: string; degree: string; field: string; year: string }>;
   certifications: Array<{ name: string; issuer: string; year: string }>;
   ats_score: number;
+  contact_info?: { name: string; email?: string; phone?: string; linkedin?: string; location?: string };
+  selected_accomplishments?: string;
+  section_order?: string[];
+  company_name?: string;
+  job_title?: string;
 }
 
 export interface ErrorEvent {
