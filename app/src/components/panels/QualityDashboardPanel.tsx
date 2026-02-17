@@ -146,7 +146,11 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                 Assessment
               </h3>
             </div>
-            <p className="text-xs text-white/85 leading-relaxed">{overall_assessment}</p>
+            <p className="text-xs text-white/85 leading-relaxed">
+              {typeof overall_assessment === 'string'
+                ? overall_assessment
+                : JSON.stringify(overall_assessment)}
+            </p>
           </GlassCard>
         )}
 

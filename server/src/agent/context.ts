@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import logger from '../lib/logger.js';
+import { MODEL_PRICING } from '../lib/llm.js';
 
 export type CoachPhase =
   | 'onboarding'
@@ -7,8 +8,7 @@ export type CoachPhase =
   | 'gap_analysis'
   | 'resume_design'
   | 'section_craft'
-  | 'quality_review'
-  | 'cover_letter';
+  | 'quality_review';
 
 type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
 
@@ -191,6 +191,11 @@ export interface CoachSession {
   last_checkpoint_phase: string | null;
   last_checkpoint_at: string | null;
   total_tokens_used: number;
+  input_tokens_used: number;
+  output_tokens_used: number;
+  estimated_cost_usd: number;
+  llm_provider: string | null;
+  llm_model: string | null;
   system_prompt_version: string | null;
   system_prompt_hash: string | null;
   created_at: string;
@@ -221,6 +226,11 @@ export class SessionContext {
   lastPanelType: string | null;
   lastPanelData: Record<string, unknown> | null;
   totalTokensUsed: number;
+  inputTokensUsed: number;
+  outputTokensUsed: number;
+  estimatedCostUsd: number;
+  llmProvider: string | null;
+  llmModel: string | null;
   systemPromptVersion: string | null;
   systemPromptHash: string | null;
 
@@ -230,9 +240,6 @@ export class SessionContext {
 
   // Runtime-only accumulator for quality dashboard (not persisted — quality_review is single-pass)
   qualityDashboardData: Record<string, unknown> = {};
-
-  // Runtime-only accumulator for cover letter paragraphs (not persisted — cover_letter is single-pass)
-  coverLetterParagraphs: Array<{ type: string; content: string; status: string }> = [];
 
   constructor(session: CoachSession) {
     this.sessionId = session.id;
@@ -259,6 +266,11 @@ export class SessionContext {
     this.lastPanelType = session.last_panel_type ?? null;
     this.lastPanelData = session.last_panel_data ?? null;
     this.totalTokensUsed = session.total_tokens_used ?? 0;
+    this.inputTokensUsed = session.input_tokens_used ?? 0;
+    this.outputTokensUsed = session.output_tokens_used ?? 0;
+    this.estimatedCostUsd = session.estimated_cost_usd ?? 0;
+    this.llmProvider = session.llm_provider ?? null;
+    this.llmModel = session.llm_model ?? null;
     this.systemPromptVersion = session.system_prompt_version ?? null;
     this.systemPromptHash = session.system_prompt_hash ?? null;
   }
@@ -303,7 +315,6 @@ export class SessionContext {
       'Resume Design': 'resume_design',
       'Section Craft': 'section_craft',
       'Quality Review': 'quality_review',
-      'Cover Letter': 'cover_letter',
       'Getting Started': 'onboarding',
       'Onboarding': 'onboarding',
     };
@@ -312,6 +323,26 @@ export class SessionContext {
 
   addTokens(count: number) {
     this.totalTokensUsed += count;
+  }
+
+  /**
+   * Track token usage with cost estimation. Call this instead of addTokens
+   * when you have per-request input/output breakdowns.
+   */
+  trackUsage(usage: { input_tokens: number; output_tokens: number }, model: string) {
+    this.inputTokensUsed += usage.input_tokens;
+    this.outputTokensUsed += usage.output_tokens;
+    this.totalTokensUsed += usage.input_tokens + usage.output_tokens;
+    const pricing = MODEL_PRICING[model] ?? { input: 0, output: 0 };
+    this.estimatedCostUsd += (usage.input_tokens * pricing.input + usage.output_tokens * pricing.output) / 1_000_000;
+  }
+
+  summarizeInterviewResponses() {
+    for (const r of this.interviewResponses) {
+      if (r.answer.length > 150) {
+        r.answer = r.answer.substring(0, 147) + '...';
+      }
+    }
   }
 
   /**
@@ -338,6 +369,19 @@ export class SessionContext {
     };
     this.sectionStatuses.push(entry);
     return entry;
+  }
+
+  /**
+   * Check if all required sections from the selected design are confirmed.
+   */
+  areAllSectionsConfirmed(): boolean {
+    const selectedDesign = this.designChoices.find(d => d.selected);
+    const requiredSections = selectedDesign?.section_order ?? [];
+    if (requiredSections.length === 0) return false;
+    const confirmedSections = new Set(
+      this.sectionStatuses.filter(s => s.status === 'confirmed').map(s => s.section),
+    );
+    return requiredSections.every(s => confirmedSections.has(s));
   }
 
   buildContextSummary(): string {
@@ -373,10 +417,6 @@ export class SessionContext {
 
     if (this.companyResearch.company_name) {
       parts.push(`\n## Company Research: ${this.companyResearch.company_name}`);
-      if (this.companyResearch.culture) parts.push(`Culture: ${this.companyResearch.culture}`);
-      if (this.companyResearch.values?.length) parts.push(`Values: ${this.companyResearch.values.join(', ')}`);
-      if (this.companyResearch.language_style) parts.push(`Language style: ${this.companyResearch.language_style}`);
-      if (this.companyResearch.leadership_style) parts.push(`Leadership style: ${this.companyResearch.leadership_style}`);
     }
 
     if (this.jdAnalysis.job_title) {
@@ -389,21 +429,6 @@ export class SessionContext {
     if (this.fitClassification.requirements?.length) {
       parts.push('\n## Fit Classification');
       parts.push(`Strong: ${this.fitClassification.strong_count ?? 0}, Partial: ${this.fitClassification.partial_count ?? 0}, Gaps: ${this.fitClassification.gap_count ?? 0}`);
-    }
-
-    if (this.benchmarkCandidate) {
-      parts.push('\n## Benchmark Candidate Profile');
-      parts.push(`Ideal candidate: ${this.benchmarkCandidate.ideal_candidate_summary}`);
-      parts.push(`Experience expectations: ${this.benchmarkCandidate.experience_expectations}`);
-      if (this.benchmarkCandidate.required_skills.length > 0) {
-        const critical = this.benchmarkCandidate.required_skills.filter(s => s.importance === 'critical');
-        const important = this.benchmarkCandidate.required_skills.filter(s => s.importance === 'important');
-        if (critical.length) parts.push(`Critical skills: ${critical.map(s => s.requirement).join(', ')}`);
-        if (important.length) parts.push(`Important skills: ${important.map(s => s.requirement).join(', ')}`);
-      }
-      if (this.benchmarkCandidate.language_keywords.length > 0) {
-        parts.push(`Keywords to echo: ${this.benchmarkCandidate.language_keywords.join(', ')}`);
-      }
     }
 
     if (this.interviewResponses.length > 0) {
@@ -502,12 +527,12 @@ export class SessionContext {
     const KEEP_FIRST = 2;
 
     // Adaptive truncation based on last observed input token count
-    let keepLast = 40;
+    let keepLast = 25;
     if (this.lastInputTokens > 150_000) {
-      keepLast = 15;
+      keepLast = 8;
       logger.warn({ sessionId: this.sessionId, lastInputTokens: this.lastInputTokens, keepLast }, 'Aggressive truncation');
     } else if (this.lastInputTokens > 120_000) {
-      keepLast = 25;
+      keepLast = 15;
       logger.info({ sessionId: this.sessionId, lastInputTokens: this.lastInputTokens, keepLast }, 'Moderate truncation');
     }
 
@@ -591,6 +616,11 @@ export class SessionContext {
       last_panel_type: this.lastPanelType,
       last_panel_data: this.lastPanelData,
       total_tokens_used: this.totalTokensUsed,
+      input_tokens_used: this.inputTokensUsed,
+      output_tokens_used: this.outputTokensUsed,
+      estimated_cost_usd: this.estimatedCostUsd,
+      llm_provider: this.llmProvider,
+      llm_model: this.llmModel,
       last_checkpoint_phase: this.currentPhase,
       last_checkpoint_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

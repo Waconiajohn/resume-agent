@@ -1,13 +1,11 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { anthropic, MODEL, MAX_TOKENS } from '../lib/anthropic.js';
+import { llm, getDefaultModel, getMaxTokens } from '../lib/llm.js';
+import type { StreamEvent, ChatMessage } from '../lib/llm-provider.js';
 import { buildSystemPrompt, getPromptFingerprint } from './system-prompt.js';
 import { getToolsForPhase } from './tools/index.js';
 import { executeToolCall } from './tool-executor.js';
 import { withRetry } from '../lib/retry.js';
 import type { SessionContext, ContentBlock, CoachPhase } from './context.js';
 import { createSessionLogger } from '../lib/logger.js';
-
-type MessageParam = Anthropic.MessageParam;
 
 const MAX_TOOL_ROUNDS = 20;
 const LOOP_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -49,6 +47,9 @@ export async function runAgentLoop(
 
       if (VALID_PHASES.has(nextPhase)) {
         ctx.setPhase(nextPhase as CoachPhase);
+        if (nextPhase === 'resume_design') {
+          ctx.summarizeInterviewResponses();
+        }
       }
       emit({
         type: 'phase_change',
@@ -102,18 +103,23 @@ export async function runAgentLoop(
       }
 
       const systemPrompt = buildSystemPrompt(ctx);
-      const phaseTools = getToolsForPhase(ctx.currentPhase);
+      let phaseTools = getToolsForPhase(ctx.currentPhase);
+
+      // When all sections are confirmed in section_craft, strip editing tools
+      // to force the agent to call confirm_phase_complete
+      if (ctx.currentPhase === 'section_craft' && ctx.areAllSectionsConfirmed()) {
+        phaseTools = phaseTools.filter(t =>
+          t.name === 'confirm_phase_complete' || t.name === 'emit_transparency' || t.name === 'save_checkpoint'
+        );
+        log.info('All sections confirmed — restricting tools to confirm_phase_complete only');
+      }
 
       // Warn user when context is very large and will be aggressively trimmed
       if (ctx.lastInputTokens > 180_000) {
         emit({ type: 'transparency', message: 'Optimizing conversation context...', phase: ctx.currentPhase });
       }
 
-      const truncatedMessages = ctx.getApiMessages();
-      const apiMessages: MessageParam[] = truncatedMessages.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content as Anthropic.MessageParam['content'],
-      }));
+      const apiMessages: ChatMessage[] = ctx.getApiMessages();
 
       try {
         let fullText = '';
@@ -123,35 +129,42 @@ export async function runAgentLoop(
         const forceToolUse = round === 0 && (
           ctx.currentPhase === 'deep_research' ||
           ctx.currentPhase === 'gap_analysis' ||
-          ctx.currentPhase === 'quality_review' ||
-          ctx.currentPhase === 'cover_letter'
+          ctx.currentPhase === 'quality_review'
         );
 
-        const response = await withRetry(
-          () => {
+        await withRetry(
+          async () => {
             fullText = '';
             toolUses.length = 0;
-            const streamParams: Parameters<typeof anthropic.messages.stream>[0] = {
-              model: MODEL,
-              max_tokens: MAX_TOKENS,
+            const stream = llm.stream({
+              model: getDefaultModel(),
+              max_tokens: getMaxTokens(),
               system: systemPrompt,
               messages: apiMessages,
-              tools: phaseTools as Parameters<typeof anthropic.messages.stream>[0]['tools'],
-            };
-            if (forceToolUse) {
-              streamParams.tool_choice = { type: 'any' };
+              tools: phaseTools,
+              ...(forceToolUse && { tool_choice: { type: 'any' as const } }),
+            });
+
+            for await (const event of stream) {
+              if (loopAbort.signal.aborted) break;
+              if (event.type === 'text') {
+                fullText += event.text;
+                emit({ type: 'text_delta', content: event.text });
+              } else if (event.type === 'tool_call') {
+                toolUses.push({
+                  id: event.id,
+                  name: event.name,
+                  input: event.input,
+                });
+              } else if (event.type === 'done') {
+                ctx.lastInputTokens = event.usage.input_tokens;
+                ctx.lastOutputTokens = event.usage.output_tokens;
+                const model = getDefaultModel();
+                ctx.trackUsage(event.usage, model);
+                ctx.llmProvider = llm.name;
+                ctx.llmModel = model;
+              }
             }
-            const s = anthropic.messages.stream(streamParams);
-            s.on('text', (text: string) => {
-              fullText += text;
-              emit({ type: 'text_delta', content: text });
-            });
-            // Abort the stream when the loop timeout fires — store handler for cleanup
-            const abortHandler = () => s.abort();
-            loopAbort.signal.addEventListener('abort', abortHandler, { once: true });
-            return s.finalMessage().finally(() => {
-              loopAbort.signal.removeEventListener('abort', abortHandler);
-            });
           },
           {
             onRetry: (attempt, error) => {
@@ -160,24 +173,6 @@ export async function runAgentLoop(
             },
           },
         );
-
-        // Track per-round token usage for adaptive truncation
-        ctx.lastInputTokens = response.usage?.input_tokens ?? 0;
-        ctx.lastOutputTokens = response.usage?.output_tokens ?? 0;
-
-        ctx.addTokens(
-          (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0),
-        );
-
-        for (const block of response.content) {
-          if (block.type === 'tool_use') {
-            toolUses.push({
-              id: block.id,
-              name: block.name,
-              input: block.input as Record<string, unknown>,
-            });
-          }
-        }
 
         if (fullText) {
           emit({ type: 'text_complete', content: fullText });
@@ -273,10 +268,14 @@ export async function runAgentLoop(
 
           try {
             const result = await executeToolCall(tool.name, tool.input, ctx, emit);
+            let resultStr = JSON.stringify(result);
+            if (resultStr.length > 2000) {
+              resultStr = resultStr.substring(0, 2000) + '..."truncated"';
+            }
             toolResults.push({
               type: 'tool_result',
               tool_use_id: tool.id,
-              content: JSON.stringify(result),
+              content: resultStr,
             });
             emit({ type: 'tool_complete', tool_name: tool.name, summary: summarizeToolResult(tool.name, result) });
           } catch (error) {
@@ -363,13 +362,11 @@ function getToolDescription(toolName: string): string {
     propose_section_edit: 'Preparing section changes for your review...',
     confirm_section: 'Confirming section...',
     humanize_check: 'Checking for natural, authentic language...',
-    ats_check: 'Running ATS compatibility check...',
-    generate_cover_letter_section: 'Drafting cover letter paragraph...',
   };
   return descriptions[toolName] ?? `Running ${toolName}...`;
 }
 
-const VALID_PHASES = new Set(['onboarding', 'deep_research', 'gap_analysis', 'resume_design', 'section_craft', 'quality_review', 'cover_letter', 'complete']);
+const VALID_PHASES = new Set(['onboarding', 'deep_research', 'gap_analysis', 'resume_design', 'section_craft', 'quality_review', 'complete']);
 
 function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: SessionContext, log: ReturnType<typeof createSessionLogger>, emit: SSEEmitter): string | null {
   // Validate nextPhase is a known phase
@@ -431,8 +428,8 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
     }
   }
 
-  // quality_review → cover_letter: check quality thresholds
-  if (currentPhase === 'quality_review' && nextPhase === 'cover_letter') {
+  // quality_review → complete: check quality thresholds
+  if (currentPhase === 'quality_review' && nextPhase === 'complete') {
     if (!ctx.adversarialReview.overall_assessment ||
         ctx.adversarialReview.overall_assessment === 'Unable to complete review') {
       return 'Cannot advance: adversarial_review has not been run. Run it before completing quality review.';
@@ -442,25 +439,14 @@ function validatePhaseGate(currentPhase: string, nextPhase: string, ctx: Session
       return `Cannot advance: checklist total is ${total}/50 (minimum 35 required). Address quality issues before proceeding.`;
     }
     // Age-bias risks are advisory only — warn but allow advancement
-    // The agent should address them but they should not create an unbreakable deadlock
     const biasRisks = ctx.adversarialReview.age_bias_risks ?? [];
     if (biasRisks.length > 0) {
       log.warn({ biasRisks, count: biasRisks.length }, 'Age-bias risks noted but allowing advancement');
-      // Surface to user so they're aware of potential bias indicators
       emit({
         type: 'transparency',
         message: `Note: ${biasRisks.length} potential age-bias indicator(s) detected in your resume. The agent has been advised to address these.`,
         phase: ctx.currentPhase,
       });
-    }
-  }
-
-  // cover_letter → complete: soft gate — warn but allow
-  if (currentPhase === 'cover_letter' && nextPhase === 'complete') {
-    const hasCoverContent = ctx.tailoredSections &&
-      Object.values(ctx.tailoredSections).some(v => typeof v === 'string' && v.length > 0);
-    if (!hasCoverContent) {
-      log.warn('Advancing cover_letter → complete without cover letter content');
     }
   }
 
@@ -517,10 +503,6 @@ function summarizeToolResult(toolName: string, result: unknown): string {
       return `${r.section ?? 'Section'} confirmed`;
     case 'humanize_check':
       return `Authenticity: ${r.authenticity_score ?? 0}%`;
-    case 'ats_check':
-      return `ATS score: ${r.ats_score ?? 0}%`;
-    case 'generate_cover_letter_section':
-      return `${r.paragraph_type ?? 'Paragraph'} drafted`;
     default:
       return 'Done';
   }

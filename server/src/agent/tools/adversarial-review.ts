@@ -1,8 +1,8 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_PRIMARY } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
-import { QUALITY_CHECKLIST } from '../resume-guide.js';
+import { QUALITY_CHECKLIST, ATS_FORMATTING_RULES } from '../resume-guide.js';
 
 const CHECKLIST_LABELS = [
   'quantified',
@@ -28,14 +28,24 @@ export async function executeAdversarialReview(
   age_bias_risks: string[];
   checklist_scores: Record<string, number>;
   checklist_total: number;
+  keyword_coverage_pct: number;
+  section_header_issues: string[];
+  ats_score: number;
 }> {
   const resumeContent = input.resume_content as string;
   const jobDescription = input.job_description as string;
   const requirements = input.requirements as string[];
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
+  const jdKeywords = [
+    ...(ctx.jdAnalysis.must_haves ?? []),
+    ...(ctx.jdAnalysis.nice_to_haves ?? []),
+  ];
+  const benchmarkKeywords = ctx.benchmarkCandidate?.language_keywords ?? [];
+
+  const response = await llm.chat({
+    model: MODEL_PRIMARY,
     max_tokens: 4096,
+    system: '',
     messages: [
       {
         role: 'user',
@@ -62,6 +72,20 @@ Also check for AGE BIAS RISKS:
 - Street address in header
 - Outdated business terminology
 
+Also perform ATS KEYWORD ANALYSIS:
+${ATS_FORMATTING_RULES}
+
+- Check keyword density: target 60-80% of JD keywords present
+- Check keyword placement: 3-5 in summary, 10-15 in skills, naturally in experience bullets
+- Check section header compliance against standard ATS terms
+- Check for ATS-unfriendly elements (tables, images, special characters)
+
+JD KEYWORDS TO CHECK:
+${jdKeywords.map((k, i) => `${i + 1}. ${k}`).join('\n')}
+
+ADDITIONAL KEYWORDS TO ECHO:
+${benchmarkKeywords.join(', ')}
+
 Return ONLY valid JSON:
 {
   "overall_assessment": "2-3 sentence brutally honest first impression from a 30-second scan",
@@ -73,13 +97,16 @@ Return ONLY valid JSON:
   "strongest_points": ["What would make you want to interview this person"],
   "age_bias_risks": ["Any age-bias signals detected in the resume"],
   "checklist_scores": { "1": 4, "2": 3, ... },
-  "checklist_total": 38
+  "checklist_total": 38,
+  "keyword_coverage_pct": 72,
+  "section_header_issues": ["Any non-standard section headers that should be renamed"],
+  "ats_score": 85
 }`,
       },
     ],
   });
 
-  const text = extractResponseText(response);
+  const text = response.text;
 
   let result: {
     overall_assessment: string;
@@ -88,6 +115,9 @@ Return ONLY valid JSON:
     age_bias_risks: string[];
     checklist_scores: Record<string, number>;
     checklist_total: number;
+    keyword_coverage_pct: number;
+    section_header_issues: string[];
+    ats_score: number;
   } = {
     overall_assessment: 'Unable to complete review',
     risk_flags: [],
@@ -95,6 +125,9 @@ Return ONLY valid JSON:
     age_bias_risks: [],
     checklist_scores: {},
     checklist_total: 0,
+    keyword_coverage_pct: 0,
+    section_header_issues: [],
+    ats_score: 0,
   };
 
   const parsed = repairJSON<Record<string, unknown>>(text);
@@ -109,12 +142,19 @@ Return ONLY valid JSON:
     }
 
     result = {
-      overall_assessment: (parsed.overall_assessment as string) ?? result.overall_assessment,
+      overall_assessment: typeof parsed.overall_assessment === 'string'
+        ? parsed.overall_assessment
+        : typeof parsed.overall_assessment === 'object' && parsed.overall_assessment !== null
+          ? JSON.stringify(parsed.overall_assessment)
+          : result.overall_assessment,
       risk_flags: (parsed.risk_flags as typeof result.risk_flags) ?? [],
       pass: (parsed.pass as boolean) ?? false,
       age_bias_risks: (parsed.age_bias_risks as string[]) ?? [],
       checklist_scores: labeledScores,
       checklist_total: (parsed.checklist_total as number) ?? 0,
+      keyword_coverage_pct: (parsed.keyword_coverage_pct as number) ?? 0,
+      section_header_issues: (parsed.section_header_issues as string[]) ?? [],
+      ats_score: Math.max(0, Math.min(100, (parsed.ats_score as number) ?? 0)),
     };
   }
 
@@ -131,7 +171,7 @@ Return ONLY valid JSON:
     checklist_total: result.checklist_total,
   };
 
-  // Progressive quality dashboard emit
+  // Progressive quality dashboard emit (includes ATS data from merged check)
   ctx.qualityDashboardData = {
     ...ctx.qualityDashboardData,
     hiring_manager: {
@@ -143,6 +183,9 @@ Return ONLY valid JSON:
     risk_flags: result.risk_flags,
     age_bias_risks: result.age_bias_risks,
     overall_assessment: result.overall_assessment,
+    ats_score: result.ats_score,
+    keyword_coverage: result.keyword_coverage_pct,
+    section_header_issues: result.section_header_issues,
   };
   emit({
     type: 'right_panel_update',

@@ -1,4 +1,4 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_PRIMARY } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -28,6 +28,14 @@ export async function executeProposeSectionEdit(
   changes: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }>;
 }> {
   const section = SECTION_ALIASES[input.section as string] ?? (input.section as string);
+
+  // Reject edits when all sections are confirmed — agent should be transitioning
+  if (ctx.areAllSectionsConfirmed()) {
+    throw new Error(
+      'ALL SECTIONS ARE ALREADY CONFIRMED. Do NOT edit sections. ' +
+      'Call confirm_phase_complete with next_phase="quality_review" IMMEDIATELY.',
+    );
+  }
   const currentContent = input.current_content as string;
   const requirements = (input.requirements as string[]) || [];
   const instructions = (input.instructions as string) || '';
@@ -53,9 +61,10 @@ Keywords to echo: ${ctx.benchmarkCandidate.language_keywords.join(', ')}`
     ? `Interview data:\n${ctx.interviewResponses.map((r) => `Q: ${r.question}\nA: ${r.answer}`).join('\n\n')}`
     : '';
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
+  const response = await llm.chat({
+    model: MODEL_PRIMARY,
     max_tokens: 4096,
+    system: '',
     messages: [
       {
         role: 'user',
@@ -104,7 +113,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const rawText = extractResponseText(response);
+  const rawText = response.text;
 
   let proposedContent = currentContent;
   let changes: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }> = [];

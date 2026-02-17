@@ -1,4 +1,4 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_LIGHT } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -16,8 +16,8 @@ export async function executeHumanizeCheck(
 }> {
   const resumeContent = input.resume_content as string;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
+  const response = await llm.chat({
+    model: MODEL_LIGHT,
     max_tokens: 4096,
     system: `You are an expert at detecting AI-generated text patterns. Your job is to review resume content and identify anything that sounds artificially generated rather than authentically human. Look for:
 
@@ -70,7 +70,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const rawText = extractResponseText(response);
+  const rawText = response.text;
 
   const parsed = repairJSON<Record<string, unknown>>(rawText);
   let result = {
@@ -84,7 +84,11 @@ Return ONLY valid JSON:
     result = {
       authenticity_score: (parsed.authenticity_score as number) ?? 50,
       issues: (parsed.issues as Array<{ pattern: string; location: string; suggestion: string }>) ?? [],
-      overall_assessment: (parsed.overall_assessment as string) ?? '',
+      overall_assessment: typeof parsed.overall_assessment === 'string'
+        ? parsed.overall_assessment
+        : typeof parsed.overall_assessment === 'object' && parsed.overall_assessment !== null
+          ? JSON.stringify(parsed.overall_assessment)
+          : '',
       age_sensitive_flags: (parsed.age_sensitive_flags as string[]) ?? [],
     };
   }
