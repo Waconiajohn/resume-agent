@@ -32,9 +32,15 @@ export async function executeAdversarialReview(
   section_header_issues: string[];
   ats_score: number;
 }> {
-  const resumeContent = input.resume_content as string;
-  const jobDescription = input.job_description as string;
-  const requirements = input.requirements as string[];
+  // Fall back to session context if input fields are missing (GLM model quirk)
+  const resumeContent = (input.resume_content as string)
+    || Object.values(ctx.tailoredSections as Record<string, string>).filter(Boolean).join('\n\n')
+    || '';
+  const jobDescription = (input.job_description as string)
+    || ctx.jdAnalysis.raw_jd
+    || '';
+  const requirements = (input.requirements as string[])
+    || [...(ctx.jdAnalysis.must_haves ?? []), ...(ctx.jdAnalysis.nice_to_haves ?? [])];
 
   const jdKeywords = [
     ...(ctx.jdAnalysis.must_haves ?? []),

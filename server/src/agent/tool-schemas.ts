@@ -37,9 +37,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
   }),
 
   adversarial_review: z.object({
-    resume_content: z.string(),
-    job_description: z.string(),
-    requirements: z.array(z.string()),
+    resume_content: z.string().optional(),
+    job_description: z.string().optional(),
+    requirements: z.array(z.string()).optional(),
   }),
 
   create_master_resume: z.object({
@@ -100,9 +100,9 @@ export const toolSchemas: Record<string, z.ZodType> = {
   }),
 
   quality_review_suite: z.object({
-    resume_content: z.string(),
-    job_description: z.string(),
-    requirements: z.array(z.string()),
+    resume_content: z.string().optional(),
+    job_description: z.string().optional(),
+    requirements: z.array(z.string()).optional(),
   }),
 
   save_checkpoint: z.object({

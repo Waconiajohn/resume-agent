@@ -14,7 +14,10 @@ export async function executeHumanizeCheck(
   overall_assessment: string;
   age_sensitive_flags: string[];
 }> {
-  const resumeContent = input.resume_content as string;
+  // Fall back to session context if input field is missing (GLM model quirk)
+  const resumeContent = (input.resume_content as string)
+    || Object.values(ctx.tailoredSections as Record<string, string>).filter(Boolean).join('\n\n')
+    || '';
 
   const response = await llm.chat({
     model: MODEL_LIGHT,

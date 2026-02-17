@@ -36,6 +36,9 @@ export async function executeToolCall(
     return { error: `Tool ${toolName} is not available in the ${ctx.currentPhase} phase` };
   }
 
+  // Normalize tool inputs: GLM models sometimes pass JSON strings where objects/arrays are expected
+  normalizeToolInput(toolName, input, ctx, log);
+
   // Validate tool input with Zod schema if available
   const schema = toolSchemas[toolName];
   if (schema) {
@@ -124,5 +127,72 @@ export async function executeToolCall(
     }
     default:
       throw new Error(`Unknown tool: ${toolName}`);
+  }
+}
+
+/**
+ * Normalize tool inputs to handle GLM model quirks:
+ * - Stringified JSON where objects/arrays are expected
+ * - Missing fields that can be derived from session context
+ */
+function normalizeToolInput(
+  toolName: string,
+  input: Record<string, unknown>,
+  ctx: SessionContext,
+  log: ReturnType<typeof createSessionLogger>,
+): void {
+  // 1. Coerce stringified JSON objects
+  if (toolName === 'update_right_panel' && typeof input.data === 'string') {
+    try {
+      input.data = JSON.parse(input.data as string);
+      log.debug({ tool: toolName }, 'Coerced data from string to object');
+    } catch {
+      log.warn({ tool: toolName }, 'Failed to parse stringified data field');
+    }
+  }
+
+  // 2. Coerce stringified arrays (e.g. requirements, changes)
+  for (const field of ['requirements', 'changes', 'choices']) {
+    if (typeof input[field] === 'string') {
+      try {
+        const parsed = JSON.parse(input[field] as string);
+        if (Array.isArray(parsed)) {
+          input[field] = parsed;
+          log.debug({ tool: toolName, field }, 'Coerced array field from string');
+        }
+      } catch { /* not valid JSON — leave as-is for schema validation to catch */ }
+    }
+  }
+
+  // 3. Fill missing quality tool fields from session context
+  if (toolName === 'adversarial_review' || toolName === 'quality_review_suite') {
+    if (!input.resume_content) {
+      const sections = Object.values(ctx.tailoredSections as Record<string, string>).filter(Boolean);
+      if (sections.length > 0) {
+        input.resume_content = sections.join('\n\n');
+        log.debug({ tool: toolName }, 'Filled resume_content from tailoredSections');
+      }
+    }
+    if (!input.job_description && ctx.jdAnalysis.raw_jd) {
+      input.job_description = ctx.jdAnalysis.raw_jd;
+      log.debug({ tool: toolName }, 'Filled job_description from jdAnalysis.raw_jd');
+    }
+    if (!input.requirements || (Array.isArray(input.requirements) && input.requirements.length === 0)) {
+      const reqs = [
+        ...(ctx.jdAnalysis.must_haves ?? []),
+        ...(ctx.jdAnalysis.nice_to_haves ?? []),
+      ];
+      if (reqs.length > 0) {
+        input.requirements = reqs;
+        log.debug({ tool: toolName }, 'Filled requirements from jdAnalysis');
+      }
+    }
+  }
+  if (toolName === 'humanize_check' && !input.resume_content) {
+    const sections = Object.values(ctx.tailoredSections as Record<string, string>).filter(Boolean);
+    if (sections.length > 0) {
+      input.resume_content = sections.join('\n\n');
+      log.debug({ tool: toolName }, 'Filled resume_content from tailoredSections');
+    }
   }
 }
