@@ -8,6 +8,7 @@ import { LandingScreen } from '@/components/LandingScreen';
 import { CoachScreen } from '@/components/CoachScreen';
 import { PipelineIntakeForm } from '@/components/PipelineIntakeForm';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { SalesPage } from '@/components/SalesPage';
 
 type View = 'landing' | 'intake' | 'coach';
 
@@ -118,6 +119,9 @@ export default function App() {
       </div>
     );
   }
+
+  const isSalesPage = ['/', '/sales'].includes(window.location.pathname);
+  if (isSalesPage) return <SalesPage />;
 
   if (!user) {
     return (
