@@ -6,9 +6,10 @@ import { Header } from '@/components/Header';
 import { AuthGate } from '@/components/AuthGate';
 import { LandingScreen } from '@/components/LandingScreen';
 import { CoachScreen } from '@/components/CoachScreen';
+import { PipelineIntakeForm } from '@/components/PipelineIntakeForm';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-type View = 'landing' | 'coach';
+type View = 'landing' | 'intake' | 'coach';
 
 export default function App() {
   const { user, session, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
@@ -24,6 +25,7 @@ export default function App() {
     loadSession,
     sendMessage,
     setCurrentSession,
+    startPipeline,
     respondToGate,
   } = useSession(accessToken);
 
@@ -43,16 +45,36 @@ export default function App() {
     panelType,
     panelData,
     addUserMessage,
+    positioningProfileFound,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   const [view, setView] = useState<View>('landing');
+  const [intakeLoading, setIntakeLoading] = useState(false);
 
-  const handleNewSession = useCallback(async () => {
-    const s = await createSession();
-    if (s) {
-      setView('coach');
-    }
-  }, [createSession]);
+  const handleNewSession = useCallback(() => {
+    setView('intake');
+  }, []);
+
+  const handleIntakeSubmit = useCallback(
+    async (data: { resumeText: string; jobDescription: string; companyName: string }) => {
+      setIntakeLoading(true);
+      try {
+        const s = await createSession();
+        if (!s) {
+          setIntakeLoading(false);
+          return;
+        }
+        setView('coach');
+        setTimeout(async () => {
+          await startPipeline(s.id, data.resumeText, data.jobDescription, data.companyName);
+          setIntakeLoading(false);
+        }, 500);
+      } catch {
+        setIntakeLoading(false);
+      }
+    },
+    [createSession, startPipeline],
+  );
 
   const handleResumeSession = useCallback(
     async (sessionId: string) => {
@@ -122,6 +144,14 @@ export default function App() {
         />
       )}
 
+      {view === 'intake' && (
+        <PipelineIntakeForm
+          onSubmit={handleIntakeSubmit}
+          onBack={() => setView('landing')}
+          loading={intakeLoading}
+        />
+      )}
+
       {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && (
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
@@ -146,6 +176,7 @@ export default function App() {
           error={agentError ?? sessionError}
           onSendMessage={handleSendMessage}
           onPipelineRespond={handlePipelineRespond}
+          positioningProfileFound={positioningProfileFound}
         />
       )}
     </div>

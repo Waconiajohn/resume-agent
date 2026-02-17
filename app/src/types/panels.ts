@@ -10,7 +10,8 @@ export type PanelType =
   | 'quality_dashboard'
   | 'completion'
   | 'positioning_interview'
-  | 'blueprint_review';
+  | 'blueprint_review'
+  | 'section_review';
 
 // --- Onboarding Summary ---
 export interface OnboardingSummaryData {
@@ -159,6 +160,12 @@ export interface BlueprintReviewData {
   keyword_count: number;
 }
 
+// --- Section Review ---
+export interface SectionReviewData {
+  section: string;
+  content: string;
+}
+
 // Discriminated union type for all panel data (type field matches PanelType)
 export type PanelData =
   | { type: 'onboarding_summary' } & OnboardingSummaryData
@@ -169,4 +176,5 @@ export type PanelData =
   | { type: 'quality_dashboard' } & QualityDashboardData
   | { type: 'completion' } & CompletionData
   | { type: 'positioning_interview' } & PositioningInterviewData
-  | { type: 'blueprint_review' } & BlueprintReviewData;
+  | { type: 'blueprint_review' } & BlueprintReviewData
+  | { type: 'section_review' } & SectionReviewData;

@@ -443,6 +443,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   setPipelineStage(data.stage as PipelineStage);
+                  setCurrentPhase(data.stage as string);
                   setIsProcessing(true);
                   setMessages((prev) => [
                     ...prev,
@@ -469,6 +470,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (!data) break;
                   setIsProcessing(false);
                   setPositioningQuestion(data.question as PositioningQuestion);
+                  // Show in right panel
+                  setPanelType('positioning_interview');
+                  setPanelData({
+                    type: 'positioning_interview',
+                    current_question: data.question as PositioningQuestion,
+                    questions_total: 6,
+                    questions_answered: (data.question as PositioningQuestion).question_number - 1,
+                  } as PanelData);
                   break;
                 }
 
@@ -488,6 +497,18 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (!data) break;
                   setIsProcessing(false);
                   setBlueprintReady(data.blueprint);
+                  // Show in right panel
+                  const bp = data.blueprint as Record<string, unknown>;
+                  setPanelType('blueprint_review');
+                  setPanelData({
+                    type: 'blueprint_review',
+                    target_role: (bp.target_role as string) ?? '',
+                    positioning_angle: (bp.positioning_angle as string) ?? '',
+                    section_plan: bp.section_plan as { order: string[]; rationale: string },
+                    age_protection: bp.age_protection as { flags: Array<{ item: string; risk: string; action: string }>; clean: boolean },
+                    evidence_allocation_count: ((bp.evidence_allocation as Record<string, unknown>)?.selected_accomplishments as unknown[] ?? []).length,
+                    keyword_count: Object.keys((bp.keyword_map as Record<string, unknown>) ?? {}).length,
+                  } as PanelData);
                   break;
                 }
 
@@ -499,6 +520,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     section: data.section as string,
                     content: data.content as string,
                   });
+                  // Show section review panel
+                  setPanelType('section_review' as PanelType);
+                  setPanelData({
+                    type: 'section_review',
+                    section: data.section as string,
+                    content: data.content as string,
+                  } as PanelData);
                   break;
                 }
 
@@ -510,7 +538,21 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'quality_scores': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  setQualityScores(data.scores as QualityScores);
+                  const scores = data.scores as QualityScores;
+                  setQualityScores(scores);
+                  // Show quality dashboard with 6-dimension scores
+                  setPanelType('quality_dashboard');
+                  setPanelData({
+                    type: 'quality_dashboard',
+                    ats_score: scores.ats_score,
+                    authenticity_score: scores.authenticity,
+                    hiring_manager: {
+                      pass: scores.hiring_manager_impact >= 4,
+                      checklist_total: scores.hiring_manager_impact,
+                      checklist_max: 5,
+                    },
+                    keyword_coverage: scores.requirement_coverage,
+                  } as PanelData);
                   break;
                 }
 

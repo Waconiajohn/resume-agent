@@ -10,6 +10,7 @@ import { QualityDashboardPanel } from './QualityDashboardPanel';
 import { CompletionPanel } from './CompletionPanel';
 import { PositioningInterviewPanel } from './PositioningInterviewPanel';
 import { BlueprintReviewPanel } from './BlueprintReviewPanel';
+import { SectionReviewPanel } from './SectionReviewPanel';
 import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
@@ -110,6 +111,21 @@ function PanelContent(props: RightPanelProps) {
             data={panelData}
             onApprove={() => {
               onPipelineRespond?.('architect_review', undefined);
+            }}
+          />
+        );
+      case 'section_review':
+        return (
+          <SectionReviewPanel
+            section={panelData.section}
+            content={panelData.content}
+            onApprove={() => {
+              onPipelineRespond?.(`section_review_${panelData.section}`, true);
+            }}
+            onRequestChanges={(feedback) => {
+              onPipelineRespond?.(`section_review_${panelData.section}`, false);
+              // Send feedback as a chat message so the agent can act on it
+              onSendMessage?.(feedback);
             }}
           />
         );

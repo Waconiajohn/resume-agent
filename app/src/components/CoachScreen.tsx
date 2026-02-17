@@ -1,5 +1,6 @@
 import { ChatPanel } from './ChatPanel';
 import { RightPanel } from './panels/RightPanel';
+import { PositioningProfileChoice } from './PositioningProfileChoice';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
@@ -18,6 +19,7 @@ interface CoachScreenProps {
   error: string | null;
   onSendMessage: (content: string) => void;
   onPipelineRespond?: (gate: string, response: unknown) => void;
+  positioningProfileFound?: { profile: unknown; updated_at: string } | null;
 }
 
 export function CoachScreen({
@@ -34,6 +36,7 @@ export function CoachScreen({
   error,
   onSendMessage,
   onPipelineRespond,
+  positioningProfileFound,
 }: CoachScreenProps) {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -41,6 +44,18 @@ export function CoachScreen({
       {error && (
         <div className="mx-4 mt-2 rounded-lg border border-red-500/30 bg-red-500/20 px-4 py-2.5 backdrop-blur-sm">
           <p className="text-sm text-red-200">{error}</p>
+        </div>
+      )}
+
+      {/* Positioning profile choice — shown when an existing profile is found */}
+      {positioningProfileFound && onPipelineRespond && (
+        <div className="px-4 py-2">
+          <PositioningProfileChoice
+            updatedAt={positioningProfileFound.updated_at}
+            onChoice={(choice) => {
+              onPipelineRespond('positioning_profile_choice', choice);
+            }}
+          />
         </div>
       )}
 
