@@ -17,6 +17,7 @@ interface CoachScreenProps {
   panelData: PanelData | null;
   error: string | null;
   onSendMessage: (content: string) => void;
+  onPipelineRespond?: (gate: string, response: unknown) => void;
 }
 
 export function CoachScreen({
@@ -32,6 +33,7 @@ export function CoachScreen({
   panelData,
   error,
   onSendMessage,
+  onPipelineRespond,
 }: CoachScreenProps) {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -65,6 +67,7 @@ export function CoachScreen({
             resume={resume}
             isProcessing={isProcessing}
             onSendMessage={onSendMessage}
+            onPipelineRespond={onPipelineRespond}
           />
         </div>
       </div>

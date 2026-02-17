@@ -8,6 +8,8 @@ import { DesignOptionsPanel } from './DesignOptionsPanel';
 import { LiveResumePanel } from './LiveResumePanel';
 import { QualityDashboardPanel } from './QualityDashboardPanel';
 import { CompletionPanel } from './CompletionPanel';
+import { PositioningInterviewPanel } from './PositioningInterviewPanel';
+import { BlueprintReviewPanel } from './BlueprintReviewPanel';
 import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
@@ -63,10 +65,11 @@ interface RightPanelProps {
   resume: FinalResume | null;
   isProcessing?: boolean;
   onSendMessage?: (content: string) => void;
+  onPipelineRespond?: (gate: string, response: unknown) => void;
 }
 
 function PanelContent(props: RightPanelProps) {
-  const { panelData, resume, isProcessing, onSendMessage } = props;
+  const { panelData, resume, isProcessing, onSendMessage, onPipelineRespond } = props;
   // If we have typed panel data, use the discriminated union switch
   if (panelData) {
     switch (panelData.type) {
@@ -90,18 +93,25 @@ function PanelContent(props: RightPanelProps) {
           />
         );
       case 'positioning_interview':
-        // Pipeline panel — dedicated component not yet implemented
         return (
-          <div className="flex h-full items-center justify-center p-8">
-            <p className="text-sm text-white/50">Positioning interview in progress...</p>
-          </div>
+          <PositioningInterviewPanel
+            data={panelData}
+            onRespond={(questionId, answer, selectedSuggestion) => {
+              onPipelineRespond?.(`positioning_q_${questionId}`, {
+                answer,
+                selected_suggestion: selectedSuggestion,
+              });
+            }}
+          />
         );
       case 'blueprint_review':
-        // Pipeline panel — dedicated component not yet implemented
         return (
-          <div className="flex h-full items-center justify-center p-8">
-            <p className="text-sm text-white/50">Blueprint review in progress...</p>
-          </div>
+          <BlueprintReviewPanel
+            data={panelData}
+            onApprove={() => {
+              onPipelineRespond?.('architect_review', undefined);
+            }}
+          />
         );
       default: {
         // 3G: Exhaustive check — compile-time safety for unhandled panel types

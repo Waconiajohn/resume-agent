@@ -24,6 +24,7 @@ export default function App() {
     loadSession,
     sendMessage,
     setCurrentSession,
+    respondToGate,
   } = useSession(accessToken);
 
   const {
@@ -72,6 +73,14 @@ export default function App() {
       }
     },
     [currentSession, addUserMessage, sendMessage, setIsProcessing],
+  );
+
+  const handlePipelineRespond = useCallback(
+    async (gate: string, response: unknown) => {
+      if (!currentSession) return;
+      await respondToGate(currentSession.id, gate, response);
+    },
+    [currentSession, respondToGate],
   );
 
   const handleSignOut = useCallback(async () => {
@@ -136,6 +145,7 @@ export default function App() {
           panelData={panelData}
           error={agentError ?? sessionError}
           onSendMessage={handleSendMessage}
+          onPipelineRespond={handlePipelineRespond}
         />
       )}
     </div>
