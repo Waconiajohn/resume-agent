@@ -89,6 +89,20 @@ function PanelContent(props: RightPanelProps) {
             resume={resume}
           />
         );
+      case 'positioning_interview':
+        // Pipeline panel — dedicated component not yet implemented
+        return (
+          <div className="flex h-full items-center justify-center p-8">
+            <p className="text-sm text-white/50">Positioning interview in progress...</p>
+          </div>
+        );
+      case 'blueprint_review':
+        // Pipeline panel — dedicated component not yet implemented
+        return (
+          <div className="flex h-full items-center justify-center p-8">
+            <p className="text-sm text-white/50">Blueprint review in progress...</p>
+          </div>
+        );
       default: {
         // 3G: Exhaustive check — compile-time safety for unhandled panel types
         const _exhaustive: never = panelData;

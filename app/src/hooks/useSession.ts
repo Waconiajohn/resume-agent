@@ -107,6 +107,66 @@ export function useSession(accessToken: string | null) {
     }
   }, [accessToken, headers]);
 
+  const startPipeline = useCallback(async (
+    sessionId: string,
+    rawResumeText: string,
+    jobDescription: string,
+    companyName: string,
+  ): Promise<boolean> => {
+    if (!accessToken) return false;
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/pipeline/start`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({
+          session_id: sessionId,
+          raw_resume_text: rawResumeText,
+          job_description: jobDescription,
+          company_name: companyName,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to start pipeline (${res.status})`);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error starting pipeline');
+      return false;
+    }
+  }, [accessToken, headers]);
+
+  const respondToGate = useCallback(async (
+    sessionId: string,
+    gate: string,
+    response: unknown,
+  ): Promise<boolean> => {
+    if (!accessToken) return false;
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/pipeline/respond`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({
+          session_id: sessionId,
+          gate,
+          response,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to respond to gate (${res.status})`);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error responding to gate');
+      return false;
+    }
+  }, [accessToken, headers]);
+
   return {
     sessions,
     currentSession,
@@ -118,5 +178,7 @@ export function useSession(accessToken: string | null) {
     loadSession,
     sendMessage,
     setCurrentSession,
+    startPipeline,
+    respondToGate,
   };
 }

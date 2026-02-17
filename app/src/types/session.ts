@@ -48,3 +48,51 @@ export interface PhaseGateData {
   phaseSummary: string;
   nextPhasePreview: string;
 }
+
+// Pipeline stage tracking (new pipeline model)
+export type PipelineStage =
+  | 'intake'
+  | 'positioning'
+  | 'research'
+  | 'gap_analysis'
+  | 'architect'
+  | 'architect_review'
+  | 'section_writing'
+  | 'section_review'
+  | 'quality_review'
+  | 'revision'
+  | 'complete';
+
+// Positioning question from Why Me interview
+export interface PositioningQuestion {
+  id: string;
+  question_number: number;
+  question_text: string;
+  context: string;
+  input_type: 'multiple_choice' | 'text' | 'hybrid';
+  suggestions?: Array<{
+    label: string;
+    description: string;
+    source: 'resume' | 'inferred';
+  }>;
+  follow_ups?: string[];
+  optional?: boolean;
+}
+
+// Quality scores from the 6-dimension review
+export interface QualityScores {
+  hiring_manager_impact: number;   // 1-5
+  requirement_coverage: number;    // 0-100
+  ats_score: number;               // 0-100
+  authenticity: number;            // 0-100
+  evidence_integrity: number;      // 0-100
+  blueprint_compliance: number;    // 0-100
+}
+
+// Revision instruction from quality review
+export interface RevisionInstruction {
+  target_section: string;
+  issue: string;
+  instruction: string;
+  priority: 'high' | 'medium' | 'low';
+}

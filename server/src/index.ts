@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions, sseConnections } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
+import { pipeline } from './routes/pipeline.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import logger from './lib/logger.js';
@@ -61,6 +62,7 @@ app.get('/metrics', (c) => {
 
 app.route('/api/sessions', sessions);
 app.route('/api/resumes', resumes);
+app.route('/api/pipeline', pipeline);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

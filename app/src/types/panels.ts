@@ -1,3 +1,5 @@
+import type { PositioningQuestion } from '@/types/session';
+
 // Panel type identifiers matching backend panel_type values
 export type PanelType =
   | 'onboarding_summary'
@@ -6,7 +8,9 @@ export type PanelType =
   | 'design_options'
   | 'live_resume'
   | 'quality_dashboard'
-  | 'completion';
+  | 'completion'
+  | 'positioning_interview'
+  | 'blueprint_review';
 
 // --- Onboarding Summary ---
 export interface OnboardingSummaryData {
@@ -132,6 +136,29 @@ export interface CompletionData {
   sections_rewritten?: number;
 }
 
+// --- Positioning Interview ---
+export interface PositioningInterviewData {
+  current_question?: PositioningQuestion;
+  questions_total: number;
+  questions_answered: number;
+}
+
+// --- Blueprint Review ---
+export interface BlueprintReviewData {
+  target_role: string;
+  positioning_angle: string;
+  section_plan: {
+    order: string[];
+    rationale: string;
+  };
+  age_protection: {
+    flags: Array<{ item: string; risk: string; action: string }>;
+    clean: boolean;
+  };
+  evidence_allocation_count: number;
+  keyword_count: number;
+}
+
 // Discriminated union type for all panel data (type field matches PanelType)
 export type PanelData =
   | { type: 'onboarding_summary' } & OnboardingSummaryData
@@ -140,4 +167,6 @@ export type PanelData =
   | { type: 'design_options' } & DesignOptionsData
   | { type: 'live_resume' } & LiveResumeData
   | { type: 'quality_dashboard' } & QualityDashboardData
-  | { type: 'completion' } & CompletionData;
+  | { type: 'completion' } & CompletionData
+  | { type: 'positioning_interview' } & PositioningInterviewData
+  | { type: 'blueprint_review' } & BlueprintReviewData;

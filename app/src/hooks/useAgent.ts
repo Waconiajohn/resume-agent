@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
+import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
@@ -31,6 +31,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [panelType, setPanelType] = useState<PanelType | null>(null);
   const [panelData, setPanelData] = useState<PanelData | null>(null);
+  const [pipelineStage, setPipelineStage] = useState<PipelineStage | null>(null);
+  const [positioningQuestion, setPositioningQuestion] = useState<PositioningQuestion | null>(null);
+  const [positioningProfileFound, setPositioningProfileFound] = useState<{ profile: unknown; updated_at: string } | null>(null);
+  const [blueprintReady, setBlueprintReady] = useState<unknown>(null);
+  const [sectionDraft, setSectionDraft] = useState<{ section: string; content: string } | null>(null);
+  const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageIdRef = useRef(0);
 
@@ -433,6 +439,113 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'stage_start': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setPipelineStage(data.stage as PipelineStage);
+                  setIsProcessing(true);
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: nextId(),
+                      role: 'system',
+                      content: data.message,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'stage_complete': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setPipelineStage(data.stage as PipelineStage);
+                  setIsProcessing(false);
+                  break;
+                }
+
+                case 'positioning_question': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setPositioningQuestion(data.question as PositioningQuestion);
+                  break;
+                }
+
+                case 'positioning_profile_found': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setPositioningProfileFound({
+                    profile: data.profile,
+                    updated_at: data.updated_at,
+                  });
+                  break;
+                }
+
+                case 'blueprint_ready': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setBlueprintReady(data.blueprint);
+                  break;
+                }
+
+                case 'section_draft': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setSectionDraft({
+                    section: data.section as string,
+                    content: data.content as string,
+                  });
+                  break;
+                }
+
+                case 'section_approved': {
+                  // Acknowledgement only — no state update needed
+                  break;
+                }
+
+                case 'quality_scores': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setQualityScores(data.scores as QualityScores);
+                  break;
+                }
+
+                case 'revision_start': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(true);
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: nextId(),
+                      role: 'system',
+                      content: `Revising ${(data.instructions as Array<unknown>).length} sections based on quality review...`,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'pipeline_complete': {
+                  setIsProcessing(false);
+                  setSessionComplete(true);
+                  setPipelineStage('complete');
+                  setPanelType('completion');
+                  break;
+                }
+
+                case 'pipeline_error': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setError(data.error as string ?? 'Pipeline error');
+                  break;
+                }
+
                 default: {
                   console.warn('[useAgent] Unknown SSE event:', msg.event);
                   break;
@@ -552,5 +665,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     panelType,
     panelData,
     addUserMessage,
+    pipelineStage,
+    positioningQuestion,
+    positioningProfileFound,
+    blueprintReady,
+    sectionDraft,
+    qualityScores,
   };
 }
