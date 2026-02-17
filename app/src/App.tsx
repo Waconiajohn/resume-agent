@@ -18,6 +18,7 @@ export default function App() {
     sessions,
     currentSession,
     loading: sessionLoading,
+    error: sessionError,
     listSessions,
     createSession,
     loadSession,
@@ -33,6 +34,7 @@ export default function App() {
     phaseGate,
     currentPhase,
     isProcessing,
+    setIsProcessing,
     resume,
     connected,
     sessionComplete,
@@ -63,9 +65,13 @@ export default function App() {
     async (content: string) => {
       if (!currentSession) return;
       addUserMessage(content);
-      await sendMessage(currentSession.id, content);
+      const ok = await sendMessage(currentSession.id, content);
+      if (!ok) {
+        // API rejected the message (e.g. 409 still processing) — reset processing state
+        setIsProcessing(false);
+      }
     },
-    [currentSession, addUserMessage, sendMessage],
+    [currentSession, addUserMessage, sendMessage, setIsProcessing],
   );
 
   const handleSignOut = useCallback(async () => {
@@ -116,7 +122,7 @@ export default function App() {
         </div>
       )}
 
-      {view === 'coach' && (connected || sessionComplete || agentError) && (
+      {view === 'coach' && (connected || sessionComplete || agentError || sessionError) && (
         <CoachScreen
           messages={messages}
           streamingText={streamingText}
@@ -128,7 +134,7 @@ export default function App() {
           resume={resume}
           panelType={panelType}
           panelData={panelData}
-          error={agentError}
+          error={agentError ?? sessionError}
           onSendMessage={handleSendMessage}
         />
       )}

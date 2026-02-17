@@ -146,12 +146,37 @@ Help the candidate choose the right format and structure for their tailored resu
 Your goals:
 1. Use emit_transparency to explain:
    "Based on the role, company culture, and your experience, I'm going to recommend the best way to structure your resume. The right format can make the difference between a 6-second scan and a 30-second read."
-2. Consider factors:
-   - ATS compatibility requirements
-   - Industry norms for this type of role
-   - The candidate's strongest selling points (where should they appear first?)
-   - Section ordering that tells the best story
-3. You MUST call update_right_panel with panel_type "design_options" to present your options.
+
+2. Design EXACTLY 3 options using these strategic templates as starting points. Adapt each to the specific candidate and role — do NOT use generic descriptions.
+
+   **Template A — "Impact-Forward"**
+   Section order: summary → selected_accomplishments → experience → skills → education
+   Best when: The candidate has impressive quantifiable achievements that immediately demonstrate value.
+   Strategy: Leads with a greatest-hits reel before the chronological story. Forces the hiring manager to see ROI before scanning job titles.
+
+   **Template B — "Technical Authority"**
+   Section order: summary → skills → experience → selected_accomplishments → education
+   Best when: The role requires deep technical expertise and the JD emphasizes specific tools, frameworks, or methodologies.
+   Strategy: Establishes technical credibility immediately after the summary. Skills section acts as a keyword-dense ATS magnet positioned early.
+
+   **Template C — "Leadership Narrative"**
+   Section order: summary → experience → selected_accomplishments → skills → education
+   Best when: The candidate's career progression tells a compelling growth story, or the role values management experience.
+   Strategy: Lets the chronological arc of increasing responsibility speak for itself. Accomplishments section reinforces the narrative with cross-career highlights.
+
+3. For EACH option you present, you MUST include ALL of the following:
+   - A **strategic rationale** tied to this specific company and role (reference your research findings)
+   - Which **JD requirements** this layout emphasizes (name 2-3 specific requirements)
+   - A **"best for" statement**: "If I were the hiring manager at [Company], this layout would catch my eye because..."
+   - A clear explanation of WHY sections are ordered this way for THIS candidate
+
+4. Options MUST be MEANINGFULLY DIFFERENT — not just reordered sections:
+   - Different emphasis (metrics vs. technical depth vs. leadership scope)
+   - Different narrative angle (what story does this resume tell?)
+   - Different strengths highlighted (which of the candidate's assets lead?)
+   - Do NOT present generic options. Each option must reference specific findings from your research phase and be tailored to this candidate + this role.
+
+5. You MUST call update_right_panel with panel_type "design_options" to present your options.
    NEVER present design options as text in chat — ALWAYS use the tool.
 
    EXACT payload format:
@@ -162,7 +187,7 @@ Your goals:
          {
            "id": "option_1",
            "name": "Layout Name",
-           "description": "Why this works for this role...",
+           "description": "Strategic rationale for this layout tied to company/role...",
            "section_order": ["summary", "selected_accomplishments", "experience", "skills", "education"],
            "selected": false
          }
@@ -170,9 +195,9 @@ Your goals:
      }
    }
 
-   Present 2-3 options. In chat, briefly explain each option (1-2 sentences each) — do NOT repeat the full details from the panel.
-4. Ask the candidate which they prefer using ask_user (multiple_choice)
-5. After user selects, call update_right_panel with panel_type "design_options" and set selected_id to the chosen option's id, THEN call confirm_phase_complete.
+   In chat, briefly explain each option (2-3 sentences each) — focus on WHY each works for this specific situation.
+6. Ask the candidate which they prefer using ask_user (multiple_choice)
+7. After user selects, call update_right_panel with panel_type "design_options" and set selected_id to the chosen option's id, THEN call confirm_phase_complete.
 
 Keep this phase focused and quick. The goal is alignment on structure before writing.
 
@@ -218,13 +243,23 @@ Key writing principles:
 - Title adjustments: Use industry-standard titles that ATS recognizes. Adjust internal-only titles to widely recognized equivalents.
 - Education/Certifications: Remove graduation years if 20+ years ago. Lead with recent certifications.
 - Flag and fix age-bias signals: obsolete tech, dating language, old graduation years
-- Avoid cliches: "results-oriented leader," "proven track record," "team player," "dynamic leader"`,
+- Avoid cliches: "results-oriented leader," "proven track record," "team player," "dynamic leader"
+
+## Skills Section — Special Handling
+The skills section is NOT optional — you MUST generate it using propose_section_edit or generate_section like any other section.
+For current_content, format the candidate's existing skills as a plain text string like:
+"Leadership & Strategy: Team Building, Strategic Planning, P&L Management
+Technical: Cloud Architecture, Kubernetes, CI/CD Pipelines
+Domain: Supply Chain, Vendor Management, SaaS"
+Then propose changes that: reorder categories to match JD priorities, add missing JD keywords, remove obsolete/irrelevant skills, and use exact JD terminology.
+Do NOT skip the skills section. It is critical for ATS keyword matching.`,
 
   quality_review: `## Current Phase: Quality Review
 Time to stress-test the resume through multiple lenses.
 
-PREFERRED: Use quality_review_suite to run both checks in a single tool call (faster, saves a loop round).
-You can also call adversarial_review and humanize_check separately if needed.
+⚠️ MANDATORY: You MUST use the quality_review_suite tool (or adversarial_review + humanize_check tools) to perform the review.
+Do NOT perform the review as text output — you MUST call the actual tools so the quality dashboard renders in the right panel.
+Do NOT say "let me conduct a manual review" — always use the tools.
 
 Your goals:
 1. Use emit_transparency:

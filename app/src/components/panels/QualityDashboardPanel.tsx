@@ -1,5 +1,6 @@
 import { ShieldCheck, ScanSearch, Fingerprint, AlertTriangle, Flag } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { cleanText } from '@/lib/clean-text';
 import type { QualityDashboardData } from '@/types/panels';
 
 interface QualityDashboardPanelProps {
@@ -148,7 +149,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             </div>
             <p className="text-xs text-white/85 leading-relaxed">
               {typeof overall_assessment === 'string'
-                ? overall_assessment
+                ? cleanText(overall_assessment)
                 : JSON.stringify(overall_assessment)}
             </p>
           </GlassCard>
@@ -172,8 +173,8 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                 }[rf.severity];
                 return (
                   <div key={i} className={`rounded-lg border p-2.5 ${severityColor}`}>
-                    <p className="text-xs text-white/85">{rf.flag}</p>
-                    <p className="mt-1 text-[10px] text-white/60">{rf.recommendation}</p>
+                    <p className="text-xs text-white/85">{cleanText(rf.flag)}</p>
+                    <p className="mt-1 text-[10px] text-white/60">{cleanText(rf.recommendation)}</p>
                   </div>
                 );
               })}
@@ -194,7 +195,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
               {age_bias_risks.map((risk, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400/60" />
-                  <span className="text-xs text-white/70">{risk}</span>
+                  <span className="text-xs text-white/70">{cleanText(risk)}</span>
                 </div>
               ))}
             </div>

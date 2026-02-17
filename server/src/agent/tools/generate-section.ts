@@ -84,9 +84,22 @@ METRIC INTEGRITY RULE: If you need a specific number (percentage, dollar amount,
 
 Return ONLY valid JSON:
 {
-  "content": "The rewritten section content",
-  "changes_made": ["List of specific changes, why each was made, and which guide rule it follows"]
-}`,
+  "content": "The full rewritten section content",
+  "changes_made": [
+    {
+      "original": "Exact short snippet from CURRENT CONTENT that was changed",
+      "proposed": "The replacement snippet (NOT the full section)",
+      "reasoning": "Why this specific change was made and which guide rule it follows"
+    }
+  ]
+}
+
+CHANGE FORMAT RULES:
+- Each entry in changes_made must be an object with "original", "proposed", and "reasoning".
+- "original" must be a specific phrase, sentence, or bullet from CURRENT CONTENT — NOT the full section.
+- "proposed" must be the replacement for that specific snippet — NOT the full section.
+- Maximum 5 changes. Prioritize the highest-impact edits.
+- NEVER put the full section text in individual change entries.`,
       },
     ],
   });
@@ -94,6 +107,7 @@ Return ONLY valid JSON:
   const rawText = response.text;
 
   let content = currentContent;
+  let changes: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }> = [];
   let changesMade: string[] = [];
 
   const parsed = repairJSON<Record<string, unknown>>(rawText);
@@ -101,7 +115,24 @@ Return ONLY valid JSON:
     // Ensure content is always a plain string, never an object
     const rawContent = parsed.content ?? currentContent;
     content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
-    changesMade = Array.isArray(parsed.changes_made) ? parsed.changes_made : [];
+
+    // Parse changes_made — may be objects (new format) or strings (legacy)
+    const rawChanges = Array.isArray(parsed.changes_made) ? parsed.changes_made : [];
+    for (const entry of rawChanges) {
+      if (typeof entry === 'object' && entry !== null && 'original' in entry) {
+        const e = entry as { original?: string; proposed?: string; reasoning?: string };
+        changes.push({
+          original: typeof e.original === 'string' ? e.original : '',
+          proposed: typeof e.proposed === 'string' ? e.proposed : '',
+          reasoning: typeof e.reasoning === 'string' ? e.reasoning : '',
+          jd_requirements: [],
+        });
+        changesMade.push(typeof e.reasoning === 'string' ? e.reasoning : 'Section edit');
+      } else if (typeof entry === 'string') {
+        changes.push({ original: '', proposed: '', reasoning: entry, jd_requirements: [] });
+        changesMade.push(entry);
+      }
+    }
 
     if (section === 'selected_accomplishments') {
       const bulletLines = content.split('\n').filter(line => /^\s*[•\-\*]/.test(line));
@@ -111,12 +142,14 @@ Return ONLY valid JSON:
         const nonBulletPrefix = content.split('\n').filter(line => !/^\s*[•\-\*]/.test(line) && line.trim()).join('\n');
         content = nonBulletPrefix ? nonBulletPrefix + '\n' + trimmed.join('\n') : trimmed.join('\n');
         changesMade.push('Trimmed selected accomplishments to 6 bullets (maximum per resume guide)');
+        changes.push({ original: '', proposed: '', reasoning: 'Trimmed selected accomplishments to 6 bullets (maximum per resume guide)', jd_requirements: [] });
       }
     }
   } else {
     // If parsing still fails, use raw text but strip any JSON wrapper artifacts
     content = rawText || currentContent;
     changesMade = ['Section rewritten (raw format)'];
+    changes = [{ original: '', proposed: '', reasoning: 'Section rewritten (raw format)', jd_requirements: [] }];
   }
 
   (ctx.tailoredSections as Record<string, unknown>)[section] = content;
@@ -144,12 +177,7 @@ Return ONLY valid JSON:
     panel_type: 'live_resume',
     data: {
       active_section: section,
-      changes: changesMade.map((change) => ({
-        original: '',
-        proposed: content,
-        reasoning: change,
-        jd_requirements: [],
-      })),
+      changes,
       proposed_content: content,
     },
   });

@@ -61,11 +61,12 @@ interface RightPanelProps {
   panelType: PanelType | null;
   panelData: PanelData | null;
   resume: FinalResume | null;
+  isProcessing?: boolean;
   onSendMessage?: (content: string) => void;
 }
 
 function PanelContent(props: RightPanelProps) {
-  const { panelData, resume, onSendMessage } = props;
+  const { panelData, resume, isProcessing, onSendMessage } = props;
   // If we have typed panel data, use the discriminated union switch
   if (panelData) {
     switch (panelData.type) {
@@ -78,7 +79,7 @@ function PanelContent(props: RightPanelProps) {
       case 'design_options':
         return <DesignOptionsPanel data={panelData} />;
       case 'live_resume':
-        return <LiveResumePanel data={panelData} onSendMessage={onSendMessage} />;
+        return <LiveResumePanel data={panelData} isProcessing={isProcessing} onSendMessage={onSendMessage} />;
       case 'quality_dashboard':
         return <QualityDashboardPanel data={panelData} />;
       case 'completion':

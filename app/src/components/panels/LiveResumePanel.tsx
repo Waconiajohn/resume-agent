@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Tag, Check, MessageSquare, Pencil, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
+import { cleanText } from '@/lib/clean-text';
 import type { LiveResumeData, SectionChange } from '@/types/panels';
 
 interface LiveResumePanelProps {
   data: LiveResumeData;
+  isProcessing?: boolean;
   onSendMessage?: (content: string) => void;
 }
 
@@ -15,9 +17,9 @@ function sectionTitle(section: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Parse proposed_content into lines (bullets and paragraphs) */
+/** Parse proposed_content into lines (bullets and paragraphs), cleaning markdown artifacts */
 function parseContentLines(content: string): string[] {
-  return content
+  return cleanText(content)
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
@@ -122,11 +124,13 @@ function ChangeBlock({
   change,
   index,
   section,
+  disabled,
   onSendMessage,
 }: {
   change: SectionChange;
   index: number;
   section: string;
+  disabled?: boolean;
   onSendMessage?: (content: string) => void;
 }) {
   return (
@@ -137,7 +141,7 @@ function ChangeBlock({
             Original
           </span>
           <p className="text-xs text-white/60 leading-relaxed line-through decoration-red-400/30 break-words">
-            {change.original}
+            {cleanText(change.original)}
           </p>
         </div>
       )}
@@ -146,11 +150,11 @@ function ChangeBlock({
           <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
             Proposed
           </span>
-          <p className="text-xs text-white/80 leading-relaxed break-words">{change.proposed}</p>
+          <p className="text-xs text-white/80 leading-relaxed break-words">{cleanText(change.proposed)}</p>
         </div>
       )}
       {change.reasoning && (
-        <p className="text-xs text-white/50 italic break-words">{change.reasoning}</p>
+        <p className="text-xs text-white/50 italic break-words">{cleanText(change.reasoning)}</p>
       )}
       {change.jd_requirements?.length > 0 && (
         <div className="space-y-1">
@@ -175,14 +179,16 @@ function ChangeBlock({
         <div className="flex items-center gap-2 pt-1 border-t border-white/[0.06]">
           <button
             onClick={() => onSendMessage(`I approve change ${index + 1} in ${sectionTitle(section)}.`)}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+            disabled={disabled}
+            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           >
             <Check className="h-3 w-3" />
             Approve
           </button>
           <button
             onClick={() => onSendMessage(`I'd like to revise change ${index + 1} in ${sectionTitle(section)}. `)}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/40 hover:bg-white/5 hover:text-white/60 transition-colors"
+            disabled={disabled}
+            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/40 hover:bg-white/5 hover:text-white/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           >
             <X className="h-3 w-3" />
             Revise
@@ -193,7 +199,7 @@ function ChangeBlock({
   );
 }
 
-export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
+export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResumePanelProps) {
   const active_section = data.active_section ?? '';
   const changes = data.changes ?? [];
   const proposedContent = data.proposed_content;
@@ -293,7 +299,7 @@ export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
         ) : (
           /* Fallback: show diff cards if no WYSIWYG content */
           changes.map((change, i) => (
-            <ChangeBlock key={i} change={change} index={i} section={active_section} onSendMessage={onSendMessage} />
+            <ChangeBlock key={i} change={change} index={i} section={active_section} disabled={isProcessing} onSendMessage={onSendMessage} />
           ))
         )}
 
@@ -314,7 +320,7 @@ export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
             {showDiffs && (
               <div className="mt-2 space-y-2">
                 {changes.map((change, i) => (
-                  <ChangeBlock key={i} change={change} index={i} section={active_section} onSendMessage={onSendMessage} />
+                  <ChangeBlock key={i} change={change} index={i} section={active_section} disabled={isProcessing} onSendMessage={onSendMessage} />
                 ))}
               </div>
             )}
@@ -326,11 +332,11 @@ export function LiveResumePanel({ data, onSendMessage }: LiveResumePanelProps) {
       {(contentLines.length > 0 || changes.length > 0) && onSendMessage && (
         <div className="border-t border-white/[0.12] px-4 py-3">
           <div className="flex items-center gap-2">
-            <GlassButton variant="primary" className="flex-1" onClick={handleAccept}>
+            <GlassButton variant="primary" className="flex-1" onClick={handleAccept} disabled={isProcessing}>
               <Check className="mr-1.5 h-3.5 w-3.5" />
               Approve All
             </GlassButton>
-            <GlassButton variant="ghost" className="flex-1" onClick={handleRequestChanges}>
+            <GlassButton variant="ghost" className="flex-1" onClick={handleRequestChanges} disabled={isProcessing}>
               <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
               Request Changes
             </GlassButton>

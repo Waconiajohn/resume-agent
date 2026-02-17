@@ -9,6 +9,7 @@ import { createSessionLogger } from '../lib/logger.js';
 
 const MAX_TOOL_ROUNDS = 20;
 const LOOP_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const ROUND_TIMEOUT_MS = 120 * 1000; // 120 seconds per round
 
 export interface SSEEvent {
   type: string;
@@ -132,47 +133,63 @@ export async function runAgentLoop(
           ctx.currentPhase === 'quality_review'
         );
 
-        await withRetry(
-          async () => {
-            fullText = '';
-            toolUses.length = 0;
-            const stream = llm.stream({
-              model: getDefaultModel(),
-              max_tokens: getMaxTokens(),
-              system: systemPrompt,
-              messages: apiMessages,
-              tools: phaseTools,
-              ...(forceToolUse && { tool_choice: { type: 'any' as const } }),
-            });
+        // Per-round timeout: abort if a single round takes too long
+        const roundAbort = new AbortController();
+        const roundTimer = setTimeout(() => {
+          log.warn({ round, phase: ctx.currentPhase }, 'Round timeout — aborting after 120s');
+          roundAbort.abort();
+        }, ROUND_TIMEOUT_MS);
 
-            for await (const event of stream) {
-              if (loopAbort.signal.aborted) break;
-              if (event.type === 'text') {
-                fullText += event.text;
-                emit({ type: 'text_delta', content: event.text });
-              } else if (event.type === 'tool_call') {
-                toolUses.push({
-                  id: event.id,
-                  name: event.name,
-                  input: event.input,
-                });
-              } else if (event.type === 'done') {
-                ctx.lastInputTokens = event.usage.input_tokens;
-                ctx.lastOutputTokens = event.usage.output_tokens;
-                const model = getDefaultModel();
-                ctx.trackUsage(event.usage, model);
-                ctx.llmProvider = llm.name;
-                ctx.llmModel = model;
+        try {
+          await withRetry(
+            async () => {
+              fullText = '';
+              toolUses.length = 0;
+              const stream = llm.stream({
+                model: getDefaultModel(),
+                max_tokens: getMaxTokens(),
+                system: systemPrompt,
+                messages: apiMessages,
+                tools: phaseTools,
+                ...(forceToolUse && { tool_choice: { type: 'any' as const } }),
+              });
+
+              for await (const event of stream) {
+                if (loopAbort.signal.aborted || roundAbort.signal.aborted) break;
+                if (event.type === 'text') {
+                  fullText += event.text;
+                  emit({ type: 'text_delta', content: event.text });
+                } else if (event.type === 'tool_call') {
+                  toolUses.push({
+                    id: event.id,
+                    name: event.name,
+                    input: event.input,
+                  });
+                } else if (event.type === 'done') {
+                  ctx.lastInputTokens = event.usage.input_tokens;
+                  ctx.lastOutputTokens = event.usage.output_tokens;
+                  const model = getDefaultModel();
+                  ctx.trackUsage(event.usage, model);
+                  ctx.llmProvider = llm.name;
+                  ctx.llmModel = model;
+                }
               }
-            }
-          },
-          {
-            onRetry: (attempt, error) => {
-              log.warn({ attempt, error: error.message }, 'API call retry');
-              emit({ type: 'transparency', message: `Retrying API call (attempt ${attempt + 1})...`, phase: ctx.currentPhase });
+
+              // If round was aborted mid-stream, treat as error
+              if (roundAbort.signal.aborted) {
+                throw new Error('Round timed out after 120 seconds');
+              }
             },
-          },
-        );
+            {
+              onRetry: (attempt, error) => {
+                log.warn({ attempt, error: error.message }, 'API call retry');
+                emit({ type: 'transparency', message: `Retrying API call (attempt ${attempt + 1})...`, phase: ctx.currentPhase });
+              },
+            },
+          );
+        } finally {
+          clearTimeout(roundTimer);
+        }
 
         if (fullText) {
           emit({ type: 'text_complete', content: fullText });
@@ -196,6 +213,20 @@ export async function runAgentLoop(
         });
 
         if (toolUses.length === 0) {
+          // Auto-complete guard: if quality_review loop ends with text-only (no tool calls),
+          // the agent likely delivered its review as text without calling confirm_phase_complete.
+          // Automatically transition to complete instead of leaving the session stuck.
+          if (ctx.currentPhase === 'quality_review') {
+            log.warn({ rounds: round + 1 }, 'quality_review ended without confirm_phase_complete — auto-completing');
+            emit({
+              type: 'phase_change',
+              from_phase: 'quality_review',
+              to_phase: 'complete',
+              summary: 'Quality review complete',
+            });
+            emit({ type: 'complete', session_id: ctx.sessionId });
+            return;
+          }
           log.info({ phase: ctx.currentPhase, rounds: round + 1 }, 'Agent loop complete');
           return;
         }

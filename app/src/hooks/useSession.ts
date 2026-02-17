@@ -86,8 +86,8 @@ export function useSession(accessToken: string | null) {
     }
   }, [accessToken, headers]);
 
-  const sendMessage = useCallback(async (sessionId: string, content: string) => {
-    if (!accessToken) return;
+  const sendMessage = useCallback(async (sessionId: string, content: string): Promise<boolean> => {
+    if (!accessToken) return false;
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
@@ -98,9 +98,12 @@ export function useSession(accessToken: string | null) {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? `Failed to send message (${res.status})`);
+        return false;
       }
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error sending message');
+      return false;
     }
   }, [accessToken, headers]);
 

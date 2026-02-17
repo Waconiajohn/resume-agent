@@ -1,5 +1,6 @@
 import { Building2, Target, UserCheck } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { cleanText, stripMarkdown } from '@/lib/clean-text';
 import type { ResearchDashboardData, BenchmarkSkill } from '@/types/panels';
 
 interface ResearchDashboardPanelProps {
@@ -47,7 +48,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             <p className="text-sm font-medium text-white mb-2">{company.company_name}</p>
           )}
           {company.culture && (
-            <p className="text-xs text-white/70 mb-2">Culture: {company.culture}</p>
+            <p className="text-xs text-white/70 mb-2">Culture: {cleanText(company.culture)}</p>
           )}
           {company.values && company.values.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
@@ -62,7 +63,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             </div>
           )}
           {company.language_style && (
-            <p className="text-xs text-white/60">Voice: {company.language_style}</p>
+            <p className="text-xs text-white/60">Voice: {cleanText(company.language_style)}</p>
           )}
         </GlassCard>
 
@@ -94,7 +95,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
                 {jd_requirements.must_haves.map((req, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400/60" />
-                    <span className="text-xs text-white/85">{req}</span>
+                    <span className="text-xs text-white/85">{stripMarkdown(req)}</span>
                   </div>
                 ))}
               </div>
@@ -110,7 +111,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
                 {jd_requirements.nice_to_haves.map((req, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/60" />
-                    <span className="text-xs text-white/85">{req}</span>
+                    <span className="text-xs text-white/85">{stripMarkdown(req)}</span>
                   </div>
                 ))}
               </div>
@@ -133,7 +134,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
 
           {benchmark.ideal_candidate_summary && (
             <p className="text-sm text-white/90 leading-relaxed mb-3">
-              {benchmark.ideal_candidate_summary}
+              {cleanText(benchmark.ideal_candidate_summary)}
             </p>
           )}
 
@@ -141,7 +142,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             <div className="space-y-1.5 mb-3">
               {benchmark.required_skills.map((skill, i) => (
                 <div key={i} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-white/85 truncate">{skill.requirement}</span>
+                  <span className="text-xs text-white/85 truncate">{stripMarkdown(skill.requirement)}</span>
                   {importanceBadge(skill.importance)}
                 </div>
               ))}

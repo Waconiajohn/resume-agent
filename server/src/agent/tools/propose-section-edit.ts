@@ -68,7 +68,7 @@ Keywords to echo: ${ctx.benchmarkCandidate.language_keywords.join(', ')}`
     messages: [
       {
         role: 'user',
-        content: `You are an expert executive resume writer specializing in professionals aged 45+. Propose changes to this resume section following the expert guidance below. For EACH change, explain what you changed, why, and which JD requirements it addresses. Flag any anti-patterns found in the original text (cliches like "responsible for," "proven track record," weak verbs, missing metrics, age-bias signals).
+        content: `You are an expert executive resume writer specializing in professionals aged 45+. Propose changes to this resume section following the expert guidance below. Flag any anti-patterns found in the original text (cliches like "responsible for," "proven track record," weak verbs, missing metrics, age-bias signals).
 
 SECTION: ${section}
 
@@ -97,14 +97,49 @@ CRITICAL RULES:
 
 METRIC INTEGRITY RULE: If you need a specific number (percentage, dollar amount, team size, timeframe, etc.) that is NOT explicitly stated in the candidate's resume, interview responses, or provided data above, DO NOT estimate or fabricate it. Instead, use placeholder format [ASK: description of what metric is needed] in the content and include a change entry with reasoning "NEEDS_USER_INPUT: description". The coaching system will prompt the user for this information.
 
-Return ONLY valid JSON:
+CHANGE FORMAT RULES — READ CAREFULLY:
+You must return a "changes" array where EACH entry is a SPECIFIC, SURGICAL text substitution — a short snippet from the original and its replacement.
+- "original": Copy-paste the EXACT text snippet from CURRENT CONTENT that you are replacing. This must be a specific phrase, sentence, or bullet — NOT the full section.
+- "proposed": The replacement text for that specific snippet — NOT the full section.
+- "reasoning": Why this specific change was made.
+- NEVER put the full section text in individual change entries. Each change must target a specific phrase, sentence, or bullet point.
+- Maximum 5 changes per call. Prioritize the highest-impact edits.
+
+CORRECT EXAMPLE (surgical snippet substitution):
 {
-  "proposed_content": "The full rewritten section",
+  "proposed_content": "Spearheaded migration of 200+ microservices to Kubernetes, reducing deployment time by 74% and saving $1.2M annually in infrastructure costs.",
   "changes": [
     {
-      "original": "The original text that was changed",
-      "proposed": "The new text",
-      "reasoning": "Why this change was made and which guide rule it follows",
+      "original": "Responsible for managing cloud infrastructure",
+      "proposed": "Spearheaded migration of 200+ microservices to Kubernetes",
+      "reasoning": "Replaced weak 'responsible for' with action verb; added specifics",
+      "jd_requirements": ["Cloud infrastructure management"]
+    },
+    {
+      "original": "which helped reduce costs",
+      "proposed": "reducing deployment time by 74% and saving $1.2M annually in infrastructure costs",
+      "reasoning": "Added concrete metrics per CAR framework",
+      "jd_requirements": ["Cost optimization"]
+    }
+  ]
+}
+
+WRONG EXAMPLE (do NOT do this — full section repeated in each change):
+{
+  "changes": [
+    { "original": "", "proposed": "THE ENTIRE REWRITTEN SECTION...", "reasoning": "..." },
+    { "original": "", "proposed": "THE ENTIRE REWRITTEN SECTION AGAIN...", "reasoning": "..." }
+  ]
+}
+
+Return ONLY valid JSON:
+{
+  "proposed_content": "The full rewritten section with all changes applied",
+  "changes": [
+    {
+      "original": "Exact short snippet from CURRENT CONTENT being replaced",
+      "proposed": "The replacement snippet (NOT the full section)",
+      "reasoning": "Why this specific change was made and which guide rule it follows",
       "jd_requirements": ["Which requirements this change addresses"]
     }
   ]
@@ -121,7 +156,24 @@ Return ONLY valid JSON:
   const parsed = repairJSON<Record<string, unknown>>(rawText);
   if (parsed) {
     proposedContent = typeof parsed.proposed_content === 'string' ? parsed.proposed_content : currentContent;
-    changes = Array.isArray(parsed.changes) ? parsed.changes : [];
+    const rawChanges: Array<{ original: string; proposed: string; reasoning: string; jd_requirements: string[] }> =
+      Array.isArray(parsed.changes) ? parsed.changes : [];
+
+    // Filter out malformed entries where original is empty or proposed is the full section
+    const proposedLen = proposedContent.length;
+    changes = rawChanges
+      .filter(c => {
+        if (!c.original || c.original.trim().length === 0) return false;
+        // If proposed is >80% of the full section length, it's likely the full section pasted in
+        if (c.proposed && c.proposed.length > proposedLen * 0.8) return false;
+        return true;
+      })
+      .slice(0, 5); // Cap at 5 changes
+
+    // If all changes were filtered out, create a single summary entry
+    if (changes.length === 0 && rawChanges.length > 0) {
+      changes = [{ original: '(see original section)', proposed: '(see rewritten section)', reasoning: 'Full section rewrite applied', jd_requirements: [] }];
+    }
   } else {
     proposedContent = rawText || currentContent;
     changes = [{ original: '', proposed: '', reasoning: 'Section rewritten', jd_requirements: [] }];

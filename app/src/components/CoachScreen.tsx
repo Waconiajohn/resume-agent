@@ -63,6 +63,7 @@ export function CoachScreen({
             panelType={panelType}
             panelData={panelData}
             resume={resume}
+            isProcessing={isProcessing}
             onSendMessage={onSendMessage}
           />
         </div>

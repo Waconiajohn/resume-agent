@@ -1,5 +1,6 @@
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { cleanText } from '@/lib/clean-text';
 import type { GapAnalysisData, RequirementFitItem } from '@/types/panels';
 
 interface GapAnalysisPanelProps {
@@ -108,12 +109,12 @@ function RequirementRow({ item }: { item: RequirementFitItem }) {
       <div className="flex items-start gap-2">
         <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${config.color}`} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white/90">{item.requirement}</p>
+          <p className="text-sm text-white/90">{cleanText(item.requirement)}</p>
           {item.evidence && (
-            <p className="mt-1 text-xs text-white/70">{item.evidence}</p>
+            <p className="mt-1 text-xs text-white/70">{cleanText(item.evidence)}</p>
           )}
           {item.strategy && (
-            <p className="mt-1 text-xs text-blue-300 italic">{item.strategy}</p>
+            <p className="mt-1 text-xs text-blue-300 italic">{cleanText(item.strategy)}</p>
           )}
         </div>
       </div>

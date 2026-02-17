@@ -51,6 +51,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // Track timeout IDs for auto-removing completed tools
   const toolCleanupTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
+  // Stale-processing detector: track last SSE event time
+  const lastEventTimestampRef = useRef<number>(Date.now());
+  const staleCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const nextId = useCallback(() => {
     messageIdRef.current += 1;
     return `msg-${messageIdRef.current}`;
@@ -122,6 +126,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           try {
             for await (const msg of parseSSEStream(response.body)) {
               if (controller.signal.aborted) break;
+
+              // Update last event timestamp for stale-processing detection
+              lastEventTimestampRef.current = Date.now();
 
               switch (msg.event) {
                 case 'connected': {
@@ -417,6 +424,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     errorMsg = 'Something went wrong processing your message. Please try again.';
                   }
                   setError(errorMsg as string);
+                  setIsProcessing(false);
                   break;
                 }
 
@@ -457,6 +465,29 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     mountedRef.current = true;
     connectSSE();
 
+    // Stale-processing detector: check every 10s if processing has stalled
+    const STALE_THRESHOLD_MS = 120_000; // 120 seconds
+    staleCheckIntervalRef.current = setInterval(() => {
+      if (!mountedRef.current) return;
+      // Use functional state read to avoid stale closure over isProcessing
+      setIsProcessing((currentlyProcessing) => {
+        if (currentlyProcessing && Date.now() - lastEventTimestampRef.current > STALE_THRESHOLD_MS) {
+          console.warn('[useAgent] Stale processing detected — no SSE events for 120s. Resetting.');
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `stale-${Date.now()}`,
+              role: 'system',
+              content: 'Session appears stalled. You can send a message to continue.',
+              timestamp: new Date().toISOString(),
+            },
+          ]);
+          return false; // reset isProcessing
+        }
+        return currentlyProcessing; // no change
+      });
+    }, 10_000);
+
     return () => {
       mountedRef.current = false;
       // Clean up fetch connection
@@ -473,6 +504,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
+      }
+      // Clean up stale-processing detector
+      if (staleCheckIntervalRef.current) {
+        clearInterval(staleCheckIntervalRef.current);
+        staleCheckIntervalRef.current = null;
       }
       // Clean up tool removal timers
       for (const timer of toolCleanupTimersRef.current) {
@@ -508,6 +544,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     phaseGate,
     currentPhase,
     isProcessing,
+    setIsProcessing,
     resume,
     connected,
     sessionComplete,
