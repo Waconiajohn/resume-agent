@@ -53,7 +53,22 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
-  // Step 5: Give up — log raw snippet for debugging
-  logger.warn({ rawSnippet: text.substring(0, 200) }, 'Failed to repair JSON');
+  // Step 5: Fix common Z.AI quirks — unescaped newlines/tabs inside strings,
+  // single quotes, unquoted keys
+  let aggressive = noTrailing
+    // Fix unescaped control chars inside JSON strings (newlines, tabs)
+    .replace(/(?<=:\s*"[^"]*)\n/g, '\\n')
+    .replace(/(?<=:\s*"[^"]*)\t/g, '\\t')
+    // Single quotes → double quotes (only when used as JSON delimiters)
+    .replace(/(?<=[\[{,:])\s*'([^']*)'\s*(?=[,\]}:])/g, '"$1"');
+
+  try {
+    return JSON.parse(aggressive) as T;
+  } catch {
+    // continue
+  }
+
+  // Step 6: Give up — log raw snippet for debugging
+  logger.warn({ rawSnippet: text.substring(0, 300) }, 'Failed to repair JSON');
   return null;
 }

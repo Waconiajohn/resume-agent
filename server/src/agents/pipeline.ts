@@ -158,17 +158,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // ─── Gate: User reviews blueprint ────────────────────────────
     state.current_stage = 'architect_review';
+    // blueprint_ready event sets up BlueprintReviewPanel with approve button
     emit({ type: 'blueprint_ready', blueprint: state.architect });
-    emit({
-      type: 'right_panel_update',
-      panel_type: 'design_options',
-      data: {
-        blueprint: state.architect,
-        section_plan: state.architect.section_plan,
-        positioning_angle: state.architect.positioning_angle,
-        age_protection: state.architect.age_protection,
-      },
-    });
 
     await waitForUser<void>('architect_review');
 

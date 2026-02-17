@@ -9,8 +9,9 @@
  * Converts <br> to space, removes bold/italic markers, heading markers,
  * citation references, and HTML tags.
  */
-export function stripMarkdown(text: string): string {
+export function stripMarkdown(text: unknown): string {
   if (!text) return '';
+  if (typeof text !== 'string') return String(text);
 
   let result = text;
 
@@ -57,8 +58,9 @@ export function stripMarkdown(text: string): string {
  * Clean markdown/HTML for multi-line rich text displays.
  * Preserves line breaks but removes formatting artifacts.
  */
-export function cleanText(text: string): string {
+export function cleanText(text: unknown): string {
   if (!text) return '';
+  if (typeof text !== 'string') return String(text);
 
   let result = text;
 

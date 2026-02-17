@@ -11,6 +11,7 @@
  * Output is surfaced to user as a reviewable design step before writing begins.
  */
 
+import logger from '../lib/logger.js';
 import { llm, MODEL_PRIMARY } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
 import type {
@@ -33,13 +34,7 @@ export async function runArchitect(input: ArchitectInput): Promise<ArchitectOutp
   const gapBrief = buildGapBrief(input);
   const keywordBrief = buildKeywordBrief(input);
 
-  const response = await llm.chat({
-    model: MODEL_PRIMARY,
-    max_tokens: 8192,
-    system: ARCHITECT_SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: `Create a complete resume blueprint for this candidate.
+  const userContent = `Create a complete resume blueprint for this candidate.
 
 TARGET ROLE: ${research.jd_analysis.role_title} at ${research.jd_analysis.company || research.company_research.company_name}
 SENIORITY: ${research.jd_analysis.seniority_level}
@@ -55,6 +50,8 @@ ${keywordBrief}
 CAREER SPAN: ${parsed_resume.career_span_years} years
 
 Now make the 7 strategic decisions and return the complete blueprint as JSON.
+
+CRITICAL: Return ONLY valid JSON. Do NOT wrap in markdown fences. Do NOT add any text before or after the JSON.
 
 Return ONLY valid JSON matching this structure:
 {
@@ -168,13 +165,34 @@ Return ONLY valid JSON matching this structure:
     "length_target": "2 pages maximum",
     "ats_rules": "No tables, no columns, standard section headers only"
   }
-}`,
-    }],
-  });
+}`;
 
-  const parsed = repairJSON<Record<string, unknown>>(response.text);
+  // Try up to 2 attempts — Z.AI sometimes returns unparseable text on first try
+  let parsed: Record<string, unknown> | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      max_tokens: 8192,
+      system: ARCHITECT_SYSTEM_PROMPT,
+      messages: [{
+        role: 'user',
+        content: attempt === 0
+          ? userContent
+          : userContent + '\n\nIMPORTANT: You MUST return raw JSON only. No markdown, no explanation, no commentary. Start with { and end with }.',
+      }],
+    });
+
+    logger.info({ attempt, responseLength: response.text.length, snippet: response.text.substring(0, 150) }, 'Architect LLM response');
+
+    parsed = repairJSON<Record<string, unknown>>(response.text);
+    if (parsed) break;
+
+    logger.warn({ attempt, rawSnippet: response.text.substring(0, 500) }, 'Architect: blueprint parse failed, retrying');
+  }
+
   if (!parsed) {
-    throw new Error('Architect: failed to parse blueprint from LLM response');
+    logger.error('Architect: all parse attempts failed, returning default blueprint');
+    return buildDefaultBlueprint(input);
   }
 
   return normalizeBlueprint(parsed, input);
@@ -379,6 +397,117 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
       bullet_format: String(global_rules.bullet_format ?? 'Action verb → scope → method → measurable result'),
       length_target: String(global_rules.length_target ?? '2 pages maximum'),
       ats_rules: String(global_rules.ats_rules ?? 'No tables, no columns, standard section headers only'),
+    },
+  };
+}
+
+/**
+ * Fallback blueprint when all LLM parse attempts fail.
+ * Returns a valid structure derived from pipeline inputs so the pipeline can continue.
+ */
+function buildDefaultBlueprint(input: ArchitectInput): ArchitectOutput {
+  const { parsed_resume, positioning, research, gap_analysis } = input;
+  const roleTitle = research.jd_analysis.role_title ?? 'Target Role';
+  const company = research.jd_analysis.company || research.company_research.company_name || 'Target Company';
+
+  // Build experience roles from parsed resume
+  const roles = parsed_resume.experience.map((exp, i) => ({
+    company: exp.company,
+    title: exp.title,
+    dates: `${exp.start_date} – ${exp.end_date}`,
+    title_adjustment: undefined as string | undefined,
+    bullet_count: i < 2 ? 5 : 3,
+  }));
+
+  // Build evidence allocations from positioning evidence library
+  const accomplishments = (positioning.evidence_library ?? []).slice(0, 5).map((ev) => ({
+    evidence_id: String(ev.id ?? ''),
+    achievement: `${ev.situation} — ${ev.result}`,
+    maps_to_requirements: [] as string[],
+    placement_rationale: 'Auto-allocated from evidence library',
+    enhancement: '',
+  }));
+
+  // Build skill categories from parsed resume
+  const categories = [{
+    label: 'Core Skills',
+    skills: parsed_resume.skills.slice(0, 12),
+    rationale: 'Primary skills from resume',
+  }];
+
+  // Keywords from JD
+  const keywords = [
+    ...research.jd_analysis.language_keywords,
+    ...research.benchmark_candidate.language_keywords,
+  ].filter((v, i, a) => a.indexOf(v) === i);
+
+  return {
+    blueprint_version: '2.0',
+    target_role: `${roleTitle} at ${company}`,
+    positioning_angle: positioning.career_arc?.label ?? '',
+
+    section_plan: {
+      order: ['header', 'summary', 'selected_accomplishments', 'experience', 'skills', 'education_and_certifications'],
+      rationale: 'Standard order (fallback — LLM blueprint parsing failed)',
+    },
+
+    summary_blueprint: {
+      positioning_angle: positioning.career_arc?.label ?? '',
+      must_include: (research.jd_analysis.must_haves ?? []).map((mh: string | { requirement: string }) => typeof mh === 'string' ? mh : mh.requirement).slice(0, 4),
+      gap_reframe: {},
+      tone_guidance: 'Professional, direct, results-oriented.',
+      keywords_to_embed: keywords.slice(0, 8),
+      authentic_phrases_to_echo: positioning.authentic_phrases?.slice(0, 3) ?? [],
+      length: '3-4 sentences',
+    },
+
+    evidence_allocation: {
+      selected_accomplishments: accomplishments,
+      experience_section: {},
+      unallocated_requirements: gap_analysis.critical_gaps?.map((g: string) => ({
+        requirement: g,
+        resolution: 'Manual review recommended',
+      })) ?? [],
+    },
+
+    skills_blueprint: {
+      format: 'categorized' as const,
+      categories,
+      keywords_still_missing: keywords.slice(8),
+      age_protection_removals: [],
+    },
+
+    experience_blueprint: {
+      roles,
+      earlier_career: roles.length > 3
+        ? {
+            include: true,
+            roles: roles.slice(3).map(r => ({ title: r.title, company: r.company })),
+            format: 'one-liner per role, no bullets',
+            rationale: 'Condense older roles to save space',
+          }
+        : undefined,
+    },
+
+    age_protection: {
+      flags: [],
+      clean: true,
+    },
+
+    keyword_map: Object.fromEntries(
+      keywords.slice(0, 10).map(kw => [kw, {
+        target_density: 2,
+        placements: ['summary', 'skills'],
+        current_count: 0,
+        action: 'Add to resume',
+      }])
+    ),
+
+    global_rules: {
+      voice: 'Professional, direct, metrics-forward.',
+      bullet_format: 'Action verb → scope → method → measurable result',
+      length_target: '2 pages maximum',
+      ats_rules: 'No tables, no columns, standard section headers only',
     },
   };
 }
