@@ -19,8 +19,7 @@ import { executeEmitScore } from './tools/emit-score.js';
 import { executeProposeSectionEdit } from './tools/propose-section-edit.js';
 import { executeConfirmSection } from './tools/confirm-section.js';
 import { executeHumanizeCheck } from './tools/humanize-check.js';
-import { executeAtsCheck } from './tools/ats-check.js';
-import { executeGenerateCoverLetterSection } from './tools/generate-cover-letter-section.js';
+import { executeQualityReviewSuite } from './tools/quality-review-suite.js';
 
 export async function executeToolCall(
   toolName: string,
@@ -81,10 +80,8 @@ export async function executeToolCall(
       return executeConfirmSection(input, ctx, emit);
     case 'humanize_check':
       return executeHumanizeCheck(input, ctx, emit);
-    case 'ats_check':
-      return executeAtsCheck(input, ctx, emit);
-    case 'generate_cover_letter_section':
-      return executeGenerateCoverLetterSection(input, ctx, emit);
+    case 'quality_review_suite':
+      return executeQualityReviewSuite(input, ctx, emit);
     case 'emit_transparency': {
       const { message, phase } = input as { message: string; phase: string };
       emit({ type: 'transparency', message, phase });

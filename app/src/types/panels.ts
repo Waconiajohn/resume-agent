@@ -6,7 +6,6 @@ export type PanelType =
   | 'design_options'
   | 'live_resume'
   | 'quality_dashboard'
-  | 'cover_letter'
   | 'completion';
 
 // --- Onboarding Summary ---
@@ -126,19 +125,6 @@ export interface QualityDashboardData {
   overall_assessment?: string;
 }
 
-// --- Cover Letter ---
-export interface CoverLetterParagraph {
-  type: string;
-  content: string;
-  status: 'draft' | 'confirmed';
-}
-
-export interface CoverLetterData {
-  paragraphs: CoverLetterParagraph[];
-  company_name?: string;
-  role_title?: string;
-}
-
 // --- Completion ---
 export interface CompletionData {
   ats_score?: number;
@@ -154,5 +140,4 @@ export type PanelData =
   | { type: 'design_options' } & DesignOptionsData
   | { type: 'live_resume' } & LiveResumeData
   | { type: 'quality_dashboard' } & QualityDashboardData
-  | { type: 'cover_letter' } & CoverLetterData
   | { type: 'completion' } & CompletionData;

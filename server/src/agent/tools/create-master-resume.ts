@@ -1,4 +1,4 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_LIGHT } from '../../lib/llm.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, MasterResumeData, ContactInfo } from '../context.js';
@@ -76,13 +76,14 @@ export async function executeCreateMasterResume(
 
   let structured: Omit<MasterResumeData, 'raw_text'>;
   try {
-    const response = await anthropic.messages.create({
-      model: MODEL,
+    const response = await llm.chat({
+      model: MODEL_LIGHT,
       max_tokens: 4096,
+      system: '',
       messages: [{ role: 'user', content: `${STRUCTURING_PROMPT}\n\n---\n\nRESUME TEXT:\n${rawText}` }],
     });
 
-    const rawResponse = extractResponseText(response);
+    const rawResponse = response.text;
     if (!rawResponse) {
       return { success: false, error: 'Failed to parse resume — no text response', code: 'AI_PARSE_FAILED', recoverable: true };
     }

@@ -221,6 +221,28 @@ sessions.post('/', async (c) => {
     job_application_id?: string;
   };
 
+  // Check usage limits before creating session
+  const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const { data: usage } = await supabaseAdmin.from('user_usage')
+    .select('sessions_count')
+    .eq('user_id', user.id)
+    .gte('period_start', periodStart)
+    .single();
+
+  const { data: subscription } = await supabaseAdmin.from('user_subscriptions')
+    .select('plan_id')
+    .eq('user_id', user.id)
+    .single();
+
+  const { data: plan } = await supabaseAdmin.from('pricing_plans')
+    .select('max_sessions_per_month')
+    .eq('id', subscription?.plan_id ?? 'free')
+    .single();
+
+  if (plan?.max_sessions_per_month && (usage?.sessions_count ?? 0) >= plan.max_sessions_per_month) {
+    return c.json({ error: 'Monthly session limit reached. Please upgrade your plan.', code: 'USAGE_LIMIT' }, 402);
+  }
+
   const { data, error } = await supabaseAdmin
     .from('coach_sessions')
     .insert({

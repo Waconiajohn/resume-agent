@@ -229,27 +229,16 @@ export const toolDefinitions: ToolDefinition[] = [
     },
   },
   {
-    name: 'ats_check',
-    description: 'Perform detailed ATS compatibility analysis. Checks keyword presence, format compatibility, and provides specific recommendations.',
+    name: 'quality_review_suite',
+    description: 'Run a comprehensive quality review combining adversarial hiring manager review (with ATS keyword analysis) and humanize check in parallel. Returns combined results and progressively updates the quality dashboard. Preferred over calling adversarial_review and humanize_check separately.',
     input_schema: {
       type: 'object',
       properties: {
-        resume_content: { type: 'string', description: 'The full resume content to check' },
+        resume_content: { type: 'string', description: 'The full tailored resume content' },
+        job_description: { type: 'string', description: 'The original job description' },
+        requirements: { type: 'array', items: { type: 'string' }, description: 'The extracted requirements list' },
       },
-      required: ['resume_content'],
-    },
-  },
-  {
-    name: 'generate_cover_letter_section',
-    description: 'Generate a single paragraph of a cover letter. Works paragraph by paragraph for collaborative iteration.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        paragraph_type: { type: 'string', enum: ['opening', 'body_1', 'body_2', 'closing'], description: 'Which paragraph to generate' },
-        instructions: { type: 'string', description: 'Specific instructions for this paragraph' },
-        previous_paragraphs: { type: 'array', items: { type: 'string' }, description: 'Previously confirmed paragraphs for flow continuity' },
-      },
-      required: ['paragraph_type'],
+      required: ['resume_content', 'job_description', 'requirements'],
     },
   },
   {
@@ -297,7 +286,7 @@ export const toolDefinitions: ToolDefinition[] = [
       properties: {
         panel_type: {
           type: 'string',
-          enum: ['onboarding_summary', 'research_dashboard', 'gap_analysis', 'design_options', 'live_resume', 'quality_dashboard', 'cover_letter'],
+          enum: ['onboarding_summary', 'research_dashboard', 'gap_analysis', 'design_options', 'live_resume', 'quality_dashboard'],
           description: 'Which panel sub-component to target',
         },
         data: {
@@ -333,12 +322,9 @@ export const PHASE_TOOLS: Record<string, string[]> = {
     'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
   ],
   quality_review: [
-    'ask_user', 'adversarial_review', 'humanize_check', 'ats_check',
+    'ask_user', 'adversarial_review', 'humanize_check', 'quality_review_suite',
     'generate_section', 'propose_section_edit', 'emit_score',
-    'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
-  ],
-  cover_letter: [
-    'ask_user', 'generate_cover_letter_section', 'export_resume', 'update_master_resume',
+    'export_resume', 'update_master_resume',
     'save_checkpoint', 'confirm_phase_complete', 'emit_transparency', 'update_right_panel',
   ],
 };

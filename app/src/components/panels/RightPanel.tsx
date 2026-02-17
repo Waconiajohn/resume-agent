@@ -7,9 +7,8 @@ import { GapAnalysisPanel } from './GapAnalysisPanel';
 import { DesignOptionsPanel } from './DesignOptionsPanel';
 import { LiveResumePanel } from './LiveResumePanel';
 import { QualityDashboardPanel } from './QualityDashboardPanel';
-import { CoverLetterPanel } from './CoverLetterPanel';
 import { CompletionPanel } from './CompletionPanel';
-import type { PanelType, PanelData, CoverLetterParagraph } from '@/types/panels';
+import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
 // Error boundary to prevent panel crashes from black-screening the app
@@ -62,9 +61,6 @@ interface RightPanelProps {
   panelType: PanelType | null;
   panelData: PanelData | null;
   resume: FinalResume | null;
-  coverLetterParagraphs?: CoverLetterParagraph[];
-  coverLetterCompany?: string;
-  coverLetterRole?: string;
   onSendMessage?: (content: string) => void;
 }
 
@@ -85,16 +81,11 @@ function PanelContent(props: RightPanelProps) {
         return <LiveResumePanel data={panelData} onSendMessage={onSendMessage} />;
       case 'quality_dashboard':
         return <QualityDashboardPanel data={panelData} />;
-      case 'cover_letter':
-        return <CoverLetterPanel data={panelData} />;
       case 'completion':
         return (
           <CompletionPanel
             data={panelData}
             resume={resume}
-            coverLetterParagraphs={props.coverLetterParagraphs}
-            coverLetterCompany={props.coverLetterCompany}
-            coverLetterRole={props.coverLetterRole}
           />
         );
       default: {

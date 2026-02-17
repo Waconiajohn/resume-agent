@@ -1,4 +1,4 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_LIGHT } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, JDAnalysis } from '../context.js';
 
@@ -15,9 +15,10 @@ Values: ${ctx.companyResearch.values?.join(', ') || 'Unknown'}
 Language style: ${ctx.companyResearch.language_style || 'Unknown'}`
     : '';
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
+  const response = await llm.chat({
+    model: MODEL_LIGHT,
     max_tokens: 4096,
+    system: '',
     messages: [
       {
         role: 'user',
@@ -41,7 +42,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const text = extractResponseText(response);
+  const text = response.text;
 
   let analysis: JDAnalysis;
   const parsed = repairJSON<Record<string, unknown>>(text);

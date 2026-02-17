@@ -1,4 +1,4 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_MID } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, BenchmarkCandidate } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -27,9 +27,10 @@ Seniority: ${ctx.jdAnalysis.seniority_level || 'Unknown'}
 Culture cues: ${ctx.jdAnalysis.culture_cues?.join(', ') || 'None identified'}`
     : 'No JD analysis available';
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
+  const response = await llm.chat({
+    model: MODEL_MID,
     max_tokens: 4096,
+    system: '',
     messages: [
       {
         role: 'user',
@@ -65,7 +66,7 @@ Create a detailed profile of exactly who this company wants to hire. Return ONLY
     ],
   });
 
-  const rawText = extractResponseText(response);
+  const rawText = response.text;
 
   let benchmark: BenchmarkCandidate;
   const parsed = repairJSON<Record<string, unknown>>(rawText);

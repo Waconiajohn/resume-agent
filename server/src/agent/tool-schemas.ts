@@ -99,14 +99,10 @@ export const toolSchemas: Record<string, z.ZodType> = {
     resume_content: z.string(),
   }),
 
-  ats_check: z.object({
+  quality_review_suite: z.object({
     resume_content: z.string(),
-  }),
-
-  generate_cover_letter_section: z.object({
-    paragraph_type: z.enum(['opening', 'body_1', 'body_2', 'closing']),
-    instructions: z.string().optional(),
-    previous_paragraphs: z.array(z.string()).optional(),
+    job_description: z.string(),
+    requirements: z.array(z.string()),
   }),
 
   save_checkpoint: z.object({
@@ -129,7 +125,6 @@ export const toolSchemas: Record<string, z.ZodType> = {
     panel_type: z.enum([
       'onboarding_summary', 'research_dashboard', 'gap_analysis',
       'design_options', 'live_resume', 'quality_dashboard',
-      'cover_letter',
     ]),
     data: z.record(z.string(), z.unknown()),
   }),

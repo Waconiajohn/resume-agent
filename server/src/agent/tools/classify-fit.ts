@@ -1,4 +1,4 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_MID } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext, FitClassification, RequirementFit } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -25,9 +25,10 @@ Prioritized requirements:
 ${ctx.benchmarkCandidate.required_skills.map(s => `- [${s.importance.toUpperCase()}] ${s.requirement} (${s.category})`).join('\n')}`
     : '';
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
+  const response = await llm.chat({
+    model: MODEL_MID,
     max_tokens: 8192,
+    system: '',
     messages: [
       {
         role: 'user',
@@ -59,7 +60,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const text = extractResponseText(response);
+  const text = response.text;
 
   let reqs: RequirementFit[] = [];
   const parsed = repairJSON<{ requirements?: Array<Record<string, string>> }>(text);

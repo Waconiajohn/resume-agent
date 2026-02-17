@@ -1,4 +1,4 @@
-import { anthropic, MODEL as CLAUDE_MODEL, extractResponseText } from './anthropic.js';
+import { llm, MODEL_LIGHT } from './llm.js';
 import { createSessionLogger } from './logger.js';
 
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
@@ -65,19 +65,19 @@ export async function queryWithFallback(
       'Perplexity API unavailable, falling back to Claude',
     );
 
-    // Race the Claude fallback against a 30s timeout to avoid indefinite hangs
+    // Race the LLM fallback against a 30s timeout to avoid indefinite hangs
     const FALLBACK_TIMEOUT_MS = 30_000;
-    const claudePromise = anthropic.messages.create({
-      model: CLAUDE_MODEL,
+    const llmPromise = llm.chat({
+      model: MODEL_LIGHT,
       max_tokens: 4096,
-      ...(claudeOptions?.system ? { system: claudeOptions.system } : {}),
+      system: claudeOptions?.system ?? '',
       messages: [{ role: 'user', content: claudeOptions?.prompt ?? messages[messages.length - 1].content }],
     });
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Claude fallback timed out after 30s')), FALLBACK_TIMEOUT_MS),
+      setTimeout(() => reject(new Error('LLM fallback timed out after 30s')), FALLBACK_TIMEOUT_MS),
     );
 
-    const response = await Promise.race([claudePromise, timeoutPromise]);
-    return extractResponseText(response);
+    const response = await Promise.race([llmPromise, timeoutPromise]);
+    return response.text;
   }
 }

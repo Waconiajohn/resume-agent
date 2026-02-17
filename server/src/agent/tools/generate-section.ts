@@ -1,4 +1,4 @@
-import { anthropic, MODEL, extractResponseText } from '../../lib/anthropic.js';
+import { llm, MODEL_PRIMARY } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import type { SessionContext } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
@@ -45,9 +45,10 @@ Culture: ${ctx.companyResearch.culture || 'Not researched'}`
     ? `Interview responses:\n${ctx.interviewResponses.map((r) => `Q: ${r.question}\nA: ${r.answer}`).join('\n\n')}`
     : 'No interview responses yet';
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
+  const response = await llm.chat({
+    model: MODEL_PRIMARY,
     max_tokens: 4096,
+    system: '',
     messages: [
       {
         role: 'user',
@@ -90,7 +91,7 @@ Return ONLY valid JSON:
     ],
   });
 
-  const rawText = extractResponseText(response);
+  const rawText = response.text;
 
   let content = currentContent;
   let changesMade: string[] = [];

@@ -4,8 +4,7 @@ type CoachPhase =
   | 'gap_analysis'
   | 'resume_design'
   | 'section_craft'
-  | 'quality_review'
-  | 'cover_letter';
+  | 'quality_review';
 
 type SessionStatus = 'active' | 'paused' | 'completed' | 'error';
 

@@ -1,18 +1,15 @@
 import { useState } from 'react';
-import { Download, FileText, Mail, CheckCircle, Loader2 } from 'lucide-react';
+import { Download, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
-import { exportDocx, exportCoverLetterDocx } from '@/lib/export-docx';
+import { exportDocx } from '@/lib/export-docx';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import type { FinalResume } from '@/types/resume';
-import type { CoverLetterParagraph, CompletionData } from '@/types/panels';
+import type { CompletionData } from '@/types/panels';
 
 interface CompletionPanelProps {
   data: CompletionData;
   resume: FinalResume | null;
-  coverLetterParagraphs?: CoverLetterParagraph[];
-  coverLetterCompany?: string;
-  coverLetterRole?: string;
 }
 
 function sanitizeFilenameSegment(s: string): string {
@@ -45,12 +42,8 @@ function StatBadge({ label, value }: { label: string; value: string | number }) 
 export function CompletionPanel({
   data,
   resume,
-  coverLetterParagraphs,
-  coverLetterCompany,
-  coverLetterRole,
 }: CompletionPanelProps) {
   const [exportingResume, setExportingResume] = useState(false);
-  const [exportingCover, setExportingCover] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
   const handleResumeDocx = async () => {
@@ -71,59 +64,6 @@ export function CompletionPanel({
     if (!resume) return;
     const filename = buildFilename(resume.contact_info, resume.company_name, 'Resume');
     downloadAsText(resumeToText(resume), filename);
-  };
-
-  const handleCoverDocx = async () => {
-    if (!coverLetterParagraphs?.length) return;
-    setExportingCover(true);
-    setExportError(null);
-    try {
-      const result = await exportCoverLetterDocx(coverLetterParagraphs, coverLetterCompany, coverLetterRole, resume?.contact_info);
-      if (!result.success) {
-        setExportError(result.error ?? 'Failed to generate cover letter DOCX');
-      }
-    } finally {
-      setExportingCover(false);
-    }
-  };
-
-  const handleCoverTxt = () => {
-    if (!coverLetterParagraphs?.length) return;
-    const lines: string[] = [];
-
-    // Sender info
-    if (resume?.contact_info?.name) {
-      lines.push(resume.contact_info.name);
-      const contactParts: string[] = [];
-      if (resume.contact_info.email) contactParts.push(resume.contact_info.email);
-      if (resume.contact_info.phone) contactParts.push(resume.contact_info.phone);
-      if (resume.contact_info.linkedin) contactParts.push(resume.contact_info.linkedin);
-      if (resume.contact_info.location) contactParts.push(resume.contact_info.location);
-      if (contactParts.length > 0) lines.push(contactParts.join(' | '));
-      lines.push('');
-    }
-
-    // Date
-    lines.push(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }));
-    lines.push('');
-
-    // Salutation
-    const salutation = coverLetterCompany ? `Dear ${coverLetterCompany} Hiring Team,` : 'Dear Hiring Manager,';
-    lines.push(salutation);
-    lines.push('');
-
-    // Body (skip empty paragraphs)
-    lines.push(coverLetterParagraphs.filter(p => p.content?.trim()).map(p => p.content).join('\n\n'));
-    lines.push('');
-
-    // Signature
-    lines.push('Sincerely,');
-    if (resume?.contact_info?.name) {
-      lines.push(resume.contact_info.name);
-    }
-
-    const filename = buildFilename(resume?.contact_info, coverLetterCompany, 'Cover_Letter');
-    downloadAsText(lines.join('\n'), filename);
   };
 
   return (
@@ -191,41 +131,6 @@ export function CompletionPanel({
           )}
         </GlassCard>
 
-        {/* Cover Letter Export */}
-        {coverLetterParagraphs && coverLetterParagraphs.length > 0 && (
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Mail className="h-4 w-4 text-blue-400" />
-              <h3 className="text-sm font-medium text-white/85">Cover Letter</h3>
-            </div>
-            <div className="space-y-2">
-              <GlassButton variant="primary" className="w-full" onClick={handleCoverDocx} disabled={exportingCover}>
-                {exportingCover ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                Download Word (.docx)
-              </GlassButton>
-              <GlassButton variant="ghost" className="w-full" onClick={handleCoverTxt}>
-                <Download className="mr-2 h-4 w-4" />
-                Download Text (.txt)
-              </GlassButton>
-            </div>
-          </GlassCard>
-        )}
-
-        {/* Preview */}
-        {coverLetterParagraphs && coverLetterParagraphs.length > 0 && (
-          <GlassCard className="p-4">
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Cover Letter Preview</h3>
-            <div className="space-y-3">
-              {coverLetterParagraphs.map((para, i) => (
-                <p key={i} className="text-xs text-white/75 leading-relaxed">{para.content}</p>
-              ))}
-            </div>
-          </GlassCard>
-        )}
       </div>
     </div>
   );

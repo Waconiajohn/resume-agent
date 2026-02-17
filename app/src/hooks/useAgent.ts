@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { PanelType, PanelData, CoverLetterParagraph } from '@/types/panels';
+import type { PanelType, PanelData } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -31,9 +31,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [panelType, setPanelType] = useState<PanelType | null>(null);
   const [panelData, setPanelData] = useState<PanelData | null>(null);
-  const [coverLetterParagraphs, setCoverLetterParagraphs] = useState<CoverLetterParagraph[]>([]);
-  const [coverLetterCompany, setCoverLetterCompany] = useState<string | undefined>();
-  const [coverLetterRole, setCoverLetterRole] = useState<string | undefined>();
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageIdRef = useRef(0);
 
@@ -323,15 +320,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     return incoming;
                   });
 
-                  // Capture cover letter data for later export
-                  if (incomingType === 'cover_letter') {
-                    const clData = data.data as Record<string, unknown>;
-                    if (Array.isArray(clData.paragraphs)) {
-                      setCoverLetterParagraphs(clData.paragraphs as CoverLetterParagraph[]);
-                    }
-                    if (clData.company_name) setCoverLetterCompany(clData.company_name as string);
-                    if (clData.role_title) setCoverLetterRole(clData.role_title as string);
-                  }
                   break;
                 }
 
@@ -526,9 +514,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     error,
     panelType,
     panelData,
-    coverLetterParagraphs,
-    coverLetterCompany,
-    coverLetterRole,
     addUserMessage,
   };
 }
