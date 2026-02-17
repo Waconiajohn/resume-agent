@@ -384,6 +384,7 @@ export type PipelineSSEEvent =
   | { type: 'positioning_profile_found'; profile: PositioningProfile; updated_at: string }
   | { type: 'blueprint_ready'; blueprint: ArchitectOutput }
   | { type: 'section_draft'; section: string; content: string }
+  | { type: 'section_revised'; section: string; content: string }
   | { type: 'section_approved'; section: string }
   | { type: 'quality_scores'; scores: QualityScores }
   | { type: 'revision_start'; instructions: RevisionInstruction[] }

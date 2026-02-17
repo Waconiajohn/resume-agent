@@ -50,7 +50,7 @@ export async function runSectionWriter(input: SectionWriterInput): Promise<Secti
 
   return {
     section,
-    content: String(parsed.content ?? response.text),
+    content: coerceContent(parsed.content, response.text),
     keywords_used: (parsed.keywords_used as string[]) ?? [],
     requirements_addressed: (parsed.requirements_addressed as string[]) ?? [],
     evidence_ids_used: (parsed.evidence_ids_used as string[]) ?? [],
@@ -103,11 +103,33 @@ Return ONLY valid JSON:
   const parsed = repairJSON<Record<string, unknown>>(response.text);
   return {
     section,
-    content: String(parsed?.content ?? response.text.trim()),
+    content: coerceContent(parsed?.content, response.text.trim()),
     keywords_used: (parsed?.keywords_used as string[]) ?? [],
     requirements_addressed: (parsed?.requirements_addressed as string[]) ?? [],
     evidence_ids_used: (parsed?.evidence_ids_used as string[]) ?? [],
   };
+}
+
+/**
+ * Coerce LLM content to a non-empty string.
+ * Z.AI sometimes returns content as an array of bullet objects, a nested object,
+ * or an empty string. This ensures we always get usable text.
+ */
+function coerceContent(content: unknown, fallback: string): string {
+  if (typeof content === 'string' && content.trim()) return content;
+  if (Array.isArray(content)) {
+    // Array of strings or objects — join them
+    const lines = content.map((item) =>
+      typeof item === 'string' ? item : (item?.text ?? item?.bullet ?? JSON.stringify(item))
+    );
+    const joined = lines.join('\n');
+    if (joined.trim()) return joined;
+  }
+  if (content && typeof content === 'object') {
+    return JSON.stringify(content);
+  }
+  // Content is empty/null/undefined — use raw LLM response as fallback
+  return fallback;
 }
 
 // ─── System prompt ───────────────────────────────────────────────────

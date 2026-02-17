@@ -257,7 +257,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         );
 
         state.sections[section] = revised;
-        emit({ type: 'section_draft', section, content: revised.content });
+        emit({ type: 'section_revised', section, content: revised.content });
       }
 
       log.info({ revisions: state.quality_review.revision_instructions.length }, 'Revision cycle complete');

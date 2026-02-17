@@ -530,6 +530,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'section_revised': {
+                  // Revision from quality review — update resume preview, no approval needed
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setSectionDraft({
+                    section: data.section as string,
+                    content: data.content as string,
+                  });
+                  break;
+                }
+
                 case 'section_approved': {
                   // Acknowledgement only — no state update needed
                   break;
@@ -577,6 +588,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   setSessionComplete(true);
                   setPipelineStage('complete');
                   setPanelType('completion');
+                  setPanelData({ type: 'completion' } as PanelData);
                   break;
                 }
 
