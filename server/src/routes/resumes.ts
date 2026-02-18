@@ -29,6 +29,8 @@ type DefaultResumeRpcResult = {
   new_default_resume_id?: string | null;
 };
 
+type CreateResumeRpcResult = Record<string, unknown>;
+
 const resumes = new Hono();
 
 resumes.use('*', authMiddleware);
@@ -184,72 +186,31 @@ resumes.post('/', async (c) => {
     source_session_id,
   } = parsed.data;
 
-  const { data: latest } = await supabaseAdmin
-    .from('master_resumes')
-    .select('version')
-    .eq('user_id', user.id)
-    .order('version', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { data: existingDefault } = await supabaseAdmin
-    .from('master_resumes')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('is_default', true)
-    .limit(1)
-    .maybeSingle();
-
-  const makeDefault = Boolean(set_as_default) || !existingDefault;
-
   const { data, error } = await supabaseAdmin
-    .from('master_resumes')
-    .insert({
-      user_id: user.id,
-      raw_text,
-      summary: summary ?? '',
-      experience: experience ?? [],
-      skills: skills ?? {},
-      education: education ?? [],
-      certifications: certifications ?? [],
-      contact_info: contact_info ?? {},
-      source_session_id: source_session_id ?? null,
-      is_default: false,
-      version: (latest?.version ?? 0) + 1,
-    })
-    .select()
-    .single();
+    .rpc('create_master_resume_atomic', {
+      p_user_id: user.id,
+      p_raw_text: raw_text,
+      p_summary: summary ?? '',
+      p_experience: experience ?? [],
+      p_skills: skills ?? {},
+      p_education: education ?? [],
+      p_certifications: certifications ?? [],
+      p_contact_info: contact_info ?? {},
+      p_source_session_id: source_session_id ?? null,
+      p_set_as_default: Boolean(set_as_default),
+    });
 
   if (error) {
     logger.error({ error: error.message }, 'Failed to create resume');
     return c.json({ error: 'Failed to create resume' }, 500);
   }
 
-  if (makeDefault) {
-    const { data: rpcData, error: rpcError } = await supabaseAdmin
-      .rpc('set_default_master_resume', {
-        p_user_id: user.id,
-        p_resume_id: data.id,
-      });
-    if (rpcError) {
-      logger.error(
-        { error: rpcError.message, resumeId: data.id },
-        'Created resume but failed to mark it as default via RPC',
-      );
-      return c.json({ error: 'Resume saved, but default selection failed' }, 500);
-    }
-    const result = (rpcData ?? {}) as DefaultResumeRpcResult;
-    if (!result.ok) {
-      logger.error(
-        { resumeId: data.id, result },
-        'Created resume but RPC declined default selection',
-      );
-      return c.json({ error: 'Resume saved, but default selection failed' }, 500);
-    }
-    data.is_default = true;
+  if (!data || typeof data !== 'object') {
+    logger.error({ data }, 'create_master_resume_atomic returned invalid payload');
+    return c.json({ error: 'Failed to create resume' }, 500);
   }
 
-  return c.json({ resume: data }, 201);
+  return c.json({ resume: data as CreateResumeRpcResult }, 201);
 });
 
 export { resumes };

@@ -1,4 +1,5 @@
 type ResumeUploadExt = 'txt' | 'docx' | 'pdf' | 'doc';
+const MAX_RESUME_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
 function getExtension(fileName: string): ResumeUploadExt | '' {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -44,6 +45,10 @@ async function extractFromPdf(file: File): Promise<string> {
 }
 
 export async function extractResumeTextFromUpload(file: File): Promise<string> {
+  if (file.size > MAX_RESUME_UPLOAD_BYTES) {
+    throw new Error('File too large. Please upload a resume under 10 MB.');
+  }
+
   const ext = getExtension(file.name);
 
   if (ext === 'doc') {

@@ -257,7 +257,7 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-panel-root className="flex h-full flex-col">
       {/* Header */}
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
@@ -269,7 +269,7 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
       </div>
 
       {/* WYSIWYG Resume Preview */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
         {contentLines.length > 0 ? (
           <GlassCard className="p-5 space-y-1 bg-white/[0.03] border-white/[0.08]">
             {/* Section heading */}

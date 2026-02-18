@@ -15,6 +15,7 @@ interface CoachScreenProps {
   phaseGate: PhaseGateData | null;
   currentPhase: string;
   isProcessing: boolean;
+  sessionComplete?: boolean;
   resume: FinalResume | null;
   panelType: PanelType | null;
   panelData: PanelData | null;
@@ -35,6 +36,7 @@ export function CoachScreen({
   phaseGate,
   currentPhase,
   isProcessing,
+  sessionComplete,
   resume,
   panelType,
   panelData,
@@ -95,6 +97,8 @@ export function CoachScreen({
           <WorkflowStatsRail
             currentPhase={currentPhase}
             isProcessing={isProcessing}
+            sessionComplete={sessionComplete}
+            error={error}
             panelData={panelData}
             resume={resume}
           />

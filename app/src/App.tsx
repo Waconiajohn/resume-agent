@@ -166,10 +166,9 @@ export default function App() {
         setIntakeDefaultResumeId(null);
         setIntakeInitialResumeText('');
       }
-      await listResumes();
       return true;
     },
-    [deleteResume, getDefaultResume, listResumes],
+    [deleteResume, getDefaultResume],
   );
 
   const handleSendMessage = useCallback(
@@ -231,6 +230,7 @@ export default function App() {
           resumes={resumes}
           loading={sessionLoading}
           resumesLoading={resumesLoading}
+          error={sessionError}
           onNewSession={handleNewSession}
           onResumeSession={handleResumeSession}
           onDeleteSession={handleDeleteSession}
@@ -268,6 +268,7 @@ export default function App() {
           phaseGate={phaseGate}
           currentPhase={pipelineStage ?? currentPhase}
           isProcessing={isProcessing}
+          sessionComplete={sessionComplete}
           resume={resume}
           panelType={panelType}
           panelData={panelData}

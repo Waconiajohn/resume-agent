@@ -73,7 +73,7 @@ export function SectionReviewPanel({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-panel-root className="flex h-full flex-col">
       {/* Header */}
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
@@ -85,7 +85,7 @@ export function SectionReviewPanel({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Content card */}
         <GlassCard className="p-5 space-y-1 bg-white/[0.03] border-white/[0.08]">
           {/* Section heading */}

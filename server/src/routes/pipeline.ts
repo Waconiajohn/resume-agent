@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
@@ -65,19 +67,75 @@ const bufferedResponses = new Map<string, { gate: string; response: unknown }>()
 const runningPipelines = new Set<string>();
 
 const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
+const MAX_JOB_URL_REDIRECTS = 3;
+
+function isPrivateIPv4(ip: string): boolean {
+  const parts = ip.split('.').map((p) => Number.parseInt(p, 10));
+  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) return true;
+  const [a, b] = parts;
+
+  if (a === 0) return true; // 0.0.0.0/8
+  if (a === 10) return true; // 10.0.0.0/8
+  if (a === 127) return true; // loopback
+  if (a === 169 && b === 254) return true; // link-local / metadata
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16/12
+  if (a === 192 && b === 168) return true; // 192.168/16
+  return false;
+}
+
+function isPrivateIPv6(ip: string): boolean {
+  const normalized = ip.trim().toLowerCase();
+  if (!normalized) return true;
+
+  if (normalized === '::' || normalized === '::1') return true; // unspecified / loopback
+  if (normalized.startsWith('::ffff:')) {
+    const mapped = normalized.replace(/^::ffff:/, '');
+    return isPrivateIPv4(mapped);
+  }
+
+  // Unique local addresses (fc00::/7)
+  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
+  // Link-local addresses (fe80::/10)
+  if (/^fe[89ab]/.test(normalized)) return true;
+  return false;
+}
 
 function isPrivateHost(hostname: string): boolean {
   const host = hostname.trim().toLowerCase();
   if (!host) return true;
-  if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local')) return true;
-  if (/^10\.\d+\.\d+\.\d+$/.test(host)) return true;
-  if (/^192\.168\.\d+\.\d+$/.test(host)) return true;
-  const m = host.match(/^172\.(\d+)\.\d+\.\d+$/);
-  if (m) {
-    const second = Number(m[1]);
-    if (second >= 16 && second <= 31) return true;
-  }
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
+
+  const ipVersion = isIP(host);
+  if (ipVersion === 4) return isPrivateIPv4(host);
+  if (ipVersion === 6) return isPrivateIPv6(host);
   return false;
+}
+
+async function assertPublicHost(hostname: string): Promise<void> {
+  const host = hostname.trim().toLowerCase();
+  if (isPrivateHost(host)) {
+    throw new Error('This URL host is not allowed. Please paste the job description text directly.');
+  }
+
+  // Validate DNS target addresses to reduce SSRF via public hostname -> private IP.
+  if (isIP(host) === 0) {
+    let ips: Array<{ address: string }> = [];
+    try {
+      const resolved = await lookup(host, { all: true, verbatim: true });
+      ips = Array.isArray(resolved) ? resolved : [resolved];
+    } catch {
+      throw new Error('Unable to resolve job URL host. Please paste the job description text directly.');
+    }
+
+    if (ips.length === 0) {
+      throw new Error('Unable to resolve job URL host. Please paste the job description text directly.');
+    }
+    for (const record of ips) {
+      if (isPrivateHost(record.address)) {
+        throw new Error('This URL host is not allowed. Please paste the job description text directly.');
+      }
+    }
+  }
 }
 
 function decodeHtmlEntities(input: string): string {
@@ -114,40 +172,67 @@ async function resolveJobDescriptionInput(input: string): Promise<string> {
   if (!['http:', 'https:'].includes(url.protocol)) {
     throw new Error('Only http/https job URLs are supported.');
   }
-  if (isPrivateHost(url.hostname)) {
-    throw new Error('This URL host is not allowed. Please paste the job description text directly.');
+  let currentUrl = url;
+
+  for (let redirects = 0; redirects <= MAX_JOB_URL_REDIRECTS; redirects += 1) {
+    await assertPublicHost(currentUrl.hostname);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+
+    try {
+      const res = await fetch(currentUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Resume-Agent/1.0 (+job-description-fetch)',
+          Accept: 'text/html, text/plain;q=0.9, */*;q=0.1',
+        },
+        redirect: 'manual',
+        signal: controller.signal,
+      });
+
+      if ([301, 302, 303, 307, 308].includes(res.status)) {
+        if (redirects >= MAX_JOB_URL_REDIRECTS) {
+          throw new Error('Job URL redirected too many times. Please paste JD text directly.');
+        }
+        const location = res.headers.get('location');
+        if (!location) {
+          throw new Error('Job URL redirect did not include a location. Please paste JD text directly.');
+        }
+        let nextUrl: URL;
+        try {
+          nextUrl = new URL(location, currentUrl);
+        } catch {
+          throw new Error('Job URL redirect target is invalid. Please paste JD text directly.');
+        }
+        if (!['http:', 'https:'].includes(nextUrl.protocol)) {
+          throw new Error('Job URL redirect uses an unsupported protocol.');
+        }
+        currentUrl = nextUrl;
+        continue;
+      }
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch job URL (${res.status}). Please paste JD text instead.`);
+      }
+      const contentType = res.headers.get('content-type')?.toLowerCase() ?? '';
+      const body = await res.text();
+      const text = contentType.includes('text/plain') ? body.trim() : extractVisibleTextFromHtml(body);
+      if (text.length < 200) {
+        throw new Error('Could not extract enough job description text from the URL. Please paste JD text directly.');
+      }
+      return text.slice(0, 50_000);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('Fetching job URL timed out. Please paste the job description text directly.');
+      }
+      throw err instanceof Error ? err : new Error('Unable to fetch job URL. Please paste JD text directly.');
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-
-  try {
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Resume-Agent/1.0 (+job-description-fetch)',
-        Accept: 'text/html, text/plain;q=0.9, */*;q=0.1',
-      },
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch job URL (${res.status}). Please paste JD text instead.`);
-    }
-    const contentType = res.headers.get('content-type')?.toLowerCase() ?? '';
-    const body = await res.text();
-    const text = contentType.includes('text/plain') ? body.trim() : extractVisibleTextFromHtml(body);
-    if (text.length < 200) {
-      throw new Error('Could not extract enough job description text from the URL. Please paste JD text directly.');
-    }
-    return text.slice(0, 50_000);
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('Fetching job URL timed out. Please paste the job description text directly.');
-    }
-    throw err instanceof Error ? err : new Error('Unable to fetch job URL. Please paste JD text directly.');
-  } finally {
-    clearTimeout(timeout);
-  }
+  throw new Error('Unable to fetch job URL. Please paste JD text directly.');
 }
 
 // POST /pipeline/start

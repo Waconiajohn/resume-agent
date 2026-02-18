@@ -20,12 +20,12 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
   } = data;
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
         <span className="text-sm font-medium text-white/85">Quality Dashboard</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Score rings */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-around">

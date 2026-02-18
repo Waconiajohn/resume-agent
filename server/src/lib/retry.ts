@@ -1,6 +1,12 @@
 const TRANSIENT_PATTERNS = [
+  '429',
+  'rate limit',
   'rate_limit',
+  'too many requests',
   'overloaded',
+  'temporarily unavailable',
+  'aborted due to timeout',
+  'timeout',
   '529',
   '500',
   '502',

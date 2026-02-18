@@ -11,6 +11,7 @@
 import { supabaseAdmin } from '../lib/supabase.js';
 import { MODEL_PRICING } from '../lib/llm.js';
 import { createSessionLogger } from '../lib/logger.js';
+import { withRetry } from '../lib/retry.js';
 import { runIntakeAgent } from './intake.js';
 import { generateQuestions, synthesizeProfile } from './positioning-coach.js';
 import { runResearchAgent } from './research.js';
@@ -52,6 +53,7 @@ export interface PipelineConfig {
 }
 
 type StageTimingMap = Partial<Record<PipelineStage, number>>;
+const SECTION_WRITE_CONCURRENCY = 3;
 
 interface FinalResumePayload {
   summary: string;
@@ -188,12 +190,21 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     state.current_stage = 'architect';
     markStageStart('architect');
 
-    state.architect = await runArchitect({
-      parsed_resume: state.intake,
-      positioning: state.positioning,
-      research: state.research,
-      gap_analysis: state.gap_analysis,
-    });
+    state.architect = await withRetry(
+      () => runArchitect({
+        parsed_resume: state.intake!,
+        positioning: state.positioning!,
+        research: state.research!,
+        gap_analysis: state.gap_analysis!,
+      }),
+      {
+        maxAttempts: 3,
+        baseDelay: 1_500,
+        onRetry: (attempt, error) => {
+          log.warn({ attempt, error: error.message }, 'Architect retry');
+        },
+      },
+    );
 
     markStageEnd('architect');
     emit({ type: 'stage_complete', stage: 'architect', message: 'Blueprint ready for review', duration_ms: stageTimingsMs.architect });
@@ -217,13 +228,29 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     const sectionCalls = buildSectionCalls(state.architect, state.intake, state.positioning);
 
-    // Fire ALL section LLM calls in parallel for ~40% speed improvement
+    // Run section calls with bounded concurrency to reduce provider 429 bursts.
+    const runWithSectionLimit = createConcurrencyLimiter(SECTION_WRITE_CONCURRENCY);
     const sectionPromises = new Map<string, Promise<{ ok: true; value: SectionWriterOutput } | { ok: false; error: unknown }>>();
-    for (const call of sectionCalls) {
+    for (const [index, call] of sectionCalls.entries()) {
       // Catch per-promise immediately to avoid unhandled rejections while user is approving earlier sections.
       sectionPromises.set(
         call.section,
-        runSectionWriter(call)
+        runWithSectionLimit(async () => {
+          // Add slight stagger so calls do not hit the provider at the same millisecond.
+          if (index > 0) {
+            await sleep(Math.min(index * 120, 900) + Math.floor(Math.random() * 120));
+          }
+          return withRetry(
+          () => runSectionWriter(call),
+            {
+              maxAttempts: 4,
+              baseDelay: 1_250,
+              onRetry: (attempt, error) => {
+                log.warn({ section: call.section, attempt, error: error.message }, 'Section writer retry');
+              },
+            },
+          );
+        })
           .then((value) => ({ ok: true as const, value }))
           .catch((error) => ({ ok: false as const, error })),
       );
@@ -281,17 +308,26 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       message: `Keyword coverage: ${keywordCoverage.found}/${keywordCoverage.total} JD keywords found (${keywordCoverage.percentage}%)`,
     });
 
-    state.quality_review = await runQualityReviewer({
-      assembled_resume: {
-        sections: Object.fromEntries(
-          Object.entries(state.sections).map(([k, v]) => [k, v.content])
-        ),
-        full_text: fullText,
+    state.quality_review = await withRetry(
+      () => runQualityReviewer({
+        assembled_resume: {
+          sections: Object.fromEntries(
+            Object.entries(state.sections ?? {}).map(([k, v]) => [k, v.content])
+          ),
+          full_text: fullText,
+        },
+        architect_blueprint: state.architect!,
+        jd_analysis: state.research!.jd_analysis,
+        evidence_library: state.positioning!.evidence_library,
+      }),
+      {
+        maxAttempts: 3,
+        baseDelay: 1_500,
+        onRetry: (attempt, error) => {
+          log.warn({ attempt, error: error.message }, 'Quality reviewer retry');
+        },
       },
-      architect_blueprint: state.architect,
-      jd_analysis: state.research.jd_analysis,
-      evidence_library: state.positioning.evidence_library,
-    });
+    );
 
     // Use a single source of truth for keyword coverage in UI surfaces.
     // The deterministic counter above should match the quality dashboard value.
@@ -317,12 +353,21 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         if (!original) continue;
 
         const blueprintSlice = getSectionBlueprint(section, state.architect);
-        const revised = await runSectionRevision(
-          section,
-          original.content,
-          instruction.instruction,
-          blueprintSlice,
-          state.architect.global_rules,
+        const revised = await withRetry(
+          () => runSectionRevision(
+            section,
+            original.content,
+            instruction.instruction,
+            blueprintSlice,
+            state.architect!.global_rules,
+          ),
+          {
+            maxAttempts: 3,
+            baseDelay: 1_000,
+            onRetry: (attempt, error) => {
+              log.warn({ section, attempt, error: error.message }, 'Section revision retry');
+            },
+          },
         );
 
         state.sections[section] = revised;
@@ -350,12 +395,21 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         if (!section || !original) continue;
 
         const blueprintSlice = getSectionBlueprint(section, state.architect);
-        const revised = await runSectionRevision(
-          section,
-          original.content,
-          `${finding.issue}. ${finding.instruction}`,
-          blueprintSlice,
-          state.architect.global_rules,
+        const revised = await withRetry(
+          () => runSectionRevision(
+            section,
+            original.content,
+            `${finding.issue}. ${finding.instruction}`,
+            blueprintSlice,
+            state.architect!.global_rules,
+          ),
+          {
+            maxAttempts: 3,
+            baseDelay: 1_000,
+            onRetry: (attempt, error) => {
+              log.warn({ section, attempt, error: error.message }, 'ATS revision retry');
+            },
+          },
         );
         state.sections[section] = revised;
         emit({ type: 'section_revised', section, content: revised.content });
@@ -696,6 +750,33 @@ function mapFindingToSection(
   }
   if (findingSection === 'formatting') return Object.keys(sections)[0] ?? null;
   return null;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createConcurrencyLimiter(limit: number) {
+  let active = 0;
+  const queue: Array<() => void> = [];
+
+  const release = () => {
+    active = Math.max(0, active - 1);
+    const next = queue.shift();
+    if (next) next();
+  };
+
+  return async function runLimited<T>(task: () => Promise<T>): Promise<T> {
+    if (active >= limit) {
+      await new Promise<void>((resolve) => queue.push(resolve));
+    }
+    active += 1;
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  };
 }
 
 function normalizeSkills(intakeSkills: string[]): Record<string, string[]> {

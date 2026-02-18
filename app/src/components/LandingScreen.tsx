@@ -11,6 +11,7 @@ interface LandingScreenProps {
   resumes: MasterResumeListItem[];
   loading: boolean;
   resumesLoading: boolean;
+  error?: string | null;
   onNewSession: () => void;
   onResumeSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
@@ -25,6 +26,7 @@ export function LandingScreen({
   resumes,
   loading,
   resumesLoading,
+  error,
   onNewSession,
   onResumeSession,
   onDeleteSession,
@@ -73,6 +75,11 @@ export function LandingScreen({
         <p className="mb-8 max-w-md text-sm text-white/50">
           I research companies, analyze job descriptions, and help you craft a tailored resume that gets interviews.
         </p>
+        {error && (
+          <div className="mb-6 w-full rounded-lg border border-red-300/28 bg-red-500/[0.08] px-4 py-2 text-left text-xs text-red-100/90">
+            {error}
+          </div>
+        )}
 
         <GlassButton onClick={onNewSession} className="mb-12 px-8 py-3 text-base">
           <Plus className="h-5 w-5" />

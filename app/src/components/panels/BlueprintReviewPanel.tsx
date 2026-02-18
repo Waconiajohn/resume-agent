@@ -99,7 +99,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
   const hasAgeFlags = !age_protection?.clean && age_protection?.flags?.length > 0;
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-panel-root className="flex h-full flex-col">
       {/* Panel header */}
         <div className="border-b border-white/[0.12] px-4 py-3">
           <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
           </div>
         </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Target Role & Positioning Angle */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">

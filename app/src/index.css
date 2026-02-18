@@ -74,12 +74,12 @@
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
   }
 
-  .inline-panel-host > .flex.h-full.flex-col {
+  .inline-panel-host [data-panel-root] {
     height: auto;
     min-height: 0;
   }
 
-  .inline-panel-host > .flex.h-full.flex-col > .flex-1.overflow-y-auto {
+  .inline-panel-host [data-panel-scroll] {
     overflow: visible;
     flex: 0 1 auto;
   }

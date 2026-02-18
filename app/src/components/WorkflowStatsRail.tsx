@@ -6,6 +6,8 @@ import type { FinalResume } from '@/types/resume';
 interface WorkflowStatsRailProps {
   currentPhase: string;
   isProcessing: boolean;
+  sessionComplete?: boolean;
+  error?: string | null;
   panelData: PanelData | null;
   resume: FinalResume | null;
 }
@@ -62,10 +64,24 @@ function MetricRow({
 export function WorkflowStatsRail({
   currentPhase,
   isProcessing,
+  sessionComplete,
+  error,
   panelData,
   resume,
 }: WorkflowStatsRailProps) {
   const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
+  const status = error
+    ? 'Error'
+    : (sessionComplete || currentPhase === 'complete')
+      ? 'Complete'
+      : isProcessing
+        ? 'Processing'
+        : 'Idle';
+  const statusClass = error
+    ? 'text-red-100/90'
+    : status === 'Complete'
+      ? 'text-emerald-100/90'
+      : 'text-white/62';
 
   return (
     <aside className="h-full overflow-y-auto border-l border-white/[0.1] px-3 py-3">
@@ -80,8 +96,8 @@ export function WorkflowStatsRail({
             icon={Activity}
           />
           <div className="mt-2 rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2">
-            <span className="text-xs text-white/62">
-              {isProcessing ? 'Processing' : 'Idle'}
+            <span className={`text-xs ${statusClass}`}>
+              {status}
             </span>
           </div>
         </GlassCard>
