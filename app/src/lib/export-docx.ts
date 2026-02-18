@@ -5,24 +5,11 @@ import {
 import type { FinalResume, ContactInfo } from '@/types/resume';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 import { buildResumeFilename } from '@/lib/export-filename';
+import { saveBlobWithFilename } from '@/lib/download';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 100);
-}
 
 // ---------------------------------------------------------------------------
 // Reusable paragraph styles (Section X-B of formatting guide)
@@ -670,7 +657,7 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   });
   const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'docx');
-  downloadBlob(blob, filename);
+  saveBlobWithFilename(blob, filename, 'docx');
   return { success: true };
 }
 

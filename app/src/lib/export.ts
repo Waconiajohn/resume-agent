@@ -1,5 +1,6 @@
 import type { FinalResume, ContactInfo } from '@/types/resume';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
+import { saveBlobWithFilename } from '@/lib/download';
 
 /**
  * Extract clean text from a string that may contain a JSON wrapper
@@ -162,12 +163,5 @@ export function resumeToText(resume: FinalResume): string {
 
 export function downloadAsText(content: string, filename: string) {
   const blob = new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  saveBlobWithFilename(blob, filename, 'txt');
 }

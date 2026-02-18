@@ -1,6 +1,7 @@
 import type { FinalResume } from '@/types/resume';
 import { resumeToText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
+import { saveBlobWithFilename } from '@/lib/download';
 
 function escapePdfText(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
@@ -84,14 +85,7 @@ export function exportPdf(resume: FinalResume): { success: boolean; error?: stri
     const text = resumeToText(resume);
     const blob = buildPdfBlob(text);
     const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'pdf');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    saveBlobWithFilename(blob, filename, 'pdf');
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to generate PDF';
