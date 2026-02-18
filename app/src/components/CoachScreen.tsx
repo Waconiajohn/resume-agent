@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChatPanel } from './ChatPanel';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { WorkflowStatsRail } from './WorkflowStatsRail';
+import { runPanelPayloadSmokeChecks } from './panels/panel-smoke';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
@@ -45,6 +46,10 @@ export function CoachScreen({
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
 
+  useEffect(() => {
+    runPanelPayloadSmokeChecks();
+  }, []);
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* 3D: Error banner */}
@@ -86,7 +91,7 @@ export function CoachScreen({
           />
         </div>
 
-        <div className="hidden w-72 min-w-0 xl:block">
+        <div className="hidden w-72 min-w-0 lg:block">
           <WorkflowStatsRail
             currentPhase={currentPhase}
             isProcessing={isProcessing}

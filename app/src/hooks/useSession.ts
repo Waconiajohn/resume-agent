@@ -201,10 +201,12 @@ export function useSession(accessToken: string | null) {
         setError(data.error ?? `Failed to set default resume (${res.status})`);
         return false;
       }
+      const data = await res.json().catch(() => ({}));
+      const newDefaultId = (data.resume_id as string | undefined) ?? resumeId;
       setResumes((prev) =>
         prev.map((r) => ({
           ...r,
-          is_default: r.id === resumeId,
+          is_default: r.id === newDefaultId,
         })),
       );
       return true;
@@ -227,7 +229,18 @@ export function useSession(accessToken: string | null) {
         setError(data.error ?? `Failed to delete resume (${res.status})`);
         return false;
       }
-      setResumes((prev) => prev.filter((r) => r.id !== resumeId));
+      const data = await res.json().catch(() => ({}));
+      const newDefaultId = (data.new_default_resume_id as string | null | undefined);
+      setResumes((prev) => {
+        const filtered = prev.filter((r) => r.id !== resumeId);
+        if (typeof newDefaultId === 'undefined') {
+          return filtered;
+        }
+        return filtered.map((r) => ({
+          ...r,
+          is_default: newDefaultId ? r.id === newDefaultId : false,
+        }));
+      });
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error deleting resume');

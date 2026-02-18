@@ -22,6 +22,13 @@ const createResumeSchema = z.object({
   source_session_id: z.string().uuid().optional(),
 });
 
+type DefaultResumeRpcResult = {
+  ok?: boolean;
+  error?: string;
+  resume_id?: string;
+  new_default_resume_id?: string | null;
+};
+
 const resumes = new Hono();
 
 resumes.use('*', authMiddleware);
@@ -105,40 +112,26 @@ resumes.put('/:id/default', async (c) => {
   const user = c.get('user');
   const resumeId = c.req.param('id');
 
-  const { data: existing, error: existingError } = await supabaseAdmin
-    .from('master_resumes')
-    .select('id')
-    .eq('id', resumeId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const { data, error } = await supabaseAdmin
+    .rpc('set_default_master_resume', {
+      p_user_id: user.id,
+      p_resume_id: resumeId,
+    });
 
-  if (existingError || !existing) {
-    return c.json({ error: 'Resume not found' }, 404);
-  }
-
-  const { error: clearError } = await supabaseAdmin
-    .from('master_resumes')
-    .update({ is_default: false })
-    .eq('user_id', user.id)
-    .eq('is_default', true);
-
-  if (clearError) {
-    logger.error({ error: clearError.message }, 'Failed to clear existing default resume');
+  if (error) {
+    logger.error({ error: error.message, resumeId }, 'Failed to set default resume via RPC');
     return c.json({ error: 'Failed to update default resume' }, 500);
   }
 
-  const { error: setError } = await supabaseAdmin
-    .from('master_resumes')
-    .update({ is_default: true })
-    .eq('id', resumeId)
-    .eq('user_id', user.id);
-
-  if (setError) {
-    logger.error({ error: setError.message }, 'Failed to set default resume');
+  const result = (data ?? {}) as DefaultResumeRpcResult;
+  if (!result.ok) {
+    if (result.error === 'NOT_FOUND') {
+      return c.json({ error: 'Resume not found' }, 404);
+    }
     return c.json({ error: 'Failed to update default resume' }, 500);
   }
 
-  return c.json({ status: 'ok', resume_id: resumeId, is_default: true });
+  return c.json({ status: 'ok', resume_id: result.resume_id ?? resumeId, is_default: true });
 });
 
 // DELETE /resumes/:id — Delete a master resume
@@ -146,18 +139,29 @@ resumes.delete('/:id', async (c) => {
   const user = c.get('user');
   const resumeId = c.req.param('id');
 
-  const { error } = await supabaseAdmin
-    .from('master_resumes')
-    .delete()
-    .eq('id', resumeId)
-    .eq('user_id', user.id);
-
+  const { data, error } = await supabaseAdmin
+    .rpc('delete_master_resume_with_fallback_default', {
+      p_user_id: user.id,
+      p_resume_id: resumeId,
+    });
   if (error) {
-    logger.error({ resumeId, error: error.message }, 'Failed to delete resume');
+    logger.error({ resumeId, error: error.message }, 'Failed to delete resume via RPC');
     return c.json({ error: 'Failed to delete resume' }, 500);
   }
 
-  return c.json({ status: 'deleted', resume_id: resumeId });
+  const result = (data ?? {}) as DefaultResumeRpcResult;
+  if (!result.ok) {
+    if (result.error === 'NOT_FOUND') {
+      return c.json({ error: 'Resume not found' }, 404);
+    }
+    return c.json({ error: 'Failed to delete resume' }, 500);
+  }
+
+  return c.json({
+    status: 'deleted',
+    resume_id: result.resume_id ?? resumeId,
+    new_default_resume_id: result.new_default_resume_id ?? null,
+  });
 });
 
 // POST /resumes — Upload/create a master resume (raw text)
@@ -197,17 +201,6 @@ resumes.post('/', async (c) => {
     .maybeSingle();
 
   const makeDefault = Boolean(set_as_default) || !existingDefault;
-  if (makeDefault) {
-    const { error: clearError } = await supabaseAdmin
-      .from('master_resumes')
-      .update({ is_default: false })
-      .eq('user_id', user.id)
-      .eq('is_default', true);
-    if (clearError) {
-      logger.error({ error: clearError.message }, 'Failed to clear existing default resume');
-      return c.json({ error: 'Failed to create resume' }, 500);
-    }
-  }
 
   const { data, error } = await supabaseAdmin
     .from('master_resumes')
@@ -221,7 +214,7 @@ resumes.post('/', async (c) => {
       certifications: certifications ?? [],
       contact_info: contact_info ?? {},
       source_session_id: source_session_id ?? null,
-      is_default: makeDefault,
+      is_default: false,
       version: (latest?.version ?? 0) + 1,
     })
     .select()
@@ -230,6 +223,30 @@ resumes.post('/', async (c) => {
   if (error) {
     logger.error({ error: error.message }, 'Failed to create resume');
     return c.json({ error: 'Failed to create resume' }, 500);
+  }
+
+  if (makeDefault) {
+    const { data: rpcData, error: rpcError } = await supabaseAdmin
+      .rpc('set_default_master_resume', {
+        p_user_id: user.id,
+        p_resume_id: data.id,
+      });
+    if (rpcError) {
+      logger.error(
+        { error: rpcError.message, resumeId: data.id },
+        'Created resume but failed to mark it as default via RPC',
+      );
+      return c.json({ error: 'Resume saved, but default selection failed' }, 500);
+    }
+    const result = (rpcData ?? {}) as DefaultResumeRpcResult;
+    if (!result.ok) {
+      logger.error(
+        { resumeId: data.id, result },
+        'Created resume but RPC declined default selection',
+      );
+      return c.json({ error: 'Resume saved, but default selection failed' }, 500);
+    }
+    data.is_default = true;
   }
 
   return c.json({ resume: data }, 201);

@@ -4,7 +4,8 @@ import { GlassTextarea } from './GlassInput';
 import { GlassButton } from './GlassButton';
 import { ChatMessage } from './ChatMessage';
 import { AskUserPrompt } from './AskUserPrompt';
-import { PanelContent } from './panels/RightPanel';
+import { SafePanelContent } from './panels/panel-renderer';
+import { ResumePanel } from './ResumePanel';
 import { PHASE_LABELS } from '@/constants/phases';
 import type { ChatMessage as ChatMessageType, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { PanelType, PanelData } from '@/types/panels';
@@ -44,9 +45,18 @@ export function ChatPanel({
   onSaveCurrentResumeAsBase,
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
+  const [showResumePreview, setShowResumePreview] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
   const isBusy = isProcessing || streamingText.length > 0 || tools.some((t) => t.status === 'running');
+  const canOpenResumePreview =
+    !!resume
+    && !!panelData
+    && (panelData.type === 'quality_dashboard' || panelData.type === 'completion');
+
+  useEffect(() => {
+    setShowResumePreview(false);
+  }, [panelData?.type]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -157,20 +167,36 @@ export function ChatPanel({
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
                 Current Work Product
               </span>
-              <span className="text-[10px] text-white/58">
-                {(panelType ?? panelData.type).replace(/_/g, ' ')}
-              </span>
+              <div className="flex items-center gap-2">
+                {canOpenResumePreview && (
+                  <button
+                    type="button"
+                    onClick={() => setShowResumePreview((prev) => !prev)}
+                    className="rounded-md border border-white/[0.14] bg-white/[0.04] px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/70 transition-colors hover:bg-white/[0.08]"
+                  >
+                    {showResumePreview ? 'Back To Panel' : 'Open Resume Preview'}
+                  </button>
+                )}
+                <span className="text-[10px] text-white/58">
+                  {(panelType ?? panelData.type).replace(/_/g, ' ')}
+                </span>
+              </div>
             </div>
-            <div className="max-h-[52vh] overflow-y-auto">
-              <PanelContent
-                panelType={panelType}
-                panelData={panelData}
-                resume={resume}
-                isProcessing={isProcessing}
-                onSendMessage={onSendMessage}
-                onPipelineRespond={onPipelineRespond}
-                onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
-              />
+            <div className="p-0">
+              {showResumePreview ? (
+                <ResumePanel resume={resume} />
+              ) : (
+                <SafePanelContent
+                  panelType={panelType}
+                  panelData={panelData}
+                  resume={resume}
+                  isProcessing={isProcessing}
+                  onSendMessage={onSendMessage}
+                  onPipelineRespond={onPipelineRespond}
+                  onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
+                  variant="inline"
+                />
+              )}
             </div>
           </div>
         )}
