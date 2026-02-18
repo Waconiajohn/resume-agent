@@ -804,8 +804,8 @@ function stripLeadingSectionTitle(content: string): string {
     lines.shift();
     while (lines.length > 0 && !lines[0].trim()) lines.shift();
   }
-  // Title-case variant (e.g. "Professional Summary", "Selected Accomplishments")
-  else if (/^(Professional Summary|Selected Accomplishments|Core Competencies|Skills|Education|Certifications)$/i.test(first)) {
+  // Title-case variant (e.g. "Professional Summary", "Selected Accomplishments", "Experience")
+  else if (/^(Professional Summary|Selected Accomplishments|Core Competencies|Skills|Education|Certifications|Experience|Professional Experience|Earlier Career)$/i.test(first)) {
     lines.shift();
     while (lines.length > 0 && !lines[0].trim()) lines.shift();
   }
@@ -883,8 +883,12 @@ function parseExperienceRoleForStructuredPayload(
   const bulletLines = lines.filter((l) => /^[•\-*]\s/.test(l));
   const nonBullets = lines.filter((l) => !/^[•\-*]\s/.test(l));
 
-  // Skip ALL CAPS heading lines (e.g. "PROFESSIONAL EXPERIENCE")
-  const headerLines = nonBullets.filter((l) => !/^[A-Z][A-Z &/]+$/.test(l) || l.length <= 2);
+  // Skip section title lines (ALL CAPS like "PROFESSIONAL EXPERIENCE" or mixed-case like "Experience")
+  const headerLines = nonBullets.filter((l) => {
+    if (/^[A-Z][A-Z &/]+$/.test(l) && l.length > 2) return false;
+    if (/^(Experience|Professional Experience|Earlier Career)$/i.test(l)) return false;
+    return true;
+  });
 
   let startDate = fallback.start_date;
   let endDate = fallback.end_date;
@@ -1001,7 +1005,7 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
     section_order: sectionOrder,
     company_name: config.company_name,
     job_title: state.research?.jd_analysis.role_title,
-    _raw_sections: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.content])),
+    _raw_sections: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, stripLeadingSectionTitle(v.content)])),
   };
 
   // Best-effort: parse a skills section output into structured categories when present.

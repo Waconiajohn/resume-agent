@@ -392,9 +392,12 @@ function parseExperienceRoleParagraphs(text: string): Paragraph[] {
   // Strip markdown bold/italic markers (e.g. **Chief Technology Officer**)
   const lines = text.split('\n').map(l => l.trim().replace(/\*\*(.*?)\*\*/g, '$1').replace(/__(.*?)__/g, '$1')).filter(Boolean);
 
-  // Skip ALL CAPS heading lines (like "PROFESSIONAL EXPERIENCE") — handled by caller
+  // Skip section title lines (ALL CAPS or mixed-case) — handled by caller
   let startIdx = 0;
-  if (lines[0] && /^[A-Z][A-Z &/]+$/.test(lines[0])) {
+  if (lines[0] && (
+    /^[A-Z][A-Z &/]+$/.test(lines[0]) ||
+    /^(Experience|Professional Experience|Earlier Career)$/i.test(lines[0])
+  )) {
     startIdx = 1;
   }
 
