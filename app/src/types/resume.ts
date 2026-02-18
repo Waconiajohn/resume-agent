@@ -36,8 +36,11 @@ export interface MasterResume {
   skills: Record<string, string[]>;
   education: MasterResumeEducation[];
   certifications: MasterResumeCertification[];
+  contact_info?: ContactInfo;
   raw_text: string;
   version: number;
+  is_default?: boolean;
+  source_session_id?: string | null;
   created_at: string;
   updated_at: string;
 }

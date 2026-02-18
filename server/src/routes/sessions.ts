@@ -215,6 +215,19 @@ sessions.post('/', async (c) => {
     job_application_id?: string;
   };
 
+  let resolvedMasterResumeId = master_resume_id ?? null;
+  if (!resolvedMasterResumeId) {
+    const { data: defaultResume } = await supabaseAdmin
+      .from('master_resumes')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_default', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    resolvedMasterResumeId = defaultResume?.id ?? null;
+  }
+
   // Atomic usage check + increment
   const { data: usageResult, error: usageError } = await supabaseAdmin
     .rpc('increment_session_usage', { p_user_id: user.id });
@@ -237,7 +250,7 @@ sessions.post('/', async (c) => {
     .from('coach_sessions')
     .insert({
       user_id: user.id,
-      master_resume_id: master_resume_id ?? null,
+      master_resume_id: resolvedMasterResumeId,
       job_application_id: job_application_id ?? null,
       status: 'active',
       current_phase: 'onboarding',

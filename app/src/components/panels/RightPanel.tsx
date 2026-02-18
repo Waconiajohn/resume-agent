@@ -67,10 +67,13 @@ interface RightPanelProps {
   isProcessing?: boolean;
   onSendMessage?: (content: string) => void;
   onPipelineRespond?: (gate: string, response: unknown) => void;
+  onSaveCurrentResumeAsBase?: (
+    mode: 'default' | 'alternate',
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 function PanelContent(props: RightPanelProps) {
-  const { panelData, resume, isProcessing, onSendMessage, onPipelineRespond } = props;
+  const { panelData, resume, isProcessing, onSendMessage, onPipelineRespond, onSaveCurrentResumeAsBase } = props;
   // If we have typed panel data, use the discriminated union switch
   if (panelData) {
     switch (panelData.type) {
@@ -91,6 +94,7 @@ function PanelContent(props: RightPanelProps) {
           <CompletionPanel
             data={panelData}
             resume={resume}
+            onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
           />
         );
       case 'positioning_interview':

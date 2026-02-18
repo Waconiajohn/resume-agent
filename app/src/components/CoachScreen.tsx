@@ -21,6 +21,9 @@ interface CoachScreenProps {
   onSendMessage: (content: string) => void;
   onPipelineRespond?: (gate: string, response: unknown) => void;
   positioningProfileFound?: { profile: unknown; updated_at: string } | null;
+  onSaveCurrentResumeAsBase?: (
+    mode: 'default' | 'alternate',
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 export function CoachScreen({
@@ -38,6 +41,7 @@ export function CoachScreen({
   onSendMessage,
   onPipelineRespond,
   positioningProfileFound,
+  onSaveCurrentResumeAsBase,
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
 
@@ -87,6 +91,7 @@ export function CoachScreen({
             isProcessing={isProcessing}
             onSendMessage={onSendMessage}
             onPipelineRespond={onPipelineRespond}
+            onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
           />
         </div>
       </div>

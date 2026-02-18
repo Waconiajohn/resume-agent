@@ -9,6 +9,7 @@ import { CoachScreen } from '@/components/CoachScreen';
 import { PipelineIntakeForm } from '@/components/PipelineIntakeForm';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SalesPage } from '@/components/SalesPage';
+import { resumeToText } from '@/lib/export';
 
 type View = 'landing' | 'intake' | 'coach';
 
@@ -23,8 +24,10 @@ export default function App() {
     error: sessionError,
     listSessions,
     createSession,
+    getDefaultResume,
     loadSession,
     deleteSession,
+    saveResumeAsBase,
     sendMessage,
     setCurrentSession,
     startPipeline,
@@ -53,16 +56,25 @@ export default function App() {
 
   const [view, setView] = useState<View>('landing');
   const [intakeLoading, setIntakeLoading] = useState(false);
+  const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
+  const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
 
-  const handleNewSession = useCallback(() => {
+  const handleNewSession = useCallback(async () => {
     setView('intake');
-  }, []);
+    setIntakeInitialResumeText('');
+    setIntakeDefaultResumeId(null);
+    const defaultResume = await getDefaultResume();
+    if (defaultResume?.raw_text?.trim()) {
+      setIntakeInitialResumeText(defaultResume.raw_text);
+      setIntakeDefaultResumeId(defaultResume.id);
+    }
+  }, [getDefaultResume]);
 
   const handleIntakeSubmit = useCallback(
     async (data: { resumeText: string; jobDescription: string; companyName: string }) => {
       setIntakeLoading(true);
       try {
-        const s = await createSession();
+        const s = await createSession(intakeDefaultResumeId ?? undefined);
         if (!s) {
           setIntakeLoading(false);
           return;
@@ -76,7 +88,7 @@ export default function App() {
         setIntakeLoading(false);
       }
     },
-    [createSession, startPipeline],
+    [createSession, startPipeline, intakeDefaultResumeId],
   );
 
   const handleResumeSession = useCallback(
@@ -95,6 +107,29 @@ export default function App() {
       }
     },
     [deleteSession, currentSession],
+  );
+
+  const handleSaveCurrentResumeAsBase = useCallback(
+    async (mode: 'default' | 'alternate') => {
+      if (!resume) return { success: false, message: 'No resume available to save' };
+      const result = await saveResumeAsBase(resume, {
+        setAsDefault: mode === 'default',
+        sourceSessionId: currentSession?.id ?? null,
+      });
+      if (result.success && mode === 'default') {
+        setIntakeDefaultResumeId(result.resumeId ?? null);
+        setIntakeInitialResumeText(resumeToText(resume));
+      }
+      return {
+        success: result.success,
+        message: result.success
+          ? mode === 'default'
+            ? 'Saved as your new default base resume.'
+            : 'Saved as an alternate base resume.'
+          : (result.error ?? 'Failed to save resume'),
+      };
+    },
+    [resume, saveResumeAsBase, currentSession],
   );
 
   const handleSendMessage = useCallback(
@@ -166,6 +201,7 @@ export default function App() {
           onSubmit={handleIntakeSubmit}
           onBack={() => setView('landing')}
           loading={intakeLoading}
+          initialResumeText={intakeInitialResumeText}
         />
       )}
 
@@ -194,6 +230,7 @@ export default function App() {
           onSendMessage={handleSendMessage}
           onPipelineRespond={handlePipelineRespond}
           positioningProfileFound={positioningProfileFound}
+          onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
         />
       )}
     </div>

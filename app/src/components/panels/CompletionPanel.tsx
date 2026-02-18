@@ -13,6 +13,9 @@ import type { CompletionData } from '@/types/panels';
 interface CompletionPanelProps {
   data: CompletionData;
   resume: FinalResume | null;
+  onSaveCurrentResumeAsBase?: (
+    mode: 'default' | 'alternate',
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 function StatBadge({ label, value }: { label: string; value: string | number }) {
@@ -27,9 +30,12 @@ function StatBadge({ label, value }: { label: string; value: string | number }) 
 export function CompletionPanel({
   data,
   resume,
+  onSaveCurrentResumeAsBase,
 }: CompletionPanelProps) {
   const [exportingResume, setExportingResume] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [savingMode, setSavingMode] = useState<'default' | 'alternate' | null>(null);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const validationIssues = validateResumeForExport(resume);
   const blockingIssue = validationIssues.find((i) => i.severity === 'error');
 
@@ -58,6 +64,21 @@ export function CompletionPanel({
     const result = exportPdf(resume);
     if (!result.success) {
       setExportError(result.error ?? 'Failed to generate PDF');
+    }
+  };
+
+  const handleSaveBase = async (mode: 'default' | 'alternate') => {
+    if (!resume || !onSaveCurrentResumeAsBase) return;
+    setSavingMode(mode);
+    setSaveMessage(null);
+    try {
+      const result = await onSaveCurrentResumeAsBase(mode);
+      setSaveMessage({
+        type: result.success ? 'success' : 'error',
+        text: result.message,
+      });
+    } finally {
+      setSavingMode(null);
     }
   };
 
@@ -92,6 +113,17 @@ export function CompletionPanel({
         {data.export_validation && !data.export_validation.passed && (
           <div className="rounded-lg bg-amber-500/20 border border-amber-500/30 px-3 py-2 text-xs text-amber-300">
             ATS validation flagged {data.export_validation.findings.length} item(s). Review before sharing.
+          </div>
+        )}
+        {saveMessage && (
+          <div
+            className={`rounded-lg px-3 py-2 text-xs ${
+              saveMessage.type === 'success'
+                ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-200'
+                : 'bg-red-500/20 border border-red-500/30 text-red-300'
+            }`}
+          >
+            {saveMessage.text}
           </div>
         )}
 
@@ -146,6 +178,43 @@ export function CompletionPanel({
             <p className="text-xs text-white/50">Resume data not available for export.</p>
           )}
         </GlassCard>
+
+        {resume && onSaveCurrentResumeAsBase && (
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+              <h3 className="text-sm font-medium text-white/85">Save As Base Resume</h3>
+            </div>
+            <div className="space-y-2">
+              <GlassButton
+                variant="primary"
+                className="w-full"
+                onClick={() => void handleSaveBase('default')}
+                disabled={savingMode !== null}
+              >
+                {savingMode === 'default' ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                )}
+                Save As New Default Base
+              </GlassButton>
+              <GlassButton
+                variant="ghost"
+                className="w-full"
+                onClick={() => void handleSaveBase('alternate')}
+                disabled={savingMode !== null}
+              >
+                {savingMode === 'alternate' ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                )}
+                Save As Alternate
+              </GlassButton>
+            </div>
+          </GlassCard>
+        )}
 
       </div>
     </div>

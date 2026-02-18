@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { CoachSession } from '@/types/session';
+import type { FinalResume, MasterResume } from '@/types/resume';
+import { resumeToText } from '@/lib/export';
 
 const API_BASE = '/api';
 
@@ -60,6 +62,62 @@ export function useSession(accessToken: string | null) {
       return null;
     } finally {
       setLoading(false);
+    }
+  }, [accessToken, headers]);
+
+  const getDefaultResume = useCallback(async (): Promise<MasterResume | null> => {
+    if (!accessToken) return null;
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/resumes/default`, { headers: headers() });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to load default resume (${res.status})`);
+        return null;
+      }
+      const data = await res.json();
+      return (data.resume as MasterResume | null) ?? null;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error loading default resume');
+      return null;
+    }
+  }, [accessToken, headers]);
+
+  const saveResumeAsBase = useCallback(async (
+    resume: FinalResume,
+    options: { setAsDefault: boolean; sourceSessionId?: string | null },
+  ): Promise<{ success: boolean; resumeId?: string; error?: string }> => {
+    if (!accessToken) return { success: false, error: 'Not authenticated' };
+    setError(null);
+    try {
+      const body = {
+        raw_text: resumeToText(resume),
+        summary: resume.summary ?? '',
+        experience: resume.experience ?? [],
+        skills: resume.skills ?? {},
+        education: resume.education ?? [],
+        certifications: resume.certifications ?? [],
+        contact_info: resume.contact_info ?? {},
+        set_as_default: options.setAsDefault,
+        source_session_id: options.sourceSessionId ?? undefined,
+      };
+      const res = await fetch(`${API_BASE}/resumes`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const message = data.error ?? `Failed to save resume (${res.status})`;
+        setError(message);
+        return { success: false, error: message };
+      }
+      const data = await res.json();
+      return { success: true, resumeId: data.resume?.id as string | undefined };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Network error saving resume';
+      setError(message);
+      return { success: false, error: message };
     }
   }, [accessToken, headers]);
 
@@ -200,6 +258,8 @@ export function useSession(accessToken: string | null) {
     clearError,
     listSessions,
     createSession,
+    getDefaultResume,
+    saveResumeAsBase,
     loadSession,
     deleteSession,
     sendMessage,

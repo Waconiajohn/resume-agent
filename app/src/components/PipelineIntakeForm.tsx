@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Sparkles, ArrowLeft, Upload, Loader2 } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { GlassInput } from './GlassInput';
@@ -10,15 +10,25 @@ interface PipelineIntakeFormProps {
   onSubmit: (data: { resumeText: string; jobDescription: string; companyName: string }) => void;
   onBack: () => void;
   loading?: boolean;
+  initialResumeText?: string;
 }
 
-export function PipelineIntakeForm({ onSubmit, onBack, loading = false }: PipelineIntakeFormProps) {
+export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialResumeText }: PipelineIntakeFormProps) {
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
+  const initialAppliedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialAppliedRef.current) return;
+    if (!initialResumeText?.trim()) return;
+    if (resumeText.trim().length > 0) return;
+    setResumeText(initialResumeText);
+    initialAppliedRef.current = true;
+  }, [initialResumeText, resumeText]);
 
   const isValid = resumeText.trim().length > 0 && jobDescription.trim().length > 0 && companyName.trim().length > 0;
 
@@ -126,6 +136,11 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false }: Pipeli
                   tabIndex={-1}
                 />
               </div>
+              {initialResumeText?.trim() && (
+                <p className="text-xs text-emerald-300/80">
+                  Loaded your current default base resume. Edit it as needed before starting.
+                </p>
+              )}
               {fileError && (
                 <p id="file-error" className="text-xs text-red-400" role="alert">
                   {fileError}
