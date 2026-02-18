@@ -341,6 +341,11 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
   const age_protection = (raw.age_protection ?? {}) as Record<string, unknown>;
   const keyword_map = (raw.keyword_map ?? {}) as Record<string, Record<string, unknown>>;
   const global_rules = (raw.global_rules ?? {}) as Record<string, unknown>;
+  const normalizedOrder = normalizeSectionOrder(
+    Array.isArray(section_plan.order)
+      ? section_plan.order
+      : ['header', 'summary', 'experience', 'skills', 'education_and_certifications'],
+  );
 
   return {
     blueprint_version: String(raw.blueprint_version ?? '2.0'),
@@ -348,7 +353,9 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
     positioning_angle: String(raw.positioning_angle ?? ''),
 
     section_plan: {
-      order: Array.isArray(section_plan.order) ? section_plan.order : ['header', 'summary', 'experience', 'skills', 'education_and_certifications'],
+      order: normalizedOrder.length > 0
+        ? normalizedOrder
+        : ['header', 'summary', 'experience', 'skills', 'education_and_certifications'],
       rationale: String(section_plan.rationale ?? ''),
     },
 
@@ -401,6 +408,45 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
       ats_rules: String(global_rules.ats_rules ?? 'No tables, no columns, standard section headers only'),
     },
   };
+}
+
+function normalizeSectionName(rawName: string): string | null {
+  const key = rawName.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const aliasMap: Record<string, string> = {
+    header: 'header',
+    summary: 'summary',
+    professional_summary: 'summary',
+    executive_summary: 'summary',
+    selected_accomplishments: 'selected_accomplishments',
+    key_accomplishments: 'selected_accomplishments',
+    accomplishments: 'selected_accomplishments',
+    experience: 'experience',
+    professional_experience: 'experience',
+    work_experience: 'experience',
+    employment_history: 'experience',
+    skills: 'skills',
+    core_competencies: 'skills',
+    competencies: 'skills',
+    technical_skills: 'skills',
+    education_and_certifications: 'education_and_certifications',
+    'education_&_certifications': 'education_and_certifications',
+    education: 'education_and_certifications',
+    certifications: 'education_and_certifications',
+  };
+  return aliasMap[key] ?? null;
+}
+
+function normalizeSectionOrder(rawOrder: string[]): string[] {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  for (const section of rawOrder) {
+    if (typeof section !== 'string') continue;
+    const canonical = normalizeSectionName(section);
+    if (!canonical || seen.has(canonical)) continue;
+    seen.add(canonical);
+    normalized.push(canonical);
+  }
+  return normalized;
 }
 
 /**
