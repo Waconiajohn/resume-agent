@@ -119,37 +119,41 @@ export class AnthropicProvider implements LLMProvider {
     let fullText = '';
     const toolCalls: ToolCall[] = [];
 
-    s.on('text', (text: string) => {
-      fullText += text;
-    });
+    const textListener = (text: string) => { fullText += text; };
+    s.on('text', textListener);
 
-    const response = await s.finalMessage();
+    try {
+      const response = await s.finalMessage();
 
-    // Yield text events from the accumulated text
-    if (fullText) {
-      yield { type: 'text', text: fullText };
-    }
-
-    // Extract tool calls from the response
-    for (const block of response.content) {
-      if (block.type === 'tool_use') {
-        const tc: ToolCall = {
-          id: block.id,
-          name: block.name,
-          input: block.input as Record<string, unknown>,
-        };
-        toolCalls.push(tc);
-        yield { type: 'tool_call', ...tc };
+      // Yield text events from the accumulated text
+      if (fullText) {
+        yield { type: 'text', text: fullText };
       }
-    }
 
-    yield {
-      type: 'done',
-      usage: {
-        input_tokens: response.usage?.input_tokens ?? 0,
-        output_tokens: response.usage?.output_tokens ?? 0,
-      },
-    };
+      // Extract tool calls from the response
+      for (const block of response.content) {
+        if (block.type === 'tool_use') {
+          const tc: ToolCall = {
+            id: block.id,
+            name: block.name,
+            input: block.input as Record<string, unknown>,
+          };
+          toolCalls.push(tc);
+          yield { type: 'tool_call', ...tc };
+        }
+      }
+
+      yield {
+        type: 'done',
+        usage: {
+          input_tokens: response.usage?.input_tokens ?? 0,
+          output_tokens: response.usage?.output_tokens ?? 0,
+        },
+      };
+    } finally {
+      s.off('text', textListener);
+      s.abort();
+    }
   }
 }
 

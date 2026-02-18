@@ -66,8 +66,8 @@ function SkillsSection({ resume }: { resume: FinalResume }) {
         </h2>
         <div className="space-y-1">
           {Object.entries(resume.skills).map(([category, items]) => (
-            <div key={category} className="text-sm">
-              <span className="font-semibold text-gray-700">{category}: </span>
+            <div key={category || '_default'} className="text-sm">
+              {category && <span className="font-semibold text-gray-700">{category}: </span>}
               <span className="text-gray-800">
                 {Array.isArray(items) ? items.join(', ') : String(items)}
               </span>

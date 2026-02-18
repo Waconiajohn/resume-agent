@@ -290,15 +290,6 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     markStageEnd('section_writing');
     emit({ type: 'stage_complete', stage: 'section_writing', message: 'All sections written', duration_ms: stageTimingsMs.section_writing });
-    emit({
-      type: 'right_panel_update',
-      panel_type: 'live_resume',
-      data: {
-        sections: Object.fromEntries(
-          Object.entries(state.sections).map(([k, v]) => [k, v.content])
-        ),
-      },
-    });
 
     log.info({ sections: Object.keys(state.sections).length }, 'Section writing complete');
 
@@ -814,7 +805,7 @@ function stripLeadingSectionTitle(content: string): string {
 
 function normalizeSkills(intakeSkills: string[]): Record<string, string[]> {
   if (!Array.isArray(intakeSkills) || intakeSkills.length === 0) return {};
-  return { Core: intakeSkills.slice(0, 30) };
+  return { '': intakeSkills.slice(0, 30) };
 }
 
 function compareExperienceRoleKeys(a: string, b: string): number {

@@ -174,6 +174,7 @@ export default function App() {
   const handleSendMessage = useCallback(
     async (content: string) => {
       if (!currentSession) return;
+      if (isProcessing) return; // Prevent 409 — don't send while backend is processing
       addUserMessage(content);
       const ok = await sendMessage(currentSession.id, content);
       if (!ok) {
@@ -181,7 +182,7 @@ export default function App() {
         setIsProcessing(false);
       }
     },
-    [currentSession, addUserMessage, sendMessage, setIsProcessing],
+    [currentSession, isProcessing, addUserMessage, sendMessage, setIsProcessing],
   );
 
   const handlePipelineRespond = useCallback(

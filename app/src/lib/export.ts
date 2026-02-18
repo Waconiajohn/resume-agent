@@ -88,7 +88,8 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
     if (typeof resume.skills === 'object' && !Array.isArray(resume.skills) && Object.keys(resume.skills).length > 0) {
       const lines = ['CORE COMPETENCIES'];
       for (const [category, items] of Object.entries(resume.skills)) {
-        lines.push(`${category}: ${Array.isArray(items) ? items.join(', ') : String(items)}`);
+        const itemText = Array.isArray(items) ? items.join(', ') : String(items);
+        lines.push(category ? `${category}: ${itemText}` : itemText);
       }
       lines.push('');
       return lines;

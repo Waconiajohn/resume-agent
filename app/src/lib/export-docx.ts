@@ -235,15 +235,18 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     const paras = [sectionHeading('Core Competencies')];
     for (const [category, items] of Object.entries(resume.skills)) {
       const itemText = Array.isArray(items) ? items.join(' \u2022 ') : String(items);
+      const children = category
+        ? [
+            new TextRun({ text: `${category}: `, bold: true, size: 20, font: FONT }),
+            new TextRun({ text: itemText, size: 20, font: FONT }),
+          ]
+        : [new TextRun({ text: itemText, size: 20, font: FONT })];
       paras.push(
         new Paragraph({
           style: 'BodyText',
           keepNext: true,
           spacing: { after: 60 },
-          children: [
-            new TextRun({ text: `${category}: `, bold: true, size: 20, font: FONT }),
-            new TextRun({ text: itemText, size: 20, font: FONT }),
-          ],
+          children,
         }),
       );
     }
