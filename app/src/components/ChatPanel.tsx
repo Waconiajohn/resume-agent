@@ -72,7 +72,7 @@ export function ChatPanel({
   }, [messages, streamingText, tools, askPrompt, phaseGate]);
 
   const handleSubmit = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isBusy) return;
     onSendMessage(input.trim());
     setInput('');
   };
@@ -224,7 +224,7 @@ export function ChatPanel({
           />
           <GlassButton
             onClick={handleSubmit}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isBusy}
             className="self-end"
             aria-label="Send message"
           >

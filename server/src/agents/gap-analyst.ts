@@ -26,9 +26,20 @@ import type {
  * Z.AI models may return "Strong", "Strong Match", "strong_match", etc.
  */
 function normalizeClassification(raw: unknown): 'strong' | 'partial' | 'gap' {
-  const s = String(raw ?? '').toLowerCase().trim();
-  if (s === 'strong' || s.includes('strong') || s.includes('exceptional') || s.includes('excellent') || s.includes('direct')) return 'strong';
-  if (s === 'partial' || s.includes('partial') || s.includes('moderate') || s.includes('related') || s.includes('meet') || s.includes('indirect') || s.includes('strengthen')) return 'partial';
+  const s = String(raw ?? '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+  if (!s) return 'gap';
+
+  // Evaluate negatives first so phrases like "does not meet" don't classify as partial.
+  if (/\b(gap|missing|unaddressable|unmet|not met|does not meet|doesn't meet|no meaningful evidence|no match|unrelated)\b/.test(s)) {
+    return 'gap';
+  }
+  if (/\b(partial|moderate|indirect|related|needs? strengthen(?:ing)?|needs? work|some match)\b/.test(s)) {
+    return 'partial';
+  }
+  if (/\b(strong|excellent|exceptional|direct match|clear match|clearly meets?|fully meets?)\b/.test(s)) {
+    return 'strong';
+  }
+
   return 'gap';
 }
 

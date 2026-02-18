@@ -103,6 +103,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     }
   }, []);
 
+  // Reset derived score state on session change so completion metrics can't leak across sessions.
+  useEffect(() => {
+    qualityScoresRef.current = null;
+    setQualityScores(null);
+  }, [sessionId]);
+
   // Connect to SSE with fetch-based streaming
   useEffect(() => {
     if (!sessionId || !accessToken) return;
