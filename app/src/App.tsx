@@ -19,14 +19,19 @@ export default function App() {
   const accessToken = session?.access_token ?? null;
   const {
     sessions,
+    resumes,
     currentSession,
     loading: sessionLoading,
+    resumesLoading,
     error: sessionError,
     listSessions,
+    listResumes,
     createSession,
     getDefaultResume,
     loadSession,
     deleteSession,
+    setDefaultResume,
+    deleteResume,
     saveResumeAsBase,
     sendMessage,
     setCurrentSession,
@@ -120,6 +125,9 @@ export default function App() {
         setIntakeDefaultResumeId(result.resumeId ?? null);
         setIntakeInitialResumeText(resumeToText(resume));
       }
+      if (result.success) {
+        await listResumes();
+      }
       return {
         success: result.success,
         message: result.success
@@ -129,7 +137,39 @@ export default function App() {
           : (result.error ?? 'Failed to save resume'),
       };
     },
-    [resume, saveResumeAsBase, currentSession],
+    [resume, saveResumeAsBase, currentSession, listResumes],
+  );
+
+  const handleSetDefaultBaseResume = useCallback(
+    async (resumeId: string) => {
+      const ok = await setDefaultResume(resumeId);
+      if (!ok) return false;
+      const defaultResume = await getDefaultResume();
+      if (defaultResume?.raw_text?.trim()) {
+        setIntakeDefaultResumeId(defaultResume.id);
+        setIntakeInitialResumeText(defaultResume.raw_text);
+      }
+      return true;
+    },
+    [setDefaultResume, getDefaultResume],
+  );
+
+  const handleDeleteBaseResume = useCallback(
+    async (resumeId: string) => {
+      const ok = await deleteResume(resumeId);
+      if (!ok) return false;
+      const defaultResume = await getDefaultResume();
+      if (defaultResume?.raw_text?.trim()) {
+        setIntakeDefaultResumeId(defaultResume.id);
+        setIntakeInitialResumeText(defaultResume.raw_text);
+      } else {
+        setIntakeDefaultResumeId(null);
+        setIntakeInitialResumeText('');
+      }
+      await listResumes();
+      return true;
+    },
+    [deleteResume, getDefaultResume, listResumes],
   );
 
   const handleSendMessage = useCallback(
@@ -188,11 +228,16 @@ export default function App() {
       {view === 'landing' && (
         <LandingScreen
           sessions={sessions}
+          resumes={resumes}
           loading={sessionLoading}
+          resumesLoading={resumesLoading}
           onNewSession={handleNewSession}
           onResumeSession={handleResumeSession}
           onDeleteSession={handleDeleteSession}
           onLoadSessions={listSessions}
+          onLoadResumes={listResumes}
+          onSetDefaultResume={handleSetDefaultBaseResume}
+          onDeleteResume={handleDeleteBaseResume}
         />
       )}
 

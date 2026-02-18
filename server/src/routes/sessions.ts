@@ -225,7 +225,18 @@ sessions.post('/', async (c) => {
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    resolvedMasterResumeId = defaultResume?.id ?? null;
+    if (defaultResume?.id) {
+      resolvedMasterResumeId = defaultResume.id;
+    } else {
+      const { data: latestResume } = await supabaseAdmin
+        .from('master_resumes')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      resolvedMasterResumeId = latestResume?.id ?? null;
+    }
   }
 
   // Atomic usage check + increment

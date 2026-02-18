@@ -1,14 +1,16 @@
 import { useState, useCallback } from 'react';
 import type { CoachSession } from '@/types/session';
-import type { FinalResume, MasterResume } from '@/types/resume';
+import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import { resumeToText } from '@/lib/export';
 
 const API_BASE = '/api';
 
 export function useSession(accessToken: string | null) {
   const [sessions, setSessions] = useState<CoachSession[]>([]);
+  const [resumes, setResumes] = useState<MasterResumeListItem[]>([]);
   const [currentSession, setCurrentSession] = useState<CoachSession | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resumesLoading, setResumesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
@@ -62,6 +64,26 @@ export function useSession(accessToken: string | null) {
       return null;
     } finally {
       setLoading(false);
+    }
+  }, [accessToken, headers]);
+
+  const listResumes = useCallback(async () => {
+    if (!accessToken) return;
+    setResumesLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/resumes`, { headers: headers() });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to load resumes (${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setResumes((data.resumes ?? []) as MasterResumeListItem[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error loading resumes');
+    } finally {
+      setResumesLoading(false);
     }
   }, [accessToken, headers]);
 
@@ -166,6 +188,53 @@ export function useSession(accessToken: string | null) {
     }
   }, [accessToken, headers]);
 
+  const setDefaultResume = useCallback(async (resumeId: string): Promise<boolean> => {
+    if (!accessToken) return false;
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/resumes/${resumeId}/default`, {
+        method: 'PUT',
+        headers: headers(),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to set default resume (${res.status})`);
+        return false;
+      }
+      setResumes((prev) =>
+        prev.map((r) => ({
+          ...r,
+          is_default: r.id === resumeId,
+        })),
+      );
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error setting default resume');
+      return false;
+    }
+  }, [accessToken, headers]);
+
+  const deleteResume = useCallback(async (resumeId: string): Promise<boolean> => {
+    if (!accessToken) return false;
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/resumes/${resumeId}`, {
+        method: 'DELETE',
+        headers: headers(),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to delete resume (${res.status})`);
+        return false;
+      }
+      setResumes((prev) => prev.filter((r) => r.id !== resumeId));
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error deleting resume');
+      return false;
+    }
+  }, [accessToken, headers]);
+
   const sendMessage = useCallback(async (sessionId: string, content: string): Promise<boolean> => {
     if (!accessToken) return false;
     setError(null);
@@ -252,16 +321,21 @@ export function useSession(accessToken: string | null) {
 
   return {
     sessions,
+    resumes,
     currentSession,
     loading,
+    resumesLoading,
     error,
     clearError,
     listSessions,
+    listResumes,
     createSession,
     getDefaultResume,
     saveResumeAsBase,
     loadSession,
     deleteSession,
+    setDefaultResume,
+    deleteResume,
     sendMessage,
     setCurrentSession,
     startPipeline,

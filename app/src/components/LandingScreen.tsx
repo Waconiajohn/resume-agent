@@ -1,30 +1,62 @@
-import { useEffect } from 'react';
-import { Sparkles, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Sparkles, Plus, Star, Trash2 } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { GlassButton } from './GlassButton';
 import { SessionCard } from './SessionCard';
 import type { CoachSession } from '@/types/session';
+import type { MasterResumeListItem } from '@/types/resume';
 
 interface LandingScreenProps {
   sessions: CoachSession[];
+  resumes: MasterResumeListItem[];
   loading: boolean;
+  resumesLoading: boolean;
   onNewSession: () => void;
   onResumeSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   onLoadSessions: () => void;
+  onLoadResumes: () => void;
+  onSetDefaultResume: (resumeId: string) => Promise<boolean>;
+  onDeleteResume: (resumeId: string) => Promise<boolean>;
 }
 
 export function LandingScreen({
   sessions,
+  resumes,
   loading,
+  resumesLoading,
   onNewSession,
   onResumeSession,
   onDeleteSession,
   onLoadSessions,
+  onLoadResumes,
+  onSetDefaultResume,
+  onDeleteResume,
 }: LandingScreenProps) {
+  const [busyResumeId, setBusyResumeId] = useState<string | null>(null);
+
   useEffect(() => {
     onLoadSessions();
-  }, [onLoadSessions]);
+    onLoadResumes();
+  }, [onLoadSessions, onLoadResumes]);
+
+  const handleSetDefault = async (resumeId: string) => {
+    setBusyResumeId(resumeId);
+    try {
+      await onSetDefaultResume(resumeId);
+    } finally {
+      setBusyResumeId(null);
+    }
+  };
+
+  const handleDeleteResume = async (resumeId: string) => {
+    setBusyResumeId(resumeId);
+    try {
+      await onDeleteResume(resumeId);
+    } finally {
+      setBusyResumeId(null);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16">
@@ -46,6 +78,71 @@ export function LandingScreen({
           <Plus className="h-5 w-5" />
           Start New Session
         </GlassButton>
+
+        <div className="mb-10 w-full">
+          <h2 className="mb-4 text-left text-sm font-medium text-white/60">Base Resumes</h2>
+          {resumesLoading ? (
+            <GlassCard className="w-full p-4">
+              <div className="h-4 w-40 animate-pulse rounded-lg bg-white/[0.03]" />
+            </GlassCard>
+          ) : resumes.length === 0 ? (
+            <GlassCard className="w-full p-4 text-left">
+              <p className="text-xs text-white/50">
+                No saved base resumes yet. Complete a session and use "Save As Base Resume" to add one.
+              </p>
+            </GlassCard>
+          ) : (
+            <div className="space-y-2">
+              {resumes.map((resume) => (
+                <GlassCard key={resume.id} className="p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 text-left">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="text-xs text-white/70">Version {resume.version}</span>
+                        {resume.is_default && (
+                          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <p className="line-clamp-2 text-xs text-white/50">
+                        {(resume.summary ?? '').trim() || 'No summary preview available'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {!resume.is_default && (
+                        <button
+                          type="button"
+                          onClick={() => void handleSetDefault(resume.id)}
+                          disabled={busyResumeId === resume.id}
+                          className="inline-flex items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-emerald-500/10 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Set as default base resume"
+                          title="Set as default"
+                        >
+                          <Star className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Delete this base resume? This cannot be undone.')) {
+                            void handleDeleteResume(resume.id);
+                          }
+                        }}
+                        disabled={busyResumeId === resume.id}
+                        className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Delete base resume"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          )}
+        </div>
 
         {sessions.length > 0 && (
           <div className="w-full">

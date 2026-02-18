@@ -45,6 +45,16 @@ export interface MasterResume {
   updated_at: string;
 }
 
+export interface MasterResumeListItem {
+  id: string;
+  summary: string;
+  version: number;
+  is_default?: boolean;
+  source_session_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FinalResume {
   summary: string;
   experience: MasterResumeExperience[];
