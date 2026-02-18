@@ -265,6 +265,27 @@ const sectionRenderers: Record<string, SectionRenderer> = {
 
   experience: (resume) => {
     if (!Array.isArray(resume.experience) || resume.experience.length === 0) return [];
+    const roleSectionKeys = Object.keys(resume._raw_sections ?? {})
+      .filter((k) => k.startsWith('experience_role_'))
+      .sort((a, b) => {
+        const ai = Number.parseInt(a.replace('experience_role_', ''), 10);
+        const bi = Number.parseInt(b.replace('experience_role_', ''), 10);
+        return ai - bi;
+      });
+    if (roleSectionKeys.length > 0) {
+      const parsedParas = [sectionHeading('Professional Experience')];
+      for (const key of roleSectionKeys) {
+        const roleText = resume._raw_sections?.[key];
+        if (!roleText) continue;
+        parsedParas.push(...parseExperienceRoleParagraphs(roleText));
+      }
+      const earlierCareer = resume._raw_sections?.earlier_career;
+      if (earlierCareer) {
+        parsedParas.push(...rawSectionToParagraphs('earlier_career', earlierCareer));
+      }
+      return parsedParas;
+    }
+
     const paras = [sectionHeading('Professional Experience')];
     for (const exp of resume.experience) {
       // Job title — keepNext so it stays with company line
@@ -353,6 +374,13 @@ const sectionRenderers: Record<string, SectionRenderer> = {
 
 export async function exportDocx(resume: FinalResume): Promise<{ success: boolean; error?: string }> {
  try {
+  const preflight = preflightCheck(resume);
+  if (!preflight.valid) {
+    return { success: false, error: preflight.errors.join('; ') };
+  }
+  if (preflight.warnings.length > 0) {
+    console.warn('[export-docx] preflight warnings:', preflight.warnings.join(' | '));
+  }
   return await _exportDocxInner(resume);
  } catch (err) {
   const message = err instanceof Error ? err.message : 'Unknown error generating DOCX';

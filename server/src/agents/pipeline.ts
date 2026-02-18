@@ -218,14 +218,24 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     const sectionCalls = buildSectionCalls(state.architect, state.intake, state.positioning);
 
     // Fire ALL section LLM calls in parallel for ~40% speed improvement
-    const sectionPromises = new Map<string, Promise<SectionWriterOutput>>();
+    const sectionPromises = new Map<string, Promise<{ ok: true; value: SectionWriterOutput } | { ok: false; error: unknown }>>();
     for (const call of sectionCalls) {
-      sectionPromises.set(call.section, runSectionWriter(call));
+      // Catch per-promise immediately to avoid unhandled rejections while user is approving earlier sections.
+      sectionPromises.set(
+        call.section,
+        runSectionWriter(call)
+          .then((value) => ({ ok: true as const, value }))
+          .catch((error) => ({ ok: false as const, error })),
+      );
     }
 
     // Present sections sequentially for user review (LLM work already in flight)
     for (const call of sectionCalls) {
-      const result = await sectionPromises.get(call.section)!;
+      const outcome = await sectionPromises.get(call.section)!;
+      if (!outcome.ok) {
+        throw outcome.error instanceof Error ? outcome.error : new Error(String(outcome.error));
+      }
+      const result = outcome.value;
       state.sections[call.section] = result;
 
       // Emit each section for progressive rendering
@@ -689,6 +699,77 @@ function normalizeSkills(intakeSkills: string[]): Record<string, string[]> {
   return { Core: intakeSkills.slice(0, 30) };
 }
 
+function parseExperienceRoleForStructuredPayload(
+  crafted: string | undefined,
+  fallback: IntakeOutput['experience'][number],
+): {
+  title: string;
+  company: string;
+  start_date: string;
+  end_date: string;
+  location: string;
+  bullets: Array<{ text: string; source: string }>;
+} {
+  if (!crafted) {
+    return {
+      title: fallback.title,
+      company: fallback.company,
+      start_date: fallback.start_date,
+      end_date: fallback.end_date,
+      location: '',
+      bullets: fallback.bullets.map((b) => ({ text: b, source: 'resume' })),
+    };
+  }
+
+  const lines = crafted.split('\n').map((l) => l.trim()).filter(Boolean);
+  const nonBullets = lines.filter((l) => !/^[•\-*]\s/.test(l));
+  const titleLine = nonBullets[0] ?? fallback.title;
+  const companyLine = nonBullets[1] ?? '';
+
+  let startDate = fallback.start_date;
+  let endDate = fallback.end_date;
+  let location = '';
+
+  const titleDate = titleLine.match(/\b(\d{4})\s*[–-]\s*(\d{4}|Present|Current)\b/i);
+  if (titleDate) {
+    startDate = titleDate[1];
+    endDate = titleDate[2];
+  }
+
+  if (companyLine) {
+    const companyParts = companyLine.split('|').map((p) => p.trim()).filter(Boolean);
+    if (companyParts.length > 0) {
+      const trailingDate = companyParts[companyParts.length - 1].match(/^(\d{4})\s*[–-]\s*(\d{4}|Present|Current)$/i);
+      if (trailingDate) {
+        startDate = trailingDate[1];
+        endDate = trailingDate[2];
+        companyParts.pop();
+      }
+      if (companyParts.length > 1) {
+        location = companyParts[companyParts.length - 1];
+      }
+    }
+  }
+
+  const companyParsed = companyLine
+    ? companyLine.split('|').map((p) => p.trim()).filter(Boolean)[0] ?? fallback.company
+    : fallback.company;
+  const titleParsed = titleLine.replace(/\b\d{4}\s*[–-]\s*(?:\d{4}|Present|Current)\b/i, '').trim() || fallback.title;
+
+  const parsedBullets = lines
+    .filter((l) => /^[•\-*]\s/.test(l))
+    .map((l) => ({ text: l.replace(/^[•\-*]\s*/, ''), source: 'crafted' }));
+
+  return {
+    title: titleParsed,
+    company: companyParsed,
+    start_date: startDate,
+    end_date: endDate,
+    location,
+    bullets: parsedBullets.length > 0 ? parsedBullets : fallback.bullets.map((b) => ({ text: b, source: 'resume' })),
+  };
+}
+
 function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): FinalResumePayload {
   const sections = state.sections ?? {};
   const intake = state.intake!;
@@ -710,23 +791,9 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
   const resume: FinalResumePayload = {
     summary: sections.summary?.content ?? intake.summary ?? '',
     selected_accomplishments: sections.selected_accomplishments?.content,
-    experience: intake.experience.map((exp, idx) => ({
-      company: exp.company,
-      title: exp.title,
-      start_date: exp.start_date,
-      end_date: exp.end_date,
-      location: '',
-      bullets: (() => {
-        // Prefer LLM-crafted content from section_writing when available
-        const crafted = sections[`experience_role_${idx}`]?.content;
-        if (!crafted) return exp.bullets.map((b) => ({ text: b, source: 'resume' }));
-        const parsed = crafted.split('\n')
-          .map(l => l.trim())
-          .filter(l => /^[•\-*]\s/.test(l))
-          .map(l => ({ text: l.replace(/^[•\-*]\s*/, ''), source: 'crafted' }));
-        return parsed.length > 0 ? parsed : exp.bullets.map((b) => ({ text: b, source: 'resume' }));
-      })(),
-    })),
+    experience: intake.experience.map((exp, idx) =>
+      parseExperienceRoleForStructuredPayload(sections[`experience_role_${idx}`]?.content, exp),
+    ),
     skills: normalizeSkills(intake.skills),
     education: intake.education.map((edu) => ({
       institution: edu.institution,
