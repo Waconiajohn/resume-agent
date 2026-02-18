@@ -921,12 +921,21 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
       parseExperienceRoleForStructuredPayload(sections[`experience_role_${idx}`]?.content, exp),
     ),
     skills: normalizeSkills(intake.skills),
-    education: intake.education.map((edu) => ({
-      institution: edu.institution,
-      degree: edu.degree,
-      field: '',
-      year: edu.year ?? '',
-    })),
+    education: intake.education.map((edu) => {
+      let year = edu.year ?? '';
+      // Apply age protection: strip years flagged by the architect
+      const ageFlags = state.architect?.age_protection;
+      if (ageFlags && !ageFlags.clean && year) {
+        const flagged = ageFlags.flags.some((f) => f.item.includes(year));
+        if (flagged) year = '';
+      }
+      return {
+        institution: edu.institution,
+        degree: edu.degree,
+        field: '',
+        year,
+      };
+    }),
     certifications: intake.certifications.map((cert) => ({
       name: cert,
       issuer: '',

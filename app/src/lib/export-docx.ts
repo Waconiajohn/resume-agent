@@ -677,7 +677,7 @@ export function preflightCheck(resume: FinalResume): PreflightResult {
 
   // Contact info
   if (!resume.contact_info?.name) {
-    errors.push('Missing contact name');
+    warnings.push('Missing contact name — exported file will use a generic header');
   }
   if (!resume.contact_info?.email && !resume.contact_info?.phone) {
     warnings.push('No email or phone in contact info');
