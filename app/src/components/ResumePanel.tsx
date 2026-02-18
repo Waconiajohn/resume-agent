@@ -4,6 +4,7 @@ import { WYSIWYGResume } from './WYSIWYGResume';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import { exportDocx } from '@/lib/export-docx';
 import { exportPdf } from '@/lib/export-pdf';
+import { buildResumeFilename } from '@/lib/export-filename';
 import type { FinalResume } from '@/types/resume';
 
 interface ResumePanelProps {
@@ -26,9 +27,7 @@ export function ResumePanel({ resume }: ResumePanelProps) {
 
   const handleDownloadText = () => {
     const text = resumeToText(resume);
-    const filename = resume.contact_info?.name
-      ? `${resume.contact_info.name.replace(/\s+/g, '_')}_Resume.txt`
-      : 'tailored-resume.txt';
+    const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'txt');
     downloadAsText(text, filename);
   };
 
@@ -37,7 +36,7 @@ export function ResumePanel({ resume }: ResumePanelProps) {
   };
 
   const handleDownloadPdf = () => {
-    exportPdf(resume.contact_info, resume.company_name);
+    exportPdf(resume);
   };
 
   return (

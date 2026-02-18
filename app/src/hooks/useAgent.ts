@@ -596,29 +596,39 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   setIsProcessing(false);
                   setSessionComplete(true);
                   setPipelineStage('complete');
-
-                  // Build FinalResume from accumulated section content
-                  const sections = sectionsMapRef.current;
-                  const contactInfo = data?.contact_info as FinalResume['contact_info'] | undefined;
-                  const companyName = data?.company_name as string | undefined;
-                  const builtResume: FinalResume = {
-                    contact_info: contactInfo ?? undefined,
-                    company_name: companyName ?? undefined,
-                    summary: sections.summary ?? '',
-                    experience: [],
-                    skills: {},
-                    education: [],
-                    certifications: [],
-                    selected_accomplishments: sections.selected_accomplishments ?? '',
-                    ats_score: 0,
-                    section_order: Object.keys(sections),
-                    // Attach raw section text for text/docx export
-                    _raw_sections: sections,
-                  } as FinalResume & { _raw_sections: Record<string, string> };
-                  setResume(builtResume);
+                  // Prefer server-assembled structured resume payload.
+                  if (data?.resume && typeof data.resume === 'object') {
+                    setResume(data.resume as FinalResume);
+                  } else {
+                    // Fallback: Build from section text if structured payload is missing.
+                    const sections = sectionsMapRef.current;
+                    const contactInfo = data?.contact_info as FinalResume['contact_info'] | undefined;
+                    const companyName = data?.company_name as string | undefined;
+                    const builtResume: FinalResume = {
+                      contact_info: contactInfo ?? undefined,
+                      company_name: companyName ?? undefined,
+                      summary: sections.summary ?? '',
+                      experience: [],
+                      skills: {},
+                      education: [],
+                      certifications: [],
+                      selected_accomplishments: sections.selected_accomplishments ?? '',
+                      ats_score: 0,
+                      section_order: Object.keys(sections),
+                      _raw_sections: sections,
+                    };
+                    setResume(builtResume);
+                  }
 
                   setPanelType('completion');
-                  setPanelData({ type: 'completion' } as PanelData);
+                  setPanelData({
+                    type: 'completion',
+                    ats_score: (data?.resume as { ats_score?: number } | undefined)?.ats_score,
+                    export_validation: data?.export_validation as {
+                      passed: boolean;
+                      findings: Array<{ section: string; issue: string; instruction: string; priority: 'high' | 'medium' | 'low' }>;
+                    } | undefined,
+                  } as PanelData);
                   break;
                 }
 

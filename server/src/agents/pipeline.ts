@@ -18,6 +18,7 @@ import { runGapAnalyst } from './gap-analyst.js';
 import { runArchitect } from './architect.js';
 import { runSectionWriter, runSectionRevision } from './section-writer.js';
 import { runQualityReviewer } from './quality-reviewer.js';
+import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
 import type {
   PipelineState,
   PipelineStage,
@@ -50,6 +51,30 @@ export interface PipelineConfig {
   waitForUser: WaitForUser;
 }
 
+type StageTimingMap = Partial<Record<PipelineStage, number>>;
+
+interface FinalResumePayload {
+  summary: string;
+  selected_accomplishments?: string;
+  experience: Array<{
+    company: string;
+    title: string;
+    start_date: string;
+    end_date: string;
+    location: string;
+    bullets: Array<{ text: string; source: string }>;
+  }>;
+  skills: Record<string, string[]>;
+  education: Array<{ institution: string; degree: string; field: string; year: string }>;
+  certifications: Array<{ name: string; issuer: string; year: string }>;
+  ats_score: number;
+  contact_info?: Record<string, string>;
+  section_order?: string[];
+  company_name?: string;
+  job_title?: string;
+  _raw_sections?: Record<string, string>;
+}
+
 /**
  * Run the full 7-agent pipeline from start to finish.
  * The pipeline pauses at user interaction gates and resumes when responses arrive.
@@ -65,11 +90,19 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     revision_count: 0,
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
   };
+  const stageTimingsMs: StageTimingMap = {};
+  const stageStart = new Map<PipelineStage, number>();
+  const markStageStart = (stage: PipelineStage) => stageStart.set(stage, Date.now());
+  const markStageEnd = (stage: PipelineStage) => {
+    const start = stageStart.get(stage);
+    if (start) stageTimingsMs[stage] = Date.now() - start;
+  };
 
   try {
     // ─── Stage 1: Intake ─────────────────────────────────────────
     emit({ type: 'stage_start', stage: 'intake', message: 'Parsing your resume...' });
     state.current_stage = 'intake';
+    markStageStart('intake');
 
     state.intake = await runIntakeAgent({
       raw_resume_text: config.raw_resume_text,
@@ -77,6 +110,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     emit({ type: 'stage_complete', stage: 'intake', message: 'Resume parsed successfully' });
+    markStageEnd('intake');
     emit({
       type: 'right_panel_update',
       panel_type: 'onboarding_summary',
@@ -87,13 +121,16 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // ─── Stage 2: Positioning Coach ──────────────────────────────
     state.current_stage = 'positioning';
+    markStageStart('positioning');
     state.positioning = await runPositioningStage(
       state, config, emit, waitForUser, log,
     );
+    markStageEnd('positioning');
 
     // ─── Stage 3: Research ───────────────────────────────────────
     emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
     state.current_stage = 'research';
+    markStageStart('research');
 
     state.research = await runResearchAgent({
       job_description: config.job_description,
@@ -102,6 +139,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     emit({ type: 'stage_complete', stage: 'research', message: 'Research complete' });
+    markStageEnd('research');
     emit({
       type: 'right_panel_update',
       panel_type: 'research_dashboard',
@@ -121,6 +159,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // ─── Stage 4: Gap Analysis ───────────────────────────────────
     emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Analyzing requirement gaps...' });
     state.current_stage = 'gap_analysis';
+    markStageStart('gap_analysis');
 
     state.gap_analysis = await runGapAnalyst({
       parsed_resume: state.intake,
@@ -130,6 +169,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     emit({ type: 'stage_complete', stage: 'gap_analysis', message: `Coverage: ${state.gap_analysis.coverage_score}%` });
+    markStageEnd('gap_analysis');
     emit({
       type: 'right_panel_update',
       panel_type: 'gap_analysis',
@@ -146,6 +186,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // ─── Stage 5: Resume Architect ───────────────────────────────
     emit({ type: 'stage_start', stage: 'architect', message: 'Designing resume strategy...' });
     state.current_stage = 'architect';
+    markStageStart('architect');
 
     state.architect = await runArchitect({
       parsed_resume: state.intake,
@@ -155,26 +196,34 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     emit({ type: 'stage_complete', stage: 'architect', message: 'Blueprint ready for review' });
+    markStageEnd('architect');
 
     // ─── Gate: User reviews blueprint ────────────────────────────
     state.current_stage = 'architect_review';
+    markStageStart('architect_review');
     // blueprint_ready event sets up BlueprintReviewPanel with approve button
     emit({ type: 'blueprint_ready', blueprint: state.architect });
 
     await waitForUser<void>('architect_review');
+    markStageEnd('architect_review');
 
     log.info('Blueprint approved by user');
 
     // ─── Stage 6: Section Writing ────────────────────────────────
     emit({ type: 'stage_start', stage: 'section_writing', message: 'Writing resume sections...' });
     state.current_stage = 'section_writing';
+    markStageStart('section_writing');
     state.sections = {};
 
     const sectionCalls = buildSectionCalls(state.architect, state.intake, state.positioning);
 
-    for (const call of sectionCalls) {
-      const result = await runSectionWriter(call);
+    let prefetchedNext: Promise<SectionWriterOutput> | null = null;
+    for (let i = 0; i < sectionCalls.length; i++) {
+      const call = sectionCalls[i];
+      const nextCall = sectionCalls[i + 1];
+      const result = prefetchedNext ? await prefetchedNext : await runSectionWriter(call);
       state.sections[call.section] = result;
+      prefetchedNext = nextCall ? runSectionWriter(nextCall) : null;
 
       // Emit each section for progressive rendering
       emit({ type: 'section_draft', section: call.section, content: result.content });
@@ -191,6 +240,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     emit({ type: 'stage_complete', stage: 'section_writing', message: 'All sections written' });
+    markStageEnd('section_writing');
     emit({
       type: 'right_panel_update',
       panel_type: 'live_resume',
@@ -206,6 +256,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // ─── Stage 7: Quality Review ─────────────────────────────────
     emit({ type: 'stage_start', stage: 'quality_review', message: 'Running quality review...' });
     state.current_stage = 'quality_review';
+    markStageStart('quality_review');
 
     const fullText = assembleResume(state.sections, state.architect);
 
@@ -226,6 +277,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // ─── Revision loop (max 1 cycle) ────────────────────────────
     if (state.quality_review.decision === 'revise' && state.quality_review.revision_instructions) {
       state.current_stage = 'revision';
+      markStageStart('revision');
       state.revision_count = 1;
 
       emit({
@@ -233,7 +285,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         instructions: state.quality_review.revision_instructions,
       });
 
-      for (const instruction of state.quality_review.revision_instructions) {
+      const actionable = state.quality_review.revision_instructions.slice(0, 4);
+      for (const instruction of actionable) {
         const section = instruction.target_section;
         const original = state.sections[section];
         if (!original) continue;
@@ -252,17 +305,55 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       }
 
       log.info({ revisions: state.quality_review.revision_instructions.length }, 'Revision cycle complete');
+      markStageEnd('revision');
+    }
+
+    // ─── Explicit ATS compliance check before export ──────────────
+    const postRevisionText = assembleResume(state.sections, state.architect);
+    const atsFindings = runAtsComplianceCheck(postRevisionText);
+    if (atsFindings.length > 0) {
+      state.current_stage = 'revision';
+      emit({
+        type: 'transparency',
+        stage: 'revision',
+        message: 'Applying ATS compliance corrections before export...',
+      });
+
+      for (const finding of atsFindings.filter((f) => f.priority !== 'low').slice(0, 3)) {
+        const section = mapFindingToSection(finding.section, state.sections);
+        const original = section ? state.sections[section] : undefined;
+        if (!section || !original) continue;
+
+        const blueprintSlice = getSectionBlueprint(section, state.architect);
+        const revised = await runSectionRevision(
+          section,
+          original.content,
+          `${finding.issue}. ${finding.instruction}`,
+          blueprintSlice,
+          state.architect.global_rules,
+        );
+        state.sections[section] = revised;
+        emit({ type: 'section_revised', section, content: revised.content });
+      }
     }
 
     emit({ type: 'stage_complete', stage: 'quality_review', message: 'Quality review complete' });
+    markStageEnd('quality_review');
 
     // ─── Complete ────────────────────────────────────────────────
     state.current_stage = 'complete';
+    const finalResume = buildFinalResumePayload(state, config);
+    const exportValidation = runAtsComplianceCheck(assembleResume(state.sections, state.architect));
     emit({
       type: 'pipeline_complete',
       session_id,
       contact_info: state.intake.contact,
       company_name: config.company_name,
+      resume: finalResume,
+      export_validation: {
+        passed: exportValidation.length === 0,
+        findings: exportValidation,
+      },
     });
 
     // Persist final state
@@ -273,6 +364,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       sections: Object.keys(state.sections).length,
       quality_decision: state.quality_review.decision,
       quality_scores: state.quality_review.scores,
+      stage_timings_ms: stageTimingsMs,
     }, 'Pipeline complete');
 
     return state;
@@ -405,13 +497,19 @@ function getSectionBlueprint(section: string, blueprint: ArchitectOutput): Recor
       return { age_protection: blueprint.age_protection };
     default:
       if (section.startsWith('experience')) {
-        // Map "experience" or "experience_role_0" etc.
-        const roleKey = section.replace('experience_', '').replace('experience', 'role_0');
-        const key = section === 'experience' ? 'role_0' : roleKey;
+        // Map "experience" to all role slices; "experience_role_N" to a single role.
+        if (section === 'experience') {
+          return {
+            roles: blueprint.experience_blueprint.roles,
+            experience_instructions: blueprint.evidence_allocation.experience_section,
+            keyword_targets: blueprint.keyword_map,
+          };
+        }
+        const roleKey = section.replace('experience_', '');
         return {
-          role: blueprint.evidence_allocation.experience_section[key] ?? {},
+          role: blueprint.evidence_allocation.experience_section[roleKey] ?? {},
           role_meta: blueprint.experience_blueprint.roles.find(r =>
-            key === `role_${blueprint.experience_blueprint.roles.indexOf(r)}`
+            roleKey === `role_${blueprint.experience_blueprint.roles.indexOf(r)}`
           ) ?? blueprint.experience_blueprint.roles[0] ?? {},
           keyword_targets: blueprint.keyword_map,
         };
@@ -426,18 +524,69 @@ function getSectionEvidence(
   resume: IntakeOutput,
   positioning: PositioningProfile,
 ): Record<string, unknown> {
-  return {
-    evidence_library: positioning.evidence_library,
-    authentic_phrases: positioning.authentic_phrases,
+  const base = {
+    authentic_phrases: positioning.authentic_phrases.slice(0, 8),
     career_arc: positioning.career_arc,
-    top_capabilities: positioning.top_capabilities,
-    original_resume: {
-      summary: resume.summary,
-      experience: resume.experience,
-      skills: resume.skills,
-      education: resume.education,
-      certifications: resume.certifications,
-    },
+    top_capabilities: positioning.top_capabilities.slice(0, 6),
+    keyword_targets: blueprint.keyword_map,
+  };
+
+  if (section === 'summary') {
+    return {
+      ...base,
+      evidence_library: positioning.evidence_library.slice(0, 10),
+      original_summary: resume.summary,
+    };
+  }
+
+  if (section === 'selected_accomplishments') {
+    return {
+      ...base,
+      evidence_library: positioning.evidence_library.slice(0, 12),
+      accomplishments_target: blueprint.evidence_allocation.selected_accomplishments ?? [],
+    };
+  }
+
+  if (section === 'skills') {
+    return {
+      ...base,
+      original_skills: resume.skills,
+      skills_blueprint: blueprint.skills_blueprint,
+    };
+  }
+
+  if (section === 'education_and_certifications') {
+    return {
+      ...base,
+      original_education: resume.education,
+      original_certifications: resume.certifications,
+      age_protection: blueprint.age_protection,
+    };
+  }
+
+  if (section === 'experience') {
+    return {
+      ...base,
+      original_experience: resume.experience,
+      evidence_library: positioning.evidence_library.slice(0, 20),
+      role_blueprint: blueprint.evidence_allocation.experience_section,
+    };
+  }
+
+  if (section.startsWith('experience_')) {
+    const roleKey = section.replace('experience_', '');
+    return {
+      ...base,
+      role_key: roleKey,
+      role_blueprint: blueprint.evidence_allocation.experience_section[roleKey] ?? {},
+      role_source: resume.experience.find((_, idx) => `role_${idx}` === roleKey) ?? null,
+      evidence_library: positioning.evidence_library.slice(0, 12),
+    };
+  }
+
+  return {
+    ...base,
+    evidence_library: positioning.evidence_library.slice(0, 8),
   };
 }
 
@@ -457,6 +606,81 @@ function assembleResume(
   }
 
   return parts.join('\n\n');
+}
+
+function mapFindingToSection(
+  findingSection: string,
+  sections: Record<string, SectionWriterOutput>,
+): string | null {
+  if (sections[findingSection]) return findingSection;
+  if (findingSection === 'skills' && sections.skills) return 'skills';
+  if (findingSection === 'summary' && sections.summary) return 'summary';
+  if (findingSection === 'experience' && sections.experience) return 'experience';
+  if (findingSection === 'formatting') return Object.keys(sections)[0] ?? null;
+  return null;
+}
+
+function normalizeSkills(intakeSkills: string[]): Record<string, string[]> {
+  if (!Array.isArray(intakeSkills) || intakeSkills.length === 0) return {};
+  return { Core: intakeSkills.slice(0, 30) };
+}
+
+function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): FinalResumePayload {
+  const sections = state.sections ?? {};
+  const intake = state.intake!;
+  const sectionOrder = (state.architect?.section_plan.order ?? ['summary', 'experience', 'skills', 'education', 'certifications'])
+    .flatMap((s) => (s === 'education_and_certifications' ? ['education', 'certifications'] : [s]))
+    .filter((s) => s !== 'header');
+  const resume: FinalResumePayload = {
+    summary: sections.summary?.content ?? intake.summary ?? '',
+    selected_accomplishments: sections.selected_accomplishments?.content,
+    experience: intake.experience.map((exp) => ({
+      company: exp.company,
+      title: exp.title,
+      start_date: exp.start_date,
+      end_date: exp.end_date,
+      location: '',
+      bullets: exp.bullets.map((b) => ({ text: b, source: 'resume' })),
+    })),
+    skills: normalizeSkills(intake.skills),
+    education: intake.education.map((edu) => ({
+      institution: edu.institution,
+      degree: edu.degree,
+      field: '',
+      year: edu.year ?? '',
+    })),
+    certifications: intake.certifications.map((cert) => ({
+      name: cert,
+      issuer: '',
+      year: '',
+    })),
+    ats_score: state.quality_review?.scores.ats_score ?? 0,
+    contact_info: intake.contact,
+    section_order: sectionOrder,
+    company_name: config.company_name,
+    job_title: state.research?.jd_analysis.role_title,
+    _raw_sections: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.content])),
+  };
+
+  // Best-effort: parse a skills section output into structured categories when present.
+  const skillsText = sections.skills?.content;
+  if (skillsText) {
+    const parsedSkills: Record<string, string[]> = {};
+    for (const line of skillsText.split('\n')) {
+      const trimmed = line.trim();
+      const idx = trimmed.indexOf(':');
+      if (idx <= 0) continue;
+      const key = trimmed.slice(0, idx).trim();
+      const value = trimmed.slice(idx + 1).trim();
+      if (!key || !value) continue;
+      parsedSkills[key] = value.split(/[,\u2022]/).map(s => s.trim()).filter(Boolean);
+    }
+    if (Object.keys(parsedSkills).length > 0) {
+      resume.skills = parsedSkills;
+    }
+  }
+
+  return resume;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────

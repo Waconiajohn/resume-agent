@@ -14,6 +14,7 @@
 import logger from '../lib/logger.js';
 import { llm, MODEL_PRIMARY } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
+import { ATS_RULEBOOK_PROMPT } from './ats-rules.js';
 import type {
   ArchitectInput,
   ArchitectOutput,
@@ -220,7 +221,8 @@ RULES:
 - Voice guidance must reference the candidate's authentic phrases from positioning interview
 - Every bullet instruction must include: focus, evidence source, and target metric
 - Maximum 2 pages. Cut aggressively from older/less relevant roles.
-- ATS-safe: no tables, no columns, no text boxes. Standard section headers only.`;
+- ATS-safe: no tables, no columns, no text boxes. Standard section headers only.
+${ATS_RULEBOOK_PROMPT}`;
 
 // ─── Context builders ────────────────────────────────────────────────
 

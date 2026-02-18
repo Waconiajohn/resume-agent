@@ -135,6 +135,15 @@ export interface CompletionData {
   ats_score?: number;
   requirements_addressed?: number;
   sections_rewritten?: number;
+  export_validation?: {
+    passed: boolean;
+    findings: Array<{
+      section: string;
+      issue: string;
+      instruction: string;
+      priority: 'high' | 'medium' | 'low';
+    }>;
+  };
 }
 
 // --- Positioning Interview ---

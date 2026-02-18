@@ -4,15 +4,11 @@ import {
 } from 'docx';
 import type { FinalResume, ContactInfo } from '@/types/resume';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
+import { buildResumeFilename } from '@/lib/export-filename';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function sanitizeFilenameSegment(s: string): string {
-  // Preserve Unicode letters/numbers (accented chars like é, ñ, ü)
-  return s.replace(/[^\p{L}\p{N}]/gu, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-}
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -26,22 +22,6 @@ function downloadBlob(blob: Blob, filename: string) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, 100);
-}
-
-function buildFilename(contactInfo?: ContactInfo, companyName?: string, suffix?: string, ext = 'docx'): string {
-  const parts: string[] = [];
-  const name = contactInfo?.name?.trim();
-  if (name) {
-    const names = name.split(/\s+/);
-    parts.push(names.map(n => sanitizeFilenameSegment(n)).filter(Boolean).join('_'));
-  }
-  if (companyName) {
-    parts.push(sanitizeFilenameSegment(companyName));
-  }
-  parts.push(suffix ?? 'Resume');
-  // Ensure filename doesn't start with underscore when name is missing
-  const filename = parts.filter(Boolean).join('_');
-  return `${filename}.${ext}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -447,39 +427,36 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     children.push(...contactHeaderParagraphs(resume.contact_info));
   }
 
-  // Pipeline v2: raw section text available — render from raw text
-  const rawSections = (resume as FinalResume & { _raw_sections?: Record<string, string> })._raw_sections;
-  if (rawSections && Object.keys(rawSections).length > 0) {
-    const order = resume.section_order ?? Object.keys(rawSections);
-    for (const sectionName of order) {
-      const text = rawSections[sectionName];
-      if (text) {
-        children.push(...rawSectionToParagraphs(sectionName, text));
-      }
-    }
-  } else {
-    // Pipeline v1: structured resume data — use section renderers
+  const hasStructuredContent =
+    !!resume.summary?.trim() ||
+    (Array.isArray(resume.experience) && resume.experience.length > 0) ||
+    (resume.skills && Object.keys(resume.skills).length > 0) ||
+    (Array.isArray(resume.education) && resume.education.length > 0) ||
+    (Array.isArray(resume.certifications) && resume.certifications.length > 0);
+
+  if (hasStructuredContent) {
+    // Preferred path: structured resume data produces consistent ATS-safe layout.
     const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
     const rendered = new Set<string>();
-
     for (const sectionName of order) {
       const renderer = sectionRenderers[sectionName];
       if (renderer) {
         children.push(...renderer(resume));
         rendered.add(sectionName);
-      } else {
-        console.warn(`[export-docx] Unknown section in section_order: ${sectionName}`);
       }
     }
-
-    // Render any remaining sections not in the order list
     for (const sectionName of DEFAULT_SECTION_ORDER) {
-      if (!rendered.has(sectionName)) {
-        const renderer = sectionRenderers[sectionName];
-        if (renderer) {
-          children.push(...renderer(resume));
-        }
-      }
+      if (rendered.has(sectionName)) continue;
+      const renderer = sectionRenderers[sectionName];
+      if (renderer) children.push(...renderer(resume));
+    }
+  } else {
+    // Fallback: raw section text from pipeline v2.
+    const rawSections = resume._raw_sections;
+    const order = resume.section_order ?? Object.keys(rawSections ?? {});
+    for (const sectionName of order) {
+      const text = rawSections?.[sectionName];
+      if (text) children.push(...rawSectionToParagraphs(sectionName, text));
     }
   }
 
@@ -515,8 +492,7 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
   const blob = new Blob([rawBlob], {
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   });
-  const filename = buildFilename(resume.contact_info, resume.company_name, 'Resume');
+  const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'docx');
   downloadBlob(blob, filename);
   return { success: true };
 }
-

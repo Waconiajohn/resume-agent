@@ -54,4 +54,5 @@ export interface FinalResume {
   section_order?: string[];
   company_name?: string;
   job_title?: string;
+  _raw_sections?: Record<string, string>;
 }

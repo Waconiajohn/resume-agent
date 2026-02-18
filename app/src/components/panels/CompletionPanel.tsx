@@ -1,33 +1,18 @@
 import { useState } from 'react';
-import { Download, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { Download, FileText, CheckCircle, Loader2, FileDown } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { exportDocx } from '@/lib/export-docx';
 import { resumeToText, downloadAsText } from '@/lib/export';
+import { exportPdf } from '@/lib/export-pdf';
+import { buildResumeFilename } from '@/lib/export-filename';
+import { validateResumeForExport } from '@/lib/export-validation';
 import type { FinalResume } from '@/types/resume';
 import type { CompletionData } from '@/types/panels';
 
 interface CompletionPanelProps {
   data: CompletionData;
   resume: FinalResume | null;
-}
-
-function sanitizeFilenameSegment(s: string): string {
-  // Preserve Unicode letters/numbers (accented chars like é, ñ, ü)
-  return s.replace(/[^\p{L}\p{N}]/gu, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-}
-
-function buildFilename(contactInfo?: FinalResume['contact_info'], companyName?: string, suffix?: string, ext = 'txt'): string {
-  const parts: string[] = [];
-  if (contactInfo?.name) {
-    const names = contactInfo.name.trim().split(/\s+/);
-    parts.push(names.map(n => sanitizeFilenameSegment(n)).filter(Boolean).join('_'));
-  }
-  if (companyName) {
-    parts.push(sanitizeFilenameSegment(companyName));
-  }
-  parts.push(suffix ?? 'Resume');
-  return `${parts.join('_')}.${ext}`;
 }
 
 function StatBadge({ label, value }: { label: string; value: string | number }) {
@@ -45,6 +30,8 @@ export function CompletionPanel({
 }: CompletionPanelProps) {
   const [exportingResume, setExportingResume] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const validationIssues = validateResumeForExport(resume);
+  const blockingIssue = validationIssues.find((i) => i.severity === 'error');
 
   const handleResumeDocx = async () => {
     if (!resume) return;
@@ -62,8 +49,16 @@ export function CompletionPanel({
 
   const handleResumeTxt = () => {
     if (!resume) return;
-    const filename = buildFilename(resume.contact_info, resume.company_name, 'Resume');
+    const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'txt');
     downloadAsText(resumeToText(resume), filename);
+  };
+
+  const handleResumePdf = () => {
+    if (!resume) return;
+    const result = exportPdf(resume);
+    if (!result.success) {
+      setExportError(result.error ?? 'Failed to generate PDF');
+    }
   };
 
   return (
@@ -80,6 +75,23 @@ export function CompletionPanel({
         {exportError && (
           <div className="rounded-lg bg-red-500/20 border border-red-500/30 px-3 py-2 text-xs text-red-300">
             {exportError}
+          </div>
+        )}
+        {validationIssues.map((issue) => (
+          <div
+            key={`${issue.field}-${issue.message}`}
+            className={`rounded-lg px-3 py-2 text-xs ${
+              issue.severity === 'error'
+                ? 'bg-red-500/20 border border-red-500/30 text-red-300'
+                : 'bg-amber-500/20 border border-amber-500/30 text-amber-300'
+            }`}
+          >
+            {issue.message}
+          </div>
+        ))}
+        {data.export_validation && !data.export_validation.passed && (
+          <div className="rounded-lg bg-amber-500/20 border border-amber-500/30 px-3 py-2 text-xs text-amber-300">
+            ATS validation flagged {data.export_validation.findings.length} item(s). Review before sharing.
           </div>
         )}
 
@@ -113,7 +125,7 @@ export function CompletionPanel({
           </div>
           {resume ? (
             <div className="space-y-2">
-              <GlassButton variant="primary" className="w-full" onClick={handleResumeDocx} disabled={exportingResume}>
+              <GlassButton variant="primary" className="w-full" onClick={handleResumeDocx} disabled={exportingResume || !!blockingIssue}>
                 {exportingResume ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -121,7 +133,11 @@ export function CompletionPanel({
                 )}
                 Download Word (.docx)
               </GlassButton>
-              <GlassButton variant="ghost" className="w-full" onClick={handleResumeTxt}>
+              <GlassButton variant="ghost" className="w-full" onClick={handleResumePdf} disabled={!!blockingIssue}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Download PDF (.pdf)
+              </GlassButton>
+              <GlassButton variant="ghost" className="w-full" onClick={handleResumeTxt} disabled={!!blockingIssue}>
                 <Download className="mr-2 h-4 w-4" />
                 Download Text (.txt)
               </GlassButton>

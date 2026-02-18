@@ -388,7 +388,42 @@ export type PipelineSSEEvent =
   | { type: 'section_approved'; section: string }
   | { type: 'quality_scores'; scores: QualityScores }
   | { type: 'revision_start'; instructions: RevisionInstruction[] }
-  | { type: 'pipeline_complete'; session_id: string; contact_info?: Record<string, string>; company_name?: string }
+  | {
+      type: 'pipeline_complete';
+      session_id: string;
+      contact_info?: Record<string, string>;
+      company_name?: string;
+      resume?: {
+        summary: string;
+        selected_accomplishments?: string;
+        experience: Array<{
+          company: string;
+          title: string;
+          start_date: string;
+          end_date: string;
+          location: string;
+          bullets: Array<{ text: string; source: string }>;
+        }>;
+        skills: Record<string, string[]>;
+        education: Array<{ institution: string; degree: string; field: string; year: string }>;
+        certifications: Array<{ name: string; issuer: string; year: string }>;
+        ats_score: number;
+        contact_info?: Record<string, string>;
+        section_order?: string[];
+        company_name?: string;
+        job_title?: string;
+        _raw_sections?: Record<string, string>;
+      };
+      export_validation?: {
+        passed: boolean;
+        findings: Array<{
+          section: string;
+          issue: string;
+          instruction: string;
+          priority: 'high' | 'medium' | 'low';
+        }>;
+      };
+    }
   | { type: 'pipeline_error'; stage: PipelineStage; error: string }
   | { type: 'transparency'; message: string; stage: PipelineStage }
   | { type: 'right_panel_update'; panel_type: string; data: Record<string, unknown> };

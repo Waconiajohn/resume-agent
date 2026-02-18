@@ -10,6 +10,7 @@
 
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
+import { ATS_RULEBOOK_SNIPPET } from './ats-rules.js';
 import type {
   SectionWriterInput,
   SectionWriterOutput,
@@ -146,6 +147,7 @@ RULES:
 - Keep bullets concise: 1-2 lines each, front-loaded with the most important information.
 - Do NOT fabricate metrics or scope that aren't in the evidence sources.
 - If the evidence doesn't include a specific number, use qualitative impact language instead of making one up.
+${ATS_RULEBOOK_SNIPPET}
 
 Return your output as JSON with: content (the section text), keywords_used, requirements_addressed, evidence_ids_used.`;
 
@@ -201,7 +203,7 @@ function buildSectionPrompt(
       break;
 
     default:
-      if (section.startsWith('experience_role_')) {
+      if (section === 'experience' || section.startsWith('experience_role_')) {
         lines.push('Write the experience entry for this specific role.');
         lines.push('Follow bullet instructions exactly: each bullet has a focus, evidence source, and target metric.');
         lines.push('Keep bullets that are marked to keep. Remove bullets marked to cut.');

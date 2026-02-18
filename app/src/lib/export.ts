@@ -108,9 +108,16 @@ function contactHeaderText(contactInfo: ContactInfo): string[] {
 }
 
 export function resumeToText(resume: FinalResume): string {
-  // Pipeline v2: raw section text available — join sections in order
-  const rawSections = (resume as FinalResume & { _raw_sections?: Record<string, string> })._raw_sections;
-  if (rawSections && Object.keys(rawSections).length > 0) {
+  const hasStructuredContent =
+    !!resume.summary?.trim() ||
+    (Array.isArray(resume.experience) && resume.experience.length > 0) ||
+    (resume.skills && Object.keys(resume.skills).length > 0) ||
+    (Array.isArray(resume.education) && resume.education.length > 0) ||
+    (Array.isArray(resume.certifications) && resume.certifications.length > 0);
+
+  // Fallback path: raw section text only when structured content is unavailable.
+  const rawSections = resume._raw_sections;
+  if (!hasStructuredContent && rawSections && Object.keys(rawSections).length > 0) {
     const order = resume.section_order ?? Object.keys(rawSections);
     return order
       .map(name => rawSections[name])
@@ -118,7 +125,7 @@ export function resumeToText(resume: FinalResume): string {
       .join('\n\n');
   }
 
-  // Pipeline v1: structured resume data — use section renderers
+  // Preferred path: structured resume data.
   const lines: string[] = [];
 
   // Contact header

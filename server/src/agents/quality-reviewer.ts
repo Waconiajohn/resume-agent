@@ -17,6 +17,7 @@
 
 import { llm, MODEL_MID } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
+import { ATS_RULEBOOK_SNIPPET } from './ats-rules.js';
 import type {
   QualityReviewerInput,
   QualityReviewerOutput,
@@ -216,7 +217,8 @@ SCORING RULES:
    - Check: section order, required elements, age protection, keyword placements.
 
 Be HONEST. Do not inflate scores. A score of 70 means there are real issues to fix.
-For every issue, provide a SPECIFIC fix instruction with the exact location and what to change.`;
+For every issue, provide a SPECIFIC fix instruction with the exact location and what to change.
+${ATS_RULEBOOK_SNIPPET}`;
 
 // ─── Normalization helpers ───────────────────────────────────────────
 

@@ -19,6 +19,25 @@ import type {
   IntakeOutput,
 } from './types.js';
 
+const CACHE_TTL_MS = 30 * 60 * 1000;
+const jdCache = new Map<string, { value: JDAnalysis; expiresAt: number }>();
+const companyCache = new Map<string, { value: CompanyResearch; expiresAt: number }>();
+const benchmarkCache = new Map<string, { value: BenchmarkCandidate; expiresAt: number }>();
+
+function getCached<T>(cache: Map<string, { value: T; expiresAt: number }>, key: string): T | null {
+  const hit = cache.get(key);
+  if (!hit) return null;
+  if (Date.now() >= hit.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+  return hit.value;
+}
+
+function setCached<T>(cache: Map<string, { value: T; expiresAt: number }>, key: string, value: T): void {
+  cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
 /**
  * Run the Research Agent: analyze JD, research company, build benchmark.
  * All three operations run in parallel where possible.
@@ -44,6 +63,9 @@ export async function runResearchAgent(input: ResearchInput): Promise<ResearchOu
 
 async function analyzeJobDescription(jobDescription: string): Promise<JDAnalysis> {
   const jd = jobDescription.slice(0, 30_000);
+  const cacheKey = jd.trim().toLowerCase();
+  const cached = getCached(jdCache, cacheKey);
+  if (cached) return cached;
 
   const response = await llm.chat({
     model: MODEL_LIGHT,
@@ -92,7 +114,7 @@ Return ONLY valid JSON:
         ? 'senior'
         : 'mid') as JDAnalysis['seniority_level'];
 
-  return {
+  const normalized = {
     role_title: String(parsed.role_title ?? 'Unknown'),
     company: String(parsed.company ?? ''),
     seniority_level,
@@ -101,6 +123,8 @@ Return ONLY valid JSON:
     implicit_requirements: (parsed.implicit_requirements as string[]) ?? [],
     language_keywords: (parsed.language_keywords as string[]) ?? [],
   };
+  setCached(jdCache, cacheKey, normalized);
+  return normalized;
 }
 
 // ─── Company Research (Perplexity + fallback) ────────────────────────
@@ -109,6 +133,9 @@ async function researchCompany(companyName: string, jobDescription: string): Pro
   if (!companyName.trim()) {
     return { company_name: '', industry: '', size: '', culture_signals: [] };
   }
+  const cacheKey = `${companyName.trim().toLowerCase()}::${jobDescription.slice(0, 2000).trim().toLowerCase()}`;
+  const cached = getCached(companyCache, cacheKey);
+  if (cached) return cached;
 
   const prompt = `Research ${companyName} as a potential employer. I need:
 1. What industry are they in and approximately how large are they?
@@ -139,12 +166,14 @@ Be specific and factual. If you're not sure about something, say so.`;
     'collaboration', 'innovation', 'diversity', 'inclusion',
   ]);
 
-  return {
+  const normalized = {
     company_name: companyName,
     industry: extractFirstSentenceAbout(text, ['industry', 'sector', 'space']) ?? '',
     size: extractFirstSentenceAbout(text, ['employees', 'size', 'headcount', 'revenue']) ?? '',
     culture_signals: culturePhrases,
   };
+  setCached(companyCache, cacheKey, normalized);
+  return normalized;
 }
 
 // ─── Benchmark Candidate (MODEL_MID) ────────────────────────────────
@@ -154,6 +183,15 @@ async function buildBenchmark(
   company: CompanyResearch,
   resume: IntakeOutput,
 ): Promise<BenchmarkCandidate> {
+  const cacheKey = JSON.stringify({
+    jd,
+    company,
+    skills: resume.skills.slice(0, 40),
+    titles: resume.experience.slice(0, 6).map(e => `${e.title}:${e.company}`),
+  });
+  const cached = getCached(benchmarkCache, cacheKey);
+  if (cached) return cached;
+
   const response = await llm.chat({
     model: MODEL_MID,
     max_tokens: 3072,
@@ -192,7 +230,7 @@ Return ONLY valid JSON:
     };
   }
 
-  return {
+  const normalized = {
     ideal_profile: String(parsed.ideal_profile ?? ''),
     language_keywords: [
       ...(parsed.language_keywords as string[] ?? []),
@@ -200,6 +238,8 @@ Return ONLY valid JSON:
     ].filter((v, i, a) => a.indexOf(v) === i), // dedupe
     section_expectations: (parsed.section_expectations as Record<string, string>) ?? {},
   };
+  setCached(benchmarkCache, cacheKey, normalized);
+  return normalized;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
