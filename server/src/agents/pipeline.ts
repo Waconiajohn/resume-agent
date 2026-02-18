@@ -663,7 +663,7 @@ function assembleResume(
       // Collect all experience_role_* entries in sorted order
       const roleKeys = Object.keys(sections)
         .filter(k => k.startsWith('experience_role_'))
-        .sort();
+        .sort(compareExperienceRoleKeys);
       for (const key of roleKeys) {
         parts.push(sections[key].content);
       }
@@ -691,7 +691,7 @@ function mapFindingToSection(
   if (findingSection === 'summary' && sections.summary) return 'summary';
   // Map generic "experience" finding to first experience_role_* section
   if (findingSection === 'experience') {
-    const roleKey = Object.keys(sections).filter(k => k.startsWith('experience_role_')).sort()[0];
+    const roleKey = Object.keys(sections).filter(k => k.startsWith('experience_role_')).sort(compareExperienceRoleKeys)[0];
     if (roleKey) return roleKey;
   }
   if (findingSection === 'formatting') return Object.keys(sections)[0] ?? null;
@@ -701,6 +701,13 @@ function mapFindingToSection(
 function normalizeSkills(intakeSkills: string[]): Record<string, string[]> {
   if (!Array.isArray(intakeSkills) || intakeSkills.length === 0) return {};
   return { Core: intakeSkills.slice(0, 30) };
+}
+
+function compareExperienceRoleKeys(a: string, b: string): number {
+  const ai = Number.parseInt(a.replace('experience_role_', ''), 10);
+  const bi = Number.parseInt(b.replace('experience_role_', ''), 10);
+  if (Number.isNaN(ai) || Number.isNaN(bi)) return a.localeCompare(b);
+  return ai - bi;
 }
 
 function parseExperienceRoleForStructuredPayload(
@@ -818,7 +825,7 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
         // Expand into actual experience_role_* keys + earlier_career
         const roleKeys = Object.keys(state.sections ?? {})
           .filter(k => k.startsWith('experience_role_'))
-          .sort();
+          .sort(compareExperienceRoleKeys);
         const keys = roleKeys.length > 0 ? roleKeys : ['experience'];
         if (state.sections?.['earlier_career']) keys.push('earlier_career');
         return keys;

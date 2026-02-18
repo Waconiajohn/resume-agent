@@ -40,7 +40,11 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
     const rawSections = resume._raw_sections ?? {};
     const roleKeys = Object.keys(rawSections)
       .filter(k => k.startsWith('experience_role_'))
-      .sort();
+      .sort((a, b) => {
+        const ai = Number.parseInt(a.replace('experience_role_', ''), 10);
+        const bi = Number.parseInt(b.replace('experience_role_', ''), 10);
+        return ai - bi;
+      });
     if (roleKeys.length > 0) {
       const lines = ['PROFESSIONAL EXPERIENCE'];
       for (const key of roleKeys) {
