@@ -108,6 +108,17 @@ function contactHeaderText(contactInfo: ContactInfo): string[] {
 }
 
 export function resumeToText(resume: FinalResume): string {
+  // Pipeline v2: raw section text available — join sections in order
+  const rawSections = (resume as FinalResume & { _raw_sections?: Record<string, string> })._raw_sections;
+  if (rawSections && Object.keys(rawSections).length > 0) {
+    const order = resume.section_order ?? Object.keys(rawSections);
+    return order
+      .map(name => rawSections[name])
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  // Pipeline v1: structured resume data — use section renderers
   const lines: string[] = [];
 
   // Contact header

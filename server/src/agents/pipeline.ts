@@ -222,15 +222,6 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     emit({ type: 'quality_scores', scores: state.quality_review.scores });
-    emit({
-      type: 'right_panel_update',
-      panel_type: 'quality_dashboard',
-      data: {
-        scores: state.quality_review.scores,
-        decision: state.quality_review.decision,
-        revision_instructions: state.quality_review.revision_instructions,
-      },
-    });
 
     // ─── Revision loop (max 1 cycle) ────────────────────────────
     if (state.quality_review.decision === 'revise' && state.quality_review.revision_instructions) {

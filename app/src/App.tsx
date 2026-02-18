@@ -46,6 +46,7 @@ export default function App() {
     panelType,
     panelData,
     addUserMessage,
+    pipelineStage,
     positioningProfileFound,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
@@ -172,7 +173,7 @@ export default function App() {
           tools={tools}
           askPrompt={askPrompt}
           phaseGate={phaseGate}
-          currentPhase={currentPhase}
+          currentPhase={pipelineStage ?? currentPhase}
           isProcessing={isProcessing}
           resume={resume}
           panelType={panelType}

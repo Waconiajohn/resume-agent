@@ -38,6 +38,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [sectionDraft, setSectionDraft] = useState<{ section: string; content: string } | null>(null);
   const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Accumulate all section content for building FinalResume at pipeline_complete
+  const sectionsMapRef = useRef<Record<string, string>>({});
   const messageIdRef = useRef(0);
 
   // Track last text_complete content to deduplicate
@@ -516,16 +518,16 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   setIsProcessing(false);
-                  setSectionDraft({
-                    section: data.section as string,
-                    content: data.content as string,
-                  });
+                  const section = data.section as string;
+                  const content = data.content as string;
+                  setSectionDraft({ section, content });
+                  sectionsMapRef.current[section] = content;
                   // Show section review panel
                   setPanelType('section_review' as PanelType);
                   setPanelData({
                     type: 'section_review',
-                    section: data.section as string,
-                    content: data.content as string,
+                    section,
+                    content,
                   } as PanelData);
                   break;
                 }
@@ -534,10 +536,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   // Revision from quality review — update resume preview, no approval needed
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  setSectionDraft({
-                    section: data.section as string,
-                    content: data.content as string,
-                  });
+                  const section = data.section as string;
+                  const content = data.content as string;
+                  setSectionDraft({ section, content });
+                  sectionsMapRef.current[section] = content;
                   break;
                 }
 
@@ -587,6 +589,23 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   setIsProcessing(false);
                   setSessionComplete(true);
                   setPipelineStage('complete');
+
+                  // Build FinalResume from accumulated section content
+                  const sections = sectionsMapRef.current;
+                  const builtResume: FinalResume = {
+                    summary: sections.summary ?? '',
+                    experience: [],
+                    skills: {},
+                    education: [],
+                    certifications: [],
+                    selected_accomplishments: sections.selected_accomplishments ?? '',
+                    ats_score: 0,
+                    section_order: Object.keys(sections),
+                    // Attach raw section text for text export
+                    _raw_sections: sections,
+                  } as FinalResume & { _raw_sections: Record<string, string> };
+                  setResume(builtResume);
+
                   setPanelType('completion');
                   setPanelData({ type: 'completion' } as PanelData);
                   break;

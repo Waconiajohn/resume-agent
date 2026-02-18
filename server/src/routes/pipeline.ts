@@ -17,6 +17,9 @@ const pendingGates = new Map<string, {
   timeout: ReturnType<typeof setTimeout>;
 }>();
 
+// Buffered responses for gates that arrive before waitForUser is called (race condition fix)
+const bufferedResponses = new Map<string, { gate: string; response: unknown }>();
+
 // Track running pipelines to prevent double-start
 const runningPipelines = new Set<string>();
 
@@ -65,6 +68,14 @@ pipeline.post('/start', async (c) => {
   const GATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
   const waitForUser = <T>(gate: string): Promise<T> => {
+    // Check if a response was already buffered (user responded before gate was registered)
+    const buffered = bufferedResponses.get(session_id);
+    if (buffered && buffered.gate === gate) {
+      bufferedResponses.delete(session_id);
+      log.info({ gate }, 'Resolved gate from buffered response');
+      return Promise.resolve(buffered.response as T);
+    }
+
     return new Promise<T>((resolve, reject) => {
       // Clear any existing gate for this session
       const existing = pendingGates.get(session_id);
@@ -111,6 +122,7 @@ pipeline.post('/start', async (c) => {
       clearTimeout(gate.timeout);
       pendingGates.delete(session_id);
     }
+    bufferedResponses.delete(session_id);
   });
 
   return c.json({ status: 'started', session_id });
@@ -141,6 +153,12 @@ pipeline.post('/respond', async (c) => {
 
   const pending = pendingGates.get(session_id);
   if (!pending) {
+    // Gate not registered yet — buffer the response for when waitForUser is called
+    if (gate) {
+      bufferedResponses.set(session_id, { gate, response });
+      logger.info({ session_id, gate }, 'Buffered early gate response');
+      return c.json({ status: 'buffered', gate });
+    }
     return c.json({ error: 'No pending gate for this session' }, 404);
   }
 

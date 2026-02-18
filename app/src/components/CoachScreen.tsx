@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChatPanel } from './ChatPanel';
 import { RightPanel } from './panels/RightPanel';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
@@ -38,6 +39,8 @@ export function CoachScreen({
   onPipelineRespond,
   positioningProfileFound,
 }: CoachScreenProps) {
+  const [profileChoiceMade, setProfileChoiceMade] = useState(false);
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* 3D: Error banner */}
@@ -48,12 +51,13 @@ export function CoachScreen({
       )}
 
       {/* Positioning profile choice — shown when an existing profile is found */}
-      {positioningProfileFound && onPipelineRespond && (
+      {positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
         <div className="px-4 py-2">
           <PositioningProfileChoice
             updatedAt={positioningProfileFound.updated_at}
             onChoice={(choice) => {
               onPipelineRespond('positioning_profile_choice', choice);
+              setProfileChoiceMade(true);
             }}
           />
         </div>

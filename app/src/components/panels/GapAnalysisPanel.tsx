@@ -36,15 +36,19 @@ function mapStatus(status: string): 'strong' | 'partial' | 'gap' {
  * 2. Nested (from agent update_right_panel): { requirements_analysis: [{ requirement, status, your_evidence, gap_or_action }], ... }
  */
 function normalizeData(data: GapAnalysisData & Record<string, unknown>) {
-  // Already in expected shape (from classify_fit)
+  // Already in expected shape (from classify_fit or pipeline gap_analysis)
   if (Array.isArray(data.requirements) && data.requirements.length > 0) {
+    // Compute counts from classification field if not provided
+    const strong = data.strong_count ?? data.requirements.filter((r: RequirementFitItem) => mapStatus(r.classification) === 'strong').length;
+    const partial = data.partial_count ?? data.requirements.filter((r: RequirementFitItem) => mapStatus(r.classification) === 'partial').length;
+    const gap = data.gap_count ?? data.requirements.filter((r: RequirementFitItem) => mapStatus(r.classification) === 'gap').length;
     return {
       requirements: data.requirements,
-      strong_count: data.strong_count ?? 0,
-      partial_count: data.partial_count ?? 0,
-      gap_count: data.gap_count ?? 0,
+      strong_count: strong,
+      partial_count: partial,
+      gap_count: gap,
       total: data.total ?? data.requirements.length,
-      addressed: data.addressed ?? 0,
+      addressed: data.addressed ?? (strong + partial),
     };
   }
 
