@@ -362,10 +362,154 @@ export async function exportDocx(resume: FinalResume): Promise<{ success: boolea
 }
 
 /**
+ * Parse experience role text into structured DOCX paragraphs.
+ * Detects: Title line, Company/dates line, and bullets.
+ *
+ * Expected LLM output format for experience_role_*:
+ *   Job Title (possibly with adjustment)
+ *   Company Name | Location | Start – End
+ *   • Bullet 1
+ *   • Bullet 2
+ */
+function parseExperienceRoleParagraphs(text: string): Paragraph[] {
+  const paras: Paragraph[] = [];
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Skip ALL CAPS heading lines (like "PROFESSIONAL EXPERIENCE") — handled by caller
+  let startIdx = 0;
+  if (lines[0] && /^[A-Z][A-Z &/]+$/.test(lines[0])) {
+    startIdx = 1;
+  }
+
+  let titleLine: string | null = null;
+  let companyLine: string | null = null;
+  const bullets: string[] = [];
+
+  for (let i = startIdx; i < lines.length; i++) {
+    const line = lines[i];
+    // Bullet point
+    if (/^[•\-*]\s/.test(line)) {
+      bullets.push(line.replace(/^[•\-*]\s*/, ''));
+      continue;
+    }
+    // First non-bullet non-heading is likely the job title
+    if (!titleLine) {
+      titleLine = line;
+      continue;
+    }
+    // Second non-bullet line is the company/dates line (often has | or – separators)
+    if (!companyLine) {
+      companyLine = line;
+      continue;
+    }
+    // Any remaining non-bullet text is body text (rare)
+    bullets.push(line);
+  }
+
+  // Render title line with JobTitle style
+  if (titleLine) {
+    // Try to extract dates from title line (e.g. "VP Engineering    2020 – Present")
+    const dateMatch = titleLine.match(/\s{2,}(\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current))$/i);
+    if (dateMatch) {
+      const title = titleLine.slice(0, dateMatch.index).trim();
+      const dates = dateMatch[1].trim();
+      paras.push(
+        new Paragraph({
+          style: 'JobTitle',
+          tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+          children: [
+            new TextRun({ text: title }),
+            new TextRun({ children: ['\t'] }),
+            new TextRun({ text: dates, bold: false, size: 20, font: FONT, color: '666666' }),
+          ],
+        }),
+      );
+    } else {
+      paras.push(
+        new Paragraph({
+          style: 'JobTitle',
+          children: [new TextRun({ text: titleLine })],
+        }),
+      );
+    }
+  }
+
+  // Render company line
+  if (companyLine) {
+    // Try to extract dates from company line (e.g. "Acme Corp | Chicago, IL | 2018 – 2020")
+    const dateMatch = companyLine.match(/\|?\s*(\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current))$/i);
+    if (dateMatch && titleLine && !titleLine.match(/\d{4}/)) {
+      const companyPart = companyLine.slice(0, dateMatch.index).replace(/\|?\s*$/, '').trim();
+      const dates = dateMatch[1].trim();
+      paras.push(
+        new Paragraph({
+          style: 'CompanyLine',
+          tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+          children: [
+            new TextRun({ text: companyPart }),
+            new TextRun({ children: ['\t'] }),
+            new TextRun({ text: dates, size: 20, font: FONT, color: '666666' }),
+          ],
+        }),
+      );
+    } else {
+      paras.push(
+        new Paragraph({
+          style: 'CompanyLine',
+          children: [new TextRun({ text: companyLine })],
+        }),
+      );
+    }
+  }
+
+  // Render bullets
+  for (const bullet of bullets) {
+    if (bullet.trim()) {
+      paras.push(bulletParagraph(bullet));
+    }
+  }
+
+  return paras;
+}
+
+/**
  * Convert raw section text (pipeline v2) into DOCX paragraphs.
  * Detects section headings (ALL CAPS lines), bullet points, and body text.
+ * Dispatches experience_role_* sections to the specialized parser.
  */
-function rawSectionToParagraphs(sectionName: string, text: string): Paragraph[] {
+function rawSectionToParagraphs(sectionName: string, text: string, isFirstExperienceRole = false): Paragraph[] {
+  // Experience role sections get specialized parsing
+  if (sectionName.startsWith('experience_role_')) {
+    const paras: Paragraph[] = [];
+    if (isFirstExperienceRole) {
+      paras.push(sectionHeading('PROFESSIONAL EXPERIENCE'));
+    }
+    paras.push(...parseExperienceRoleParagraphs(text));
+    return paras;
+  }
+
+  // Earlier career section
+  if (sectionName === 'earlier_career') {
+    const paras: Paragraph[] = [];
+    // Parse as body text with optional bullets
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (/^[A-Z][A-Z &/]+$/.test(trimmed) && trimmed.length > 2) continue; // skip redundant heading
+      if (/^[•\-*]\s/.test(trimmed)) {
+        paras.push(bulletParagraph(trimmed.replace(/^[•\-*]\s*/, '')));
+      } else {
+        paras.push(
+          new Paragraph({
+            style: 'BodyText',
+            children: [new TextRun({ text: trimmed })],
+          }),
+        );
+      }
+    }
+    return paras;
+  }
+
   const paras: Paragraph[] = [];
   const lines = text.split('\n');
 
@@ -454,9 +598,14 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     // Fallback: raw section text from pipeline v2.
     const rawSections = resume._raw_sections;
     const order = resume.section_order ?? Object.keys(rawSections ?? {});
+    let isFirstExpRole = true;
     for (const sectionName of order) {
       const text = rawSections?.[sectionName];
-      if (text) children.push(...rawSectionToParagraphs(sectionName, text));
+      if (text) {
+        const isExpRole = sectionName.startsWith('experience_role_');
+        children.push(...rawSectionToParagraphs(sectionName, text, isExpRole && isFirstExpRole));
+        if (isExpRole) isFirstExpRole = false;
+      }
     }
   }
 
@@ -495,4 +644,59 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
   const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'docx');
   downloadBlob(blob, filename);
   return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Export preflight validation
+// ---------------------------------------------------------------------------
+
+export interface PreflightResult {
+  valid: boolean;
+  warnings: string[];
+  errors: string[];
+}
+
+export function preflightCheck(resume: FinalResume): PreflightResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Contact info
+  if (!resume.contact_info?.name) {
+    errors.push('Missing contact name');
+  }
+  if (!resume.contact_info?.email && !resume.contact_info?.phone) {
+    warnings.push('No email or phone in contact info');
+  }
+
+  // Section content
+  const rawSections = resume._raw_sections ?? {};
+  const sectionKeys = Object.keys(rawSections);
+  if (sectionKeys.length === 0 && !resume.summary) {
+    errors.push('No resume sections found');
+  }
+
+  for (const [key, content] of Object.entries(rawSections)) {
+    if (!content || !content.trim()) {
+      errors.push(`Empty section: ${key}`);
+    }
+  }
+
+  // Summary check
+  if (!resume.summary && !rawSections.summary) {
+    warnings.push('No summary section');
+  }
+
+  // Experience check
+  const hasExperience =
+    (Array.isArray(resume.experience) && resume.experience.length > 0) ||
+    sectionKeys.some(k => k.startsWith('experience_role_') || k === 'experience');
+  if (!hasExperience) {
+    warnings.push('No experience section');
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
 }

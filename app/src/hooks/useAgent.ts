@@ -470,6 +470,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (!data) break;
                   setPipelineStage(data.stage as PipelineStage);
                   setIsProcessing(false);
+                  if (data.duration_ms) {
+                    console.log(`[pipeline] ${data.stage} completed in ${(data.duration_ms as number / 1000).toFixed(1)}s`);
+                  }
                   break;
                 }
 

@@ -379,7 +379,7 @@ export interface PipelineState {
 
 export type PipelineSSEEvent =
   | { type: 'stage_start'; stage: PipelineStage; message: string }
-  | { type: 'stage_complete'; stage: PipelineStage; message: string }
+  | { type: 'stage_complete'; stage: PipelineStage; message: string; duration_ms?: number }
   | { type: 'positioning_question'; question: PositioningQuestion }
   | { type: 'positioning_profile_found'; profile: PositioningProfile; updated_at: string }
   | { type: 'blueprint_ready'; blueprint: ArchitectOutput }

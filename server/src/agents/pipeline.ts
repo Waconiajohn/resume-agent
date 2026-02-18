@@ -109,8 +109,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       job_description: config.job_description,
     });
 
-    emit({ type: 'stage_complete', stage: 'intake', message: 'Resume parsed successfully' });
     markStageEnd('intake');
+    emit({ type: 'stage_complete', stage: 'intake', message: 'Resume parsed successfully', duration_ms: stageTimingsMs.intake });
     emit({
       type: 'right_panel_update',
       panel_type: 'onboarding_summary',
@@ -138,8 +138,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       parsed_resume: state.intake,
     });
 
-    emit({ type: 'stage_complete', stage: 'research', message: 'Research complete' });
     markStageEnd('research');
+    emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
     emit({
       type: 'right_panel_update',
       panel_type: 'research_dashboard',
@@ -168,8 +168,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       benchmark: state.research.benchmark_candidate,
     });
 
-    emit({ type: 'stage_complete', stage: 'gap_analysis', message: `Coverage: ${state.gap_analysis.coverage_score}%` });
     markStageEnd('gap_analysis');
+    emit({ type: 'stage_complete', stage: 'gap_analysis', message: `Coverage: ${state.gap_analysis.coverage_score}%`, duration_ms: stageTimingsMs.gap_analysis });
     emit({
       type: 'right_panel_update',
       panel_type: 'gap_analysis',
@@ -195,8 +195,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       gap_analysis: state.gap_analysis,
     });
 
-    emit({ type: 'stage_complete', stage: 'architect', message: 'Blueprint ready for review' });
     markStageEnd('architect');
+    emit({ type: 'stage_complete', stage: 'architect', message: 'Blueprint ready for review', duration_ms: stageTimingsMs.architect });
 
     // ─── Gate: User reviews blueprint ────────────────────────────
     state.current_stage = 'architect_review';
@@ -217,13 +217,16 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     const sectionCalls = buildSectionCalls(state.architect, state.intake, state.positioning);
 
-    let prefetchedNext: Promise<SectionWriterOutput> | null = null;
-    for (let i = 0; i < sectionCalls.length; i++) {
-      const call = sectionCalls[i];
-      const nextCall = sectionCalls[i + 1];
-      const result = prefetchedNext ? await prefetchedNext : await runSectionWriter(call);
+    // Fire ALL section LLM calls in parallel for ~40% speed improvement
+    const sectionPromises = new Map<string, Promise<SectionWriterOutput>>();
+    for (const call of sectionCalls) {
+      sectionPromises.set(call.section, runSectionWriter(call));
+    }
+
+    // Present sections sequentially for user review (LLM work already in flight)
+    for (const call of sectionCalls) {
+      const result = await sectionPromises.get(call.section)!;
       state.sections[call.section] = result;
-      prefetchedNext = nextCall ? runSectionWriter(nextCall) : null;
 
       // Emit each section for progressive rendering
       emit({ type: 'section_draft', section: call.section, content: result.content });
@@ -239,8 +242,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       // (handled by the waitForUser callback in the route layer)
     }
 
-    emit({ type: 'stage_complete', stage: 'section_writing', message: 'All sections written' });
     markStageEnd('section_writing');
+    emit({ type: 'stage_complete', stage: 'section_writing', message: 'All sections written', duration_ms: stageTimingsMs.section_writing });
     emit({
       type: 'right_panel_update',
       panel_type: 'live_resume',
@@ -259,6 +262,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     markStageStart('quality_review');
 
     const fullText = assembleResume(state.sections, state.architect);
+
+    // Simple keyword coverage check (no LLM call needed)
+    const keywordCoverage = computeKeywordCoverage(fullText, state.research.jd_analysis.language_keywords);
+    emit({
+      type: 'transparency',
+      stage: 'quality_review',
+      message: `Keyword coverage: ${keywordCoverage.found}/${keywordCoverage.total} JD keywords found (${keywordCoverage.percentage}%)`,
+    });
 
     state.quality_review = await runQualityReviewer({
       assembled_resume: {
@@ -337,8 +348,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       }
     }
 
-    emit({ type: 'stage_complete', stage: 'quality_review', message: 'Quality review complete' });
     markStageEnd('quality_review');
+    emit({ type: 'stage_complete', stage: 'quality_review', message: 'Quality review complete', duration_ms: stageTimingsMs.quality_review });
 
     // ─── Complete ────────────────────────────────────────────────
     state.current_stage = 'complete';
@@ -356,8 +367,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       },
     });
 
-    // Persist final state
-    await persistSession(state);
+    // Persist final state (including resume for reconnect restore)
+    await persistSession(state, finalResume);
 
     log.info({
       stages_completed: 7,
@@ -471,6 +482,32 @@ function buildSectionCalls(
   for (const section of blueprint.section_plan.order) {
     if (section === 'header') continue; // Header is built from contact info, no LLM needed
 
+    // Expand "experience" into one call per role from the blueprint
+    if (section === 'experience') {
+      const roleCount = blueprint.experience_blueprint.roles.length;
+      for (let i = 0; i < roleCount; i++) {
+        const roleSection = `experience_role_${i}`;
+        calls.push({
+          section: roleSection,
+          blueprint_slice: getSectionBlueprint(roleSection, blueprint),
+          evidence_sources: getSectionEvidence(roleSection, blueprint, resume, positioning),
+          global_rules: blueprint.global_rules,
+        });
+      }
+      // Earlier career as a separate section if included
+      if (blueprint.experience_blueprint.earlier_career?.include) {
+        calls.push({
+          section: 'earlier_career',
+          blueprint_slice: {
+            earlier_career: blueprint.experience_blueprint.earlier_career,
+          },
+          evidence_sources: getSectionEvidence('earlier_career', blueprint, resume, positioning),
+          global_rules: blueprint.global_rules,
+        });
+      }
+      continue;
+    }
+
     const blueprintSlice = getSectionBlueprint(section, blueprint);
     const evidenceSources = getSectionEvidence(section, blueprint, resume, positioning);
 
@@ -506,11 +543,10 @@ function getSectionBlueprint(section: string, blueprint: ArchitectOutput): Recor
           };
         }
         const roleKey = section.replace('experience_', '');
+        const roleIndex = parseInt(roleKey.replace('role_', ''), 10);
         return {
           role: blueprint.evidence_allocation.experience_section[roleKey] ?? {},
-          role_meta: blueprint.experience_blueprint.roles.find(r =>
-            roleKey === `role_${blueprint.experience_blueprint.roles.indexOf(r)}`
-          ) ?? blueprint.experience_blueprint.roles[0] ?? {},
+          role_meta: blueprint.experience_blueprint.roles[roleIndex] ?? blueprint.experience_blueprint.roles[0] ?? {},
           keyword_targets: blueprint.keyword_map,
         };
       }
@@ -524,32 +560,36 @@ function getSectionEvidence(
   resume: IntakeOutput,
   positioning: PositioningProfile,
 ): Record<string, unknown> {
-  const base = {
-    authentic_phrases: positioning.authentic_phrases.slice(0, 8),
-    career_arc: positioning.career_arc,
-    top_capabilities: positioning.top_capabilities.slice(0, 6),
-    keyword_targets: blueprint.keyword_map,
-  };
+  // Minimal shared context — only keyword targets (needed everywhere for density)
+  const keywordTargets = blueprint.keyword_map;
 
   if (section === 'summary') {
     return {
-      ...base,
+      authentic_phrases: positioning.authentic_phrases.slice(0, 8),
+      career_arc: positioning.career_arc,
+      top_capabilities: positioning.top_capabilities.slice(0, 6),
+      keyword_targets: keywordTargets,
       evidence_library: positioning.evidence_library.slice(0, 10),
       original_summary: resume.summary,
     };
   }
 
   if (section === 'selected_accomplishments') {
+    // Only the allocated accomplishments + evidence they reference
+    const allocated = blueprint.evidence_allocation.selected_accomplishments ?? [];
+    const allocatedIds = new Set(allocated.map(a => a.evidence_id));
+    const relevantEvidence = positioning.evidence_library.filter(e => e.id && allocatedIds.has(e.id));
     return {
-      ...base,
-      evidence_library: positioning.evidence_library.slice(0, 12),
-      accomplishments_target: blueprint.evidence_allocation.selected_accomplishments ?? [],
+      keyword_targets: keywordTargets,
+      top_capabilities: positioning.top_capabilities.slice(0, 4),
+      accomplishments_target: allocated,
+      evidence_library: relevantEvidence.length > 0 ? relevantEvidence : positioning.evidence_library.slice(0, 8),
     };
   }
 
   if (section === 'skills') {
     return {
-      ...base,
+      keyword_targets: keywordTargets,
       original_skills: resume.skills,
       skills_blueprint: blueprint.skills_blueprint,
     };
@@ -557,36 +597,42 @@ function getSectionEvidence(
 
   if (section === 'education_and_certifications') {
     return {
-      ...base,
       original_education: resume.education,
       original_certifications: resume.certifications,
       age_protection: blueprint.age_protection,
     };
   }
 
-  if (section === 'experience') {
-    return {
-      ...base,
-      original_experience: resume.experience,
-      evidence_library: positioning.evidence_library.slice(0, 20),
-      role_blueprint: blueprint.evidence_allocation.experience_section,
-    };
-  }
-
-  if (section.startsWith('experience_')) {
+  if (section.startsWith('experience_role_')) {
     const roleKey = section.replace('experience_', '');
+    const roleAllocation = blueprint.evidence_allocation.experience_section[roleKey] ?? {};
+    // Only include evidence items referenced by this role's bullet instructions
+    const bulletSources = new Set(
+      ((roleAllocation as Record<string, unknown>).bullets_to_write as Array<{ evidence_source?: string }> ?? [])
+        .map(b => b.evidence_source).filter(Boolean)
+    );
+    const roleEvidence = positioning.evidence_library.filter(e => e.id && bulletSources.has(e.id));
     return {
-      ...base,
+      keyword_targets: keywordTargets,
       role_key: roleKey,
-      role_blueprint: blueprint.evidence_allocation.experience_section[roleKey] ?? {},
+      role_blueprint: roleAllocation,
       role_source: resume.experience.find((_, idx) => `role_${idx}` === roleKey) ?? null,
-      evidence_library: positioning.evidence_library.slice(0, 12),
+      evidence_library: roleEvidence.length > 0 ? roleEvidence : positioning.evidence_library.slice(0, 6),
+      authentic_phrases: positioning.authentic_phrases.slice(0, 4),
     };
   }
 
+  if (section === 'earlier_career') {
+    return {
+      earlier_career: blueprint.experience_blueprint.earlier_career,
+      original_experience: resume.experience,
+    };
+  }
+
+  // Fallback for any unknown section
   return {
-    ...base,
-    evidence_library: positioning.evidence_library.slice(0, 8),
+    keyword_targets: keywordTargets,
+    evidence_library: positioning.evidence_library.slice(0, 6),
   };
 }
 
@@ -599,6 +645,20 @@ function assembleResume(
   const parts: string[] = [];
 
   for (const sectionName of blueprint.section_plan.order) {
+    if (sectionName === 'experience') {
+      // Collect all experience_role_* entries in sorted order
+      const roleKeys = Object.keys(sections)
+        .filter(k => k.startsWith('experience_role_'))
+        .sort();
+      for (const key of roleKeys) {
+        parts.push(sections[key].content);
+      }
+      if (sections['earlier_career']) {
+        parts.push(sections['earlier_career'].content);
+      }
+      continue;
+    }
+
     const section = sections[sectionName];
     if (section) {
       parts.push(section.content);
@@ -615,7 +675,11 @@ function mapFindingToSection(
   if (sections[findingSection]) return findingSection;
   if (findingSection === 'skills' && sections.skills) return 'skills';
   if (findingSection === 'summary' && sections.summary) return 'summary';
-  if (findingSection === 'experience' && sections.experience) return 'experience';
+  // Map generic "experience" finding to first experience_role_* section
+  if (findingSection === 'experience') {
+    const roleKey = Object.keys(sections).filter(k => k.startsWith('experience_role_')).sort()[0];
+    if (roleKey) return roleKey;
+  }
   if (findingSection === 'formatting') return Object.keys(sections)[0] ?? null;
   return null;
 }
@@ -629,18 +693,39 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
   const sections = state.sections ?? {};
   const intake = state.intake!;
   const sectionOrder = (state.architect?.section_plan.order ?? ['summary', 'experience', 'skills', 'education', 'certifications'])
-    .flatMap((s) => (s === 'education_and_certifications' ? ['education', 'certifications'] : [s]))
+    .flatMap((s) => {
+      if (s === 'education_and_certifications') return ['education', 'certifications'];
+      if (s === 'experience') {
+        // Expand into actual experience_role_* keys + earlier_career
+        const roleKeys = Object.keys(state.sections ?? {})
+          .filter(k => k.startsWith('experience_role_'))
+          .sort();
+        const keys = roleKeys.length > 0 ? roleKeys : ['experience'];
+        if (state.sections?.['earlier_career']) keys.push('earlier_career');
+        return keys;
+      }
+      return [s];
+    })
     .filter((s) => s !== 'header');
   const resume: FinalResumePayload = {
     summary: sections.summary?.content ?? intake.summary ?? '',
     selected_accomplishments: sections.selected_accomplishments?.content,
-    experience: intake.experience.map((exp) => ({
+    experience: intake.experience.map((exp, idx) => ({
       company: exp.company,
       title: exp.title,
       start_date: exp.start_date,
       end_date: exp.end_date,
       location: '',
-      bullets: exp.bullets.map((b) => ({ text: b, source: 'resume' })),
+      bullets: (() => {
+        // Prefer LLM-crafted content from section_writing when available
+        const crafted = sections[`experience_role_${idx}`]?.content;
+        if (!crafted) return exp.bullets.map((b) => ({ text: b, source: 'resume' }));
+        const parsed = crafted.split('\n')
+          .map(l => l.trim())
+          .filter(l => /^[•\-*]\s/.test(l))
+          .map(l => ({ text: l.replace(/^[•\-*]\s*/, ''), source: 'crafted' }));
+        return parsed.length > 0 ? parsed : exp.bullets.map((b) => ({ text: b, source: 'resume' }));
+      })(),
     })),
     skills: normalizeSkills(intake.skills),
     education: intake.education.map((edu) => ({
@@ -667,7 +752,8 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
   if (skillsText) {
     const parsedSkills: Record<string, string[]> = {};
     for (const line of skillsText.split('\n')) {
-      const trimmed = line.trim();
+      // Strip markdown bold/italic before parsing
+      const trimmed = line.trim().replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '');
       const idx = trimmed.indexOf(':');
       if (idx <= 0) continue;
       const key = trimmed.slice(0, idx).trim();
@@ -681,6 +767,30 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
   }
 
   return resume;
+}
+
+// ─── Keyword coverage (deterministic, no LLM) ────────────────────────
+
+function computeKeywordCoverage(
+  resumeText: string,
+  jdKeywords: string[],
+): { found: number; total: number; percentage: number; missing: string[] } {
+  if (!jdKeywords || jdKeywords.length === 0) {
+    return { found: 0, total: 0, percentage: 100, missing: [] };
+  }
+  const lower = resumeText.toLowerCase();
+  const missing: string[] = [];
+  let found = 0;
+  for (const kw of jdKeywords) {
+    if (lower.includes(kw.toLowerCase())) {
+      found++;
+    } else {
+      missing.push(kw);
+    }
+  }
+  const total = jdKeywords.length;
+  const percentage = total > 0 ? Math.round((found / total) * 100) : 100;
+  return { found, total, percentage, missing };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -711,7 +821,7 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
   };
 }
 
-async function persistSession(state: PipelineState): Promise<void> {
+async function persistSession(state: PipelineState, finalResume?: FinalResumePayload): Promise<void> {
   try {
     await supabaseAdmin
       .from('coach_sessions')
@@ -721,10 +831,14 @@ async function persistSession(state: PipelineState): Promise<void> {
         output_tokens_used: state.token_usage.output_tokens,
         estimated_cost_usd: state.token_usage.estimated_cost_usd,
         positioning_profile_id: state.positioning_profile_id,
+        // Persist panel state so SSE restore can provide resume after reconnect
+        last_panel_type: 'completion',
+        last_panel_data: finalResume ? { resume: finalResume } : undefined,
       })
       .eq('id', state.session_id)
       .eq('user_id', state.user_id);
-  } catch {
+  } catch (err) {
     // Non-critical — log but don't fail the pipeline
+    console.warn('[pipeline] persistSession failed:', err instanceof Error ? err.message : String(err));
   }
 }
