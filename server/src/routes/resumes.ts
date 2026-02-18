@@ -53,6 +53,25 @@ resumes.get('/:id', async (c) => {
   return c.json({ resume: data });
 });
 
+// DELETE /resumes/:id — Delete a master resume
+resumes.delete('/:id', async (c) => {
+  const user = c.get('user');
+  const resumeId = c.req.param('id');
+
+  const { error } = await supabaseAdmin
+    .from('master_resumes')
+    .delete()
+    .eq('id', resumeId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    logger.error({ resumeId, error: error.message }, 'Failed to delete resume');
+    return c.json({ error: 'Failed to delete resume' }, 500);
+  }
+
+  return c.json({ status: 'deleted', resume_id: resumeId });
+});
+
 // POST /resumes — Upload/create a master resume (raw text)
 resumes.post('/', async (c) => {
   const user = c.get('user');

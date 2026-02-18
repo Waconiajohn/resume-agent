@@ -24,6 +24,7 @@ export default function App() {
     listSessions,
     createSession,
     loadSession,
+    deleteSession,
     sendMessage,
     setCurrentSession,
     startPipeline,
@@ -86,6 +87,16 @@ export default function App() {
     [loadSession],
   );
 
+  const handleDeleteSession = useCallback(
+    async (sessionId: string) => {
+      const ok = await deleteSession(sessionId);
+      if (ok && currentSession?.id === sessionId) {
+        setView('landing');
+      }
+    },
+    [deleteSession, currentSession],
+  );
+
   const handleSendMessage = useCallback(
     async (content: string) => {
       if (!currentSession) return;
@@ -145,6 +156,7 @@ export default function App() {
           loading={sessionLoading}
           onNewSession={handleNewSession}
           onResumeSession={handleResumeSession}
+          onDeleteSession={handleDeleteSession}
           onLoadSessions={listSessions}
         />
       )}

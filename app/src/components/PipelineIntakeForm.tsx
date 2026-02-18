@@ -4,6 +4,7 @@ import { GlassCard } from './GlassCard';
 import { GlassInput } from './GlassInput';
 import { GlassTextarea } from './GlassInput';
 import { GlassButton } from './GlassButton';
+import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 
 interface PipelineIntakeFormProps {
   onSubmit: (data: { resumeText: string; jobDescription: string; companyName: string }) => void;
@@ -16,6 +17,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false }: Pipeli
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isValid = resumeText.trim().length > 0 && jobDescription.trim().length > 0 && companyName.trim().length > 0;
@@ -29,25 +31,23 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false }: Pipeli
     if (!file) return;
 
     setFileError(null);
-
-    if (!file.name.endsWith('.txt')) {
-      setFileError('Only .txt files are supported for upload. PDF/DOCX support coming soon.');
-      e.target.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result;
-      if (typeof text === 'string') {
-        setResumeText(text);
+    setFileLoading(true);
+    void (async () => {
+      try {
+        const extracted = await extractResumeTextFromUpload(file);
+        if (!extracted) {
+          setFileError('No readable text found in this file. Try another file or paste text directly.');
+          return;
+        }
+        setResumeText(extracted);
+      } catch (err) {
+        setFileError(err instanceof Error ? err.message : 'Failed to read file. Please paste your resume text instead.');
+      } finally {
+        setFileLoading(false);
+        e.target.value = '';
       }
-    };
-    reader.onerror = () => {
-      setFileError('Failed to read file. Please paste your resume text instead.');
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+    })();
+
   }, []);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
@@ -108,18 +108,18 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false }: Pipeli
                 <button
                   type="button"
                   onClick={handleFileClick}
-                  disabled={loading}
+                  disabled={loading || fileLoading}
                   id="file-upload-hint"
                   className="inline-flex items-center gap-1 text-xs text-blue-400/80 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:underline"
-                  aria-label="Upload a .txt file to populate resume text"
+                  aria-label="Upload a resume file (.txt, .docx, .pdf)"
                 >
-                  <Upload className="h-3 w-3" />
-                  or upload a .txt file
+                  {fileLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                  {fileLoading ? 'reading file...' : 'or upload .txt, .docx, or .pdf'}
                 </button>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".txt"
+                  accept=".txt,.docx,.pdf,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain"
                   className="hidden"
                   onChange={handleFileChange}
                   aria-hidden="true"
@@ -142,11 +142,14 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false }: Pipeli
                 id="job-description"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the job description here..."
+                placeholder="Paste the job description text or a job posting URL..."
                 rows={8}
                 disabled={loading}
                 aria-required="true"
               />
+              <p className="text-xs text-white/50">
+                You can paste full JD text or a job link (URL).
+              </p>
             </div>
 
             {/* Company Name field */}
@@ -168,7 +171,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false }: Pipeli
             {/* Submit button */}
             <GlassButton
               type="submit"
-              disabled={!isValid || loading}
+              disabled={!isValid || loading || fileLoading}
               className="w-full py-3 text-base"
               aria-busy={loading}
             >

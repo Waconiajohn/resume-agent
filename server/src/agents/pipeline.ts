@@ -933,20 +933,73 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
   };
 }
 
+function buildRawTextFromFinalResume(finalResume: FinalResumePayload): string {
+  const rawSections = finalResume._raw_sections ?? {};
+  const order = finalResume.section_order ?? Object.keys(rawSections);
+  const fromRaw = order.map((s) => rawSections[s]).filter((s): s is string => !!s && s.trim().length > 0);
+  if (fromRaw.length > 0) return fromRaw.join('\n\n').trim();
+
+  const lines: string[] = [];
+  if (finalResume.summary?.trim()) lines.push(finalResume.summary.trim(), '');
+  for (const role of finalResume.experience ?? []) {
+    lines.push(`${role.title} | ${role.company}`);
+    lines.push(`${role.start_date} - ${role.end_date}${role.location ? ` | ${role.location}` : ''}`);
+    for (const bullet of role.bullets ?? []) {
+      if (bullet.text?.trim()) lines.push(`- ${bullet.text.trim()}`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+async function persistMasterResumeSnapshot(userId: string, finalResume: FinalResumePayload): Promise<string | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('master_resumes')
+      .insert({
+        user_id: userId,
+        raw_text: buildRawTextFromFinalResume(finalResume),
+        summary: finalResume.summary ?? '',
+        experience: finalResume.experience ?? [],
+        skills: finalResume.skills ?? {},
+        education: finalResume.education ?? [],
+        certifications: finalResume.certifications ?? [],
+        version: 1,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.warn('[pipeline] persistMasterResumeSnapshot failed:', error.message);
+      return null;
+    }
+    return data?.id ?? null;
+  } catch (err) {
+    console.warn('[pipeline] persistMasterResumeSnapshot failed:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 async function persistSession(state: PipelineState, finalResume?: FinalResumePayload): Promise<void> {
   try {
+    const masterResumeId = finalResume ? await persistMasterResumeSnapshot(state.user_id, finalResume) : null;
+    const updatePayload: Record<string, unknown> = {
+      status: 'completed',
+      input_tokens_used: state.token_usage.input_tokens,
+      output_tokens_used: state.token_usage.output_tokens,
+      estimated_cost_usd: state.token_usage.estimated_cost_usd,
+      positioning_profile_id: state.positioning_profile_id,
+      // Persist panel state so SSE restore can provide resume after reconnect
+      last_panel_type: 'completion',
+      last_panel_data: finalResume ? { resume: finalResume } : undefined,
+    };
+    if (masterResumeId) {
+      updatePayload.master_resume_id = masterResumeId;
+    }
+
     await supabaseAdmin
       .from('coach_sessions')
-      .update({
-        status: 'completed',
-        input_tokens_used: state.token_usage.input_tokens,
-        output_tokens_used: state.token_usage.output_tokens,
-        estimated_cost_usd: state.token_usage.estimated_cost_usd,
-        positioning_profile_id: state.positioning_profile_id,
-        // Persist panel state so SSE restore can provide resume after reconnect
-        last_panel_type: 'completion',
-        last_panel_data: finalResume ? { resume: finalResume } : undefined,
-      })
+      .update(updatePayload)
       .eq('id', state.session_id)
       .eq('user_id', state.user_id);
   } catch (err) {

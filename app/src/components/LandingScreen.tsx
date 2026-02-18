@@ -10,6 +10,7 @@ interface LandingScreenProps {
   loading: boolean;
   onNewSession: () => void;
   onResumeSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => void;
   onLoadSessions: () => void;
 }
 
@@ -18,6 +19,7 @@ export function LandingScreen({
   loading,
   onNewSession,
   onResumeSession,
+  onDeleteSession,
   onLoadSessions,
 }: LandingScreenProps) {
   useEffect(() => {
@@ -56,6 +58,11 @@ export function LandingScreen({
                   key={session.id}
                   session={session}
                   onClick={() => onResumeSession(session.id)}
+                  onDelete={() => {
+                    if (window.confirm('Delete this session? This cannot be undone.')) {
+                      onDeleteSession(session.id);
+                    }
+                  }}
                 />
               ))}
             </div>

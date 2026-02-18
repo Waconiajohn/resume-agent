@@ -273,6 +273,42 @@ sessions.get('/:id', async (c) => {
   return c.json({ session: data });
 });
 
+// DELETE /sessions/:id — Delete a session
+sessions.delete('/:id', async (c) => {
+  const user = c.get('user');
+  const sessionId = c.req.param('id');
+
+  const { data: existing, error: loadError } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('pipeline_status')
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+    .single();
+  if (loadError || !existing) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+  if (existing.pipeline_status === 'running') {
+    return c.json({ error: 'Cannot delete a session while its pipeline is running' }, 409);
+  }
+
+  const { error } = await supabaseAdmin
+    .from('coach_sessions')
+    .delete()
+    .eq('id', sessionId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    logger.error({ sessionId, error: error.message }, 'Failed to delete session');
+    return c.json({ error: 'Failed to delete session' }, 500);
+  }
+
+  // Best-effort in-memory cleanup
+  sseConnections.delete(sessionId);
+  processingSessions.delete(sessionId);
+
+  return c.json({ status: 'deleted', session_id: sessionId });
+});
+
 // Track in-flight processing per session to prevent concurrent submissions
 const processingSessions = new Set<string>();
 

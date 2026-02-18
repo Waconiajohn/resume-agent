@@ -11,7 +11,7 @@ import logger, { createSessionLogger } from '../lib/logger.js';
 const startSchema = z.object({
   session_id: z.string().uuid(),
   raw_resume_text: z.string().min(50).max(100_000),
-  job_description: z.string().min(20).max(50_000),
+  job_description: z.string().min(1).max(50_000),
   company_name: z.string().min(1).max(200),
 });
 
@@ -64,6 +64,92 @@ const bufferedResponses = new Map<string, { gate: string; response: unknown }>()
 // Track running pipelines to prevent double-start
 const runningPipelines = new Set<string>();
 
+const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
+
+function isPrivateHost(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase();
+  if (!host) return true;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local')) return true;
+  if (/^10\.\d+\.\d+\.\d+$/.test(host)) return true;
+  if (/^192\.168\.\d+\.\d+$/.test(host)) return true;
+  const m = host.match(/^172\.(\d+)\.\d+\.\d+$/);
+  if (m) {
+    const second = Number(m[1]);
+    if (second >= 16 && second <= 31) return true;
+  }
+  return false;
+}
+
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+}
+
+function extractVisibleTextFromHtml(html: string): string {
+  const noScripts = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ');
+  const withLineBreaks = noScripts.replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6|br|tr|td)>/gi, '\n');
+  const withoutTags = withLineBreaks.replace(/<[^>]+>/g, ' ');
+  return decodeHtmlEntities(withoutTags).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+async function resolveJobDescriptionInput(input: string): Promise<string> {
+  const trimmed = input.trim();
+  if (!JOB_URL_PATTERN.test(trimmed)) return trimmed;
+
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error('Invalid job URL. Please paste full job description text or a valid URL.');
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('Only http/https job URLs are supported.');
+  }
+  if (isPrivateHost(url.hostname)) {
+    throw new Error('This URL host is not allowed. Please paste the job description text directly.');
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Resume-Agent/1.0 (+job-description-fetch)',
+        Accept: 'text/html, text/plain;q=0.9, */*;q=0.1',
+      },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch job URL (${res.status}). Please paste JD text instead.`);
+    }
+    const contentType = res.headers.get('content-type')?.toLowerCase() ?? '';
+    const body = await res.text();
+    const text = contentType.includes('text/plain') ? body.trim() : extractVisibleTextFromHtml(body);
+    if (text.length < 200) {
+      throw new Error('Could not extract enough job description text from the URL. Please paste JD text directly.');
+    }
+    return text.slice(0, 50_000);
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Fetching job URL timed out. Please paste the job description text directly.');
+    }
+    throw err instanceof Error ? err : new Error('Unable to fetch job URL. Please paste JD text directly.');
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // POST /pipeline/start
 // Body: { session_id, raw_resume_text, job_description, company_name }
 pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
@@ -74,6 +160,12 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
   const { session_id, raw_resume_text, job_description, company_name } = parsed.data;
+  let resolvedJobDescription = job_description.trim();
+  try {
+    resolvedJobDescription = await resolveJobDescriptionInput(job_description);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Invalid job description input' }, 400);
+  }
 
   // Verify session belongs to user
   const { data: session, error } = await supabaseAdmin
@@ -163,7 +255,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     session_id,
     user_id: user.id,
     raw_resume_text,
-    job_description,
+    job_description: resolvedJobDescription,
     company_name,
     emit,
     waitForUser,

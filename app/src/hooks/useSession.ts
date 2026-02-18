@@ -86,6 +86,28 @@ export function useSession(accessToken: string | null) {
     }
   }, [accessToken, headers]);
 
+  const deleteSession = useCallback(async (sessionId: string): Promise<boolean> => {
+    if (!accessToken) return false;
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: headers(),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to delete session (${res.status})`);
+        return false;
+      }
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setCurrentSession((prev) => (prev?.id === sessionId ? null : prev));
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error deleting session');
+      return false;
+    }
+  }, [accessToken, headers]);
+
   const sendMessage = useCallback(async (sessionId: string, content: string): Promise<boolean> => {
     if (!accessToken) return false;
     setError(null);
@@ -179,6 +201,7 @@ export function useSession(accessToken: string | null) {
     listSessions,
     createSession,
     loadSession,
+    deleteSession,
     sendMessage,
     setCurrentSession,
     startPipeline,

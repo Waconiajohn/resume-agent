@@ -1,4 +1,4 @@
-import { Clock, ArrowRight } from 'lucide-react';
+import { Clock, ArrowRight, Trash2 } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { PHASE_LABELS } from '@/constants/phases';
 import type { CoachSession } from '@/types/session';
@@ -6,9 +6,10 @@ import type { CoachSession } from '@/types/session';
 interface SessionCardProps {
   session: CoachSession;
   onClick: () => void;
+  onDelete?: () => void;
 }
 
-export function SessionCard({ session, onClick }: SessionCardProps) {
+export function SessionCard({ session, onClick, onDelete }: SessionCardProps) {
   const timeAgo = getTimeAgo(session.updated_at);
 
   return (
@@ -23,7 +24,22 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
             {timeAgo}
           </div>
         </div>
-        <ArrowRight className="h-4 w-4 text-white/30" />
+        <div className="flex items-center gap-2">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+              aria-label="Delete session"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+          <ArrowRight className="h-4 w-4 text-white/30" />
+        </div>
       </div>
     </GlassCard>
   );
