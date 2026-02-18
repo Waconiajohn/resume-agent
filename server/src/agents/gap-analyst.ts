@@ -14,11 +14,23 @@
 
 import { llm, MODEL_MID } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
+import logger from '../lib/logger.js';
 import type {
   GapAnalystInput,
   GapAnalystOutput,
   RequirementMapping,
 } from './types.js';
+
+/**
+ * Normalize classification values from LLM output.
+ * Z.AI models may return "Strong", "Strong Match", "strong_match", etc.
+ */
+function normalizeClassification(raw: unknown): 'strong' | 'partial' | 'gap' {
+  const s = String(raw ?? '').toLowerCase().trim();
+  if (s === 'strong' || s.includes('strong') || s.includes('exceptional') || s.includes('excellent') || s.includes('direct')) return 'strong';
+  if (s === 'partial' || s.includes('partial') || s.includes('moderate') || s.includes('related') || s.includes('meet') || s.includes('indirect') || s.includes('strengthen')) return 'partial';
+  return 'gap';
+}
 
 export async function runGapAnalyst(input: GapAnalystInput): Promise<GapAnalystOutput> {
   const { parsed_resume, positioning, jd_analysis, benchmark } = input;
@@ -105,10 +117,10 @@ Return ONLY valid JSON:
   if (parsed?.requirements && Array.isArray(parsed.requirements)) {
     requirements = (parsed.requirements as Record<string, unknown>[]).map(r => ({
       requirement: String(r.requirement ?? ''),
-      classification: (String(r.classification).toLowerCase() as RequirementMapping['classification']) ?? 'gap',
+      classification: normalizeClassification(r.classification ?? r.status ?? r.match),
       evidence: Array.isArray(r.evidence)
         ? (r.evidence as string[])
-        : [String(r.evidence ?? '')],
+        : r.evidence ? [String(r.evidence)] : [],
       resume_location: r.resume_location ? String(r.resume_location) : undefined,
       positioning_source: r.positioning_source ? String(r.positioning_source) : undefined,
       strengthen: r.strengthen ? String(r.strengthen) : undefined,
@@ -116,8 +128,17 @@ Return ONLY valid JSON:
       unaddressable: Boolean(r.unaddressable),
     }));
     strength_summary = String(parsed.strength_summary ?? '');
+
+    const strong = requirements.filter(r => r.classification === 'strong').length;
+    const partial = requirements.filter(r => r.classification === 'partial').length;
+    const gap = requirements.filter(r => r.classification === 'gap').length;
+    logger.info({ strong, partial, gap, total: requirements.length }, 'Gap analysis classification counts');
   } else {
     // Fallback: mark all as gap
+    logger.warn(
+      { rawSnippet: response.text.substring(0, 500), parsedKeys: parsed ? Object.keys(parsed) : null },
+      'Gap analysis JSON parse failed — falling back to all-gap',
+    );
     requirements = allRequirements.map(r => ({
       requirement: r.text,
       classification: 'gap' as const,

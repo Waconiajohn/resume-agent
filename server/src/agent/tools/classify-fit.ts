@@ -1,7 +1,19 @@
 import { llm, MODEL_MID } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
+import logger from '../../lib/logger.js';
 import type { SessionContext, FitClassification, RequirementFit } from '../context.js';
 import type { SSEEmitter } from '../loop.js';
+
+/**
+ * Normalize classification values from LLM output.
+ * Z.AI models may return "Strong", "Strong Match", "strong_match", etc.
+ */
+function normalizeClassification(raw: unknown): 'strong' | 'partial' | 'gap' {
+  const s = String(raw ?? '').toLowerCase().trim();
+  if (s === 'strong' || s.includes('strong') || s.includes('exceptional') || s.includes('excellent') || s.includes('direct')) return 'strong';
+  if (s === 'partial' || s.includes('partial') || s.includes('moderate') || s.includes('related') || s.includes('meet') || s.includes('indirect') || s.includes('strengthen')) return 'partial';
+  return 'gap';
+}
 
 export async function executeClassifyFit(
   input: Record<string, unknown>,
@@ -67,12 +79,21 @@ Return ONLY valid JSON:
   if (parsed?.requirements) {
     reqs = parsed.requirements.map((r) => ({
       requirement: r.requirement,
-      classification: r.classification as 'strong' | 'partial' | 'gap',
+      classification: normalizeClassification(r.classification ?? r.status ?? r.match),
       importance: (r.importance as 'critical' | 'important' | 'nice_to_have') || undefined,
       evidence: r.evidence,
       strategy: r.strategy,
     }));
+
+    const strong = reqs.filter(r => r.classification === 'strong').length;
+    const partial = reqs.filter(r => r.classification === 'partial').length;
+    const gap = reqs.filter(r => r.classification === 'gap').length;
+    logger.info({ strong, partial, gap, total: reqs.length }, 'Classify-fit classification counts');
   } else {
+    logger.warn(
+      { rawSnippet: text.substring(0, 500), parsedKeys: parsed ? Object.keys(parsed) : null },
+      'Classify-fit JSON parse failed — falling back to all-gap',
+    );
     reqs = requirements.map((r) => ({
       requirement: r,
       classification: 'gap' as const,
