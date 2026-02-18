@@ -31,19 +31,42 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
   },
   selected_accomplishments: (resume) => {
     if (!resume.selected_accomplishments) return [];
-    return ['SELECTED ACCOMPLISHMENTS', resume.selected_accomplishments, ''];
+    // Strip leading heading if the LLM baked it into the content
+    const content = resume.selected_accomplishments.replace(/^\s*SELECTED ACCOMPLISHMENTS\s*/i, '').trim();
+    return ['SELECTED ACCOMPLISHMENTS', content, ''];
   },
   experience: (resume) => {
+    // Prefer raw section text from experience_role_* keys (more reliable than parsed structured data)
+    const rawSections = resume._raw_sections ?? {};
+    const roleKeys = Object.keys(rawSections)
+      .filter(k => k.startsWith('experience_role_'))
+      .sort();
+    if (roleKeys.length > 0) {
+      const lines = ['PROFESSIONAL EXPERIENCE'];
+      for (const key of roleKeys) {
+        const text = rawSections[key];
+        if (!text?.trim()) continue;
+        // Strip duplicate heading if LLM included one, then add the role text
+        const cleaned = text.replace(/^\s*PROFESSIONAL EXPERIENCE\s*\n?/i, '').trim();
+        lines.push(cleaned, '');
+      }
+      const earlier = rawSections.earlier_career;
+      if (earlier?.trim()) {
+        lines.push(earlier.trim(), '');
+      }
+      return lines;
+    }
+
     if (!Array.isArray(resume.experience) || resume.experience.length === 0) {
       if (typeof resume.experience === 'string') {
         return ['EXPERIENCE', extractProposedContent(resume.experience), ''];
       }
       return [];
     }
-    const lines = ['EXPERIENCE'];
+    const lines = ['PROFESSIONAL EXPERIENCE'];
     for (const exp of resume.experience) {
       lines.push(`${exp.title} | ${exp.company}`);
-      lines.push(`${exp.start_date} – ${exp.end_date} | ${exp.location}`);
+      lines.push(`${exp.start_date} – ${exp.end_date}${exp.location ? ` | ${exp.location}` : ''}`);
       for (const bullet of exp.bullets ?? []) {
         lines.push(`  • ${bullet.text}`);
       }
@@ -52,15 +75,21 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
     return lines;
   },
   skills: (resume) => {
+    // Prefer raw section text if categories are richer there
+    const rawSkills = resume._raw_sections?.skills;
+    if (rawSkills?.trim()) {
+      const cleaned = rawSkills.replace(/^\s*(?:SKILLS|CORE COMPETENCIES)\s*\n?/i, '').trim();
+      if (cleaned) return ['CORE COMPETENCIES', cleaned, ''];
+    }
     if (typeof resume.skills === 'object' && !Array.isArray(resume.skills) && Object.keys(resume.skills).length > 0) {
-      const lines = ['SKILLS'];
+      const lines = ['CORE COMPETENCIES'];
       for (const [category, items] of Object.entries(resume.skills)) {
         lines.push(`${category}: ${Array.isArray(items) ? items.join(', ') : String(items)}`);
       }
       lines.push('');
       return lines;
     }
-    if (typeof resume.skills === 'string') return ['SKILLS', resume.skills, ''];
+    if (typeof resume.skills === 'string') return ['CORE COMPETENCIES', resume.skills, ''];
     return [];
   },
   education: (resume) => {
@@ -138,7 +167,17 @@ export function resumeToText(resume: FinalResume): string {
   const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
   const rendered = new Set<string>();
 
+  let experienceRendered = false;
   for (const sectionName of order) {
+    // Map experience_role_* and earlier_career to the single experience renderer
+    if (sectionName.startsWith('experience_role_') || sectionName === 'earlier_career') {
+      if (!experienceRendered) {
+        lines.push(...textSectionRenderers.experience(resume));
+        rendered.add('experience');
+        experienceRendered = true;
+      }
+      continue;
+    }
     const renderer = textSectionRenderers[sectionName];
     if (renderer) {
       lines.push(...renderer(resume));

@@ -725,25 +725,48 @@ function parseExperienceRoleForStructuredPayload(
     };
   }
 
-  const lines = crafted.split('\n').map((l) => l.trim()).filter(Boolean);
+  // Strip markdown bold/italic from LLM output
+  const stripMd = (s: string) => s.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '');
+  const lines = crafted.split('\n').map((l) => stripMd(l.trim())).filter(Boolean);
+
+  // Separate bullet lines from header/body lines
+  const bulletLines = lines.filter((l) => /^[•\-*]\s/.test(l));
   const nonBullets = lines.filter((l) => !/^[•\-*]\s/.test(l));
-  const titleLine = nonBullets[0] ?? fallback.title;
-  const companyLine = nonBullets[1] ?? '';
+
+  // Skip ALL CAPS heading lines (e.g. "PROFESSIONAL EXPERIENCE")
+  const headerLines = nonBullets.filter((l) => !/^[A-Z][A-Z &/]+$/.test(l) || l.length <= 2);
 
   let startDate = fallback.start_date;
   let endDate = fallback.end_date;
   let location = '';
 
-  const titleDate = titleLine.match(/\b(\d{4})\s*[–-]\s*(\d{4}|Present|Current)\b/i);
-  if (titleDate) {
+  // Find the date line — could be standalone (e.g. "2020 – Present") or embedded
+  const dateLine = headerLines.find((l) => /^\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current)$/i.test(l));
+  if (dateLine) {
+    const dateMatch = dateLine.match(/^(\d{4})\s*[–\-]\s*(\d{4}|Present|Current)$/i);
+    if (dateMatch) {
+      startDate = dateMatch[1];
+      endDate = dateMatch[2];
+    }
+  }
+
+  // Header lines excluding standalone date lines
+  const contentHeaders = headerLines.filter((l) => !/^\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current)$/i.test(l));
+  const titleLine = contentHeaders[0] ?? fallback.title;
+  const companyLine = contentHeaders[1] ?? '';
+
+  // Extract date from title line if embedded (e.g. "VP Engineering | Company | 2020 – Present")
+  const titleDate = titleLine.match(/\b(\d{4})\s*[–\-]\s*(\d{4}|Present|Current)\b/i);
+  if (titleDate && startDate === fallback.start_date) {
     startDate = titleDate[1];
     endDate = titleDate[2];
   }
 
+  // Parse company line for location and trailing dates
   if (companyLine) {
     const companyParts = companyLine.split('|').map((p) => p.trim()).filter(Boolean);
     if (companyParts.length > 0) {
-      const trailingDate = companyParts[companyParts.length - 1].match(/^(\d{4})\s*[–-]\s*(\d{4}|Present|Current)$/i);
+      const trailingDate = companyParts[companyParts.length - 1].match(/^(\d{4})\s*[–\-]\s*(\d{4}|Present|Current)$/i);
       if (trailingDate) {
         startDate = trailingDate[1];
         endDate = trailingDate[2];
@@ -758,11 +781,22 @@ function parseExperienceRoleForStructuredPayload(
   const companyParsed = companyLine
     ? companyLine.split('|').map((p) => p.trim()).filter(Boolean)[0] ?? fallback.company
     : fallback.company;
-  const titleParsed = titleLine.replace(/\b\d{4}\s*[–-]\s*(?:\d{4}|Present|Current)\b/i, '').trim() || fallback.title;
+  const titleParsed = titleLine
+    .replace(/\b\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current)\b/i, '')
+    .replace(/\|/g, '')
+    .trim() || fallback.title;
 
-  const parsedBullets = lines
-    .filter((l) => /^[•\-*]\s/.test(l))
+  // Parse bullets — LLM may use bullet markers or plain paragraph text
+  let parsedBullets = bulletLines
     .map((l) => ({ text: l.replace(/^[•\-*]\s*/, ''), source: 'crafted' }));
+
+  // If no bullet-marked lines, treat remaining content headers (after title/company/date) as bullets
+  if (parsedBullets.length === 0) {
+    const bodyLines = contentHeaders.slice(2).filter((l) => l.length > 20); // skip short lines
+    if (bodyLines.length > 0) {
+      parsedBullets = bodyLines.map((l) => ({ text: l, source: 'crafted' }));
+    }
+  }
 
   return {
     title: titleParsed,
