@@ -30,10 +30,10 @@ async function acquireLock(sessionId: string): Promise<boolean> {
   // 23505 = unique_violation — lock is held by another instance
   if (error.code === '23505') return false;
 
-  // For any other error (table missing, network issue, etc.), fail closed
-  // to prevent concurrent access during DB outages.
+  // For any other error (table missing, network issue, etc.), bubble up so
+  // callers can fail fast instead of treating outages as "lock is busy."
   logger.error({ sessionId, error: error.message, code: error.code }, 'Failed to acquire session lock');
-  return false;
+  throw new Error(`Lock acquisition failed: ${error.message}`);
 }
 
 /**

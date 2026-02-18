@@ -24,6 +24,32 @@ const respondSchema = z.object({
 const pipeline = new Hono();
 pipeline.use('*', authMiddleware);
 
+async function setPendingGate(sessionId: string, gate: string, data?: Record<string, unknown>) {
+  const { error } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      pending_gate: gate,
+      pending_gate_data: data ?? null,
+    })
+    .eq('id', sessionId);
+  if (error) {
+    logger.warn({ session_id: sessionId, gate, error: error.message }, 'Failed to persist pending gate');
+  }
+}
+
+async function clearPendingGate(sessionId: string) {
+  const { error } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      pending_gate: null,
+      pending_gate_data: null,
+    })
+    .eq('id', sessionId);
+  if (error) {
+    logger.warn({ session_id: sessionId, error: error.message }, 'Failed to clear pending gate');
+  }
+}
+
 // In-memory gate resolvers per session
 const pendingGates = new Map<string, {
   resolve: (value: unknown) => void;
@@ -76,6 +102,12 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
 
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
+    if (event.type === 'stage_start') {
+      void supabaseAdmin
+        .from('coach_sessions')
+        .update({ pipeline_stage: event.stage })
+        .eq('id', session_id);
+    }
     const emitters = sseConnections.get(session_id);
     if (emitters) {
       for (const emitter of emitters) {
@@ -93,6 +125,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     if (buffered && buffered.gate === gate) {
       bufferedResponses.delete(session_id);
       log.info({ gate }, 'Resolved gate from buffered response');
+      void clearPendingGate(session_id);
       return Promise.resolve(buffered.response as T);
     }
 
@@ -106,6 +139,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
 
       const timeout = setTimeout(() => {
         pendingGates.delete(session_id);
+        void clearPendingGate(session_id);
         reject(new Error(`Gate '${gate}' timed out after ${GATE_TIMEOUT_MS}ms`));
       }, GATE_TIMEOUT_MS);
 
@@ -114,6 +148,10 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
         reject,
         gate,
         timeout,
+      });
+
+      void setPendingGate(session_id, gate, {
+        created_at: new Date().toISOString(),
       });
     });
   };
@@ -151,6 +189,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       pendingGates.delete(session_id);
     }
     bufferedResponses.delete(session_id);
+    void clearPendingGate(session_id);
   });
 
   return c.json({ status: 'started', session_id });
@@ -181,6 +220,20 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
 
   const pending = pendingGates.get(session_id);
   if (!pending) {
+    const { data: dbState } = await supabaseAdmin
+      .from('coach_sessions')
+      .select('pipeline_status, pending_gate')
+      .eq('id', session_id)
+      .single();
+
+    if (dbState?.pipeline_status === 'running' && dbState.pending_gate) {
+      return c.json({
+        error: 'Pipeline state is stale after server restart. Please start a new session.',
+        code: 'STALE_PIPELINE',
+        pending_gate: dbState.pending_gate,
+      }, 409);
+    }
+
     // Gate not registered yet — buffer the response for when waitForUser is called
     if (gate) {
       bufferedResponses.set(session_id, { gate, response });
@@ -199,6 +252,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
   clearTimeout(pending.timeout);
   pending.resolve(response);
   pendingGates.delete(session_id);
+  await clearPendingGate(session_id);
 
   return c.json({ status: 'ok', gate: pending.gate });
 });
@@ -227,28 +281,19 @@ pipeline.get('/status', async (c) => {
 
   const running = runningPipelines.has(sessionId);
   const pending = pendingGates.get(sessionId);
-
-  // If not running in-memory, check DB for pipeline state (handles server restart)
-  if (!running) {
-    const { data: dbSession } = await supabaseAdmin
-      .from('coach_sessions')
-      .select('pipeline_status, pipeline_stage, pending_gate')
-      .eq('id', sessionId)
-      .single();
-
-    if (dbSession?.pipeline_status === 'running') {
-      return c.json({
-        running: false,
-        pending_gate: null,
-        stale_pipeline: true,
-        message: 'Pipeline was running but server restarted. Please start a new session.',
-      });
-    }
-  }
+  const { data: dbSession } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('pipeline_status, pipeline_stage, pending_gate')
+    .eq('id', sessionId)
+    .single();
+  const persistedPendingGate = dbSession?.pending_gate ?? null;
+  const stalePipeline = !running && dbSession?.pipeline_status === 'running';
 
   return c.json({
     running,
-    pending_gate: pending?.gate ?? null,
+    pending_gate: pending?.gate ?? persistedPendingGate,
+    stale_pipeline: stalePipeline,
+    pipeline_stage: dbSession?.pipeline_stage ?? null,
   });
 });
 
