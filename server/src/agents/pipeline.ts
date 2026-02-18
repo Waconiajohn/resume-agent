@@ -293,6 +293,10 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       evidence_library: state.positioning.evidence_library,
     });
 
+    // Use a single source of truth for keyword coverage in UI surfaces.
+    // The deterministic counter above should match the quality dashboard value.
+    state.quality_review.scores.requirement_coverage = keywordCoverage.percentage;
+
     emit({ type: 'quality_scores', scores: state.quality_review.scores });
 
     // ─── Revision loop (max 1 cycle) ────────────────────────────
