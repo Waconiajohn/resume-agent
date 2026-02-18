@@ -60,8 +60,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // Track timeout IDs for auto-removing completed tools
   const toolCleanupTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
-  // Stale-processing detector: track last SSE event time
-  const lastEventTimestampRef = useRef<number>(Date.now());
+  // Stale-processing detector: track last pipeline progress event time.
+  // Heartbeats should not count as progress, otherwise stalled pipelines never trip the detector.
+  const lastProgressTimestampRef = useRef<number>(Date.now());
   const staleCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const nextId = useCallback(() => {
@@ -135,9 +136,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           try {
             for await (const msg of parseSSEStream(response.body)) {
               if (controller.signal.aborted) break;
-
-              // Update last event timestamp for stale-processing detection
-              lastEventTimestampRef.current = Date.now();
 
               switch (msg.event) {
                 case 'connected': {
@@ -450,6 +448,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'stage_start': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  lastProgressTimestampRef.current = Date.now();
                   setPipelineStage(data.stage as PipelineStage);
                   setCurrentPhase(data.stage as string);
                   setIsProcessing(true);
@@ -468,6 +467,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'stage_complete': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  lastProgressTimestampRef.current = Date.now();
                   setPipelineStage(data.stage as PipelineStage);
                   setIsProcessing(false);
                   if (data.duration_ms) {
@@ -526,6 +526,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'section_draft': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  lastProgressTimestampRef.current = Date.now();
                   setIsProcessing(false);
                   const section = data.section as string;
                   const content = data.content as string;
@@ -545,6 +546,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   // Revision from quality review — update resume preview, no approval needed
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  lastProgressTimestampRef.current = Date.now();
                   const section = data.section as string;
                   const content = data.content as string;
                   setSectionDraft({ section, content });
@@ -560,6 +562,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'quality_scores': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  lastProgressTimestampRef.current = Date.now();
                   const scores = data.scores as QualityScores;
                   setQualityScores(scores);
                   // Show quality dashboard with 6-dimension scores
@@ -581,6 +584,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'revision_start': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  lastProgressTimestampRef.current = Date.now();
                   setIsProcessing(true);
                   setMessages((prev) => [
                     ...prev,
@@ -596,6 +600,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
                 case 'pipeline_complete': {
                   const data = safeParse(msg.data);
+                  lastProgressTimestampRef.current = Date.now();
                   setIsProcessing(false);
                   setSessionComplete(true);
                   setPipelineStage('complete');
@@ -638,6 +643,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'pipeline_error': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  lastProgressTimestampRef.current = Date.now();
                   setIsProcessing(false);
                   setError(data.error as string ?? 'Pipeline error');
                   break;
@@ -681,7 +687,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       if (!mountedRef.current) return;
       // Use functional state read to avoid stale closure over isProcessing
       setIsProcessing((currentlyProcessing) => {
-        if (currentlyProcessing && Date.now() - lastEventTimestampRef.current > STALE_THRESHOLD_MS) {
+        if (currentlyProcessing && Date.now() - lastProgressTimestampRef.current > STALE_THRESHOLD_MS) {
           console.warn('[useAgent] Stale processing detected — no SSE events for 120s. Resetting.');
           setMessages((prev) => [
             ...prev,
