@@ -258,7 +258,12 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // ─── Complete ────────────────────────────────────────────────
     state.current_stage = 'complete';
-    emit({ type: 'pipeline_complete', session_id });
+    emit({
+      type: 'pipeline_complete',
+      session_id,
+      contact_info: state.intake.contact,
+      company_name: config.company_name,
+    });
 
     // Persist final state
     await persistSession(state);

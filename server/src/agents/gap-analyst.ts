@@ -105,7 +105,7 @@ Return ONLY valid JSON:
   if (parsed?.requirements && Array.isArray(parsed.requirements)) {
     requirements = (parsed.requirements as Record<string, unknown>[]).map(r => ({
       requirement: String(r.requirement ?? ''),
-      classification: (String(r.classification) as RequirementMapping['classification']) ?? 'gap',
+      classification: (String(r.classification).toLowerCase() as RequirementMapping['classification']) ?? 'gap',
       evidence: Array.isArray(r.evidence)
         ? (r.evidence as string[])
         : [String(r.evidence ?? '')],

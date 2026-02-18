@@ -13,7 +13,7 @@ interface GapAnalysisPanelProps {
  * Agent update_right_panel emits: "strong_match" | "exceptional_match" | "needs_strengthening" | "partial_match" | "meets_minimum" | "gap" | "missing"
  */
 function mapStatus(status: string): 'strong' | 'partial' | 'gap' {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'strong':
     case 'strong_match':
     case 'exceptional_match':

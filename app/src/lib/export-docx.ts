@@ -381,6 +381,64 @@ export async function exportDocx(resume: FinalResume): Promise<{ success: boolea
  }
 }
 
+/**
+ * Convert raw section text (pipeline v2) into DOCX paragraphs.
+ * Detects section headings (ALL CAPS lines), bullet points, and body text.
+ */
+function rawSectionToParagraphs(sectionName: string, text: string): Paragraph[] {
+  const paras: Paragraph[] = [];
+  const lines = text.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Detect ALL CAPS headings (section titles like "SKILLS", "EXPERIENCE")
+    if (/^[A-Z][A-Z &/]+$/.test(trimmed) && trimmed.length > 2) {
+      paras.push(sectionHeading(trimmed));
+    }
+    // Detect bullet points
+    else if (/^\s*[•\-*]\s/.test(line)) {
+      const clean = trimmed.replace(/^\s*[•\-*]\s*/, '');
+      if (clean) paras.push(bulletParagraph(clean));
+    }
+    // Bold-style lines (likely sub-headings like job titles or skill categories)
+    else if (/^[A-Z][A-Za-z &]+:/.test(trimmed) && trimmed.length < 120) {
+      const colonIdx = trimmed.indexOf(':');
+      paras.push(
+        new Paragraph({
+          style: 'BodyText',
+          keepNext: true,
+          spacing: { after: 60 },
+          children: [
+            new TextRun({ text: trimmed.substring(0, colonIdx + 1) + ' ', bold: true, size: 20, font: FONT }),
+            new TextRun({ text: trimmed.substring(colonIdx + 1).trim(), size: 20, font: FONT }),
+          ],
+        }),
+      );
+    }
+    // Regular body text
+    else {
+      paras.push(
+        new Paragraph({
+          style: 'BodyText',
+          children: [new TextRun({ text: trimmed })],
+        }),
+      );
+    }
+  }
+
+  // If the first line wasn't an ALL CAPS heading, add one from the section name
+  const firstLine = lines.find(l => l.trim())?.trim() ?? '';
+  const firstLineIsHeading = /^[A-Z][A-Z &/]+$/.test(firstLine) && firstLine.length > 2;
+  if (paras.length > 0 && !firstLineIsHeading) {
+    const heading = sectionName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    paras.unshift(sectionHeading(heading));
+  }
+
+  return paras;
+}
+
 async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean }> {
   const children: Paragraph[] = [];
 
@@ -389,26 +447,38 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     children.push(...contactHeaderParagraphs(resume.contact_info));
   }
 
-  // Render sections in design-choice order, falling back to default
-  const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
-  const rendered = new Set<string>();
-
-  for (const sectionName of order) {
-    const renderer = sectionRenderers[sectionName];
-    if (renderer) {
-      children.push(...renderer(resume));
-      rendered.add(sectionName);
-    } else {
-      console.warn(`[export-docx] Unknown section in section_order: ${sectionName}`);
+  // Pipeline v2: raw section text available — render from raw text
+  const rawSections = (resume as FinalResume & { _raw_sections?: Record<string, string> })._raw_sections;
+  if (rawSections && Object.keys(rawSections).length > 0) {
+    const order = resume.section_order ?? Object.keys(rawSections);
+    for (const sectionName of order) {
+      const text = rawSections[sectionName];
+      if (text) {
+        children.push(...rawSectionToParagraphs(sectionName, text));
+      }
     }
-  }
+  } else {
+    // Pipeline v1: structured resume data — use section renderers
+    const order = resume.section_order ?? DEFAULT_SECTION_ORDER;
+    const rendered = new Set<string>();
 
-  // Render any remaining sections not in the order list
-  for (const sectionName of DEFAULT_SECTION_ORDER) {
-    if (!rendered.has(sectionName)) {
+    for (const sectionName of order) {
       const renderer = sectionRenderers[sectionName];
       if (renderer) {
         children.push(...renderer(resume));
+        rendered.add(sectionName);
+      } else {
+        console.warn(`[export-docx] Unknown section in section_order: ${sectionName}`);
+      }
+    }
+
+    // Render any remaining sections not in the order list
+    for (const sectionName of DEFAULT_SECTION_ORDER) {
+      if (!rendered.has(sectionName)) {
+        const renderer = sectionRenderers[sectionName];
+        if (renderer) {
+          children.push(...renderer(resume));
+        }
       }
     }
   }

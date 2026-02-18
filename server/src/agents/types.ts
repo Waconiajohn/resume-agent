@@ -388,7 +388,7 @@ export type PipelineSSEEvent =
   | { type: 'section_approved'; section: string }
   | { type: 'quality_scores'; scores: QualityScores }
   | { type: 'revision_start'; instructions: RevisionInstruction[] }
-  | { type: 'pipeline_complete'; session_id: string }
+  | { type: 'pipeline_complete'; session_id: string; contact_info?: Record<string, string>; company_name?: string }
   | { type: 'pipeline_error'; stage: PipelineStage; error: string }
   | { type: 'transparency'; message: string; stage: PipelineStage }
   | { type: 'right_panel_update'; panel_type: string; data: Record<string, unknown> };

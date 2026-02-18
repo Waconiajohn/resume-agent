@@ -67,7 +67,7 @@ export async function runIntakeAgent(input: IntakeInput): Promise<IntakeOutput> 
 
   const response = await llm.chat({
     model: MODEL_LIGHT,
-    max_tokens: 4096,
+    max_tokens: 8192,
     system: '',
     messages: [{ role: 'user', content: `${PARSE_PROMPT}\n\n---\n\nRESUME TEXT:\n${rawText}` }],
   });
