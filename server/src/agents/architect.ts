@@ -347,9 +347,21 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
       : ['header', 'summary', 'experience', 'skills', 'education_and_certifications'],
   );
 
+  const roleTitle = input.research.jd_analysis.role_title ?? 'Target Role';
+  const companyName = input.research.jd_analysis.company || input.research.company_research.company_name || '';
+  const expectedTargetRole = companyName ? `${roleTitle} at ${companyName}` : roleTitle;
+
+  // Validate LLM's target_role — reject if it contains template placeholders
+  let targetRole = String(raw.target_role ?? '');
+  const placeholders = ['company name', 'company', 'companyname', 'target company'];
+  const lower = targetRole.toLowerCase();
+  if (!targetRole || placeholders.some(p => lower.endsWith(p) || lower.endsWith(`at ${p}`))) {
+    targetRole = expectedTargetRole;
+  }
+
   return {
     blueprint_version: String(raw.blueprint_version ?? '2.0'),
-    target_role: String(raw.target_role ?? `${input.research.jd_analysis.role_title}`),
+    target_role: targetRole,
     positioning_angle: String(raw.positioning_angle ?? ''),
 
     section_plan: {
