@@ -611,16 +611,33 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     }
   } else {
     // Fallback: raw section text from pipeline v2.
-    const rawSections = resume._raw_sections;
+    const rawSections = resume._raw_sections ?? {};
     const order = resume.section_order ?? Object.keys(rawSections ?? {});
     let isFirstExpRole = true;
+    let renderedCombinedEducation = false;
     for (const sectionName of order) {
-      const text = rawSections?.[sectionName];
+      let text = rawSections[sectionName];
+      // Bridge split section_order keys to legacy combined raw key.
+      if (
+        !text
+        && !renderedCombinedEducation
+        && (sectionName === 'education' || sectionName === 'certifications')
+        && rawSections.education_and_certifications
+      ) {
+        text = rawSections.education_and_certifications;
+        renderedCombinedEducation = true;
+        children.push(...rawSectionToParagraphs('education_and_certifications', text));
+        continue;
+      }
       if (text) {
         const isExpRole = sectionName.startsWith('experience_role_');
         children.push(...rawSectionToParagraphs(sectionName, text, isExpRole && isFirstExpRole));
         if (isExpRole) isFirstExpRole = false;
+        if (sectionName === 'education_and_certifications') renderedCombinedEducation = true;
       }
+    }
+    if (!renderedCombinedEducation && rawSections.education_and_certifications) {
+      children.push(...rawSectionToParagraphs('education_and_certifications', rawSections.education_and_certifications));
     }
   }
 

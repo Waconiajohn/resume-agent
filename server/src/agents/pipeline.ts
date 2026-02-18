@@ -791,6 +791,35 @@ function compareExperienceRoleKeys(a: string, b: string): number {
   return ai - bi;
 }
 
+function sanitizeEducationYear(
+  rawYear: string | undefined,
+  ageProtection: ArchitectOutput['age_protection'] | undefined,
+): string {
+  const yearText = (rawYear ?? '').trim();
+  if (!yearText) return '';
+  if (!ageProtection || ageProtection.clean) return yearText;
+
+  const yearMatch = yearText.match(/\b(19|20)\d{2}\b/);
+  if (!yearMatch) return yearText;
+  const yearToken = yearMatch[0];
+
+  const flaggedYears = new Set<string>();
+  for (const flag of ageProtection.flags ?? []) {
+    const matches = `${flag.item} ${flag.risk} ${flag.action}`.match(/\b(19|20)\d{2}\b/g) ?? [];
+    for (const y of matches) flaggedYears.add(y);
+  }
+
+  if (flaggedYears.has(yearToken)) return '';
+
+  // Guardrail from architect rules: hide graduation years 20+ years old.
+  const numericYear = Number.parseInt(yearToken, 10);
+  if (!Number.isNaN(numericYear) && new Date().getFullYear() - numericYear >= 20) {
+    return '';
+  }
+
+  return yearText;
+}
+
 function parseExperienceRoleForStructuredPayload(
   crafted: string | undefined,
   fallback: IntakeOutput['experience'][number],
@@ -921,21 +950,12 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
       parseExperienceRoleForStructuredPayload(sections[`experience_role_${idx}`]?.content, exp),
     ),
     skills: normalizeSkills(intake.skills),
-    education: intake.education.map((edu) => {
-      let year = edu.year ?? '';
-      // Apply age protection: strip years flagged by the architect
-      const ageFlags = state.architect?.age_protection;
-      if (ageFlags && !ageFlags.clean && year) {
-        const flagged = ageFlags.flags.some((f) => f.item.includes(year));
-        if (flagged) year = '';
-      }
-      return {
-        institution: edu.institution,
-        degree: edu.degree,
-        field: '',
-        year,
-      };
-    }),
+    education: intake.education.map((edu) => ({
+      institution: edu.institution,
+      degree: edu.degree,
+      field: '',
+      year: sanitizeEducationYear(edu.year, state.architect?.age_protection),
+    })),
     certifications: intake.certifications.map((cert) => ({
       name: cert,
       issuer: '',
