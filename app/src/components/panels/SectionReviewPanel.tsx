@@ -78,7 +78,7 @@ export function SectionReviewPanel({
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white/85">Section Review</span>
-          <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-medium text-blue-300">
+          <span className="rounded-full border border-white/[0.14] bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-medium text-white/78">
             {sectionTitle(section)}
           </span>
         </div>

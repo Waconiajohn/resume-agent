@@ -58,7 +58,7 @@ function MiniWireframe({ sections }: { sections: string[] }) {
               className={cn(
                 'flex-1 rounded-sm',
                 isEmphasis
-                  ? 'border border-blue-500/30 bg-blue-500/20'
+                  ? 'border border-white/[0.2] bg-white/[0.11]'
                   : 'bg-white/[0.10]',
                 config.height,
               )}
@@ -66,7 +66,7 @@ function MiniWireframe({ sections }: { sections: string[] }) {
             <span
               className={cn(
                 'w-24 shrink-0 text-right text-[9px]',
-                isEmphasis ? 'font-medium text-blue-300' : 'text-white/50',
+                isEmphasis ? 'font-medium text-white/84' : 'text-white/50',
               )}
             >
               {config.short}
@@ -101,12 +101,12 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
   return (
     <div className="flex h-full flex-col">
       {/* Panel header */}
-      <div className="border-b border-white/[0.12] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-blue-400" />
-          <span className="text-sm font-medium text-white/85">Resume Blueprint</span>
+        <div className="border-b border-white/[0.12] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-[#afc4ff]" />
+            <span className="text-sm font-medium text-white/85">Resume Blueprint</span>
+          </div>
         </div>
-      </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Target Role & Positioning Angle */}
@@ -120,7 +120,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             {target_role}
           </p>
           {positioning_angle && (
-            <p className="mt-2 text-xs text-blue-300 italic leading-relaxed">
+            <p className="mt-2 text-xs italic leading-relaxed text-white/62">
               "{positioning_angle}"
             </p>
           )}
@@ -157,9 +157,9 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
 
         {/* Age Protection Card */}
         {hasAgeFlags ? (
-          <GlassCard className="p-4 border-amber-500/20">
+          <GlassCard className="p-4 border-white/[0.14]">
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+              <AlertTriangle className="h-3.5 w-3.5 text-white/62" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Age Protection
               </h3>
@@ -168,15 +168,15 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
               {age_protection.flags.map((flag, i) => (
                 <div
                   key={i}
-                  className="rounded-lg border border-amber-500/[0.15] bg-amber-500/[0.06] p-2.5 space-y-1"
+                  className="space-y-1 rounded-lg border border-white/[0.1] bg-white/[0.03] p-2.5"
                 >
                   <p className="text-xs font-medium text-white/85">{flag.item}</p>
                   <div className="flex items-start gap-1.5">
-                    <span className="shrink-0 text-[10px] font-semibold text-amber-400">Risk:</span>
+                    <span className="shrink-0 text-[10px] font-semibold text-white/66">Risk:</span>
                     <span className="text-[10px] text-white/60 leading-relaxed">{flag.risk}</span>
                   </div>
                   <div className="flex items-start gap-1.5">
-                    <span className="shrink-0 text-[10px] font-semibold text-green-400">Action:</span>
+                    <span className="shrink-0 text-[10px] font-semibold text-white/66">Action:</span>
                     <span className="text-[10px] text-white/60 leading-relaxed">{flag.action}</span>
                   </div>
                 </div>
@@ -184,10 +184,10 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             </div>
           </GlassCard>
         ) : (
-          <GlassCard className="p-3 border-emerald-500/20">
+          <GlassCard className="p-3 border-white/[0.14]">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-              <span className="text-xs text-emerald-300 font-medium">No age signals detected</span>
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
+              <span className="text-xs font-medium text-white/76">No age signals detected</span>
             </div>
           </GlassCard>
         )}

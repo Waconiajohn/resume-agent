@@ -1,0 +1,118 @@
+import { Activity, Gauge, Hash, ShieldCheck, ListChecks } from 'lucide-react';
+import { GlassCard } from './GlassCard';
+import type { PanelData } from '@/types/panels';
+import type { FinalResume } from '@/types/resume';
+
+interface WorkflowStatsRailProps {
+  currentPhase: string;
+  isProcessing: boolean;
+  panelData: PanelData | null;
+  resume: FinalResume | null;
+}
+
+function phaseLabel(phase: string): string {
+  return phase.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function metricSnapshot(panelData: PanelData | null, resume: FinalResume | null) {
+  let ats: number | null = resume?.ats_score ?? null;
+  let keywordCoverage: number | null = null;
+  let authenticity: number | null = null;
+  let requirements: string | null = null;
+
+  if (panelData?.type === 'quality_dashboard') {
+    ats = panelData.ats_score ?? ats;
+    keywordCoverage = panelData.keyword_coverage ?? null;
+    authenticity = panelData.authenticity_score ?? null;
+  }
+
+  if (panelData?.type === 'completion') {
+    ats = panelData.ats_score ?? ats;
+    requirements =
+      panelData.requirements_addressed != null ? `${panelData.requirements_addressed}` : null;
+  }
+
+  if (panelData?.type === 'gap_analysis') {
+    requirements = `${panelData.addressed}/${panelData.total}`;
+  }
+
+  return { ats, keywordCoverage, authenticity, requirements };
+}
+
+function MetricRow({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof Activity;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+      <div className="flex items-center gap-2 text-white/65">
+        <Icon className="h-3.5 w-3.5 text-white/58" />
+        <span className="text-xs">{label}</span>
+      </div>
+      <span className="text-xs font-semibold text-white/86">{value}</span>
+    </div>
+  );
+}
+
+export function WorkflowStatsRail({
+  currentPhase,
+  isProcessing,
+  panelData,
+  resume,
+}: WorkflowStatsRailProps) {
+  const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
+
+  return (
+    <aside className="h-full overflow-y-auto border-l border-white/[0.1] px-3 py-3">
+      <div className="space-y-3">
+        <GlassCard className="p-3">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+            Session
+          </div>
+          <MetricRow
+            label="Phase"
+            value={phaseLabel(currentPhase)}
+            icon={Activity}
+          />
+          <div className="mt-2 rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+            <span className="text-xs text-white/62">
+              {isProcessing ? 'Processing' : 'Idle'}
+            </span>
+          </div>
+        </GlassCard>
+
+        <GlassCard className="p-3">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+            Metrics
+          </div>
+          {ats != null && <MetricRow label="ATS Score" value={`${ats}%`} icon={Gauge} />}
+          {keywordCoverage != null && (
+            <div className="mt-2">
+              <MetricRow label="Keyword Coverage" value={`${keywordCoverage}%`} icon={Hash} />
+            </div>
+          )}
+          {authenticity != null && (
+            <div className="mt-2">
+              <MetricRow label="Authenticity" value={`${authenticity}%`} icon={ShieldCheck} />
+            </div>
+          )}
+          {requirements && (
+            <div className="mt-2">
+              <MetricRow label="Requirements" value={requirements} icon={ListChecks} />
+            </div>
+          )}
+          {ats == null && keywordCoverage == null && authenticity == null && !requirements && (
+            <div className="rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2 text-xs text-white/56">
+              Metrics appear as the pipeline advances.
+            </div>
+          )}
+        </GlassCard>
+      </div>
+    </aside>
+  );
+}

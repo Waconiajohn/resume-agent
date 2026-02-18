@@ -51,7 +51,7 @@ function PanelError() {
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-3 text-center">
-        <AlertTriangle className="h-8 w-8 text-amber-400/40" />
+        <AlertTriangle className="h-8 w-8 text-white/28" />
         <p className="text-sm text-white/50">
           Panel data couldn't be displayed. It will update on the next event.
         </p>
@@ -60,7 +60,7 @@ function PanelError() {
   );
 }
 
-interface RightPanelProps {
+export interface RightPanelProps {
   panelType: PanelType | null;
   panelData: PanelData | null;
   resume: FinalResume | null;
@@ -72,7 +72,7 @@ interface RightPanelProps {
   ) => Promise<{ success: boolean; message: string }>;
 }
 
-function PanelContent(props: RightPanelProps) {
+export function PanelContent(props: RightPanelProps) {
   const { panelData, resume, isProcessing, onSendMessage, onPipelineRespond, onSaveCurrentResumeAsBase } = props;
   // If we have typed panel data, use the discriminated union switch
   if (panelData) {
@@ -164,12 +164,14 @@ export function RightPanel(props: RightPanelProps) {
   const resetKey = `${props.panelType ?? 'resume'}-${simpleHash(props.panelData)}`;
 
   return (
-    <PanelErrorBoundary
-      key={props.panelType ?? 'resume'}
-      resetKey={resetKey}
-      fallback={<PanelError />}
-    >
-      <PanelContent {...props} />
-    </PanelErrorBoundary>
+    <div className="right-panel-shell h-full bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]">
+      <PanelErrorBoundary
+        key={props.panelType ?? 'resume'}
+        resetKey={resetKey}
+        fallback={<PanelError />}
+      >
+        <PanelContent {...props} />
+      </PanelErrorBoundary>
+    </div>
   );
 }

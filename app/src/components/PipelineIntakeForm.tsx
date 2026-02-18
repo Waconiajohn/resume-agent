@@ -68,7 +68,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] overflow-y-auto">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-300/[0.07] via-transparent to-transparent" />
 
       <div className="relative z-10 mx-auto max-w-2xl px-4 py-12">
         {/* Back button */}
@@ -87,8 +87,8 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
 
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/20">
-            <Sparkles className="h-8 w-8 text-blue-400" />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.12] bg-white/[0.04]">
+            <Sparkles className="h-8 w-8 text-[#afc4ff]" />
           </div>
           <h1 className="mb-2 text-3xl font-bold text-white/90">New Resume Session</h1>
           <p className="max-w-md text-sm text-white/50">
@@ -102,7 +102,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
             {/* Resume field */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white/80" htmlFor="resume-text">
-                Resume <span className="text-blue-400">*</span>
+                Resume <span className="text-white/62">*</span>
               </label>
               <GlassTextarea
                 id="resume-text"
@@ -120,7 +120,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
                   onClick={handleFileClick}
                   disabled={loading || fileLoading}
                   id="file-upload-hint"
-                  className="inline-flex items-center gap-1 text-xs text-blue-400/80 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:underline"
+                  className="inline-flex items-center gap-1 text-xs text-white/58 transition-colors hover:text-white/84 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:underline"
                   aria-label="Upload a resume file (.txt, .docx, .pdf)"
                 >
                   {fileLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
@@ -151,7 +151,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
             {/* Job Description field */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white/80" htmlFor="job-description">
-                Job Description <span className="text-blue-400">*</span>
+                Job Description <span className="text-white/62">*</span>
               </label>
               <GlassTextarea
                 id="job-description"
@@ -170,7 +170,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
             {/* Company Name field */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white/80" htmlFor="company-name">
-                Company Name <span className="text-blue-400">*</span>
+                Company Name <span className="text-white/62">*</span>
               </label>
               <GlassInput
                 id="company-name"

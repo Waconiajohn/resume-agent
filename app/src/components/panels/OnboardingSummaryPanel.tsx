@@ -78,7 +78,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
             return (
               <GlassCard key={label} className="p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon className="h-3.5 w-3.5 text-blue-400" />
+                  <Icon className="h-3.5 w-3.5 text-[#afc4ff]" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-white/60">
                     {label}
                   </span>
@@ -98,7 +98,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
             <div className="space-y-2">
               {strengths.map((s, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
                   <span className="text-sm text-white/90">{s}</span>
                 </div>
               ))}
@@ -115,7 +115,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
             <div className="space-y-2">
               {opportunities.map((o, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/58" />
                   <span className="text-sm text-white/90">{o}</span>
                 </div>
               ))}

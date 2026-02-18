@@ -11,14 +11,14 @@ export function GlassCard({ children, className, hover = false, onClick }: Glass
   return (
     <div
       className={cn(
-        'relative rounded-2xl border border-white/[0.12] bg-white/[0.06] backdrop-blur-xl backdrop-saturate-150 shadow-lg shadow-black/20',
-        hover && 'transition-all hover:bg-white/[0.10] hover:border-white/[0.18] hover:shadow-xl hover:shadow-black/25',
+        'relative overflow-hidden rounded-[18px] border border-white/[0.1] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_44px_-28px_rgba(0,0,0,0.9)]',
+        'before:pointer-events-none before:absolute before:inset-0 before:rounded-[18px] before:ring-1 before:ring-inset before:ring-white/[0.04]',
+        hover && 'transition-all duration-200 hover:border-white/[0.16] hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.035))] hover:shadow-[0_24px_52px_-30px_rgba(0,0,0,0.95)]',
         className,
       )}
       onClick={onClick}
     >
-      {/* Apple glass inner highlight */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.18]" />
       {children}
     </div>
   );

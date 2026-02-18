@@ -60,11 +60,11 @@ export function LandingScreen({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-300/[0.07] via-transparent to-transparent" />
 
       <div className="relative z-10 flex flex-col items-center text-center">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/20">
-          <Sparkles className="h-8 w-8 text-blue-400" />
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.12] bg-white/[0.04]">
+          <Sparkles className="h-8 w-8 text-[#afc4ff]" />
         </div>
 
         <h1 className="mb-2 text-3xl font-bold text-white/90">
@@ -100,7 +100,7 @@ export function LandingScreen({
                       <div className="mb-1 flex items-center gap-2">
                         <span className="text-xs text-white/70">Version {resume.version}</span>
                         {resume.is_default && (
-                          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
+                          <span className="rounded-full border border-white/[0.16] bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/78">
                             Default
                           </span>
                         )}
@@ -115,7 +115,7 @@ export function LandingScreen({
                           type="button"
                           onClick={() => void handleSetDefault(resume.id)}
                           disabled={busyResumeId === resume.id}
-                          className="inline-flex items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-emerald-500/10 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white/85 disabled:cursor-not-allowed disabled:opacity-50"
                           aria-label="Set as default base resume"
                           title="Set as default"
                         >
@@ -130,7 +130,7 @@ export function LandingScreen({
                           }
                         }}
                         disabled={busyResumeId === resume.id}
-                        className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/75 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Delete base resume"
                         title="Delete"
                       >

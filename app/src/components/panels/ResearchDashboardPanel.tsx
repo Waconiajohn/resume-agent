@@ -9,9 +9,9 @@ interface ResearchDashboardPanelProps {
 
 function importanceBadge(importance: BenchmarkSkill['importance']) {
   const styles = {
-    critical: 'border-red-500/30 bg-red-500/15 text-red-400',
-    important: 'border-amber-500/30 bg-amber-500/15 text-amber-400',
-    nice_to_have: 'border-white/10 bg-white/[0.08] text-white/70',
+    critical: 'border-white/[0.14] bg-white/[0.05] text-white/82',
+    important: 'border-white/[0.12] bg-white/[0.04] text-white/76',
+    nice_to_have: 'border-white/[0.1] bg-white/[0.03] text-white/68',
   };
   const labels = { critical: 'Critical', important: 'Important', nice_to_have: 'Nice to have' };
   return (
@@ -36,7 +36,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* Company Card */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Building2 className="h-4 w-4 text-blue-400" />
+            <Building2 className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
               Company
             </h3>
@@ -55,7 +55,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
               {company.values.map((v, i) => (
                 <span
                   key={i}
-                  className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300"
+                  className="rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/75"
                 >
                   {v}
                 </span>
@@ -70,7 +70,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* JD Requirements */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Target className="h-4 w-4 text-blue-400" />
+            <Target className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
               JD Requirements
             </h3>
@@ -81,20 +81,20 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           )}
 
           {jd_requirements.seniority_level && (
-            <span className="mb-3 inline-block rounded-full border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-300">
+            <span className="mb-3 inline-block rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-white/76">
               {jd_requirements.seniority_level}
             </span>
           )}
 
           {jd_requirements.must_haves && jd_requirements.must_haves.length > 0 && (
             <div className="mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-red-400 mb-1.5 block">
+              <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-white/58">
                 Must-Haves
               </span>
               <div className="space-y-1">
                 {jd_requirements.must_haves.map((req, i) => (
                   <div key={i} className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400/60" />
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/42" />
                     <span className="text-xs text-white/85">{stripMarkdown(req)}</span>
                   </div>
                 ))}
@@ -104,13 +104,13 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
 
           {jd_requirements.nice_to_haves && jd_requirements.nice_to_haves.length > 0 && (
             <div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 mb-1.5 block">
+              <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-white/58">
                 Nice-to-Haves
               </span>
               <div className="space-y-1">
                 {jd_requirements.nice_to_haves.map((req, i) => (
                   <div key={i} className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/60" />
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/32" />
                     <span className="text-xs text-white/85">{stripMarkdown(req)}</span>
                   </div>
                 ))}
@@ -122,7 +122,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* Benchmark Profile */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <UserCheck className="h-4 w-4 text-blue-400" />
+            <UserCheck className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
               Benchmark Profile
             </h3>

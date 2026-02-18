@@ -50,12 +50,12 @@ function MiniWireframe({ sections }: { sections: string[] }) {
             <span className="w-3 text-[8px] text-white/30 text-right shrink-0">{i + 1}</span>
             <div className={cn(
               'flex-1 rounded-sm',
-              isEmphasis ? 'bg-blue-500/20 border border-blue-500/30' : 'bg-white/[0.10]',
+              isEmphasis ? 'border border-white/[0.2] bg-white/[0.11]' : 'bg-white/[0.10]',
               config.height,
             )} />
             <span className={cn(
               'w-20 text-right text-[9px] shrink-0',
-              isEmphasis ? 'text-blue-300 font-medium' : 'text-white/50',
+              isEmphasis ? 'font-medium text-white/84' : 'text-white/50',
             )}>
               {config.short}
             </span>
@@ -72,16 +72,16 @@ function DesignCard({ option, isSelected }: { option: DesignOption; isSelected: 
       className={cn(
         'p-4 transition-all duration-200',
         isSelected
-          ? 'border-blue-500/40 shadow-[0_0_20px_-4px_rgba(59,130,246,0.15)]'
+          ? 'border-white/[0.2] shadow-[0_0_20px_-10px_rgba(255,255,255,0.35)]'
           : 'hover:border-white/10',
       )}
       hover={!isSelected}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Layout className="h-3.5 w-3.5 text-blue-400" />
+        <Layout className="h-3.5 w-3.5 text-[#afc4ff]" />
         <span className="text-sm font-medium text-white">{option.name}</span>
         {isSelected && (
-          <span className="ml-auto rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-medium text-blue-300">
+          <span className="ml-auto rounded-full border border-white/[0.14] bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/78">
             Selected
           </span>
         )}
@@ -94,7 +94,7 @@ function DesignCard({ option, isSelected }: { option: DesignOption; isSelected: 
       )}
 
       {option.rationale && (
-        <p className="mt-3 text-xs text-blue-300 italic">{option.rationale}</p>
+        <p className="mt-3 text-xs italic text-white/62">{option.rationale}</p>
       )}
     </GlassCard>
   );

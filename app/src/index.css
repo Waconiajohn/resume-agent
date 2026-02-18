@@ -2,18 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background:
-    radial-gradient(ellipse at 20% 30%, hsl(230 40% 14%) 0%, hsl(225 25% 8%) 50%),
-    radial-gradient(ellipse at 80% 70%, hsl(260 30% 12%) 0%, transparent 50%),
-    hsl(225 25% 8%);
-  min-height: 100vh;
-}
-
 @layer base {
+  :root {
+    color-scheme: dark;
+    --bg-0: #07090d;
+    --bg-1: #0b1119;
+    --bg-2: #111926;
+    --line-soft: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --text-strong: rgba(245, 248, 255, 0.94);
+    --text-muted: rgba(212, 220, 235, 0.66);
+    --accent: #98b3ff;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    font-family: 'SF Pro Text', 'SF Pro Display', 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    letter-spacing: 0.01em;
+    color: var(--text-strong);
+    background:
+      radial-gradient(1200px 680px at 14% 8%, rgba(146, 178, 255, 0.16) 0%, transparent 62%),
+      radial-gradient(900px 560px at 86% 4%, rgba(174, 196, 255, 0.1) 0%, transparent 58%),
+      linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 38%, var(--bg-0) 100%);
+    min-height: 100vh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to right, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(circle at 50% 26%, black 34%, transparent 78%);
+    opacity: 0.6;
+  }
+
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
   }
   *::-webkit-scrollbar {
     width: 6px;
@@ -22,9 +59,19 @@ body {
     background: transparent;
   }
   *::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
   }
+}
+
+@layer components {
+  .panel-surface {
+    @apply rounded-xl border border-white/[0.10] bg-white/[0.03];
+  }
+}
+
+body {
+  background-attachment: fixed;
 }
 
 @media print {

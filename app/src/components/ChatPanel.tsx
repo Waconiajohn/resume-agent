@@ -4,8 +4,11 @@ import { GlassTextarea } from './GlassInput';
 import { GlassButton } from './GlassButton';
 import { ChatMessage } from './ChatMessage';
 import { AskUserPrompt } from './AskUserPrompt';
+import { PanelContent } from './panels/RightPanel';
 import { PHASE_LABELS } from '@/constants/phases';
 import type { ChatMessage as ChatMessageType, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
+import type { PanelType, PanelData } from '@/types/panels';
+import type { FinalResume } from '@/types/resume';
 
 interface ChatPanelProps {
   messages: ChatMessageType[];
@@ -16,6 +19,13 @@ interface ChatPanelProps {
   currentPhase: string;
   isProcessing: boolean;
   onSendMessage: (content: string) => void;
+  panelType: PanelType | null;
+  panelData: PanelData | null;
+  resume: FinalResume | null;
+  onPipelineRespond?: (gate: string, response: unknown) => void;
+  onSaveCurrentResumeAsBase?: (
+    mode: 'default' | 'alternate',
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 export function ChatPanel({
@@ -27,6 +37,11 @@ export function ChatPanel({
   currentPhase,
   isProcessing,
   onSendMessage,
+  panelType,
+  panelData,
+  resume,
+  onPipelineRespond,
+  onSaveCurrentResumeAsBase,
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,14 +77,14 @@ export function ChatPanel({
   return (
     <div className="flex h-full flex-col">
       {/* Phase indicator bar */}
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2">
+      <div className="flex items-center gap-2 border-b border-white/[0.1] px-4 py-2">
         <span className="text-[10px] uppercase tracking-wider text-white/50">Phase</span>
-        <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-xs font-medium text-blue-300">
+        <span className="rounded-full border border-white/[0.12] bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-white/78">
           {PHASE_LABELS[currentPhase] ?? currentPhase}
         </span>
         {isBusy && (
           <div className="ml-auto flex items-center gap-1.5">
-            <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+            <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />
             <span className="text-[10px] text-white/60">Working...</span>
           </div>
         )}
@@ -84,7 +99,7 @@ export function ChatPanel({
         {/* Tool status indicators */}
         {tools.filter((t) => t.status === 'running').map((tool) => (
           <div key={tool.name} className="flex items-center gap-2 px-4 py-2">
-            <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+            <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />
             <span className="text-xs text-white/50">{tool.description}</span>
           </div>
         ))}
@@ -92,7 +107,7 @@ export function ChatPanel({
         {/* Processing indicator (when agent is working but no text streaming yet) */}
         {isProcessing && !streamingText && tools.every((t) => t.status !== 'running') && (
           <div className="flex items-center gap-2 px-4 py-3">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+            <Loader2 className="h-4 w-4 animate-spin text-[#aec3ff]" />
             <span className="text-sm text-white/50">Your coach is thinking...</span>
           </div>
         )}
@@ -106,9 +121,9 @@ export function ChatPanel({
 
         {/* Phase gate confirmation */}
         {phaseGate && (
-          <div className="mx-4 my-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+          <div className="mx-4 my-3 rounded-lg border border-white/[0.12] bg-white/[0.035] p-4">
             <div className="mb-2 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-400" />
+              <CheckCircle className="h-4 w-4 text-[#a8d7b8]" />
               <span className="text-sm font-medium text-white">
                 {PHASE_LABELS[phaseGate.currentPhase] ?? phaseGate.currentPhase} complete
               </span>
@@ -122,16 +137,40 @@ export function ChatPanel({
             <div className="flex gap-2">
               <button
                 onClick={() => onSendMessage("Yes, let's move forward!")}
-                className="rounded-md bg-blue-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-400"
+                className="rounded-md border border-white/[0.14] bg-white/[0.08] px-4 py-1.5 text-sm font-medium text-white transition hover:bg-white/[0.12]"
               >
                 Continue
               </button>
               <button
                 onClick={() => onSendMessage("I'd like to revisit some things first.")}
-                className="rounded-md border border-white/20 px-4 py-1.5 text-sm text-white/70 transition hover:bg-white/5"
+                className="rounded-md border border-white/20 px-4 py-1.5 text-sm text-white/74 transition hover:bg-white/5"
               >
                 Go Back
               </button>
+            </div>
+          </div>
+        )}
+
+        {panelData && (
+          <div className="mx-4 my-3 overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.025]">
+            <div className="flex items-center justify-between border-b border-white/[0.1] px-3 py-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+                Current Work Product
+              </span>
+              <span className="text-[10px] text-white/58">
+                {(panelType ?? panelData.type).replace(/_/g, ' ')}
+              </span>
+            </div>
+            <div className="max-h-[52vh] overflow-y-auto">
+              <PanelContent
+                panelType={panelType}
+                panelData={panelData}
+                resume={resume}
+                isProcessing={isProcessing}
+                onSendMessage={onSendMessage}
+                onPipelineRespond={onPipelineRespond}
+                onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
+              />
             </div>
           </div>
         )}
@@ -143,7 +182,7 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="border-t border-white/[0.06] p-4">
+      <div className="border-t border-white/[0.1] p-4">
         <div className="flex gap-2">
           <GlassTextarea
             value={input}

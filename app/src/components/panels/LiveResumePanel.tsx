@@ -64,9 +64,9 @@ function EditableLine({
 
   if (isEditing) {
     return (
-      <div className="group rounded-lg border border-blue-500/30 bg-blue-500/[0.06] p-3">
+      <div className="group rounded-lg border border-white/[0.14] bg-white/[0.04] p-3">
         <textarea
-          className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 focus:border-blue-500/50 focus:outline-none resize-none"
+          className="w-full resize-none rounded border border-white/[0.14] bg-white/[0.05] px-3 py-2 text-sm text-white/90 focus:border-white/[0.24] focus:outline-none"
           value={editText}
           onChange={(e) => onEditTextChange(e.target.value)}
           rows={3}
@@ -75,7 +75,7 @@ function EditableLine({
         <div className="mt-2 flex items-center gap-2">
           <button
             onClick={() => onSaveEdit(index)}
-            className="rounded bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-300 hover:bg-blue-500/30 transition-colors"
+            className="rounded border border-white/[0.14] bg-white/[0.08] px-3 py-1 text-xs font-medium text-white/85 transition-colors hover:bg-white/[0.12]"
           >
             Save
           </button>
@@ -109,7 +109,7 @@ function EditableLine({
           </button>
           <button
             onClick={() => onDelete(index)}
-            className="rounded p-1 text-white/30 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+            className="rounded p-1 text-white/30 transition-colors hover:bg-white/[0.1] hover:text-white/72"
             title="Remove"
           >
             <X className="h-3.5 w-3.5" />
@@ -136,8 +136,8 @@ function ChangeBlock({
   return (
     <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 space-y-2">
       {change.original && (
-        <div className="rounded border border-red-500/10 bg-red-500/[0.06] px-3 py-2">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-red-400">
+        <div className="rounded border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-white/56">
             Original
           </span>
           <p className="text-xs text-white/60 leading-relaxed line-through decoration-red-400/30 break-words">
@@ -146,8 +146,8 @@ function ChangeBlock({
         </div>
       )}
       {change.proposed && (
-        <div className="rounded border border-emerald-500/10 bg-emerald-500/[0.06] px-3 py-2">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+        <div className="rounded border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-white/56">
             Proposed
           </span>
           <p className="text-xs text-white/80 leading-relaxed break-words">{cleanText(change.proposed)}</p>
@@ -163,12 +163,12 @@ function ChangeBlock({
           </span>
           <div className="flex flex-wrap gap-1">
             {change.jd_requirements.map((req, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-300"
-              >
-                <Tag className="h-2.5 w-2.5" />
-                {req}
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/76"
+                >
+                  <Tag className="h-2.5 w-2.5" />
+                  {req}
               </span>
             ))}
           </div>
@@ -180,7 +180,7 @@ function ChangeBlock({
           <button
             onClick={() => onSendMessage(`I approve change ${index + 1} in ${sectionTitle(section)}.`)}
             disabled={disabled}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/78 transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
           >
             <Check className="h-3 w-3" />
             Approve
@@ -188,7 +188,7 @@ function ChangeBlock({
           <button
             onClick={() => onSendMessage(`I'd like to revise change ${index + 1} in ${sectionTitle(section)}. `)}
             disabled={disabled}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/40 hover:bg-white/5 hover:text-white/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
           >
             <X className="h-3 w-3" />
             Revise
@@ -262,7 +262,7 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white/85">Resume Preview</span>
-          <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-medium text-blue-300">
+          <span className="rounded-full border border-white/[0.14] bg-white/[0.05] px-2.5 py-0.5 text-[10px] font-medium text-white/78">
             {sectionTitle(active_section)}
           </span>
         </div>

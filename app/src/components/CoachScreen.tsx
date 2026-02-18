@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChatPanel } from './ChatPanel';
-import { RightPanel } from './panels/RightPanel';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
+import { WorkflowStatsRail } from './WorkflowStatsRail';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
@@ -49,8 +49,8 @@ export function CoachScreen({
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* 3D: Error banner */}
       {error && (
-        <div className="mx-4 mt-2 rounded-lg border border-red-500/30 bg-red-500/20 px-4 py-2.5 backdrop-blur-sm">
-          <p className="text-sm text-red-200">{error}</p>
+        <div className="mx-4 mt-2 rounded-lg border border-white/[0.14] bg-white/[0.04] px-4 py-2.5 backdrop-blur-xl">
+          <p className="text-sm text-white/78">{error}</p>
         </div>
       )}
 
@@ -68,8 +68,7 @@ export function CoachScreen({
       )}
 
       <div className="flex flex-1 min-h-0">
-        {/* Chat side */}
-        <div className="flex-1 min-w-0 border-r border-white/[0.12]">
+        <div className="flex-1 min-w-0">
           <ChatPanel
             messages={messages}
             streamingText={streamingText}
@@ -79,19 +78,20 @@ export function CoachScreen({
             currentPhase={currentPhase}
             isProcessing={isProcessing}
             onSendMessage={onSendMessage}
-          />
-        </div>
-
-        {/* Dynamic right panel */}
-        <div className="hidden w-[45%] min-w-0 overflow-x-hidden lg:block">
-          <RightPanel
             panelType={panelType}
             panelData={panelData}
             resume={resume}
-            isProcessing={isProcessing}
-            onSendMessage={onSendMessage}
             onPipelineRespond={onPipelineRespond}
             onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
+          />
+        </div>
+
+        <div className="hidden w-72 min-w-0 xl:block">
+          <WorkflowStatsRail
+            currentPhase={currentPhase}
+            isProcessing={isProcessing}
+            panelData={panelData}
+            resume={resume}
           />
         </div>
       </div>

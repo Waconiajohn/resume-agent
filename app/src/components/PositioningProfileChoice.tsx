@@ -29,7 +29,7 @@ export function PositioningProfileChoice({
     <GlassCard className="mx-4 p-4">
       {/* Header row */}
       <div className="flex items-center gap-2 mb-1">
-        <Sparkles className="h-4 w-4 text-blue-400 flex-shrink-0" />
+        <Sparkles className="h-4 w-4 flex-shrink-0 text-[#afc4ff]" />
         <p className="text-sm font-medium text-white/90">Found Your Positioning Profile</p>
       </div>
       <p className="mb-4 text-xs text-white/60">
@@ -45,7 +45,7 @@ export function PositioningProfileChoice({
         >
           <span className="truncate">
             Use it
-            <span className="ml-1 text-[10px] font-normal text-blue-200/70">(faster)</span>
+            <span className="ml-1 text-[10px] font-normal text-white/56">(faster)</span>
           </span>
         </GlassButton>
 

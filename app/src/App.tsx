@@ -202,7 +202,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-blue-400" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
       </div>
     );
   }
@@ -222,8 +222,8 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <div className="h-screen bg-surface">
-      <Header email={user.email} onSignOut={handleSignOut} />
+      <div className="h-screen bg-surface">
+        <Header email={user.email} onSignOut={handleSignOut} />
 
       {view === 'landing' && (
         <LandingScreen
@@ -253,7 +253,7 @@ export default function App() {
       {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && (
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-blue-400" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
             <span className="text-sm text-white/50">Connecting to session...</span>
           </div>
         </div>
@@ -278,7 +278,7 @@ export default function App() {
           onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
         />
       )}
-    </div>
+      </div>
     </ErrorBoundary>
   );
 }

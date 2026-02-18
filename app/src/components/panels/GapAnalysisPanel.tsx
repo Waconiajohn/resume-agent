@@ -83,23 +83,23 @@ function normalizeData(data: GapAnalysisData & Record<string, unknown>) {
 const classificationConfig = {
   strong: {
     icon: CheckCircle,
-    color: 'text-emerald-400',
-    border: 'border-emerald-500/20',
-    bg: 'bg-emerald-500/15',
+    color: 'text-[#a8d7b8]',
+    border: 'border-white/[0.12]',
+    bg: 'bg-white/[0.035]',
     label: 'Strong',
   },
   partial: {
     icon: AlertTriangle,
-    color: 'text-amber-400',
-    border: 'border-amber-500/20',
-    bg: 'bg-amber-500/15',
+    color: 'text-[#dcc390]',
+    border: 'border-white/[0.12]',
+    bg: 'bg-white/[0.03]',
     label: 'Partial',
   },
   gap: {
     icon: XCircle,
-    color: 'text-red-400',
-    border: 'border-red-500/20',
-    bg: 'bg-red-500/15',
+    color: 'text-[#e1a4a4]',
+    border: 'border-white/[0.12]',
+    bg: 'bg-white/[0.03]',
     label: 'Gap',
   },
 };
@@ -118,7 +118,7 @@ function RequirementRow({ item }: { item: RequirementFitItem }) {
             <p className="mt-1 text-xs text-white/70">{cleanText(item.evidence)}</p>
           )}
           {item.strategy && (
-            <p className="mt-1 text-xs text-blue-300 italic">{cleanText(item.strategy)}</p>
+            <p className="mt-1 text-xs italic text-white/62">{cleanText(item.strategy)}</p>
           )}
         </div>
       </div>
@@ -148,7 +148,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
           </div>
           <div className="h-2 rounded-full bg-white/[0.10] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-r from-[#9cb6ff] to-[#c2d2ff] transition-all duration-500"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -157,19 +157,19 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         {/* Count badges */}
         <div className="grid grid-cols-3 gap-2">
           <GlassCard className="p-3 text-center">
-            <span className="text-lg font-semibold text-emerald-400">{strong_count}</span>
+            <span className="text-lg font-semibold text-[#b5dec2]">{strong_count}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
               Strong
             </span>
           </GlassCard>
           <GlassCard className="p-3 text-center">
-            <span className="text-lg font-semibold text-amber-400">{partial_count}</span>
+            <span className="text-lg font-semibold text-[#dfc797]">{partial_count}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
               Partial
             </span>
           </GlassCard>
           <GlassCard className="p-3 text-center">
-            <span className="text-lg font-semibold text-red-400">{gap_count}</span>
+            <span className="text-lg font-semibold text-[#dfa9a9]">{gap_count}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
               Gap
             </span>

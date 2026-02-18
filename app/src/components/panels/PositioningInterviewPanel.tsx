@@ -25,7 +25,7 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
       className={cn(
         'p-3.5 cursor-pointer transition-all duration-200',
         isSelected
-          ? 'border-blue-500/40 shadow-[0_0_20px_-4px_rgba(59,130,246,0.15)] bg-blue-500/[0.08]'
+          ? 'border-white/[0.2] bg-white/[0.08] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
           : 'hover:border-white/20 hover:bg-white/[0.10]',
       )}
       onClick={onClick}
@@ -36,7 +36,7 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
           className={cn(
             'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition-all duration-200 flex items-center justify-center',
             isSelected
-              ? 'border-blue-400 bg-blue-400'
+              ? 'border-white/70 bg-white/70'
               : 'border-white/30 bg-transparent',
           )}
           aria-hidden="true"
@@ -62,7 +62,7 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
               className={cn(
                 'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
                 source === 'resume'
-                  ? 'bg-emerald-500/15 text-emerald-400/90 border border-emerald-500/20'
+                  ? 'border border-white/[0.14] bg-white/[0.06] text-white/76'
                   : 'bg-white/[0.08] text-white/50 border border-white/10',
               )}
             >
@@ -76,7 +76,7 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
 
         {/* Selected checkmark */}
         {isSelected && (
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" aria-hidden="true" />
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-white/74" aria-hidden="true" />
         )}
       </div>
     </GlassCard>
@@ -163,7 +163,7 @@ function QuestionBody({ question, onSubmit }: QuestionBodyProps) {
             'backdrop-blur-xl transition-all duration-200',
             'focus:outline-none focus:ring-2 focus:ring-blue-400/40',
             selectedSuggestion
-              ? 'border-blue-500/25 focus:border-blue-500/40'
+              ? 'border-white/[0.2] focus:border-white/[0.26]'
               : 'border-white/[0.12] focus:border-white/25',
           )}
         />
@@ -206,7 +206,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+            <MessageSquare className="h-3.5 w-3.5 text-[#afc4ff]" />
             <span className="text-sm font-medium text-white/85">Why Me Interview</span>
           </div>
           {questions_total > 0 && (
@@ -227,7 +227,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             aria-label={`${progressPct}% complete`}
           >
             <div
-              className="h-full rounded-full bg-blue-400 transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-[#b5c9ff] transition-all duration-500 ease-out"
               style={{ width: `${progressPct}%` }}
             />
           </div>

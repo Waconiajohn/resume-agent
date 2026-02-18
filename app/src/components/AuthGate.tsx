@@ -34,11 +34,11 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-300/[0.08] via-transparent to-transparent" />
 
       <GlassCard className="relative z-10 w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <Sparkles className="h-8 w-8 text-blue-400" />
+          <Sparkles className="h-8 w-8 text-[#afc4ff]" />
           <h1 className="text-xl font-semibold text-white/90">Resume Agent</h1>
           <p className="text-sm text-white/50">Your AI resume coach</p>
         </div>

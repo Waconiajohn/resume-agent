@@ -6,9 +6,9 @@ export default {
     extend: {
       colors: {
         surface: {
-          DEFAULT: 'hsl(225 25% 8%)',
-          raised: 'hsl(225 25% 12%)',
-          overlay: 'hsl(225 25% 16%)',
+          DEFAULT: 'hsl(220 30% 6%)',
+          raised: 'hsl(220 26% 10%)',
+          overlay: 'hsl(222 24% 14%)',
         },
       },
     },

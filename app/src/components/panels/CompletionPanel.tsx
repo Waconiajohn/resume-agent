@@ -20,7 +20,7 @@ interface CompletionPanelProps {
 
 function StatBadge({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-lg bg-white/[0.04] px-4 py-3">
+    <div className="flex flex-col items-center gap-1 rounded-lg border border-white/[0.1] bg-white/[0.03] px-4 py-3">
       <span className="text-xl font-bold text-white">{value}</span>
       <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">{label}</span>
     </div>
@@ -86,7 +86,7 @@ export function CompletionPanel({
     <div className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center gap-2">
-          <CheckCircle className="h-4 w-4 text-emerald-400" />
+          <CheckCircle className="h-4 w-4 text-[#a8d7b8]" />
           <span className="text-sm font-medium text-white/85">Session Complete</span>
         </div>
       </div>
@@ -94,33 +94,33 @@ export function CompletionPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Export error banner */}
         {exportError && (
-          <div className="rounded-lg bg-red-500/20 border border-red-500/30 px-3 py-2 text-xs text-red-300">
+          <div className="rounded-lg border border-white/[0.14] bg-white/[0.04] px-3 py-2 text-xs text-white/74">
             {exportError}
           </div>
         )}
         {validationIssues.map((issue) => (
           <div
             key={`${issue.field}-${issue.message}`}
-            className={`rounded-lg px-3 py-2 text-xs ${
+            className={`rounded-lg border px-3 py-2 text-xs ${
               issue.severity === 'error'
-                ? 'bg-red-500/20 border border-red-500/30 text-red-300'
-                : 'bg-amber-500/20 border border-amber-500/30 text-amber-300'
+                ? 'border-white/[0.14] bg-white/[0.04] text-white/74'
+                : 'border-white/[0.14] bg-white/[0.04] text-white/74'
             }`}
           >
             {issue.message}
           </div>
         ))}
         {data.export_validation && !data.export_validation.passed && (
-          <div className="rounded-lg bg-amber-500/20 border border-amber-500/30 px-3 py-2 text-xs text-amber-300">
+          <div className="rounded-lg border border-white/[0.14] bg-white/[0.04] px-3 py-2 text-xs text-white/74">
             ATS validation flagged {data.export_validation.findings.length} item(s). Review before sharing.
           </div>
         )}
         {saveMessage && (
           <div
-            className={`rounded-lg px-3 py-2 text-xs ${
+            className={`rounded-lg border px-3 py-2 text-xs ${
               saveMessage.type === 'success'
-                ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-200'
-                : 'bg-red-500/20 border border-red-500/30 text-red-300'
+                ? 'border-white/[0.14] bg-white/[0.04] text-white/74'
+                : 'border-white/[0.14] bg-white/[0.04] text-white/74'
             }`}
           >
             {saveMessage.text}
@@ -144,7 +144,7 @@ export function CompletionPanel({
 
         {/* Missing contact info warning */}
         {resume && !resume.contact_info?.name && (
-          <div className="rounded-lg bg-amber-500/20 border border-amber-500/30 px-3 py-2 text-xs text-amber-300">
+          <div className="rounded-lg border border-white/[0.14] bg-white/[0.04] px-3 py-2 text-xs text-white/74">
             Contact name is missing. Your exports will not include a name header.
           </div>
         )}
@@ -152,7 +152,7 @@ export function CompletionPanel({
         {/* Resume Export */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <FileText className="h-4 w-4 text-blue-400" />
+            <FileText className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-sm font-medium text-white/85">Tailored Resume</h3>
           </div>
           {resume ? (
@@ -182,7 +182,7 @@ export function CompletionPanel({
         {resume && onSaveCurrentResumeAsBase && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="h-4 w-4 text-emerald-400" />
+              <CheckCircle className="h-4 w-4 text-[#a8d7b8]" />
               <h3 className="text-sm font-medium text-white/85">Save As Base Resume</h3>
             </div>
             <div className="space-y-2">
