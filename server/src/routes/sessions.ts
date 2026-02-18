@@ -38,20 +38,14 @@ const sseConnectionTimestamps = new Map<string, number[]>();
 const SSE_RATE_WINDOW_MS = 60_000;
 const SSE_RATE_MAX = 10;
 
-// SSE endpoint — accepts Authorization header (preferred) or query param (deprecated fallback)
+// SSE endpoint — requires Authorization header with Bearer token
 sessions.get('/:id/sse', async (c) => {
   const sessionId = c.req.param('id');
 
-  // Prefer Authorization header; fall back to query param for legacy EventSource clients
   const authHeader = c.req.header('Authorization');
   let token: string | undefined;
   if (authHeader?.startsWith('Bearer ')) {
     token = authHeader.slice(7);
-  } else {
-    token = c.req.query('token');
-    if (token) {
-      logger.warn({ sessionId }, 'DEPRECATED: JWT in query string. Use Authorization header instead.');
-    }
   }
 
   if (!token) {
@@ -221,26 +215,22 @@ sessions.post('/', async (c) => {
     job_application_id?: string;
   };
 
-  // Check usage limits before creating session
-  const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-  const { data: usage } = await supabaseAdmin.from('user_usage')
-    .select('sessions_count')
-    .eq('user_id', user.id)
-    .gte('period_start', periodStart)
-    .single();
+  // Atomic usage check + increment
+  const { data: usageResult, error: usageError } = await supabaseAdmin
+    .rpc('increment_session_usage', { p_user_id: user.id });
 
-  const { data: subscription } = await supabaseAdmin.from('user_subscriptions')
-    .select('plan_id')
-    .eq('user_id', user.id)
-    .single();
+  if (usageError) {
+    logger.error({ error: usageError.message }, 'Failed to check usage limits');
+    return c.json({ error: 'Failed to verify usage limits' }, 500);
+  }
 
-  const { data: plan } = await supabaseAdmin.from('pricing_plans')
-    .select('max_sessions_per_month')
-    .eq('id', subscription?.plan_id ?? 'free')
-    .single();
-
-  if (plan?.max_sessions_per_month && (usage?.sessions_count ?? 0) >= plan.max_sessions_per_month) {
-    return c.json({ error: 'Monthly session limit reached. Please upgrade your plan.', code: 'USAGE_LIMIT' }, 402);
+  if (usageResult && !usageResult.allowed) {
+    return c.json({
+      error: 'Monthly session limit reached. Please upgrade your plan.',
+      code: 'USAGE_LIMIT',
+      current_count: usageResult.current_count,
+      max_count: usageResult.max_count,
+    }, 402);
   }
 
   const { data, error } = await supabaseAdmin
@@ -311,10 +301,11 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     if (idempotency_key.length > 128) {
       return c.json({ error: 'Idempotency key too long (max 128 chars)' }, 400);
     }
-    if (recentIdempotencyKeys.has(idempotency_key)) {
+    const scopedKey = `${user.id}:${idempotency_key}`;
+    if (recentIdempotencyKeys.has(scopedKey)) {
       return c.json({ error: 'Duplicate message', code: 'DUPLICATE' }, 409);
     }
-    recentIdempotencyKeys.set(idempotency_key, Date.now());
+    recentIdempotencyKeys.set(scopedKey, Date.now());
   }
 
   const { data: sessionData, error: loadError } = await supabaseAdmin

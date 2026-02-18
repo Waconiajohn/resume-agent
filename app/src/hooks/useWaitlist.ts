@@ -8,6 +8,15 @@ export function useWaitlist() {
   async function submit(email: string) {
     setStatus('submitting');
     setError(null);
+
+    // Validate email format before hitting DB
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address.');
+      setStatus('error');
+      return;
+    }
+
     const { error: dbError } = await supabase
       .from('waitlist_emails')
       .insert({ email, source: 'sales_page' });

@@ -1,10 +1,25 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { sseConnections } from './sessions.js';
 import { runPipeline } from '../agents/pipeline.js';
 import type { PipelineSSEEvent } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
+
+const startSchema = z.object({
+  session_id: z.string().uuid(),
+  raw_resume_text: z.string().min(50).max(100_000),
+  job_description: z.string().min(20).max(50_000),
+  company_name: z.string().min(1).max(200),
+});
+
+const respondSchema = z.object({
+  session_id: z.string().uuid(),
+  gate: z.string().min(1).max(100).optional(),
+  response: z.unknown(),
+});
 
 const pipeline = new Hono();
 pipeline.use('*', authMiddleware);
@@ -25,15 +40,14 @@ const runningPipelines = new Set<string>();
 
 // POST /pipeline/start
 // Body: { session_id, raw_resume_text, job_description, company_name }
-pipeline.post('/start', async (c) => {
+pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   const user = c.get('user');
-  const body = await c.req.json();
-  const { session_id, raw_resume_text, job_description, company_name } = body;
-
-  // Validate inputs
-  if (!session_id || !raw_resume_text || !job_description || !company_name) {
-    return c.json({ error: 'Missing required fields' }, 400);
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = startSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
+  const { session_id, raw_resume_text, job_description, company_name } = parsed.data;
 
   // Verify session belongs to user
   const { data: session, error } = await supabaseAdmin
@@ -53,6 +67,12 @@ pipeline.post('/start', async (c) => {
   }
 
   runningPipelines.add(session_id);
+
+  // Persist pipeline status to DB
+  await supabaseAdmin
+    .from('coach_sessions')
+    .update({ pipeline_status: 'running', pipeline_stage: 'intake' })
+    .eq('id', session_id);
 
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
@@ -109,11 +129,19 @@ pipeline.post('/start', async (c) => {
     company_name,
     emit,
     waitForUser,
-  }).then((state) => {
+  }).then(async (state) => {
     log.info({ stage: state.current_stage, revision_count: state.revision_count }, 'Pipeline completed');
-  }).catch((error) => {
+    await supabaseAdmin
+      .from('coach_sessions')
+      .update({ pipeline_status: 'complete', pending_gate: null, pending_gate_data: null })
+      .eq('id', session_id);
+  }).catch(async (error) => {
     log.error({ error: error instanceof Error ? error.message : error }, 'Pipeline failed');
     emit({ type: 'pipeline_error', stage: 'intake', error: error instanceof Error ? error.message : 'Pipeline failed' });
+    await supabaseAdmin
+      .from('coach_sessions')
+      .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
+      .eq('id', session_id);
   }).finally(() => {
     runningPipelines.delete(session_id);
     // Clean up any lingering gate
@@ -130,14 +158,14 @@ pipeline.post('/start', async (c) => {
 
 // POST /pipeline/respond
 // Body: { session_id, gate, response }
-pipeline.post('/respond', async (c) => {
+pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
-  const body = await c.req.json();
-  const { session_id, gate, response } = body;
-
-  if (!session_id) {
-    return c.json({ error: 'Missing session_id' }, 400);
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = respondSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
+  const { session_id, gate, response } = parsed.data;
 
   // Verify session belongs to user
   const { data: session, error } = await supabaseAdmin
@@ -199,6 +227,24 @@ pipeline.get('/status', async (c) => {
 
   const running = runningPipelines.has(sessionId);
   const pending = pendingGates.get(sessionId);
+
+  // If not running in-memory, check DB for pipeline state (handles server restart)
+  if (!running) {
+    const { data: dbSession } = await supabaseAdmin
+      .from('coach_sessions')
+      .select('pipeline_status, pipeline_stage, pending_gate')
+      .eq('id', sessionId)
+      .single();
+
+    if (dbSession?.pipeline_status === 'running') {
+      return c.json({
+        running: false,
+        pending_gate: null,
+        stale_pipeline: true,
+        message: 'Pipeline was running but server restarted. Please start a new session.',
+      });
+    }
+  }
 
   return c.json({
     running,

@@ -30,10 +30,10 @@ async function acquireLock(sessionId: string): Promise<boolean> {
   // 23505 = unique_violation — lock is held by another instance
   if (error.code === '23505') return false;
 
-  // For any other error (table missing, network issue, etc.), log and proceed
-  // rather than blocking the session forever. The lock is a best-effort safeguard.
-  logger.error({ sessionId, error: error.message, code: error.code }, 'Failed to acquire session lock, proceeding without lock');
-  return true;
+  // For any other error (table missing, network issue, etc.), fail closed
+  // to prevent concurrent access during DB outages.
+  logger.error({ sessionId, error: error.message, code: error.code }, 'Failed to acquire session lock');
+  return false;
 }
 
 /**
@@ -98,18 +98,34 @@ async function waitForLock(sessionId: string): Promise<void> {
 }
 
 /**
+ * Renews the session lock by extending its expiry.
+ * Called periodically to prevent lock expiry during long-running operations.
+ */
+async function renewLock(sessionId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('session_locks')
+    .update({ expires_at: new Date(Date.now() + LOCK_EXPIRY_MS).toISOString() })
+    .eq('session_id', sessionId);
+  if (error) {
+    logger.warn({ sessionId, error: error.message }, 'Failed to renew session lock');
+  }
+}
+
+/**
  * Executes fn() while holding a distributed session lock.
- * Drop-in replacement for the previous in-memory lock.
+ * Automatically renews the lock every 60s to prevent expiry during long operations.
  */
 export async function withSessionLock<T>(
   sessionId: string,
   fn: () => Promise<T>,
 ): Promise<T> {
   await waitForLock(sessionId);
+  const renewInterval = setInterval(() => renewLock(sessionId), 60_000);
 
   try {
     return await fn();
   } finally {
+    clearInterval(renewInterval);
     await releaseLock(sessionId);
   }
 }

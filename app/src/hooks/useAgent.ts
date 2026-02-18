@@ -44,6 +44,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
   // Track last text_complete content to deduplicate
   const lastTextCompleteRef = useRef<string>('');
+  const lastSeqRef = useRef<number>(0);
 
   // Reconnection tracking
   const reconnectAttemptsRef = useRef(0);
@@ -207,8 +208,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'text_complete': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  // Deduplicate text_complete events
-                  if (data.content === lastTextCompleteRef.current) break;
+                  // Deduplicate: prefer server sequence number, fall back to content equality
+                  if (typeof data.seq === 'number') {
+                    if (data.seq <= lastSeqRef.current) break;
+                    lastSeqRef.current = data.seq;
+                  } else {
+                    if (data.content === lastTextCompleteRef.current) break;
+                  }
                   lastTextCompleteRef.current = data.content;
 
                   // Flush any remaining buffered deltas before completing

@@ -46,6 +46,15 @@ app.get('/health', async (c) => {
 const startTime = Date.now();
 
 app.get('/metrics', (c) => {
+  const metricsKey = process.env.METRICS_KEY;
+  if (metricsKey) {
+    if (c.req.header('Authorization') !== `Bearer ${metricsKey}`) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+  } else if (isProduction) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
   const memUsage = process.memoryUsage();
   return c.json({
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),

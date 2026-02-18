@@ -1,7 +1,17 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import logger from '../lib/logger.js';
+
+const createResumeSchema = z.object({
+  raw_text: z.string().min(1).max(100_000),
+  summary: z.string().max(5000).optional(),
+  experience: z.array(z.unknown()).max(50).optional(),
+  skills: z.record(z.string(), z.array(z.string())).optional(),
+  education: z.array(z.unknown()).max(20).optional(),
+  certifications: z.array(z.unknown()).max(50).optional(),
+});
 
 const resumes = new Hono();
 
@@ -47,18 +57,11 @@ resumes.get('/:id', async (c) => {
 resumes.post('/', async (c) => {
   const user = c.get('user');
   const body = await c.req.json().catch(() => ({}));
-  const { raw_text, summary, experience, skills, education, certifications } = body as {
-    raw_text: string;
-    summary?: string;
-    experience?: unknown[];
-    skills?: Record<string, string[]>;
-    education?: unknown[];
-    certifications?: unknown[];
-  };
-
-  if (!raw_text?.trim()) {
-    return c.json({ error: 'raw_text is required' }, 400);
+  const parsed = createResumeSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
+  const { raw_text, summary, experience, skills, education, certifications } = parsed.data;
 
   const { data, error } = await supabaseAdmin
     .from('master_resumes')

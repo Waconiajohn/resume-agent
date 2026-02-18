@@ -1,4 +1,5 @@
 import type { Context, Next } from 'hono';
+import logger from '../lib/logger.js';
 
 interface RateLimitEntry {
   count: number;
@@ -25,7 +26,14 @@ setInterval(() => {
 export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
   return async (c: Context, next: Next) => {
     const user = c.get('user') as { id: string } | undefined;
-    const key = user?.id ?? c.req.header('x-forwarded-for') ?? 'anonymous';
+    let key: string;
+    if (user?.id) {
+      key = user.id;
+    } else if (process.env.TRUST_PROXY === 'true') {
+      key = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous';
+    } else {
+      key = 'anonymous';
+    }
 
     const now = Date.now();
     let entry = buckets.get(key);
@@ -40,6 +48,7 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
     if (entry.count > maxRequests) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       c.header('Retry-After', String(retryAfter));
+      logger.warn({ key: key === user?.id ? `user:${key.slice(0, 8)}...` : key, count: entry.count, max: maxRequests }, 'Rate limit exceeded');
       return c.json({ error: 'Too many requests. Please try again later.' }, 429);
     }
 

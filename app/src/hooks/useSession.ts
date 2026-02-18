@@ -93,7 +93,10 @@ export function useSession(accessToken: string | null) {
       const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          idempotency_key: `${sessionId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
