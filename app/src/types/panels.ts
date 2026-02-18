@@ -133,6 +133,8 @@ export interface QualityDashboardData {
 // --- Completion ---
 export interface CompletionData {
   ats_score?: number;
+  keyword_coverage?: number;
+  authenticity_score?: number;
   requirements_addressed?: number;
   sections_rewritten?: number;
   export_validation?: {

@@ -144,7 +144,8 @@ function EducationSection({ resume }: { resume: FinalResume }) {
         </h2>
         {resume.education.map((edu, i) => (
           <div key={i} className="text-sm text-gray-800">
-            <span className="font-semibold">{edu.degree}</span> in {edu.field}, {edu.institution}
+            <span className="font-semibold">{edu.degree}</span>
+            {edu.field ? ` in ${edu.field}` : ''}, {edu.institution}
             {edu.year ? ` (${edu.year})` : ''}
           </div>
         ))}
@@ -175,7 +176,8 @@ function CertificationsSection({ resume }: { resume: FinalResume }) {
         </h2>
         {resume.certifications.map((cert, i) => (
           <div key={i} className="text-sm text-gray-800">
-            <span className="font-semibold">{cert.name}</span> — {cert.issuer}
+            <span className="font-semibold">{cert.name}</span>
+            {cert.issuer ? ` — ${cert.issuer}` : ''}
             {cert.year ? ` (${cert.year})` : ''}
           </div>
         ))}
@@ -216,7 +218,11 @@ export function WYSIWYGResume({ resume }: WYSIWYGResumeProps) {
       orderedSections.push(<Component key={sectionName} resume={resume} />);
       rendered.add(sectionName);
     } else if (import.meta.env.DEV) {
-      console.warn(`[WYSIWYGResume] Unknown section in section_order: ${sectionName}`);
+      // experience_role_*, earlier_career, education_and_certifications are handled
+      // by the experience / education / certifications renderers — silently skip.
+      if (!sectionName.startsWith('experience_role_') && sectionName !== 'earlier_career' && sectionName !== 'education_and_certifications') {
+        console.warn(`[WYSIWYGResume] Unknown section in section_order: ${sectionName}`);
+      }
     }
   }
 

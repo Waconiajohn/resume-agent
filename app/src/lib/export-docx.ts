@@ -314,17 +314,18 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     if (!Array.isArray(resume.education) || resume.education.length === 0) return [];
     const paras = [sectionHeading('Education')];
     for (const edu of resume.education) {
+      // Build line conditionally to avoid "in ," artifact when field/year are empty
+      let line = edu.degree;
+      if (edu.field) line += ` in ${edu.field}`;
+      line += `, ${edu.institution}`;
+      if (edu.year) line += ` (${edu.year})`;
       paras.push(
         new Paragraph({
           style: 'BodyText',
           keepLines: true,
           spacing: { after: 60 },
           children: [
-            new TextRun({
-              text: `${edu.degree} in ${edu.field}, ${edu.institution}${edu.year ? ` (${edu.year})` : ''}`,
-              size: 20,
-              font: FONT,
-            }),
+            new TextRun({ text: line, size: 20, font: FONT }),
           ],
         }),
       );
@@ -336,17 +337,17 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     if (!Array.isArray(resume.certifications) || resume.certifications.length === 0) return [];
     const paras = [sectionHeading('Certifications')];
     for (const cert of resume.certifications) {
+      // Build line conditionally to avoid trailing "— " when issuer is empty
+      let line = cert.name;
+      if (cert.issuer) line += ` \u2014 ${cert.issuer}`;
+      if (cert.year) line += ` (${cert.year})`;
       paras.push(
         new Paragraph({
           style: 'BodyText',
           keepLines: true,
           spacing: { after: 60 },
           children: [
-            new TextRun({
-              text: `${cert.name} \u2014 ${cert.issuer}${cert.year ? ` (${cert.year})` : ''}`,
-              size: 20,
-              font: FONT,
-            }),
+            new TextRun({ text: line, size: 20, font: FONT }),
           ],
         }),
       );
@@ -388,7 +389,8 @@ export async function exportDocx(resume: FinalResume): Promise<{ success: boolea
  */
 function parseExperienceRoleParagraphs(text: string): Paragraph[] {
   const paras: Paragraph[] = [];
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  // Strip markdown bold/italic markers (e.g. **Chief Technology Officer**)
+  const lines = text.split('\n').map(l => l.trim().replace(/\*\*(.*?)\*\*/g, '$1').replace(/__(.*?)__/g, '$1')).filter(Boolean);
 
   // Skip ALL CAPS heading lines (like "PROFESSIONAL EXPERIENCE") — handled by caller
   let startIdx = 0;

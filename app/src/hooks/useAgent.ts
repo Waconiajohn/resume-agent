@@ -37,6 +37,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [blueprintReady, setBlueprintReady] = useState<unknown>(null);
   const [sectionDraft, setSectionDraft] = useState<{ section: string; content: string } | null>(null);
   const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
+  // Ref mirror so pipeline_complete handler can read latest quality scores
+  const qualityScoresRef = useRef<QualityScores | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   // Accumulate all section content for building FinalResume at pipeline_complete
   const sectionsMapRef = useRef<Record<string, string>>({});
@@ -572,6 +574,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   staleNoticeActiveRef.current = false;
                   const scores = data.scores as QualityScores;
                   setQualityScores(scores);
+                  qualityScoresRef.current = scores;
                   // Show quality dashboard with 6-dimension scores
                   setPanelType('quality_dashboard');
                   setPanelData({
@@ -641,6 +644,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   setPanelData({
                     type: 'completion',
                     ats_score: (data?.resume as { ats_score?: number } | undefined)?.ats_score,
+                    keyword_coverage: qualityScoresRef.current?.requirement_coverage,
+                    authenticity_score: qualityScoresRef.current?.authenticity,
                     export_validation: data?.export_validation as {
                       passed: boolean;
                       findings: Array<{ section: string; issue: string; instruction: string; priority: 'high' | 'medium' | 'low' }>;
@@ -692,7 +697,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     connectSSE();
 
     // Stale-processing detector: check every 10s if processing has stalled
-    const STALE_THRESHOLD_MS = 120_000; // 120 seconds
+    const STALE_THRESHOLD_MS = 300_000; // 5 min — quality_review can take 3-5 min on slow providers
     staleCheckIntervalRef.current = setInterval(() => {
       if (!mountedRef.current) return;
       // Use functional state read to avoid stale closure over isProcessing

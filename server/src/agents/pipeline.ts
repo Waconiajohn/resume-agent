@@ -172,14 +172,23 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     markStageEnd('gap_analysis');
     emit({ type: 'stage_complete', stage: 'gap_analysis', message: `Coverage: ${state.gap_analysis.coverage_score}%`, duration_ms: stageTimingsMs.gap_analysis });
+    const gapReqs = state.gap_analysis.requirements;
+    const gapStrong = gapReqs.filter(r => r.classification === 'strong').length;
+    const gapPartial = gapReqs.filter(r => r.classification === 'partial').length;
+    const gapGap = gapReqs.filter(r => r.classification === 'gap').length;
     emit({
       type: 'right_panel_update',
       panel_type: 'gap_analysis',
       data: {
-        requirements: state.gap_analysis.requirements,
+        requirements: gapReqs,
         coverage_score: state.gap_analysis.coverage_score,
         critical_gaps: state.gap_analysis.critical_gaps,
         strength_summary: state.gap_analysis.strength_summary,
+        total: gapReqs.length,
+        addressed: gapStrong + gapPartial,
+        strong_count: gapStrong,
+        partial_count: gapPartial,
+        gap_count: gapGap,
       },
     });
 
@@ -562,8 +571,9 @@ function buildSectionCalls(
           global_rules: blueprint.global_rules,
         });
       }
-      // Earlier career as a separate section if included
-      if (blueprint.experience_blueprint.earlier_career?.include) {
+      // Earlier career as a separate section if included — but skip if ALL original
+      // resume roles are already individually expanded (prevents duplicate entries).
+      if (blueprint.experience_blueprint.earlier_career?.include && roleCount < resume.experience.length) {
         calls.push({
           section: 'earlier_career',
           blueprint_slice: {
@@ -779,6 +789,29 @@ function createConcurrencyLimiter(limit: number) {
   };
 }
 
+/**
+ * Strip leading section title lines that the LLM includes in raw section text.
+ * Prevents "PROFESSIONAL SUMMARY" heading duplicating the structured heading.
+ */
+function stripLeadingSectionTitle(content: string): string {
+  const lines = content.split('\n');
+  // Remove leading blank lines
+  while (lines.length > 0 && !lines[0].trim()) lines.shift();
+  if (lines.length === 0) return '';
+  const first = lines[0].trim();
+  // ALL CAPS heading (e.g. "SELECTED ACCOMPLISHMENTS", "PROFESSIONAL SUMMARY")
+  if (/^[A-Z][A-Z &/]+$/.test(first) && first.length > 2) {
+    lines.shift();
+    while (lines.length > 0 && !lines[0].trim()) lines.shift();
+  }
+  // Title-case variant (e.g. "Professional Summary", "Selected Accomplishments")
+  else if (/^(Professional Summary|Selected Accomplishments|Core Competencies|Skills|Education|Certifications)$/i.test(first)) {
+    lines.shift();
+    while (lines.length > 0 && !lines[0].trim()) lines.shift();
+  }
+  return lines.join('\n').trim();
+}
+
 function normalizeSkills(intakeSkills: string[]): Record<string, string[]> {
   if (!Array.isArray(intakeSkills) || intakeSkills.length === 0) return {};
   return { Core: intakeSkills.slice(0, 30) };
@@ -944,8 +977,10 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
     })
     .filter((s) => s !== 'header');
   const resume: FinalResumePayload = {
-    summary: sections.summary?.content ?? intake.summary ?? '',
-    selected_accomplishments: sections.selected_accomplishments?.content,
+    summary: stripLeadingSectionTitle(sections.summary?.content ?? intake.summary ?? ''),
+    selected_accomplishments: sections.selected_accomplishments?.content
+      ? stripLeadingSectionTitle(sections.selected_accomplishments.content)
+      : undefined,
     experience: intake.experience.map((exp, idx) =>
       parseExperienceRoleForStructuredPayload(sections[`experience_role_${idx}`]?.content, exp),
     ),

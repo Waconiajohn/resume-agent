@@ -30,6 +30,8 @@ function metricSnapshot(panelData: PanelData | null, resume: FinalResume | null)
 
   if (panelData?.type === 'completion') {
     ats = panelData.ats_score ?? ats;
+    keywordCoverage = panelData.keyword_coverage ?? keywordCoverage;
+    authenticity = panelData.authenticity_score ?? authenticity;
     requirements =
       panelData.requirements_addressed != null ? `${panelData.requirements_addressed}` : null;
   }
