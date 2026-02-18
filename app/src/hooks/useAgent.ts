@@ -63,6 +63,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // Stale-processing detector: track last pipeline progress event time.
   // Heartbeats should not count as progress, otherwise stalled pipelines never trip the detector.
   const lastProgressTimestampRef = useRef<number>(Date.now());
+  // Prevent repeated stale notices while a single stall is ongoing.
+  const staleNoticeActiveRef = useRef<boolean>(false);
   const staleCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const nextId = useCallback(() => {
@@ -449,6 +451,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   setPipelineStage(data.stage as PipelineStage);
                   setCurrentPhase(data.stage as string);
                   setIsProcessing(true);
@@ -468,6 +471,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   setPipelineStage(data.stage as PipelineStage);
                   setIsProcessing(false);
                   if (data.duration_ms) {
@@ -527,6 +531,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   setIsProcessing(false);
                   const section = data.section as string;
                   const content = data.content as string;
@@ -547,6 +552,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   const section = data.section as string;
                   const content = data.content as string;
                   setSectionDraft({ section, content });
@@ -563,6 +569,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   const scores = data.scores as QualityScores;
                   setQualityScores(scores);
                   // Show quality dashboard with 6-dimension scores
@@ -585,6 +592,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   setIsProcessing(true);
                   setMessages((prev) => [
                     ...prev,
@@ -601,6 +609,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'pipeline_complete': {
                   const data = safeParse(msg.data);
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   setIsProcessing(false);
                   setSessionComplete(true);
                   setPipelineStage('complete');
@@ -644,6 +653,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
+                  staleNoticeActiveRef.current = false;
                   setIsProcessing(false);
                   setError(data.error as string ?? 'Pipeline error');
                   break;
@@ -688,16 +698,19 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       // Use functional state read to avoid stale closure over isProcessing
       setIsProcessing((currentlyProcessing) => {
         if (currentlyProcessing && Date.now() - lastProgressTimestampRef.current > STALE_THRESHOLD_MS) {
-          console.warn('[useAgent] Stale processing detected — no SSE events for 120s. Resetting.');
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `stale-${Date.now()}`,
-              role: 'system',
-              content: 'Session appears stalled. You can send a message to continue.',
-              timestamp: new Date().toISOString(),
-            },
-          ]);
+          if (!staleNoticeActiveRef.current) {
+            console.warn('[useAgent] Stale processing detected — no progress events for 120s. Resetting once.');
+            staleNoticeActiveRef.current = true;
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: nextId(),
+                role: 'system',
+                content: 'Session appears stalled. You can send a message to continue.',
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+          }
           return false; // reset isProcessing
         }
         return currentlyProcessing; // no change
