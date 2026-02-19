@@ -262,7 +262,31 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
       // ─── Await research if it hasn't finished yet ───────────
       if (!state.research) {
-        state.research = await researchPromise;
+        try {
+          state.research = await researchPromise;
+        } catch (researchErr) {
+          // Research failed after positioning — retry once before giving up.
+          log.warn(
+            { error: researchErr instanceof Error ? researchErr.message : String(researchErr) },
+            'Late research promise rejected — retrying once',
+          );
+          try {
+            state.research = await withRetry(
+              () => runResearchAgent({
+                job_description: config.job_description,
+                company_name: config.company_name,
+                parsed_resume: state.intake!,
+              }),
+              { maxAttempts: 2, baseDelay: 3_000, onRetry: (a, e) => log.warn({ attempt: a, error: e.message }, 'Research retry') },
+            );
+          } catch (retryErr) {
+            log.error(
+              { error: retryErr instanceof Error ? retryErr.message : String(retryErr) },
+              'Research failed after retry — pipeline cannot continue without research',
+            );
+            throw retryErr;
+          }
+        }
         markStageEnd('research');
         emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
         emit({

@@ -18,7 +18,7 @@ export function isQuestionnaireEnabled(stage: QuestionnaireStage): boolean {
 }
 
 export const FEATURE_FLAGS = {
-  positioning_v2: envBool('FF_POSITIONING_V2', true),
+  positioning_v2: envBool('FF_POSITIONING_V2', false),
 };
 
 export function isFeatureEnabled(flag: keyof typeof FEATURE_FLAGS): boolean {

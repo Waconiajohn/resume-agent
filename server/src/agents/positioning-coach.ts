@@ -90,10 +90,6 @@ function identifyRequirementGaps(
  * benchmark candidate, and company research. Falls back to static questions
  * if LLM call fails.
  */
-function rejectAfter(ms: number, message: string): Promise<never> {
-  return new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms));
-}
-
 export async function generateQuestions(
   resume: IntakeOutput,
   research?: ResearchOutput,
@@ -107,10 +103,14 @@ export async function generateQuestions(
   try {
     const gaps = identifyRequirementGaps(resume, research);
     const questions = await withRetry(
-      () => Promise.race([
-        generateQuestionsViaLLM(resume, research, gaps, preferences),
-        rejectAfter(20_000, 'Question generation timed out'),
-      ]),
+      () => {
+        // Each attempt gets its own AbortController so the in-flight fetch is
+        // cancelled before a retry starts — prevents duplicate concurrent calls.
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 20_000);
+        return generateQuestionsViaLLM(resume, research, gaps, preferences, controller.signal)
+          .finally(() => clearTimeout(timer));
+      },
       {
         maxAttempts: 2,
         baseDelay: 2_000,
@@ -134,6 +134,7 @@ async function generateQuestionsViaLLM(
   research: ResearchOutput,
   gaps: RequirementGap[],
   preferences?: { primary_goal?: string; resume_priority?: string; seniority_delta?: string },
+  signal?: AbortSignal,
 ): Promise<PositioningQuestion[]> {
   const needsAgeProtection = resume.career_span_years > 15;
 
@@ -208,6 +209,7 @@ Generate the coaching interview questions as a JSON array.`;
     max_tokens: 4096,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
+    signal,
   });
 
   const parsed = repairJSON<unknown[]>(response.text);

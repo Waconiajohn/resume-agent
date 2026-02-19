@@ -10,6 +10,7 @@ export interface ChatParams {
   tools?: ToolDef[];
   tool_choice?: { type: 'any' } | { type: 'auto' } | { type: 'none' };
   max_tokens: number;
+  signal?: AbortSignal;
 }
 
 /** Anthropic-style message with content blocks */
@@ -219,7 +220,7 @@ export class ZAIProvider implements LLMProvider {
         'Authorization': `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(180_000), // 3 minute timeout for non-streaming
+      signal: params.signal ?? AbortSignal.timeout(180_000), // caller signal or 3 min default
     });
 
     if (!response.ok) {

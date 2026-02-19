@@ -169,7 +169,9 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
   // Determine whether the submit button should be enabled
   const hasSelection = selectedSuggestionIndex !== null;
   const hasCustomText = customText.trim().length > 0;
-  const canSubmit = hasSelection || hasCustomText;
+  // Inferred/JD suggestions require custom text to ensure truth-bound answers
+  const needsElaboration = hasSelection && !hasCustomText && selectedSuggestion?.source !== 'resume';
+  const canSubmit = needsElaboration ? false : (hasSelection || hasCustomText);
 
   function handleSuggestionClick(index: number) {
     setSelectedSuggestionIndex(prev => (prev === index ? null : index));
@@ -254,6 +256,13 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
           )}
         />
       </div>
+
+      {/* Elaboration hint for inferred/JD suggestions */}
+      {needsElaboration && (
+        <p className="text-xs text-amber-300/70">
+          Please add a specific example above to confirm this applies to your experience.
+        </p>
+      )}
 
       {/* Submit button */}
       <div className="flex justify-end pt-1">
