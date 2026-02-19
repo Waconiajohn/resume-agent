@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, Plus, Star, Trash2 } from 'lucide-react';
+import { Sparkles, Plus, Star, Trash2, AlertTriangle } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { GlassButton } from './GlassButton';
 import { SessionCard } from './SessionCard';

@@ -4,9 +4,9 @@ export function ScoreRing({ score, max, label, color }: { score: number; max: nu
   const offset = circumference - (pct / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1.5" role="img" aria-label={`${label}: ${pct}%`}>
       <div className="relative h-16 w-16">
-        <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
+        <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
           <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3" className="text-white/[0.10]" />
           <circle
             cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3"

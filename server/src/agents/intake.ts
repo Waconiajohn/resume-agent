@@ -68,8 +68,8 @@ export async function runIntakeAgent(input: IntakeInput): Promise<IntakeOutput> 
   const response = await llm.chat({
     model: MODEL_LIGHT,
     max_tokens: 8192,
-    system: '',
-    messages: [{ role: 'user', content: `${PARSE_PROMPT}\n\n---\n\nRESUME TEXT:\n${rawText}` }],
+    system: PARSE_PROMPT,
+    messages: [{ role: 'user', content: `RESUME TEXT:\n${rawText}` }],
   });
 
   if (!response.text) {
@@ -146,9 +146,14 @@ export async function runIntakeAgent(input: IntakeInput): Promise<IntakeOutput> 
     certifications = [];
   }
 
-  // Calculate career span
+  // Calculate career span — use regex to extract 4-digit year from date strings
+  // that may include month names (e.g. "Jan 2018", "March 2022 – Present")
+  const extractYear = (dateStr: string): number => {
+    const match = dateStr.match(/\b(19|20)\d{2}\b/);
+    return match ? parseInt(match[0], 10) : NaN;
+  };
   const years = experience
-    .flatMap(e => [parseInt(e.start_date), parseInt(e.end_date)])
+    .flatMap(e => [extractYear(e.start_date), extractYear(e.end_date)])
     .filter(y => !isNaN(y) && y > 1950 && y <= new Date().getFullYear() + 1);
   const career_span_years = years.length >= 2
     ? Math.max(...years) - Math.min(...years)

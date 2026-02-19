@@ -72,7 +72,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Stat cards */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {cards.map(({ label, value, icon: Icon }) => {
             if (value == null) return null;
             return (

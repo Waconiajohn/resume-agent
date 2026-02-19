@@ -107,7 +107,7 @@ export async function generateQuestions(
         // Each attempt gets its own AbortController so the in-flight fetch is
         // cancelled before a retry starts — prevents duplicate concurrent calls.
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 20_000);
+        const timer = setTimeout(() => controller.abort(), 120_000);
         return generateQuestionsViaLLM(resume, research, gaps, preferences, controller.signal)
           .finally(() => clearTimeout(timer));
       },

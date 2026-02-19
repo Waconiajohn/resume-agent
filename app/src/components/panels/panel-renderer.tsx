@@ -90,6 +90,9 @@ export function validatePanelData(panelData: PanelData | null): string | null {
       if (typeof panelData.active_section !== 'string') {
         return 'Live resume payload is missing active section.';
       }
+      if (!Array.isArray(panelData.changes)) {
+        return 'Live resume payload is missing changes array.';
+      }
       return null;
     case 'positioning_interview':
       if (
@@ -212,9 +215,17 @@ function renderPanelBody(props: PanelRendererProps) {
   }
 }
 
-function simpleHash(data: unknown): string {
+function djb2Hash(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function contentHash(data: unknown): string {
   try {
-    return String(JSON.stringify(data).length);
+    return djb2Hash(JSON.stringify(data));
   } catch {
     return '0';
   }
@@ -225,7 +236,7 @@ export function SafePanelContent(
 ) {
   const { variant = 'pane', panelType, panelData } = props;
   const validationError = validatePanelData(panelData);
-  const resetKey = `${panelType ?? 'resume'}-${simpleHash(panelData)}`;
+  const resetKey = `${panelType ?? 'resume'}-${contentHash(panelData)}`;
   const frameClass = variant === 'inline' ? 'inline-panel-host' : 'right-panel-shell';
 
   return (

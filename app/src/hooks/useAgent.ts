@@ -86,9 +86,16 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     rafIdRef.current = null;
   }, []);
 
+  // Ref to hold the latest connectSSE function so handleDisconnect never closes over a stale version
+  const connectSSERef = useRef<(() => void) | null>(null);
+
   // Reconnect with exponential backoff
-  const handleDisconnect = useCallback((connectFn: () => void) => {
+  const handleDisconnect = useCallback(() => {
     setConnected(false);
+    // Clear in-flight state before reconnecting to avoid stale UI
+    setStreamingText('');
+    setTools([]);
+    setAskPrompt(null);
 
     if (!mountedRef.current) return;
 
@@ -97,7 +104,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       reconnectAttemptsRef.current += 1;
       reconnectTimerRef.current = setTimeout(() => {
         if (mountedRef.current) {
-          connectFn();
+          connectSSERef.current?.();
         }
       }, delay);
     } else {
@@ -118,6 +125,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     if (!sessionId || !accessToken) return;
 
     function connectSSE() {
+      // Update ref so handleDisconnect always uses the latest version
+      connectSSERef.current = connectSSE;
+
       // Abort any existing connection
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -136,14 +146,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           if (!response.ok) {
             console.error('[useAgent] SSE fetch failed:', response.status, response.statusText);
             setError(`Connection failed (${response.status})`);
-            handleDisconnect(connectSSE);
+            handleDisconnect();
             return;
           }
 
           if (!response.body) {
             console.error('[useAgent] SSE response has no body');
             setError('Connection failed (no response body)');
-            handleDisconnect(connectSSE);
+            handleDisconnect();
             return;
           }
 
@@ -730,7 +740,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
           // Stream ended (server closed connection or network drop) — attempt reconnect
           if (!controller.signal.aborted && mountedRef.current) {
-            handleDisconnect(connectSSE);
+            handleDisconnect();
           }
         })
         .catch((err) => {
@@ -739,7 +749,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
             return;
           }
           console.error('[useAgent] SSE fetch error:', err);
-          handleDisconnect(connectSSE);
+          handleDisconnect();
         });
     }
 
@@ -747,21 +757,21 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     connectSSE();
 
     // Stale-processing detector: check every 10s if processing has stalled
-    const STALE_THRESHOLD_MS = 300_000; // 5 min — quality_review can take 3-5 min on slow providers
+    const STALE_THRESHOLD_MS = 120_000; // 2 min — first warning at 2 min
     staleCheckIntervalRef.current = setInterval(() => {
       if (!mountedRef.current) return;
       // Use functional state read to avoid stale closure over isProcessing
       setIsProcessing((currentlyProcessing) => {
         if (currentlyProcessing && Date.now() - lastProgressTimestampRef.current > STALE_THRESHOLD_MS) {
           if (!staleNoticeActiveRef.current) {
-            console.warn('[useAgent] Stale processing detected — no progress events for 300s. Resetting once.');
+            console.warn('[useAgent] Stale processing detected — no progress events for 120s. Resetting once.');
             staleNoticeActiveRef.current = true;
             setMessages((prev) => [
               ...prev,
               {
                 id: nextId(),
                 role: 'system',
-                content: 'Session appears stalled. You can send a message to continue.',
+                content: 'Session appears stalled. You can send a message to retry or refresh the page.',
                 timestamp: new Date().toISOString(),
               },
             ]);

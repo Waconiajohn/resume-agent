@@ -67,11 +67,13 @@ export function ChatPanel({
     userScrolledUpRef.current = el.scrollHeight - el.scrollTop - el.clientHeight > 100;
   }, []);
 
+  const isStreaming = streamingText.length > 0;
   useEffect(() => {
     if (!userScrolledUpRef.current) {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      const behavior = isStreaming ? 'instant' : 'smooth';
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
     }
-  }, [messages, streamingText, tools, askPrompt, phaseGate]);
+  }, [messages, streamingText, tools, askPrompt, phaseGate, isStreaming]);
 
   const handleSubmit = () => {
     if (!input.trim() || isBusy) return;
@@ -110,16 +112,16 @@ export function ChatPanel({
 
         {/* Tool status indicators */}
         {tools.filter((t) => t.status === 'running').map((tool) => (
-          <div key={tool.name} className="flex items-center gap-2 px-4 py-2">
-            <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />
+          <div key={tool.name} className="flex items-center gap-2 px-4 py-2" role="status" aria-label={tool.description ?? 'Processing'}>
+            <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" aria-hidden="true" />
             <span className="text-xs text-white/50">{tool.description}</span>
           </div>
         ))}
 
         {/* Processing indicator (when agent is working but no text streaming yet) */}
         {isProcessing && !streamingText && tools.every((t) => t.status !== 'running') && (
-          <div className="flex items-center gap-2 px-4 py-3">
-            <Loader2 className="h-4 w-4 animate-spin text-[#aec3ff]" />
+          <div className="flex items-center gap-2 px-4 py-3" role="status" aria-label="Coach is thinking">
+            <Loader2 className="h-4 w-4 animate-spin text-[#aec3ff]" aria-hidden="true" />
             <span className="text-sm text-white/50">Your coach is thinking...</span>
           </div>
         )}
@@ -145,39 +147,41 @@ export function ChatPanel({
               <ArrowRight className="h-3 w-3" />
               <span>Next: <strong className="text-white/80">{PHASE_LABELS[phaseGate.nextPhase] ?? phaseGate.nextPhase}</strong></span>
             </div>
-            <p className="mb-4 text-xs text-white/50">{phaseGate.nextPhasePreview}</p>
+            <p className="mb-4 text-xs text-white/75">{phaseGate.nextPhasePreview}</p>
             <div className="flex gap-2">
-              <button
+              <GlassButton
+                variant="primary"
                 onClick={() => onSendMessage("Yes, let's move forward!")}
-                className="rounded-md border border-white/[0.14] bg-white/[0.08] px-4 py-1.5 text-sm font-medium text-white transition hover:bg-white/[0.12]"
               >
                 Continue
-              </button>
-              <button
+              </GlassButton>
+              <GlassButton
+                variant="ghost"
                 onClick={() => onSendMessage("I'd like to revisit some things first.")}
-                className="rounded-md border border-white/20 px-4 py-1.5 text-sm text-white/74 transition hover:bg-white/5"
               >
                 Go Back
-              </button>
+              </GlassButton>
             </div>
           </div>
         )}
 
         {panelData && (
-          <div className="mx-4 my-3 overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.025]">
+          <div className="mx-4 my-3 min-h-[400px] overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.025]">
             <div className="flex items-center justify-between border-b border-white/[0.1] px-3 py-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
                 Current Work Product
               </span>
               <div className="flex items-center gap-2">
                 {canOpenResumePreview && (
-                  <button
+                  <GlassButton
                     type="button"
+                    variant="ghost"
                     onClick={() => setShowResumePreview((prev) => !prev)}
-                    className="rounded-md border border-white/[0.14] bg-white/[0.04] px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white/70 transition-colors hover:bg-white/[0.08]"
+                    aria-label={showResumePreview ? 'Back to panel view' : 'Open resume preview'}
+                    className="h-auto px-2 py-1 text-[10px] uppercase tracking-[0.12em]"
                   >
                     {showResumePreview ? 'Back To Panel' : 'Open Resume Preview'}
-                  </button>
+                  </GlassButton>
                 )}
                 <span className="text-[10px] text-white/58">
                   {(panelType ?? panelData.type).replace(/_/g, ' ')}

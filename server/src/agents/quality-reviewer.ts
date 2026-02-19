@@ -15,7 +15,7 @@
  * 6. Blueprint Compliance (0-100, pass: 85+)
  */
 
-import { llm, MODEL_MID } from '../lib/llm.js';
+import { llm, MODEL_PRIMARY } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
 import { ATS_RULEBOOK_SNIPPET } from './ats-rules.js';
 import type {
@@ -29,7 +29,7 @@ export async function runQualityReviewer(input: QualityReviewerInput): Promise<Q
   const { assembled_resume, architect_blueprint, jd_analysis, evidence_library } = input;
 
   const response = await llm.chat({
-    model: MODEL_MID,
+    model: MODEL_PRIMARY,
     max_tokens: 6144,
     system: REVIEWER_SYSTEM_PROMPT,
     messages: [{

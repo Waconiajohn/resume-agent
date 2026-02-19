@@ -153,6 +153,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       data: buildOnboardingSummary(state.intake),
     });
 
+    if (state.intake.experience.length === 0) {
+      emit({
+        type: 'transparency',
+        stage: 'intake',
+        message: 'No work experience was detected in your resume. The pipeline will continue but results may be limited — consider pasting your resume again with clearer formatting.',
+      });
+    }
+
     log.info({ experience_count: state.intake.experience.length }, 'Intake complete');
 
     // ─── Intake Quiz (optional) ─────────────────────────────────
@@ -194,21 +202,27 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       log.info({ preferences: state.user_preferences }, 'Intake quiz complete');
     }
 
+    // positioning_v2: JD-informed positioning — runs research first (with 90s race timeout) so
+    // positioning questions can be tailored to specific JD requirements. Currently a canary flag
+    // (default false). TODO: flip default to true once stability is confirmed in production.
     if (isFeatureEnabled('positioning_v2')) {
-      // ─── v2: Race research with 20s timeout, then positioning with JD-informed questions ───
+      // ─── v2: Race research with 90s timeout, then positioning with JD-informed questions ───
       emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
       state.current_stage = 'research';
       markStageStart('research');
 
-      // Fire off research as a background promise
-      const researchPromise = runResearchAgent({
-        job_description: config.job_description,
-        company_name: config.company_name,
-        parsed_resume: state.intake,
-      });
+      // Fire off research as a background promise (with retry for transient failures)
+      const researchPromise = withRetry(
+        () => runResearchAgent({
+          job_description: config.job_description,
+          company_name: config.company_name,
+          parsed_resume: state.intake!,
+        }),
+        { maxAttempts: 3, baseDelay: 2_000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'Research (v2 background) retry') },
+      );
 
-      // Race: give research 20s to complete before falling back
-      const RESEARCH_RACE_TIMEOUT_MS = 20_000;
+      // Race: give research 90s to complete before falling back
+      const RESEARCH_RACE_TIMEOUT_MS = 90_000;
       const researchRaceResult = await Promise.race([
         researchPromise.then(r => ({ resolved: true as const, data: r })),
         sleep(RESEARCH_RACE_TIMEOUT_MS).then(() => ({ resolved: false as const, data: null })),
@@ -347,11 +361,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       state.current_stage = 'research';
       markStageStart('research');
 
-      state.research = await runResearchAgent({
-        job_description: config.job_description,
-        company_name: config.company_name,
-        parsed_resume: state.intake,
-      });
+      state.research = await withRetry(
+        () => runResearchAgent({
+          job_description: config.job_description,
+          company_name: config.company_name,
+          parsed_resume: state.intake!,
+        }),
+        { maxAttempts: 3, baseDelay: 2_000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'Research (v1) retry') },
+      );
 
       markStageEnd('research');
       emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
@@ -455,6 +472,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     state.current_stage = 'architect';
     markStageStart('architect');
 
+    // Architect has an internal 2-attempt retry for JSON parse failures.
+    // Keep outer retry at maxAttempts: 2 to avoid 6-call worst case (2*3).
     state.architect = await withRetry(
       () => runArchitect({
         parsed_resume: state.intake!,
@@ -465,7 +484,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         research_preferences: state.research_preferences_summary,
       }),
       {
-        maxAttempts: 3,
+        maxAttempts: 2,
         baseDelay: 1_500,
         onRetry: (attempt, error) => {
           log.warn({ attempt, error: error.message }, 'Architect retry');
@@ -507,16 +526,21 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           if (index > 0) {
             await sleep(Math.min(index * 120, 900) + Math.floor(Math.random() * 120));
           }
-          return withRetry(
-          () => runSectionWriter(call),
-            {
-              maxAttempts: 4,
-              baseDelay: 1_250,
-              onRetry: (attempt, error) => {
-                log.warn({ section: call.section, attempt, error: error.message }, 'Section writer retry');
+          // 5-minute wall-clock timeout per section to prevent stalled sections
+          // from blocking the rest of the pipeline indefinitely.
+          return Promise.race([
+            withRetry(
+              () => runSectionWriter(call),
+              {
+                maxAttempts: 4,
+                baseDelay: 1_250,
+                onRetry: (attempt, error) => {
+                  log.warn({ section: call.section, attempt, error: error.message }, 'Section writer retry');
+                },
               },
-            },
-          );
+            ),
+            rejectAfter(300_000, `Section ${call.section} timed out after 5 minutes`),
+          ]);
         })
           .then((value) => ({ ok: true as const, value }))
           .catch((error) => ({ ok: false as const, error })),
@@ -526,10 +550,22 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // Present sections sequentially for user review (LLM work already in flight)
     for (const call of sectionCalls) {
       const outcome = await sectionPromises.get(call.section)!;
+      let result: SectionWriterOutput;
       if (!outcome.ok) {
-        throw outcome.error instanceof Error ? outcome.error : new Error(String(outcome.error));
+        const sectionErr = outcome.error instanceof Error ? outcome.error : new Error(String(outcome.error));
+        log.error({ section: call.section, error: sectionErr.message }, 'Section writer failed after retries — using fallback content');
+        emit({ type: 'section_error', section: call.section, error: sectionErr.message });
+        // Use a minimal fallback so the pipeline can continue
+        result = {
+          section: call.section,
+          content: buildFallbackSectionContent(call.section, state.intake!),
+          keywords_used: [],
+          requirements_addressed: [],
+          evidence_ids_used: [],
+        };
+      } else {
+        result = outcome.value;
       }
-      let result = outcome.value;
       state.sections[call.section] = result;
 
       // Revision loop: keep presenting section until user approves
@@ -586,7 +622,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           emit({
             type: 'transparency',
             stage: 'section_review',
-            message: 'Please approve, use Quick Fix, or edit the section directly.',
+            message: 'We received an unrecognized response — please use the Approve, Quick Fix, or Edit buttons to continue.',
           });
           log.warn({ section: call.section, reviewResponse }, 'Non-actionable section review response');
         }
@@ -737,6 +773,25 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
       log.info({ revisions: allInstructions.length, approved: approvedFixIds.size }, 'Revision cycle complete');
       markStageEnd('revision');
+    } else if (state.quality_review.decision === 'redesign') {
+      // Quality reviewer suggests a full redesign — surface reason to user, then continue to
+      // export the best resume we have rather than silently ignoring the signal.
+      const reason = state.quality_review.redesign_reason ?? 'The resume structure may not optimally showcase your candidacy for this role.';
+      log.warn({ decision: 'redesign', reason }, 'Quality review suggests redesign — notifying user and proceeding with current sections');
+      emit({
+        type: 'transparency',
+        stage: 'quality_review',
+        message: `Quality review note: ${reason} The resume has been optimized as far as possible in this session.`,
+      });
+      emit({
+        type: 'right_panel_update',
+        panel_type: 'quality_dashboard',
+        data: {
+          scores: state.quality_review.scores,
+          decision: state.quality_review.decision,
+          redesign_reason: reason,
+        },
+      });
     }
 
     // ─── Explicit ATS compliance check before export ──────────────
@@ -754,6 +809,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         const section = mapFindingToSection(finding.section, state.sections);
         const original = section ? state.sections[section] : undefined;
         if (!section || !original) continue;
+
+        emit({ type: 'system_message', content: `Applying ATS fix to ${section}: ${finding.issue}` });
 
         const blueprintSlice = getSectionBlueprint(section, state.architect);
         const revised = await withRetry(
@@ -799,18 +856,23 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // Collect accumulated token usage from all LLM calls
     state.token_usage.input_tokens = usageAcc.input_tokens;
     state.token_usage.output_tokens = usageAcc.output_tokens;
-    // Estimate cost using MODEL_PRICING — use average across all model tiers
-    const pricingEntries = Object.values(MODEL_PRICING);
-    const avgInput = pricingEntries.reduce((s, p) => s + p.input, 0) / (pricingEntries.length || 1);
-    const avgOutput = pricingEntries.reduce((s, p) => s + p.output, 0) / (pricingEntries.length || 1);
+    // Estimate cost using blended rate for this pipeline's model mix:
+    // The pipeline primarily uses MODEL_LIGHT (free) for intake/JD analysis,
+    // MODEL_MID for research/gap, and MODEL_PRIMARY for section writing.
+    // Rough blended estimate: 50% at LIGHT rate (free), 30% at MID, 20% at PRIMARY.
+    const lightPrice = MODEL_PRICING['glm-4.7-flash'] ?? { input: 0, output: 0 };
+    const midPrice = MODEL_PRICING['glm-4.5-air'] ?? { input: 0.20, output: 1.10 };
+    const primaryPrice = MODEL_PRICING['glm-4.7'] ?? { input: 0.60, output: 2.20 };
+    const blendedInputRate = lightPrice.input * 0.5 + midPrice.input * 0.3 + primaryPrice.input * 0.2;
+    const blendedOutputRate = lightPrice.output * 0.5 + midPrice.output * 0.3 + primaryPrice.output * 0.2;
     state.token_usage.estimated_cost_usd = Number(
-      ((usageAcc.input_tokens / 1_000_000) * avgInput +
-       (usageAcc.output_tokens / 1_000_000) * avgOutput).toFixed(4),
+      ((usageAcc.input_tokens / 1_000_000) * blendedInputRate +
+       (usageAcc.output_tokens / 1_000_000) * blendedOutputRate).toFixed(4),
     );
     stopUsageTracking(session_id);
 
     // Persist final state (including resume for reconnect restore)
-    await persistSession(state, finalResume);
+    await persistSession(state, finalResume, emit);
 
     log.info({
       stages_completed: 7,
@@ -911,13 +973,26 @@ async function runPositioningStage(
       category_progress: catProgress,
     });
 
-    const response = await waitForUser<{ answer: string; selected_suggestion?: string }>(
-      `positioning_q_${question.id}`,
-    );
+    let response: { answer: string; selected_suggestion?: string };
+    try {
+      response = await waitForUser<{ answer: string; selected_suggestion?: string }>(
+        `positioning_q_${question.id}`,
+      );
+    } catch (gateErr) {
+      const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);
+      if (errMsg.includes('Gate superseded')) {
+        log.warn({ question_id: question.id }, 'Positioning gate superseded — skipping question');
+        continue;
+      }
+      throw gateErr;
+    }
 
+    // Tag answers where user selected a suggestion without providing custom text,
+    // so the synthesis LLM knows this is a suggested value rather than user-authored.
+    const taggedAnswer = tagPositioningAnswer(response.answer, response.selected_suggestion);
     answers.push({
       question_id: question.id,
-      answer: response.answer,
+      answer: taggedAnswer,
       selected_suggestion: response.selected_suggestion,
     });
     answeredIds.add(question.id);
@@ -946,9 +1021,10 @@ async function runPositioningStage(
           `positioning_q_${followUpQuestion.id}`,
         );
 
+        const taggedFollowUpAnswer = tagPositioningAnswer(followUpResponse.answer, followUpResponse.selected_suggestion);
         answers.push({
           question_id: followUpQuestion.id,
-          answer: followUpResponse.answer,
+          answer: taggedFollowUpAnswer,
           selected_suggestion: followUpResponse.selected_suggestion,
         });
       }
@@ -957,13 +1033,16 @@ async function runPositioningStage(
 
   // Synthesize the profile (research-aware when available)
   emit({ type: 'transparency', message: 'Synthesizing your positioning profile...', stage: 'positioning' });
-  const profile = await synthesizeProfile(state.intake!, answers, state.research ?? undefined);
+  const profile = await withRetry(
+    () => synthesizeProfile(state.intake!, answers, state.research ?? undefined),
+    { maxAttempts: 3, baseDelay: 2000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'synthesizeProfile retry') },
+  );
 
   // Save to database
   const currentVersion = Number.isFinite((existingProfile as { version?: unknown } | null)?.version as number)
     ? Number((existingProfile as { version?: number }).version)
     : 0;
-  const { data: saved } = await supabaseAdmin
+  const { data: saved, error: saveError } = await supabaseAdmin
     .from('user_positioning_profiles')
     .upsert({
       user_id: config.user_id,
@@ -974,6 +1053,9 @@ async function runPositioningStage(
     .select('id')
     .single();
 
+  if (saveError) {
+    log.warn({ error: saveError.message }, 'Failed to persist positioning profile — continuing without saved profile');
+  }
   if (saved) {
     state.positioning_profile_id = saved.id;
   }
@@ -1185,15 +1267,24 @@ function mapFindingToSection(
   findingSection: string,
   sections: Record<string, SectionWriterOutput>,
 ): string | null {
+  // Exact match first
   if (sections[findingSection]) return findingSection;
-  if (findingSection === 'skills' && sections.skills) return 'skills';
+  // Try canonical section names with stable priority: summary → skills → experience
   if (findingSection === 'summary' && sections.summary) return 'summary';
-  // Map generic "experience" finding to first experience_role_* section
+  if (findingSection === 'skills' && sections.skills) return 'skills';
+  // Map generic "experience" finding to first experience_role_* section (sorted)
   if (findingSection === 'experience') {
     const roleKey = Object.keys(sections).filter(k => k.startsWith('experience_role_')).sort(compareExperienceRoleKeys)[0];
     if (roleKey) return roleKey;
   }
-  if (findingSection === 'formatting') return Object.keys(sections)[0] ?? null;
+  // Generic formatting finding: prefer summary, then skills, then first experience role
+  if (findingSection === 'formatting') {
+    if (sections.summary) return 'summary';
+    if (sections.skills) return 'skills';
+    const roleKey = Object.keys(sections).filter(k => k.startsWith('experience_role_')).sort(compareExperienceRoleKeys)[0];
+    if (roleKey) return roleKey;
+    return Object.keys(sections)[0] ?? null;
+  }
   return null;
 }
 
@@ -1220,8 +1311,55 @@ function normalizeSectionReviewResponse(
   };
 }
 
+/**
+ * Build minimal fallback content for a section when the LLM writer fails after all retries.
+ * Uses raw intake data so the pipeline can continue with something rather than nothing.
+ */
+function buildFallbackSectionContent(section: string, intake: IntakeOutput): string {
+  if (section === 'summary') {
+    return intake.summary ?? '';
+  }
+  if (section.startsWith('experience_role_')) {
+    const idx = parseInt(section.replace('experience_role_', ''), 10);
+    const exp = intake.experience[idx];
+    if (!exp) return '';
+    const bullets = exp.bullets.map(b => `• ${b}`).join('\n');
+    return `${exp.title} | ${exp.company} | ${exp.start_date} – ${exp.end_date}\n${bullets}`;
+  }
+  if (section === 'skills') {
+    return intake.skills.join(', ');
+  }
+  if (section === 'education_and_certifications') {
+    const edu = intake.education.map(e => `${e.degree} — ${e.institution}${e.year ? ` (${e.year})` : ''}`).join('\n');
+    const certs = intake.certifications.join('\n');
+    return [edu, certs].filter(Boolean).join('\n');
+  }
+  return '';
+}
+
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Returns a promise that rejects after `ms` milliseconds with the given message. */
+function rejectAfter(ms: number, message: string): Promise<never> {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms));
+}
+
+/**
+ * Tag a positioning answer when the user selected a pre-populated suggestion without
+ * providing any custom text. This signals to the synthesis LLM that the value is
+ * inferred/suggested rather than directly user-authored, so it should be treated
+ * with lower confidence when building the evidence library.
+ */
+function tagPositioningAnswer(answer: string, selectedSuggestion?: string): string {
+  if (!selectedSuggestion) return answer;
+  const trimmed = answer.trim();
+  // If the answer is empty or identical to the selected suggestion label, tag it
+  if (!trimmed || trimmed === selectedSuggestion.trim()) {
+    return `[Selected suggestion: ${selectedSuggestion}]`;
+  }
+  return answer;
 }
 
 function createConcurrencyLimiter(limit: number) {
@@ -1272,7 +1410,7 @@ function stripLeadingSectionTitle(content: string): string {
 
 function normalizeSkills(intakeSkills: string[]): Record<string, string[]> {
   if (!Array.isArray(intakeSkills) || intakeSkills.length === 0) return {};
-  return { '': intakeSkills.slice(0, 30) };
+  return { 'Core Skills': intakeSkills.slice(0, 30) };
 }
 
 function compareExperienceRoleKeys(a: string, b: string): number {
@@ -1352,18 +1490,25 @@ function parseExperienceRoleForStructuredPayload(
   let endDate = fallback.end_date;
   let location = '';
 
-  // Find the date line — could be standalone (e.g. "2020 – Present") or embedded
-  const dateLine = headerLines.find((l) => /^\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current)$/i.test(l));
+  // Match standalone date lines: "2020 – Present", "Jan 2020 – Present", "January 2020 – Dec 2022"
+  const DATE_LINE_RE = /^(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+)?\d{4}\s*[–\-]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+)?\d{4}|(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+)?\d{4}\s*[–\-]\s*(?:Present|Current)$/i;
+  const YEAR_EXTRACT_RE = /\b(\d{4})\b/g;
+
+  const dateLine = headerLines.find((l) => DATE_LINE_RE.test(l));
   if (dateLine) {
-    const dateMatch = dateLine.match(/^(\d{4})\s*[–\-]\s*(\d{4}|Present|Current)$/i);
-    if (dateMatch) {
-      startDate = dateMatch[1];
-      endDate = dateMatch[2];
+    const yearMatches = Array.from(dateLine.matchAll(YEAR_EXTRACT_RE)).map(m => m[1]);
+    if (yearMatches.length >= 2) {
+      startDate = yearMatches[0];
+      endDate = yearMatches[1];
+    } else if (yearMatches.length === 1) {
+      startDate = yearMatches[0];
+      const presentMatch = /Present|Current/i.test(dateLine);
+      if (presentMatch) endDate = 'Present';
     }
   }
 
   // Header lines excluding standalone date lines
-  const contentHeaders = headerLines.filter((l) => !/^\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current)$/i.test(l));
+  const contentHeaders = headerLines.filter((l) => !DATE_LINE_RE.test(l));
   const titleLine = contentHeaders[0] ?? fallback.title;
   const companyLine = contentHeaders[1] ?? '';
 
@@ -1462,9 +1607,22 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
     selected_accomplishments: sections.selected_accomplishments?.content
       ? stripLeadingSectionTitle(sections.selected_accomplishments.content)
       : undefined,
-    experience: intake.experience.map((exp, idx) =>
-      parseExperienceRoleForStructuredPayload(sections[`experience_role_${idx}`]?.content, exp),
-    ),
+    experience: (() => {
+      const craftedRoleKeys = Object.keys(sections)
+        .filter(k => k.startsWith('experience_role_'))
+        .sort(compareExperienceRoleKeys);
+      // Only include roles that were actually crafted; fall back to all intake roles
+      // if none were crafted (e.g., pipeline was aborted before section writing).
+      if (craftedRoleKeys.length > 0) {
+        return craftedRoleKeys.map(key => {
+          const idx = parseInt(key.replace('experience_role_', ''), 10);
+          return parseExperienceRoleForStructuredPayload(sections[key]?.content, intake.experience[idx]);
+        }).filter(Boolean);
+      }
+      return intake.experience.map((exp, idx) =>
+        parseExperienceRoleForStructuredPayload(sections[`experience_role_${idx}`]?.content, exp),
+      );
+    })(),
     skills: normalizeSkills(intake.skills),
     education: intake.education.map((edu) => ({
       institution: edu.institution,
@@ -1714,7 +1872,11 @@ function processResearchSubmission(
   log.info('Research validation quiz complete');
 }
 
-async function persistSession(state: PipelineState, finalResume?: FinalResumePayload): Promise<void> {
+async function persistSession(
+  state: PipelineState,
+  finalResume?: FinalResumePayload,
+  emit?: PipelineEmitter,
+): Promise<void> {
   try {
     await supabaseAdmin
       .from('coach_sessions')
@@ -1732,6 +1894,13 @@ async function persistSession(state: PipelineState, finalResume?: FinalResumePay
       .eq('user_id', state.user_id);
   } catch (err) {
     // Non-critical — log but don't fail the pipeline
-    console.warn('[pipeline] persistSession failed:', err instanceof Error ? err.message : String(err));
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.warn('[pipeline] persistSession failed:', errMsg);
+    // Notify the user so they know to export immediately before the session closes
+    emit?.({
+      type: 'transparency',
+      stage: 'complete',
+      message: 'Note: Your session could not be saved to the database. Please export your resume now to avoid losing it.',
+    });
   }
 }

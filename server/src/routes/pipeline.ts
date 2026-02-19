@@ -7,7 +7,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { sseConnections } from './sessions.js';
 import { runPipeline } from '../agents/pipeline.js';
-import type { PipelineSSEEvent } from '../agents/types.js';
+import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 
 const startSchema = z.object({
@@ -104,6 +104,15 @@ const GATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const GATE_POLL_BASE_MS = 250;
 const GATE_POLL_MAX_MS = 2_000;
 const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes without DB state updates
+
+// Track running pipelines to prevent double-start (in-process guard, complements DB check)
+const runningPipelines = new Set<string>();
+
+// Known pipeline stages for type-safe stale recovery
+const PIPELINE_STAGES: PipelineStage[] = [
+  'intake', 'positioning', 'research', 'gap_analysis', 'architect',
+  'architect_review', 'section_writing', 'section_review', 'quality_review', 'revision', 'complete',
+];
 
 const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
 const MAX_JOB_URL_REDIRECTS = 3;
@@ -407,6 +416,12 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   if (session.pipeline_status === 'complete') {
     return c.json({ error: 'Pipeline already completed for this session' }, 409);
   }
+
+  // In-process dedup guard (complements DB-level claim below)
+  if (runningPipelines.has(session_id)) {
+    return c.json({ error: 'Pipeline already running for this session' }, 409);
+  }
+
   if (session.pipeline_status === 'running') {
     const updatedAtMs = Date.parse(session.updated_at ?? '');
     const isStale = Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS);
@@ -504,6 +519,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // Start pipeline in background (fire-and-forget)
   const log = createSessionLogger(session_id);
 
+  runningPipelines.add(session_id);
   runPipeline({
     session_id,
     user_id: user.id,
@@ -528,6 +544,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
       .eq('id', session_id);
   }).finally(() => {
+    runningPipelines.delete(session_id);
     cancelQueuedPanelPersist(session_id);
     void clearPendingGate(session_id);
   });
@@ -578,6 +595,26 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
       })
       .eq('id', session_id)
       .eq('pipeline_status', 'running');
+
+    // Notify connected SSE clients about the stale state
+    const staleStage = PIPELINE_STAGES.includes(dbState.pipeline_stage as PipelineStage)
+      ? (dbState.pipeline_stage as PipelineStage)
+      : 'intake';
+    const emitters = sseConnections.get(session_id);
+    if (emitters) {
+      for (const emitter of emitters) {
+        try {
+          emitter({
+            type: 'pipeline_error',
+            stage: staleStage,
+            error: 'Pipeline state became stale after a server restart. Please restart the pipeline.',
+          } as never);
+        } catch {
+          // Connection may already be closed.
+        }
+      }
+    }
+
     return c.json({
       error: 'Pipeline state became stale after a server restart. Please restart the pipeline from this session.',
       code: 'STALE_PIPELINE',

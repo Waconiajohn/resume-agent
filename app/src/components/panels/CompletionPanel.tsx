@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileText, CheckCircle, Loader2, FileDown } from 'lucide-react';
+import { Download, FileText, CheckCircle, Loader2, FileDown, Save } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { resumeToText, downloadAsText } from '@/lib/export';
@@ -182,7 +182,7 @@ export function CompletionPanel({
 
         {/* Stats */}
         {(data.ats_score != null || data.requirements_addressed != null) && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {data.ats_score != null && (
               <StatBadge label="ATS Score" value={`${data.ats_score}%`} />
             )}
@@ -239,7 +239,7 @@ export function CompletionPanel({
         {resume && onSaveCurrentResumeAsBase && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="h-4 w-4 text-[#a8d7b8]" />
+              <Save className="h-4 w-4 text-[#a8d7b8]" />
               <h3 className="text-sm font-medium text-white/85">Save As Base Resume</h3>
             </div>
             <div className="space-y-2">
@@ -252,7 +252,7 @@ export function CompletionPanel({
                 {savingMode === 'default' ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <CheckCircle className="mr-2 h-4 w-4" />
+                  <Save className="mr-2 h-4 w-4" />
                 )}
                 Save As New Default Base
               </GlassButton>
@@ -265,7 +265,7 @@ export function CompletionPanel({
                 {savingMode === 'alternate' ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <CheckCircle className="mr-2 h-4 w-4" />
+                  <Save className="mr-2 h-4 w-4" />
                 )}
                 Save As Alternate
               </GlassButton>

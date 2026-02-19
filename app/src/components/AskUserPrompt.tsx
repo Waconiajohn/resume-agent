@@ -55,8 +55,13 @@ export function AskUserPrompt({ prompt, onSubmit }: AskUserPromptProps) {
         <GlassTextarea
           value={textAnswer}
           onChange={(e) => setTextAnswer(e.target.value)}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+          }}
           placeholder="Type your answer..."
-          rows={2}
+          rows={3}
           className="flex-1"
         />
         <GlassButton

@@ -99,7 +99,7 @@ function EditableLine({
         <p className="flex-1 text-sm leading-relaxed text-white/85">
           {displayText}
         </p>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex-shrink-0">
           <button
             onClick={() => onStartEdit(index, displayText)}
             className="rounded p-1 text-white/30 hover:bg-white/10 hover:text-white/60 transition-colors"

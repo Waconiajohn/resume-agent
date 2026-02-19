@@ -18,8 +18,8 @@ export function Header({ email, onSignOut }: HeaderProps) {
         {email && (
           <div className="flex items-center gap-3">
             <span className="text-xs text-white/55">{email}</span>
-            <GlassButton variant="ghost" onClick={onSignOut} className="h-8 px-2.5">
-              <LogOut className="h-4 w-4" />
+            <GlassButton variant="ghost" onClick={onSignOut} className="h-8 px-2.5" aria-label="Sign out" title="Sign out">
+              <LogOut className="h-4 w-4" aria-hidden="true" />
             </GlassButton>
           </div>
         )}

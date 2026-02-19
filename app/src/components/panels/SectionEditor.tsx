@@ -15,9 +15,10 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter((w) => w.length > 0).length;
 }
 
-export function SectionEditor({ content, section: _section, onSave, onCancel }: SectionEditorProps) {
+export function SectionEditor({ content, section, onSave, onCancel }: SectionEditorProps) {
   const [value, setValue] = useState(content);
   const words = wordCount(value);
+  const sectionLabel = section.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <GlassCard className="p-5 space-y-3 bg-white/[0.03] border-white/[0.08]">
@@ -26,7 +27,7 @@ export function SectionEditor({ content, section: _section, onSave, onCancel }: 
         onChange={(e) => setValue(e.target.value)}
         rows={12}
         className="w-full resize-y"
-        aria-label="Edit section content"
+        aria-label={`Edit ${sectionLabel} section content`}
       />
       <div className="flex items-center justify-between">
         <span className="text-xs text-white/40">{words} {words === 1 ? 'word' : 'words'}</span>

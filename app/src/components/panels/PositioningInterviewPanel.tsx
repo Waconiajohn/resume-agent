@@ -37,13 +37,22 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
 
   return (
     <GlassCard
+      role="radio"
+      aria-checked={isSelected}
+      tabIndex={0}
       className={cn(
-        'p-3.5 cursor-pointer transition-all duration-200',
+        'p-3.5 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
         isSelected
           ? 'border-white/[0.2] bg-white/[0.08] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
           : 'hover:border-white/20 hover:bg-white/[0.10]',
       )}
       onClick={onClick}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       <div className="flex items-start gap-3">
         {/* Radio indicator */}
@@ -75,7 +84,7 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
             {/* Source badge */}
             <span
               className={cn(
-                'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
+                'shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
                 sourceBadge.className,
               )}
             >
@@ -115,7 +124,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
             {/* Label pill */}
             <span
               className={cn(
-                'shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider whitespace-nowrap',
+                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap',
                 isComplete
                   ? 'bg-green-500/20 text-green-300 border border-green-400/25'
                   : 'bg-white/[0.06] text-white/45 border border-white/[0.10]',
@@ -125,7 +134,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
             </span>
             {/* Progress track */}
             <div
-              className="flex-1 h-0.5 rounded-full bg-white/[0.08] overflow-hidden"
+              className="flex-1 h-1.5 rounded-full bg-white/[0.08] overflow-hidden"
               role="progressbar"
               aria-valuenow={pct}
               aria-valuemin={0}
@@ -330,7 +339,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
           /* Fallback: simple overall progress bar */
           questions_total > 0 && (
             <div
-              className="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-white/[0.10]"
+              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.10]"
               role="progressbar"
               aria-valuenow={progressPct}
               aria-valuemin={0}
@@ -396,6 +405,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
 
             {/* Suggestions + input */}
             <QuestionBody
+              key={current_question.id}
               question={current_question}
               encouragingText={encouraging_text}
               onSubmit={handleSubmit}

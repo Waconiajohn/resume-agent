@@ -404,11 +404,11 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
       length: String(summary_blueprint.length ?? '3-4 sentences'),
     } as SummaryBlueprint,
 
-    evidence_allocation: {
+    evidence_allocation: deduplicateEvidenceAllocation({
       selected_accomplishments: (evidence_allocation.selected_accomplishments as EvidenceAllocation['selected_accomplishments']) ?? [],
       experience_section: (evidence_allocation.experience_section as EvidenceAllocation['experience_section']) ?? {},
       unallocated_requirements: (evidence_allocation.unallocated_requirements as EvidenceAllocation['unallocated_requirements']) ?? [],
-    },
+    }),
 
     skills_blueprint: {
       format: 'categorized',
@@ -442,6 +442,34 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
       length_target: String(global_rules.length_target ?? '2 pages maximum'),
       ats_rules: String(global_rules.ats_rules ?? 'No tables, no columns, standard section headers only'),
     },
+  };
+}
+
+/**
+ * Enforce the invariant: an evidence item allocated to "selected_accomplishments"
+ * must NOT also appear in experience bullet instructions. Remove duplicates from
+ * experience bullets when they share an evidence_id or achievement text with
+ * an allocated accomplishment.
+ */
+function deduplicateEvidenceAllocation(allocation: EvidenceAllocation): EvidenceAllocation {
+  const accomplishmentIds = new Set(
+    (allocation.selected_accomplishments ?? []).map(a => a.evidence_id).filter(Boolean),
+  );
+  if (accomplishmentIds.size === 0) return allocation;
+
+  const deduplicatedSection: EvidenceAllocation['experience_section'] = {};
+  for (const [roleKey, roleAlloc] of Object.entries(allocation.experience_section ?? {})) {
+    const role = roleAlloc as Record<string, unknown>;
+    const bullets = (role.bullets_to_write as Array<Record<string, unknown>> | undefined) ?? [];
+    const dedupedBullets = bullets.filter(
+      b => !accomplishmentIds.has(b.evidence_source as string),
+    );
+    deduplicatedSection[roleKey] = { ...role, bullets_to_write: dedupedBullets } as typeof roleAlloc;
+  }
+
+  return {
+    ...allocation,
+    experience_section: deduplicatedSection,
   };
 }
 

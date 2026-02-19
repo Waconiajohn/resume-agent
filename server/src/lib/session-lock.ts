@@ -5,6 +5,9 @@ const POLL_INTERVAL_MS = 500;
 const MAX_WAIT_MS = 30_000;
 const LOCK_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes (reduced from 6 to minimize crash-induced wait)
 
+/** Track lock IDs acquired by this process instance so we only release our own. */
+const instanceOwnedLocks = new Set<string>();
+
 /**
  * Acquires a distributed session lock backed by the session_locks DB table.
  * Returns true if acquired, false if the lock is held by another instance.
@@ -25,7 +28,10 @@ async function acquireLock(sessionId: string): Promise<boolean> {
       expires_at: new Date(Date.now() + LOCK_EXPIRY_MS).toISOString(),
     });
 
-  if (!error) return true;
+  if (!error) {
+    instanceOwnedLocks.add(sessionId);
+    return true;
+  }
 
   // 23505 = unique_violation — lock is held by another instance
   if (error.code === '23505') return false;
@@ -40,6 +46,7 @@ async function acquireLock(sessionId: string): Promise<boolean> {
  * Releases the distributed session lock.
  */
 async function releaseLock(sessionId: string): Promise<void> {
+  instanceOwnedLocks.delete(sessionId);
   const { error } = await supabaseAdmin
     .from('session_locks')
     .delete()
@@ -51,18 +58,28 @@ async function releaseLock(sessionId: string): Promise<void> {
 }
 
 /**
- * Release all session locks on this server instance (called during shutdown).
+ * Release only session locks that were acquired by this server instance.
+ * Called during graceful shutdown to avoid releasing locks held by other pods.
  */
 export async function releaseAllLocks(): Promise<void> {
+  const lockIds = Array.from(instanceOwnedLocks);
+  if (lockIds.length === 0) {
+    logger.info('No instance-owned session locks to release');
+    return;
+  }
+
+  logger.info({ count: lockIds.length, sessions: lockIds }, 'Releasing instance-owned session locks');
+
   const { error } = await supabaseAdmin
     .from('session_locks')
     .delete()
-    .neq('session_id', '');
+    .in('session_id', lockIds);
 
   if (error) {
-    logger.error({ error: error.message }, 'Failed to release all session locks on shutdown');
+    logger.error({ error: error.message }, 'Failed to release instance-owned session locks on shutdown');
   } else {
-    logger.info('Released all session locks');
+    instanceOwnedLocks.clear();
+    logger.info({ released: lockIds.length }, 'Released instance-owned session locks');
   }
 }
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Layout } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { cn } from '@/lib/utils';
@@ -47,14 +48,14 @@ function MiniWireframe({ sections }: { sections: string[] }) {
         const isEmphasis = i === emphasisIndex;
         return (
           <div key={i} className="flex items-center gap-2">
-            <span className="w-3 text-[8px] text-white/30 text-right shrink-0">{i + 1}</span>
+            <span className="w-3 text-[10px] text-white/30 text-right shrink-0">{i + 1}</span>
             <div className={cn(
               'flex-1 rounded-sm',
               isEmphasis ? 'border border-white/[0.2] bg-white/[0.11]' : 'bg-white/[0.10]',
               config.height,
             )} />
             <span className={cn(
-              'w-20 text-right text-[9px] shrink-0',
+              'w-20 text-right text-[10px] shrink-0',
               isEmphasis ? 'font-medium text-white/84' : 'text-white/50',
             )}>
               {config.short}
@@ -66,16 +67,34 @@ function MiniWireframe({ sections }: { sections: string[] }) {
   );
 }
 
-function DesignCard({ option, isSelected }: { option: DesignOption; isSelected: boolean }) {
+function DesignCard({
+  option,
+  isSelected,
+  onClick,
+}: {
+  option: DesignOption;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
   return (
     <GlassCard
+      role="radio"
+      aria-checked={isSelected}
+      tabIndex={0}
       className={cn(
-        'p-4 transition-all duration-200',
+        'p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
         isSelected
           ? 'border-white/[0.2] shadow-[0_0_20px_-10px_rgba(255,255,255,0.35)]'
           : 'hover:border-white/10',
       )}
       hover={!isSelected}
+      onClick={onClick}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Layout className="h-3.5 w-3.5 text-[#afc4ff]" />
@@ -104,11 +123,20 @@ export function DesignOptionsPanel({ data }: DesignOptionsPanelProps) {
   const options = data.options ?? [];
   const selected_id = data.selected_id;
 
+  // Track local selection so clicking works even before server confirms
+  const initialSelectedId = selected_id ?? options.find(o => o.selected)?.id ?? null;
+  const [localSelectedId, setLocalSelectedId] = useState<string | null>(initialSelectedId);
+
   // Once a selection is made, only show the selected option
-  const hasSelection = !!selected_id || options.some(o => o.selected);
-  const displayOptions = hasSelection
-    ? options.filter(o => o.selected || o.id === selected_id)
+  const effectiveSelectedId = localSelectedId ?? selected_id;
+  const hasServerSelection = !!selected_id || options.some(o => o.selected);
+  const displayOptions = hasServerSelection && effectiveSelectedId
+    ? options.filter(o => o.selected || o.id === effectiveSelectedId)
     : options;
+
+  const handleSelect = (optionId: string) => {
+    setLocalSelectedId(optionId);
+  };
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -116,12 +144,18 @@ export function DesignOptionsPanel({ data }: DesignOptionsPanelProps) {
         <span className="text-sm font-medium text-white/85">Resume Design</span>
       </div>
 
-      <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div
+        data-panel-scroll
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+        role="radiogroup"
+        aria-label="Resume design options"
+      >
         {displayOptions.map((option) => (
           <DesignCard
             key={option.id}
             option={option}
-            isSelected={option.selected || option.id === selected_id}
+            isSelected={option.selected || option.id === effectiveSelectedId}
+            onClick={() => handleSelect(option.id)}
           />
         ))}
       </div>

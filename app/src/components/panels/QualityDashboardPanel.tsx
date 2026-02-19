@@ -141,11 +141,11 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             </div>
             <div className="space-y-2">
               {risk_flags.map((rf, i) => {
-                const severityColor = {
-                  low: 'border-white/[0.1] bg-white/[0.04]',
-                  medium: 'border-white/[0.1] bg-white/[0.04]',
-                  high: 'border-white/[0.1] bg-white/[0.04]',
-                }[rf.severity];
+                const severityColor = ({
+                  low: 'border-emerald-500/20 bg-emerald-500/10',
+                  medium: 'border-amber-500/20 bg-amber-500/10',
+                  high: 'border-red-500/20 bg-red-500/10',
+                } as Record<string, string>)[rf.severity] ?? 'border-white/[0.1] bg-white/[0.04]';
                 return (
                   <div key={i} className={`rounded-lg border p-2.5 ${severityColor}`}>
                     <p className="text-xs text-white/85">{cleanText(rf.flag)}</p>

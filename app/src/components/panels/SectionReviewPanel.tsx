@@ -62,11 +62,11 @@ export function SectionReviewPanel({
   const [selectedChips, setSelectedChips] = useState<Set<string>>(new Set());
   const chipsRef = useRef<HTMLDivElement>(null);
 
-  // Reset mode/chips when section changes (e.g. new section_draft from server)
+  // Reset mode/chips when section or content changes (e.g. new section_draft from server)
   useEffect(() => {
     setMode('view');
     setSelectedChips(new Set());
-  }, [section]);
+  }, [section, content]);
 
   // Scroll chips into view when quickfix mode activates
   useEffect(() => {

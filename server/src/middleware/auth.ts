@@ -13,6 +13,35 @@ declare module 'hono' {
   }
 }
 
+// Simple in-memory JWT verification cache — 5 minute TTL.
+// Avoids a Supabase remote call on every request for the same token.
+const TOKEN_CACHE_TTL_MS = 5 * 60 * 1000;
+interface CacheEntry {
+  user: AuthUser;
+  expiresAt: number;
+}
+const tokenCache = new Map<string, CacheEntry>();
+
+function getCachedUser(token: string): AuthUser | null {
+  const entry = tokenCache.get(token);
+  if (!entry) return null;
+  if (Date.now() >= entry.expiresAt) {
+    tokenCache.delete(token);
+    return null;
+  }
+  return entry.user;
+}
+
+function cacheUser(token: string, user: AuthUser): void {
+  // Limit cache size to prevent unbounded memory growth
+  if (tokenCache.size >= 1000) {
+    // Evict oldest entry
+    const oldest = tokenCache.keys().next().value;
+    if (oldest) tokenCache.delete(oldest);
+  }
+  tokenCache.set(token, { user, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+}
+
 export async function authMiddleware(c: Context, next: Next) {
   const authHeader = c.req.header('Authorization');
 
@@ -21,6 +50,14 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 
   const token = authHeader.slice(7);
+
+  // Check cache first to avoid remote call
+  const cached = getCachedUser(token);
+  if (cached) {
+    c.set('user', cached);
+    await next();
+    return;
+  }
 
   const {
     data: { user },
@@ -31,11 +68,14 @@ export async function authMiddleware(c: Context, next: Next) {
     return c.json({ error: 'Invalid or expired token' }, 401);
   }
 
-  c.set('user', {
+  const authUser: AuthUser = {
     id: user.id,
     email: user.email ?? '',
     accessToken: token,
-  });
+  };
+
+  cacheUser(token, authUser);
+  c.set('user', authUser);
 
   await next();
 }

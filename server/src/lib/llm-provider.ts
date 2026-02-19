@@ -12,6 +12,7 @@ export interface ChatParams {
   tool_choice?: { type: 'any' } | { type: 'auto' } | { type: 'none' };
   max_tokens: number;
   signal?: AbortSignal;
+  session_id?: string;
 }
 
 /** Anthropic-style message with content blocks */
@@ -88,10 +89,11 @@ export function stopUsageTracking(sessionId: string): void {
 }
 
 /** Called internally after every chat() call to accumulate usage. */
-function recordUsage(usage: { input_tokens: number; output_tokens: number }): void {
-  const sessionId = usageContext.getStore();
-  if (sessionId) {
-    const acc = sessionUsageAccumulators.get(sessionId);
+function recordUsage(usage: { input_tokens: number; output_tokens: number }, sessionId?: string): void {
+  // Prefer explicit session_id param, then fall back to AsyncLocalStorage context.
+  const sid = sessionId ?? usageContext.getStore();
+  if (sid) {
+    const acc = sessionUsageAccumulators.get(sid);
     if (acc) {
       acc.input_tokens += usage.input_tokens;
       acc.output_tokens += usage.output_tokens;
@@ -150,21 +152,19 @@ export class AnthropicProvider implements LLMProvider {
       input_tokens: response.usage?.input_tokens ?? 0,
       output_tokens: response.usage?.output_tokens ?? 0,
     };
-    recordUsage(usage);
+    recordUsage(usage, params.session_id);
 
     return { text, tool_calls, usage };
   }
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
     const anthropic = getAnthropicClient();
-    const streamParams: {
-      model: string;
-      max_tokens: number;
-      system: string;
-      messages: Anthropic.MessageParam[];
-      tools: Anthropic.Tool[];
-      tool_choice?: Anthropic.ToolChoice;
-    } = {
+    const timeoutSignal = AbortSignal.timeout(300_000); // 5 minute timeout
+    const combinedSignal = params.signal
+      ? AbortSignal.any([params.signal, timeoutSignal])
+      : timeoutSignal;
+
+    const streamParams: Parameters<typeof anthropic.messages.stream>[0] = {
       model: params.model,
       max_tokens: params.max_tokens,
       system: params.system,
@@ -176,6 +176,10 @@ export class AnthropicProvider implements LLMProvider {
     }
 
     const s = anthropic.messages.stream(streamParams);
+
+    // Abort the stream if the combined signal fires
+    const abortHandler = () => s.abort();
+    combinedSignal.addEventListener('abort', abortHandler, { once: true });
 
     // Collect events and yield them
     let fullText = '';
@@ -205,18 +209,15 @@ export class AnthropicProvider implements LLMProvider {
         }
       }
 
-      recordUsage({
+      const usage = {
         input_tokens: response.usage?.input_tokens ?? 0,
         output_tokens: response.usage?.output_tokens ?? 0,
-      });
-      yield {
-        type: 'done',
-        usage: {
-          input_tokens: response.usage?.input_tokens ?? 0,
-          output_tokens: response.usage?.output_tokens ?? 0,
-        },
       };
+      recordUsage(usage, params.session_id);
+
+      yield { type: 'done', usage };
     } finally {
+      combinedSignal.removeEventListener('abort', abortHandler);
       s.off('text', textListener);
       s.abort();
     }
@@ -259,12 +260,18 @@ export class ZAIProvider implements LLMProvider {
 
     const data = await response.json() as OpenAIChatResponse;
     const result = this.parseResponse(data);
-    recordUsage(result.usage);
+    recordUsage(result.usage, params.session_id);
     return result;
   }
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
     const body = this.buildRequestBody(params, true);
+    // Combine caller's signal with a 5-minute timeout
+    const timeoutSignal = AbortSignal.timeout(300_000);
+    const combinedSignal = params.signal
+      ? AbortSignal.any([params.signal, timeoutSignal])
+      : timeoutSignal;
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -272,7 +279,7 @@ export class ZAIProvider implements LLMProvider {
         'Authorization': `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(300_000), // 5 minute timeout for streaming
+      signal: combinedSignal,
     });
 
     if (!response.ok) {
@@ -293,6 +300,20 @@ export class ZAIProvider implements LLMProvider {
 
     // Accumulate tool calls across chunks (streamed incrementally)
     const pendingToolCalls = new Map<number, { id: string; name: string; arguments: string }>();
+    let toolCallsFlushed = false;
+
+    const flushToolCalls = function* (): Generator<StreamEvent> {
+      if (toolCallsFlushed) return;
+      toolCallsFlushed = true;
+      for (const [, tc] of pendingToolCalls) {
+        let input: Record<string, unknown> = {};
+        try {
+          input = JSON.parse(tc.arguments);
+        } catch { /* empty */ }
+        yield { type: 'tool_call' as const, id: tc.id, name: tc.name, input };
+      }
+      pendingToolCalls.clear();
+    };
 
     try {
       while (true) {
@@ -308,17 +329,11 @@ export class ZAIProvider implements LLMProvider {
           if (!trimmed || !trimmed.startsWith('data: ')) continue;
           const payload = trimmed.slice(6);
           if (payload === '[DONE]') {
-            // Flush any pending tool calls
-            for (const [, tc] of pendingToolCalls) {
-              let input: Record<string, unknown> = {};
-              try {
-                input = JSON.parse(tc.arguments);
-              } catch { /* empty */ }
-              yield { type: 'tool_call', id: tc.id, name: tc.name, input };
-            }
-            pendingToolCalls.clear();
-            recordUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
-            yield { type: 'done', usage: { input_tokens: inputTokens, output_tokens: outputTokens } };
+            // Flush any pending tool calls (guard: only once)
+            yield* flushToolCalls();
+            const finalUsage = { input_tokens: inputTokens, output_tokens: outputTokens };
+            recordUsage(finalUsage, params.session_id);
+            yield { type: 'done', usage: finalUsage };
             return;
           }
 
@@ -365,17 +380,10 @@ export class ZAIProvider implements LLMProvider {
             }
           }
 
-          // Check for finish_reason to flush tool calls
+          // Check for finish_reason to flush tool calls (guard: only once)
           const finishReason = chunk.choices?.[0]?.finish_reason;
           if (finishReason === 'tool_calls' || finishReason === 'stop') {
-            for (const [, tc] of pendingToolCalls) {
-              let input: Record<string, unknown> = {};
-              try {
-                input = JSON.parse(tc.arguments);
-              } catch { /* empty */ }
-              yield { type: 'tool_call', id: tc.id, name: tc.name, input };
-            }
-            pendingToolCalls.clear();
+            yield* flushToolCalls();
           }
         }
       }
@@ -384,8 +392,9 @@ export class ZAIProvider implements LLMProvider {
     }
 
     // If we get here without [DONE], still emit done
-    recordUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
-    yield { type: 'done', usage: { input_tokens: inputTokens, output_tokens: outputTokens } };
+    const finalUsage = { input_tokens: inputTokens, output_tokens: outputTokens };
+    recordUsage(finalUsage, params.session_id);
+    yield { type: 'done', usage: finalUsage };
   }
 
   // ─── Translation helpers ─────────────────────────────────────────
@@ -513,7 +522,7 @@ export class ZAIProvider implements LLMProvider {
     const choice = data.choices?.[0];
     const message = choice?.message;
 
-    let text = message?.content ?? '';
+    const text = message?.content ?? '';
     const tool_calls: ToolCall[] = [];
 
     if (message?.tool_calls) {

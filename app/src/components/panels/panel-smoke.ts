@@ -45,6 +45,22 @@ function samplePanels(): PanelData[] {
       keyword_count: 0,
     },
     { type: 'section_review', section: 'summary', content: 'Example section content' },
+    {
+      type: 'questionnaire',
+      questionnaire_id: 'smoke-test',
+      schema_version: 1,
+      stage: 'intake_quiz',
+      title: 'Sample Questionnaire',
+      questions: [{
+        id: 'q1',
+        question_text: 'Sample question?',
+        input_type: 'single_choice' as const,
+        allow_custom: false,
+        allow_skip: true,
+        options: [],
+      }],
+      current_index: 0,
+    },
   ];
 }
 

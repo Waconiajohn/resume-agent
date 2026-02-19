@@ -155,7 +155,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         </GlassCard>
 
         {/* Count badges */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <GlassCard className="p-3 text-center">
             <span className="text-lg font-semibold text-[#b5dec2]">{strong_count}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">

@@ -63,22 +63,14 @@ export async function runResearchAgent(input: ResearchInput): Promise<ResearchOu
 
 async function analyzeJobDescription(jobDescription: string): Promise<JDAnalysis> {
   const jd = jobDescription.slice(0, 30_000);
-  const cacheKey = jd.trim().toLowerCase();
+  const cacheKey = `${jd.slice(0, 200).trim().toLowerCase()}::${jd.length}`;
   const cached = getCached(jdCache, cacheKey);
   if (cached) return cached;
 
   const response = await llm.chat({
     model: MODEL_LIGHT,
     max_tokens: 4096,
-    system: '',
-    messages: [{
-      role: 'user',
-      content: `Parse this job description into structured requirements. Be thorough — capture EVERYTHING a hiring manager would screen for, including implicit requirements.
-
-JOB DESCRIPTION:
-${jd}
-
-Return ONLY valid JSON:
+    system: `Parse job descriptions into structured requirements. Be thorough — capture EVERYTHING a hiring manager would screen for, including implicit requirements. Return ONLY valid JSON with this exact shape:
 {
   "role_title": "The exact job title",
   "company": "The company name",
@@ -88,6 +80,9 @@ Return ONLY valid JSON:
   "implicit_requirements": ["Unstated requirements inferred from language, context, or industry norms"],
   "language_keywords": ["Exact words and phrases from the JD that should appear on the resume"]
 }`,
+    messages: [{
+      role: 'user',
+      content: `JOB DESCRIPTION:\n${jd}`,
     }],
   });
 
@@ -133,7 +128,8 @@ async function researchCompany(companyName: string, jobDescription: string): Pro
   if (!companyName.trim()) {
     return { company_name: '', industry: '', size: '', culture_signals: [] };
   }
-  const cacheKey = `${companyName.trim().toLowerCase()}::${jobDescription.slice(0, 2000).trim().toLowerCase()}`;
+  const jdSnippet = jobDescription.slice(0, 200).trim().toLowerCase();
+  const cacheKey = `${companyName.trim().toLowerCase()}::${jdSnippet}::${jobDescription.length}`;
   const cached = getCached(companyCache, cacheKey);
   if (cached) return cached;
 
@@ -195,20 +191,7 @@ async function buildBenchmark(
   const response = await llm.chat({
     model: MODEL_MID,
     max_tokens: 3072,
-    system: '',
-    messages: [{
-      role: 'user',
-      content: `Synthesize a Benchmark Candidate Profile — the ideal candidate for this role.
-
-ROLE: ${jd.role_title} at ${jd.company || company.company_name}
-SENIORITY: ${jd.seniority_level}
-MUST-HAVES: ${jd.must_haves.join(', ') || 'None specified'}
-NICE-TO-HAVES: ${jd.nice_to_haves.join(', ') || 'None specified'}
-IMPLICIT: ${jd.implicit_requirements.join(', ') || 'None identified'}
-COMPANY CULTURE: ${company.culture_signals.join('; ') || 'Unknown'}
-INDUSTRY: ${company.industry || 'Unknown'}
-
-Return ONLY valid JSON:
+    system: `You are a talent benchmark analyst. Synthesize a Benchmark Candidate Profile for a job role. Return ONLY valid JSON with this exact shape:
 {
   "ideal_profile": "2-3 sentence description of the perfect candidate",
   "language_keywords": ["Exact words/phrases the resume should echo from the JD and industry"],
@@ -218,6 +201,15 @@ Return ONLY valid JSON:
     "skills": "How skills should be organized/prioritized"
   }
 }`,
+    messages: [{
+      role: 'user',
+      content: `ROLE: ${jd.role_title} at ${jd.company || company.company_name}
+SENIORITY: ${jd.seniority_level}
+MUST-HAVES: ${jd.must_haves.join(', ') || 'None specified'}
+NICE-TO-HAVES: ${jd.nice_to_haves.join(', ') || 'None specified'}
+IMPLICIT: ${jd.implicit_requirements.join(', ') || 'None identified'}
+COMPANY CULTURE: ${company.culture_signals.join('; ') || 'Unknown'}
+INDUSTRY: ${company.industry || 'Unknown'}`,
     }],
   });
 

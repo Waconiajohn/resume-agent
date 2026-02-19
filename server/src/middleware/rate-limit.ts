@@ -19,7 +19,7 @@ setInterval(() => {
 }, 60_000);
 
 /**
- * Simple sliding-window rate limiter keyed by user ID (from auth) or IP.
+ * Simple fixed-window rate limiter keyed by user ID (from auth) or IP.
  * @param maxRequests - Max requests allowed in the window
  * @param windowMs - Window duration in milliseconds
  */

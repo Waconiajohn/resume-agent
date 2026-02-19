@@ -239,7 +239,7 @@ export function WYSIWYGResume({ resume }: WYSIWYGResumeProps) {
   return (
     <div
       id="resume-print-target"
-      className="mx-auto my-6 max-w-[8.5in] rounded-lg bg-white px-10 py-8 shadow-2xl shadow-black/40 text-gray-900"
+      className="mx-auto my-6 w-full max-w-[8.5in] overflow-x-auto rounded-lg bg-white px-4 py-6 shadow-2xl shadow-black/40 text-gray-900 md:px-10 md:py-8"
       style={{ fontFamily: 'Calibri, "Segoe UI", system-ui, sans-serif' }}
     >
       <ContactHeader resume={resume} />

@@ -31,12 +31,20 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="max-w-md text-sm text-white/60">
             An unexpected error occurred. Please reload to continue.
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg border border-white/[0.14] bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.12]"
-          >
-            Reload page
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-lg border border-white/[0.14] bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.12]"
+            >
+              Reload page
+            </button>
+            <button
+              onClick={() => { window.location.href = '/app'; }}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.08]"
+            >
+              Return to Home
+            </button>
+          </div>
         </div>
       );
     }

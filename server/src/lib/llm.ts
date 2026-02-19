@@ -30,30 +30,20 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
 };
 
 // ─── Tool → model mapping ────────────────────────────────────────────
+// Only entries used by the current pipeline agents are kept here.
 
 const TOOL_MODEL_MAP: Record<string, string> = {
-  // Quality writing tools → MODEL_PRIMARY (glm-4.7)
+  // Quality writing → MODEL_PRIMARY (glm-4.7)
   generate_section: MODEL_PRIMARY,
-  propose_section_edit: MODEL_PRIMARY,
-  adversarial_review: MODEL_PRIMARY,
-  quality_review_suite: MODEL_PRIMARY,
 
-  // Mid-tier analysis tools → MODEL_MID (glm-4.5-air)
+  // Mid-tier analysis → MODEL_MID (glm-4.5-air)
   classify_fit: MODEL_MID,
   build_benchmark: MODEL_MID,
 
-  // Lightweight extraction tools → MODEL_LIGHT (glm-4.7-flash, FREE)
+  // Lightweight extraction → MODEL_LIGHT (glm-4.7-flash, FREE)
   analyze_jd: MODEL_LIGHT,
-  create_master_resume: MODEL_LIGHT,
-  humanize_check: MODEL_LIGHT,
   research_company: MODEL_LIGHT,
   research_industry: MODEL_LIGHT,
-  emit_score: MODEL_LIGHT,
-  update_requirement_status: MODEL_LIGHT,
-  confirm_section: MODEL_LIGHT,
-  save_checkpoint: MODEL_LIGHT,
-  export_resume: MODEL_LIGHT,
-  update_master_resume: MODEL_LIGHT,
 };
 
 /**
@@ -82,7 +72,7 @@ function createProvider(): LLMProvider {
     return new ZAIProvider({ apiKey, baseUrl });
   }
 
-  // Optional fallback: Anthropic.
+  // Optional fallback: Anthropic (lazy-initializes client on first use).
   return new AnthropicProvider();
 }
 

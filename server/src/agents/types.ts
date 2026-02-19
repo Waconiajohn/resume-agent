@@ -514,6 +514,8 @@ export type PipelineSSEEvent =
     }
   | { type: 'pipeline_error'; stage: PipelineStage; error: string }
   | { type: 'transparency'; message: string; stage: PipelineStage }
+  | { type: 'system_message'; content: string }
+  | { type: 'section_error'; section: string; error: string }
   | { type: 'right_panel_update'; panel_type: string; data: Record<string, unknown> }
   | {
       type: 'questionnaire';
