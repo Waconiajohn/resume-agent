@@ -176,6 +176,11 @@ export interface ArchitectInput {
   positioning: PositioningProfile;
   research: ResearchOutput;
   gap_analysis: GapAnalystOutput;
+  user_preferences?: {
+    primary_goal?: string;
+    resume_priority?: string;
+    seniority_delta?: string;
+  };
 }
 
 export interface ArchitectOutput {

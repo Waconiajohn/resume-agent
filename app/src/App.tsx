@@ -57,6 +57,8 @@ export default function App() {
     addUserMessage,
     pipelineStage,
     positioningProfileFound,
+    isPipelineGateActive,
+    setIsPipelineGateActive,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   const [view, setView] = useState<View>('landing');
@@ -188,9 +190,10 @@ export default function App() {
   const handlePipelineRespond = useCallback(
     async (gate: string, response: unknown) => {
       if (!currentSession) return;
+      setIsPipelineGateActive(false);
       await respondToGate(currentSession.id, gate, response);
     },
-    [currentSession, respondToGate],
+    [currentSession, respondToGate, setIsPipelineGateActive],
   );
 
   const handleSignOut = useCallback(async () => {
@@ -275,6 +278,7 @@ export default function App() {
           panelData={panelData}
           error={agentError ?? sessionError}
           onSendMessage={handleSendMessage}
+          isPipelineGateActive={isPipelineGateActive}
           onPipelineRespond={handlePipelineRespond}
           positioningProfileFound={positioningProfileFound}
           onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}

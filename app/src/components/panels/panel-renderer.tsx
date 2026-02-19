@@ -181,8 +181,10 @@ function renderPanelBody(props: PanelRendererProps) {
             onPipelineRespond?.(`section_review_${panelData.section}`, true);
           }}
           onRequestChanges={(feedback) => {
-            onPipelineRespond?.(`section_review_${panelData.section}`, false);
-            onSendMessage?.(feedback);
+            onPipelineRespond?.(`section_review_${panelData.section}`, {
+              approved: false,
+              feedback,
+            });
           }}
           onDirectEdit={(editedContent) => {
             onPipelineRespond?.(`section_review_${panelData.section}`, {

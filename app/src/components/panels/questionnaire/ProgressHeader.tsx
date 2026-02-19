@@ -9,7 +9,7 @@ interface ProgressHeaderProps {
 }
 
 export function ProgressHeader({ title, currentStep, totalSteps, icon }: ProgressHeaderProps) {
-  const progressPct = totalSteps > 0 ? Math.round((Math.max(0, currentStep - 1) / totalSteps) * 100) : 0;
+  const progressPct = totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0;
 
   return (
     <div className="border-b border-white/[0.12] px-4 py-3">

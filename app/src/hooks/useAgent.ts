@@ -32,6 +32,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [panelType, setPanelType] = useState<PanelType | null>(null);
   const [panelData, setPanelData] = useState<PanelData | null>(null);
   const [pipelineStage, setPipelineStage] = useState<PipelineStage | null>(null);
+  const [isPipelineGateActive, setIsPipelineGateActive] = useState(false);
   const [positioningQuestion, setPositioningQuestion] = useState<PositioningQuestion | null>(null);
   const [positioningProfileFound, setPositioningProfileFound] = useState<{ profile: unknown; updated_at: string } | null>(null);
   const [blueprintReady, setBlueprintReady] = useState<unknown>(null);
@@ -184,6 +185,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     // Restore resume data from completion panel (persisted by export_resume)
                     if (data.last_panel_type === 'completion' && panelPayload.resume) {
                       setResume(panelPayload.resume as FinalResume);
+                    }
+                    // Restore gate-active state for interactive panels
+                    const gateTypes = ['questionnaire', 'section_review', 'blueprint_review', 'positioning_interview'];
+                    if (gateTypes.includes(data.last_panel_type as string)) {
+                      setIsPipelineGateActive(true);
                     }
                   }
                   // On restore, clear processing state — the agent loop isn't running
@@ -492,6 +498,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   setIsProcessing(false);
+                  setIsPipelineGateActive(true);
                   setPositioningQuestion(data.question as PositioningQuestion);
                   // Show in right panel
                   setPanelType('positioning_interview');
@@ -508,6 +515,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   setIsProcessing(false);
+                  setIsPipelineGateActive(true);
                   setPanelType('questionnaire');
                   setPanelData({
                     type: 'questionnaire',
@@ -537,6 +545,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   setIsProcessing(false);
+                  setIsPipelineGateActive(true);
                   setBlueprintReady(data.blueprint);
                   // Show in right panel
                   const bp = data.blueprint as Record<string, unknown>;
@@ -559,6 +568,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   lastProgressTimestampRef.current = Date.now();
                   staleNoticeActiveRef.current = false;
                   setIsProcessing(false);
+                  setIsPipelineGateActive(true);
                   const section = data.section as string;
                   const content = data.content as string;
                   setSectionDraft({ section, content });
@@ -816,5 +826,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     blueprintReady,
     sectionDraft,
     qualityScores,
+    isPipelineGateActive,
+    setIsPipelineGateActive,
   };
 }

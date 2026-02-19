@@ -24,6 +24,7 @@ interface ChatPanelProps {
   panelData: PanelData | null;
   resume: FinalResume | null;
   onPipelineRespond?: (gate: string, response: unknown) => void;
+  isPipelineGateActive?: boolean;
   onSaveCurrentResumeAsBase?: (
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
@@ -41,6 +42,7 @@ export function ChatPanel({
   panelType,
   panelData,
   resume,
+  isPipelineGateActive,
   onPipelineRespond,
   onSaveCurrentResumeAsBase,
 }: ChatPanelProps) {
@@ -48,7 +50,7 @@ export function ChatPanel({
   const [showResumePreview, setShowResumePreview] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
-  const isBusy = isProcessing || streamingText.length > 0 || tools.some((t) => t.status === 'running');
+  const isBusy = isProcessing || isPipelineGateActive || streamingText.length > 0 || tools.some((t) => t.status === 'running');
   const canOpenResumePreview =
     !!resume
     && !!panelData

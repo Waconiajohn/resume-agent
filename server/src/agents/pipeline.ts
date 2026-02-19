@@ -333,6 +333,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         positioning: state.positioning!,
         research: state.research!,
         gap_analysis: state.gap_analysis!,
+        user_preferences: state.user_preferences,
       }),
       {
         maxAttempts: 3,
@@ -399,37 +400,59 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       if (!outcome.ok) {
         throw outcome.error instanceof Error ? outcome.error : new Error(String(outcome.error));
       }
-      const result = outcome.value;
+      let result = outcome.value;
       state.sections[call.section] = result;
 
-      // Emit each section for progressive rendering
-      emit({ type: 'section_draft', section: call.section, content: result.content });
+      // Revision loop: keep presenting section until user approves
+      let sectionApproved = false;
+      while (!sectionApproved) {
+        // Emit section for progressive rendering / re-review
+        emit({ type: 'section_draft', section: call.section, content: result.content });
 
-      // Gate: User approves, quick-fixes, or directly edits each section
-      state.current_stage = 'section_review';
-      const reviewResponse = await waitForUser<boolean | { approved: boolean; edited_content?: string; refinement_ids?: string[] }>(
-        `section_review_${call.section}`,
-      );
+        // Gate: User approves, quick-fixes, directly edits, or provides feedback
+        state.current_stage = 'section_review';
+        const reviewResponse = await waitForUser<boolean | { approved: boolean; edited_content?: string; feedback?: string; refinement_ids?: string[] }>(
+          `section_review_${call.section}`,
+        );
 
-      // Normalize: `true` → approved, `false` → feedback via chat (existing),
-      // `{ edited_content }` → use directly, `{ refinement_ids }` → build instruction
-      const isSimpleBool = typeof reviewResponse === 'boolean';
-      const approved = isSimpleBool ? reviewResponse : (reviewResponse as { approved: boolean }).approved;
+        const isSimpleBool = typeof reviewResponse === 'boolean';
+        const approved = isSimpleBool ? reviewResponse : (reviewResponse as { approved: boolean }).approved;
 
-      if (approved) {
-        emit({ type: 'section_approved', section: call.section });
-      } else if (!isSimpleBool && (reviewResponse as { edited_content?: string }).edited_content) {
-        // User directly edited — use their content without LLM rewrite
-        const editedContent = (reviewResponse as { edited_content: string }).edited_content;
-        state.sections[call.section] = {
-          ...result,
-          content: editedContent,
-        };
-        emit({ type: 'section_approved', section: call.section });
-        log.info({ section: call.section }, 'Section directly edited by user');
+        if (approved) {
+          emit({ type: 'section_approved', section: call.section });
+          sectionApproved = true;
+        } else if (!isSimpleBool && (reviewResponse as { edited_content?: string }).edited_content) {
+          // User directly edited — use their content without LLM rewrite
+          const editedContent = (reviewResponse as { edited_content: string }).edited_content;
+          result = { ...result, content: editedContent };
+          state.sections[call.section] = result;
+          emit({ type: 'section_approved', section: call.section });
+          sectionApproved = true;
+          log.info({ section: call.section }, 'Section directly edited by user');
+        } else if (!isSimpleBool && (reviewResponse as { feedback?: string }).feedback) {
+          // Quick Fix: re-run section writer with user feedback as revision instruction
+          const feedback = (reviewResponse as { feedback: string }).feedback;
+          const refinementIds = (reviewResponse as { refinement_ids?: string[] }).refinement_ids;
+          const instruction = refinementIds?.length
+            ? `Apply these fixes: ${refinementIds.join(', ')}. User feedback: ${feedback}`
+            : feedback;
+
+          const blueprintSlice = getSectionBlueprint(call.section, state.architect!);
+          const revised = await withRetry(
+            () => runSectionRevision(call.section, result.content, instruction, blueprintSlice, state.architect!.global_rules),
+            { maxAttempts: 3, baseDelay: 1_000, onRetry: (a, e) => { log.warn({ section: call.section, attempt: a, error: e.message }, 'Section revision retry'); } },
+          );
+          result = revised;
+          state.sections[call.section] = revised;
+          emit({ type: 'section_revised', section: call.section, content: revised.content });
+          log.info({ section: call.section }, 'Section revised via Quick Fix feedback');
+          // Loop continues — re-present revised section for re-review
+        } else {
+          // Bare `false` or unknown shape — treat as approved to prevent infinite loop
+          emit({ type: 'section_approved', section: call.section });
+          sectionApproved = true;
+        }
       }
-      // If not approved and no direct edit, user provided feedback via chat
-      // (handled by the waitForUser callback in the route layer)
     }
 
     markStageEnd('section_writing');
@@ -511,6 +534,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
       // High-priority fixes: present to user for approval (if feature flag enabled)
       let approvedFixIds: Set<string> = new Set(highPriority.map((_, i) => `fix_${i}`)); // default: apply all
+      const customModifications = new Map<string, string>();
       if (highPriority.length > 0) {
         const fixQuestions = highPriority.map((inst, i) =>
           makeQuestion(`fix_${i}`, `${inst.target_section}: ${inst.issue}`, 'single_choice', [
@@ -531,6 +555,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
             const selected = resp.selected_option_ids[0];
             if (selected === 'apply' || selected === 'modify') {
               approvedFixIds.add(resp.question_id);
+              if (selected === 'modify' && resp.custom_text?.trim()) {
+                customModifications.set(resp.question_id, resp.custom_text.trim());
+              }
             }
           }
         }
@@ -545,9 +572,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         const original = state.sections[section];
         if (!original) continue;
 
+        // Append user's custom modification text when "Apply with changes" was selected
+        const customText = customModifications.get(`fix_${i}`);
+        const revisionInstruction = customText
+          ? `${instruction.instruction}\n\nUSER MODIFICATION: ${customText}`
+          : instruction.instruction;
+
         const blueprintSlice = getSectionBlueprint(section, state.architect);
         const revised = await withRetry(
-          () => runSectionRevision(section, original.content, instruction.instruction, blueprintSlice, state.architect!.global_rules),
+          () => runSectionRevision(section, original.content, revisionInstruction, blueprintSlice, state.architect!.global_rules),
           { maxAttempts: 3, baseDelay: 1_000, onRetry: (attempt, error) => { log.warn({ section, attempt, error: error.message }, 'Section revision retry'); } },
         );
         state.sections[section] = revised;

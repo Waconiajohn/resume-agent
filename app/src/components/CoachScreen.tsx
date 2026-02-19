@@ -21,6 +21,7 @@ interface CoachScreenProps {
   panelData: PanelData | null;
   error: string | null;
   onSendMessage: (content: string) => void;
+  isPipelineGateActive?: boolean;
   onPipelineRespond?: (gate: string, response: unknown) => void;
   positioningProfileFound?: { profile: unknown; updated_at: string } | null;
   onSaveCurrentResumeAsBase?: (
@@ -41,6 +42,7 @@ export function CoachScreen({
   panelType,
   panelData,
   error,
+  isPipelineGateActive,
   onSendMessage,
   onPipelineRespond,
   positioningProfileFound,
@@ -85,6 +87,7 @@ export function CoachScreen({
             currentPhase={currentPhase}
             isProcessing={isProcessing}
             onSendMessage={onSendMessage}
+            isPipelineGateActive={isPipelineGateActive}
             panelType={panelType}
             panelData={panelData}
             resume={resume}

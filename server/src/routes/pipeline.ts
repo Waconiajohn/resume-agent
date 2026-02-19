@@ -285,6 +285,46 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
         .update({ pipeline_stage: event.stage })
         .eq('id', session_id);
     }
+    // Persist questionnaire events for session restore
+    if (event.type === 'questionnaire') {
+      void supabaseAdmin
+        .from('coach_sessions')
+        .update({
+          last_panel_type: 'questionnaire',
+          last_panel_data: event,
+        })
+        .eq('id', session_id);
+    }
+    // Persist right_panel_update events for session restore
+    if (event.type === 'right_panel_update') {
+      void supabaseAdmin
+        .from('coach_sessions')
+        .update({
+          last_panel_type: event.panel_type,
+          last_panel_data: event.data,
+        })
+        .eq('id', session_id);
+    }
+    // Persist section_draft as section_review panel for restore
+    if (event.type === 'section_draft') {
+      void supabaseAdmin
+        .from('coach_sessions')
+        .update({
+          last_panel_type: 'section_review',
+          last_panel_data: { section: event.section, content: event.content },
+        })
+        .eq('id', session_id);
+    }
+    // Persist blueprint_ready for restore
+    if (event.type === 'blueprint_ready') {
+      void supabaseAdmin
+        .from('coach_sessions')
+        .update({
+          last_panel_type: 'blueprint_review',
+          last_panel_data: event.blueprint,
+        })
+        .eq('id', session_id);
+    }
     const emitters = sseConnections.get(session_id);
     if (emitters) {
       for (const emitter of emitters) {

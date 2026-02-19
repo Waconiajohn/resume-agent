@@ -27,13 +27,25 @@ import type {
 } from './types.js';
 
 export async function runArchitect(input: ArchitectInput): Promise<ArchitectOutput> {
-  const { parsed_resume, positioning, research, gap_analysis } = input;
+  const { parsed_resume, positioning, research, gap_analysis, user_preferences } = input;
 
   // Build a comprehensive context for the Architect
   const resumeOverview = buildResumeOverview(input);
   const positioningBrief = buildPositioningBrief(input);
   const gapBrief = buildGapBrief(input);
   const keywordBrief = buildKeywordBrief(input);
+
+  const prefsBlock = user_preferences ? `
+USER PREFERENCES:
+- Primary goal: ${user_preferences.primary_goal ?? 'Not specified'}
+- Resume priority: ${user_preferences.resume_priority ?? 'Balanced'}
+- Seniority target: ${user_preferences.seniority_delta ?? 'Same level'}
+
+Use these preferences to guide your strategic decisions. For example:
+- "authentic" priority → emphasize authentic phrases, minimize corporate jargon
+- "ats" priority → maximize keyword density and exact-match phrases
+- "impact" priority → lead with metrics and quantified results
+` : '';
 
   const userContent = `Create a complete resume blueprint for this candidate.
 
@@ -47,7 +59,7 @@ ${positioningBrief}
 ${gapBrief}
 
 ${keywordBrief}
-
+${prefsBlock}
 CAREER SPAN: ${parsed_resume.career_span_years} years
 
 Now make the 7 strategic decisions and return the complete blueprint as JSON.
