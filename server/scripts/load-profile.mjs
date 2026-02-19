@@ -4,6 +4,12 @@ import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Safety guard: refuse to run against production
+if (process.env.NODE_ENV === 'production') {
+  console.error('ERROR: Load test scripts must not run in production (NODE_ENV=production). Aborting.');
+  process.exit(1);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const serverRoot = path.resolve(__dirname, '..');

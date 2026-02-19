@@ -13,6 +13,7 @@ import { MODEL_PRICING } from '../lib/llm.js';
 import { startUsageTracking, stopUsageTracking, setUsageTrackingContext } from '../lib/llm-provider.js';
 import { createSessionLogger } from '../lib/logger.js';
 import { withRetry } from '../lib/retry.js';
+import { sleep } from '../lib/sleep.js';
 import { runIntakeAgent } from './intake.js';
 import { generateQuestions, synthesizeProfile, evaluateFollowUp, MAX_FOLLOW_UPS } from './positioning-coach.js';
 import { runResearchAgent } from './research.js';
@@ -1338,10 +1339,6 @@ function buildFallbackSectionContent(section: string, intake: IntakeOutput): str
     return [edu, certs].filter(Boolean).join('\n');
   }
   return '';
-}
-
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function withTimeout<T>(

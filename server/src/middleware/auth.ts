@@ -33,7 +33,7 @@ const tokenCacheCleanupTimer = setInterval(() => {
 }, 60_000);
 tokenCacheCleanupTimer.unref();
 
-function getCachedUser(token: string): AuthUser | null {
+export function getCachedUser(token: string): AuthUser | null {
   const entry = tokenCache.get(token);
   if (!entry) return null;
   if (Date.now() >= entry.expiresAt) {
@@ -46,7 +46,7 @@ function getCachedUser(token: string): AuthUser | null {
   return entry.user;
 }
 
-function cacheUser(token: string, user: AuthUser): void {
+export function cacheUser(token: string, user: AuthUser): void {
   // Limit cache size to prevent unbounded memory growth
   if (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {
     // Evict oldest entry

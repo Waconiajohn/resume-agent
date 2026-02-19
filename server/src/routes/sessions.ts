@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { supabaseAdmin } from '../lib/supabase.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, getCachedUser, cacheUser } from '../middleware/auth.js';
+import type { AuthUser } from '../middleware/auth.js';
 import { SessionContext } from '../agent/context.js';
 import type { CoachSession } from '../agent/context.js';
 import { runAgentLoop } from '../agent/loop.js';
@@ -120,6 +121,13 @@ const sseRateCleanupTimer = setInterval(() => {
       sseConnectionTimestamps.set(userId, recent);
     }
   }
+  // Clean stale sseConnectionsByUser entries — users with no active SSE connections
+  // whose count drifted due to unclean disconnects.
+  for (const [userId, count] of sseConnectionsByUser.entries()) {
+    if (count <= 0) {
+      sseConnectionsByUser.delete(userId);
+    }
+  }
 }, 60_000);
 sseRateCleanupTimer.unref();
 
@@ -137,10 +145,17 @@ sessions.get('/:id/sse', async (c) => {
     return c.json({ error: 'Missing authentication token' }, 401);
   }
 
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-  if (authError || !user) {
-    return c.json({ error: 'Invalid or expired token' }, 401);
+  // Use shared token cache to avoid a Supabase remote call on every SSE connect
+  let authUser: AuthUser | null = getCachedUser(token);
+  if (!authUser) {
+    const { data: { user: rawUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !rawUser) {
+      return c.json({ error: 'Invalid or expired token' }, 401);
+    }
+    authUser = { id: rawUser.id, email: rawUser.email ?? '', accessToken: token };
+    cacheUser(token, authUser);
   }
+  const user = authUser;
 
   const { data: session, error } = await supabaseAdmin
     .from('coach_sessions')
@@ -390,18 +405,11 @@ sessions.delete('/:id', async (c) => {
     return c.json({ error: 'Failed to delete session' }, 500);
   }
 
-  // Best-effort in-memory cleanup
-  const removedEmitters = sseConnections.get(sessionId)?.length ?? 0;
-  sseConnections.delete(sessionId);
-  totalSSEConnections = Math.max(0, totalSSEConnections - removedEmitters);
-  if (removedEmitters > 0) {
-    const count = sseConnectionsByUser.get(user.id) ?? 0;
-    const nextCount = Math.max(0, count - removedEmitters);
-    if (nextCount === 0) {
-      sseConnectionsByUser.delete(user.id);
-    } else {
-      sseConnectionsByUser.set(user.id, nextCount);
-    }
+  // Best-effort in-memory cleanup — use removeSSEConnection for each emitter
+  // to keep totalSSEConnections and sseConnectionsByUser consistent.
+  const emitters = sseConnections.get(sessionId) ?? [];
+  for (const emitter of [...emitters]) {
+    removeSSEConnection(sessionId, user.id, emitter);
   }
   processingSessions.delete(sessionId);
 

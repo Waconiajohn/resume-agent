@@ -36,6 +36,7 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
 }
 
 function pruneCache<T>(cache: Map<string, CacheValue<T>>, maxEntries: number): void {
+  if (cache.size === 0) return;
   const now = Date.now();
   for (const [key, entry] of cache.entries()) {
     if (now >= entry.expiresAt) {
@@ -63,8 +64,8 @@ function getCached<T>(cache: Map<string, CacheValue<T>>, key: string): T | null 
 }
 
 function setCached<T>(cache: Map<string, CacheValue<T>>, key: string, value: T, maxEntries: number): void {
-  cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
   pruneCache(cache, maxEntries);
+  cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
 const cacheCleanupTimer = setInterval(() => {

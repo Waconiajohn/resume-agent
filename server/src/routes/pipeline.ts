@@ -9,6 +9,7 @@ import { sseConnections } from './sessions.js';
 import { runPipeline } from '../agents/pipeline.js';
 import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
+import { sleep } from '../lib/sleep.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -147,7 +148,7 @@ function pruneStaleRunningPipelines(now = Date.now()): void {
 }
 
 const runningPipelinesCleanupTimer = setInterval(() => {
-  pruneStaleRunningPipelines();
+  if (runningPipelines.size > 0) pruneStaleRunningPipelines();
 }, 60_000);
 runningPipelinesCleanupTimer.unref();
 
@@ -216,10 +217,6 @@ function withResponseQueue(payload: PendingGatePayload, queue: Array<{ gate: str
   delete normalized.buffered_response;
   delete normalized.buffered_at;
   return normalized;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function gatePollDelayMs(attempt: number): number {
