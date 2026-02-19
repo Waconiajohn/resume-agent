@@ -15,11 +15,13 @@ import { withRetry } from '../lib/retry.js';
 import { runIntakeAgent } from './intake.js';
 import { generateQuestions, synthesizeProfile } from './positioning-coach.js';
 import { runResearchAgent } from './research.js';
-import { runGapAnalyst } from './gap-analyst.js';
+import { runGapAnalyst, generateGapQuestions, enrichGapAnalysis } from './gap-analyst.js';
 import { runArchitect } from './architect.js';
 import { runSectionWriter, runSectionRevision } from './section-writer.js';
 import { runQualityReviewer } from './quality-reviewer.js';
 import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
+import { isQuestionnaireEnabled, type QuestionnaireStage } from '../lib/feature-flags.js';
+import { buildQuestionnaireEvent, makeQuestion, getSelectedLabels } from '../lib/questionnaire-helpers.js';
 import type {
   PipelineState,
   PipelineStage,
@@ -30,6 +32,8 @@ import type {
   ArchitectOutput,
   SectionWriterOutput,
   QualityReviewerOutput,
+  QuestionnaireQuestion,
+  QuestionnaireSubmission,
 } from './types.js';
 
 export type PipelineEmitter = (event: PipelineSSEEvent) => void;
@@ -39,6 +43,29 @@ export type PipelineEmitter = (event: PipelineSSEEvent) => void;
  * and the orchestrator calls this to wait for user input.
  */
 export type WaitForUser = <T>(gate: string) => Promise<T>;
+
+/**
+ * Generic questionnaire helper — checks feature flag, emits questionnaire SSE event,
+ * waits for user response, and returns the submission (or null if flag is disabled).
+ */
+async function runQuestionnaire(
+  stage: QuestionnaireStage,
+  questionnaire_id: string,
+  title: string,
+  questions: QuestionnaireQuestion[],
+  emit: PipelineEmitter,
+  waitForUser: WaitForUser,
+  subtitle?: string,
+): Promise<QuestionnaireSubmission | null> {
+  if (!isQuestionnaireEnabled(stage)) return null;
+  if (questions.length === 0) return null;
+
+  const event = buildQuestionnaireEvent(questionnaire_id, stage, title, questions, subtitle);
+  emit(event);
+
+  const submission = await waitForUser<QuestionnaireSubmission>(`questionnaire_${questionnaire_id}`);
+  return submission;
+}
 
 // ─── Pipeline entry point ────────────────────────────────────────────
 
@@ -121,6 +148,45 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     log.info({ experience_count: state.intake.experience.length }, 'Intake complete');
 
+    // ─── Intake Quiz (optional) ─────────────────────────────────
+    const intakeQuizQuestions = [
+      makeQuestion('goal', "What's your primary goal for this application?", 'single_choice', [
+        { id: 'dream_job', label: 'Dream job', description: 'This is THE role I really want' },
+        { id: 'exploring', label: 'Exploring options', description: "I'm actively looking and casting a wide net" },
+        { id: 'urgent', label: 'Urgent need', description: 'I need a new role quickly' },
+        { id: 'leverage', label: 'Building leverage', description: 'I want a strong application for negotiation' },
+      ]),
+      makeQuestion('priority', 'What matters most in your resume?', 'single_choice', [
+        { id: 'authentic', label: 'Sounds like me', description: 'Authentic voice that represents who I am' },
+        { id: 'ats', label: 'Beats the ATS', description: 'Maximum keyword coverage and formatting' },
+        { id: 'impact', label: 'Shows impact', description: 'Metrics-driven accomplishments front and center' },
+        { id: 'balanced', label: 'Balanced approach', description: 'A well-rounded resume that covers all bases' },
+      ]),
+      makeQuestion('seniority', 'How senior is this role compared to your current level?', 'single_choice', [
+        { id: 'same', label: 'Same level', description: 'Lateral move with similar responsibilities' },
+        { id: 'one_up', label: 'One step up', description: 'Natural next promotion' },
+        { id: 'big_jump', label: 'Big jump', description: 'Significant stretch role' },
+        { id: 'step_back', label: 'Step back', description: 'Intentionally moving to a less senior role' },
+      ], { allow_skip: true }),
+    ];
+
+    const intakeSubmission = await runQuestionnaire(
+      'intake_quiz', 'intake_quiz', 'Quick Setup', intakeQuizQuestions, emit, waitForUser,
+      "A few quick questions to tailor your resume experience",
+    );
+
+    if (intakeSubmission) {
+      const goalResp = intakeSubmission.responses.find(r => r.question_id === 'goal');
+      const priorityResp = intakeSubmission.responses.find(r => r.question_id === 'priority');
+      const seniorityResp = intakeSubmission.responses.find(r => r.question_id === 'seniority');
+      state.user_preferences = {
+        primary_goal: goalResp?.selected_option_ids[0],
+        resume_priority: priorityResp?.selected_option_ids[0],
+        seniority_delta: seniorityResp?.skipped ? undefined : seniorityResp?.selected_option_ids[0],
+      };
+      log.info({ preferences: state.user_preferences }, 'Intake quiz complete');
+    }
+
     // ─── Stage 2: Positioning Coach ──────────────────────────────
     state.current_stage = 'positioning';
     markStageStart('positioning');
@@ -158,6 +224,36 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete');
 
+    // ─── Research Validation Quiz (optional) ─────────────────────
+    const researchQuizQuestions = [
+      makeQuestion('top_requirements', 'Which requirements matter most for this role?', 'multi_choice',
+        state.research.jd_analysis.must_haves.slice(0, 6).map((req, i) => ({
+          id: `req_${i}`,
+          label: req,
+          source: 'jd' as const,
+        })),
+        { context: 'Select up to 3 that you think the hiring manager cares about most' },
+      ),
+      makeQuestion('culture_check', 'Does this company culture description sound right?', 'single_choice', [
+        { id: 'yes', label: 'Yes, spot on' },
+        { id: 'somewhat', label: 'Somewhat accurate' },
+        { id: 'not_quite', label: 'Not quite right' },
+      ], { allow_custom: true, context: `We found: ${state.research.company_research.culture_signals.slice(0, 3).join(', ')}` }),
+      makeQuestion('anything_else', 'Anything else we should know about this role?', 'single_choice', [
+        { id: 'nope', label: 'No, looks good' },
+      ], { allow_custom: true, allow_skip: true, context: 'Insider knowledge, team dynamics, or role nuances' }),
+    ];
+
+    const researchSubmission = await runQuestionnaire(
+      'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
+      'Help us fine-tune our research findings',
+    );
+
+    if (researchSubmission) {
+      state.research_preferences = researchSubmission;
+      log.info('Research validation quiz complete');
+    }
+
     // ─── Stage 4: Gap Analysis ───────────────────────────────────
     emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Analyzing requirement gaps...' });
     state.current_stage = 'gap_analysis';
@@ -193,6 +289,38 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     log.info({ coverage: state.gap_analysis.coverage_score, gaps: state.gap_analysis.critical_gaps.length }, 'Gap analysis complete');
+
+    // ─── Gap Analysis Quiz (optional) ───────────────────────────
+    const gapQuizQuestions = generateGapQuestions(state.gap_analysis);
+    const gapSubmission = await runQuestionnaire(
+      'gap_analysis_quiz', 'gap_analysis', 'Verify Your Skills', gapQuizQuestions, emit, waitForUser,
+      'Help us understand your true proficiency in these areas',
+    );
+
+    if (gapSubmission && gapQuizQuestions.length > 0) {
+      state.gap_analysis = enrichGapAnalysis(state.gap_analysis, gapSubmission.responses, gapQuizQuestions);
+      // Re-emit the updated gap panel
+      const enrichedReqs = state.gap_analysis.requirements;
+      const enrichedStrong = enrichedReqs.filter(r => r.classification === 'strong').length;
+      const enrichedPartial = enrichedReqs.filter(r => r.classification === 'partial').length;
+      const enrichedGap = enrichedReqs.filter(r => r.classification === 'gap').length;
+      emit({
+        type: 'right_panel_update',
+        panel_type: 'gap_analysis',
+        data: {
+          requirements: enrichedReqs,
+          coverage_score: state.gap_analysis.coverage_score,
+          critical_gaps: state.gap_analysis.critical_gaps,
+          strength_summary: state.gap_analysis.strength_summary,
+          total: enrichedReqs.length,
+          addressed: enrichedStrong + enrichedPartial,
+          strong_count: enrichedStrong,
+          partial_count: enrichedPartial,
+          gap_count: enrichedGap,
+        },
+      });
+      log.info({ enriched_coverage: state.gap_analysis.coverage_score }, 'Gap analysis enriched by user');
+    }
 
     // ─── Stage 5: Resume Architect ───────────────────────────────
     emit({ type: 'stage_start', stage: 'architect', message: 'Designing resume strategy...' });
@@ -277,14 +405,30 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       // Emit each section for progressive rendering
       emit({ type: 'section_draft', section: call.section, content: result.content });
 
-      // Gate: User approves each section
+      // Gate: User approves, quick-fixes, or directly edits each section
       state.current_stage = 'section_review';
-      const approved = await waitForUser<boolean>(`section_review_${call.section}`);
+      const reviewResponse = await waitForUser<boolean | { approved: boolean; edited_content?: string; refinement_ids?: string[] }>(
+        `section_review_${call.section}`,
+      );
+
+      // Normalize: `true` → approved, `false` → feedback via chat (existing),
+      // `{ edited_content }` → use directly, `{ refinement_ids }` → build instruction
+      const isSimpleBool = typeof reviewResponse === 'boolean';
+      const approved = isSimpleBool ? reviewResponse : (reviewResponse as { approved: boolean }).approved;
 
       if (approved) {
         emit({ type: 'section_approved', section: call.section });
+      } else if (!isSimpleBool && (reviewResponse as { edited_content?: string }).edited_content) {
+        // User directly edited — use their content without LLM rewrite
+        const editedContent = (reviewResponse as { edited_content: string }).edited_content;
+        state.sections[call.section] = {
+          ...result,
+          content: editedContent,
+        };
+        emit({ type: 'section_approved', section: call.section });
+        log.info({ section: call.section }, 'Section directly edited by user');
       }
-      // If not approved, the user provided feedback which triggered a rewrite
+      // If not approved and no direct edit, user provided feedback via chat
       // (handled by the waitForUser callback in the route layer)
     }
 
@@ -346,35 +490,71 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         instructions: state.quality_review.revision_instructions,
       });
 
-      const actionable = state.quality_review.revision_instructions.slice(0, 4);
-      for (const instruction of actionable) {
+      const allInstructions = state.quality_review.revision_instructions.slice(0, 4);
+      const highPriority = allInstructions.filter(i => i.priority === 'high');
+      const autoApply = allInstructions.filter(i => i.priority !== 'high');
+
+      // Auto-apply low/medium priority fixes without asking
+      for (const instruction of autoApply) {
         const section = instruction.target_section;
         const original = state.sections[section];
         if (!original) continue;
 
         const blueprintSlice = getSectionBlueprint(section, state.architect);
         const revised = await withRetry(
-          () => runSectionRevision(
-            section,
-            original.content,
-            instruction.instruction,
-            blueprintSlice,
-            state.architect!.global_rules,
-          ),
-          {
-            maxAttempts: 3,
-            baseDelay: 1_000,
-            onRetry: (attempt, error) => {
-              log.warn({ section, attempt, error: error.message }, 'Section revision retry');
-            },
-          },
+          () => runSectionRevision(section, original.content, instruction.instruction, blueprintSlice, state.architect!.global_rules),
+          { maxAttempts: 3, baseDelay: 1_000, onRetry: (attempt, error) => { log.warn({ section, attempt, error: error.message }, 'Section revision retry'); } },
         );
-
         state.sections[section] = revised;
         emit({ type: 'section_revised', section, content: revised.content });
       }
 
-      log.info({ revisions: state.quality_review.revision_instructions.length }, 'Revision cycle complete');
+      // High-priority fixes: present to user for approval (if feature flag enabled)
+      let approvedFixIds: Set<string> = new Set(highPriority.map((_, i) => `fix_${i}`)); // default: apply all
+      if (highPriority.length > 0) {
+        const fixQuestions = highPriority.map((inst, i) =>
+          makeQuestion(`fix_${i}`, `${inst.target_section}: ${inst.issue}`, 'single_choice', [
+            { id: 'apply', label: 'Apply this fix' },
+            { id: 'skip', label: 'Skip this one' },
+            { id: 'modify', label: 'Apply with changes' },
+          ], { allow_custom: true, context: inst.instruction }),
+        );
+
+        const fixSubmission = await runQuestionnaire(
+          'quality_review_approval', 'quality_fixes', 'Review Suggested Fixes', fixQuestions, emit, waitForUser,
+          `${highPriority.length} important fix${highPriority.length > 1 ? 'es' : ''} need your approval`,
+        );
+
+        if (fixSubmission) {
+          approvedFixIds = new Set<string>();
+          for (const resp of fixSubmission.responses) {
+            const selected = resp.selected_option_ids[0];
+            if (selected === 'apply' || selected === 'modify') {
+              approvedFixIds.add(resp.question_id);
+            }
+          }
+        }
+      }
+
+      // Apply approved high-priority fixes
+      for (let i = 0; i < highPriority.length; i++) {
+        if (!approvedFixIds.has(`fix_${i}`)) continue;
+
+        const instruction = highPriority[i];
+        const section = instruction.target_section;
+        const original = state.sections[section];
+        if (!original) continue;
+
+        const blueprintSlice = getSectionBlueprint(section, state.architect);
+        const revised = await withRetry(
+          () => runSectionRevision(section, original.content, instruction.instruction, blueprintSlice, state.architect!.global_rules),
+          { maxAttempts: 3, baseDelay: 1_000, onRetry: (attempt, error) => { log.warn({ section, attempt, error: error.message }, 'Section revision retry'); } },
+        );
+        state.sections[section] = revised;
+        emit({ type: 'section_revised', section, content: revised.content });
+      }
+
+      log.info({ revisions: allInstructions.length, approved: approvedFixIds.size }, 'Revision cycle complete');
       markStageEnd('revision');
     }
 

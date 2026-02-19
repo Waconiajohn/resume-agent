@@ -96,3 +96,38 @@ export interface RevisionInstruction {
   instruction: string;
   priority: 'high' | 'medium' | 'low';
 }
+
+// ─── Questionnaire Types ────────────────────────────────────────────
+
+export interface QuestionnaireOption {
+  id: string;
+  label: string;
+  description?: string;
+  source?: 'resume' | 'jd' | 'inferred' | 'system';
+}
+
+export interface QuestionnaireQuestion {
+  id: string;
+  question_text: string;
+  context?: string;
+  input_type: 'single_choice' | 'multi_choice' | 'rating';
+  options?: QuestionnaireOption[];
+  allow_custom: boolean;
+  allow_skip: boolean;
+  depends_on?: { question_id: string; condition: 'equals' | 'not_equals'; value: string };
+}
+
+export interface QuestionnaireResponse {
+  question_id: string;
+  selected_option_ids: string[];
+  custom_text?: string;
+  skipped: boolean;
+}
+
+export interface QuestionnaireSubmission {
+  questionnaire_id: string;
+  schema_version: number;
+  stage: string;
+  responses: QuestionnaireResponse[];
+  submitted_at: string;
+}

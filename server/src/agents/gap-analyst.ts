@@ -19,7 +19,10 @@ import type {
   GapAnalystInput,
   GapAnalystOutput,
   RequirementMapping,
+  QuestionnaireQuestion,
+  QuestionnaireResponse,
 } from './types.js';
+import { makeQuestion } from '../lib/questionnaire-helpers.js';
 
 /**
  * Normalize classification values from LLM output.
@@ -174,5 +177,101 @@ Return ONLY valid JSON:
       .filter(r => r.classification === 'gap' && r.mitigation && !r.unaddressable)
       .map(r => `${r.requirement} → ${r.mitigation}`),
     strength_summary,
+  };
+}
+
+// ─── Gap Analysis Questionnaire Helpers ──────────────────────────────
+
+const PROFICIENCY_OPTIONS = [
+  { id: 'expert', label: 'Expert', description: 'Deep hands-on experience — could teach others' },
+  { id: 'proficient', label: 'Proficient', description: 'Solid working knowledge and regular use' },
+  { id: 'familiar', label: 'Familiar', description: 'Some exposure but not daily practice' },
+  { id: 'none', label: 'No experience', description: "Haven't worked with this" },
+];
+
+/**
+ * Generate questionnaire questions for partial/gap requirements (capped at 8).
+ * Lets users self-report proficiency so the AI doesn't under/over-estimate.
+ */
+export function generateGapQuestions(analysis: GapAnalystOutput): QuestionnaireQuestion[] {
+  const candidates = analysis.requirements
+    .filter(r => r.classification === 'partial' || r.classification === 'gap')
+    .slice(0, 8);
+
+  return candidates.map((req, i) =>
+    makeQuestion(
+      `gap_${i}`,
+      `How would you rate your experience with: ${req.requirement}?`,
+      'single_choice',
+      PROFICIENCY_OPTIONS,
+      {
+        allow_custom: true,
+        context: req.classification === 'partial'
+          ? `We found some evidence: ${(req.evidence ?? []).slice(0, 2).join('; ')}`
+          : req.mitigation
+            ? `Possible angle: ${req.mitigation}`
+            : undefined,
+      },
+    ),
+  );
+}
+
+/**
+ * Enrich gap analysis with user's self-reported proficiency.
+ * - Expert/Proficient on a gap → upgrade to partial or strong
+ * - None on a partial → downgrade to gap
+ * - Custom text → add to evidence
+ */
+export function enrichGapAnalysis(
+  original: GapAnalystOutput,
+  responses: QuestionnaireResponse[],
+  questions: QuestionnaireQuestion[],
+): GapAnalystOutput {
+  const candidates = original.requirements
+    .filter(r => r.classification === 'partial' || r.classification === 'gap')
+    .slice(0, 8);
+
+  const enrichedReqs = original.requirements.map(req => {
+    const candidateIdx = candidates.indexOf(req);
+    if (candidateIdx === -1) return req;
+
+    const questionId = `gap_${candidateIdx}`;
+    const response = responses.find(r => r.question_id === questionId);
+    if (!response || response.skipped) return req;
+
+    const selectedId = response.selected_option_ids[0];
+    const clone = { ...req, evidence: [...(req.evidence ?? [])] };
+
+    // Add custom text as evidence
+    if (response.custom_text?.trim()) {
+      clone.evidence.push(`User-reported: ${response.custom_text.trim()}`);
+    }
+
+    // Reclassify based on self-reported proficiency
+    if (selectedId === 'expert') {
+      clone.classification = 'strong';
+    } else if (selectedId === 'proficient') {
+      clone.classification = req.classification === 'gap' ? 'partial' : 'strong';
+    } else if (selectedId === 'none' && req.classification === 'partial') {
+      clone.classification = 'gap';
+    }
+
+    return clone;
+  });
+
+  const strong = enrichedReqs.filter(r => r.classification === 'strong').length;
+  const partial = enrichedReqs.filter(r => r.classification === 'partial').length;
+  const total = enrichedReqs.length;
+
+  return {
+    ...original,
+    requirements: enrichedReqs,
+    coverage_score: total > 0 ? Math.round(((strong + partial * 0.5) / total) * 100) : 0,
+    critical_gaps: enrichedReqs
+      .filter(r => r.classification === 'gap' && !r.unaddressable)
+      .map(r => r.requirement),
+    addressable_gaps: enrichedReqs
+      .filter(r => r.classification === 'gap' && r.mitigation && !r.unaddressable)
+      .map(r => `${r.requirement} → ${r.mitigation}`),
   };
 }

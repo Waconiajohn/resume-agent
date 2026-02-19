@@ -504,6 +504,24 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'questionnaire': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setIsProcessing(false);
+                  setPanelType('questionnaire');
+                  setPanelData({
+                    type: 'questionnaire',
+                    questionnaire_id: data.questionnaire_id,
+                    schema_version: data.schema_version,
+                    stage: data.stage,
+                    title: data.title,
+                    subtitle: data.subtitle,
+                    questions: data.questions,
+                    current_index: data.current_index ?? 0,
+                  } as PanelData);
+                  break;
+                }
+
                 case 'positioning_profile_found': {
                   const data = safeParse(msg.data);
                   if (!data) break;

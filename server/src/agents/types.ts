@@ -335,6 +335,41 @@ export interface RevisionInstruction {
   priority: 'high' | 'medium' | 'low';
 }
 
+// ─── Questionnaire Types ─────────────────────────────────────────────
+
+export interface QuestionnaireOption {
+  id: string;
+  label: string;
+  description?: string;
+  source?: 'resume' | 'jd' | 'inferred' | 'system';
+}
+
+export interface QuestionnaireQuestion {
+  id: string;
+  question_text: string;
+  context?: string;
+  input_type: 'single_choice' | 'multi_choice' | 'rating';
+  options?: QuestionnaireOption[];
+  allow_custom: boolean;
+  allow_skip: boolean;
+  depends_on?: { question_id: string; condition: 'equals' | 'not_equals'; value: string };
+}
+
+export interface QuestionnaireResponse {
+  question_id: string;
+  selected_option_ids: string[];
+  custom_text?: string;
+  skipped: boolean;
+}
+
+export interface QuestionnaireSubmission {
+  questionnaire_id: string;
+  schema_version: number;
+  stage: string;
+  responses: QuestionnaireResponse[];
+  submitted_at: string;
+}
+
 // ─── Pipeline Orchestration ──────────────────────────────────────────
 
 export type PipelineStage =
@@ -363,6 +398,14 @@ export interface PipelineState {
   architect?: ArchitectOutput;
   sections?: Record<string, SectionWriterOutput>;
   quality_review?: QualityReviewerOutput;
+
+  // Questionnaire data
+  user_preferences?: {
+    primary_goal?: string;
+    resume_priority?: string;
+    seniority_delta?: string;
+  };
+  research_preferences?: QuestionnaireSubmission;
 
   // Metadata
   positioning_profile_id?: string;    // if reusing saved profile
@@ -426,4 +469,14 @@ export type PipelineSSEEvent =
     }
   | { type: 'pipeline_error'; stage: PipelineStage; error: string }
   | { type: 'transparency'; message: string; stage: PipelineStage }
-  | { type: 'right_panel_update'; panel_type: string; data: Record<string, unknown> };
+  | { type: 'right_panel_update'; panel_type: string; data: Record<string, unknown> }
+  | {
+      type: 'questionnaire';
+      questionnaire_id: string;
+      schema_version: number;
+      stage: string;
+      title: string;
+      subtitle?: string;
+      questions: QuestionnaireQuestion[];
+      current_index: number;
+    };

@@ -11,7 +11,9 @@ import { CompletionPanel } from './CompletionPanel';
 import { PositioningInterviewPanel } from './PositioningInterviewPanel';
 import { BlueprintReviewPanel } from './BlueprintReviewPanel';
 import { SectionReviewPanel } from './SectionReviewPanel';
+import { QuestionnairePanel } from './QuestionnairePanel';
 import type { PanelData, PanelType } from '@/types/panels';
+import type { QuestionnaireSubmission } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 
 export interface PanelRendererProps {
@@ -97,6 +99,11 @@ export function validatePanelData(panelData: PanelData | null): string | null {
         return 'Positioning interview payload is incomplete.';
       }
       return null;
+    case 'questionnaire':
+      if (!panelData.questionnaire_id || !Array.isArray(panelData.questions)) {
+        return 'Questionnaire payload is missing required fields.';
+      }
+      return null;
     case 'quality_dashboard':
     case 'completion':
     case 'onboarding_summary':
@@ -176,6 +183,21 @@ function renderPanelBody(props: PanelRendererProps) {
           onRequestChanges={(feedback) => {
             onPipelineRespond?.(`section_review_${panelData.section}`, false);
             onSendMessage?.(feedback);
+          }}
+          onDirectEdit={(editedContent) => {
+            onPipelineRespond?.(`section_review_${panelData.section}`, {
+              approved: false,
+              edited_content: editedContent,
+            });
+          }}
+        />
+      );
+    case 'questionnaire':
+      return (
+        <QuestionnairePanel
+          data={panelData}
+          onComplete={(submission: QuestionnaireSubmission) => {
+            onPipelineRespond?.(`questionnaire_${panelData.questionnaire_id}`, submission);
           }}
         />
       );

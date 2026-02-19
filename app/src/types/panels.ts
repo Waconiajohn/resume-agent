@@ -1,4 +1,4 @@
-import type { PositioningQuestion } from '@/types/session';
+import type { PositioningQuestion, QuestionnaireQuestion } from '@/types/session';
 
 // Panel type identifiers matching backend panel_type values
 export type PanelType =
@@ -11,7 +11,8 @@ export type PanelType =
   | 'completion'
   | 'positioning_interview'
   | 'blueprint_review'
-  | 'section_review';
+  | 'section_review'
+  | 'questionnaire';
 
 // --- Onboarding Summary ---
 export interface OnboardingSummaryData {
@@ -177,6 +178,17 @@ export interface SectionReviewData {
   content: string;
 }
 
+// --- Questionnaire ---
+export interface QuestionnaireData {
+  questionnaire_id: string;
+  schema_version: number;
+  stage: string;
+  title: string;
+  subtitle?: string;
+  questions: QuestionnaireQuestion[];
+  current_index: number;
+}
+
 // Discriminated union type for all panel data (type field matches PanelType)
 export type PanelData =
   | { type: 'onboarding_summary' } & OnboardingSummaryData
@@ -188,4 +200,5 @@ export type PanelData =
   | { type: 'completion' } & CompletionData
   | { type: 'positioning_interview' } & PositioningInterviewData
   | { type: 'blueprint_review' } & BlueprintReviewData
-  | { type: 'section_review' } & SectionReviewData;
+  | { type: 'section_review' } & SectionReviewData
+  | { type: 'questionnaire' } & QuestionnaireData;
