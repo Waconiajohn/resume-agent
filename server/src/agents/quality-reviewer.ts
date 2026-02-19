@@ -204,7 +204,7 @@ SCORING RULES:
    - Effective reframes of gaps count as addressed. Weak reframes don't.
 
 3. ATS Compliance (0-100): Will this parse correctly through ATS software?
-   - Check: keyword coverage (60-80% target), standard section headers, no formatting hazards.
+   - Check: strong integration of high-priority JD terms, standard section headers, no formatting hazards.
 
 4. Authenticity (0-100): Does this sound human-written or AI-generated?
    - Flag: uniform sentence structure, generic buzzwords, parallel lists, missing personality.

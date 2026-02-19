@@ -39,7 +39,10 @@ app.get('/health', async (c) => {
     // db down
   }
 
-  const llmProvider = process.env.LLM_PROVIDER ?? 'anthropic';
+  const configuredProvider = process.env.LLM_PROVIDER?.toLowerCase();
+  const llmProvider = configuredProvider === 'zai' || configuredProvider === 'anthropic'
+    ? configuredProvider
+    : (process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
   const llmKeyPresent = llmProvider === 'zai'
     ? Boolean(process.env.ZAI_API_KEY)
     : Boolean(process.env.ANTHROPIC_API_KEY);

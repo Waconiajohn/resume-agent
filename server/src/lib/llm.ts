@@ -67,7 +67,11 @@ export function getModelForTool(toolName: string): string {
 // ─── Provider factory ────────────────────────────────────────────────
 
 function createProvider(): LLMProvider {
-  const providerName = (process.env.LLM_PROVIDER ?? 'anthropic').toLowerCase();
+  // Primary default is Z.AI. Anthropic is optional fallback.
+  const configuredProvider = process.env.LLM_PROVIDER?.toLowerCase();
+  const providerName = configuredProvider === 'zai' || configuredProvider === 'anthropic'
+    ? configuredProvider
+    : (process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
 
   if (providerName === 'zai') {
     const apiKey = process.env.ZAI_API_KEY;
@@ -78,7 +82,7 @@ function createProvider(): LLMProvider {
     return new ZAIProvider({ apiKey, baseUrl });
   }
 
-  // Default: Anthropic (existing setup)
+  // Optional fallback: Anthropic.
   return new AnthropicProvider();
 }
 

@@ -18,6 +18,7 @@ export const ATS_RULEBOOK_SNIPPET = `ATS RULES (MANDATORY):
 - Standard section headers only (Professional Summary, Experience, Skills/Core Competencies, Education, Certifications)
 - No tables, no columns, no text boxes, no icons/emoji, no decorative symbols
 - Keep contact info in body content (not dependent on document header/footer parsing)
+- Do NOT use vertical bar separators (" | ") in resume content; use commas, semicolons, or line breaks
 - Use plain bullets and straightforward chronology
 - Avoid uncommon unicode separators and ornamental punctuation in headings
 - Keep language keyword-rich but natural; do not keyword-stuff`;
@@ -42,6 +43,7 @@ ${loadAtsRulebookExcerpt()}
 
 const FORBIDDEN_PATTERNS: Array<{ re: RegExp; message: string; section: string; priority: 'high' | 'medium' }> = [
   { re: /\|.{0,40}\|/, message: 'Table-like pipe formatting detected', section: 'formatting', priority: 'high' },
+  { re: /\s\|\s/, message: 'Vertical bar separator detected (" | ") — ATS parser risk', section: 'formatting', priority: 'high' },
   { re: /[\u2600-\u27BF]/, message: 'Icon/symbol characters detected', section: 'formatting', priority: 'high' },
   { re: /(?:^|\n)\s*Objective\s*$/im, message: 'Objective heading detected; use Professional Summary', section: 'summary', priority: 'medium' },
   { re: /(?:^|\n)\s*Profile\s*$/im, message: 'Non-standard heading "Profile" detected', section: 'summary', priority: 'medium' },

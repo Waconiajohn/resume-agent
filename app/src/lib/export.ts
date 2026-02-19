@@ -24,6 +24,10 @@ function extractProposedContent(text: string): string {
 
 type TextSectionRenderer = (resume: FinalResume) => string[];
 
+function sanitizeAtsSeparators(text: string): string {
+  return text.replace(/\s\|\s/g, ', ');
+}
+
 const textSectionRenderers: Record<string, TextSectionRenderer> = {
   summary: (resume) => {
     if (!resume.summary) return [];
@@ -69,8 +73,8 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
     }
     const lines = ['PROFESSIONAL EXPERIENCE'];
     for (const exp of resume.experience) {
-      lines.push(`${exp.title} | ${exp.company}`);
-      lines.push(`${exp.start_date} – ${exp.end_date}${exp.location ? ` | ${exp.location}` : ''}`);
+      lines.push(`${exp.title}, ${exp.company}`);
+      lines.push(`${exp.start_date} – ${exp.end_date}${exp.location ? `, ${exp.location}` : ''}`);
       for (const bullet of exp.bullets ?? []) {
         lines.push(`  • ${bullet.text}`);
       }
@@ -141,7 +145,7 @@ function contactHeaderText(contactInfo: ContactInfo): string[] {
   if (contactInfo.linkedin) parts.push(contactInfo.linkedin);
   if (contactInfo.location) parts.push(contactInfo.location);
   if (parts.length > 0) {
-    lines.push(parts.join(' | '));
+    lines.push(parts.join('; '));
   }
   if (lines.length > 0) {
     lines.push('═'.repeat(60));
@@ -163,7 +167,7 @@ export function resumeToText(resume: FinalResume): string {
   if (!hasStructuredContent && rawSections && Object.keys(rawSections).length > 0) {
     const order = resume.section_order ?? Object.keys(rawSections);
     let renderedCombinedEducation = false;
-    return order
+    return sanitizeAtsSeparators(order
       .map((name) => {
         if (
           !renderedCombinedEducation
@@ -176,7 +180,7 @@ export function resumeToText(resume: FinalResume): string {
         return rawSections[name];
       })
       .filter(Boolean)
-      .join('\n\n');
+      .join('\n\n'));
   }
 
   // Preferred path: structured resume data.
@@ -221,7 +225,7 @@ export function resumeToText(resume: FinalResume): string {
     }
   }
 
-  return lines.join('\n');
+  return sanitizeAtsSeparators(lines.join('\n'));
 }
 
 export function downloadAsText(content: string, filename: string) {

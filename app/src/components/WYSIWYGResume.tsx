@@ -24,7 +24,7 @@ function ContactHeader({ resume }: { resume: FinalResume }) {
     <div className="mb-4 text-center">
       <h1 className="text-xl font-bold text-gray-900">{ci.name}</h1>
       {contactParts.length > 0 && (
-        <p className="mt-1 text-xs text-gray-500">{contactParts.join(' | ')}</p>
+        <p className="mt-1 text-xs text-gray-500">{contactParts.join('; ')}</p>
       )}
       <hr className="mt-2 border-gray-400" />
     </div>
@@ -106,7 +106,7 @@ function ExperienceSection({ resume }: { resume: FinalResume }) {
                 <span className="text-sm font-bold text-gray-900">{exp.title}</span>
                 <span className="text-xs text-gray-500">{exp.start_date} – {exp.end_date}</span>
               </div>
-              <div className="text-sm text-gray-600">{exp.company}{exp.location ? ` | ${exp.location}` : ''}</div>
+              <div className="text-sm text-gray-600">{exp.company}{exp.location ? `, ${exp.location}` : ''}</div>
               {exp.bullets?.length > 0 && (
                 <ul className="mt-1.5 space-y-0.5 pl-4">
                   {exp.bullets.map((b, j) => (

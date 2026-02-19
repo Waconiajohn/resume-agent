@@ -128,7 +128,7 @@ function contactHeaderParagraphs(contactInfo: ContactInfo): Paragraph[] {
     paras.push(
       new Paragraph({
         style: 'ContactLine',
-        children: [new TextRun({ text: parts.join(' | ') })],
+        children: [new TextRun({ text: parts.join('; ') })],
       }),
     );
   }
@@ -155,7 +155,7 @@ function pageHeader(contactInfo?: ContactInfo): Header {
   if (contactInfo?.email) parts.push(contactInfo.email);
   if (contactInfo?.phone) parts.push(contactInfo.phone);
 
-  const leftText = parts.join(' | ');
+  const leftText = parts.join('; ');
 
   return new Header({
     children: [
@@ -299,7 +299,7 @@ const sectionRenderers: Record<string, SectionRenderer> = {
           style: 'CompanyLine',
           children: [
             new TextRun({
-              text: `${exp.company}${exp.location ? ` | ${exp.location}` : ''}`,
+              text: `${exp.company}${exp.location ? `, ${exp.location}` : ''}`,
             }),
           ],
         }),
@@ -370,7 +370,7 @@ export async function exportDocx(resume: FinalResume): Promise<{ success: boolea
     return { success: false, error: preflight.errors.join('; ') };
   }
   if (preflight.warnings.length > 0) {
-    console.warn('[export-docx] preflight warnings:', preflight.warnings.join(' | '));
+    console.warn('[export-docx] preflight warnings:', preflight.warnings.join('; '));
   }
   return await _exportDocxInner(resume);
  } catch (err) {
@@ -386,7 +386,7 @@ export async function exportDocx(resume: FinalResume): Promise<{ success: boolea
  *
  * Expected LLM output format for experience_role_*:
  *   Job Title (possibly with adjustment)
- *   Company Name | Location | Start – End
+ *   Company Name, Location, Start – End
  *   • Bullet 1
  *   • Bullet 2
  */
@@ -409,7 +409,7 @@ function parseExperienceRoleParagraphs(text: string): Paragraph[] {
   const bullets: string[] = [];
 
   for (let i = startIdx; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i].replace(/\s\|\s/g, ', ');
     // Bullet point
     if (/^[•\-*]\s/.test(line)) {
       bullets.push(line.replace(/^[•\-*]\s*/, ''));
@@ -420,7 +420,7 @@ function parseExperienceRoleParagraphs(text: string): Paragraph[] {
       titleLine = line;
       continue;
     }
-    // Second non-bullet line is the company/dates line (often has | or – separators)
+    // Second non-bullet line is the company/dates line (often has commas/semicolons/legacy pipes)
     if (!companyLine) {
       companyLine = line;
       continue;
@@ -459,10 +459,10 @@ function parseExperienceRoleParagraphs(text: string): Paragraph[] {
 
   // Render company line
   if (companyLine) {
-    // Try to extract dates from company line (e.g. "Acme Corp | Chicago, IL | 2018 – 2020")
-    const dateMatch = companyLine.match(/\|?\s*(\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current))$/i);
+    // Try to extract dates from company line (e.g. "Acme Corp, Chicago, IL, 2018 – 2020")
+    const dateMatch = companyLine.match(/[|,;•\-]?\s*(\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current))$/i);
     if (dateMatch && titleLine && !titleLine.match(/\d{4}/)) {
-      const companyPart = companyLine.slice(0, dateMatch.index).replace(/\|?\s*$/, '').trim();
+      const companyPart = companyLine.slice(0, dateMatch.index).replace(/[|,;•\-]?\s*$/, '').trim();
       const dates = dateMatch[1].trim();
       paras.push(
         new Paragraph({
@@ -537,7 +537,7 @@ function rawSectionToParagraphs(sectionName: string, text: string, isFirstExperi
   const lines = text.split('\n');
 
   for (const line of lines) {
-    const trimmed = line.trim();
+    const trimmed = line.trim().replace(/\s\|\s/g, ', ');
     if (!trimmed) continue;
 
     // Detect ALL CAPS headings (section titles like "SKILLS", "EXPERIENCE")

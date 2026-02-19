@@ -117,20 +117,24 @@ Return ONLY valid JSON:
  * or an empty string. This ensures we always get usable text.
  */
 function coerceContent(content: unknown, fallback: string): string {
-  if (typeof content === 'string' && content.trim()) return content;
+  if (typeof content === 'string' && content.trim()) return sanitizeAtsUnsafeDelimiters(content);
   if (Array.isArray(content)) {
     // Array of strings or objects — join them
     const lines = content.map((item) =>
       typeof item === 'string' ? item : (item?.text ?? item?.bullet ?? JSON.stringify(item))
     );
     const joined = lines.join('\n');
-    if (joined.trim()) return joined;
+    if (joined.trim()) return sanitizeAtsUnsafeDelimiters(joined);
   }
   if (content && typeof content === 'object') {
-    return JSON.stringify(content);
+    return sanitizeAtsUnsafeDelimiters(JSON.stringify(content));
   }
   // Content is empty/null/undefined — use raw LLM response as fallback
-  return fallback;
+  return sanitizeAtsUnsafeDelimiters(fallback);
+}
+
+function sanitizeAtsUnsafeDelimiters(text: string): string {
+  return text.replace(/\s\|\s/g, ', ');
 }
 
 // ─── System prompt ───────────────────────────────────────────────────
@@ -147,6 +151,7 @@ RULES:
 - Keep bullets concise: 1-2 lines each, front-loaded with the most important information.
 - Do NOT fabricate metrics or scope that aren't in the evidence sources.
 - If the evidence doesn't include a specific number, use qualitative impact language instead of making one up.
+- Never use vertical bar separators (" | ") in any resume line; use commas, semicolons, or line breaks.
 ${ATS_RULEBOOK_SNIPPET}
 
 Return your output as JSON with: content (the section text), keywords_used, requirements_addressed, evidence_ids_used.`;

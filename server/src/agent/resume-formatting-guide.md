@@ -204,7 +204,7 @@ ATS systems look for these specific keywords. While modern NLP-powered ATS can r
 
 **Page 2-3 Header:**
 - Include name and contact in smaller font (10pt)
-- Format: `John Smith | john.smith@email.com | (555) 123-4567 | Page 2`
+- Format: `John Smith; john.smith@email.com; (555) 123-4567; Page 2`
 
 **Break Positioning:**
 - NEVER break within a job entry — use `keepNext: true` on job title paragraphs and `keepLines: true` on job entry groups
@@ -427,13 +427,13 @@ ATS systems look for these specific keywords. While modern NLP-powered ATS can r
 **Format:**
 ```
 JOHN SMITH
-City, State | (555) 123-4567 | john.smith@email.com | linkedin.com/in/johnsmith
+City, State; (555) 123-4567; john.smith@email.com; linkedin.com/in/johnsmith
 ```
 
 **Implementation:**
 - Name: 18-24pt Bold, centered (`AlignmentType.CENTER`)
 - Contact line: 10-11pt Regular, centered, single line
-- Separators: pipes (|) between contact elements
+- Separators: semicolons or commas between contact elements (never vertical bars)
 - LinkedIn: full URL visible (ATS does NOT parse hidden link text)
 - Location: City, State only (NO street address)
 - Placement: document body on page 1, NOT in Word header
@@ -460,7 +460,7 @@ Team Building & Leadership - Business Process Improvement - Digital Transformati
 ```
 
 **Implementation:**
-- Skills as continuous flowing text with bullet separators (middle dot or pipe)
+- Skills as continuous flowing text with bullet separators (middle dot, comma, or semicolon)
 - Natural text wrapping creates visual 2-3 column effect
 - Maintains single-column structure (100% ATS-safe)
 - 10-15 skills typical, up to 20 maximum
@@ -518,7 +518,7 @@ Company Name (descriptor if not well-known), City, State
 **Format:**
 ```
 Master of Business Administration (MBA), Finance
-University of Chicago Booth School of Business, Chicago, IL | 2005
+University of Chicago Booth School of Business, Chicago, IL, 2005
 ```
 
 **Rules:**
@@ -531,8 +531,8 @@ University of Chicago Booth School of Business, Chicago, IL | 2005
 
 **Format:**
 ```
-Project Management Professional (PMP) | Project Management Institute | 2018
-Lean Six Sigma Black Belt | American Society for Quality | 2016
+Project Management Professional (PMP), Project Management Institute, 2018
+Lean Six Sigma Black Belt, American Society for Quality, 2016
 ```
 
 - List only current/active certifications
@@ -545,14 +545,14 @@ Lean Six Sigma Black Belt | American Society for Quality | 2016
 
 Brief entries:
 ```
-Senior Manager, ABC Corporation (Chicago, IL) | 2003 - 2008
+Senior Manager, ABC Corporation (Chicago, IL), 2003 - 2008
 - Led operations team of 25 employees with $15M budget
 ```
 
 Or list format (no bullets):
 ```
-Senior Operations Manager, XYZ Manufacturing (Detroit, MI) | 2002 - 2008
-Production Supervisor, ABC Industries (Chicago, IL) | 1998 - 2002
+Senior Operations Manager, XYZ Manufacturing (Detroit, MI), 2002 - 2008
+Production Supervisor, ABC Industries (Chicago, IL), 1998 - 2002
 ```
 
 ---
@@ -646,7 +646,7 @@ headers: {
       new Paragraph({
         alignment: AlignmentType.LEFT,
         children: [
-          new TextRun({ text: `${name} | ${email} | ${phone} | Page `, size: 20, font: 'Calibri', color: '999999' }),
+          new TextRun({ text: `${name}; ${email}; ${phone}; Page `, size: 20, font: 'Calibri', color: '999999' }),
           new TextRun({ children: [PageNumber.CURRENT], size: 20, font: 'Calibri', color: '999999' }),
         ],
       }),

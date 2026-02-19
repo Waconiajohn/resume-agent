@@ -549,7 +549,7 @@ MODEL_MID (analytical evaluation, not creative writing)
 - Gap reframes executed and effective
 
 **Dimension 3: ATS Compliance (score 0-100, pass: 80+)**
-- Keyword coverage: 60-80% of JD keywords present
+- Keyword integration: strong natural coverage of high-priority JD terms (without stuffing)
 - Keyword placement: 3-5 in summary, 10-15 in skills, natural in experience
 - Section headers: standard ATS-parsable names only
 - No formatting hazards (tables, columns, text boxes, special chars)

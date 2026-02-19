@@ -239,7 +239,7 @@ Key writing principles:
 - Summary: 3-5 sentences, 60-100 words. Lead with best metric. Use the formula: Identity Statement → Top Achievement → Second Achievement → Core Specialization
 - Selected Accomplishments: 3-6 bullets of greatest hits, front-loaded with metrics, spanning career breadth
 - Experience bullets: Use CAR (Challenge-Action-Result), RAS (Result-Action-Situation), or STAR frameworks. Front-load with results. 4-8 bullets per role max.
-- Skills: 10-15 skills in 2-3 thematic categories. Target 60-80% JD keyword coverage. Use exact JD terminology.
+- Skills: 10-15 skills in 2-3 thematic categories. Prioritize high-value JD terminology with natural integration (no stuffing).
 - Title adjustments: Use industry-standard titles that ATS recognizes. Adjust internal-only titles to widely recognized equivalents.
 - Education/Certifications: Remove graduation years if 20+ years ago. Lead with recent certifications.
 - Flag and fix age-bias signals: obsolete tech, dating language, old graduation years
@@ -276,7 +276,7 @@ Your goals:
 ${QUALITY_CHECKLIST.map((item, i) => `     ${i + 1}. ${item}`).join('\n')}
       - Check for age-bias risks (graduation years, dating language, obsolete tech)
       - ATS keyword analysis: keyword density, placement, section header compliance
-      - Keyword coverage target: 60-80% of JD requirements
+      - Keyword integration target: strong coverage of high-priority JD requirements without stuffing
 
    b. HUMANIZE CHECK (humanize_check):
       - Detects AI-generated patterns AND resume-specific cliches
@@ -350,7 +350,7 @@ export function buildSystemPrompt(ctx: SessionContext): string {
 3. Am I matching the company's language style? (Reference company research language_style)
 4. Have I avoided ALL anti-patterns? (No "responsible for", "proven track record", "team player", "dynamic leader", etc.)
 5. For experience: am I using CAR/RAS/STAR frameworks with front-loaded results?
-6. For skills: am I hitting 60-80% JD keyword coverage with exact JD terminology?
+6. For skills: am I strongly covering the highest-priority JD terms with exact, natural language?
 7. For age 45+: have I removed graduation years 20+ years old, obsolete tech, and dating language?`;
 
     // When all sections are confirmed, inject aggressive transition instructions

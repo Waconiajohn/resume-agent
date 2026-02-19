@@ -81,7 +81,7 @@ Also check for AGE BIAS RISKS:
 Also perform ATS KEYWORD ANALYSIS:
 ${ATS_FORMATTING_RULES}
 
-- Check keyword density: target 60-80% of JD keywords present
+- Check keyword density: verify strong presence of high-priority JD terms (without stuffing)
 - Check keyword placement: 3-5 in summary, 10-15 in skills, naturally in experience bullets
 - Check section header compliance against standard ATS terms
 - Check for ATS-unfriendly elements (tables, images, special characters)

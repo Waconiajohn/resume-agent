@@ -346,7 +346,7 @@ function buildKeywordBrief(input: ArchitectInput): string {
     ...research.benchmark_candidate.language_keywords,
   ].filter((v, i, a) => a.indexOf(v) === i);
 
-  return `JD KEYWORDS TO INTEGRATE (target 60-80% coverage):\n${keywords.map((k, i) => `${i + 1}. ${k}`).join('\n')}`;
+  return `JD KEYWORDS TO INTEGRATE (prioritize must-have terminology and strong natural coverage):\n${keywords.map((k, i) => `${i + 1}. ${k}`).join('\n')}`;
 }
 
 // ─── Output normalization ────────────────────────────────────────────

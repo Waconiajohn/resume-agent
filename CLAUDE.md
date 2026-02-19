@@ -19,7 +19,7 @@ This philosophy must guide all LLM prompts, tool implementations, and UX decisio
 - **Backend**: Hono + Node.js (port 3001)
 - **Frontend**: Vite + React 19 + TailwindCSS (port 5173)
 - **Database**: Supabase (PostgreSQL) with RLS policies
-- **LLM**: Z.AI GLM models (OpenAI-compatible) via provider abstraction, switchable to Anthropic
+- **LLM**: Z.AI GLM models (OpenAI-compatible) as primary provider, with optional Anthropic fallback
 
 ## Monorepo Layout
 
@@ -39,7 +39,7 @@ supabase/
 ## Dev Setup & Commands
 
 **Environment variables** (in `server/.env`):
-- `LLM_PROVIDER=zai` (or `anthropic`)
+- `LLM_PROVIDER` optional (defaults to `zai` when `ZAI_API_KEY` exists; can be set to `anthropic`)
 - `ZAI_API_KEY`, `PERPLEXITY_API_KEY`
 - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
 - Optional: `ZAI_MODEL_PRIMARY`, `ZAI_MODEL_MID`, `ZAI_MODEL_ORCHESTRATOR`, `ZAI_MODEL_LIGHT`
@@ -74,7 +74,7 @@ All agent types are in `server/src/agents/types.ts` — `PipelineState`, `Pipeli
 
 ### LLM Provider
 
-`server/src/lib/llm-provider.ts` — `AnthropicProvider` + `ZAIProvider` (OpenAI-compatible). Switchable via `LLM_PROVIDER` env var.
+`server/src/lib/llm-provider.ts` — `ZAIProvider` (primary) + `AnthropicProvider` (optional fallback). Selectable via `LLM_PROVIDER` env var.
 
 ### Model Routing
 
@@ -162,7 +162,7 @@ Migrations in `supabase/migrations/` — numbered sequentially (001–012, then 
 - **Pipeline gates**: `waitForUser()` pauses → SSE event to frontend → user interacts → `POST /api/pipeline/respond` → pipeline resumes.
 - **Tool-to-model routing**: `getModelForTool(toolName)` in `llm.ts` maps each tool to the right cost tier.
 - **Panel rendering**: `panel-renderer.tsx` maps `PanelData.type` → component. `PanelErrorBoundary` wraps each panel.
-- **Message format**: Anthropic-style content blocks internally; `ZAIProvider` translates to/from OpenAI format.
+- **Message format**: Internal content-block format; `ZAIProvider` translates to/from OpenAI format when active.
 - **Imports**: `@/` alias for app imports; `.js` extensions for server imports (ESM).
 - **Error handling**: Pipeline wraps each stage in try/catch, emits `pipeline_error` events. Never throw from SSE handlers.
 - **TypeScript**: Strict mode. Both `app/` and `server/` must pass `tsc --noEmit`. Avoid `any` where possible.

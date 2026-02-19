@@ -605,13 +605,24 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     const fullText = assembleResume(state.sections, state.architect);
 
-    // Simple keyword coverage check (no LLM call needed)
-    const keywordCoverage = computeKeywordCoverage(fullText, state.research.jd_analysis.language_keywords);
+    // Deterministic keyword-integration signal (weighted, no LLM call needed)
+    const keywordCoverage = computeKeywordCoverage(
+      fullText,
+      state.research.jd_analysis.language_keywords,
+      state.research.jd_analysis.must_haves,
+    );
     emit({
       type: 'transparency',
       stage: 'quality_review',
-      message: `Keyword coverage: ${keywordCoverage.found}/${keywordCoverage.total} JD keywords found (${keywordCoverage.percentage}%)`,
+      message: `Keyword integration effort: ${keywordCoverage.strong} strong + ${keywordCoverage.partial} partial matches across ${keywordCoverage.total} targets (${keywordCoverage.percentage}% weighted)`,
     });
+    if (keywordCoverage.high_priority_missing.length > 0) {
+      emit({
+        type: 'transparency',
+        stage: 'quality_review',
+        message: `Still missing high-priority terms: ${keywordCoverage.high_priority_missing.slice(0, 5).join(', ')}`,
+      });
+    }
 
     state.quality_review = await withRetry(
       () => runQualityReviewer({
@@ -634,8 +645,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       },
     );
 
-    // Use a single source of truth for keyword coverage in UI surfaces.
-    // The deterministic counter above should match the quality dashboard value.
+    // Use a single source of truth for keyword integration effort in UI surfaces.
     state.quality_review.scores.requirement_coverage = keywordCoverage.percentage;
 
     emit({ type: 'quality_scores', scores: state.quality_review.scores });
@@ -1357,7 +1367,7 @@ function parseExperienceRoleForStructuredPayload(
   const titleLine = contentHeaders[0] ?? fallback.title;
   const companyLine = contentHeaders[1] ?? '';
 
-  // Extract date from title line if embedded (e.g. "VP Engineering | Company | 2020 – Present")
+  // Extract date from title line if embedded (e.g. "VP Engineering, Company, 2020 – Present")
   const titleDate = titleLine.match(/\b(\d{4})\s*[–\-]\s*(\d{4}|Present|Current)\b/i);
   if (titleDate && startDate === fallback.start_date) {
     startDate = titleDate[1];
@@ -1365,27 +1375,46 @@ function parseExperienceRoleForStructuredPayload(
   }
 
   // Parse company line for location and trailing dates
+  let companyParsed = fallback.company;
   if (companyLine) {
-    const companyParts = companyLine.split('|').map((p) => p.trim()).filter(Boolean);
-    if (companyParts.length > 0) {
-      const trailingDate = companyParts[companyParts.length - 1].match(/^(\d{4})\s*[–\-]\s*(\d{4}|Present|Current)$/i);
-      if (trailingDate) {
-        startDate = trailingDate[1];
-        endDate = trailingDate[2];
-        companyParts.pop();
+    const trailingDate = companyLine.match(/(\d{4})\s*[–\-]\s*(\d{4}|Present|Current)\s*$/i);
+    let companyMeta = companyLine;
+    if (trailingDate?.index != null) {
+      startDate = trailingDate[1];
+      endDate = trailingDate[2];
+      companyMeta = companyLine
+        .slice(0, trailingDate.index)
+        .replace(/[|,;•\-]\s*$/, '')
+        .trim();
+    }
+
+    // Prefer explicit delimiters if present (legacy "|" or ATS-safe ";" / "•")
+    const explicitParts = companyMeta
+      .split(/\s*\|\s*|\s*;\s*|\s+•\s+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    if (explicitParts.length > 0) {
+      companyParsed = explicitParts[0];
+      if (explicitParts.length > 1) {
+        location = explicitParts.slice(1).join(', ');
       }
-      if (companyParts.length > 1) {
-        location = companyParts[companyParts.length - 1];
+    } else if (companyMeta) {
+      // Fallback for comma-delimited "Company, City, ST" lines
+      const commaIdx = companyMeta.indexOf(',');
+      if (commaIdx > 0) {
+        companyParsed = companyMeta.slice(0, commaIdx).trim();
+        const loc = companyMeta.slice(commaIdx + 1).trim();
+        if (loc) location = loc;
+      } else {
+        companyParsed = companyMeta;
       }
     }
   }
 
-  const companyParsed = companyLine
-    ? companyLine.split('|').map((p) => p.trim()).filter(Boolean)[0] ?? fallback.company
-    : fallback.company;
   const titleParsed = titleLine
     .replace(/\b\d{4}\s*[–\-]\s*(?:\d{4}|Present|Current)\b/i, '')
-    .replace(/\|/g, '')
+    .replace(/\s\|\s/g, ', ')
     .trim() || fallback.title;
 
   // Parse bullets — LLM may use bullet markers or plain paragraph text
@@ -1486,26 +1515,130 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
 
 // ─── Keyword coverage (deterministic, no LLM) ────────────────────────
 
+const KEYWORD_STOPWORDS = new Set([
+  'and', 'or', 'with', 'for', 'the', 'a', 'an', 'to', 'of', 'in', 'on', 'at', 'by',
+  'is', 'are', 'as', 'from', 'across', 'within', 'using', 'build', 'develop', 'manage',
+]);
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeKeywordTerm(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9+/#\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokenizeKeywordTerm(value: string): string[] {
+  return normalizeKeywordTerm(value)
+    .split(' ')
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !KEYWORD_STOPWORDS.has(t));
+}
+
+function isLikelyKeyword(value: string): boolean {
+  const normalized = normalizeKeywordTerm(value);
+  if (!normalized) return false;
+  if (normalized.length < 3) return false;
+  const tokens = tokenizeKeywordTerm(normalized);
+  return tokens.length > 0;
+}
+
 function computeKeywordCoverage(
   resumeText: string,
   jdKeywords: string[],
-): { found: number; total: number; percentage: number; missing: string[] } {
+  mustHaves: string[] = [],
+): {
+  found: number;
+  strong: number;
+  partial: number;
+  total: number;
+  percentage: number;
+  missing: string[];
+  high_priority_missing: string[];
+} {
   if (!jdKeywords || jdKeywords.length === 0) {
-    return { found: 0, total: 0, percentage: 100, missing: [] };
+    return {
+      found: 0,
+      strong: 0,
+      partial: 0,
+      total: 0,
+      percentage: 100,
+      missing: [],
+      high_priority_missing: [],
+    };
   }
-  const lower = resumeText.toLowerCase();
+
+  const deduped = new Map<string, string>();
+  for (const raw of jdKeywords) {
+    const normalized = normalizeKeywordTerm(raw);
+    if (!normalized || !isLikelyKeyword(normalized)) continue;
+    if (!deduped.has(normalized)) deduped.set(normalized, raw.trim());
+  }
+
+  const entries = Array.from(deduped.entries()).map(([normalized, original]) => ({ normalized, original }));
+  if (entries.length === 0) {
+    return {
+      found: 0,
+      strong: 0,
+      partial: 0,
+      total: 0,
+      percentage: 100,
+      missing: [],
+      high_priority_missing: [],
+    };
+  }
+
+  const mustHaveCorpus = normalizeKeywordTerm(mustHaves.join(' '));
+  const resumeNormalized = normalizeKeywordTerm(resumeText);
+  const resumeTokens = new Set(tokenizeKeywordTerm(resumeNormalized));
+
+  let strong = 0;
+  let partial = 0;
+  let weightedFound = 0;
+  let totalWeight = 0;
   const missing: string[] = [];
-  let found = 0;
-  for (const kw of jdKeywords) {
-    if (lower.includes(kw.toLowerCase())) {
-      found++;
-    } else {
-      missing.push(kw);
+  const highPriorityMissing: string[] = [];
+
+  for (const keyword of entries) {
+    const phrasePattern = new RegExp(`\\b${escapeRegExp(keyword.normalized).replace(/\s+/g, '\\s+')}\\b`, 'i');
+    const highPriority = mustHaveCorpus.includes(keyword.normalized);
+    const weight = highPriority ? 1.4 : 1;
+    totalWeight += weight;
+
+    if (phrasePattern.test(resumeNormalized)) {
+      strong += 1;
+      weightedFound += weight;
+      continue;
     }
+
+    const tokens = tokenizeKeywordTerm(keyword.normalized);
+    const tokenHits = tokens.filter((t) => resumeTokens.has(t)).length;
+    const ratio = tokens.length > 0 ? tokenHits / tokens.length : 0;
+
+    if (ratio >= 0.75 || (tokens.length >= 3 && tokenHits >= 2)) {
+      partial += 1;
+      weightedFound += weight * 0.6;
+      continue;
+    }
+
+    missing.push(keyword.original);
+    if (highPriority) highPriorityMissing.push(keyword.original);
   }
-  const total = jdKeywords.length;
-  const percentage = total > 0 ? Math.round((found / total) * 100) : 100;
-  return { found, total, percentage, missing };
+
+  const percentage = totalWeight > 0 ? Math.round((weightedFound / totalWeight) * 100) : 100;
+  return {
+    found: strong + partial,
+    strong,
+    partial,
+    total: entries.length,
+    percentage,
+    missing,
+    high_priority_missing: highPriorityMissing,
+  };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────

@@ -161,7 +161,7 @@ DO:
 - Balance strategic and tactical — show capability for both high-level strategy and execution
 - Update to reflect current tech landscape — AI, machine learning, cloud platforms, data analytics
 - Match JD priority — if they list "strategic planning" first, weight it heavily
-- Target 60-80% coverage of JD keywords (15-25 relevant keywords total)
+- Prioritize strong coverage of must-have JD terms with natural placement (avoid stuffing)
 
 DON'T:
 - List soft skills as standalone items ("leadership," "communication," "team player")
@@ -292,13 +292,14 @@ LAYOUT & FORMAT:
 - No headers/footers with critical info (ATS often can't read them)
 - No images, graphics, charts, logos
 - No text boxes or floating elements
+- Do not use vertical bars (" | ") as separators in contact or role lines
 - Consistent date formatting throughout
 
 KEYWORD PLACEMENT TARGETS:
 - Professional Summary: 3-5 most critical keywords
 - Skills Section: 10-15 keywords organized clearly
 - Work Experience bullets: integrated naturally with context
-- Target 60-80% overall keyword coverage of JD requirements
+- Aim for strong natural coverage of high-priority JD requirements, with exact terminology where truthful
 
 KEYWORD RULES:
 - Use exact JD terminology (e.g., "Salesforce CRM" not just "CRM")

@@ -36,6 +36,7 @@ const STYLE_MAP: Record<Exclude<PdfStyle, 'blank'>, PdfStyleConfig> = {
 function sanitizePdfText(input: string): string {
   return input
     .replace(/\s+/g, ' ')
+    .replace(/\s\|\s/g, ', ')
     // Translate common Unicode punctuation to ASCII equivalents
     .replace(/[\u2018\u2019\u201A\u2032]/g, "'")     // smart single quotes, prime
     .replace(/[\u201C\u201D\u201E\u2033]/g, '"')      // smart double quotes, double prime
@@ -150,7 +151,7 @@ function renderSkills(resume: FinalResume): PdfLine[] {
     if (entries.length > 0) {
       lines.push({ text: 'CORE COMPETENCIES', style: 'heading' });
       for (const [category, items] of entries) {
-        const itemText = Array.isArray(items) ? items.join(' | ') : String(items);
+        const itemText = Array.isArray(items) ? items.join(', ') : String(items);
         const text = category ? `${category}: ${itemText}` : itemText;
         lines.push({ text, style: 'body' });
       }
@@ -188,8 +189,8 @@ function renderExperience(resume: FinalResume): PdfLine[] {
 
   lines.push({ text: 'PROFESSIONAL EXPERIENCE', style: 'heading' });
   for (const exp of resume.experience) {
-    const roleLine = `${exp.title} | ${exp.company}`;
-    const dateLine = `${exp.start_date} - ${exp.end_date}${exp.location ? ` | ${exp.location}` : ''}`;
+    const roleLine = `${exp.title}, ${exp.company}`;
+    const dateLine = `${exp.start_date} - ${exp.end_date}${exp.location ? `, ${exp.location}` : ''}`;
     lines.push({ text: roleLine, style: 'body' });
     lines.push({ text: dateLine, style: 'body' });
     for (const bullet of exp.bullets ?? []) {
@@ -240,7 +241,7 @@ function buildPdfLines(resume: FinalResume): PdfLine[] {
   ].filter((part): part is string => Boolean(part?.trim()));
 
   if (name) lines.push({ text: name.toUpperCase(), style: 'name' });
-  if (contactParts.length > 0) lines.push({ text: contactParts.join(' | '), style: 'contact' });
+  if (contactParts.length > 0) lines.push({ text: contactParts.join('; '), style: 'contact' });
   if (name || contactParts.length > 0) lines.push({ text: '', style: 'blank' });
 
   const hasStructuredContent =
