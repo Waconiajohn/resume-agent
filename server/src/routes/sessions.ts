@@ -148,6 +148,7 @@ sessions.get('/:id/sse', async (c) => {
           pending_phase_transition: typedSession.pending_phase_transition,
           last_panel_type: typedSession.last_panel_type ?? null,
           last_panel_data: typedSession.last_panel_data ?? null,
+          pipeline_status: typedSession.pipeline_status ?? null,
         }),
       });
     }

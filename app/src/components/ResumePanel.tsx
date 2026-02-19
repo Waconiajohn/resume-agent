@@ -53,14 +53,17 @@ export function ResumePanel({ resume }: ResumePanelProps) {
   const handleDownloadPdf = () => {
     setExportError(null);
     setExportingPdf(true);
-    try {
-      const result = exportPdf(resume);
-      if (!result.success) {
-        setExportError(result.error ?? 'Failed to export PDF');
+    // exportPdf is synchronous — wrap in rAF so React can paint the loading state first
+    requestAnimationFrame(() => {
+      try {
+        const result = exportPdf(resume);
+        if (!result.success) {
+          setExportError(result.error ?? 'Failed to export PDF');
+        }
+      } finally {
+        setExportingPdf(false);
       }
-    } finally {
-      setExportingPdf(false);
-    }
+    });
   };
 
   const isExporting = exportingDocx || exportingPdf;

@@ -324,9 +324,23 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  // Prevent double-start
+  // Prevent double-start (in-memory check)
   if (runningPipelines.has(session_id)) {
     return c.json({ error: 'Pipeline already running' }, 409);
+  }
+
+  // Prevent restarting a completed or errored pipeline after server restart
+  // (runningPipelines is in-memory and empty after restart)
+  if (session.status === 'completed') {
+    return c.json({ error: 'Pipeline already completed for this session' }, 409);
+  }
+  const { data: pipelineCheck } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('pipeline_status')
+    .eq('id', session_id)
+    .single();
+  if (pipelineCheck?.pipeline_status === 'complete') {
+    return c.json({ error: 'Pipeline already completed for this session' }, 409);
   }
 
   runningPipelines.add(session_id);
@@ -440,7 +454,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       .eq('id', session_id);
   }).catch(async (error) => {
     log.error({ error: error instanceof Error ? error.message : error }, 'Pipeline failed');
-    emit({ type: 'pipeline_error', stage: 'intake', error: error instanceof Error ? error.message : 'Pipeline failed' });
+    // Note: runPipeline already emits pipeline_error before re-throwing — do NOT emit a second one here.
     await flushQueuedPanelPersist(session_id);
     await supabaseAdmin
       .from('coach_sessions')

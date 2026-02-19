@@ -39,7 +39,11 @@ app.get('/health', async (c) => {
     // db down
   }
 
-  const status = dbOk && process.env.ANTHROPIC_API_KEY ? 'ok' : 'degraded';
+  const llmProvider = process.env.LLM_PROVIDER ?? 'anthropic';
+  const llmKeyPresent = llmProvider === 'zai'
+    ? Boolean(process.env.ZAI_API_KEY)
+    : Boolean(process.env.ANTHROPIC_API_KEY);
+  const status = dbOk && llmKeyPresent ? 'ok' : 'degraded';
   return c.json({ status, timestamp: new Date().toISOString() });
 });
 

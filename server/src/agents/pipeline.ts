@@ -10,6 +10,7 @@
 
 import { supabaseAdmin } from '../lib/supabase.js';
 import { MODEL_PRICING } from '../lib/llm.js';
+import { startUsageTracking, stopUsageTracking } from '../lib/llm-provider.js';
 import { createSessionLogger } from '../lib/logger.js';
 import { withRetry } from '../lib/retry.js';
 import { runIntakeAgent } from './intake.js';
@@ -111,6 +112,9 @@ interface FinalResumePayload {
 export async function runPipeline(config: PipelineConfig): Promise<PipelineState> {
   const { session_id, user_id, emit, waitForUser } = config;
   const log = createSessionLogger(session_id);
+
+  // Track token usage across all LLM calls made during this pipeline run
+  const usageAcc = startUsageTracking(session_id);
 
   const state: PipelineState = {
     session_id,
@@ -417,8 +421,16 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       state.sections[call.section] = result;
 
       // Revision loop: keep presenting section until user approves
+      const MAX_REVIEW_ITERATIONS = 5;
       let sectionApproved = false;
+      let reviewIterations = 0;
       while (!sectionApproved) {
+        reviewIterations++;
+        if (reviewIterations > MAX_REVIEW_ITERATIONS) {
+          log.warn({ section: call.section, iterations: reviewIterations }, 'Max review iterations exceeded — auto-approving section');
+          emit({ type: 'section_approved', section: call.section });
+          break;
+        }
         // Emit section for progressive rendering / re-review
         emit({ type: 'section_draft', section: call.section, content: result.content });
 
@@ -662,6 +674,19 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       },
     });
 
+    // Collect accumulated token usage from all LLM calls
+    state.token_usage.input_tokens = usageAcc.input_tokens;
+    state.token_usage.output_tokens = usageAcc.output_tokens;
+    // Estimate cost using MODEL_PRICING — use average across all model tiers
+    const pricingEntries = Object.values(MODEL_PRICING);
+    const avgInput = pricingEntries.reduce((s, p) => s + p.input, 0) / (pricingEntries.length || 1);
+    const avgOutput = pricingEntries.reduce((s, p) => s + p.output, 0) / (pricingEntries.length || 1);
+    state.token_usage.estimated_cost_usd = Number(
+      ((usageAcc.input_tokens / 1_000_000) * avgInput +
+       (usageAcc.output_tokens / 1_000_000) * avgOutput).toFixed(4),
+    );
+    stopUsageTracking(session_id);
+
     // Persist final state (including resume for reconnect restore)
     await persistSession(state, finalResume);
 
@@ -676,6 +701,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     return state;
 
   } catch (error) {
+    stopUsageTracking(session_id);
     const errorMsg = error instanceof Error ? error.message : String(error);
     log.error({ error: errorMsg, stage: state.current_stage }, 'Pipeline error');
     emit({ type: 'pipeline_error', stage: state.current_stage, error: errorMsg });
@@ -1254,17 +1280,23 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
   if (skillsText) {
     const parsedSkills: Record<string, string[]> = {};
     for (const line of skillsText.split('\n')) {
-      // Strip markdown bold/italic before parsing
-      const trimmed = line.trim().replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '');
+      // Strip markdown bold/italic and leading list markers before parsing
+      const trimmed = line.trim()
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/__/g, '')
+        .replace(/^[-•*]\s*/, '');  // Handle "- Category: skills" and "• Category: skills"
       const idx = trimmed.indexOf(':');
       if (idx <= 0) continue;
       const key = trimmed.slice(0, idx).trim();
       const value = trimmed.slice(idx + 1).trim();
       if (!key || !value) continue;
-      parsedSkills[key] = value.split(/[,\u2022]/).map(s => s.trim()).filter(Boolean);
+      parsedSkills[key] = value.split(/[,|;\u2022]/).map(s => s.trim()).filter(Boolean);
     }
     if (Object.keys(parsedSkills).length > 0) {
       resume.skills = parsedSkills;
+    } else {
+      console.warn('[pipeline] Skills section could not be parsed into categories — falling back to intake skills');
     }
   }
 

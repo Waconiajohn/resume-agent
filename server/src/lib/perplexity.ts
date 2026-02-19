@@ -36,6 +36,7 @@ export async function queryPerplexity(
       temperature: options?.temperature ?? 0.2,
       max_tokens: options?.max_tokens ?? 4096,
     }),
+    signal: AbortSignal.timeout(60_000),
   });
 
   if (!response.ok) {

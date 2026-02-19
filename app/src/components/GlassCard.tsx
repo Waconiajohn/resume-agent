@@ -1,13 +1,12 @@
 import { cn } from '@/lib/utils';
 
-interface GlassCardProps {
+type GlassCardProps = React.HTMLAttributes<HTMLDivElement> & {
   children: React.ReactNode;
   className?: string;
   hover?: boolean;
-  onClick?: () => void;
-}
+};
 
-export function GlassCard({ children, className, hover = false, onClick }: GlassCardProps) {
+export function GlassCard({ children, className, hover = false, ...rest }: GlassCardProps) {
   return (
     <div
       className={cn(
@@ -16,7 +15,7 @@ export function GlassCard({ children, className, hover = false, onClick }: Glass
         hover && 'transition-all duration-200 hover:border-white/[0.16] hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.035))] hover:shadow-[0_24px_52px_-30px_rgba(0,0,0,0.95)]',
         className,
       )}
-      onClick={onClick}
+      {...rest}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.18]" />
       {children}

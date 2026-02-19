@@ -197,6 +197,7 @@ function renderPanelBody(props: PanelRendererProps) {
     case 'questionnaire':
       return (
         <QuestionnairePanel
+          key={panelData.questionnaire_id}
           data={panelData}
           onComplete={(submission: QuestionnaireSubmission) => {
             onPipelineRespond?.(`questionnaire_${panelData.questionnaire_id}`, submission);

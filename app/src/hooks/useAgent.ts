@@ -187,9 +187,15 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     if (data.last_panel_type === 'completion' && panelPayload.resume) {
                       setResume(panelPayload.resume as FinalResume);
                     }
-                    // Restore gate-active state for interactive panels
+                    // Restore gate-active state for interactive panels, but only if
+                    // the pipeline is actually running (not completed/errored).
+                    // After server restart, runningPipelines is empty and the gate
+                    // may already be resolved server-side.
                     const gateTypes = ['questionnaire', 'section_review', 'blueprint_review', 'positioning_interview'];
-                    setIsPipelineGateActive(gateTypes.includes(data.last_panel_type as string));
+                    const pipelineRunning = data.pipeline_status === 'running';
+                    setIsPipelineGateActive(
+                      pipelineRunning && gateTypes.includes(data.last_panel_type as string),
+                    );
                   }
                   // On restore, clear processing state — the agent loop isn't running
                   setIsProcessing(false);
@@ -633,12 +639,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   lastProgressTimestampRef.current = Date.now();
                   staleNoticeActiveRef.current = false;
                   setIsProcessing(true);
+                  const instructionCount = Array.isArray(data.instructions) ? data.instructions.length : 0;
                   setMessages((prev) => [
                     ...prev,
                     {
                       id: nextId(),
                       role: 'system',
-                      content: `Revising ${(data.instructions as Array<unknown>).length} sections based on quality review...`,
+                      content: `Revising ${instructionCount} sections based on quality review...`,
                       timestamp: new Date().toISOString(),
                     },
                   ]);

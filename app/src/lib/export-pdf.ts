@@ -36,7 +36,23 @@ const STYLE_MAP: Record<Exclude<PdfStyle, 'blank'>, PdfStyleConfig> = {
 function sanitizePdfText(input: string): string {
   return input
     .replace(/\s+/g, ' ')
-    .replace(/[^\x20-\x7E]/g, '?')
+    // Translate common Unicode punctuation to ASCII equivalents
+    .replace(/[\u2018\u2019\u201A\u2032]/g, "'")     // smart single quotes, prime
+    .replace(/[\u201C\u201D\u201E\u2033]/g, '"')      // smart double quotes, double prime
+    .replace(/[\u2013\u2014]/g, '-')                   // en-dash, em-dash
+    .replace(/[\u2026]/g, '...')                       // ellipsis
+    .replace(/[\u2022\u2023\u25E6\u2043]/g, '-')      // bullets
+    .replace(/[\u00B7\u2027]/g, '-')                   // middle dot variants
+    .replace(/[\u00A0]/g, ' ')                         // non-breaking space
+    .replace(/[\u2019\u02BC]/g, "'")                   // modifier apostrophe
+    .replace(/[\u00AE]/g, '(R)')                       // registered
+    .replace(/[\u2122]/g, '(TM)')                      // trademark
+    .replace(/[\u00A9]/g, '(C)')                       // copyright
+    .replace(/[\u00BD]/g, '1/2')                       // vulgar fraction 1/2
+    .replace(/[\u00BC]/g, '1/4')                       // vulgar fraction 1/4
+    .replace(/[\u00BE]/g, '3/4')                       // vulgar fraction 3/4
+    // Strip remaining non-ASCII (silent drop, not ?)
+    .replace(/[^\x20-\x7E]/g, '')
     .trim();
 }
 
@@ -393,14 +409,18 @@ function buildPdfBlob(resume: FinalResume): Blob {
   objects[pagesObj - 1] = `<< /Type /Pages /Kids [${pageKids.join(' ')}] /Count ${pageKids.length} >>`;
   objects[catalogObj - 1] = `<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
 
-  let pdf = '%PDF-1.4\n';
+  const header = '%PDF-1.4\n';
+  let pdf = header;
+  let byteCount = encoder.encode(header).length;
   const offsets: number[] = [0];
   for (let i = 0; i < objects.length; i++) {
-    offsets.push(encoder.encode(pdf).length);
-    pdf += `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+    offsets.push(byteCount);
+    const objStr = `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+    pdf += objStr;
+    byteCount += encoder.encode(objStr).length;
   }
 
-  const xrefOffset = encoder.encode(pdf).length;
+  const xrefOffset = byteCount;
   pdf += `xref\n0 ${objects.length + 1}\n`;
   pdf += '0000000000 65535 f \n';
   for (let i = 1; i <= objects.length; i++) {

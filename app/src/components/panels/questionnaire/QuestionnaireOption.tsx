@@ -32,6 +32,13 @@ interface QuestionnaireOptionProps {
 export function QuestionnaireOption({ option, isSelected, selectionMode, onClick }: QuestionnaireOptionProps) {
   const badge = option.source ? SOURCE_BADGE[option.source] : null;
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <GlassCard
       className={cn(
@@ -40,7 +47,11 @@ export function QuestionnaireOption({ option, isSelected, selectionMode, onClick
           ? 'border-white/[0.2] bg-white/[0.08] shadow-[0_0_20px_-10px_rgba(255,255,255,0.4)]'
           : 'hover:border-white/20 hover:bg-white/[0.10]',
       )}
+      role={selectionMode === 'single' ? 'radio' : 'checkbox'}
+      tabIndex={0}
+      aria-checked={isSelected}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
     >
       <div className="flex items-start gap-3">
         {/* Selection indicator */}

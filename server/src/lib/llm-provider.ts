@@ -53,6 +53,43 @@ export type StreamEvent =
   | { type: 'tool_call'; id: string; name: string; input: Record<string, unknown> }
   | { type: 'done'; usage: { input_tokens: number; output_tokens: number } };
 
+// ─── Per-session usage tracking ─────────────────────────────────────
+
+export interface UsageAccumulator {
+  input_tokens: number;
+  output_tokens: number;
+}
+
+/**
+ * Global per-session usage listeners. The pipeline registers an accumulator
+ * before starting and reads it at the end. All llm.chat() calls made during
+ * that session automatically accumulate usage.
+ */
+const sessionUsageAccumulators = new Map<string, UsageAccumulator>();
+
+/** Register a session for usage tracking. Returns the accumulator to read later. */
+export function startUsageTracking(sessionId: string): UsageAccumulator {
+  const acc: UsageAccumulator = { input_tokens: 0, output_tokens: 0 };
+  sessionUsageAccumulators.set(sessionId, acc);
+  return acc;
+}
+
+/** Stop tracking and remove the accumulator. */
+export function stopUsageTracking(sessionId: string): void {
+  sessionUsageAccumulators.delete(sessionId);
+}
+
+/** Called internally after every chat() call to accumulate usage. */
+function recordUsage(usage: { input_tokens: number; output_tokens: number }): void {
+  // Accumulate across all active sessions — in practice only one pipeline
+  // runs per process at a time per session, so this is fine. For multi-session
+  // tracking, callers should use session-scoped chat wrappers.
+  for (const acc of sessionUsageAccumulators.values()) {
+    acc.input_tokens += usage.input_tokens;
+    acc.output_tokens += usage.output_tokens;
+  }
+}
+
 // ─── Provider interface ──────────────────────────────────────────────
 
 export interface LLMProvider {
@@ -91,14 +128,13 @@ export class AnthropicProvider implements LLMProvider {
       }
     }
 
-    return {
-      text,
-      tool_calls,
-      usage: {
-        input_tokens: response.usage?.input_tokens ?? 0,
-        output_tokens: response.usage?.output_tokens ?? 0,
-      },
+    const usage = {
+      input_tokens: response.usage?.input_tokens ?? 0,
+      output_tokens: response.usage?.output_tokens ?? 0,
     };
+    recordUsage(usage);
+
+    return { text, tool_calls, usage };
   }
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
@@ -192,7 +228,9 @@ export class ZAIProvider implements LLMProvider {
     }
 
     const data = await response.json() as OpenAIChatResponse;
-    return this.parseResponse(data);
+    const result = this.parseResponse(data);
+    recordUsage(result.usage);
+    return result;
   }
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {

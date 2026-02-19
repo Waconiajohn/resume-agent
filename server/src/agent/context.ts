@@ -198,6 +198,7 @@ export interface CoachSession {
   llm_model: string | null;
   system_prompt_version: string | null;
   system_prompt_hash: string | null;
+  pipeline_status: string | null;
   created_at: string;
   updated_at: string;
 }
