@@ -14,7 +14,6 @@
  * manages the back-and-forth.
  */
 
-import { llm, MODEL_PRIMARY, MODEL_MID } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
 import { withRetry } from '../lib/retry.js';
 import logger from '../lib/logger.js';
@@ -29,6 +28,16 @@ import type {
 
 /** Maximum total follow-up questions across the entire interview. */
 export const MAX_FOLLOW_UPS = 3;
+
+type LLMRuntime = typeof import('../lib/llm.js');
+let llmRuntimePromise: Promise<LLMRuntime> | null = null;
+
+async function getLLMRuntime(): Promise<LLMRuntime> {
+  if (!llmRuntimePromise) {
+    llmRuntimePromise = import('../lib/llm.js');
+  }
+  return llmRuntimePromise;
+}
 
 // ─── Requirement gap detection ────────────────────────────────────────
 
@@ -136,6 +145,7 @@ async function generateQuestionsViaLLM(
   preferences?: { primary_goal?: string; resume_priority?: string; seniority_delta?: string },
   signal?: AbortSignal,
 ): Promise<PositioningQuestion[]> {
+  const { llm, MODEL_MID } = await getLLMRuntime();
   const needsAgeProtection = resume.career_span_years > 15;
 
   const systemPrompt = `You are an elite executive career positioning strategist. Design a "Why Me" coaching interview that extracts the candidate's most powerful, authentic stories and maps them directly to what this specific role demands.
@@ -510,6 +520,7 @@ export async function synthesizeProfile(
   answers: Array<{ question_id: string; answer: string; selected_suggestion?: string }>,
   research?: ResearchOutput,
 ): Promise<PositioningProfile> {
+  const { llm, MODEL_PRIMARY } = await getLLMRuntime();
   const answerBlock = answers.map(a => {
     const label = a.selected_suggestion ? ` [Selected: ${a.selected_suggestion}]` : '';
     return `Q: ${a.question_id}${label}\nA: ${a.answer}`;
