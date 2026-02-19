@@ -193,6 +193,7 @@ const PARTIAL_OPTIONS = [
   { id: 'stronger', label: 'Yes, I have a stronger example', description: 'I can provide a more compelling proof point' },
   { id: 'covers_it', label: "What's on my resume covers it", description: 'The existing evidence is my best example' },
   { id: 'different_angle', label: 'Different angle', description: 'I can demonstrate this through a different experience' },
+  { id: 'not_applicable', label: 'Not really applicable', description: "This doesn't reflect my experience accurately" },
 ];
 
 /**
@@ -291,7 +292,7 @@ export function enrichGapAnalysis(
       // req.classification === 'partial'
       if (selectedId === 'stronger') {
         clone.classification = 'strong';
-      } else if (selectedId === 'none') {
+      } else if (selectedId === 'not_applicable') {
         clone.classification = 'gap';
       } else if (selectedId === 'different_angle') {
         // Keep partial; custom_text already added above as evidence

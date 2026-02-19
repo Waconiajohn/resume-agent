@@ -14,14 +14,14 @@ import { startUsageTracking, stopUsageTracking } from '../lib/llm-provider.js';
 import { createSessionLogger } from '../lib/logger.js';
 import { withRetry } from '../lib/retry.js';
 import { runIntakeAgent } from './intake.js';
-import { generateQuestions, synthesizeProfile, evaluateFollowUp } from './positioning-coach.js';
+import { generateQuestions, synthesizeProfile, evaluateFollowUp, MAX_FOLLOW_UPS } from './positioning-coach.js';
 import { runResearchAgent } from './research.js';
 import { runGapAnalyst, generateGapQuestions, enrichGapAnalysis } from './gap-analyst.js';
 import { runArchitect } from './architect.js';
 import { runSectionWriter, runSectionRevision } from './section-writer.js';
 import { runQualityReviewer } from './quality-reviewer.js';
 import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
-import { isQuestionnaireEnabled, type QuestionnaireStage } from '../lib/feature-flags.js';
+import { isQuestionnaireEnabled, isFeatureEnabled, type QuestionnaireStage } from '../lib/feature-flags.js';
 import { buildQuestionnaireEvent, makeQuestion, getSelectedLabels } from '../lib/questionnaire-helpers.js';
 import type {
   PipelineState,
@@ -193,86 +193,151 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       log.info({ preferences: state.user_preferences }, 'Intake quiz complete');
     }
 
-    // ─── Stage 2: Research ─────────────────────────────────────
-    // Research runs before positioning so the interview can reference
-    // JD requirements, benchmark candidate, and company culture.
-    emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
-    state.current_stage = 'research';
-    markStageStart('research');
+    if (isFeatureEnabled('positioning_v2')) {
+      // ─── v2: Race research with 20s timeout, then positioning with JD-informed questions ───
+      emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
+      state.current_stage = 'research';
+      markStageStart('research');
 
-    state.research = await runResearchAgent({
-      job_description: config.job_description,
-      company_name: config.company_name,
-      parsed_resume: state.intake,
-    });
+      // Fire off research as a background promise
+      const researchPromise = runResearchAgent({
+        job_description: config.job_description,
+        company_name: config.company_name,
+        parsed_resume: state.intake,
+      });
 
-    markStageEnd('research');
-    emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
-    emit({
-      type: 'right_panel_update',
-      panel_type: 'research_dashboard',
-      data: {
-        company: state.research.company_research,
-        jd_requirements: {
-          must_haves: state.research.jd_analysis.must_haves,
-          nice_to_haves: state.research.jd_analysis.nice_to_haves,
-          seniority_level: state.research.jd_analysis.seniority_level,
+      // Race: give research 20s to complete before falling back
+      const RESEARCH_RACE_TIMEOUT_MS = 20_000;
+      const researchRaceResult = await Promise.race([
+        researchPromise.then(r => ({ resolved: true as const, data: r })),
+        sleep(RESEARCH_RACE_TIMEOUT_MS).then(() => ({ resolved: false as const, data: null })),
+      ]);
+
+      if (researchRaceResult.resolved) {
+        state.research = researchRaceResult.data!;
+        markStageEnd('research');
+        emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
+        log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (within timeout)');
+      } else {
+        log.info('Research still running after timeout — starting positioning with fallback questions');
+        emit({ type: 'transparency', stage: 'research', message: 'Research is still running — starting your interview with general questions...' });
+      }
+
+      // Emit research dashboard if research is ready
+      if (state.research) {
+        emit({
+          type: 'right_panel_update',
+          panel_type: 'research_dashboard',
+          data: {
+            company: state.research.company_research,
+            jd_requirements: {
+              must_haves: state.research.jd_analysis.must_haves,
+              nice_to_haves: state.research.jd_analysis.nice_to_haves,
+              seniority_level: state.research.jd_analysis.seniority_level,
+            },
+            benchmark: state.research.benchmark_candidate,
+          },
+        });
+      }
+
+      // ─── Research Validation Quiz (if research is ready) ────────
+      if (state.research) {
+        const researchQuizQuestions = buildResearchQuizQuestions(state.research);
+        const researchSubmission = await runQuestionnaire(
+          'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
+          'Help us fine-tune our research findings',
+        );
+        if (researchSubmission) {
+          processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
+        }
+      }
+
+      // ─── Positioning Coach ──────────────────────────────────
+      state.current_stage = 'positioning';
+      markStageStart('positioning');
+      state.positioning = await runPositioningStage(
+        state, config, emit, waitForUser, log,
+      );
+      markStageEnd('positioning');
+
+      // ─── Await research if it hasn't finished yet ───────────
+      if (!state.research) {
+        state.research = await researchPromise;
+        markStageEnd('research');
+        emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
+        emit({
+          type: 'right_panel_update',
+          panel_type: 'research_dashboard',
+          data: {
+            company: state.research.company_research,
+            jd_requirements: {
+              must_haves: state.research.jd_analysis.must_haves,
+              nice_to_haves: state.research.jd_analysis.nice_to_haves,
+              seniority_level: state.research.jd_analysis.seniority_level,
+            },
+            benchmark: state.research.benchmark_candidate,
+          },
+        });
+        log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (after positioning)');
+
+        // Run research validation quiz now
+        const researchQuizQuestions = buildResearchQuizQuestions(state.research);
+        const researchSubmission = await runQuestionnaire(
+          'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
+          'Help us fine-tune our research findings',
+        );
+        if (researchSubmission) {
+          processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
+        }
+      }
+    } else {
+      // ─── v1: Positioning first, then research (original order) ───
+      state.current_stage = 'positioning';
+      markStageStart('positioning');
+      state.positioning = await runPositioningStage(
+        state, config, emit, waitForUser, log,
+      );
+      markStageEnd('positioning');
+
+      // ─── Research ─────────────────────────────────────
+      emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
+      state.current_stage = 'research';
+      markStageStart('research');
+
+      state.research = await runResearchAgent({
+        job_description: config.job_description,
+        company_name: config.company_name,
+        parsed_resume: state.intake,
+      });
+
+      markStageEnd('research');
+      emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
+      emit({
+        type: 'right_panel_update',
+        panel_type: 'research_dashboard',
+        data: {
+          company: state.research.company_research,
+          jd_requirements: {
+            must_haves: state.research.jd_analysis.must_haves,
+            nice_to_haves: state.research.jd_analysis.nice_to_haves,
+            seniority_level: state.research.jd_analysis.seniority_level,
+          },
+          benchmark: state.research.benchmark_candidate,
         },
-        benchmark: state.research.benchmark_candidate,
-      },
-    });
+      });
 
-    log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete');
+      log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete');
 
-    // ─── Research Validation Quiz (optional) ─────────────────────
-    const researchQuizQuestions = [
-      makeQuestion('top_requirements', 'Which requirements matter most for this role?', 'multi_choice',
-        state.research.jd_analysis.must_haves.slice(0, 6).map((req, i) => ({
-          id: `req_${i}`,
-          label: req,
-          source: 'jd' as const,
-        })),
-        { context: 'Select up to 3 that you think the hiring manager cares about most' },
-      ),
-      makeQuestion('culture_check', 'Does this company culture description sound right?', 'single_choice', [
-        { id: 'yes', label: 'Yes, spot on' },
-        { id: 'somewhat', label: 'Somewhat accurate' },
-        { id: 'not_quite', label: 'Not quite right' },
-      ], { allow_custom: true, context: `We found: ${state.research.company_research.culture_signals.slice(0, 3).join(', ')}` }),
-      makeQuestion('anything_else', 'Anything else we should know about this role?', 'single_choice', [
-        { id: 'nope', label: 'No, looks good' },
-      ], { allow_custom: true, allow_skip: true, context: 'Insider knowledge, team dynamics, or role nuances' }),
-    ];
-
-    const researchSubmission = await runQuestionnaire(
-      'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
-      'Help us fine-tune our research findings',
-    );
-
-    if (researchSubmission) {
-      state.research_preferences = researchSubmission;
-      const topReqResponse = researchSubmission.responses.find((r) => r.question_id === 'top_requirements');
-      const cultureResponse = researchSubmission.responses.find((r) => r.question_id === 'culture_check');
-      const notesResponse = researchSubmission.responses.find((r) => r.question_id === 'anything_else');
-
-      state.research_preferences_summary = {
-        top_requirements: topReqResponse
-          ? getSelectedLabels(topReqResponse, researchQuizQuestions[0]).slice(0, 3)
-          : [],
-        culture_alignment: (cultureResponse?.selected_option_ids[0] as 'yes' | 'somewhat' | 'not_quite' | undefined),
-        culture_notes: cultureResponse?.custom_text?.trim() || undefined,
-        additional_notes: notesResponse?.custom_text?.trim() || undefined,
-      };
-      log.info('Research validation quiz complete');
+      // ─── Research Validation Quiz (optional) ────────────────
+      const researchQuizQuestions = buildResearchQuizQuestions(state.research);
+      const researchSubmission = await runQuestionnaire(
+        'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
+        'Help us fine-tune our research findings',
+      );
+      if (researchSubmission) {
+        processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
+      }
     }
-
-    // ─── Stage 3: Positioning Coach ──────────────────────────────
-    state.current_stage = 'positioning';
-    markStageStart('positioning');
-    state.positioning = await runPositioningStage(
-      state, config, emit, waitForUser, log,
-    );
-    markStageEnd('positioning');
 
     // ─── Stage 4: Gap Analysis ───────────────────────────────────
     emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Analyzing requirement gaps...' });
@@ -783,6 +848,7 @@ async function runPositioningStage(
 
   const answeredIds = new Set<string>();
   let previousEncouragingText: string | undefined;
+  let followUpCount = 0;
 
   for (const question of questions) {
     const catProgress = buildCategoryProgress(answeredIds);
@@ -808,32 +874,35 @@ async function runPositioningStage(
     answeredIds.add(question.id);
     previousEncouragingText = question.encouraging_text;
 
-    // Evaluate follow-up triggers (max 1 follow-up per question)
-    const followUp = evaluateFollowUp(question, response.answer);
-    if (followUp) {
-      const followUpQuestion: PositioningQuestion = {
-        ...followUp,
-        question_number: question.question_number,
-        is_follow_up: true,
-        parent_question_id: question.id,
-      };
+    // Evaluate follow-up triggers (max 1 follow-up per question, capped globally)
+    if (followUpCount < MAX_FOLLOW_UPS) {
+      const followUp = evaluateFollowUp(question, response.answer);
+      if (followUp) {
+        followUpCount++;
+        const followUpQuestion: PositioningQuestion = {
+          ...followUp,
+          question_number: question.question_number,
+          is_follow_up: true,
+          parent_question_id: question.id,
+        };
 
-      emit({
-        type: 'positioning_question',
-        question: followUpQuestion,
-        questions_total: questions.length,
-        category_progress: buildCategoryProgress(answeredIds),
-      });
+        emit({
+          type: 'positioning_question',
+          question: followUpQuestion,
+          questions_total: questions.length,
+          category_progress: buildCategoryProgress(answeredIds),
+        });
 
-      const followUpResponse = await waitForUser<{ answer: string; selected_suggestion?: string }>(
-        `positioning_q_${followUpQuestion.id}`,
-      );
+        const followUpResponse = await waitForUser<{ answer: string; selected_suggestion?: string }>(
+          `positioning_q_${followUpQuestion.id}`,
+        );
 
-      answers.push({
-        question_id: followUpQuestion.id,
-        answer: followUpResponse.answer,
-        selected_suggestion: followUpResponse.selected_suggestion,
-      });
+        answers.push({
+          question_id: followUpQuestion.id,
+          answer: followUpResponse.answer,
+          selected_suggestion: followUpResponse.selected_suggestion,
+        });
+      }
     }
   }
 
@@ -1425,6 +1494,51 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
     leadership_span: leadershipSpan,
     strengths: intake.experience.slice(0, 3).map(e => `${e.title} at ${e.company}`),
   };
+}
+
+// ─── Research quiz helpers (extracted to avoid duplication in v1/v2 paths) ────
+
+function buildResearchQuizQuestions(research: ResearchOutput): QuestionnaireQuestion[] {
+  return [
+    makeQuestion('top_requirements', 'Which requirements matter most for this role?', 'multi_choice',
+      research.jd_analysis.must_haves.slice(0, 6).map((req, i) => ({
+        id: `req_${i}`,
+        label: req,
+        source: 'jd' as const,
+      })),
+      { context: 'Select up to 3 that you think the hiring manager cares about most' },
+    ),
+    makeQuestion('culture_check', 'Does this company culture description sound right?', 'single_choice', [
+      { id: 'yes', label: 'Yes, spot on' },
+      { id: 'somewhat', label: 'Somewhat accurate' },
+      { id: 'not_quite', label: 'Not quite right' },
+    ], { allow_custom: true, context: `We found: ${research.company_research.culture_signals.slice(0, 3).join(', ')}` }),
+    makeQuestion('anything_else', 'Anything else we should know about this role?', 'single_choice', [
+      { id: 'nope', label: 'No, looks good' },
+    ], { allow_custom: true, allow_skip: true, context: 'Insider knowledge, team dynamics, or role nuances' }),
+  ];
+}
+
+function processResearchSubmission(
+  state: PipelineState,
+  submission: QuestionnaireSubmission,
+  quizQuestions: QuestionnaireQuestion[],
+  log: ReturnType<typeof createSessionLogger>,
+): void {
+  state.research_preferences = submission;
+  const topReqResponse = submission.responses.find((r) => r.question_id === 'top_requirements');
+  const cultureResponse = submission.responses.find((r) => r.question_id === 'culture_check');
+  const notesResponse = submission.responses.find((r) => r.question_id === 'anything_else');
+
+  state.research_preferences_summary = {
+    top_requirements: topReqResponse
+      ? getSelectedLabels(topReqResponse, quizQuestions[0]).slice(0, 3)
+      : [],
+    culture_alignment: (cultureResponse?.selected_option_ids[0] as 'yes' | 'somewhat' | 'not_quite' | undefined),
+    culture_notes: cultureResponse?.custom_text?.trim() || undefined,
+    additional_notes: notesResponse?.custom_text?.trim() || undefined,
+  };
+  log.info('Research validation quiz complete');
 }
 
 async function persistSession(state: PipelineState, finalResume?: FinalResumePayload): Promise<void> {

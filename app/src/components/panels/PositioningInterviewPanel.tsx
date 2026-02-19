@@ -186,8 +186,13 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       answer = customText.trim();
       suggestionLabel = selectedSuggestion.label;
     } else if (selectedSuggestion && !hasCustomText) {
-      // Only suggestion selected
-      answer = `${selectedSuggestion.label}: ${selectedSuggestion.description}`;
+      // Only suggestion selected — tag inferred/jd suggestions so downstream
+      // agents know this wasn't user-authored detail
+      if (selectedSuggestion.source === 'resume') {
+        answer = `${selectedSuggestion.label}: ${selectedSuggestion.description}`;
+      } else {
+        answer = `[Selected suggestion] ${selectedSuggestion.label}: ${selectedSuggestion.description}`;
+      }
       suggestionLabel = selectedSuggestion.label;
     } else {
       // Only custom text
@@ -199,7 +204,9 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
   }
 
   const textareaPlaceholder = selectedSuggestion
-    ? `Selected: "${selectedSuggestion.label}" — add more detail (optional)...`
+    ? selectedSuggestion.source === 'resume'
+      ? `Selected: "${selectedSuggestion.label}" — add more detail (optional)...`
+      : `Selected: "${selectedSuggestion.label}" — add a specific example to strengthen this (recommended)...`
     : 'Or type your own answer...';
 
   return (

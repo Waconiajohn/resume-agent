@@ -16,6 +16,7 @@
 
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
+import { withRetry } from '../lib/retry.js';
 import logger from '../lib/logger.js';
 import type {
   IntakeOutput,
@@ -25,6 +26,9 @@ import type {
   EvidenceItem,
   QuestionCategory,
 } from './types.js';
+
+/** Maximum total follow-up questions across the entire interview. */
+export const MAX_FOLLOW_UPS = 3;
 
 // ─── Requirement gap detection ────────────────────────────────────────
 
@@ -86,6 +90,10 @@ function identifyRequirementGaps(
  * benchmark candidate, and company research. Falls back to static questions
  * if LLM call fails.
  */
+function rejectAfter(ms: number, message: string): Promise<never> {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms));
+}
+
 export async function generateQuestions(
   resume: IntakeOutput,
   research?: ResearchOutput,
@@ -98,7 +106,19 @@ export async function generateQuestions(
 
   try {
     const gaps = identifyRequirementGaps(resume, research);
-    const questions = await generateQuestionsViaLLM(resume, research, gaps, preferences);
+    const questions = await withRetry(
+      () => Promise.race([
+        generateQuestionsViaLLM(resume, research, gaps, preferences),
+        rejectAfter(20_000, 'Question generation timed out'),
+      ]),
+      {
+        maxAttempts: 2,
+        baseDelay: 2_000,
+        onRetry: (attempt, error) => {
+          logger.warn({ attempt, error: error.message }, 'Retrying LLM question generation');
+        },
+      },
+    );
     return questions;
   } catch (err) {
     logger.warn(
@@ -221,6 +241,7 @@ function normalizeQuestions(raw: unknown[], resume: IntakeOutput): PositioningQu
   ]);
 
   const questions: PositioningQuestion[] = [];
+  const seenIds = new Set<string>();
   let questionNumber = 1;
 
   for (const item of raw) {
@@ -242,8 +263,14 @@ function normalizeQuestions(raw: unknown[], resume: IntakeOutput): PositioningQu
         source: (['resume', 'inferred', 'jd'].includes(s.source ?? '') ? s.source : 'inferred') as 'resume' | 'inferred' | 'jd',
       }));
 
+    let id = q.id && typeof q.id === 'string' ? q.id : `q_${questionNumber}`;
+    while (seenIds.has(id)) {
+      id = `${id}_${questionNumber}`;
+    }
+    seenIds.add(id);
+
     questions.push({
-      id: q.id && typeof q.id === 'string' ? q.id : `q_${questionNumber}`,
+      id,
       question_number: questionNumber,
       question_text: q.question_text,
       context: q.context ?? '',

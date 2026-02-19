@@ -16,3 +16,11 @@ export type QuestionnaireStage = keyof typeof QUESTIONNAIRE_FLAGS;
 export function isQuestionnaireEnabled(stage: QuestionnaireStage): boolean {
   return QUESTIONNAIRE_FLAGS[stage];
 }
+
+export const FEATURE_FLAGS = {
+  positioning_v2: envBool('FF_POSITIONING_V2', true),
+};
+
+export function isFeatureEnabled(flag: keyof typeof FEATURE_FLAGS): boolean {
+  return FEATURE_FLAGS[flag];
+}
