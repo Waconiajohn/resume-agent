@@ -254,12 +254,21 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       }
 
       // ─── Positioning Coach ──────────────────────────────────
+      emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
       state.current_stage = 'positioning';
       markStageStart('positioning');
       state.positioning = await runPositioningStage(
         state, config, emit, waitForUser, log,
       );
       markStageEnd('positioning');
+      emit({
+        type: 'stage_complete',
+        stage: 'positioning',
+        message: state.positioning_reuse_mode === 'reuse'
+          ? 'Using saved positioning profile'
+          : 'Positioning profile created and saved',
+        duration_ms: stageTimingsMs.positioning,
+      });
 
       // ─── Await research if it hasn't finished yet ───────────
       if (!state.research) {
@@ -317,12 +326,21 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       }
     } else {
       // ─── v1: Positioning first, then research (original order) ───
+      emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
       state.current_stage = 'positioning';
       markStageStart('positioning');
       state.positioning = await runPositioningStage(
         state, config, emit, waitForUser, log,
       );
       markStageEnd('positioning');
+      emit({
+        type: 'stage_complete',
+        stage: 'positioning',
+        message: state.positioning_reuse_mode === 'reuse'
+          ? 'Using saved positioning profile'
+          : 'Positioning profile created and saved',
+        duration_ms: stageTimingsMs.positioning,
+      });
 
       // ─── Research ─────────────────────────────────────
       emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
@@ -832,15 +850,11 @@ async function runPositioningStage(
 
     if (choice === 'reuse') {
       state.positioning_profile_id = existingProfile.id;
-      emit({ type: 'stage_complete', stage: 'positioning', message: 'Using saved positioning profile' });
       log.info('Reusing existing positioning profile');
       return existingProfile.positioning_data as PositioningProfile;
     }
     // For 'update' and 'fresh', proceed with the interview
   }
-
-  // Run the positioning interview
-  emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
 
   // Generate JD-informed questions (async, LLM-powered when research is available)
   const questions = await generateQuestions(state.intake!, state.research ?? undefined, state.user_preferences);
@@ -953,8 +967,6 @@ async function runPositioningStage(
   if (saved) {
     state.positioning_profile_id = saved.id;
   }
-
-  emit({ type: 'stage_complete', stage: 'positioning', message: 'Positioning profile created and saved' });
   log.info({ capabilities: profile.top_capabilities.length, evidence: profile.evidence_library.length }, 'Positioning complete');
 
   return profile;

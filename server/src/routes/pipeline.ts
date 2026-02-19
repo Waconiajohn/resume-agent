@@ -7,7 +7,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { sseConnections } from './sessions.js';
 import { runPipeline } from '../agents/pipeline.js';
-import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
+import type { PipelineSSEEvent } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 
 const startSchema = z.object({
@@ -99,36 +99,90 @@ async function flushQueuedPanelPersist(sessionId: string) {
   await persistLastPanelState(sessionId, queued.panelType, queued.panelData);
 }
 
-// In-memory gate resolvers per session
-const pendingGates = new Map<string, {
-  resolve: (value: unknown) => void;
-  reject: (reason: unknown) => void;
-  gate: string;
-  timeout: ReturnType<typeof setTimeout>;
-}>();
-
-// Buffered responses for gates that arrive before waitForUser is called (race condition fix)
-const bufferedResponses = new Map<string, { gate: string; response: unknown }>();
-
-// Track running pipelines to prevent double-start
-const runningPipelines = new Set<string>();
+const GATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const GATE_POLL_INTERVAL_MS = 400;
+const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes without DB state updates
 
 const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
 const MAX_JOB_URL_REDIRECTS = 3;
 const MAX_JOB_FETCH_BYTES = 2_000_000; // 2MB safety cap to avoid oversized pages
-const PIPELINE_STAGES: PipelineStage[] = [
-  'intake',
-  'research',
-  'positioning',
-  'gap_analysis',
-  'architect',
-  'architect_review',
-  'section_writing',
-  'section_review',
-  'quality_review',
-  'revision',
-  'complete',
-];
+
+type PendingGatePayload = {
+  created_at?: string;
+  gate?: string;
+  response?: unknown;
+  response_gate?: string;
+  responded_at?: string;
+  buffered_gate?: string;
+  buffered_response?: unknown;
+  buffered_at?: string;
+};
+
+function parsePendingGatePayload(raw: unknown): PendingGatePayload {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  return raw as PendingGatePayload;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getPipelineState(sessionId: string): Promise<{
+  pipeline_status: string | null;
+  pipeline_stage: string | null;
+  pending_gate: string | null;
+  pending_gate_data: unknown;
+  updated_at: string | null;
+} | null> {
+  const { data, error } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('pipeline_status, pipeline_stage, pending_gate, pending_gate_data, updated_at')
+    .eq('id', sessionId)
+    .single();
+  if (error) return null;
+  return data;
+}
+
+async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<T> {
+  const startedAt = Date.now();
+
+  // First consume any buffered early response for this exact gate.
+  const initial = await getPipelineState(sessionId);
+  const initialPayload = parsePendingGatePayload(initial?.pending_gate_data);
+  if (initialPayload.buffered_gate === gate && 'buffered_response' in initialPayload) {
+    await clearPendingGate(sessionId);
+    return initialPayload.buffered_response as T;
+  }
+
+  await setPendingGate(sessionId, gate, {
+    gate,
+    created_at: new Date().toISOString(),
+  });
+
+  while (Date.now() - startedAt < GATE_TIMEOUT_MS) {
+    const state = await getPipelineState(sessionId);
+    if (!state) {
+      await sleep(GATE_POLL_INTERVAL_MS);
+      continue;
+    }
+
+    if (state.pipeline_status !== 'running') {
+      throw new Error(`Gate '${gate}' aborted because pipeline status is '${state.pipeline_status ?? 'unknown'}'`);
+    }
+
+    const payload = parsePendingGatePayload(state.pending_gate_data);
+    const responseGate = payload.response_gate ?? payload.gate ?? state.pending_gate ?? null;
+    if (responseGate === gate && 'response' in payload) {
+      await clearPendingGate(sessionId);
+      return payload.response as T;
+    }
+
+    await sleep(GATE_POLL_INTERVAL_MS);
+  }
+
+  await clearPendingGate(sessionId);
+  throw new Error(`Gate '${gate}' timed out after ${GATE_TIMEOUT_MS}ms`);
+}
 
 function isPrivateIPv4(ip: string): boolean {
   const parts = ip.split('.').map((p) => Number.parseInt(p, 10));
@@ -326,7 +380,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // Verify session belongs to user
   const { data: session, error } = await supabaseAdmin
     .from('coach_sessions')
-    .select('id, user_id, status')
+    .select('id, user_id, status, pipeline_status, updated_at')
     .eq('id', session_id)
     .eq('user_id', user.id)
     .single();
@@ -335,32 +389,60 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  // Prevent double-start (in-memory check)
-  if (runningPipelines.has(session_id)) {
-    return c.json({ error: 'Pipeline already running' }, 409);
-  }
-
-  // Prevent restarting a completed or errored pipeline after server restart
-  // (runningPipelines is in-memory and empty after restart)
+  // Prevent restarting completed sessions.
   if (session.status === 'completed') {
     return c.json({ error: 'Pipeline already completed for this session' }, 409);
   }
-  const { data: pipelineCheck } = await supabaseAdmin
-    .from('coach_sessions')
-    .select('pipeline_status')
-    .eq('id', session_id)
-    .single();
-  if (pipelineCheck?.pipeline_status === 'complete') {
+  if (session.pipeline_status === 'complete') {
     return c.json({ error: 'Pipeline already completed for this session' }, 409);
   }
+  if (session.pipeline_status === 'running') {
+    const updatedAtMs = Date.parse(session.updated_at ?? '');
+    const isStale = Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS);
+    if (!isStale) {
+      return c.json({ error: 'Pipeline already running for this session' }, 409);
+    }
 
-  runningPipelines.add(session_id);
+    logger.warn({ session_id }, 'Recovering stale running pipeline before restart');
+    const { error: recoverError } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({
+        pipeline_status: 'error',
+        pending_gate: null,
+        pending_gate_data: null,
+      })
+      .eq('id', session_id)
+      .eq('user_id', user.id)
+      .eq('pipeline_status', 'running');
 
-  // Persist pipeline status to DB
-  await supabaseAdmin
+    if (recoverError) {
+      logger.error({ session_id, error: recoverError.message }, 'Failed to recover stale pipeline state');
+      return c.json({ error: 'Failed to recover stale pipeline state' }, 500);
+    }
+  }
+
+  // Atomically claim this session's pipeline slot (cross-instance safe).
+  const { data: claimedSession, error: claimError } = await supabaseAdmin
     .from('coach_sessions')
-    .update({ pipeline_status: 'running', pipeline_stage: 'intake' })
-    .eq('id', session_id);
+    .update({
+      pipeline_status: 'running',
+      pipeline_stage: 'intake',
+      pending_gate: null,
+      pending_gate_data: null,
+    })
+    .eq('id', session_id)
+    .eq('user_id', user.id)
+    .or('pipeline_status.is.null,pipeline_status.eq.error')
+    .select('id')
+    .maybeSingle();
+
+  if (claimError) {
+    logger.error({ session_id, error: claimError.message }, 'Failed to claim pipeline slot');
+    return c.json({ error: 'Failed to start pipeline' }, 500);
+  }
+  if (!claimedSession) {
+    return c.json({ error: 'Pipeline already running or completed for this session' }, 409);
+  }
 
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
@@ -405,45 +487,8 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
   };
 
-  // Create waitForUser function
-  const GATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-
-  const waitForUser = <T>(gate: string): Promise<T> => {
-    // Check if a response was already buffered (user responded before gate was registered)
-    const buffered = bufferedResponses.get(session_id);
-    if (buffered && buffered.gate === gate) {
-      bufferedResponses.delete(session_id);
-      log.info({ gate }, 'Resolved gate from buffered response');
-      void clearPendingGate(session_id);
-      return Promise.resolve(buffered.response as T);
-    }
-
-    return new Promise<T>((resolve, reject) => {
-      // Clear any existing gate for this session
-      const existing = pendingGates.get(session_id);
-      if (existing) {
-        clearTimeout(existing.timeout);
-        existing.reject(new Error('Gate superseded'));
-      }
-
-      const timeout = setTimeout(() => {
-        pendingGates.delete(session_id);
-        void clearPendingGate(session_id);
-        reject(new Error(`Gate '${gate}' timed out after ${GATE_TIMEOUT_MS}ms`));
-      }, GATE_TIMEOUT_MS);
-
-      pendingGates.set(session_id, {
-        resolve: resolve as (value: unknown) => void,
-        reject,
-        gate,
-        timeout,
-      });
-
-      void setPendingGate(session_id, gate, {
-        created_at: new Date().toISOString(),
-      });
-    });
-  };
+  // Create waitForUser function (DB-backed so /respond can land on any instance).
+  const waitForUser = <T>(gate: string): Promise<T> => waitForGateResponse<T>(session_id, gate);
 
   // Start pipeline in background (fire-and-forget)
   const log = createSessionLogger(session_id);
@@ -472,14 +517,6 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
       .eq('id', session_id);
   }).finally(() => {
-    runningPipelines.delete(session_id);
-    // Clean up any lingering gate
-    const gate = pendingGates.get(session_id);
-    if (gate) {
-      clearTimeout(gate.timeout);
-      pendingGates.delete(session_id);
-    }
-    bufferedResponses.delete(session_id);
     cancelQueuedPanelPersist(session_id);
     void clearPendingGate(session_id);
   });
@@ -510,74 +547,83 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  const pending = pendingGates.get(session_id);
-  if (!pending) {
-    const { data: dbState } = await supabaseAdmin
+  const dbState = await getPipelineState(session_id);
+  if (!dbState) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  if (dbState.pipeline_status !== 'running') {
+    return c.json({ error: 'Pipeline is not running for this session' }, 409);
+  }
+  const updatedAtMs = Date.parse(dbState.updated_at ?? '');
+  const staleRunning = Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS);
+  if (staleRunning) {
+    await supabaseAdmin
       .from('coach_sessions')
-      .select('pipeline_status, pipeline_stage, pending_gate')
+      .update({
+        pipeline_status: 'error',
+        pending_gate: null,
+        pending_gate_data: null,
+      })
       .eq('id', session_id)
-      .single();
-
-    if (dbState?.pipeline_status === 'running' && dbState.pending_gate) {
-      logger.warn(
-        { session_id, pending_gate: dbState.pending_gate },
-        'Detected stale pipeline state while resolving gate response',
-      );
-      // Process was likely restarted; clear stale running state so the session can be resumed.
-      await supabaseAdmin
-        .from('coach_sessions')
-        .update({
-          pipeline_status: 'error',
-          pending_gate: null,
-          pending_gate_data: null,
-        })
-        .eq('id', session_id);
-      bufferedResponses.delete(session_id);
-      const staleStage = PIPELINE_STAGES.includes(dbState.pipeline_stage as PipelineStage)
-        ? (dbState.pipeline_stage as PipelineStage)
-        : 'intake';
-      const emitters = sseConnections.get(session_id);
-      if (emitters) {
-        for (const emitter of emitters) {
-          try {
-            emitter({
-              type: 'pipeline_error',
-              stage: staleStage,
-              error: 'Pipeline state became stale after a server restart. Please restart the pipeline.',
-            } as never);
-          } catch {
-            // Connection may already be closed.
-          }
-        }
-      }
-      return c.json({
-        error: 'Pipeline state became stale after a server restart. Please restart the pipeline from this session.',
-        code: 'STALE_PIPELINE',
-        pending_gate: dbState.pending_gate,
-      }, 409);
-    }
-
-    // Gate not registered yet — buffer the response for when waitForUser is called
-    if (gate) {
-      bufferedResponses.set(session_id, { gate, response });
-      logger.info({ session_id, gate }, 'Buffered early gate response');
-      return c.json({ status: 'buffered', gate });
-    }
-    return c.json({ error: 'No pending gate for this session' }, 404);
+      .eq('pipeline_status', 'running');
+    return c.json({
+      error: 'Pipeline state became stale after a server restart. Please restart the pipeline from this session.',
+      code: 'STALE_PIPELINE',
+    }, 409);
   }
 
-  // Optional: verify gate name matches
-  if (gate && pending.gate !== gate) {
-    return c.json({ error: `Expected gate '${pending.gate}', got '${gate}'` }, 400);
+  if (dbState.pending_gate) {
+    // Optional: verify gate name matches
+    if (gate && dbState.pending_gate !== gate) {
+      return c.json({ error: `Expected gate '${dbState.pending_gate}', got '${gate}'` }, 400);
+    }
+
+    const currentPayload = parsePendingGatePayload(dbState.pending_gate_data);
+    const payload: PendingGatePayload = {
+      ...currentPayload,
+      gate: dbState.pending_gate,
+      response,
+      response_gate: dbState.pending_gate,
+      responded_at: new Date().toISOString(),
+    };
+
+    const { error: persistError } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ pending_gate_data: payload })
+      .eq('id', session_id)
+      .eq('pending_gate', dbState.pending_gate);
+
+    if (persistError) {
+      logger.error({ session_id, gate: dbState.pending_gate, error: persistError.message }, 'Failed to persist gate response');
+      return c.json({ error: 'Failed to persist gate response' }, 500);
+    }
+
+    return c.json({ status: 'ok', gate: dbState.pending_gate });
   }
 
-  // Resolve the gate
-  clearTimeout(pending.timeout);
-  pending.resolve(response);
-  pendingGates.delete(session_id);
-  await clearPendingGate(session_id);
+  // No pending gate yet — buffer the response in DB so waitForUser can consume it later.
+  if (gate) {
+    const currentPayload = parsePendingGatePayload(dbState.pending_gate_data);
+    const payload: PendingGatePayload = {
+      ...currentPayload,
+      buffered_gate: gate,
+      buffered_response: response,
+      buffered_at: new Date().toISOString(),
+    };
+    const { error: bufferError } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ pending_gate_data: payload })
+      .eq('id', session_id);
+    if (bufferError) {
+      logger.error({ session_id, gate, error: bufferError.message }, 'Failed to buffer early gate response');
+      return c.json({ error: 'Failed to buffer gate response' }, 500);
+    }
+    logger.info({ session_id, gate }, 'Buffered early gate response in DB');
+    return c.json({ status: 'buffered', gate });
+  }
 
-  return c.json({ status: 'ok', gate: pending.gate });
+  return c.json({ error: 'No pending gate for this session' }, 404);
 });
 
 // GET /pipeline/status
@@ -602,22 +648,22 @@ pipeline.get('/status', async (c) => {
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  const running = runningPipelines.has(sessionId);
-  const pending = pendingGates.get(sessionId);
   const { data: dbSession } = await supabaseAdmin
     .from('coach_sessions')
-    .select('pipeline_status, pipeline_stage, pending_gate')
+    .select('pipeline_status, pipeline_stage, pending_gate, updated_at')
     .eq('id', sessionId)
     .single();
-  const persistedPendingGate = dbSession?.pending_gate ?? null;
-  const stalePipeline = !running && dbSession?.pipeline_status === 'running';
+  const running = dbSession?.pipeline_status === 'running';
+  const pendingGate = dbSession?.pending_gate ?? null;
+  const updatedAtMs = Date.parse(dbSession?.updated_at ?? '');
+  const stalePipeline = running && Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS);
 
   return c.json({
     running,
-    pending_gate: pending?.gate ?? persistedPendingGate,
+    pending_gate: pendingGate,
     stale_pipeline: stalePipeline,
     pipeline_stage: dbSession?.pipeline_stage ?? null,
   });
 });
 
-export { pipeline, pendingGates, runningPipelines };
+export { pipeline };

@@ -22,21 +22,46 @@ const MAX_SSE_PER_USER = 5;
 // Idempotency: track recent message keys to reject duplicates
 const recentIdempotencyKeys = new Map<string, number>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_IDEMPOTENCY_KEYS = 20_000;
 
 // Cleanup expired keys every minute
-setInterval(() => {
+const idempotencyCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, timestamp] of recentIdempotencyKeys) {
     if (now - timestamp > IDEMPOTENCY_TTL_MS) {
       recentIdempotencyKeys.delete(key);
     }
   }
+
+  // Backstop for sustained load spikes: trim oldest keys if map grows unbounded.
+  if (recentIdempotencyKeys.size > MAX_IDEMPOTENCY_KEYS) {
+    const entries = Array.from(recentIdempotencyKeys.entries())
+      .sort((a, b) => a[1] - b[1]);
+    const trimCount = recentIdempotencyKeys.size - MAX_IDEMPOTENCY_KEYS;
+    for (let i = 0; i < trimCount; i++) {
+      recentIdempotencyKeys.delete(entries[i][0]);
+    }
+  }
 }, 60_000);
+idempotencyCleanupTimer.unref();
 
 // Rate limit SSE connections: max 10 new connections per user per minute
 const sseConnectionTimestamps = new Map<string, number[]>();
 const SSE_RATE_WINDOW_MS = 60_000;
 const SSE_RATE_MAX = 10;
+
+const sseRateCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [userId, timestamps] of sseConnectionTimestamps.entries()) {
+    const recent = timestamps.filter((t) => now - t < SSE_RATE_WINDOW_MS);
+    if (recent.length === 0) {
+      sseConnectionTimestamps.delete(userId);
+    } else {
+      sseConnectionTimestamps.set(userId, recent);
+    }
+  }
+}, 60_000);
+sseRateCleanupTimer.unref();
 
 // SSE endpoint — requires Authorization header with Bearer token
 sessions.get('/:id/sse', async (c) => {

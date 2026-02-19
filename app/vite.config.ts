@@ -10,11 +10,14 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
+          ui: ['lucide-react', 'clsx', 'tailwind-merge'],
           supabase: ['@supabase/supabase-js'],
+          markdown: ['react-markdown', 'rehype-sanitize'],
           docx: ['docx', 'file-saver'],
         },
       },

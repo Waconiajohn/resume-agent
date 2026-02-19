@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { Download, FileText, CheckCircle, Loader2, FileDown } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
-import { exportDocx } from '@/lib/export-docx';
 import { resumeToText, downloadAsText } from '@/lib/export';
-import { exportPdf } from '@/lib/export-pdf';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { validateResumeForExport } from '@/lib/export-validation';
 import type { FinalResume } from '@/types/resume';
@@ -58,6 +56,7 @@ export function CompletionPanel({
     setExportingResume(true);
     setExportError(null);
     try {
+      const { exportDocx } = await import('@/lib/export-docx');
       const result = await exportDocx(resume);
       if (!result.success) {
         setExportError(result.error ?? 'Failed to generate resume DOCX');
@@ -73,11 +72,18 @@ export function CompletionPanel({
     downloadAsText(resumeToText(resume), filename);
   };
 
-  const handleResumePdf = () => {
+  const handleResumePdf = async () => {
     if (!resume) return;
-    const result = exportPdf(resume);
-    if (!result.success) {
-      setExportError(result.error ?? 'Failed to generate PDF');
+    setExportingResume(true);
+    setExportError(null);
+    try {
+      const { exportPdf } = await import('@/lib/export-pdf');
+      const result = exportPdf(resume);
+      if (!result.success) {
+        setExportError(result.error ?? 'Failed to generate PDF');
+      }
+    } finally {
+      setExportingResume(false);
     }
   };
 
@@ -171,11 +177,11 @@ export function CompletionPanel({
                 )}
                 Download Word (.docx)
               </GlassButton>
-              <GlassButton variant="ghost" className="w-full" onClick={handleResumePdf} disabled={!!blockingIssue}>
+              <GlassButton variant="ghost" className="w-full" onClick={() => void handleResumePdf()} disabled={exportingResume || !!blockingIssue}>
                 <FileDown className="mr-2 h-4 w-4" />
                 Download PDF (.pdf)
               </GlassButton>
-              <GlassButton variant="ghost" className="w-full" onClick={handleResumeTxt} disabled={!!blockingIssue}>
+              <GlassButton variant="ghost" className="w-full" onClick={handleResumeTxt} disabled={exportingResume || !!blockingIssue}>
                 <Download className="mr-2 h-4 w-4" />
                 Download Text (.txt)
               </GlassButton>

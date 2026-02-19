@@ -3,8 +3,6 @@ import { Download, FileText, FileType2, Loader2, Printer } from 'lucide-react';
 import { GlassButton } from './GlassButton';
 import { WYSIWYGResume } from './WYSIWYGResume';
 import { resumeToText, downloadAsText } from '@/lib/export';
-import { exportDocx } from '@/lib/export-docx';
-import { exportPdf } from '@/lib/export-pdf';
 import { buildResumeFilename } from '@/lib/export-filename';
 import type { FinalResume } from '@/types/resume';
 
@@ -41,6 +39,7 @@ export function ResumePanel({ resume }: ResumePanelProps) {
     setExportError(null);
     setExportingDocx(true);
     try {
+      const { exportDocx } = await import('@/lib/export-docx');
       const result = await exportDocx(resume);
       if (!result.success) {
         setExportError(result.error ?? 'Failed to export DOCX');
@@ -55,14 +54,19 @@ export function ResumePanel({ resume }: ResumePanelProps) {
     setExportingPdf(true);
     // exportPdf is synchronous — wrap in rAF so React can paint the loading state first
     requestAnimationFrame(() => {
-      try {
-        const result = exportPdf(resume);
-        if (!result.success) {
-          setExportError(result.error ?? 'Failed to export PDF');
-        }
-      } finally {
-        setExportingPdf(false);
-      }
+      void import('@/lib/export-pdf')
+        .then(({ exportPdf }) => {
+          const result = exportPdf(resume);
+          if (!result.success) {
+            setExportError(result.error ?? 'Failed to export PDF');
+          }
+        })
+        .catch((err: unknown) => {
+          setExportError(err instanceof Error ? err.message : 'Failed to export PDF');
+        })
+        .finally(() => {
+          setExportingPdf(false);
+        });
     });
   };
 
