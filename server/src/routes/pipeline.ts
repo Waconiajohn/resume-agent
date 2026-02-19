@@ -27,11 +27,21 @@ const pipeline = new Hono();
 pipeline.use('*', authMiddleware);
 
 async function setPendingGate(sessionId: string, gate: string, data?: Record<string, unknown>) {
+  // Preserve any queued early responses when opening a new gate.
+  const { data: existing } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('pending_gate_data')
+    .eq('id', sessionId)
+    .maybeSingle();
+  const existingPayload = parsePendingGatePayload(existing?.pending_gate_data);
+  const queue = getResponseQueue(existingPayload);
+  const payload = withResponseQueue(data ?? {}, queue);
+
   const { error } = await supabaseAdmin
     .from('coach_sessions')
     .update({
       pending_gate: gate,
-      pending_gate_data: data ?? null,
+      pending_gate_data: payload,
     })
     .eq('id', sessionId);
   if (error) {
@@ -39,12 +49,13 @@ async function setPendingGate(sessionId: string, gate: string, data?: Record<str
   }
 }
 
-async function clearPendingGate(sessionId: string) {
+async function clearPendingGate(sessionId: string, keepQueueFromPayload?: PendingGatePayload) {
+  const queue = keepQueueFromPayload ? getResponseQueue(keepQueueFromPayload) : [];
   const { error } = await supabaseAdmin
     .from('coach_sessions')
     .update({
       pending_gate: null,
-      pending_gate_data: null,
+      pending_gate_data: queue.length > 0 ? { response_queue: queue } : null,
     })
     .eq('id', sessionId);
   if (error) {
@@ -124,6 +135,12 @@ type PendingGatePayload = {
   response?: unknown;
   response_gate?: string;
   responded_at?: string;
+  response_queue?: Array<{
+    gate: string;
+    response: unknown;
+    responded_at: string;
+  }>;
+  // Legacy single-buffer fields (kept for migration compatibility)
   buffered_gate?: string;
   buffered_response?: unknown;
   buffered_at?: string;
@@ -132,6 +149,41 @@ type PendingGatePayload = {
 function parsePendingGatePayload(raw: unknown): PendingGatePayload {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   return raw as PendingGatePayload;
+}
+
+const MAX_BUFFERED_RESPONSES = 25;
+
+function getResponseQueue(payload: PendingGatePayload): Array<{ gate: string; response: unknown; responded_at: string }> {
+  const queue = Array.isArray(payload.response_queue)
+    ? payload.response_queue.filter((item) =>
+      item
+      && typeof item === 'object'
+      && typeof (item as { gate?: unknown }).gate === 'string'
+      && 'response' in (item as Record<string, unknown>)
+      && typeof (item as { responded_at?: unknown }).responded_at === 'string')
+    : [];
+
+  // Backward compatibility: fold old single buffered fields into the queue.
+  if (payload.buffered_gate && 'buffered_response' in payload) {
+    queue.push({
+      gate: payload.buffered_gate,
+      response: payload.buffered_response,
+      responded_at: payload.buffered_at ?? new Date().toISOString(),
+    });
+  }
+
+  return queue.slice(-MAX_BUFFERED_RESPONSES);
+}
+
+function withResponseQueue(payload: PendingGatePayload, queue: Array<{ gate: string; response: unknown; responded_at: string }>): PendingGatePayload {
+  const normalized = {
+    ...payload,
+    response_queue: queue.slice(-MAX_BUFFERED_RESPONSES),
+  };
+  delete normalized.buffered_gate;
+  delete normalized.buffered_response;
+  delete normalized.buffered_at;
+  return normalized;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -163,13 +215,24 @@ async function getPipelineState(sessionId: string): Promise<{
 async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<T> {
   const startedAt = Date.now();
   let pollAttempt = 0;
+  let lastPayload: PendingGatePayload = {};
 
   // First consume any buffered early response for this exact gate.
   const initial = await getPipelineState(sessionId);
   const initialPayload = parsePendingGatePayload(initial?.pending_gate_data);
-  if (initialPayload.buffered_gate === gate && 'buffered_response' in initialPayload) {
-    await clearPendingGate(sessionId);
-    return initialPayload.buffered_response as T;
+  const initialQueue = getResponseQueue(initialPayload);
+  const initialIdx = initialQueue.findIndex((item) => item.gate === gate);
+  if (initialIdx >= 0) {
+    const [match] = initialQueue.splice(initialIdx, 1);
+    const nextPayload = withResponseQueue(initialPayload, initialQueue);
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ pending_gate_data: nextPayload })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, gate, error: error.message }, 'Failed to consume queued gate response');
+    }
+    return match.response as T;
   }
 
   await setPendingGate(sessionId, gate, {
@@ -190,9 +253,10 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
     }
 
     const payload = parsePendingGatePayload(state.pending_gate_data);
+    lastPayload = payload;
     const responseGate = payload.response_gate ?? payload.gate ?? state.pending_gate ?? null;
     if (responseGate === gate && 'response' in payload) {
-      await clearPendingGate(sessionId);
+      await clearPendingGate(sessionId, payload);
       return payload.response as T;
     }
 
@@ -200,7 +264,7 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
     pollAttempt += 1;
   }
 
-  await clearPendingGate(sessionId);
+  await clearPendingGate(sessionId, lastPayload);
   throw new Error(`Gate '${gate}' timed out after ${GATE_TIMEOUT_MS}ms`);
 }
 
@@ -653,12 +717,13 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
   // No pending gate yet — buffer the response in DB so waitForUser can consume it later.
   if (gate) {
     const currentPayload = parsePendingGatePayload(dbState.pending_gate_data);
-    const payload: PendingGatePayload = {
-      ...currentPayload,
-      buffered_gate: gate,
-      buffered_response: response,
-      buffered_at: new Date().toISOString(),
-    };
+    const queue = getResponseQueue(currentPayload);
+    queue.push({
+      gate,
+      response,
+      responded_at: new Date().toISOString(),
+    });
+    const payload = withResponseQueue(currentPayload, queue);
     const { error: bufferError } = await supabaseAdmin
       .from('coach_sessions')
       .update({ pending_gate_data: payload })

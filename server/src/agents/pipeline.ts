@@ -526,11 +526,12 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           if (index > 0) {
             await sleep(Math.min(index * 120, 900) + Math.floor(Math.random() * 120));
           }
+          const sectionAbort = new AbortController();
           // 5-minute wall-clock timeout per section to prevent stalled sections
           // from blocking the rest of the pipeline indefinitely.
-          return Promise.race([
+          return withTimeout(
             withRetry(
-              () => runSectionWriter(call),
+              () => runSectionWriter({ ...call, signal: sectionAbort.signal }),
               {
                 maxAttempts: 4,
                 baseDelay: 1_250,
@@ -539,8 +540,10 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
                 },
               },
             ),
-            rejectAfter(300_000, `Section ${call.section} timed out after 5 minutes`),
-          ]);
+            300_000,
+            `Section ${call.section} timed out after 5 minutes`,
+            () => sectionAbort.abort(),
+          );
         })
           .then((value) => ({ ok: true as const, value }))
           .catch((error) => ({ ok: false as const, error })),
@@ -1324,7 +1327,7 @@ function buildFallbackSectionContent(section: string, intake: IntakeOutput): str
     const exp = intake.experience[idx];
     if (!exp) return '';
     const bullets = exp.bullets.map(b => `• ${b}`).join('\n');
-    return `${exp.title} | ${exp.company} | ${exp.start_date} – ${exp.end_date}\n${bullets}`;
+    return `${exp.title}, ${exp.company}\n${exp.start_date} – ${exp.end_date}\n${bullets}`;
   }
   if (section === 'skills') {
     return intake.skills.join(', ');
@@ -1341,9 +1344,27 @@ async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Returns a promise that rejects after `ms` milliseconds with the given message. */
-function rejectAfter(ms: number, message: string): Promise<never> {
-  return new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms));
+async function withTimeout<T>(
+  task: Promise<T>,
+  ms: number,
+  message: string,
+  onTimeout?: () => void,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          onTimeout?.();
+          reject(new Error(message));
+        }, ms);
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /**

@@ -667,6 +667,40 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'system_message': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  const content = (data.content as string | undefined)?.trim();
+                  if (!content) break;
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: nextId(),
+                      role: 'system',
+                      content,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'section_error': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  const section = (data.section as string | undefined) ?? 'section';
+                  const err = (data.error as string | undefined) ?? 'Unknown error';
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: nextId(),
+                      role: 'system',
+                      content: `Section issue (${section}): ${err}. Fallback content was used so the pipeline could continue.`,
+                      timestamp: new Date().toISOString(),
+                    },
+                  ]);
+                  break;
+                }
+
                 case 'pipeline_complete': {
                   const data = safeParse(msg.data);
                   lastProgressTimestampRef.current = Date.now();

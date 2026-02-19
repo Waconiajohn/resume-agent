@@ -35,6 +35,7 @@ export async function runSectionWriter(input: SectionWriterInput): Promise<Secti
     max_tokens: 4096,
     system: WRITER_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
+    signal: input.signal,
   });
 
   const parsed = repairJSON<Record<string, unknown>>(response.text);
@@ -67,6 +68,7 @@ export async function runSectionRevision(
   revision_instruction: string,
   blueprint_slice: Record<string, unknown>,
   global_rules: ArchitectOutput['global_rules'],
+  options?: { signal?: AbortSignal },
 ): Promise<SectionWriterOutput> {
   const response = await llm.chat({
     model: MODEL_PRIMARY,
@@ -99,6 +101,7 @@ Return ONLY valid JSON:
   "evidence_ids_used": ["evidence IDs referenced"]
 }`,
     }],
+    signal: options?.signal,
   });
 
   const parsed = repairJSON<Record<string, unknown>>(response.text);

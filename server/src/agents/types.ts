@@ -328,6 +328,7 @@ export interface SectionWriterInput {
   blueprint_slice: Record<string, unknown>;
   evidence_sources: Record<string, unknown>;
   global_rules: ArchitectOutput['global_rules'];
+  signal?: AbortSignal;
 }
 
 export interface SectionWriterOutput {
