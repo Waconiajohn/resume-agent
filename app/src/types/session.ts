@@ -63,6 +63,20 @@ export type PipelineStage =
   | 'revision'
   | 'complete';
 
+export type QuestionCategory =
+  | 'scale_and_scope'
+  | 'requirement_mapped'
+  | 'career_narrative'
+  | 'hidden_accomplishments'
+  | 'currency_and_adaptability';
+
+export interface CategoryProgress {
+  category: QuestionCategory;
+  label: string;
+  answered: number;
+  total: number;
+}
+
 // Positioning question from Why Me interview
 export interface PositioningQuestion {
   id: string;
@@ -73,10 +87,15 @@ export interface PositioningQuestion {
   suggestions?: Array<{
     label: string;
     description: string;
-    source: 'resume' | 'inferred';
+    source: 'resume' | 'inferred' | 'jd';
   }>;
   follow_ups?: string[];
   optional?: boolean;
+  category?: QuestionCategory;
+  requirement_map?: string[];
+  is_follow_up?: boolean;
+  parent_question_id?: string;
+  encouraging_text?: string;
 }
 
 // Quality scores from the 6-dimension review

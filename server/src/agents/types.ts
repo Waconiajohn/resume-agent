@@ -50,6 +50,13 @@ export interface EducationEntry {
 
 // ─── Agent 2: Positioning Coach ("Why Me") ───────────────────────────
 
+export type QuestionCategory =
+  | 'scale_and_scope'
+  | 'requirement_mapped'
+  | 'career_narrative'
+  | 'hidden_accomplishments'
+  | 'currency_and_adaptability';
+
 export interface PositioningCoachInput {
   parsed_resume: IntakeOutput;
   existing_profile?: PositioningProfile | null;
@@ -86,6 +93,14 @@ export interface EvidenceItem {
   result: string;
   metrics_defensible: boolean;
   user_validated: boolean;
+  source_question_id?: string;
+  mapped_requirements?: string[];
+  scope_metrics?: {
+    team_size?: string;
+    budget?: string;
+    revenue_impact?: string;
+    geography?: string;
+  };
 }
 
 /** Question presented to user during Why Me interview */
@@ -98,10 +113,23 @@ export interface PositioningQuestion {
   suggestions?: Array<{
     label: string;
     description: string;
-    source: 'resume' | 'inferred';
+    source: 'resume' | 'inferred' | 'jd';
   }>;
   follow_ups?: string[];
   optional?: boolean;
+  category?: QuestionCategory;
+  requirement_map?: string[];
+  is_follow_up?: boolean;
+  parent_question_id?: string;
+  encouraging_text?: string;
+}
+
+/** Category progress for positioning interview UI */
+export interface CategoryProgress {
+  category: QuestionCategory;
+  label: string;
+  answered: number;
+  total: number;
 }
 
 // ─── Agent 3: Research ───────────────────────────────────────────────
@@ -440,7 +468,7 @@ export interface PipelineState {
 export type PipelineSSEEvent =
   | { type: 'stage_start'; stage: PipelineStage; message: string }
   | { type: 'stage_complete'; stage: PipelineStage; message: string; duration_ms?: number }
-  | { type: 'positioning_question'; question: PositioningQuestion }
+  | { type: 'positioning_question'; question: PositioningQuestion; questions_total: number; category_progress?: CategoryProgress[] }
   | { type: 'positioning_profile_found'; profile: PositioningProfile; updated_at: string }
   | { type: 'blueprint_ready'; blueprint: ArchitectOutput }
   | { type: 'section_draft'; section: string; content: string }

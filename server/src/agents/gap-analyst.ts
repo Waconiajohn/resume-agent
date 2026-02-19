@@ -182,54 +182,84 @@ Return ONLY valid JSON:
 
 // ─── Gap Analysis Questionnaire Helpers ──────────────────────────────
 
-const PROFICIENCY_OPTIONS = [
-  { id: 'expert', label: 'Expert', description: 'Deep hands-on experience — could teach others' },
-  { id: 'proficient', label: 'Proficient', description: 'Solid working knowledge and regular use' },
-  { id: 'familiar', label: 'Familiar', description: 'Some exposure but not daily practice' },
-  { id: 'none', label: 'No experience', description: "Haven't worked with this" },
+const GAP_OPTIONS = [
+  { id: 'significant', label: 'Yes, significant experience', description: 'I can describe a specific achievement with results' },
+  { id: 'some', label: 'Yes, some experience', description: "I've worked with this but it's not a headline skill" },
+  { id: 'adjacent', label: 'Adjacent experience', description: 'I have transferable skills from a related area' },
+  { id: 'none', label: 'No direct experience', description: 'This is genuinely new territory for me' },
+];
+
+const PARTIAL_OPTIONS = [
+  { id: 'stronger', label: 'Yes, I have a stronger example', description: 'I can provide a more compelling proof point' },
+  { id: 'covers_it', label: "What's on my resume covers it", description: 'The existing evidence is my best example' },
+  { id: 'different_angle', label: 'Different angle', description: 'I can demonstrate this through a different experience' },
 ];
 
 /**
- * Generate questionnaire questions for partial/gap requirements (capped at 8).
- * Lets users self-report proficiency so the AI doesn't under/over-estimate.
+ * Generate evidence-probing questionnaire questions for partial/gap requirements.
+ * Gaps are prioritized over partials; capped at 6 questions total.
+ * Questions differ by classification — gaps ask if experience exists, partials ask
+ * whether stronger evidence can be surfaced.
  */
 export function generateGapQuestions(analysis: GapAnalystOutput): QuestionnaireQuestion[] {
-  const candidates = analysis.requirements
-    .filter(r => r.classification === 'partial' || r.classification === 'gap')
-    .slice(0, 8);
+  const gaps = analysis.requirements.filter(r => r.classification === 'gap');
+  const partials = analysis.requirements.filter(r => r.classification === 'partial');
 
-  return candidates.map((req, i) =>
-    makeQuestion(
-      `gap_${i}`,
-      `How would you rate your experience with: ${req.requirement}?`,
-      'single_choice',
-      PROFICIENCY_OPTIONS,
-      {
-        allow_custom: true,
-        context: req.classification === 'partial'
-          ? `We found some evidence: ${(req.evidence ?? []).slice(0, 2).join('; ')}`
-          : req.mitigation
-            ? `Possible angle: ${req.mitigation}`
+  // Prioritize gaps first, then partials, cap at 6
+  const candidates = [...gaps, ...partials].slice(0, 6);
+
+  return candidates.map((req, i) => {
+    if (req.classification === 'gap') {
+      return makeQuestion(
+        `gap_${i}`,
+        `The role requires ${req.requirement} — do you have experience with this?`,
+        'single_choice',
+        GAP_OPTIONS,
+        {
+          allow_custom: true,
+          context: 'Describe a specific situation where you demonstrated this — what happened and what resulted?',
+        },
+      );
+    } else {
+      // partial
+      const existingEvidence = (req.evidence ?? []).slice(0, 2).join('; ');
+      return makeQuestion(
+        `gap_${i}`,
+        `We found some evidence for ${req.requirement} — can you strengthen it?`,
+        'single_choice',
+        PARTIAL_OPTIONS,
+        {
+          allow_custom: true,
+          context: existingEvidence
+            ? `Existing evidence: ${existingEvidence}`
             : undefined,
-      },
-    ),
-  );
+        },
+      );
+    }
+  });
 }
 
 /**
- * Enrich gap analysis with user's self-reported proficiency.
- * - Expert/Proficient on a gap → upgrade to partial or strong
- * - None on a partial → downgrade to gap
- * - Custom text → add to evidence
+ * Enrich gap analysis with user's evidence-probe responses.
+ *
+ * Reclassification rules:
+ * - significant (gap)       → strong
+ * - some (gap)              → partial
+ * - adjacent (gap)          → partial (with custom text as evidence)
+ * - none (partial)          → gap
+ * - stronger (partial)      → strong
+ * - covers_it (partial)     → keep current (partial)
+ * - different_angle (partial) → keep partial, add custom text as evidence
+ * - custom_text (any)       → append as "User-reported: [text]" to evidence
  */
 export function enrichGapAnalysis(
   original: GapAnalystOutput,
   responses: QuestionnaireResponse[],
   questions: QuestionnaireQuestion[],
 ): GapAnalystOutput {
-  const candidates = original.requirements
-    .filter(r => r.classification === 'partial' || r.classification === 'gap')
-    .slice(0, 8);
+  const gaps = original.requirements.filter(r => r.classification === 'gap');
+  const partials = original.requirements.filter(r => r.classification === 'partial');
+  const candidates = [...gaps, ...partials].slice(0, 6);
 
   const enrichedReqs = original.requirements.map(req => {
     const candidateIdx = candidates.indexOf(req);
@@ -242,18 +272,31 @@ export function enrichGapAnalysis(
     const selectedId = response.selected_option_ids[0];
     const clone = { ...req, evidence: [...(req.evidence ?? [])] };
 
-    // Add custom text as evidence
+    // Always append custom text as evidence regardless of selected option
     if (response.custom_text?.trim()) {
       clone.evidence.push(`User-reported: ${response.custom_text.trim()}`);
     }
 
-    // Reclassify based on self-reported proficiency
-    if (selectedId === 'expert') {
-      clone.classification = 'strong';
-    } else if (selectedId === 'proficient') {
-      clone.classification = req.classification === 'gap' ? 'partial' : 'strong';
-    } else if (selectedId === 'none' && req.classification === 'partial') {
-      clone.classification = 'gap';
+    if (req.classification === 'gap') {
+      if (selectedId === 'significant') {
+        clone.classification = 'strong';
+      } else if (selectedId === 'some') {
+        clone.classification = 'partial';
+      } else if (selectedId === 'adjacent') {
+        clone.classification = 'partial';
+        // custom_text already added above; no further reclassification needed
+      }
+      // 'none' → stay as gap (no change)
+    } else {
+      // req.classification === 'partial'
+      if (selectedId === 'stronger') {
+        clone.classification = 'strong';
+      } else if (selectedId === 'none') {
+        clone.classification = 'gap';
+      } else if (selectedId === 'different_angle') {
+        // Keep partial; custom_text already added above as evidence
+      }
+      // 'covers_it' → keep partial (no change)
     }
 
     return clone;

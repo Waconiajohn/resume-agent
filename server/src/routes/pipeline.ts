@@ -117,8 +117,8 @@ const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
 const MAX_JOB_URL_REDIRECTS = 3;
 const PIPELINE_STAGES: PipelineStage[] = [
   'intake',
-  'positioning',
   'research',
+  'positioning',
   'gap_analysis',
   'architect',
   'architect_review',

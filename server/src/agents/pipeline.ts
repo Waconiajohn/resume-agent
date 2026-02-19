@@ -14,7 +14,7 @@ import { startUsageTracking, stopUsageTracking } from '../lib/llm-provider.js';
 import { createSessionLogger } from '../lib/logger.js';
 import { withRetry } from '../lib/retry.js';
 import { runIntakeAgent } from './intake.js';
-import { generateQuestions, synthesizeProfile } from './positioning-coach.js';
+import { generateQuestions, synthesizeProfile, evaluateFollowUp } from './positioning-coach.js';
 import { runResearchAgent } from './research.js';
 import { runGapAnalyst, generateGapQuestions, enrichGapAnalysis } from './gap-analyst.js';
 import { runArchitect } from './architect.js';
@@ -30,11 +30,13 @@ import type {
   IntakeOutput,
   PositioningProfile,
   PositioningQuestion,
+  ResearchOutput,
   ArchitectOutput,
   SectionWriterOutput,
   QualityReviewerOutput,
   QuestionnaireQuestion,
   QuestionnaireSubmission,
+  CategoryProgress,
 } from './types.js';
 
 export type PipelineEmitter = (event: PipelineSSEEvent) => void;
@@ -191,15 +193,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       log.info({ preferences: state.user_preferences }, 'Intake quiz complete');
     }
 
-    // ─── Stage 2: Positioning Coach ──────────────────────────────
-    state.current_stage = 'positioning';
-    markStageStart('positioning');
-    state.positioning = await runPositioningStage(
-      state, config, emit, waitForUser, log,
-    );
-    markStageEnd('positioning');
-
-    // ─── Stage 3: Research ───────────────────────────────────────
+    // ─── Stage 2: Research ─────────────────────────────────────
+    // Research runs before positioning so the interview can reference
+    // JD requirements, benchmark candidate, and company culture.
     emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
     state.current_stage = 'research';
     markStageStart('research');
@@ -269,6 +265,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       };
       log.info('Research validation quiz complete');
     }
+
+    // ─── Stage 3: Positioning Coach ──────────────────────────────
+    state.current_stage = 'positioning';
+    markStageStart('positioning');
+    state.positioning = await runPositioningStage(
+      state, config, emit, waitForUser, log,
+    );
+    markStageEnd('positioning');
 
     // ─── Stage 4: Gap Analysis ───────────────────────────────────
     emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Analyzing requirement gaps...' });
@@ -748,11 +752,49 @@ async function runPositioningStage(
   // Run the positioning interview
   emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
 
-  const questions = generateQuestions(state.intake!);
+  // Generate JD-informed questions (async, LLM-powered when research is available)
+  const questions = await generateQuestions(state.intake!, state.research ?? undefined, state.user_preferences);
   const answers: Array<{ question_id: string; answer: string; selected_suggestion?: string }> = [];
 
+  // Build category progress tracking
+  const categoryLabels: Record<string, string> = {
+    scale_and_scope: 'Scale & Scope',
+    requirement_mapped: 'Requirements',
+    career_narrative: 'Career Story',
+    hidden_accomplishments: 'Hidden Wins',
+    currency_and_adaptability: 'Adaptability',
+  };
+  const buildCategoryProgress = (answeredIds: Set<string>): CategoryProgress[] => {
+    const cats = new Map<string, { total: number; answered: number }>();
+    for (const q of questions) {
+      const cat = q.category ?? 'career_narrative';
+      if (!cats.has(cat)) cats.set(cat, { total: 0, answered: 0 });
+      const c = cats.get(cat)!;
+      c.total++;
+      if (answeredIds.has(q.id)) c.answered++;
+    }
+    return Array.from(cats.entries()).map(([cat, c]) => ({
+      category: cat as CategoryProgress['category'],
+      label: categoryLabels[cat] ?? cat,
+      answered: c.answered,
+      total: c.total,
+    }));
+  };
+
+  const answeredIds = new Set<string>();
+  let previousEncouragingText: string | undefined;
+
   for (const question of questions) {
-    emit({ type: 'positioning_question', question });
+    const catProgress = buildCategoryProgress(answeredIds);
+    emit({
+      type: 'positioning_question',
+      question: {
+        ...question,
+        encouraging_text: previousEncouragingText,
+      },
+      questions_total: questions.length,
+      category_progress: catProgress,
+    });
 
     const response = await waitForUser<{ answer: string; selected_suggestion?: string }>(
       `positioning_q_${question.id}`,
@@ -763,11 +805,41 @@ async function runPositioningStage(
       answer: response.answer,
       selected_suggestion: response.selected_suggestion,
     });
+    answeredIds.add(question.id);
+    previousEncouragingText = question.encouraging_text;
+
+    // Evaluate follow-up triggers (max 1 follow-up per question)
+    const followUp = evaluateFollowUp(question, response.answer);
+    if (followUp) {
+      const followUpQuestion: PositioningQuestion = {
+        ...followUp,
+        question_number: question.question_number,
+        is_follow_up: true,
+        parent_question_id: question.id,
+      };
+
+      emit({
+        type: 'positioning_question',
+        question: followUpQuestion,
+        questions_total: questions.length,
+        category_progress: buildCategoryProgress(answeredIds),
+      });
+
+      const followUpResponse = await waitForUser<{ answer: string; selected_suggestion?: string }>(
+        `positioning_q_${followUpQuestion.id}`,
+      );
+
+      answers.push({
+        question_id: followUpQuestion.id,
+        answer: followUpResponse.answer,
+        selected_suggestion: followUpResponse.selected_suggestion,
+      });
+    }
   }
 
-  // Synthesize the profile
+  // Synthesize the profile (research-aware when available)
   emit({ type: 'transparency', message: 'Synthesizing your positioning profile...', stage: 'positioning' });
-  const profile = await synthesizeProfile(state.intake!, answers);
+  const profile = await synthesizeProfile(state.intake!, answers, state.research ?? undefined);
 
   // Save to database
   const { data: saved } = await supabaseAdmin

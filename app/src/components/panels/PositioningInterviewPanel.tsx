@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ArrowRight, CheckCircle2, MessageSquare } from 'lucide-react';
+import { ArrowRight, CheckCircle2, GitBranch, MessageSquare, Sparkles } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { cn } from '@/lib/utils';
 import type { PositioningInterviewData } from '@/types/panels';
-import type { PositioningQuestion } from '@/types/session';
+import type { CategoryProgress, PositioningQuestion } from '@/types/session';
 
 interface PositioningInterviewPanelProps {
   data: PositioningInterviewData;
@@ -14,12 +14,27 @@ interface PositioningInterviewPanelProps {
 interface SuggestionCardProps {
   label: string;
   description: string;
-  source: 'resume' | 'inferred';
+  source: 'resume' | 'inferred' | 'jd';
   isSelected: boolean;
   onClick: () => void;
 }
 
 function SuggestionCard({ label, description, source, isSelected, onClick }: SuggestionCardProps) {
+  const sourceBadge = {
+    resume: {
+      label: 'From Resume',
+      className: 'border border-white/[0.14] bg-white/[0.06] text-white/76',
+    },
+    inferred: {
+      label: 'Inferred',
+      className: 'bg-white/[0.08] text-white/50 border border-white/10',
+    },
+    jd: {
+      label: 'From JD',
+      className: 'bg-blue-500/[0.18] text-blue-300 border border-blue-400/[0.25]',
+    },
+  }[source];
+
   return (
     <GlassCard
       className={cn(
@@ -61,12 +76,10 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
             <span
               className={cn(
                 'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
-                source === 'resume'
-                  ? 'border border-white/[0.14] bg-white/[0.06] text-white/76'
-                  : 'bg-white/[0.08] text-white/50 border border-white/10',
+                sourceBadge.className,
               )}
             >
-              {source === 'resume' ? 'From Resume' : 'Inferred'}
+              {sourceBadge.label}
             </span>
           </div>
           {description && (
@@ -83,12 +96,70 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
   );
 }
 
+// ─── Category Progress Bars ──────────────────────────────────────────────────
+
+interface CategoryProgressBarProps {
+  categories: CategoryProgress[];
+}
+
+function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
+  if (!categories || categories.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex flex-col gap-1.5" aria-label="Category progress">
+      {categories.map((cat) => {
+        const pct = cat.total > 0 ? Math.round((cat.answered / cat.total) * 100) : 0;
+        const isComplete = cat.answered >= cat.total;
+        return (
+          <div key={cat.category} className="flex items-center gap-2">
+            {/* Label pill */}
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider whitespace-nowrap',
+                isComplete
+                  ? 'bg-green-500/20 text-green-300 border border-green-400/25'
+                  : 'bg-white/[0.06] text-white/45 border border-white/[0.10]',
+              )}
+            >
+              {cat.label}
+            </span>
+            {/* Progress track */}
+            <div
+              className="flex-1 h-0.5 rounded-full bg-white/[0.08] overflow-hidden"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${cat.label}: ${cat.answered} of ${cat.total}`}
+            >
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500 ease-out',
+                  isComplete ? 'bg-green-400/70' : 'bg-[#b5c9ff]/60',
+                )}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            {/* Count */}
+            <span className="shrink-0 text-[10px] text-white/35 tabular-nums">
+              {cat.answered}/{cat.total}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Question Body ───────────────────────────────────────────────────────────
+
 interface QuestionBodyProps {
   question: PositioningQuestion;
+  encouragingText?: string;
   onSubmit: (answer: string, selectedSuggestion?: string) => void;
 }
 
-function QuestionBody({ question, onSubmit }: QuestionBodyProps) {
+function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps) {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number | null>(null);
   const [customText, setCustomText] = useState('');
 
@@ -133,6 +204,14 @@ function QuestionBody({ question, onSubmit }: QuestionBodyProps) {
 
   return (
     <div className="space-y-3">
+      {/* Encouraging message from previous answer */}
+      {encouragingText && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-green-400/[0.20] bg-green-500/[0.08] px-3.5 py-2.5">
+          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400/80" aria-hidden="true" />
+          <p className="text-xs text-green-300/90 leading-relaxed">{encouragingText}</p>
+        </div>
+      )}
+
       {/* Suggestions */}
       {suggestions.length > 0 && (
         <div className="space-y-2" role="radiogroup" aria-label="Answer suggestions">
@@ -186,14 +265,25 @@ function QuestionBody({ question, onSubmit }: QuestionBodyProps) {
   );
 }
 
+// ─── Main Panel ──────────────────────────────────────────────────────────────
+
 export function PositioningInterviewPanel({ data, onRespond }: PositioningInterviewPanelProps) {
-  const { current_question, questions_total, questions_answered } = data;
+  const {
+    current_question,
+    questions_total,
+    questions_answered,
+    category_progress,
+    encouraging_text,
+  } = data;
 
   // Progress calculations — answered + 1 represents the current question being shown
   const displayedIndex = questions_answered + 1;
   const progressPct = questions_total > 0
     ? Math.round((questions_answered / questions_total) * 100)
     : 0;
+
+  // Determine whether to show category bars or simple counter
+  const hasCategoryProgress = Array.isArray(category_progress) && category_progress.length > 0;
 
   function handleSubmit(answer: string, selectedSuggestion?: string) {
     if (!current_question || !onRespond) return;
@@ -209,28 +299,34 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             <MessageSquare className="h-3.5 w-3.5 text-[#afc4ff]" />
             <span className="text-sm font-medium text-white/85">Why Me Interview</span>
           </div>
-          {questions_total > 0 && (
+          {/* Show simple counter only when no category progress */}
+          {questions_total > 0 && !hasCategoryProgress && (
             <span className="text-xs font-medium text-white/50" aria-label={`Question ${displayedIndex} of ${questions_total}`}>
               {displayedIndex} / {questions_total}
             </span>
           )}
         </div>
 
-        {/* Progress bar */}
-        {questions_total > 0 && (
-          <div
-            className="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-white/[0.10]"
-            role="progressbar"
-            aria-valuenow={progressPct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`${progressPct}% complete`}
-          >
+        {/* Category progress bars — shown when category data is available */}
+        {hasCategoryProgress ? (
+          <CategoryProgressBars categories={category_progress!} />
+        ) : (
+          /* Fallback: simple overall progress bar */
+          questions_total > 0 && (
             <div
-              className="h-full rounded-full bg-[#b5c9ff] transition-all duration-500 ease-out"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
+              className="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-white/[0.10]"
+              role="progressbar"
+              aria-valuenow={progressPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${progressPct}% complete`}
+            >
+              <div
+                className="h-full rounded-full bg-[#b5c9ff] transition-all duration-500 ease-out"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          )
         )}
       </div>
 
@@ -238,11 +334,39 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
         {current_question ? (
           <>
-            {/* Question text */}
-            <div>
+            {/* Follow-up indicator */}
+            {current_question.is_follow_up && (
+              <div className="flex items-center gap-2">
+                <div className="w-0.5 self-stretch rounded-full bg-indigo-400/50" aria-hidden="true" />
+                <div className="flex items-center gap-1.5">
+                  <GitBranch className="h-3 w-3 text-indigo-400/70" aria-hidden="true" />
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-300/70">
+                    Follow-up
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Question text — indented slightly when it's a follow-up */}
+            <div className={cn(current_question.is_follow_up && 'pl-3 border-l border-indigo-400/25')}>
               <p className="text-base font-medium text-white leading-snug">
                 {current_question.question_text}
               </p>
+
+              {/* JD requirement map badges */}
+              {Array.isArray(current_question.requirement_map) && current_question.requirement_map.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Helps address">
+                  <span className="text-[10px] text-white/40 self-center">Helps address:</span>
+                  {current_question.requirement_map.map((req) => (
+                    <span
+                      key={req}
+                      className="rounded-full bg-blue-500/[0.14] border border-blue-400/[0.22] px-2 py-0.5 text-[10px] font-medium text-blue-300/80"
+                    >
+                      {req}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Context helper */}
@@ -257,6 +381,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             {/* Suggestions + input */}
             <QuestionBody
               question={current_question}
+              encouragingText={encouraging_text}
               onSubmit={handleSubmit}
             />
           </>

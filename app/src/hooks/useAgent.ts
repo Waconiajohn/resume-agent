@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores } from '@/types/session';
+import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores, CategoryProgress } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
@@ -507,14 +507,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (!data) break;
                   setIsProcessing(false);
                   setIsPipelineGateActive(true);
-                  setPositioningQuestion(data.question as PositioningQuestion);
+                  const q = data.question as PositioningQuestion;
+                  setPositioningQuestion(q);
                   // Show in right panel
                   setPanelType('positioning_interview');
                   setPanelData({
                     type: 'positioning_interview',
-                    current_question: data.question as PositioningQuestion,
-                    questions_total: 6,
-                    questions_answered: (data.question as PositioningQuestion).question_number - 1,
+                    current_question: q,
+                    questions_total: (data.questions_total as number) ?? q.question_number,
+                    questions_answered: q.question_number - 1,
+                    category_progress: data.category_progress as CategoryProgress[] | undefined,
+                    encouraging_text: q.encouraging_text,
                   } as PanelData);
                   break;
                 }

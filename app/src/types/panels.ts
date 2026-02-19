@@ -1,4 +1,4 @@
-import type { PositioningQuestion, QuestionnaireQuestion } from '@/types/session';
+import type { PositioningQuestion, QuestionnaireQuestion, CategoryProgress } from '@/types/session';
 
 // Panel type identifiers matching backend panel_type values
 export type PanelType =
@@ -154,6 +154,8 @@ export interface PositioningInterviewData {
   current_question?: PositioningQuestion;
   questions_total: number;
   questions_answered: number;
+  category_progress?: CategoryProgress[];
+  encouraging_text?: string;
 }
 
 // --- Blueprint Review ---
