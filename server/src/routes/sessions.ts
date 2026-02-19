@@ -14,21 +14,41 @@ import logger, { createSessionLogger } from '../lib/logger.js';
 const sessions = new Hono();
 
 const sseConnections = new Map<string, Array<(event: SSEEvent) => void>>();
+let totalSSEConnections = 0;
 
 // Track SSE connections per user to prevent resource exhaustion
 const sseConnectionsByUser = new Map<string, number>();
 const MAX_SSE_PER_USER = 5;
 const MAX_TOTAL_SSE_CONNECTIONS = (() => {
   const parsed = Number.parseInt(process.env.MAX_TOTAL_SSE_CONNECTIONS ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2000;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5000;
 })();
 
-function getTotalSSEConnections(): number {
-  let total = 0;
-  for (const emitters of sseConnections.values()) {
-    total += emitters.length;
+function addSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
+  if (!sseConnections.has(sessionId)) {
+    sseConnections.set(sessionId, []);
   }
-  return total;
+  sseConnections.get(sessionId)!.push(emitter);
+  totalSSEConnections += 1;
+  sseConnectionsByUser.set(userId, (sseConnectionsByUser.get(userId) ?? 0) + 1);
+}
+
+function removeSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
+  const emitters = sseConnections.get(sessionId);
+  if (emitters) {
+    const idx = emitters.indexOf(emitter);
+    if (idx !== -1) {
+      emitters.splice(idx, 1);
+      totalSSEConnections = Math.max(0, totalSSEConnections - 1);
+    }
+    if (emitters.length === 0) sseConnections.delete(sessionId);
+  }
+  const count = sseConnectionsByUser.get(userId) ?? 1;
+  if (count <= 1) {
+    sseConnectionsByUser.delete(userId);
+  } else {
+    sseConnectionsByUser.set(userId, count - 1);
+  }
 }
 
 // Idempotency: track recent message keys to reject duplicates
@@ -46,13 +66,10 @@ const idempotencyCleanupTimer = setInterval(() => {
   }
 
   // Backstop for sustained load spikes: trim oldest keys if map grows unbounded.
-  if (recentIdempotencyKeys.size > MAX_IDEMPOTENCY_KEYS) {
-    const entries = Array.from(recentIdempotencyKeys.entries())
-      .sort((a, b) => a[1] - b[1]);
-    const trimCount = recentIdempotencyKeys.size - MAX_IDEMPOTENCY_KEYS;
-    for (let i = 0; i < trimCount; i++) {
-      recentIdempotencyKeys.delete(entries[i][0]);
-    }
+  while (recentIdempotencyKeys.size > MAX_IDEMPOTENCY_KEYS) {
+    const oldest = recentIdempotencyKeys.keys().next().value;
+    if (!oldest) break;
+    recentIdempotencyKeys.delete(oldest);
   }
 }, 60_000);
 idempotencyCleanupTimer.unref();
@@ -61,11 +78,42 @@ idempotencyCleanupTimer.unref();
 const sseConnectionTimestamps = new Map<string, number[]>();
 const SSE_RATE_WINDOW_MS = 60_000;
 const SSE_RATE_MAX = 10;
+const MAX_SSE_RATE_USERS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_SSE_RATE_USERS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 20_000;
+})();
+
+function trimRecentSSEAttempts(timestamps: number[], now: number): number[] {
+  let head = 0;
+  while (head < timestamps.length && now - timestamps[head] >= SSE_RATE_WINDOW_MS) {
+    head += 1;
+  }
+  return head > 0 ? timestamps.slice(head) : timestamps;
+}
+
+function trackSSEAttempt(userId: string, now: number): { allowed: boolean } {
+  const prior = sseConnectionTimestamps.get(userId) ?? [];
+  const recent = trimRecentSSEAttempts(prior, now);
+  if (recent.length >= SSE_RATE_MAX) {
+    sseConnectionTimestamps.set(userId, recent);
+    return { allowed: false };
+  }
+  recent.push(now);
+  // Maintain rough LRU order so oldest tracked users are evicted first.
+  sseConnectionTimestamps.delete(userId);
+  sseConnectionTimestamps.set(userId, recent);
+  while (sseConnectionTimestamps.size > MAX_SSE_RATE_USERS) {
+    const oldestUser = sseConnectionTimestamps.keys().next().value;
+    if (!oldestUser) break;
+    sseConnectionTimestamps.delete(oldestUser);
+  }
+  return { allowed: true };
+}
 
 const sseRateCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [userId, timestamps] of sseConnectionTimestamps.entries()) {
-    const recent = timestamps.filter((t) => now - t < SSE_RATE_WINDOW_MS);
+    const recent = trimRecentSSEAttempts(timestamps, now);
     if (recent.length === 0) {
       sseConnectionTimestamps.delete(userId);
     } else {
@@ -107,20 +155,17 @@ sessions.get('/:id/sse', async (c) => {
 
   // SSE connection rate limit: prevent rapid reconnection floods
   const now = Date.now();
-  const timestamps = sseConnectionTimestamps.get(user.id) ?? [];
-  const recentTimestamps = timestamps.filter(t => now - t < SSE_RATE_WINDOW_MS);
-  if (recentTimestamps.length >= SSE_RATE_MAX) {
+  const sseAttempt = trackSSEAttempt(user.id, now);
+  if (!sseAttempt.allowed) {
     return c.json({ error: 'Too many connection attempts. Please wait a moment.' }, 429);
   }
-  recentTimestamps.push(now);
-  sseConnectionTimestamps.set(user.id, recentTimestamps);
 
   // Enforce per-user SSE connection limit
   const currentUserConns = sseConnectionsByUser.get(user.id) ?? 0;
   if (currentUserConns >= MAX_SSE_PER_USER) {
     return c.json({ error: 'Too many open connections. Please close other tabs.' }, 429);
   }
-  if (getTotalSSEConnections() >= MAX_TOTAL_SSE_CONNECTIONS) {
+  if (totalSSEConnections >= MAX_TOTAL_SSE_CONNECTIONS) {
     return c.json({ error: 'Server is at capacity. Please try again shortly.' }, 503);
   }
 
@@ -130,18 +175,7 @@ sessions.get('/:id/sse', async (c) => {
     const cleanupConnection = () => {
       if (connectionClosed || !emitter) return;
       connectionClosed = true;
-      const emitters = sseConnections.get(sessionId);
-      if (emitters) {
-        const idx = emitters.indexOf(emitter);
-        if (idx !== -1) emitters.splice(idx, 1);
-        if (emitters.length === 0) sseConnections.delete(sessionId);
-      }
-      const count = sseConnectionsByUser.get(user.id) ?? 1;
-      if (count <= 1) {
-        sseConnectionsByUser.delete(user.id);
-      } else {
-        sseConnectionsByUser.set(user.id, count - 1);
-      }
+      removeSSEConnection(sessionId, user.id, emitter);
     };
     emitter = (event: SSEEvent) => {
       void stream.writeSSE({
@@ -153,11 +187,7 @@ sessions.get('/:id/sse', async (c) => {
       });
     };
 
-    if (!sseConnections.has(sessionId)) {
-      sseConnections.set(sessionId, []);
-    }
-    sseConnections.get(sessionId)!.push(emitter);
-    sseConnectionsByUser.set(user.id, (sseConnectionsByUser.get(user.id) ?? 0) + 1);
+    addSSEConnection(sessionId, user.id, emitter);
 
     await stream.writeSSE({
       event: 'connected',
@@ -363,6 +393,7 @@ sessions.delete('/:id', async (c) => {
   // Best-effort in-memory cleanup
   const removedEmitters = sseConnections.get(sessionId)?.length ?? 0;
   sseConnections.delete(sessionId);
+  totalSSEConnections = Math.max(0, totalSSEConnections - removedEmitters);
   if (removedEmitters > 0) {
     const count = sseConnectionsByUser.get(user.id) ?? 0;
     const nextCount = Math.max(0, count - removedEmitters);
@@ -410,6 +441,11 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
       return c.json({ status: 'duplicate', code: 'DUPLICATE' });
     }
     recentIdempotencyKeys.set(scopedKey, Date.now());
+    while (recentIdempotencyKeys.size > MAX_IDEMPOTENCY_KEYS) {
+      const oldest = recentIdempotencyKeys.keys().next().value;
+      if (!oldest) break;
+      recentIdempotencyKeys.delete(oldest);
+    }
   }
 
   const { data: sessionData, error: loadError } = await supabaseAdmin

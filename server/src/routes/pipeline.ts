@@ -26,6 +26,11 @@ const respondSchema = z.object({
 const pipeline = new Hono();
 pipeline.use('*', authMiddleware);
 
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 async function setPendingGate(sessionId: string, gate: string, data?: Record<string, unknown>) {
   // Preserve any queued early responses when opening a new gate.
   const { data: existing } = await supabaseAdmin
@@ -64,6 +69,7 @@ async function clearPendingGate(sessionId: string, keepQueueFromPayload?: Pendin
 }
 
 const PANEL_PERSIST_DEBOUNCE_MS = 250;
+const MAX_QUEUED_PANEL_PERSISTS = parsePositiveInt(process.env.MAX_QUEUED_PANEL_PERSISTS, 5000);
 const queuedPanelPersists = new Map<string, {
   panelType: string;
   panelData: unknown;
@@ -94,6 +100,16 @@ function cancelQueuedPanelPersist(sessionId: string) {
 }
 
 function queuePanelPersist(sessionId: string, panelType: string, panelData: unknown) {
+  if (!queuedPanelPersists.has(sessionId) && queuedPanelPersists.size >= MAX_QUEUED_PANEL_PERSISTS) {
+    const oldestSession = queuedPanelPersists.keys().next().value;
+    if (oldestSession) {
+      cancelQueuedPanelPersist(oldestSession);
+      logger.warn(
+        { evicted_session: oldestSession, queue_size: queuedPanelPersists.size },
+        'Evicted queued panel persist entry due to capacity',
+      );
+    }
+  }
   cancelQueuedPanelPersist(sessionId);
   const timeout = setTimeout(() => {
     queuedPanelPersists.delete(sessionId);
@@ -116,17 +132,22 @@ const GATE_POLL_BASE_MS = 250;
 const GATE_POLL_MAX_MS = 2_000;
 const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes without DB state updates
 const IN_PROCESS_PIPELINE_TTL_MS = 20 * 60 * 1000; // 20 minutes without process-local completion
+const MAX_IN_PROCESS_PIPELINES = parsePositiveInt(process.env.MAX_IN_PROCESS_PIPELINES, 5000);
 
 // Track running pipelines to prevent double-start (in-process guard, complements DB check)
 const runningPipelines = new Map<string, number>();
-const runningPipelinesCleanupTimer = setInterval(() => {
-  const now = Date.now();
+
+function pruneStaleRunningPipelines(now = Date.now()): void {
   for (const [sessionId, startedAt] of runningPipelines.entries()) {
     if (now - startedAt > IN_PROCESS_PIPELINE_TTL_MS) {
       runningPipelines.delete(sessionId);
       logger.warn({ session_id: sessionId }, 'Evicted stale in-process pipeline guard');
     }
   }
+}
+
+const runningPipelinesCleanupTimer = setInterval(() => {
+  pruneStaleRunningPipelines();
 }, 60_000);
 runningPipelinesCleanupTimer.unref();
 
@@ -501,6 +522,12 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
     runningPipelines.delete(session_id);
     logger.warn({ session_id }, 'Cleared stale in-process pipeline guard before restart');
+  }
+
+  pruneStaleRunningPipelines();
+  if (!runningPipelines.has(session_id) && runningPipelines.size >= MAX_IN_PROCESS_PIPELINES) {
+    logger.error({ active_local_pipelines: runningPipelines.size }, 'In-process pipeline guard reached capacity');
+    return c.json({ error: 'Server is at capacity. Please retry shortly.' }, 503);
   }
 
   if (session.pipeline_status === 'running') {
