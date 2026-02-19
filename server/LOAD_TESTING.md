@@ -14,6 +14,20 @@ cd server
 npm run load:profile:quick
 ```
 
+Tiered comparison (small + medium + large):
+
+```bash
+cd server
+npm run load:profile:tiers
+```
+
+Quick tier run:
+
+```bash
+cd server
+npm run load:profile:tiers:quick
+```
+
 ## Prerequisites
 
 1. `server/.env` must contain valid:
@@ -43,6 +57,16 @@ npm run load:profile -- \
   --skip-pipeline=false
 ```
 
+Tier runner flags:
+
+```bash
+npm run load:profile:tiers -- \
+  --tiers=small,medium,large \
+  --pause-ms=1500 \
+  --skip-sse=false \
+  --skip-pipeline=false
+```
+
 ## Output
 
 The script prints a JSON report with:
@@ -52,3 +76,5 @@ The script prints a JSON report with:
 - status code mix
 - `/metrics` snapshots before/during/after load
 - active hardening env values
+
+The tier runner additionally prints a one-table summary for all selected tiers.
