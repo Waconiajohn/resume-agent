@@ -516,6 +516,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     state.sections = {};
 
     const sectionCalls = buildSectionCalls(state.architect, state.intake, state.positioning);
+    const expandedSectionOrder = sectionCalls.map((c) => c.section);
 
     // Run section calls with bounded concurrency to reduce provider 429 bursts.
     const runWithSectionLimit = createConcurrencyLimiter(SECTION_WRITE_CONCURRENCY);
@@ -555,6 +556,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // Track approved sections for section_context events
     const approvedSectionSet = new Set<string>();
+    const sectionContextVersions = new Map<string, number>();
 
     // Present sections sequentially for user review (LLM work already in flight)
     for (const call of sectionCalls) {
@@ -582,32 +584,59 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       let sectionApproved = false;
       let reviewIterations = 0;
       while (!sectionApproved) {
-        reviewIterations++;
-        if (reviewIterations > MAX_REVIEW_ITERATIONS) {
+        if (reviewIterations >= MAX_REVIEW_ITERATIONS) {
           log.warn({ section: call.section, iterations: reviewIterations }, 'Max review iterations exceeded — auto-approving section');
           emit({ type: 'section_approved', section: call.section });
           break;
         }
+        const contextVersion = (sectionContextVersions.get(call.section) ?? 0) + 1;
+        sectionContextVersions.set(call.section, contextVersion);
+        const reviewToken = `${call.section}:${contextVersion}:${Date.now()}`;
         // Emit section context before section draft for workbench enrichment
         emit({
           type: 'section_context',
           section: call.section,
+          context_version: contextVersion,
+          generated_at: new Date().toISOString(),
           blueprint_slice: getSectionBlueprint(call.section, state.architect!),
           evidence: filterEvidenceForSection(call.section, state.architect!, state.positioning!),
           keywords: buildKeywordStatus(call.section, result.content, state.architect!),
           gap_mappings: buildGapMappingsForSection(state.gap_analysis!),
-          section_order: state.architect!.section_plan.order,
+          section_order: expandedSectionOrder,
           sections_approved: Array.from(approvedSectionSet),
         });
         // Emit section for progressive rendering / re-review
-        emit({ type: 'section_draft', section: call.section, content: result.content });
+        emit({ type: 'section_draft', section: call.section, content: result.content, review_token: reviewToken });
 
         // Gate: User approves, quick-fixes, directly edits, or provides feedback
         state.current_stage = 'section_review';
-        const reviewResponse = await waitForUser<boolean | { approved: boolean; edited_content?: string; feedback?: string; refinement_ids?: string[] }>(
+        const reviewResponse = await waitForUser<boolean | {
+          approved: boolean;
+          edited_content?: string;
+          feedback?: string;
+          refinement_ids?: string[];
+          review_token?: string;
+        }>(
           `section_review_${call.section}`,
         );
         const normalizedReview = normalizeSectionReviewResponse(reviewResponse);
+        if (normalizedReview.review_token && normalizedReview.review_token !== reviewToken) {
+          emit({
+            type: 'transparency',
+            stage: 'section_review',
+            message: 'Ignoring an outdated refinement action and keeping the latest draft on screen.',
+          });
+          log.info(
+            {
+              section: call.section,
+              expected_review_token: reviewToken,
+              received_review_token: normalizedReview.review_token,
+            },
+            'Ignored stale section review response',
+          );
+          continue;
+        }
+        reviewIterations++;
 
         if (normalizedReview.approved) {
           emit({ type: 'section_approved', section: call.section });
@@ -636,7 +665,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           );
           result = revised;
           state.sections[call.section] = revised;
-          emit({ type: 'section_revised', section: call.section, content: revised.content });
+          emit({ type: 'section_revised', section: call.section, content: revised.content, review_token: reviewToken });
           log.info({ section: call.section }, 'Section revised via Quick Fix feedback');
           // Loop continues — re-present revised section for re-review
         } else {
@@ -1393,8 +1422,20 @@ function mapFindingToSection(
 }
 
 function normalizeSectionReviewResponse(
-  response: boolean | { approved: boolean; edited_content?: string; feedback?: string; refinement_ids?: string[] },
-): { approved: boolean; edited_content?: string; feedback?: string; refinement_ids?: string[] } {
+  response: boolean | {
+    approved: boolean;
+    edited_content?: string;
+    feedback?: string;
+    refinement_ids?: string[];
+    review_token?: string;
+  },
+): {
+  approved: boolean;
+  edited_content?: string;
+  feedback?: string;
+  refinement_ids?: string[];
+  review_token?: string;
+} {
   if (typeof response === 'boolean') {
     // Legacy false path: treat as a request for a generic improvement instead of auto-approving.
     return response
@@ -1412,6 +1453,7 @@ function normalizeSectionReviewResponse(
     edited_content: editedContent ? editedContent : undefined,
     feedback: feedback ? feedback : undefined,
     refinement_ids: response.refinement_ids?.filter(Boolean),
+    review_token: response.review_token?.trim() || undefined,
   };
 }
 

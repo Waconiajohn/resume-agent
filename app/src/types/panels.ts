@@ -176,6 +176,8 @@ export interface BlueprintReviewData {
 
 // --- Section Workbench Context ---
 export interface SectionWorkbenchContext {
+  context_version: number;
+  generated_at: string;
   blueprint_slice: Record<string, unknown>;
   evidence: Array<{
     id: string;
@@ -204,6 +206,7 @@ export interface SectionWorkbenchContext {
 export interface SectionReviewData {
   section: string;
   content: string;
+  review_token?: string;
   context?: SectionWorkbenchContext | null;
 }
 

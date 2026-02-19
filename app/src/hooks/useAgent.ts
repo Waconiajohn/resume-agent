@@ -44,7 +44,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // Accumulate all section content for building FinalResume at pipeline_complete
   const sectionsMapRef = useRef<Record<string, string>>({});
   // Store the latest section workbench context, emitted before section_draft
-  const sectionContextRef = useRef<SectionWorkbenchContext | null>(null);
+  const sectionContextRef = useRef<{ section: string; context: SectionWorkbenchContext } | null>(null);
   const messageIdRef = useRef(0);
 
   // Track last text_complete content to deduplicate
@@ -120,6 +120,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setQualityScores(null);
     setIsPipelineGateActive(false);
     stalePipelineNoticeRef.current = false;
+    sectionContextRef.current = null;
   }, [sessionId]);
 
   // Connect to SSE with fetch-based streaming
@@ -591,12 +592,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   sectionContextRef.current = {
-                    blueprint_slice: data.blueprint_slice as Record<string, unknown>,
-                    evidence: data.evidence as SectionWorkbenchContext['evidence'],
-                    keywords: data.keywords as SectionWorkbenchContext['keywords'],
-                    gap_mappings: data.gap_mappings as SectionWorkbenchContext['gap_mappings'],
-                    section_order: data.section_order as string[],
-                    sections_approved: data.sections_approved as string[],
+                    section: data.section as string,
+                    context: {
+                      context_version: (data.context_version as number | undefined) ?? 0,
+                      generated_at: (data.generated_at as string | undefined) ?? new Date().toISOString(),
+                      blueprint_slice: data.blueprint_slice as Record<string, unknown>,
+                      evidence: data.evidence as SectionWorkbenchContext['evidence'],
+                      keywords: data.keywords as SectionWorkbenchContext['keywords'],
+                      gap_mappings: data.gap_mappings as SectionWorkbenchContext['gap_mappings'],
+                      section_order: data.section_order as string[],
+                      sections_approved: data.sections_approved as string[],
+                    },
                   };
                   break;
                 }
@@ -612,13 +618,18 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const content = data.content as string;
                   setSectionDraft({ section, content });
                   sectionsMapRef.current[section] = content;
+                  const contextForSection =
+                    sectionContextRef.current?.section === section
+                      ? sectionContextRef.current.context
+                      : null;
                   // Show section review panel, merging in the latest workbench context
                   setPanelType('section_review' as PanelType);
                   setPanelData({
                     type: 'section_review',
                     section,
                     content,
-                    ...(sectionContextRef.current ? { context: sectionContextRef.current } : {}),
+                    review_token: (data.review_token as string | undefined) ?? undefined,
+                    ...(contextForSection ? { context: contextForSection } : {}),
                   } as PanelData);
                   break;
                 }

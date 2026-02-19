@@ -472,12 +472,14 @@ export type PipelineSSEEvent =
   | { type: 'positioning_question'; question: PositioningQuestion; questions_total: number; category_progress?: CategoryProgress[] }
   | { type: 'positioning_profile_found'; profile: PositioningProfile; updated_at: string }
   | { type: 'blueprint_ready'; blueprint: ArchitectOutput }
-  | { type: 'section_draft'; section: string; content: string }
-  | { type: 'section_revised'; section: string; content: string }
+  | { type: 'section_draft'; section: string; content: string; review_token?: string }
+  | { type: 'section_revised'; section: string; content: string; review_token?: string }
   | { type: 'section_approved'; section: string }
   | {
       type: 'section_context';
       section: string;
+      context_version: number;
+      generated_at: string;
       blueprint_slice: Record<string, unknown>;
       evidence: Array<{
         id: string;

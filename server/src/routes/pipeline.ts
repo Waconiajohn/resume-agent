@@ -250,10 +250,19 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
   const initial = await getPipelineState(sessionId);
   const initialPayload = parsePendingGatePayload(initial?.pending_gate_data);
   const initialQueue = getResponseQueue(initialPayload);
-  const initialIdx = initialQueue.findIndex((item) => item.gate === gate);
+  let initialIdx = -1;
+  for (let i = initialQueue.length - 1; i >= 0; i -= 1) {
+    if (initialQueue[i].gate === gate) {
+      initialIdx = i;
+      break;
+    }
+  }
   if (initialIdx >= 0) {
     const [match] = initialQueue.splice(initialIdx, 1);
-    const nextPayload = withResponseQueue(initialPayload, initialQueue);
+    const nextPayload = withResponseQueue(
+      initialPayload,
+      initialQueue.filter((item) => item.gate !== gate),
+    );
     const { error } = await supabaseAdmin
       .from('coach_sessions')
       .update({ pending_gate_data: nextPayload })
@@ -575,8 +584,36 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     return c.json({ error: 'Pipeline already running or completed for this session' }, 409);
   }
 
-  // Capture the most recently emitted section_context to merge into section_draft persistence
-  let latestSectionContext: Record<string, unknown> | null = null;
+  // Capture the most recently emitted section_context to merge into section_draft persistence.
+  let latestSectionContext: {
+    section: string;
+    context: {
+      context_version: number;
+      generated_at: string;
+      blueprint_slice: Record<string, unknown>;
+      evidence: Array<{
+        id: string;
+        situation: string;
+        action: string;
+        result: string;
+        metrics_defensible: boolean;
+        user_validated: boolean;
+        mapped_requirements: string[];
+        scope_metrics: Record<string, string>;
+      }>;
+      keywords: Array<{
+        keyword: string;
+        target_density: number;
+        current_count: number;
+      }>;
+      gap_mappings: Array<{
+        requirement: string;
+        classification: 'strong' | 'partial' | 'gap';
+      }>;
+      section_order: string[];
+      sections_approved: string[];
+    };
+  } | null = null;
 
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
@@ -608,14 +645,31 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
     // Capture section_context for merging into subsequent section_draft persistence
     if (event.type === 'section_context') {
-      latestSectionContext = { ...event };
+      latestSectionContext = {
+        section: event.section,
+        context: {
+          context_version: event.context_version,
+          generated_at: event.generated_at,
+          blueprint_slice: event.blueprint_slice,
+          evidence: event.evidence,
+          keywords: event.keywords,
+          gap_mappings: event.gap_mappings,
+          section_order: event.section_order,
+          sections_approved: event.sections_approved,
+        },
+      };
     }
     // Persist section_draft as section_review panel for restore, merging any section_context
     if (event.type === 'section_draft') {
+      const contextForSection =
+        latestSectionContext?.section === event.section
+          ? latestSectionContext.context
+          : null;
       queuePanelPersist(session_id, 'section_review', {
         section: event.section,
         content: event.content,
-        ...(latestSectionContext ? { context: latestSectionContext } : {}),
+        review_token: event.review_token,
+        ...(contextForSection ? { context: contextForSection } : {}),
       });
     }
     // Persist blueprint_ready for restore
@@ -779,7 +833,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
   // No pending gate yet — buffer the response in DB so waitForUser can consume it later.
   if (gate) {
     const currentPayload = parsePendingGatePayload(dbState.pending_gate_data);
-    const queue = getResponseQueue(currentPayload);
+    const queue = getResponseQueue(currentPayload).filter((item) => item.gate !== gate);
     queue.push({
       gate,
       response,

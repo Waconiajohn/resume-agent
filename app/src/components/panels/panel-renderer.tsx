@@ -181,20 +181,26 @@ function renderPanelBody(props: PanelRendererProps) {
         <SectionWorkbench
           section={panelData.section}
           content={panelData.content}
+          reviewToken={panelData.review_token}
           context={sectionData.context ?? null}
           onApprove={() => {
-            onPipelineRespond?.(`section_review_${panelData.section}`, true);
+            onPipelineRespond?.(`section_review_${panelData.section}`, {
+              approved: true,
+              review_token: panelData.review_token,
+            });
           }}
-          onRequestChanges={(feedback) => {
+          onRequestChanges={(feedback, reviewToken) => {
             onPipelineRespond?.(`section_review_${panelData.section}`, {
               approved: false,
               feedback,
+              review_token: reviewToken ?? panelData.review_token,
             });
           }}
-          onDirectEdit={(editedContent) => {
+          onDirectEdit={(editedContent, reviewToken) => {
             onPipelineRespond?.(`section_review_${panelData.section}`, {
               approved: false,
               edited_content: editedContent,
+              review_token: reviewToken ?? panelData.review_token,
             });
           }}
         />
