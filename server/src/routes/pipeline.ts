@@ -88,6 +88,7 @@ function queuePanelPersist(sessionId: string, panelType: string, panelData: unkn
     queuedPanelPersists.delete(sessionId);
     void persistLastPanelState(sessionId, panelType, panelData);
   }, PANEL_PERSIST_DEBOUNCE_MS);
+  timeout.unref?.();
   queuedPanelPersists.set(sessionId, { panelType, panelData, timeout });
 }
 
@@ -100,7 +101,8 @@ async function flushQueuedPanelPersist(sessionId: string) {
 }
 
 const GATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-const GATE_POLL_INTERVAL_MS = 400;
+const GATE_POLL_BASE_MS = 250;
+const GATE_POLL_MAX_MS = 2_000;
 const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes without DB state updates
 
 const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
@@ -127,6 +129,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function gatePollDelayMs(attempt: number): number {
+  const backoff = Math.min(GATE_POLL_MAX_MS, Math.floor(GATE_POLL_BASE_MS * Math.pow(1.35, attempt)));
+  const jitter = Math.floor(Math.random() * 120);
+  return backoff + jitter;
+}
+
 async function getPipelineState(sessionId: string): Promise<{
   pipeline_status: string | null;
   pipeline_stage: string | null;
@@ -145,6 +153,7 @@ async function getPipelineState(sessionId: string): Promise<{
 
 async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<T> {
   const startedAt = Date.now();
+  let pollAttempt = 0;
 
   // First consume any buffered early response for this exact gate.
   const initial = await getPipelineState(sessionId);
@@ -162,7 +171,8 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
   while (Date.now() - startedAt < GATE_TIMEOUT_MS) {
     const state = await getPipelineState(sessionId);
     if (!state) {
-      await sleep(GATE_POLL_INTERVAL_MS);
+      await sleep(gatePollDelayMs(pollAttempt));
+      pollAttempt += 1;
       continue;
     }
 
@@ -177,7 +187,8 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
       return payload.response as T;
     }
 
-    await sleep(GATE_POLL_INTERVAL_MS);
+    await sleep(gatePollDelayMs(pollAttempt));
+    pollAttempt += 1;
   }
 
   await clearPendingGate(sessionId);

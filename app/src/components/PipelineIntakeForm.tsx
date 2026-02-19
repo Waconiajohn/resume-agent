@@ -11,9 +11,16 @@ interface PipelineIntakeFormProps {
   onBack: () => void;
   loading?: boolean;
   initialResumeText?: string;
+  error?: string | null;
 }
 
-export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialResumeText }: PipelineIntakeFormProps) {
+export function PipelineIntakeForm({
+  onSubmit,
+  onBack,
+  loading = false,
+  initialResumeText,
+  error,
+}: PipelineIntakeFormProps) {
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -98,6 +105,11 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
 
         {/* Form */}
         <GlassCard className="p-6">
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-300/28 bg-red-500/[0.08] px-3 py-2 text-xs text-red-100/90">
+              {error}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {/* Resume field */}
             <div className="space-y-2">
@@ -129,7 +141,7 @@ export function PipelineIntakeForm({ onSubmit, onBack, loading = false, initialR
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".txt,.docx,.pdf,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain"
+                  accept=".txt,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                   className="hidden"
                   onChange={handleFileChange}
                   aria-hidden="true"

@@ -389,7 +389,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     }
     const scopedKey = `${user.id}:${idempotency_key}`;
     if (recentIdempotencyKeys.has(scopedKey)) {
-      return c.json({ error: 'Duplicate message', code: 'DUPLICATE' }, 409);
+      return c.json({ status: 'duplicate', code: 'DUPLICATE' });
     }
     recentIdempotencyKeys.set(scopedKey, Date.now());
   }

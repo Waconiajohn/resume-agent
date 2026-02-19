@@ -5,6 +5,7 @@ import { GlassButton } from '../GlassButton';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { validateResumeForExport } from '@/lib/export-validation';
+import { buildExportDiagnosticsReport, recordExportDiagnostic } from '@/lib/export-diagnostics';
 import type { FinalResume } from '@/types/resume';
 import type { CompletionData } from '@/types/panels';
 
@@ -46,6 +47,7 @@ export function CompletionPanel({
 }: CompletionPanelProps) {
   const [exportingResume, setExportingResume] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportInfo, setExportInfo] = useState<string | null>(null);
   const [savingMode, setSavingMode] = useState<'default' | 'alternate' | null>(null);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const validationIssues = validateResumeForExport(resume);
@@ -55,11 +57,17 @@ export function CompletionPanel({
     if (!resume) return;
     setExportingResume(true);
     setExportError(null);
+    setExportInfo(null);
+    recordExportDiagnostic(resume, 'docx', 'attempt');
     try {
       const { exportDocx } = await import('@/lib/export-docx');
       const result = await exportDocx(resume);
       if (!result.success) {
-        setExportError(result.error ?? 'Failed to generate resume DOCX');
+        const message = result.error ?? 'Failed to generate resume DOCX';
+        recordExportDiagnostic(resume, 'docx', 'failure', message);
+        setExportError(message);
+      } else {
+        recordExportDiagnostic(resume, 'docx', 'success');
       }
     } finally {
       setExportingResume(false);
@@ -68,22 +76,50 @@ export function CompletionPanel({
 
   const handleResumeTxt = () => {
     if (!resume) return;
-    const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'txt');
-    downloadAsText(resumeToText(resume), filename);
+    setExportError(null);
+    setExportInfo(null);
+    recordExportDiagnostic(resume, 'txt', 'attempt');
+    try {
+      const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'txt');
+      downloadAsText(resumeToText(resume), filename);
+      recordExportDiagnostic(resume, 'txt', 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to generate text export';
+      recordExportDiagnostic(resume, 'txt', 'failure', message);
+      setExportError(message);
+    }
   };
 
   const handleResumePdf = async () => {
     if (!resume) return;
     setExportingResume(true);
     setExportError(null);
+    setExportInfo(null);
+    recordExportDiagnostic(resume, 'pdf', 'attempt');
     try {
       const { exportPdf } = await import('@/lib/export-pdf');
       const result = exportPdf(resume);
       if (!result.success) {
-        setExportError(result.error ?? 'Failed to generate PDF');
+        const message = result.error ?? 'Failed to generate PDF';
+        recordExportDiagnostic(resume, 'pdf', 'failure', message);
+        setExportError(message);
+      } else {
+        recordExportDiagnostic(resume, 'pdf', 'success');
       }
     } finally {
       setExportingResume(false);
+    }
+  };
+
+  const handleCopyDiagnostics = async () => {
+    setExportError(null);
+    setExportInfo(null);
+    try {
+      const report = buildExportDiagnosticsReport();
+      await navigator.clipboard.writeText(report);
+      setExportInfo('Export diagnostics copied to clipboard.');
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Failed to copy diagnostics');
     }
   };
 
@@ -116,6 +152,11 @@ export function CompletionPanel({
         {exportError && (
           <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('error')}`}>
             {exportError}
+          </div>
+        )}
+        {exportInfo && (
+          <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('info')}`}>
+            {exportInfo}
           </div>
         )}
         {validationIssues.map((issue) => (
@@ -184,6 +225,10 @@ export function CompletionPanel({
               <GlassButton variant="ghost" className="w-full" onClick={handleResumeTxt} disabled={exportingResume || !!blockingIssue}>
                 <Download className="mr-2 h-4 w-4" />
                 Download Text (.txt)
+              </GlassButton>
+              <GlassButton variant="ghost" className="w-full" onClick={() => void handleCopyDiagnostics()}>
+                <FileText className="mr-2 h-4 w-4" />
+                Copy Export Diagnostics
               </GlassButton>
             </div>
           ) : (

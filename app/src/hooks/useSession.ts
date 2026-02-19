@@ -248,28 +248,54 @@ export function useSession(accessToken: string | null) {
     }
   }, [accessToken, headers]);
 
-  const sendMessage = useCallback(async (sessionId: string, content: string): Promise<boolean> => {
+  const sendMessage = useCallback(async (
+    sessionId: string,
+    content: string,
+    clientMessageId?: string,
+  ): Promise<boolean> => {
     if (!accessToken) return false;
     setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({
-          content,
-          idempotency_key: `${sessionId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to send message (${res.status})`);
+    const idempotencyKey = `${sessionId}:${clientMessageId ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`}`;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
+          method: 'POST',
+          headers: headers(),
+          body: JSON.stringify({
+            content,
+            idempotency_key: idempotencyKey,
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+
+          // Duplicate idempotency key means the message was already accepted.
+          if (res.status === 409 && data.code === 'DUPLICATE') {
+            return true;
+          }
+
+          const retryable = res.status === 429 || res.status >= 500;
+          if (retryable && attempt === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            continue;
+          }
+
+          setError(data.error ?? `Failed to send message (${res.status})`);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          continue;
+        }
+        setError(err instanceof Error ? err.message : 'Network error sending message');
         return false;
       }
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Network error sending message');
-      return false;
     }
+    return false;
   }, [accessToken, headers]);
 
   const startPipeline = useCallback(async (

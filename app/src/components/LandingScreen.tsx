@@ -14,12 +14,25 @@ interface LandingScreenProps {
   error?: string | null;
   onNewSession: () => void;
   onResumeSession: (sessionId: string) => void;
-  onDeleteSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => Promise<boolean>;
   onLoadSessions: () => void;
   onLoadResumes: () => void;
   onSetDefaultResume: (resumeId: string) => Promise<boolean>;
   onDeleteResume: (resumeId: string) => Promise<boolean>;
 }
+
+type LandingToast = {
+  type: 'success' | 'error';
+  message: string;
+};
+
+type ConfirmState = {
+  kind: 'resume' | 'session';
+  id: string;
+  title: string;
+  message: string;
+  confirmLabel: string;
+};
 
 export function LandingScreen({
   sessions,
@@ -36,16 +49,34 @@ export function LandingScreen({
   onDeleteResume,
 }: LandingScreenProps) {
   const [busyResumeId, setBusyResumeId] = useState<string | null>(null);
+  const [busySessionId, setBusySessionId] = useState<string | null>(null);
+  const [toast, setToast] = useState<LandingToast | null>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   useEffect(() => {
     onLoadSessions();
     onLoadResumes();
   }, [onLoadSessions, onLoadResumes]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = (type: LandingToast['type'], message: string) => {
+    setToast({ type, message });
+  };
+
   const handleSetDefault = async (resumeId: string) => {
     setBusyResumeId(resumeId);
     try {
-      await onSetDefaultResume(resumeId);
+      const ok = await onSetDefaultResume(resumeId);
+      if (ok) {
+        showToast('success', 'Default base resume updated.');
+      } else {
+        showToast('error', 'Failed to set default base resume.');
+      }
     } finally {
       setBusyResumeId(null);
     }
@@ -54,10 +85,40 @@ export function LandingScreen({
   const handleDeleteResume = async (resumeId: string) => {
     setBusyResumeId(resumeId);
     try {
-      await onDeleteResume(resumeId);
+      const ok = await onDeleteResume(resumeId);
+      if (ok) {
+        showToast('success', 'Base resume deleted.');
+      } else {
+        showToast('error', 'Failed to delete base resume.');
+      }
     } finally {
       setBusyResumeId(null);
     }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    setBusySessionId(sessionId);
+    try {
+      const ok = await onDeleteSession(sessionId);
+      if (ok) {
+        showToast('success', 'Session deleted.');
+      } else {
+        showToast('error', 'Failed to delete session.');
+      }
+    } finally {
+      setBusySessionId(null);
+    }
+  };
+
+  const confirmAction = async () => {
+    if (!confirmState) return;
+    const target = confirmState;
+    setConfirmState(null);
+    if (target.kind === 'resume') {
+      await handleDeleteResume(target.id);
+      return;
+    }
+    await handleDeleteSession(target.id);
   };
 
   return (
@@ -78,6 +139,17 @@ export function LandingScreen({
         {error && (
           <div className="mb-6 w-full rounded-lg border border-red-300/28 bg-red-500/[0.08] px-4 py-2 text-left text-xs text-red-100/90">
             {error}
+          </div>
+        )}
+        {toast && (
+          <div
+            className={`mb-6 w-full rounded-lg border px-4 py-2 text-left text-xs ${
+              toast.type === 'success'
+                ? 'border-emerald-300/28 bg-emerald-500/[0.08] text-emerald-100/90'
+                : 'border-red-300/28 bg-red-500/[0.08] text-red-100/90'
+            }`}
+          >
+            {toast.message}
           </div>
         )}
 
@@ -132,9 +204,13 @@ export function LandingScreen({
                       <button
                         type="button"
                         onClick={() => {
-                          if (window.confirm('Delete this base resume? This cannot be undone.')) {
-                            void handleDeleteResume(resume.id);
-                          }
+                          setConfirmState({
+                            kind: 'resume',
+                            id: resume.id,
+                            title: 'Delete base resume?',
+                            message: 'This action cannot be undone.',
+                            confirmLabel: 'Delete Resume',
+                          });
                         }}
                         disabled={busyResumeId === resume.id}
                         className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/75 disabled:cursor-not-allowed disabled:opacity-50"
@@ -162,10 +238,15 @@ export function LandingScreen({
                   key={session.id}
                   session={session}
                   onClick={() => onResumeSession(session.id)}
+                  deleteDisabled={busySessionId === session.id}
                   onDelete={() => {
-                    if (window.confirm('Delete this session? This cannot be undone.')) {
-                      onDeleteSession(session.id);
-                    }
+                    setConfirmState({
+                      kind: 'session',
+                      id: session.id,
+                      title: 'Delete session?',
+                      message: 'This action cannot be undone.',
+                      confirmLabel: 'Delete Session',
+                    });
                   }}
                 />
               ))}
@@ -179,6 +260,23 @@ export function LandingScreen({
           </GlassCard>
         )}
       </div>
+
+      {confirmState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4">
+          <GlassCard className="w-full max-w-sm border border-white/[0.18] p-5 text-left">
+            <h3 className="mb-2 text-sm font-semibold text-white/90">{confirmState.title}</h3>
+            <p className="mb-4 text-xs text-white/60">{confirmState.message}</p>
+            <div className="flex justify-end gap-2">
+              <GlassButton variant="ghost" onClick={() => setConfirmState(null)}>
+                Cancel
+              </GlassButton>
+              <GlassButton variant="primary" onClick={() => void confirmAction()}>
+                {confirmState.confirmLabel}
+              </GlassButton>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 }

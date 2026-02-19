@@ -7,9 +7,10 @@ interface SessionCardProps {
   session: CoachSession;
   onClick: () => void;
   onDelete?: () => void;
+  deleteDisabled?: boolean;
 }
 
-export function SessionCard({ session, onClick, onDelete }: SessionCardProps) {
+export function SessionCard({ session, onClick, onDelete, deleteDisabled = false }: SessionCardProps) {
   const timeAgo = getTimeAgo(session.updated_at);
 
   return (
@@ -32,7 +33,8 @@ export function SessionCard({ session, onClick, onDelete }: SessionCardProps) {
                   e.stopPropagation();
                   onDelete();
                 }}
-                className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/74"
+                disabled={deleteDisabled}
+                className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/74 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Delete session"
               >
                 <Trash2 className="h-4 w-4" />

@@ -10,6 +10,7 @@ interface WorkflowStatsRailProps {
   error?: string | null;
   panelData: PanelData | null;
   resume: FinalResume | null;
+  compact?: boolean;
 }
 
 function phaseLabel(phase: string): string {
@@ -70,6 +71,7 @@ export function WorkflowStatsRail({
   error,
   panelData,
   resume,
+  compact = false,
 }: WorkflowStatsRailProps) {
   const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
   const status = error
@@ -85,51 +87,69 @@ export function WorkflowStatsRail({
       ? 'text-emerald-100/90'
       : 'text-white/62';
 
+  const sessionCard = (
+    <GlassCard className="p-3">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+        Session
+      </div>
+      <MetricRow
+        label="Phase"
+        value={phaseLabel(currentPhase)}
+        icon={Activity}
+      />
+      <div className="mt-2 rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2">
+        <span className={`text-xs ${statusClass}`}>
+          {status}
+        </span>
+      </div>
+    </GlassCard>
+  );
+
+  const metricsCard = (
+    <GlassCard className="p-3">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+        Metrics
+      </div>
+      {ats != null && <MetricRow label="ATS Score" value={`${ats}%`} icon={Gauge} />}
+      {keywordCoverage != null && (
+        <div className="mt-2">
+          <MetricRow label="Keyword Coverage" value={`${keywordCoverage}%`} icon={Hash} />
+        </div>
+      )}
+      {authenticity != null && (
+        <div className="mt-2">
+          <MetricRow label="Authenticity" value={`${authenticity}%`} icon={ShieldCheck} />
+        </div>
+      )}
+      {requirements && (
+        <div className="mt-2">
+          <MetricRow label="Requirements" value={requirements} icon={ListChecks} />
+        </div>
+      )}
+      {ats == null && keywordCoverage == null && authenticity == null && !requirements && (
+        <div className="rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2 text-xs text-white/56">
+          Metrics appear as the pipeline advances.
+        </div>
+      )}
+    </GlassCard>
+  );
+
+  if (compact) {
+    return (
+      <aside className="border-b border-white/[0.1] px-3 py-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="min-w-[185px] flex-1">{sessionCard}</div>
+          <div className="min-w-[220px] flex-1">{metricsCard}</div>
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className="h-full overflow-y-auto border-l border-white/[0.1] px-3 py-3">
       <div className="space-y-3">
-        <GlassCard className="p-3">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
-            Session
-          </div>
-          <MetricRow
-            label="Phase"
-            value={phaseLabel(currentPhase)}
-            icon={Activity}
-          />
-          <div className="mt-2 rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2">
-            <span className={`text-xs ${statusClass}`}>
-              {status}
-            </span>
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-3">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
-            Metrics
-          </div>
-          {ats != null && <MetricRow label="ATS Score" value={`${ats}%`} icon={Gauge} />}
-          {keywordCoverage != null && (
-            <div className="mt-2">
-              <MetricRow label="Keyword Coverage" value={`${keywordCoverage}%`} icon={Hash} />
-            </div>
-          )}
-          {authenticity != null && (
-            <div className="mt-2">
-              <MetricRow label="Authenticity" value={`${authenticity}%`} icon={ShieldCheck} />
-            </div>
-          )}
-          {requirements && (
-            <div className="mt-2">
-              <MetricRow label="Requirements" value={requirements} icon={ListChecks} />
-            </div>
-          )}
-          {ats == null && keywordCoverage == null && authenticity == null && !requirements && (
-            <div className="rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2 text-xs text-white/56">
-              Metrics appear as the pipeline advances.
-            </div>
-          )}
-        </GlassCard>
+        {sessionCard}
+        {metricsCard}
       </div>
     </aside>
   );

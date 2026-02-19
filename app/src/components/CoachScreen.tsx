@@ -76,6 +76,18 @@ export function CoachScreen({
         </div>
       )}
 
+      <div className="lg:hidden">
+        <WorkflowStatsRail
+          compact
+          currentPhase={currentPhase}
+          isProcessing={isProcessing}
+          sessionComplete={sessionComplete}
+          error={error}
+          panelData={panelData}
+          resume={resume}
+        />
+      </div>
+
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 min-w-0">
           <ChatPanel

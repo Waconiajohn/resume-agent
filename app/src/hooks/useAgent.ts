@@ -69,6 +69,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // Prevent repeated stale notices while a single stall is ongoing.
   const staleNoticeActiveRef = useRef<boolean>(false);
   const staleCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stalePipelineNoticeRef = useRef<boolean>(false);
 
   const nextId = useCallback(() => {
     messageIdRef.current += 1;
@@ -109,6 +110,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     qualityScoresRef.current = null;
     setQualityScores(null);
     setIsPipelineGateActive(false);
+    stalePipelineNoticeRef.current = false;
   }, [sessionId]);
 
   // Connect to SSE with fetch-based streaming
@@ -800,6 +802,108 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       reconnectAttemptsRef.current = 0;
     };
   }, [sessionId, accessToken, nextId, flushDeltaBuffer, handleDisconnect]);
+
+  // Fallback status poll: when SSE is disconnected, keep pipeline stage/gate state synchronized.
+  useEffect(() => {
+    if (!sessionId || !accessToken || sessionComplete) return;
+    let cancelled = false;
+
+    const restoreCompletionFromSession = async () => {
+      const sessionRes = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!sessionRes.ok) return;
+      const payload = await sessionRes.json().catch(() => null) as {
+        session?: {
+          last_panel_type?: string | null;
+          last_panel_data?: { resume?: FinalResume } | null;
+        };
+      } | null;
+      if (cancelled) return;
+      const lastPanelType = payload?.session?.last_panel_type;
+      const lastPanelData = payload?.session?.last_panel_data;
+      if (lastPanelType !== 'completion') return;
+
+      const restoredResume = lastPanelData?.resume;
+      if (restoredResume) {
+        setResume(restoredResume);
+        setPanelType('completion');
+        setPanelData({
+          type: 'completion',
+          ats_score: restoredResume.ats_score,
+        } as PanelData);
+      }
+      setSessionComplete(true);
+      setPipelineStage('complete');
+      setCurrentPhase('complete');
+      setIsPipelineGateActive(false);
+      setIsProcessing(false);
+    };
+
+    const pollStatus = async () => {
+      if (cancelled || connected) return;
+      try {
+        const res = await fetch(`/api/pipeline/status?session_id=${encodeURIComponent(sessionId)}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null) as {
+          running?: boolean;
+          pending_gate?: string | null;
+          stale_pipeline?: boolean;
+          pipeline_stage?: string | null;
+        } | null;
+        if (!data || cancelled) return;
+
+        if (data.stale_pipeline && !stalePipelineNoticeRef.current) {
+          stalePipelineNoticeRef.current = true;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: 'system',
+              content: 'Session state became stale. Restart the pipeline from this session to continue.',
+              timestamp: new Date().toISOString(),
+            },
+          ]);
+          setIsProcessing(false);
+          return;
+        }
+
+        if (data.running) {
+          if (data.pipeline_stage) {
+            setPipelineStage(data.pipeline_stage as PipelineStage);
+            setCurrentPhase(data.pipeline_stage);
+          }
+          if (data.pending_gate) {
+            setIsPipelineGateActive(true);
+          }
+        } else {
+          setIsPipelineGateActive(false);
+          setIsProcessing(false);
+          if (data.pipeline_stage === 'complete' && !sessionComplete) {
+            await restoreCompletionFromSession();
+          }
+        }
+      } catch {
+        // best effort
+      }
+    };
+
+    const interval = setInterval(() => {
+      void pollStatus();
+    }, 12_000);
+    void pollStatus();
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [sessionId, accessToken, connected, sessionComplete, nextId, setIsPipelineGateActive]);
 
   const addUserMessage = useCallback((content: string) => {
     setMessages((prev) => [

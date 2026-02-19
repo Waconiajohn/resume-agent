@@ -4,6 +4,7 @@ import { GlassButton } from './GlassButton';
 import { WYSIWYGResume } from './WYSIWYGResume';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
+import { recordExportDiagnostic } from '@/lib/export-diagnostics';
 import type { FinalResume } from '@/types/resume';
 
 interface ResumePanelProps {
@@ -30,19 +31,32 @@ export function ResumePanel({ resume }: ResumePanelProps) {
 
   const handleDownloadText = () => {
     setExportError(null);
-    const text = resumeToText(resume);
-    const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'txt');
-    downloadAsText(text, filename);
+    recordExportDiagnostic(resume, 'txt', 'attempt');
+    try {
+      const text = resumeToText(resume);
+      const filename = buildResumeFilename(resume.contact_info, resume.company_name, 'Resume', 'txt');
+      downloadAsText(text, filename);
+      recordExportDiagnostic(resume, 'txt', 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to export text';
+      recordExportDiagnostic(resume, 'txt', 'failure', message);
+      setExportError(message);
+    }
   };
 
   const handleDownloadDocx = async () => {
     setExportError(null);
     setExportingDocx(true);
+    recordExportDiagnostic(resume, 'docx', 'attempt');
     try {
       const { exportDocx } = await import('@/lib/export-docx');
       const result = await exportDocx(resume);
       if (!result.success) {
-        setExportError(result.error ?? 'Failed to export DOCX');
+        const message = result.error ?? 'Failed to export DOCX';
+        recordExportDiagnostic(resume, 'docx', 'failure', message);
+        setExportError(message);
+      } else {
+        recordExportDiagnostic(resume, 'docx', 'success');
       }
     } finally {
       setExportingDocx(false);
@@ -52,17 +66,24 @@ export function ResumePanel({ resume }: ResumePanelProps) {
   const handleDownloadPdf = () => {
     setExportError(null);
     setExportingPdf(true);
+    recordExportDiagnostic(resume, 'pdf', 'attempt');
     // exportPdf is synchronous — wrap in rAF so React can paint the loading state first
     requestAnimationFrame(() => {
       void import('@/lib/export-pdf')
         .then(({ exportPdf }) => {
           const result = exportPdf(resume);
           if (!result.success) {
-            setExportError(result.error ?? 'Failed to export PDF');
+            const message = result.error ?? 'Failed to export PDF';
+            recordExportDiagnostic(resume, 'pdf', 'failure', message);
+            setExportError(message);
+          } else {
+            recordExportDiagnostic(resume, 'pdf', 'success');
           }
         })
         .catch((err: unknown) => {
-          setExportError(err instanceof Error ? err.message : 'Failed to export PDF');
+          const message = err instanceof Error ? err.message : 'Failed to export PDF';
+          recordExportDiagnostic(resume, 'pdf', 'failure', message);
+          setExportError(message);
         })
         .finally(() => {
           setExportingPdf(false);

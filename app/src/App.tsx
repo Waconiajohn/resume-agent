@@ -86,16 +86,26 @@ export default function App() {
           setIntakeLoading(false);
           return;
         }
-        setView('coach');
-        setTimeout(async () => {
-          await startPipeline(s.id, data.resumeText, data.jobDescription, data.companyName);
+
+        const started = await startPipeline(
+          s.id,
+          data.resumeText,
+          data.jobDescription,
+          data.companyName,
+        );
+        if (!started) {
+          await deleteSession(s.id);
           setIntakeLoading(false);
-        }, 500);
+          return;
+        }
+
+        setView('coach');
+        setIntakeLoading(false);
       } catch {
         setIntakeLoading(false);
       }
     },
-    [createSession, startPipeline, intakeDefaultResumeId],
+    [createSession, startPipeline, intakeDefaultResumeId, deleteSession],
   );
 
   const handleResumeSession = useCallback(
@@ -112,6 +122,7 @@ export default function App() {
       if (ok && currentSession?.id === sessionId) {
         setView('landing');
       }
+      return ok;
     },
     [deleteSession, currentSession],
   );
@@ -178,7 +189,10 @@ export default function App() {
       if (!currentSession) return;
       if (isProcessing || isPipelineGateActive) return; // Prevent 409 and gate collisions
       addUserMessage(content);
-      const ok = await sendMessage(currentSession.id, content);
+      const clientMessageId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const ok = await sendMessage(currentSession.id, content, clientMessageId);
       if (!ok) {
         // API rejected the message (e.g. 409 still processing) — reset processing state
         setIsProcessing(false);
@@ -251,6 +265,7 @@ export default function App() {
           onBack={() => setView('landing')}
           loading={intakeLoading}
           initialResumeText={intakeInitialResumeText}
+          error={sessionError}
         />
       )}
 
