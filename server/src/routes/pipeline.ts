@@ -115,9 +115,20 @@ const GATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const GATE_POLL_BASE_MS = 250;
 const GATE_POLL_MAX_MS = 2_000;
 const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes without DB state updates
+const IN_PROCESS_PIPELINE_TTL_MS = 20 * 60 * 1000; // 20 minutes without process-local completion
 
 // Track running pipelines to prevent double-start (in-process guard, complements DB check)
-const runningPipelines = new Set<string>();
+const runningPipelines = new Map<string, number>();
+const runningPipelinesCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, startedAt] of runningPipelines.entries()) {
+    if (now - startedAt > IN_PROCESS_PIPELINE_TTL_MS) {
+      runningPipelines.delete(sessionId);
+      logger.warn({ session_id: sessionId }, 'Evicted stale in-process pipeline guard');
+    }
+  }
+}, 60_000);
+runningPipelinesCleanupTimer.unref();
 
 // Known pipeline stages for type-safe stale recovery
 const PIPELINE_STAGES: PipelineStage[] = [
@@ -482,8 +493,14 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   }
 
   // In-process dedup guard (complements DB-level claim below)
-  if (runningPipelines.has(session_id)) {
-    return c.json({ error: 'Pipeline already running for this session' }, 409);
+  const inProcessStartedAt = runningPipelines.get(session_id);
+  if (typeof inProcessStartedAt === 'number') {
+    const staleInProcess = Date.now() - inProcessStartedAt > IN_PROCESS_PIPELINE_TTL_MS;
+    if (!staleInProcess) {
+      return c.json({ error: 'Pipeline already running for this session' }, 409);
+    }
+    runningPipelines.delete(session_id);
+    logger.warn({ session_id }, 'Cleared stale in-process pipeline guard before restart');
   }
 
   if (session.pipeline_status === 'running') {
@@ -537,10 +554,22 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
     if (event.type === 'stage_start') {
-      void supabaseAdmin
-        .from('coach_sessions')
-        .update({ pipeline_stage: event.stage })
-        .eq('id', session_id);
+      void (async () => {
+        try {
+          const { error } = await supabaseAdmin
+            .from('coach_sessions')
+            .update({ pipeline_stage: event.stage })
+            .eq('id', session_id);
+          if (error) {
+            logger.warn({ session_id, stage: event.stage, error: error.message }, 'Failed to persist pipeline stage');
+          }
+        } catch (err) {
+          logger.warn(
+            { session_id, stage: event.stage, error: err instanceof Error ? err.message : String(err) },
+            'Failed to persist pipeline stage',
+          );
+        }
+      })();
     }
     // Persist questionnaire events for session restore
     if (event.type === 'questionnaire') {
@@ -583,7 +612,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // Start pipeline in background (fire-and-forget)
   const log = createSessionLogger(session_id);
 
-  runningPipelines.add(session_id);
+  runningPipelines.set(session_id, Date.now());
   runPipeline({
     session_id,
     user_id: user.id,
@@ -650,6 +679,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
   const updatedAtMs = Date.parse(dbState.updated_at ?? '');
   const staleRunning = Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS);
   if (staleRunning) {
+    runningPipelines.delete(session_id);
     await supabaseAdmin
       .from('coach_sessions')
       .update({

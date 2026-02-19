@@ -9,7 +9,7 @@ interface RateLimitEntry {
 const buckets = new Map<string, RateLimitEntry>();
 
 // Cleanup expired entries every 60 seconds
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of buckets) {
     if (now >= entry.resetAt) {
@@ -17,6 +17,7 @@ setInterval(() => {
     }
   }
 }, 60_000);
+cleanupTimer.unref();
 
 /**
  * Simple fixed-window rate limiter keyed by user ID (from auth) or IP.

@@ -16,11 +16,22 @@ declare module 'hono' {
 // Simple in-memory JWT verification cache — 5 minute TTL.
 // Avoids a Supabase remote call on every request for the same token.
 const TOKEN_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_TOKEN_CACHE_ENTRIES = 1000;
 interface CacheEntry {
   user: AuthUser;
   expiresAt: number;
 }
 const tokenCache = new Map<string, CacheEntry>();
+
+const tokenCacheCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [token, entry] of tokenCache.entries()) {
+    if (now >= entry.expiresAt) {
+      tokenCache.delete(token);
+    }
+  }
+}, 60_000);
+tokenCacheCleanupTimer.unref();
 
 function getCachedUser(token: string): AuthUser | null {
   const entry = tokenCache.get(token);
@@ -29,12 +40,15 @@ function getCachedUser(token: string): AuthUser | null {
     tokenCache.delete(token);
     return null;
   }
+  // Refresh LRU position to keep active users in cache under load.
+  tokenCache.delete(token);
+  tokenCache.set(token, entry);
   return entry.user;
 }
 
 function cacheUser(token: string, user: AuthUser): void {
   // Limit cache size to prevent unbounded memory growth
-  if (tokenCache.size >= 1000) {
+  if (tokenCache.size >= MAX_TOKEN_CACHE_ENTRIES) {
     // Evict oldest entry
     const oldest = tokenCache.keys().next().value;
     if (oldest) tokenCache.delete(oldest);

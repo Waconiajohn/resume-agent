@@ -18,6 +18,18 @@ const sseConnections = new Map<string, Array<(event: SSEEvent) => void>>();
 // Track SSE connections per user to prevent resource exhaustion
 const sseConnectionsByUser = new Map<string, number>();
 const MAX_SSE_PER_USER = 5;
+const MAX_TOTAL_SSE_CONNECTIONS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_TOTAL_SSE_CONNECTIONS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2000;
+})();
+
+function getTotalSSEConnections(): number {
+  let total = 0;
+  for (const emitters of sseConnections.values()) {
+    total += emitters.length;
+  }
+  return total;
+}
 
 // Idempotency: track recent message keys to reject duplicates
 const recentIdempotencyKeys = new Map<string, number>();
@@ -108,12 +120,36 @@ sessions.get('/:id/sse', async (c) => {
   if (currentUserConns >= MAX_SSE_PER_USER) {
     return c.json({ error: 'Too many open connections. Please close other tabs.' }, 429);
   }
+  if (getTotalSSEConnections() >= MAX_TOTAL_SSE_CONNECTIONS) {
+    return c.json({ error: 'Server is at capacity. Please try again shortly.' }, 503);
+  }
 
   return streamSSE(c, async (stream) => {
-    const emitter = (event: SSEEvent) => {
-      stream.writeSSE({
+    let emitter: ((event: SSEEvent) => void) | null = null;
+    let connectionClosed = false;
+    const cleanupConnection = () => {
+      if (connectionClosed || !emitter) return;
+      connectionClosed = true;
+      const emitters = sseConnections.get(sessionId);
+      if (emitters) {
+        const idx = emitters.indexOf(emitter);
+        if (idx !== -1) emitters.splice(idx, 1);
+        if (emitters.length === 0) sseConnections.delete(sessionId);
+      }
+      const count = sseConnectionsByUser.get(user.id) ?? 1;
+      if (count <= 1) {
+        sseConnectionsByUser.delete(user.id);
+      } else {
+        sseConnectionsByUser.set(user.id, count - 1);
+      }
+    };
+    emitter = (event: SSEEvent) => {
+      void stream.writeSSE({
         event: event.type,
         data: JSON.stringify(event),
+      }).catch(() => {
+        logger.warn({ sessionId }, 'SSE write failed — cleaning up connection');
+        cleanupConnection();
       });
     };
 
@@ -178,27 +214,14 @@ sessions.get('/:id/sse', async (c) => {
       });
     }
 
-    let heartbeatFailed = false;
     const heartbeat = setInterval(() => {
-      stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
+      void stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
         logger.warn({ sessionId }, 'SSE heartbeat failed — cleaning up zombie connection');
         clearInterval(heartbeat);
-        heartbeatFailed = true;
-        // Trigger connection cleanup for zombie connections
-        const emitters = sseConnections.get(sessionId);
-        if (emitters) {
-          const idx = emitters.indexOf(emitter);
-          if (idx !== -1) emitters.splice(idx, 1);
-          if (emitters.length === 0) sseConnections.delete(sessionId);
-        }
-        const count = sseConnectionsByUser.get(user.id) ?? 1;
-        if (count <= 1) {
-          sseConnectionsByUser.delete(user.id);
-        } else {
-          sseConnectionsByUser.set(user.id, count - 1);
-        }
+        cleanupConnection();
       });
     }, 10_000);
+    heartbeat.unref();
 
     try {
       await new Promise<void>((resolve) => {
@@ -208,22 +231,7 @@ sessions.get('/:id/sse', async (c) => {
       });
     } finally {
       clearInterval(heartbeat);
-      // Only clean up if heartbeat failure hasn't already done it
-      if (!heartbeatFailed) {
-        const emitters = sseConnections.get(sessionId);
-        if (emitters) {
-          const idx = emitters.indexOf(emitter);
-          if (idx !== -1) emitters.splice(idx, 1);
-          if (emitters.length === 0) sseConnections.delete(sessionId);
-        }
-        // Decrement per-user connection count
-        const count = sseConnectionsByUser.get(user.id) ?? 1;
-        if (count <= 1) {
-          sseConnectionsByUser.delete(user.id);
-        } else {
-          sseConnectionsByUser.set(user.id, count - 1);
-        }
-      }
+      cleanupConnection();
     }
   });
 });
@@ -353,7 +361,17 @@ sessions.delete('/:id', async (c) => {
   }
 
   // Best-effort in-memory cleanup
+  const removedEmitters = sseConnections.get(sessionId)?.length ?? 0;
   sseConnections.delete(sessionId);
+  if (removedEmitters > 0) {
+    const count = sseConnectionsByUser.get(user.id) ?? 0;
+    const nextCount = Math.max(0, count - removedEmitters);
+    if (nextCount === 0) {
+      sseConnectionsByUser.delete(user.id);
+    } else {
+      sseConnectionsByUser.set(user.id, nextCount);
+    }
+  }
   processingSessions.delete(sessionId);
 
   return c.json({ status: 'deleted', session_id: sessionId });

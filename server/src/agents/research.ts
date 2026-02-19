@@ -20,23 +20,59 @@ import type {
 } from './types.js';
 
 const CACHE_TTL_MS = 30 * 60 * 1000;
+const CACHE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_JD_CACHE_ENTRIES = parsePositiveInt(process.env.RESEARCH_JD_CACHE_MAX, 400);
+const MAX_COMPANY_CACHE_ENTRIES = parsePositiveInt(process.env.RESEARCH_COMPANY_CACHE_MAX, 300);
+const MAX_BENCHMARK_CACHE_ENTRIES = parsePositiveInt(process.env.RESEARCH_BENCHMARK_CACHE_MAX, 400);
+
+type CacheValue<T> = { value: T; expiresAt: number };
 const jdCache = new Map<string, { value: JDAnalysis; expiresAt: number }>();
 const companyCache = new Map<string, { value: CompanyResearch; expiresAt: number }>();
 const benchmarkCache = new Map<string, { value: BenchmarkCandidate; expiresAt: number }>();
 
-function getCached<T>(cache: Map<string, { value: T; expiresAt: number }>, key: string): T | null {
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function pruneCache<T>(cache: Map<string, CacheValue<T>>, maxEntries: number): void {
+  const now = Date.now();
+  for (const [key, entry] of cache.entries()) {
+    if (now >= entry.expiresAt) {
+      cache.delete(key);
+    }
+  }
+  while (cache.size > maxEntries) {
+    const oldestKey = cache.keys().next().value;
+    if (!oldestKey) break;
+    cache.delete(oldestKey);
+  }
+}
+
+function getCached<T>(cache: Map<string, CacheValue<T>>, key: string): T | null {
   const hit = cache.get(key);
   if (!hit) return null;
   if (Date.now() >= hit.expiresAt) {
     cache.delete(key);
     return null;
   }
+  // Refresh recency so old hot keys do not get evicted during backpressure trimming.
+  cache.delete(key);
+  cache.set(key, hit);
   return hit.value;
 }
 
-function setCached<T>(cache: Map<string, { value: T; expiresAt: number }>, key: string, value: T): void {
+function setCached<T>(cache: Map<string, CacheValue<T>>, key: string, value: T, maxEntries: number): void {
   cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+  pruneCache(cache, maxEntries);
 }
+
+const cacheCleanupTimer = setInterval(() => {
+  pruneCache(jdCache, MAX_JD_CACHE_ENTRIES);
+  pruneCache(companyCache, MAX_COMPANY_CACHE_ENTRIES);
+  pruneCache(benchmarkCache, MAX_BENCHMARK_CACHE_ENTRIES);
+}, CACHE_CLEANUP_INTERVAL_MS);
+cacheCleanupTimer.unref();
 
 /**
  * Run the Research Agent: analyze JD, research company, build benchmark.
@@ -118,7 +154,7 @@ async function analyzeJobDescription(jobDescription: string): Promise<JDAnalysis
     implicit_requirements: (parsed.implicit_requirements as string[]) ?? [],
     language_keywords: (parsed.language_keywords as string[]) ?? [],
   };
-  setCached(jdCache, cacheKey, normalized);
+  setCached(jdCache, cacheKey, normalized, MAX_JD_CACHE_ENTRIES);
   return normalized;
 }
 
@@ -168,7 +204,7 @@ Be specific and factual. If you're not sure about something, say so.`;
     size: extractFirstSentenceAbout(text, ['employees', 'size', 'headcount', 'revenue']) ?? '',
     culture_signals: culturePhrases,
   };
-  setCached(companyCache, cacheKey, normalized);
+  setCached(companyCache, cacheKey, normalized, MAX_COMPANY_CACHE_ENTRIES);
   return normalized;
 }
 
@@ -179,12 +215,7 @@ async function buildBenchmark(
   company: CompanyResearch,
   resume: IntakeOutput,
 ): Promise<BenchmarkCandidate> {
-  const cacheKey = JSON.stringify({
-    jd,
-    company,
-    skills: resume.skills.slice(0, 40),
-    titles: resume.experience.slice(0, 6).map(e => `${e.title}:${e.company}`),
-  });
+  const cacheKey = buildBenchmarkCacheKey(jd, company, resume);
   const cached = getCached(benchmarkCache, cacheKey);
   if (cached) return cached;
 
@@ -230,11 +261,45 @@ INDUSTRY: ${company.industry || 'Unknown'}`,
     ].filter((v, i, a) => a.indexOf(v) === i), // dedupe
     section_expectations: (parsed.section_expectations as Record<string, string>) ?? {},
   };
-  setCached(benchmarkCache, cacheKey, normalized);
+  setCached(benchmarkCache, cacheKey, normalized, MAX_BENCHMARK_CACHE_ENTRIES);
   return normalized;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
+
+function hashString(input: string): string {
+  // FNV-1a 32-bit hash for compact deterministic cache keys.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function buildBenchmarkCacheKey(jd: JDAnalysis, company: CompanyResearch, resume: IntakeOutput): string {
+  const raw = JSON.stringify({
+    jd: {
+      role_title: jd.role_title,
+      company: jd.company,
+      seniority_level: jd.seniority_level,
+      must_haves: jd.must_haves.slice(0, 25),
+      implicit_requirements: jd.implicit_requirements.slice(0, 20),
+      language_keywords: jd.language_keywords.slice(0, 30),
+    },
+    company: {
+      company_name: company.company_name,
+      industry: company.industry,
+      size: company.size,
+      culture_signals: company.culture_signals.slice(0, 8),
+    },
+    resume: {
+      skills: resume.skills.slice(0, 40),
+      titles: resume.experience.slice(0, 6).map((e) => `${e.title}:${e.company}`),
+    },
+  });
+  return `${hashString(raw)}:${raw.length}`;
+}
 
 function extractSignals(text: string, keywords: string[]): string[] {
   const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(Boolean);
