@@ -575,6 +575,9 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     return c.json({ error: 'Pipeline already running or completed for this session' }, 409);
   }
 
+  // Capture the most recently emitted section_context to merge into section_draft persistence
+  let latestSectionContext: Record<string, unknown> | null = null;
+
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
     if (event.type === 'stage_start') {
@@ -603,11 +606,16 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     if (event.type === 'right_panel_update') {
       queuePanelPersist(session_id, event.panel_type, event.data);
     }
-    // Persist section_draft as section_review panel for restore
+    // Capture section_context for merging into subsequent section_draft persistence
+    if (event.type === 'section_context') {
+      latestSectionContext = { ...event };
+    }
+    // Persist section_draft as section_review panel for restore, merging any section_context
     if (event.type === 'section_draft') {
       queuePanelPersist(session_id, 'section_review', {
         section: event.section,
         content: event.content,
+        ...(latestSectionContext ? { context: latestSectionContext } : {}),
       });
     }
     // Persist blueprint_ready for restore

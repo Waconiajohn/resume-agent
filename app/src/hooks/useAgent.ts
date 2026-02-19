@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores, CategoryProgress } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { PanelType, PanelData } from '@/types/panels';
+import type { PanelType, PanelData, SectionWorkbenchContext } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -43,6 +43,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const abortControllerRef = useRef<AbortController | null>(null);
   // Accumulate all section content for building FinalResume at pipeline_complete
   const sectionsMapRef = useRef<Record<string, string>>({});
+  // Store the latest section workbench context, emitted before section_draft
+  const sectionContextRef = useRef<SectionWorkbenchContext | null>(null);
   const messageIdRef = useRef(0);
 
   // Track last text_complete content to deduplicate
@@ -585,6 +587,20 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'section_context': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  sectionContextRef.current = {
+                    blueprint_slice: data.blueprint_slice as Record<string, unknown>,
+                    evidence: data.evidence as SectionWorkbenchContext['evidence'],
+                    keywords: data.keywords as SectionWorkbenchContext['keywords'],
+                    gap_mappings: data.gap_mappings as SectionWorkbenchContext['gap_mappings'],
+                    section_order: data.section_order as string[],
+                    sections_approved: data.sections_approved as string[],
+                  };
+                  break;
+                }
+
                 case 'section_draft': {
                   const data = safeParse(msg.data);
                   if (!data) break;
@@ -596,12 +612,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const content = data.content as string;
                   setSectionDraft({ section, content });
                   sectionsMapRef.current[section] = content;
-                  // Show section review panel
+                  // Show section review panel, merging in the latest workbench context
                   setPanelType('section_review' as PanelType);
                   setPanelData({
                     type: 'section_review',
                     section,
                     content,
+                    ...(sectionContextRef.current ? { context: sectionContextRef.current } : {}),
                   } as PanelData);
                   break;
                 }

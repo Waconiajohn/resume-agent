@@ -475,6 +475,32 @@ export type PipelineSSEEvent =
   | { type: 'section_draft'; section: string; content: string }
   | { type: 'section_revised'; section: string; content: string }
   | { type: 'section_approved'; section: string }
+  | {
+      type: 'section_context';
+      section: string;
+      blueprint_slice: Record<string, unknown>;
+      evidence: Array<{
+        id: string;
+        situation: string;
+        action: string;
+        result: string;
+        metrics_defensible: boolean;
+        user_validated: boolean;
+        mapped_requirements: string[];
+        scope_metrics: Record<string, string>;
+      }>;
+      keywords: Array<{
+        keyword: string;
+        target_density: number;
+        current_count: number;
+      }>;
+      gap_mappings: Array<{
+        requirement: string;
+        classification: 'strong' | 'partial' | 'gap';
+      }>;
+      section_order: string[];
+      sections_approved: string[];
+    }
   | { type: 'quality_scores'; scores: QualityScores }
   | { type: 'revision_start'; instructions: RevisionInstruction[] }
   | {

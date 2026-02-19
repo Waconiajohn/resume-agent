@@ -165,7 +165,7 @@ export function ChatPanel({
           </div>
         )}
 
-        {panelData && (
+        {panelData && panelType !== 'section_review' && (
           <div className="mx-4 my-3 min-h-[400px] overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.025]">
             <div className="flex items-center justify-between border-b border-white/[0.1] px-3 py-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">

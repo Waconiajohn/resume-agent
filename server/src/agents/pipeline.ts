@@ -38,6 +38,8 @@ import type {
   QuestionnaireQuestion,
   QuestionnaireSubmission,
   CategoryProgress,
+  GapAnalystOutput,
+  EvidenceItem,
 } from './types.js';
 
 export type PipelineEmitter = (event: PipelineSSEEvent) => void;
@@ -551,6 +553,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       );
     }
 
+    // Track approved sections for section_context events
+    const approvedSectionSet = new Set<string>();
+
     // Present sections sequentially for user review (LLM work already in flight)
     for (const call of sectionCalls) {
       const outcome = await sectionPromises.get(call.section)!;
@@ -583,6 +588,17 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           emit({ type: 'section_approved', section: call.section });
           break;
         }
+        // Emit section context before section draft for workbench enrichment
+        emit({
+          type: 'section_context',
+          section: call.section,
+          blueprint_slice: getSectionBlueprint(call.section, state.architect!),
+          evidence: filterEvidenceForSection(call.section, state.architect!, state.positioning!),
+          keywords: buildKeywordStatus(call.section, result.content, state.architect!),
+          gap_mappings: buildGapMappingsForSection(state.gap_analysis!),
+          section_order: state.architect!.section_plan.order,
+          sections_approved: Array.from(approvedSectionSet),
+        });
         // Emit section for progressive rendering / re-review
         emit({ type: 'section_draft', section: call.section, content: result.content });
 
@@ -595,12 +611,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
         if (normalizedReview.approved) {
           emit({ type: 'section_approved', section: call.section });
+          approvedSectionSet.add(call.section);
           sectionApproved = true;
         } else if (normalizedReview.edited_content) {
           // User directly edited — use their content without LLM rewrite
           result = { ...result, content: normalizedReview.edited_content };
           state.sections[call.section] = result;
           emit({ type: 'section_approved', section: call.section });
+          approvedSectionSet.add(call.section);
           sectionApproved = true;
           log.info({ section: call.section }, 'Section directly edited by user');
         } else if (normalizedReview.feedback) {
@@ -1233,6 +1251,88 @@ function getSectionEvidence(
     keyword_targets: keywordTargets,
     evidence_library: positioning.evidence_library.slice(0, 6),
   };
+}
+
+// ─── Section context helpers ─────────────────────────────────────────
+
+function filterEvidenceForSection(
+  section: string,
+  blueprint: ArchitectOutput,
+  positioning: PositioningProfile,
+): Array<{
+  id: string;
+  situation: string;
+  action: string;
+  result: string;
+  metrics_defensible: boolean;
+  user_validated: boolean;
+  mapped_requirements: string[];
+  scope_metrics: Record<string, string>;
+}> {
+  let relevant: EvidenceItem[] = [];
+
+  if (section === 'summary' || section === 'selected_accomplishments') {
+    const allocated = blueprint.evidence_allocation.selected_accomplishments ?? [];
+    const allocatedIds = new Set(allocated.map(a => a.evidence_id));
+    relevant = positioning.evidence_library.filter(e => e.id && allocatedIds.has(e.id));
+    if (relevant.length === 0) {
+      relevant = positioning.evidence_library.slice(0, 10);
+    }
+  } else if (section.startsWith('experience_role_')) {
+    const roleKey = section.replace('experience_', '');
+    const roleAllocation = blueprint.evidence_allocation.experience_section[roleKey] ?? {};
+    const bulletSources = new Set(
+      ((roleAllocation as Record<string, unknown>).bullets_to_write as Array<{ evidence_source?: string }> ?? [])
+        .map(b => b.evidence_source).filter(Boolean),
+    );
+    relevant = positioning.evidence_library.filter(e => e.id && bulletSources.has(e.id));
+    if (relevant.length === 0) {
+      relevant = positioning.evidence_library.slice(0, 6);
+    }
+  } else {
+    relevant = positioning.evidence_library.slice(0, 6);
+  }
+
+  return relevant.map(e => ({
+    id: e.id ?? '',
+    situation: e.situation,
+    action: e.action,
+    result: e.result,
+    metrics_defensible: e.metrics_defensible,
+    user_validated: e.user_validated,
+    mapped_requirements: e.mapped_requirements ?? [],
+    scope_metrics: {
+      ...(e.scope_metrics?.team_size ? { team_size: e.scope_metrics.team_size } : {}),
+      ...(e.scope_metrics?.budget ? { budget: e.scope_metrics.budget } : {}),
+      ...(e.scope_metrics?.revenue_impact ? { revenue_impact: e.scope_metrics.revenue_impact } : {}),
+      ...(e.scope_metrics?.geography ? { geography: e.scope_metrics.geography } : {}),
+    },
+  }));
+}
+
+function buildKeywordStatus(
+  _section: string,
+  content: string,
+  blueprint: ArchitectOutput,
+): Array<{ keyword: string; target_density: number; current_count: number }> {
+  return Object.entries(blueprint.keyword_map).map(([keyword, target]) => {
+    const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const matches = content.match(regex);
+    return {
+      keyword,
+      target_density: target.target_density,
+      current_count: matches ? matches.length : 0,
+    };
+  });
+}
+
+function buildGapMappingsForSection(
+  gapAnalysis: GapAnalystOutput,
+): Array<{ requirement: string; classification: 'strong' | 'partial' | 'gap' }> {
+  return gapAnalysis.requirements.map(r => ({
+    requirement: r.requirement,
+    classification: r.classification,
+  }));
 }
 
 // ─── Resume assembly ─────────────────────────────────────────────────

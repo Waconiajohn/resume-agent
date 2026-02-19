@@ -10,9 +10,9 @@ import { QualityDashboardPanel } from './QualityDashboardPanel';
 import { CompletionPanel } from './CompletionPanel';
 import { PositioningInterviewPanel } from './PositioningInterviewPanel';
 import { BlueprintReviewPanel } from './BlueprintReviewPanel';
-import { SectionReviewPanel } from './SectionReviewPanel';
+import { SectionWorkbench } from './SectionWorkbench';
 import { QuestionnairePanel } from './QuestionnairePanel';
-import type { PanelData, PanelType } from '@/types/panels';
+import type { PanelData, PanelType, SectionWorkbenchContext } from '@/types/panels';
 import type { QuestionnaireSubmission } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 
@@ -175,11 +175,13 @@ function renderPanelBody(props: PanelRendererProps) {
           }}
         />
       );
-    case 'section_review':
+    case 'section_review': {
+      const sectionData = panelData as PanelData & { context?: SectionWorkbenchContext | null };
       return (
-        <SectionReviewPanel
+        <SectionWorkbench
           section={panelData.section}
           content={panelData.content}
+          context={sectionData.context ?? null}
           onApprove={() => {
             onPipelineRespond?.(`section_review_${panelData.section}`, true);
           }}
@@ -197,6 +199,7 @@ function renderPanelBody(props: PanelRendererProps) {
           }}
         />
       );
+    }
     case 'questionnaire':
       return (
         <QuestionnairePanel

@@ -174,10 +174,37 @@ export interface BlueprintReviewData {
   keyword_count: number;
 }
 
+// --- Section Workbench Context ---
+export interface SectionWorkbenchContext {
+  blueprint_slice: Record<string, unknown>;
+  evidence: Array<{
+    id: string;
+    situation: string;
+    action: string;
+    result: string;
+    metrics_defensible: boolean;
+    user_validated: boolean;
+    mapped_requirements: string[];
+    scope_metrics: Record<string, string>;
+  }>;
+  keywords: Array<{
+    keyword: string;
+    target_density: number;
+    current_count: number;
+  }>;
+  gap_mappings: Array<{
+    requirement: string;
+    classification: 'strong' | 'partial' | 'gap';
+  }>;
+  section_order: string[];
+  sections_approved: string[];
+}
+
 // --- Section Review ---
 export interface SectionReviewData {
   section: string;
   content: string;
+  context?: SectionWorkbenchContext | null;
 }
 
 // --- Questionnaire ---
