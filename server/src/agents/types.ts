@@ -181,6 +181,12 @@ export interface ArchitectInput {
     resume_priority?: string;
     seniority_delta?: string;
   };
+  research_preferences?: {
+    top_requirements?: string[];
+    culture_alignment?: 'yes' | 'somewhat' | 'not_quite';
+    culture_notes?: string;
+    additional_notes?: string;
+  };
 }
 
 export interface ArchitectOutput {
@@ -411,6 +417,12 @@ export interface PipelineState {
     seniority_delta?: string;
   };
   research_preferences?: QuestionnaireSubmission;
+  research_preferences_summary?: {
+    top_requirements?: string[];
+    culture_alignment?: 'yes' | 'somewhat' | 'not_quite';
+    culture_notes?: string;
+    additional_notes?: string;
+  };
 
   // Metadata
   positioning_profile_id?: string;    // if reusing saved profile

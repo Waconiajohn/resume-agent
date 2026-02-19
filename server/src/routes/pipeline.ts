@@ -7,7 +7,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { sseConnections } from './sessions.js';
 import { runPipeline } from '../agents/pipeline.js';
-import type { PipelineSSEEvent } from '../agents/types.js';
+import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 
 const startSchema = z.object({
@@ -52,6 +52,53 @@ async function clearPendingGate(sessionId: string) {
   }
 }
 
+const PANEL_PERSIST_DEBOUNCE_MS = 250;
+const queuedPanelPersists = new Map<string, {
+  panelType: string;
+  panelData: unknown;
+  timeout: ReturnType<typeof setTimeout>;
+}>();
+
+async function persistLastPanelState(sessionId: string, panelType: string, panelData: unknown) {
+  const { error } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      last_panel_type: panelType,
+      last_panel_data: panelData,
+    })
+    .eq('id', sessionId);
+  if (error) {
+    logger.warn(
+      { session_id: sessionId, panel_type: panelType, error: error.message },
+      'Failed to persist last panel state',
+    );
+  }
+}
+
+function cancelQueuedPanelPersist(sessionId: string) {
+  const queued = queuedPanelPersists.get(sessionId);
+  if (!queued) return;
+  clearTimeout(queued.timeout);
+  queuedPanelPersists.delete(sessionId);
+}
+
+function queuePanelPersist(sessionId: string, panelType: string, panelData: unknown) {
+  cancelQueuedPanelPersist(sessionId);
+  const timeout = setTimeout(() => {
+    queuedPanelPersists.delete(sessionId);
+    void persistLastPanelState(sessionId, panelType, panelData);
+  }, PANEL_PERSIST_DEBOUNCE_MS);
+  queuedPanelPersists.set(sessionId, { panelType, panelData, timeout });
+}
+
+async function flushQueuedPanelPersist(sessionId: string) {
+  const queued = queuedPanelPersists.get(sessionId);
+  if (!queued) return;
+  clearTimeout(queued.timeout);
+  queuedPanelPersists.delete(sessionId);
+  await persistLastPanelState(sessionId, queued.panelType, queued.panelData);
+}
+
 // In-memory gate resolvers per session
 const pendingGates = new Map<string, {
   resolve: (value: unknown) => void;
@@ -68,6 +115,19 @@ const runningPipelines = new Set<string>();
 
 const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
 const MAX_JOB_URL_REDIRECTS = 3;
+const PIPELINE_STAGES: PipelineStage[] = [
+  'intake',
+  'positioning',
+  'research',
+  'gap_analysis',
+  'architect',
+  'architect_review',
+  'section_writing',
+  'section_review',
+  'quality_review',
+  'revision',
+  'complete',
+];
 
 function isPrivateIPv4(ip: string): boolean {
   const parts = ip.split('.').map((p) => Number.parseInt(p, 10));
@@ -287,43 +347,30 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
     // Persist questionnaire events for session restore
     if (event.type === 'questionnaire') {
-      void supabaseAdmin
-        .from('coach_sessions')
-        .update({
-          last_panel_type: 'questionnaire',
-          last_panel_data: event,
-        })
-        .eq('id', session_id);
+      queuePanelPersist(session_id, 'questionnaire', event);
     }
     // Persist right_panel_update events for session restore
     if (event.type === 'right_panel_update') {
-      void supabaseAdmin
-        .from('coach_sessions')
-        .update({
-          last_panel_type: event.panel_type,
-          last_panel_data: event.data,
-        })
-        .eq('id', session_id);
+      queuePanelPersist(session_id, event.panel_type, event.data);
     }
     // Persist section_draft as section_review panel for restore
     if (event.type === 'section_draft') {
-      void supabaseAdmin
-        .from('coach_sessions')
-        .update({
-          last_panel_type: 'section_review',
-          last_panel_data: { section: event.section, content: event.content },
-        })
-        .eq('id', session_id);
+      queuePanelPersist(session_id, 'section_review', {
+        section: event.section,
+        content: event.content,
+      });
     }
     // Persist blueprint_ready for restore
     if (event.type === 'blueprint_ready') {
-      void supabaseAdmin
-        .from('coach_sessions')
-        .update({
-          last_panel_type: 'blueprint_review',
-          last_panel_data: event.blueprint,
-        })
-        .eq('id', session_id);
+      queuePanelPersist(session_id, 'blueprint_review', event.blueprint);
+    }
+    // Persist final completion payload with precedence over queued intermediate panels
+    if (event.type === 'pipeline_complete') {
+      cancelQueuedPanelPersist(session_id);
+      void persistLastPanelState(session_id, 'completion', { resume: event.resume });
+    }
+    if (event.type === 'pipeline_error') {
+      cancelQueuedPanelPersist(session_id);
     }
     const emitters = sseConnections.get(session_id);
     if (emitters) {
@@ -386,6 +433,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     waitForUser,
   }).then(async (state) => {
     log.info({ stage: state.current_stage, revision_count: state.revision_count }, 'Pipeline completed');
+    await flushQueuedPanelPersist(session_id);
     await supabaseAdmin
       .from('coach_sessions')
       .update({ pipeline_status: 'complete', pending_gate: null, pending_gate_data: null })
@@ -393,6 +441,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   }).catch(async (error) => {
     log.error({ error: error instanceof Error ? error.message : error }, 'Pipeline failed');
     emit({ type: 'pipeline_error', stage: 'intake', error: error instanceof Error ? error.message : 'Pipeline failed' });
+    await flushQueuedPanelPersist(session_id);
     await supabaseAdmin
       .from('coach_sessions')
       .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
@@ -406,6 +455,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       pendingGates.delete(session_id);
     }
     bufferedResponses.delete(session_id);
+    cancelQueuedPanelPersist(session_id);
     void clearPendingGate(session_id);
   });
 
@@ -439,13 +489,44 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!pending) {
     const { data: dbState } = await supabaseAdmin
       .from('coach_sessions')
-      .select('pipeline_status, pending_gate')
+      .select('pipeline_status, pipeline_stage, pending_gate')
       .eq('id', session_id)
       .single();
 
     if (dbState?.pipeline_status === 'running' && dbState.pending_gate) {
+      logger.warn(
+        { session_id, pending_gate: dbState.pending_gate },
+        'Detected stale pipeline state while resolving gate response',
+      );
+      // Process was likely restarted; clear stale running state so the session can be resumed.
+      await supabaseAdmin
+        .from('coach_sessions')
+        .update({
+          pipeline_status: 'error',
+          pending_gate: null,
+          pending_gate_data: null,
+        })
+        .eq('id', session_id);
+      bufferedResponses.delete(session_id);
+      const staleStage = PIPELINE_STAGES.includes(dbState.pipeline_stage as PipelineStage)
+        ? (dbState.pipeline_stage as PipelineStage)
+        : 'intake';
+      const emitters = sseConnections.get(session_id);
+      if (emitters) {
+        for (const emitter of emitters) {
+          try {
+            emitter({
+              type: 'pipeline_error',
+              stage: staleStage,
+              error: 'Pipeline state became stale after a server restart. Please restart the pipeline.',
+            } as never);
+          } catch {
+            // Connection may already be closed.
+          }
+        }
+      }
       return c.json({
-        error: 'Pipeline state is stale after server restart. Please start a new session.',
+        error: 'Pipeline state became stale after a server restart. Please restart the pipeline from this session.',
         code: 'STALE_PIPELINE',
         pending_gate: dbState.pending_gate,
       }, 409);

@@ -251,6 +251,18 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     if (researchSubmission) {
       state.research_preferences = researchSubmission;
+      const topReqResponse = researchSubmission.responses.find((r) => r.question_id === 'top_requirements');
+      const cultureResponse = researchSubmission.responses.find((r) => r.question_id === 'culture_check');
+      const notesResponse = researchSubmission.responses.find((r) => r.question_id === 'anything_else');
+
+      state.research_preferences_summary = {
+        top_requirements: topReqResponse
+          ? getSelectedLabels(topReqResponse, researchQuizQuestions[0]).slice(0, 3)
+          : [],
+        culture_alignment: (cultureResponse?.selected_option_ids[0] as 'yes' | 'somewhat' | 'not_quite' | undefined),
+        culture_notes: cultureResponse?.custom_text?.trim() || undefined,
+        additional_notes: notesResponse?.custom_text?.trim() || undefined,
+      };
       log.info('Research validation quiz complete');
     }
 
@@ -334,6 +346,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         research: state.research!,
         gap_analysis: state.gap_analysis!,
         user_preferences: state.user_preferences,
+        research_preferences: state.research_preferences_summary,
       }),
       {
         maxAttempts: 3,
@@ -414,25 +427,22 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         const reviewResponse = await waitForUser<boolean | { approved: boolean; edited_content?: string; feedback?: string; refinement_ids?: string[] }>(
           `section_review_${call.section}`,
         );
+        const normalizedReview = normalizeSectionReviewResponse(reviewResponse);
 
-        const isSimpleBool = typeof reviewResponse === 'boolean';
-        const approved = isSimpleBool ? reviewResponse : (reviewResponse as { approved: boolean }).approved;
-
-        if (approved) {
+        if (normalizedReview.approved) {
           emit({ type: 'section_approved', section: call.section });
           sectionApproved = true;
-        } else if (!isSimpleBool && (reviewResponse as { edited_content?: string }).edited_content) {
+        } else if (normalizedReview.edited_content) {
           // User directly edited — use their content without LLM rewrite
-          const editedContent = (reviewResponse as { edited_content: string }).edited_content;
-          result = { ...result, content: editedContent };
+          result = { ...result, content: normalizedReview.edited_content };
           state.sections[call.section] = result;
           emit({ type: 'section_approved', section: call.section });
           sectionApproved = true;
           log.info({ section: call.section }, 'Section directly edited by user');
-        } else if (!isSimpleBool && (reviewResponse as { feedback?: string }).feedback) {
+        } else if (normalizedReview.feedback) {
           // Quick Fix: re-run section writer with user feedback as revision instruction
-          const feedback = (reviewResponse as { feedback: string }).feedback;
-          const refinementIds = (reviewResponse as { refinement_ids?: string[] }).refinement_ids;
+          const feedback = normalizedReview.feedback;
+          const refinementIds = normalizedReview.refinement_ids;
           const instruction = refinementIds?.length
             ? `Apply these fixes: ${refinementIds.join(', ')}. User feedback: ${feedback}`
             : feedback;
@@ -448,9 +458,13 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           log.info({ section: call.section }, 'Section revised via Quick Fix feedback');
           // Loop continues — re-present revised section for re-review
         } else {
-          // Bare `false` or unknown shape — treat as approved to prevent infinite loop
-          emit({ type: 'section_approved', section: call.section });
-          sectionApproved = true;
+          // Keep the review gate active until we receive an actionable response.
+          emit({
+            type: 'transparency',
+            stage: 'section_review',
+            message: 'Please approve, use Quick Fix, or edit the section directly.',
+          });
+          log.warn({ section: call.section, reviewResponse }, 'Non-actionable section review response');
         }
       }
     }
@@ -964,6 +978,29 @@ function mapFindingToSection(
   }
   if (findingSection === 'formatting') return Object.keys(sections)[0] ?? null;
   return null;
+}
+
+function normalizeSectionReviewResponse(
+  response: boolean | { approved: boolean; edited_content?: string; feedback?: string; refinement_ids?: string[] },
+): { approved: boolean; edited_content?: string; feedback?: string; refinement_ids?: string[] } {
+  if (typeof response === 'boolean') {
+    // Legacy false path: treat as a request for a generic improvement instead of auto-approving.
+    return response
+      ? { approved: true }
+      : {
+          approved: false,
+          feedback: 'Improve this section for clarity, impact, and ATS alignment while preserving factual accuracy.',
+        };
+  }
+
+  const editedContent = response.edited_content?.trim();
+  const feedback = response.feedback?.trim();
+  return {
+    approved: Boolean(response.approved),
+    edited_content: editedContent ? editedContent : undefined,
+    feedback: feedback ? feedback : undefined,
+    refinement_ids: response.refinement_ids?.filter(Boolean),
+  };
 }
 
 async function sleep(ms: number): Promise<void> {

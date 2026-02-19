@@ -108,6 +108,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   useEffect(() => {
     qualityScoresRef.current = null;
     setQualityScores(null);
+    setIsPipelineGateActive(false);
   }, [sessionId]);
 
   // Connect to SSE with fetch-based streaming
@@ -188,9 +189,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     }
                     // Restore gate-active state for interactive panels
                     const gateTypes = ['questionnaire', 'section_review', 'blueprint_review', 'positioning_interview'];
-                    if (gateTypes.includes(data.last_panel_type as string)) {
-                      setIsPipelineGateActive(true);
-                    }
+                    setIsPipelineGateActive(gateTypes.includes(data.last_panel_type as string));
                   }
                   // On restore, clear processing state — the agent loop isn't running
                   setIsProcessing(false);
@@ -427,6 +426,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'complete': {
                   // Session finished — stop processing, mark complete, close connection
                   const cData = safeParse(msg.data);
+                  setIsPipelineGateActive(false);
                   setIsProcessing(false);
                   setSessionComplete(true);
                   setCurrentPhase('complete');
@@ -451,6 +451,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (typeof errorMsg === 'string' && errorMsg.startsWith('{')) {
                     errorMsg = 'Something went wrong processing your message. Please try again.';
                   }
+                  setIsPipelineGateActive(false);
                   setError(errorMsg as string);
                   setIsProcessing(false);
                   break;
@@ -466,6 +467,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
                   staleNoticeActiveRef.current = false;
+                  setIsPipelineGateActive(false);
                   setPipelineStage(data.stage as PipelineStage);
                   setCurrentPhase(data.stage as string);
                   setIsProcessing(true);
@@ -647,6 +649,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   lastProgressTimestampRef.current = Date.now();
                   staleNoticeActiveRef.current = false;
+                  setIsPipelineGateActive(false);
                   setIsProcessing(false);
                   setSessionComplete(true);
                   setPipelineStage('complete');
@@ -693,6 +696,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (!data) break;
                   lastProgressTimestampRef.current = Date.now();
                   staleNoticeActiveRef.current = false;
+                  setIsPipelineGateActive(false);
                   setIsProcessing(false);
                   setError(data.error as string ?? 'Pipeline error');
                   break;
@@ -738,7 +742,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       setIsProcessing((currentlyProcessing) => {
         if (currentlyProcessing && Date.now() - lastProgressTimestampRef.current > STALE_THRESHOLD_MS) {
           if (!staleNoticeActiveRef.current) {
-            console.warn('[useAgent] Stale processing detected — no progress events for 120s. Resetting once.');
+            console.warn('[useAgent] Stale processing detected — no progress events for 300s. Resetting once.');
             staleNoticeActiveRef.current = true;
             setMessages((prev) => [
               ...prev,

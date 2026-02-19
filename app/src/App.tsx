@@ -176,7 +176,7 @@ export default function App() {
   const handleSendMessage = useCallback(
     async (content: string) => {
       if (!currentSession) return;
-      if (isProcessing) return; // Prevent 409 — don't send while backend is processing
+      if (isProcessing || isPipelineGateActive) return; // Prevent 409 and gate collisions
       addUserMessage(content);
       const ok = await sendMessage(currentSession.id, content);
       if (!ok) {
@@ -184,14 +184,14 @@ export default function App() {
         setIsProcessing(false);
       }
     },
-    [currentSession, isProcessing, addUserMessage, sendMessage, setIsProcessing],
+    [currentSession, isProcessing, isPipelineGateActive, addUserMessage, sendMessage, setIsProcessing],
   );
 
   const handlePipelineRespond = useCallback(
     async (gate: string, response: unknown) => {
       if (!currentSession) return;
-      setIsPipelineGateActive(false);
-      await respondToGate(currentSession.id, gate, response);
+      const ok = await respondToGate(currentSession.id, gate, response);
+      setIsPipelineGateActive(!ok);
     },
     [currentSession, respondToGate, setIsPipelineGateActive],
   );

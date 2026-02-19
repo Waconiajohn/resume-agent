@@ -27,7 +27,7 @@ import type {
 } from './types.js';
 
 export async function runArchitect(input: ArchitectInput): Promise<ArchitectOutput> {
-  const { parsed_resume, positioning, research, gap_analysis, user_preferences } = input;
+  const { parsed_resume, positioning, research, gap_analysis, user_preferences, research_preferences } = input;
 
   // Build a comprehensive context for the Architect
   const resumeOverview = buildResumeOverview(input);
@@ -47,6 +47,16 @@ Use these preferences to guide your strategic decisions. For example:
 - "impact" priority → lead with metrics and quantified results
 ` : '';
 
+  const researchPrefsBlock = research_preferences ? `
+RESEARCH VALIDATION FROM USER:
+- Top requirements to prioritize: ${(research_preferences.top_requirements ?? []).join('; ') || 'None selected'}
+- Culture alignment check: ${research_preferences.culture_alignment ?? 'Not provided'}
+- Culture notes: ${research_preferences.culture_notes ?? 'None'}
+- Additional role notes: ${research_preferences.additional_notes ?? 'None'}
+
+Use this validated context to prioritize what appears in the summary and experience bullets.
+` : '';
+
   const userContent = `Create a complete resume blueprint for this candidate.
 
 TARGET ROLE: ${research.jd_analysis.role_title} at ${research.jd_analysis.company || research.company_research.company_name}
@@ -60,6 +70,7 @@ ${gapBrief}
 
 ${keywordBrief}
 ${prefsBlock}
+${researchPrefsBlock}
 CAREER SPAN: ${parsed_resume.career_span_years} years
 
 Now make the 7 strategic decisions and return the complete blueprint as JSON.

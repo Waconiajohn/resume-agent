@@ -322,7 +322,11 @@ export function useSession(accessToken: string | null) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to respond to gate (${res.status})`);
+        if (data.code === 'STALE_PIPELINE') {
+          setError('Session state became stale after a server restart. Please restart the pipeline from this session.');
+        } else {
+          setError(data.error ?? `Failed to respond to gate (${res.status})`);
+        }
         return false;
       }
       return true;
