@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { anthropic } from './anthropic.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { getAnthropicClient } from './anthropic.js';
 
 // ─── Shared interfaces ───────────────────────────────────────────────
 
@@ -67,12 +68,18 @@ export interface UsageAccumulator {
  * that session automatically accumulate usage.
  */
 const sessionUsageAccumulators = new Map<string, UsageAccumulator>();
+const usageContext = new AsyncLocalStorage<string>();
 
 /** Register a session for usage tracking. Returns the accumulator to read later. */
 export function startUsageTracking(sessionId: string): UsageAccumulator {
   const acc: UsageAccumulator = { input_tokens: 0, output_tokens: 0 };
   sessionUsageAccumulators.set(sessionId, acc);
   return acc;
+}
+
+/** Scope downstream LLM calls to a specific session for usage accounting. */
+export function setUsageTrackingContext(sessionId: string): void {
+  usageContext.enterWith(sessionId);
 }
 
 /** Stop tracking and remove the accumulator. */
@@ -82,10 +89,19 @@ export function stopUsageTracking(sessionId: string): void {
 
 /** Called internally after every chat() call to accumulate usage. */
 function recordUsage(usage: { input_tokens: number; output_tokens: number }): void {
-  // Accumulate across all active sessions — in practice only one pipeline
-  // runs per process at a time per session, so this is fine. For multi-session
-  // tracking, callers should use session-scoped chat wrappers.
-  for (const acc of sessionUsageAccumulators.values()) {
+  const sessionId = usageContext.getStore();
+  if (sessionId) {
+    const acc = sessionUsageAccumulators.get(sessionId);
+    if (acc) {
+      acc.input_tokens += usage.input_tokens;
+      acc.output_tokens += usage.output_tokens;
+      return;
+    }
+  }
+
+  // Backward-compatible fallback: if exactly one session is active, attribute usage to it.
+  if (sessionUsageAccumulators.size === 1) {
+    const acc = Array.from(sessionUsageAccumulators.values())[0];
     acc.input_tokens += usage.input_tokens;
     acc.output_tokens += usage.output_tokens;
   }
@@ -105,6 +121,7 @@ export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
 
   async chat(params: ChatParams): Promise<ChatResponse> {
+    const anthropic = getAnthropicClient();
     const response = await anthropic.messages.create({
       model: params.model,
       max_tokens: params.max_tokens,
@@ -139,7 +156,15 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
-    const streamParams: Parameters<typeof anthropic.messages.stream>[0] = {
+    const anthropic = getAnthropicClient();
+    const streamParams: {
+      model: string;
+      max_tokens: number;
+      system: string;
+      messages: Anthropic.MessageParam[];
+      tools: Anthropic.Tool[];
+      tool_choice?: Anthropic.ToolChoice;
+    } = {
       model: params.model,
       max_tokens: params.max_tokens,
       system: params.system,
@@ -180,6 +205,10 @@ export class AnthropicProvider implements LLMProvider {
         }
       }
 
+      recordUsage({
+        input_tokens: response.usage?.input_tokens ?? 0,
+        output_tokens: response.usage?.output_tokens ?? 0,
+      });
       yield {
         type: 'done',
         usage: {
@@ -288,6 +317,7 @@ export class ZAIProvider implements LLMProvider {
               yield { type: 'tool_call', id: tc.id, name: tc.name, input };
             }
             pendingToolCalls.clear();
+            recordUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
             yield { type: 'done', usage: { input_tokens: inputTokens, output_tokens: outputTokens } };
             return;
           }
@@ -354,6 +384,7 @@ export class ZAIProvider implements LLMProvider {
     }
 
     // If we get here without [DONE], still emit done
+    recordUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
     yield { type: 'done', usage: { input_tokens: inputTokens, output_tokens: outputTokens } };
   }
 

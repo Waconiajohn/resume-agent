@@ -10,7 +10,7 @@
 
 import { supabaseAdmin } from '../lib/supabase.js';
 import { MODEL_PRICING } from '../lib/llm.js';
-import { startUsageTracking, stopUsageTracking } from '../lib/llm-provider.js';
+import { startUsageTracking, stopUsageTracking, setUsageTrackingContext } from '../lib/llm-provider.js';
 import { createSessionLogger } from '../lib/logger.js';
 import { withRetry } from '../lib/retry.js';
 import { runIntakeAgent } from './intake.js';
@@ -117,6 +117,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
   // Track token usage across all LLM calls made during this pipeline run
   const usageAcc = startUsageTracking(session_id);
+  setUsageTrackingContext(session_id);
 
   const state: PipelineState = {
     session_id,
@@ -814,7 +815,7 @@ async function runPositioningStage(
   // Check for existing positioning profile
   const { data: existingProfile } = await supabaseAdmin
     .from('user_positioning_profiles')
-    .select('id, positioning_data, updated_at')
+    .select('id, positioning_data, updated_at, version')
     .eq('user_id', config.user_id)
     .single();
 
@@ -935,12 +936,15 @@ async function runPositioningStage(
   const profile = await synthesizeProfile(state.intake!, answers, state.research ?? undefined);
 
   // Save to database
+  const currentVersion = Number.isFinite((existingProfile as { version?: unknown } | null)?.version as number)
+    ? Number((existingProfile as { version?: number }).version)
+    : 0;
   const { data: saved } = await supabaseAdmin
     .from('user_positioning_profiles')
     .upsert({
       user_id: config.user_id,
       positioning_data: profile,
-      version: existingProfile ? (existingProfile as Record<string, unknown>).version as number + 1 : 1,
+      version: currentVersion + 1,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
     .select('id')

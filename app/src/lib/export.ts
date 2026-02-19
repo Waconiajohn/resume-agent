@@ -101,7 +101,11 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
     if (Array.isArray(resume.education) && resume.education.length > 0) {
       const lines = ['EDUCATION'];
       for (const edu of resume.education) {
-        lines.push(`${edu.degree} in ${edu.field}, ${edu.institution} (${edu.year})`);
+        let text = (edu.degree ?? '').trim();
+        if (edu.field?.trim()) text += ` in ${edu.field.trim()}`;
+        if (edu.institution?.trim()) text += `${text ? ', ' : ''}${edu.institution.trim()}`;
+        if (edu.year?.trim()) text += ` (${edu.year.trim()})`;
+        if (text) lines.push(text);
       }
       lines.push('');
       return lines;
@@ -113,8 +117,12 @@ const textSectionRenderers: Record<string, TextSectionRenderer> = {
     if (Array.isArray(resume.certifications) && resume.certifications.length > 0) {
       const lines = ['CERTIFICATIONS'];
       for (const cert of resume.certifications) {
-        lines.push(`${cert.name} — ${cert.issuer} (${cert.year})`);
+        let text = (cert.name ?? '').trim();
+        if (cert.issuer?.trim()) text += ` — ${cert.issuer.trim()}`;
+        if (cert.year?.trim()) text += ` (${cert.year.trim()})`;
+        if (text) lines.push(text);
       }
+      lines.push('');
       return lines;
     }
     if (typeof resume.certifications === 'string') return ['CERTIFICATIONS', resume.certifications];
@@ -154,8 +162,19 @@ export function resumeToText(resume: FinalResume): string {
   const rawSections = resume._raw_sections;
   if (!hasStructuredContent && rawSections && Object.keys(rawSections).length > 0) {
     const order = resume.section_order ?? Object.keys(rawSections);
+    let renderedCombinedEducation = false;
     return order
-      .map(name => rawSections[name])
+      .map((name) => {
+        if (
+          !renderedCombinedEducation
+          && (name === 'education' || name === 'certifications')
+          && rawSections.education_and_certifications
+        ) {
+          renderedCombinedEducation = true;
+          return rawSections.education_and_certifications;
+        }
+        return rawSections[name];
+      })
       .filter(Boolean)
       .join('\n\n');
   }

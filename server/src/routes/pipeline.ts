@@ -115,6 +115,7 @@ const runningPipelines = new Set<string>();
 
 const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
 const MAX_JOB_URL_REDIRECTS = 3;
+const MAX_JOB_FETCH_BYTES = 2_000_000; // 2MB safety cap to avoid oversized pages
 const PIPELINE_STAGES: PipelineStage[] = [
   'intake',
   'research',
@@ -275,8 +276,18 @@ async function resolveJobDescriptionInput(input: string): Promise<string> {
       if (!res.ok) {
         throw new Error(`Failed to fetch job URL (${res.status}). Please paste JD text instead.`);
       }
+      const contentLength = res.headers.get('content-length');
+      if (contentLength) {
+        const bytes = Number.parseInt(contentLength, 10);
+        if (Number.isFinite(bytes) && bytes > MAX_JOB_FETCH_BYTES) {
+          throw new Error('Job URL content is too large. Please paste the job description text directly.');
+        }
+      }
       const contentType = res.headers.get('content-type')?.toLowerCase() ?? '';
       const body = await res.text();
+      if (body.length > MAX_JOB_FETCH_BYTES) {
+        throw new Error('Job URL content is too large. Please paste the job description text directly.');
+      }
       const text = contentType.includes('text/plain') ? body.trim() : extractVisibleTextFromHtml(body);
       if (text.length < 200) {
         throw new Error('Could not extract enough job description text from the URL. Please paste JD text directly.');
