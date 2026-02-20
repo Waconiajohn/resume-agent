@@ -77,7 +77,7 @@ let cachedHealthCheck: {
   llmKeyPresent: boolean;
 } | null = null;
 
-app.get('/health', async (c) => {
+async function getHealthSnapshot(now = Date.now()) {
   const configuredProvider = process.env.LLM_PROVIDER?.toLowerCase();
   const llmProvider = configuredProvider === 'zai' || configuredProvider === 'anthropic'
     ? configuredProvider
@@ -86,7 +86,6 @@ app.get('/health', async (c) => {
     ? Boolean(process.env.ZAI_API_KEY)
     : Boolean(process.env.ANTHROPIC_API_KEY);
 
-  const now = Date.now();
   const cache = cachedHealthCheck;
   const canUseCache =
     cache
@@ -110,16 +109,39 @@ app.get('/health', async (c) => {
     };
   }
 
+  return {
+    dbOk,
+    llmKeyPresent: llmKeyPresentNow,
+    canUseCache: Boolean(canUseCache),
+    checkedAt: cachedHealthCheck?.checkedAt ?? null,
+  };
+}
+
+app.get('/health', async (c) => {
+  const health = await getHealthSnapshot();
   const status = shuttingDown
     ? 'draining'
-    : (dbOk && llmKeyPresentNow ? 'ok' : 'degraded');
+    : (health.dbOk && health.llmKeyPresent ? 'ok' : 'degraded');
   return c.json({
     status,
     shutting_down: shuttingDown,
-    cached: Boolean(canUseCache),
-    checked_at: cachedHealthCheck ? new Date(cachedHealthCheck.checkedAt).toISOString() : null,
+    cached: health.canUseCache,
+    checked_at: health.checkedAt ? new Date(health.checkedAt).toISOString() : null,
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get('/ready', async (c) => {
+  const health = await getHealthSnapshot();
+  const ready = !shuttingDown && health.dbOk && health.llmKeyPresent;
+  return c.json({
+    ready,
+    shutting_down: shuttingDown,
+    db_ok: health.dbOk,
+    llm_key_ok: health.llmKeyPresent,
+    checked_at: health.checkedAt ? new Date(health.checkedAt).toISOString() : null,
+    timestamp: new Date().toISOString(),
+  }, ready ? 200 : 503);
 });
 
 const startTime = Date.now();
@@ -197,7 +219,9 @@ function shutdown(signal: string) {
   logger.info({ signal }, 'Graceful shutdown initiated');
 
   // Release all session locks so users aren't blocked after restart
-  releaseAllLocks().catch(() => {});
+  releaseAllLocks().catch((err) => {
+    logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Failed to release session locks during shutdown');
+  });
 
   // Close HTTP server (stop accepting new connections)
   server.close(() => {
@@ -214,3 +238,11 @@ function shutdown(signal: string) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+  logger.error({ reason }, 'Unhandled promise rejection');
+  shutdown('UNHANDLED_REJECTION');
+});
+process.on('uncaughtException', (err) => {
+  logger.error({ err }, 'Uncaught exception');
+  shutdown('UNCAUGHT_EXCEPTION');
+});
