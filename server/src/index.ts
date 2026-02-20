@@ -75,6 +75,16 @@ app.use('*', async (c, next) => {
   }
 });
 
+app.use('*', async (c, next) => {
+  await next();
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('X-Frame-Options', 'DENY');
+  c.header('Referrer-Policy', 'no-referrer');
+  if (isProduction) {
+    c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  }
+});
+
 app.use('*', cors({
   origin: allowedOrigins,
   credentials: true,
