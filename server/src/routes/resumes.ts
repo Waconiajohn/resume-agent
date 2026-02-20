@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
-import { parsePositiveInt, rejectOversizedJsonBody } from '../lib/http-body-guard.js';
+import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 
 const createResumeSchema = z.object({
   raw_text: z.string().min(1).max(100_000),
@@ -172,12 +172,11 @@ resumes.delete('/:id', rateLimitMiddleware(20, 60_000), async (c) => {
 
 // POST /resumes — Upload/create a master resume (raw text)
 resumes.post('/', rateLimitMiddleware(20, 60_000), async (c) => {
-  const oversized = rejectOversizedJsonBody(c, MAX_CREATE_RESUME_BODY_BYTES);
-  if (oversized) return oversized;
+  const parsedBody = await parseJsonBodyWithLimit(c, MAX_CREATE_RESUME_BODY_BYTES);
+  if (!parsedBody.ok) return parsedBody.response;
 
   const user = c.get('user');
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = createResumeSchema.safeParse(body);
+  const parsed = createResumeSchema.safeParse(parsedBody.data);
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }

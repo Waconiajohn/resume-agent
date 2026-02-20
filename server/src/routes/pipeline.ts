@@ -10,7 +10,7 @@ import { runPipeline } from '../agents/pipeline.js';
 import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 import { sleep } from '../lib/sleep.js';
-import { parsePositiveInt, rejectOversizedJsonBody } from '../lib/http-body-guard.js';
+import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -693,12 +693,11 @@ async function resolveJobDescriptionInput(input: string): Promise<string> {
 // POST /pipeline/start
 // Body: { session_id, raw_resume_text, job_description, company_name }
 pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
-  const oversized = rejectOversizedJsonBody(c, MAX_PIPELINE_START_BODY_BYTES);
-  if (oversized) return oversized;
+  const parsedBody = await parseJsonBodyWithLimit(c, MAX_PIPELINE_START_BODY_BYTES);
+  if (!parsedBody.ok) return parsedBody.response;
 
   const user = c.get('user');
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = startSchema.safeParse(body);
+  const parsed = startSchema.safeParse(parsedBody.data);
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
@@ -971,12 +970,11 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
 // POST /pipeline/respond
 // Body: { session_id, gate, response }
 pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
-  const oversized = rejectOversizedJsonBody(c, MAX_PIPELINE_RESPOND_BODY_BYTES);
-  if (oversized) return oversized;
+  const parsedBody = await parseJsonBodyWithLimit(c, MAX_PIPELINE_RESPOND_BODY_BYTES);
+  if (!parsedBody.ok) return parsedBody.response;
 
   const user = c.get('user');
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = respondSchema.safeParse(body);
+  const parsed = respondSchema.safeParse(parsedBody.data);
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }

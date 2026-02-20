@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Hono, type Context } from 'hono';
-import { parsePositiveInt, rejectOversizedJsonBody } from '../lib/http-body-guard.js';
+import { parsePositiveInt, rejectOversizedJsonBody, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 
 describe('parsePositiveInt', () => {
   it('returns parsed positive values', () => {
@@ -51,5 +51,43 @@ describe('rejectOversizedJsonBody', () => {
   it('ignores malformed content-length values', () => {
     expect(rejectOversizedJsonBody(makeMockContext('abc'), 50)).toBeNull();
     expect(rejectOversizedJsonBody(makeMockContext('-7'), 50)).toBeNull();
+  });
+});
+
+describe('parseJsonBodyWithLimit', () => {
+  it('blocks oversized bodies even when content-length is absent or unreliable', async () => {
+    const app = new Hono();
+    app.post('/parse', async (c) => {
+      const parsed = await parseJsonBodyWithLimit(c, 20);
+      if (!parsed.ok) return parsed.response;
+      return c.json({ ok: true, data: parsed.data });
+    });
+
+    const res = await app.request('http://test/parse', {
+      method: 'POST',
+      body: JSON.stringify({ payload: 'x'.repeat(200) }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    expect(res.status).toBe(413);
+  });
+
+  it('returns {} for invalid JSON to preserve existing validation flow', async () => {
+    const app = new Hono();
+    app.post('/parse', async (c) => {
+      const parsed = await parseJsonBodyWithLimit(c, 200);
+      if (!parsed.ok) return parsed.response;
+      return c.json({ data: parsed.data });
+    });
+
+    const res = await app.request('http://test/parse', {
+      method: 'POST',
+      body: '{invalid-json',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: unknown };
+    expect(body.data).toEqual({});
   });
 });

@@ -11,7 +11,7 @@ import { withSessionLock } from '../lib/session-lock.js';
 import { saveSessionCheckpoint } from '../lib/save-session-checkpoint.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
-import { parsePositiveInt, rejectOversizedJsonBody } from '../lib/http-body-guard.js';
+import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 
 const sessions = new Hono();
 
@@ -297,11 +297,11 @@ sessions.use('*', authMiddleware);
 
 // POST /sessions — Create a new coaching session
 sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
-  const oversized = rejectOversizedJsonBody(c, MAX_CREATE_SESSION_BODY_BYTES);
-  if (oversized) return oversized;
+  const parsedBody = await parseJsonBodyWithLimit(c, MAX_CREATE_SESSION_BODY_BYTES);
+  if (!parsedBody.ok) return parsedBody.response;
 
   const user = c.get('user');
-  const body = await c.req.json().catch(() => ({}));
+  const body = parsedBody.data as Record<string, unknown>;
 
   const { master_resume_id, job_application_id } = body as {
     master_resume_id?: string;
@@ -491,12 +491,12 @@ processingCleanupTimer.unref();
 // POST /sessions/:id/messages — Send a message to the agent
 // Rate limit: 20 messages per user per minute
 sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
-  const oversized = rejectOversizedJsonBody(c, MAX_MESSAGE_BODY_BYTES);
-  if (oversized) return oversized;
+  const parsedBody = await parseJsonBodyWithLimit(c, MAX_MESSAGE_BODY_BYTES);
+  if (!parsedBody.ok) return parsedBody.response;
 
   const user = c.get('user');
   const sessionId = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
+  const body = parsedBody.data as Record<string, unknown>;
   const { content, idempotency_key } = body as { content: string; idempotency_key?: string };
 
   if (!content?.trim()) {
