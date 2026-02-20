@@ -544,88 +544,96 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     }
   }
 
-  const { data: sessionData, error: loadError } = await supabaseAdmin
-    .from('coach_sessions')
-    .select('*')
-    .eq('id', sessionId)
-    .eq('user_id', user.id)
-    .single();
+  // Reserve immediately so concurrent requests for the same session are rejected in-process.
+  reserveProcessingSession(sessionId, user.id, now);
+  let handedOff = false;
+  try {
+    const { data: sessionData, error: loadError } = await supabaseAdmin
+      .from('coach_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .single();
 
-  if (loadError || !sessionData) {
-    if (loadError && loadError.code !== 'PGRST116') {
-      logger.error({ sessionId, error: loadError.message }, 'DB error loading session');
-      return c.json({ error: 'Database error' }, 503);
+    if (loadError || !sessionData) {
+      if (loadError && loadError.code !== 'PGRST116') {
+        logger.error({ sessionId, error: loadError.message }, 'DB error loading session');
+        return c.json({ error: 'Database error' }, 503);
+      }
+      return c.json({ error: 'Session not found' }, 404);
     }
-    return c.json({ error: 'Session not found' }, 404);
-  }
 
-  // Lightweight validation before casting
-  if (!sessionData.id || !sessionData.user_id || !sessionData.current_phase) {
-    return c.json({ error: 'Invalid session data' }, 500);
-  }
-  const session = sessionData as CoachSession;
-  const ctx = new SessionContext(session);
+    // Lightweight validation before casting
+    if (!sessionData.id || !sessionData.user_id || !sessionData.current_phase) {
+      return c.json({ error: 'Invalid session data' }, 500);
+    }
+    const session = sessionData as CoachSession;
+    const ctx = new SessionContext(session);
 
-  await ctx.loadMasterResume(supabaseAdmin);
+    await ctx.loadMasterResume(supabaseAdmin);
 
-  const emit = (event: SSEEvent) => {
-    const emitters = sseConnections.get(sessionId);
-    if (emitters) {
-      for (const emitter of [...emitters]) {
-        try {
-          emitter(event);
-        } catch {
-          // Drop dead emitter immediately to reduce repeated send failures.
-          removeSSEConnection(sessionId, user.id, emitter);
+    const emit = (event: SSEEvent) => {
+      const emitters = sseConnections.get(sessionId);
+      if (emitters) {
+        for (const emitter of [...emitters]) {
+          try {
+            emitter(event);
+          } catch {
+            // Drop dead emitter immediately to reduce repeated send failures.
+            removeSSEConnection(sessionId, user.id, emitter);
+          }
         }
       }
-    }
-  };
+    };
 
-  if (ctx.pendingToolCallId) {
-    const lastResponse = ctx.interviewResponses[ctx.interviewResponses.length - 1];
-    if (lastResponse && lastResponse.answer === '[awaiting response]') {
-      lastResponse.answer = content;
-    }
-  }
-
-  const log = createSessionLogger(sessionId);
-
-  reserveProcessingSession(sessionId, user.id, now);
-
-  withSessionLock(sessionId, async () => {
-    try {
-      await runAgentLoop(ctx, content, emit);
-    } catch (error) {
-      log.error({ error: error instanceof Error ? error.message : error }, 'Agent loop error');
-      emit({
-        type: 'error',
-        message: 'Something went wrong processing your message. Please try again.',
-        recoverable: true,
-      });
-    } finally {
-      const result = await saveSessionCheckpoint(ctx);
-      if (!result.success) {
-        log.error({ error: result.error }, 'Failed to save session checkpoint');
-        emit({
-          type: 'error',
-          message: 'Failed to save your progress. Your message was processed but changes may not persist. Please retry.',
-          recoverable: true,
-        });
+    if (ctx.pendingToolCallId) {
+      const lastResponse = ctx.interviewResponses[ctx.interviewResponses.length - 1];
+      if (lastResponse && lastResponse.answer === '[awaiting response]') {
+        lastResponse.answer = content;
       }
     }
-  }).catch((error) => {
-    log.error({ error: error instanceof Error ? error.message : error }, 'Session lock error');
-    emit({
-      type: 'error',
-      message: 'Failed to process message — please try again.',
-      recoverable: true,
-    });
-  }).finally(() => {
-    releaseProcessingSession(sessionId);
-  });
 
-  return c.json({ status: 'processing' });
+    const log = createSessionLogger(sessionId);
+
+    withSessionLock(sessionId, async () => {
+      try {
+        await runAgentLoop(ctx, content, emit);
+      } catch (error) {
+        log.error({ error: error instanceof Error ? error.message : error }, 'Agent loop error');
+        emit({
+          type: 'error',
+          message: 'Something went wrong processing your message. Please try again.',
+          recoverable: true,
+        });
+      } finally {
+        const result = await saveSessionCheckpoint(ctx);
+        if (!result.success) {
+          log.error({ error: result.error }, 'Failed to save session checkpoint');
+          emit({
+            type: 'error',
+            message: 'Failed to save your progress. Your message was processed but changes may not persist. Please retry.',
+            recoverable: true,
+          });
+        }
+      }
+    }).catch((error) => {
+      log.error({ error: error instanceof Error ? error.message : error }, 'Session lock error');
+      emit({
+        type: 'error',
+        message: 'Failed to process message — please try again.',
+        recoverable: true,
+      });
+    }).finally(() => {
+      releaseProcessingSession(sessionId);
+    });
+
+    handedOff = true;
+    return c.json({ status: 'processing' });
+  } finally {
+    if (!handedOff) {
+      releaseProcessingSession(sessionId);
+    }
+  }
 });
 
 // GET /sessions — Get user's sessions list
