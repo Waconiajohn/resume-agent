@@ -16,6 +16,7 @@ import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard
 const sessions = new Hono();
 
 const sseConnections = new Map<string, Array<(event: SSEEvent) => void>>();
+const sseEmitterOwners = new WeakMap<(event: SSEEvent) => void, string>();
 let totalSSEConnections = 0;
 
 // Track SSE connections per user to prevent resource exhaustion
@@ -52,25 +53,28 @@ function addSSEConnection(sessionId: string, userId: string, emitter: (event: SS
     sseConnections.set(sessionId, []);
   }
   sseConnections.get(sessionId)!.push(emitter);
+  sseEmitterOwners.set(emitter, userId);
   totalSSEConnections += 1;
   sseConnectionsByUser.set(userId, (sseConnectionsByUser.get(userId) ?? 0) + 1);
 }
 
 function removeSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
+  const ownerId = sseEmitterOwners.get(emitter) ?? userId;
   const emitters = sseConnections.get(sessionId);
   if (emitters) {
     const idx = emitters.indexOf(emitter);
     if (idx !== -1) {
       emitters.splice(idx, 1);
       totalSSEConnections = Math.max(0, totalSSEConnections - 1);
+      sseEmitterOwners.delete(emitter);
     }
     if (emitters.length === 0) sseConnections.delete(sessionId);
   }
-  const count = sseConnectionsByUser.get(userId) ?? 1;
+  const count = sseConnectionsByUser.get(ownerId) ?? 1;
   if (count <= 1) {
-    sseConnectionsByUser.delete(userId);
+    sseConnectionsByUser.delete(ownerId);
   } else {
-    sseConnectionsByUser.set(userId, count - 1);
+    sseConnectionsByUser.set(ownerId, count - 1);
   }
 }
 
@@ -143,12 +147,18 @@ const sseRateCleanupTimer = setInterval(() => {
       sseConnectionTimestamps.set(userId, recent);
     }
   }
-  // Clean stale sseConnectionsByUser entries — users with no active SSE connections
-  // whose count drifted due to unclean disconnects.
-  for (const [userId, count] of sseConnectionsByUser.entries()) {
-    if (count <= 0) {
-      sseConnectionsByUser.delete(userId);
+  // Reconcile per-user SSE counts from active emitter ownership to heal drift.
+  const actualByUser = new Map<string, number>();
+  for (const emitters of sseConnections.values()) {
+    for (const emitter of emitters) {
+      const ownerId = sseEmitterOwners.get(emitter);
+      if (!ownerId) continue;
+      actualByUser.set(ownerId, (actualByUser.get(ownerId) ?? 0) + 1);
     }
+  }
+  sseConnectionsByUser.clear();
+  for (const [ownerId, count] of actualByUser.entries()) {
+    sseConnectionsByUser.set(ownerId, count);
   }
 }, 60_000);
 sseRateCleanupTimer.unref();
