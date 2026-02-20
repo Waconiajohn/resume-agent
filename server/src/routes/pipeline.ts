@@ -34,6 +34,12 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
 
 const MAX_PIPELINE_START_BODY_BYTES = parsePositiveInt(process.env.MAX_PIPELINE_START_BODY_BYTES, 220_000);
 const MAX_PIPELINE_RESPOND_BODY_BYTES = parsePositiveInt(process.env.MAX_PIPELINE_RESPOND_BODY_BYTES, 120_000);
+const MAX_SECTION_CONTEXT_EVIDENCE_ITEMS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_EVIDENCE_ITEMS, 20);
+const MAX_SECTION_CONTEXT_KEYWORDS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_KEYWORDS, 40);
+const MAX_SECTION_CONTEXT_GAPS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_GAPS, 40);
+const MAX_SECTION_CONTEXT_ORDER_ITEMS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_ORDER_ITEMS, 40);
+const MAX_SECTION_CONTEXT_TEXT_CHARS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_TEXT_CHARS, 700);
+const MAX_SECTION_CONTEXT_BLUEPRINT_BYTES = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_BLUEPRINT_BYTES, 120_000);
 
 function rejectOversizedJsonBody(c: Context, maxBytes: number): Response | null {
   const contentLength = c.req.header('content-length');
@@ -42,6 +48,64 @@ function rejectOversizedJsonBody(c: Context, maxBytes: number): Response | null 
   if (!Number.isFinite(parsed) || parsed < 0) return null;
   if (parsed <= maxBytes) return null;
   return c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413);
+}
+
+function truncateText(value: string, maxChars = MAX_SECTION_CONTEXT_TEXT_CHARS): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, maxChars)}...`;
+}
+
+function sanitizeBlueprintSlice(slice: Record<string, unknown>): Record<string, unknown> {
+  try {
+    const serialized = JSON.stringify(slice);
+    if (serialized.length <= MAX_SECTION_CONTEXT_BLUEPRINT_BYTES) return slice;
+    return {
+      truncated: true,
+      reason: 'blueprint_slice_too_large',
+      max_bytes: MAX_SECTION_CONTEXT_BLUEPRINT_BYTES,
+      keys: Object.keys(slice).slice(0, 25),
+    };
+  } catch {
+    return {
+      truncated: true,
+      reason: 'blueprint_slice_serialization_failed',
+    };
+  }
+}
+
+function sanitizeSectionContext(event: Extract<PipelineSSEEvent, { type: 'section_context' }>) {
+  return {
+    context_version: event.context_version,
+    generated_at: event.generated_at,
+    blueprint_slice: sanitizeBlueprintSlice(event.blueprint_slice),
+    evidence: event.evidence.slice(0, MAX_SECTION_CONTEXT_EVIDENCE_ITEMS).map((e) => ({
+      id: truncateText(e.id, 80),
+      situation: truncateText(e.situation),
+      action: truncateText(e.action),
+      result: truncateText(e.result),
+      metrics_defensible: e.metrics_defensible,
+      user_validated: e.user_validated,
+      mapped_requirements: e.mapped_requirements
+        .slice(0, 8)
+        .map((req) => truncateText(req, 180)),
+      scope_metrics: Object.fromEntries(
+        Object.entries(e.scope_metrics ?? {})
+          .slice(0, 8)
+          .map(([k, v]) => [truncateText(String(k), 40), truncateText(String(v), 120)]),
+      ),
+    })),
+    keywords: event.keywords.slice(0, MAX_SECTION_CONTEXT_KEYWORDS).map((k) => ({
+      keyword: truncateText(k.keyword, 80),
+      target_density: k.target_density,
+      current_count: k.current_count,
+    })),
+    gap_mappings: event.gap_mappings.slice(0, MAX_SECTION_CONTEXT_GAPS).map((g) => ({
+      requirement: truncateText(g.requirement, 180),
+      classification: g.classification,
+    })),
+    section_order: event.section_order.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(s, 60)),
+    sections_approved: event.sections_approved.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(s, 60)),
+  };
 }
 
 async function setPendingGate(sessionId: string, gate: string, data?: Record<string, unknown>) {
@@ -260,6 +324,12 @@ export function getPipelineRouteStats() {
     max_queued_panel_persists: MAX_QUEUED_PANEL_PERSISTS,
     max_pipeline_start_body_bytes: MAX_PIPELINE_START_BODY_BYTES,
     max_pipeline_respond_body_bytes: MAX_PIPELINE_RESPOND_BODY_BYTES,
+    max_section_context_evidence_items: MAX_SECTION_CONTEXT_EVIDENCE_ITEMS,
+    max_section_context_keywords: MAX_SECTION_CONTEXT_KEYWORDS,
+    max_section_context_gaps: MAX_SECTION_CONTEXT_GAPS,
+    max_section_context_order_items: MAX_SECTION_CONTEXT_ORDER_ITEMS,
+    max_section_context_text_chars: MAX_SECTION_CONTEXT_TEXT_CHARS,
+    max_section_context_blueprint_bytes: MAX_SECTION_CONTEXT_BLUEPRINT_BYTES,
   };
 }
 
@@ -793,18 +863,10 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
     // Capture section_context for merging into subsequent section_draft persistence
     if (event.type === 'section_context') {
+      const sanitizedContext = sanitizeSectionContext(event);
       latestSectionContext = {
         section: event.section,
-        context: {
-          context_version: event.context_version,
-          generated_at: event.generated_at,
-          blueprint_slice: event.blueprint_slice,
-          evidence: event.evidence,
-          keywords: event.keywords,
-          gap_mappings: event.gap_mappings,
-          section_order: event.section_order,
-          sections_approved: event.sections_approved,
-        },
+        context: sanitizedContext,
       };
     }
     // Persist section_draft as section_review panel for restore, merging any section_context
