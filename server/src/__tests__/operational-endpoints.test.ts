@@ -28,6 +28,7 @@ describe('operational endpoints', () => {
     expect(res.headers.get('cache-control')).toBe('no-store');
     expect(res.headers.get('x-content-type-options')).toBe('nosniff');
     expect(res.headers.get('x-frame-options')).toBe('DENY');
+    expect(res.headers.get('strict-transport-security')).toBeNull();
   });
 
   it('returns structured readiness payload on /ready', async () => {

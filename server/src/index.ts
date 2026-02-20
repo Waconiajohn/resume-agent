@@ -82,7 +82,16 @@ app.use('*', async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
   c.header('Referrer-Policy', 'no-referrer');
-  if (isProduction) {
+  const forwardedProto = c.req.header('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
+  const directProto = (() => {
+    try {
+      return new URL(c.req.url).protocol;
+    } catch {
+      return '';
+    }
+  })();
+  const requestIsHttps = forwardedProto === 'https' || directProto === 'https:';
+  if (isProduction && requestIsHttps) {
     c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   }
 });
