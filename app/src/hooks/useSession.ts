@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import { resumeToText } from '@/lib/export';
@@ -12,16 +12,27 @@ export function useSession(accessToken: string | null) {
   const [loading, setLoading] = useState(false);
   const [resumesLoading, setResumesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const accessTokenRef = useRef<string | null>(accessToken);
 
   const clearError = useCallback(() => setError(null), []);
 
-  const headers = useCallback(() => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${accessToken}`,
-  }), [accessToken]);
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+  }, [accessToken]);
+
+  const headers = useCallback(() => {
+    const token = accessTokenRef.current;
+    const next: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      next.Authorization = `Bearer ${token}`;
+    }
+    return next;
+  }, []);
 
   const listSessions = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessTokenRef.current) return;
     setLoading(true);
     setError(null);
     try {
@@ -38,10 +49,10 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const createSession = useCallback(async (masterResumeId?: string) => {
-    if (!accessToken) return null;
+    if (!accessTokenRef.current) return null;
     setLoading(true);
     setError(null);
     try {
@@ -65,10 +76,10 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const listResumes = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessTokenRef.current) return;
     setResumesLoading(true);
     setError(null);
     try {
@@ -85,10 +96,10 @@ export function useSession(accessToken: string | null) {
     } finally {
       setResumesLoading(false);
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const getDefaultResume = useCallback(async (): Promise<MasterResume | null> => {
-    if (!accessToken) return null;
+    if (!accessTokenRef.current) return null;
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/resumes/default`, { headers: headers() });
@@ -103,13 +114,13 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error loading default resume');
       return null;
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const saveResumeAsBase = useCallback(async (
     resume: FinalResume,
     options: { setAsDefault: boolean; sourceSessionId?: string | null },
   ): Promise<{ success: boolean; resumeId?: string; error?: string }> => {
-    if (!accessToken) return { success: false, error: 'Not authenticated' };
+    if (!accessTokenRef.current) return { success: false, error: 'Not authenticated' };
     setError(null);
     try {
       const body = {
@@ -141,10 +152,10 @@ export function useSession(accessToken: string | null) {
       setError(message);
       return { success: false, error: message };
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const loadSession = useCallback(async (sessionId: string) => {
-    if (!accessToken) return null;
+    if (!accessTokenRef.current) return null;
     setLoading(true);
     setError(null);
     try {
@@ -164,10 +175,10 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const deleteSession = useCallback(async (sessionId: string): Promise<boolean> => {
-    if (!accessToken) return false;
+    if (!accessTokenRef.current) return false;
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
@@ -186,10 +197,10 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error deleting session');
       return false;
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const setDefaultResume = useCallback(async (resumeId: string): Promise<boolean> => {
-    if (!accessToken) return false;
+    if (!accessTokenRef.current) return false;
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/resumes/${resumeId}/default`, {
@@ -214,10 +225,10 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error setting default resume');
       return false;
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const deleteResume = useCallback(async (resumeId: string): Promise<boolean> => {
-    if (!accessToken) return false;
+    if (!accessTokenRef.current) return false;
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/resumes/${resumeId}`, {
@@ -246,14 +257,14 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error deleting resume');
       return false;
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const sendMessage = useCallback(async (
     sessionId: string,
     content: string,
     clientMessageId?: string,
   ): Promise<boolean> => {
-    if (!accessToken) return false;
+    if (!accessTokenRef.current) return false;
     setError(null);
     const idempotencyKey = `${sessionId}:${clientMessageId ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`}`;
 
@@ -296,7 +307,7 @@ export function useSession(accessToken: string | null) {
       }
     }
     return false;
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const startPipeline = useCallback(async (
     sessionId: string,
@@ -304,7 +315,7 @@ export function useSession(accessToken: string | null) {
     jobDescription: string,
     companyName: string,
   ): Promise<boolean> => {
-    if (!accessToken) return false;
+    if (!accessTokenRef.current) return false;
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/pipeline/start`, {
@@ -327,14 +338,14 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error starting pipeline');
       return false;
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   const respondToGate = useCallback(async (
     sessionId: string,
     gate: string,
     response: unknown,
   ): Promise<boolean> => {
-    if (!accessToken) return false;
+    if (!accessTokenRef.current) return false;
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/pipeline/respond`, {
@@ -360,7 +371,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error responding to gate');
       return false;
     }
-  }, [accessToken, headers]);
+  }, [headers]);
 
   return {
     sessions,

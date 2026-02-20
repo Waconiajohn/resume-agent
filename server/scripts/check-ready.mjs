@@ -30,13 +30,24 @@ async function main() {
   const baseUrl = String(args.url ?? process.env.READY_CHECK_URL ?? '').trim();
   const timeoutMs = toPositiveInt(args['timeout-ms'] ?? process.env.READY_CHECK_TIMEOUT_MS, 45_000);
   const intervalMs = toPositiveInt(args['interval-ms'] ?? process.env.READY_CHECK_INTERVAL_MS, 1000);
+  const requestTimeoutMs = toPositiveInt(
+    args['request-timeout-ms'] ?? process.env.READY_CHECK_REQUEST_TIMEOUT_MS,
+    Math.min(intervalMs, 5_000),
+  );
 
   if (!baseUrl) {
     console.error('[check-ready] Missing URL. Set READY_CHECK_URL or pass --url=https://your-host.');
     process.exit(2);
   }
 
-  const readyUrl = `${baseUrl.replace(/\/+$/, '')}/ready`;
+  let readyUrl = '';
+  try {
+    const parsed = new URL(baseUrl);
+    readyUrl = `${parsed.toString().replace(/\/+$/, '')}/ready`;
+  } catch {
+    console.error(`[check-ready] Invalid URL: ${baseUrl}`);
+    process.exit(2);
+  }
   const deadline = Date.now() + timeoutMs;
   let attempts = 0;
   let lastStatus = 0;
@@ -46,7 +57,11 @@ async function main() {
   while (Date.now() < deadline) {
     attempts += 1;
     try {
-      const res = await fetch(readyUrl, { method: 'GET', headers: { Accept: 'application/json' } });
+      const res = await fetch(readyUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      });
       lastStatus = res.status;
       const body = await res.json().catch(() => null);
       lastBody = body;
@@ -71,6 +86,7 @@ async function main() {
     ready_url: readyUrl,
     attempts,
     timeout_ms: timeoutMs,
+    request_timeout_ms: requestTimeoutMs,
     last_status: lastStatus || null,
     last_body: lastBody,
     last_error: lastError,

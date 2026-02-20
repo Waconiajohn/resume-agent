@@ -40,6 +40,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
   // Ref mirror so pipeline_complete handler can read latest quality scores
   const qualityScoresRef = useRef<QualityScores | null>(null);
+  const accessTokenRef = useRef<string | null>(accessToken);
   const abortControllerRef = useRef<AbortController | null>(null);
   // Accumulate all section content for building FinalResume at pipeline_complete
   const sectionsMapRef = useRef<Record<string, string>>({});
@@ -77,6 +78,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     messageIdRef.current += 1;
     return `msg-${messageIdRef.current}`;
   }, []);
+
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+  }, [accessToken]);
 
   // Flush delta buffer to state
   const flushDeltaBuffer = useCallback(() => {
@@ -149,7 +154,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
   // Connect to SSE with fetch-based streaming
   useEffect(() => {
-    if (!sessionId || !accessToken) return;
+    if (!sessionId || !accessTokenRef.current) return;
 
     function connectSSE() {
       // Update ref so handleDisconnect always uses the latest version
@@ -162,10 +167,15 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
+      const token = accessTokenRef.current;
+      if (!token) {
+        setError('Not authenticated');
+        return;
+      }
 
       fetch(`/api/sessions/${sessionId}/sse`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         signal: controller.signal,
       })
@@ -897,17 +907,19 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       toolCleanupTimersRef.current.clear();
       reconnectAttemptsRef.current = 0;
     };
-  }, [sessionId, accessToken, nextId, flushDeltaBuffer, handleDisconnect]);
+  }, [sessionId, nextId, flushDeltaBuffer, handleDisconnect]);
 
   // Fallback status poll: when SSE is disconnected, keep pipeline stage/gate state synchronized.
   useEffect(() => {
-    if (!sessionId || !accessToken || sessionComplete) return;
+    if (!sessionId || !accessTokenRef.current || sessionComplete) return;
     let cancelled = false;
 
     const restoreCompletionFromSession = async () => {
+      const token = accessTokenRef.current;
+      if (!token) return;
       const sessionRes = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       if (!sessionRes.ok) return;
@@ -941,9 +953,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     const pollStatus = async () => {
       if (cancelled || connected) return;
       try {
+        const token = accessTokenRef.current;
+        if (!token) return;
         const res = await fetch(`/api/pipeline/status?session_id=${encodeURIComponent(sessionId)}`, {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         });
         if (!res.ok) return;
@@ -999,7 +1013,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [sessionId, accessToken, connected, sessionComplete, nextId, setIsPipelineGateActive]);
+  }, [sessionId, connected, sessionComplete, nextId, setIsPipelineGateActive]);
 
   const addUserMessage = useCallback((content: string) => {
     setMessages((prev) => [
