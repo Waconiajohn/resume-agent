@@ -587,6 +587,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         if (reviewIterations >= MAX_REVIEW_ITERATIONS) {
           log.warn({ section: call.section, iterations: reviewIterations }, 'Max review iterations exceeded — auto-approving section');
           emit({ type: 'section_approved', section: call.section });
+          approvedSectionSet.add(call.section);
           break;
         }
         const contextVersion = (sectionContextVersions.get(call.section) ?? 0) + 1;
@@ -620,6 +621,19 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           `section_review_${call.section}`,
         );
         const normalizedReview = normalizeSectionReviewResponse(reviewResponse);
+        reviewIterations++;
+
+        // Strict token checks for object responses. Legacy boolean responses are accepted
+        // for backwards compatibility, but all structured workbench actions must be tokened.
+        if (typeof reviewResponse !== 'boolean' && !normalizedReview.review_token) {
+          emit({
+            type: 'transparency',
+            stage: 'section_review',
+            message: 'Your action expired. Please click your choice again on the latest draft.',
+          });
+          log.warn({ section: call.section }, 'Rejected tokenless section review object response');
+          continue;
+        }
         if (normalizedReview.review_token && normalizedReview.review_token !== reviewToken) {
           emit({
             type: 'transparency',
@@ -636,7 +650,6 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           );
           continue;
         }
-        reviewIterations++;
 
         if (normalizedReview.approved) {
           emit({ type: 'section_approved', section: call.section });
@@ -1322,8 +1335,8 @@ function filterEvidenceForSection(
     relevant = positioning.evidence_library.slice(0, 6);
   }
 
-  return relevant.map(e => ({
-    id: e.id ?? '',
+  return relevant.map((e, idx) => ({
+    id: (e.id && e.id.trim()) ? e.id : `${section}_evidence_${idx + 1}`,
     situation: e.situation,
     action: e.action,
     result: e.result,
@@ -1345,14 +1358,29 @@ function buildKeywordStatus(
   blueprint: ArchitectOutput,
 ): Array<{ keyword: string; target_density: number; current_count: number }> {
   return Object.entries(blueprint.keyword_map).map(([keyword, target]) => {
-    const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    const matches = content.match(regex);
     return {
       keyword,
       target_density: target.target_density,
-      current_count: matches ? matches.length : 0,
+      current_count: countKeywordOccurrences(keyword, content),
     };
   });
+}
+
+function countKeywordOccurrences(keyword: string, content: string): number {
+  const term = keyword.trim();
+  if (!term || !content) return 0;
+
+  const escaped = term
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\s+/g, '\\s+');
+  const boundaryPattern = `(^|[^A-Za-z0-9])(${escaped})(?=$|[^A-Za-z0-9])`;
+  const regex = new RegExp(boundaryPattern, 'gi');
+
+  let count = 0;
+  for (const _ of content.matchAll(regex)) {
+    count += 1;
+  }
+  return count;
 }
 
 function buildGapMappingsForSection(

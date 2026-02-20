@@ -41,6 +41,7 @@ export function WorkbenchContentEditor({
 }: WorkbenchContentEditorProps) {
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
   const [editingLineValue, setEditingLineValue] = useState('');
+  const [activeLinePrefix, setActiveLinePrefix] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const lines = parseContentLines(localContent || content);
@@ -57,13 +58,16 @@ export function WorkbenchContentEditor({
   useEffect(() => {
     if (!isRefining) {
       setActiveLineIndex(null);
+      setActiveLinePrefix('');
     }
   }, [isRefining]);
 
   const handleLineClick = (index: number, line: string) => {
     if (isRefining) return;
+    const prefixMatch = line.match(/^(\s*[•\-\*]\s*)/);
     setActiveLineIndex(index);
-    setEditingLineValue(line);
+    setActiveLinePrefix(prefixMatch ? '• ' : '');
+    setEditingLineValue(stripBulletPrefix(line));
     setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
@@ -71,15 +75,21 @@ export function WorkbenchContentEditor({
     if (activeLineIndex === null) return;
     // Save edits back into localContent
     const updatedLines = [...lines];
-    updatedLines[activeLineIndex] = editingLineValue;
+    const nextValue = editingLineValue.trimEnd();
+    updatedLines[activeLineIndex] = activeLinePrefix && nextValue
+      ? `${activeLinePrefix}${nextValue}`
+      : nextValue;
     onLocalContentChange(updatedLines.join('\n'));
     setActiveLineIndex(null);
+    setActiveLinePrefix('');
   };
 
   const handleLineKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setActiveLineIndex(null);
+      setActiveLinePrefix('');
     } else if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleLineBlur();
     }
   };
@@ -111,7 +121,7 @@ export function WorkbenchContentEditor({
                   !isRefining && 'hover:bg-white/[0.04]',
                   isActive && 'bg-white/[0.04]',
                 )}
-                onClick={() => handleLineClick(i, displayText)}
+                onClick={() => handleLineClick(i, line)}
               >
                 {bullet && !isActive && (
                   <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white/40" />

@@ -79,7 +79,7 @@ export function SectionWorkbench({
     setShowAdvanced(false);
     unlockRefineState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, content, unlockRefineState]);
+  }, [section, unlockRefineState]);
 
   useEffect(() => {
     return () => {
@@ -92,14 +92,20 @@ export function SectionWorkbench({
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        if (!isRefining) {
+        if (isRefining) {
+          return;
+        }
+        if (hasLocalEdits) {
+          onDirectEdit(localContent, reviewToken);
+          setHasLocalEdits(false);
+        } else {
           onApprove();
         }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isRefining, onApprove]);
+  }, [hasLocalEdits, isRefining, localContent, onApprove, onDirectEdit, reviewToken]);
 
   const handleLocalContentChange = useCallback(
     (updated: string) => {

@@ -14,9 +14,16 @@ interface WorkbenchKeywordBarProps {
 
 function countKeywordInContent(keyword: string, content: string): number {
   if (!keyword || !content) return 0;
-  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(escaped, 'gi');
-  return (content.match(regex) || []).length;
+  const escaped = keyword
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\s+/g, '\\s+');
+  const regex = new RegExp(`(^|[^A-Za-z0-9])(${escaped})(?=$|[^A-Za-z0-9])`, 'gi');
+  let count = 0;
+  for (const _ of content.matchAll(regex)) {
+    count += 1;
+  }
+  return count;
 }
 
 type KeywordStatus = 'met' | 'partial' | 'missing';

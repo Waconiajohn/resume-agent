@@ -174,8 +174,13 @@ export function WorkbenchEvidenceCards({
         Evidence Library
       </p>
       <div className="space-y-2">
-        {visible.map((item) => (
-          <EvidenceCard key={item.id} item={item} content={content} onWeaveIn={onWeaveIn} />
+        {visible.map((item, idx) => (
+          <EvidenceCard
+            key={item.id || `evidence_${idx}_${item.result.slice(0, 24)}`}
+            item={item}
+            content={content}
+            onWeaveIn={onWeaveIn}
+          />
         ))}
       </div>
       {!showAll && hiddenCount > 0 && (
