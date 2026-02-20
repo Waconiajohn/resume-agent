@@ -109,4 +109,36 @@ describe('parseJsonBodyWithLimit', () => {
     const body = await res.json() as { error?: string };
     expect(body.error).toContain('application/json');
   });
+
+  it('blocks oversized streamed JSON bodies without relying on content-length', async () => {
+    const app = new Hono();
+    app.post('/parse', async (c) => {
+      const parsed = await parseJsonBodyWithLimit(c, 30);
+      if (!parsed.ok) return parsed.response;
+      return c.json({ data: parsed.data });
+    });
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('{"payload":"'));
+        controller.enqueue(encoder.encode('x'.repeat(120)));
+        controller.enqueue(encoder.encode('"}'));
+        controller.close();
+      },
+    });
+
+    const init: RequestInit & { duplex: 'half' } = {
+      method: 'POST',
+      body: stream,
+      headers: { 'Content-Type': 'application/json' },
+      duplex: 'half',
+    };
+    const req = new Request('http://test/parse', init);
+    const res = await app.request(req);
+
+    expect(res.status).toBe(413);
+    const body = await res.json() as { error?: string };
+    expect(body.error).toContain('Request too large');
+  });
 });

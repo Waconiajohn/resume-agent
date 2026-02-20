@@ -18,6 +18,58 @@ export type JsonBodyParseResult =
   | { ok: true; data: unknown }
   | { ok: false; response: Response };
 
+type BodyReadResult =
+  | { ok: true; raw: string }
+  | { ok: false; response: Response };
+
+async function readUtf8BodyWithLimit(c: Context, maxBytes: number): Promise<BodyReadResult> {
+  const req = c.req.raw;
+  if (req.bodyUsed) {
+    return { ok: false, response: c.json({ error: 'Request body is not readable' }, 400) };
+  }
+
+  const stream = req.body;
+  if (!stream) return { ok: true, raw: '' };
+
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        try {
+          await reader.cancel();
+        } catch {
+          // best effort
+        }
+        return {
+          ok: false,
+          response: c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413),
+        };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, response: c.json({ error: 'Failed to read request body' }, 400) };
+  }
+
+  const merged = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  const raw = new TextDecoder().decode(merged);
+  return { ok: true, raw };
+}
+
 /**
  * Parse JSON body with an actual byte-size guard.
  * Protects endpoints even when Content-Length is absent or incorrect.
@@ -34,20 +86,9 @@ export async function parseJsonBodyWithLimit(c: Context, maxBytes: number): Prom
     };
   }
 
-  let raw = '';
-  try {
-    raw = await c.req.text();
-  } catch {
-    return { ok: false, response: c.json({ error: 'Failed to read request body' }, 400) };
-  }
-
-  const bytes = Buffer.byteLength(raw, 'utf8');
-  if (bytes > maxBytes) {
-    return {
-      ok: false,
-      response: c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413),
-    };
-  }
+  const read = await readUtf8BodyWithLimit(c, maxBytes);
+  if (!read.ok) return read;
+  const raw = read.raw;
 
   if (!raw.trim()) return { ok: true, data: {} };
   try {
