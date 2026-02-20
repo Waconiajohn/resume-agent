@@ -35,7 +35,7 @@ It runs:
 
 1. App verification (`app` typecheck/tests/build) on `pull_request` and `push`.
 2. Server verification (`server` typecheck/tests/build) on `pull_request` and `push`.
-3. Migration drift checks on `pull_request` and `push` (for `server/**` and `supabase/migrations/**` changes).
+3. Migration drift checks on `pull_request` and `push` (for `app/**`, `server/**`, and `supabase/migrations/**` changes).
 4. Optional staging readiness checks on manual dispatch when `ready_check_url` is provided.
 
 Repository secrets required for migration drift checks:
