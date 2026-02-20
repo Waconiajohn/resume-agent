@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 
 const createResumeSchema = z.object({
@@ -126,7 +127,7 @@ resumes.get('/:id', async (c) => {
 });
 
 // PUT /resumes/:id/default — Mark an existing resume as the default base
-resumes.put('/:id/default', async (c) => {
+resumes.put('/:id/default', rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const resumeId = c.req.param('id');
 
@@ -153,7 +154,7 @@ resumes.put('/:id/default', async (c) => {
 });
 
 // DELETE /resumes/:id — Delete a master resume
-resumes.delete('/:id', async (c) => {
+resumes.delete('/:id', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const resumeId = c.req.param('id');
 
@@ -183,7 +184,7 @@ resumes.delete('/:id', async (c) => {
 });
 
 // POST /resumes — Upload/create a master resume (raw text)
-resumes.post('/', async (c) => {
+resumes.post('/', rateLimitMiddleware(20, 60_000), async (c) => {
   const oversized = rejectOversizedJsonBody(c, MAX_CREATE_RESUME_BODY_BYTES);
   if (oversized) return oversized;
 
