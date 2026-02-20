@@ -30,6 +30,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? [] // Block all CORS in production if not configured
     : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
+function getHeapUsedMb() {
+  return Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+}
+
+function isHeapOverloaded() {
+  if (maxHeapUsedMb <= 0) return false;
+  return getHeapUsedMb() >= maxHeapUsedMb;
+}
+
 if (isProduction && !process.env.ALLOWED_ORIGINS) {
   logger.error('ALLOWED_ORIGINS not set in production — all cross-origin requests will be blocked');
 }
@@ -49,7 +58,7 @@ app.use('*', async (c, next) => {
     }
 
     if (maxHeapUsedMb > 0 && !bypass) {
-      const heapUsedMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+      const heapUsedMb = getHeapUsedMb();
       if (heapUsedMb >= maxHeapUsedMb) {
         status = 503;
         return c.json({
@@ -112,6 +121,8 @@ async function getHealthSnapshot(now = Date.now()) {
   return {
     dbOk,
     llmKeyPresent: llmKeyPresentNow,
+    heapUsedMb: getHeapUsedMb(),
+    heapOverloaded: isHeapOverloaded(),
     canUseCache: Boolean(canUseCache),
     checkedAt: cachedHealthCheck?.checkedAt ?? null,
   };
@@ -121,10 +132,12 @@ app.get('/health', async (c) => {
   const health = await getHealthSnapshot();
   const status = shuttingDown
     ? 'draining'
-    : (health.dbOk && health.llmKeyPresent ? 'ok' : 'degraded');
+    : (health.dbOk && health.llmKeyPresent && !health.heapOverloaded ? 'ok' : 'degraded');
   return c.json({
     status,
     shutting_down: shuttingDown,
+    heap_overloaded: health.heapOverloaded,
+    heap_used_mb: health.heapUsedMb,
     cached: health.canUseCache,
     checked_at: health.checkedAt ? new Date(health.checkedAt).toISOString() : null,
     timestamp: new Date().toISOString(),
@@ -133,12 +146,14 @@ app.get('/health', async (c) => {
 
 app.get('/ready', async (c) => {
   const health = await getHealthSnapshot();
-  const ready = !shuttingDown && health.dbOk && health.llmKeyPresent;
+  const ready = !shuttingDown && health.dbOk && health.llmKeyPresent && !health.heapOverloaded;
   return c.json({
     ready,
     shutting_down: shuttingDown,
     db_ok: health.dbOk,
     llm_key_ok: health.llmKeyPresent,
+    heap_overloaded: health.heapOverloaded,
+    heap_used_mb: health.heapUsedMb,
     checked_at: health.checkedAt ? new Date(health.checkedAt).toISOString() : null,
     timestamp: new Date().toISOString(),
   }, ready ? 200 : 503);
