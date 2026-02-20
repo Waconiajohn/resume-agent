@@ -136,6 +136,7 @@ const IN_PROCESS_PIPELINE_TTL_MS = 20 * 60 * 1000; // 20 minutes without process
 const MAX_IN_PROCESS_PIPELINES = parsePositiveInt(process.env.MAX_IN_PROCESS_PIPELINES, 5000);
 const MAX_RUNNING_PIPELINES_PER_USER = parsePositiveInt(process.env.MAX_RUNNING_PIPELINES_PER_USER, 3);
 const MAX_RUNNING_PIPELINES_GLOBAL = parsePositiveInt(process.env.MAX_RUNNING_PIPELINES_GLOBAL, 1500);
+const STALE_RECOVERY_COOLDOWN_MS = parsePositiveInt(process.env.STALE_RECOVERY_COOLDOWN_MS, 60_000);
 
 // Track running pipelines to prevent double-start (in-process guard, complements DB check)
 const runningPipelines = new Map<string, number>();
@@ -154,12 +155,62 @@ const runningPipelinesCleanupTimer = setInterval(() => {
 }, 60_000);
 runningPipelinesCleanupTimer.unref();
 
+let lastStaleRecoveryAt = 0;
+let staleRecoveryRuns = 0;
+let staleRecoveredRows = 0;
+
+async function recoverGlobalStalePipelines(now = Date.now()): Promise<void> {
+  if (now - lastStaleRecoveryAt < STALE_RECOVERY_COOLDOWN_MS) return;
+  lastStaleRecoveryAt = now;
+  staleRecoveryRuns += 1;
+  const staleBeforeIso = new Date(now - STALE_PIPELINE_MS).toISOString();
+  try {
+    const { count, error: countError } = await supabaseAdmin
+      .from('coach_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('pipeline_status', 'running')
+      .lt('updated_at', staleBeforeIso);
+    if (countError) {
+      logger.warn({ error: countError.message }, 'Failed to count stale running pipelines');
+      return;
+    }
+
+    if ((count ?? 0) <= 0) {
+      staleRecoveredRows = 0;
+      return;
+    }
+
+    const { error: recoverError } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({
+        pipeline_status: 'error',
+        pending_gate: null,
+        pending_gate_data: null,
+      })
+      .eq('pipeline_status', 'running')
+      .lt('updated_at', staleBeforeIso);
+    if (recoverError) {
+      logger.warn({ error: recoverError.message }, 'Failed to recover stale running pipelines');
+      return;
+    }
+
+    staleRecoveredRows = count ?? 0;
+    logger.warn({ recovered: staleRecoveredRows }, 'Recovered stale running pipelines');
+  } catch (err) {
+    logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Stale running pipeline recovery failed');
+  }
+}
+
 export function getPipelineRouteStats() {
   return {
     running_pipelines_local: runningPipelines.size,
     max_running_pipelines_local: MAX_IN_PROCESS_PIPELINES,
     max_running_pipelines_per_user: MAX_RUNNING_PIPELINES_PER_USER,
     max_running_pipelines_global: MAX_RUNNING_PIPELINES_GLOBAL,
+    stale_recovery_runs: staleRecoveryRuns,
+    stale_recovery_cooldown_ms: STALE_RECOVERY_COOLDOWN_MS,
+    stale_recovery_last_at: lastStaleRecoveryAt ? new Date(lastStaleRecoveryAt).toISOString() : null,
+    stale_recovery_last_count: staleRecoveredRows,
     queued_panel_persists: queuedPanelPersists.size,
     max_queued_panel_persists: MAX_QUEUED_PANEL_PERSISTS,
   };
@@ -531,6 +582,8 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   if (session.pipeline_status === 'complete') {
     return c.json({ error: 'Pipeline already completed for this session' }, 409);
   }
+
+  await recoverGlobalStalePipelines();
 
   // In-process dedup guard (complements DB-level claim below)
   const inProcessStartedAt = runningPipelines.get(session_id);

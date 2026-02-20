@@ -415,7 +415,7 @@ sessions.delete('/:id', async (c) => {
   for (const emitter of [...emitters]) {
     removeSSEConnection(sessionId, user.id, emitter);
   }
-  processingSessions.delete(sessionId);
+  releaseProcessingSession(sessionId);
 
   return c.json({ status: 'deleted', session_id: sessionId });
 });
@@ -423,6 +423,7 @@ sessions.delete('/:id', async (c) => {
 // Track in-flight processing per session to prevent concurrent submissions.
 // Includes user ownership for per-user concurrency caps.
 const processingSessions = new Map<string, { userId: string; startedAt: number }>();
+const processingSessionsByUser = new Map<string, number>();
 const MAX_PROCESSING_SESSIONS = (() => {
   const parsed = Number.parseInt(process.env.MAX_PROCESSING_SESSIONS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 2_000;
@@ -435,17 +436,30 @@ const PROCESSING_TTL_MS = (() => {
 function pruneStaleProcessingSessions(now: number): void {
   for (const [sid, entry] of processingSessions.entries()) {
     if (now - entry.startedAt >= PROCESSING_TTL_MS) {
-      processingSessions.delete(sid);
+      releaseProcessingSession(sid);
     }
   }
 }
 
 function getUserProcessingCount(userId: string): number {
-  let count = 0;
-  for (const entry of processingSessions.values()) {
-    if (entry.userId === userId) count += 1;
+  return processingSessionsByUser.get(userId) ?? 0;
+}
+
+function reserveProcessingSession(sessionId: string, userId: string, startedAt: number): void {
+  processingSessions.set(sessionId, { userId, startedAt });
+  processingSessionsByUser.set(userId, (processingSessionsByUser.get(userId) ?? 0) + 1);
+}
+
+function releaseProcessingSession(sessionId: string): void {
+  const entry = processingSessions.get(sessionId);
+  if (!entry) return;
+  processingSessions.delete(sessionId);
+  const nextCount = (processingSessionsByUser.get(entry.userId) ?? 1) - 1;
+  if (nextCount <= 0) {
+    processingSessionsByUser.delete(entry.userId);
+  } else {
+    processingSessionsByUser.set(entry.userId, nextCount);
   }
-  return count;
 }
 
 const processingCleanupTimer = setInterval(() => {
@@ -547,7 +561,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   const log = createSessionLogger(sessionId);
 
-  processingSessions.set(sessionId, { userId: user.id, startedAt: now });
+  reserveProcessingSession(sessionId, user.id, now);
 
   withSessionLock(sessionId, async () => {
     try {
@@ -578,7 +592,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
       recoverable: true,
     });
   }).finally(() => {
-    processingSessions.delete(sessionId);
+    releaseProcessingSession(sessionId);
   });
 
   return c.json({ status: 'processing' });
@@ -609,6 +623,7 @@ export function getSessionRouteStats() {
     total_sse_emitters: totalSSEConnections,
     sse_users_tracked: sseConnectionsByUser.size,
     active_processing_sessions: processingSessions.size,
+    processing_users_tracked: processingSessionsByUser.size,
     max_processing_sessions: MAX_PROCESSING_SESSIONS,
     max_processing_sessions_per_user: MAX_PROCESSING_SESSIONS_PER_USER,
   };
