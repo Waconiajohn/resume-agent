@@ -60,15 +60,15 @@ export function SectionWorkbench({
     clearRefineWatchdog();
   }, [clearRefineWatchdog]);
 
-  // Reset local content when the content prop changes (new draft from server)
+  // Reset local state on new server draft content OR a new review token.
+  // Token-only changes can happen when the server reissues a draft with unchanged text.
   useEffect(() => {
     setLocalContent(content);
     setHasLocalEdits(false);
     setUndoStack([]);
     setRedoStack([]);
     unlockRefineState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content, unlockRefineState]);
+  }, [content, reviewToken, unlockRefineState]);
 
   // Also reset when section changes
   useEffect(() => {
@@ -78,7 +78,6 @@ export function SectionWorkbench({
     setRedoStack([]);
     setShowAdvanced(false);
     unlockRefineState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section, unlockRefineState]);
 
   useEffect(() => {

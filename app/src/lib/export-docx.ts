@@ -699,6 +699,12 @@ export interface PreflightResult {
 export function preflightCheck(resume: FinalResume): PreflightResult {
   const errors: string[] = [];
   const warnings: string[] = [];
+  const hasStructuredContent =
+    !!resume.summary?.trim() ||
+    (Array.isArray(resume.experience) && resume.experience.length > 0) ||
+    (resume.skills && Object.keys(resume.skills).length > 0) ||
+    (Array.isArray(resume.education) && resume.education.length > 0) ||
+    (Array.isArray(resume.certifications) && resume.certifications.length > 0);
 
   // Contact info
   if (!resume.contact_info?.name) {
@@ -711,14 +717,17 @@ export function preflightCheck(resume: FinalResume): PreflightResult {
   // Section content
   const rawSections = resume._raw_sections ?? {};
   const sectionKeys = Object.keys(rawSections);
-  if (sectionKeys.length === 0 && !resume.summary) {
-    errors.push('No resume sections found');
-  }
+  let nonEmptyRawSectionCount = 0;
 
   for (const [key, content] of Object.entries(rawSections)) {
     if (!content || !content.trim()) {
-      errors.push(`Empty section: ${key}`);
+      warnings.push(`Empty section: ${key}`);
+    } else {
+      nonEmptyRawSectionCount += 1;
     }
+  }
+  if (!hasStructuredContent && nonEmptyRawSectionCount === 0) {
+    errors.push('No resume sections found');
   }
 
   // Summary check

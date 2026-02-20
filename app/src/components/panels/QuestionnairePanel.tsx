@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, SkipForward } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
@@ -27,7 +27,8 @@ function shouldShowQuestion(
 
   const { question_id, condition, value } = question.depends_on;
   const dep = responses.find((r) => r.question_id === question_id);
-  if (!dep) return condition === 'not_equals'; // no response yet
+  // Do not show dependent questions until the parent question has a response.
+  if (!dep) return false;
 
   const answered = dep.selected_option_ids.includes(value) || dep.custom_text === value;
   return condition === 'equals' ? answered : !answered;
@@ -67,6 +68,14 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
     const pos = visibleIndices.indexOf(startQIdx);
     return pos >= 0 ? pos : 0;
   });
+
+  // Keep current position within bounds when branching changes the visible set.
+  useEffect(() => {
+    setCurrentVisiblePos((prev) => {
+      if (visibleIndices.length === 0) return 0;
+      return Math.min(prev, visibleIndices.length - 1);
+    });
+  }, [visibleIndices.length]);
 
   // Slide direction for animation
   const [slideDir, setSlideDir] = useState<'forward' | 'back' | null>(null);

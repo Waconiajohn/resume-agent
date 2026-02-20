@@ -77,7 +77,7 @@ export function validatePanelData(panelData: PanelData | null): string | null {
 
   switch (panelData.type) {
     case 'section_review':
-      if (!panelData.section || !panelData.content) {
+      if (typeof panelData.section !== 'string' || typeof panelData.content !== 'string') {
         return 'Section review payload is missing section or content.';
       }
       return null;

@@ -1081,9 +1081,19 @@ async function runPositioningStage(
           category_progress: buildCategoryProgress(answeredIds),
         });
 
-        const followUpResponse = await waitForUser<{ answer: string; selected_suggestion?: string }>(
-          `positioning_q_${followUpQuestion.id}`,
-        );
+        let followUpResponse: { answer: string; selected_suggestion?: string };
+        try {
+          followUpResponse = await waitForUser<{ answer: string; selected_suggestion?: string }>(
+            `positioning_q_${followUpQuestion.id}`,
+          );
+        } catch (gateErr) {
+          const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);
+          if (errMsg.includes('Gate superseded')) {
+            log.warn({ question_id: followUpQuestion.id }, 'Follow-up gate superseded — skipping follow-up');
+            continue;
+          }
+          throw gateErr;
+        }
 
         const taggedFollowUpAnswer = tagPositioningAnswer(followUpResponse.answer, followUpResponse.selected_suggestion);
         answers.push({
@@ -1142,7 +1152,13 @@ function buildSectionCalls(
 
     // Expand "experience" into one call per role from the blueprint
     if (section === 'experience') {
-      const roleCount = blueprint.experience_blueprint.roles.length;
+      // Guardrail: never generate more role calls than parsed intake experience.
+      // If architect omitted roles unexpectedly, fall back to intake role count so
+      // experience content still gets drafted/reviewed instead of disappearing.
+      const blueprintRoleCount = blueprint.experience_blueprint.roles.length;
+      const roleCount = blueprintRoleCount > 0
+        ? Math.min(blueprintRoleCount, resume.experience.length)
+        : resume.experience.length;
       for (let i = 0; i < roleCount; i++) {
         const roleSection = `experience_role_${i}`;
         calls.push({
@@ -1804,8 +1820,13 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
       if (craftedRoleKeys.length > 0) {
         return craftedRoleKeys.map(key => {
           const idx = parseInt(key.replace('experience_role_', ''), 10);
-          return parseExperienceRoleForStructuredPayload(sections[key]?.content, intake.experience[idx]);
-        }).filter(Boolean);
+          const fallbackRole = intake.experience[idx];
+          if (!fallbackRole) {
+            console.warn(`[pipeline] Skipping crafted role without matching intake entry: ${key}`);
+            return null;
+          }
+          return parseExperienceRoleForStructuredPayload(sections[key]?.content, fallbackRole);
+        }).filter((role): role is ReturnType<typeof parseExperienceRoleForStructuredPayload> => role !== null);
       }
       return intake.experience.map((exp, idx) =>
         parseExperienceRoleForStructuredPayload(sections[`experience_role_${idx}`]?.content, exp),

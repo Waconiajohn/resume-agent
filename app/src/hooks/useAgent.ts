@@ -116,9 +116,33 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
   // Reset derived score state on session change so completion metrics can't leak across sessions.
   useEffect(() => {
+    setCurrentPhase('onboarding');
+    setIsProcessing(false);
+    setConnected(false);
+    setSessionComplete(false);
+    setError(null);
+    setPipelineStage(null);
+    setMessages([]);
+    setStreamingText('');
+    setTools([]);
+    setAskPrompt(null);
+    setPhaseGate(null);
+    setResume(null);
+    setPanelType(null);
+    setPanelData(null);
+    setPositioningQuestion(null);
+    setPositioningProfileFound(null);
+    setBlueprintReady(null);
+    setSectionDraft(null);
+    sectionsMapRef.current = {};
+    lastTextCompleteRef.current = '';
+    lastSeqRef.current = 0;
     qualityScoresRef.current = null;
     setQualityScores(null);
     setIsPipelineGateActive(false);
+    reconnectAttemptsRef.current = 0;
+    lastProgressTimestampRef.current = Date.now();
+    staleNoticeActiveRef.current = false;
     stalePipelineNoticeRef.current = false;
     sectionContextRef.current = null;
   }, [sessionId]);

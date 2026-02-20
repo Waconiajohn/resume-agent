@@ -27,13 +27,15 @@ cleanupTimer.unref();
 export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
   return async (c: Context, next: Next) => {
     const user = c.get('user') as { id: string } | undefined;
+    const scope = `${c.req.method}:${c.req.path}`;
     let key: string;
     if (user?.id) {
-      key = user.id;
+      key = `user:${user.id}:${scope}`;
     } else if (process.env.TRUST_PROXY === 'true') {
-      key = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous';
+      const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous';
+      key = `ip:${forwarded}:${scope}`;
     } else {
-      key = 'anonymous';
+      key = `anonymous:${scope}`;
     }
 
     const now = Date.now();
@@ -49,7 +51,12 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
     if (entry.count > maxRequests) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       c.header('Retry-After', String(retryAfter));
-      logger.warn({ key: key === user?.id ? `user:${key.slice(0, 8)}...` : key, count: entry.count, max: maxRequests }, 'Rate limit exceeded');
+      logger.warn({
+        key,
+        scope,
+        count: entry.count,
+        max: maxRequests,
+      }, 'Rate limit exceeded');
       return c.json({ error: 'Too many requests. Please try again later.' }, 429);
     }
 
