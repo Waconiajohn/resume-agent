@@ -87,6 +87,10 @@ export interface PipelineConfig {
 
 type StageTimingMap = Partial<Record<PipelineStage, number>>;
 const SECTION_WRITE_CONCURRENCY = 3;
+const SECTION_REVISION_TIMEOUT_MS = (() => {
+  const parsed = Number.parseInt(process.env.SECTION_REVISION_TIMEOUT_MS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 180_000;
+})();
 
 interface FinalResumePayload {
   summary: string;
@@ -672,14 +676,44 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
             : feedback;
 
           const blueprintSlice = getSectionBlueprint(call.section, state.architect!);
-          const revised = await withRetry(
-            () => runSectionRevision(call.section, result.content, instruction, blueprintSlice, state.architect!.global_rules),
-            { maxAttempts: 3, baseDelay: 1_000, onRetry: (a, e) => { log.warn({ section: call.section, attempt: a, error: e.message }, 'Section revision retry'); } },
-          );
-          result = revised;
-          state.sections[call.section] = revised;
-          emit({ type: 'section_revised', section: call.section, content: revised.content, review_token: reviewToken });
-          log.info({ section: call.section }, 'Section revised via Quick Fix feedback');
+          try {
+            const revisionAbort = new AbortController();
+            const revised = await withTimeout(
+              withRetry(
+                () => runSectionRevision(
+                  call.section,
+                  result.content,
+                  instruction,
+                  blueprintSlice,
+                  state.architect!.global_rules,
+                  { signal: revisionAbort.signal },
+                ),
+                {
+                  maxAttempts: 3,
+                  baseDelay: 1_000,
+                  onRetry: (a, e) => {
+                    log.warn({ section: call.section, attempt: a, error: e.message }, 'Section revision retry');
+                  },
+                },
+              ),
+              SECTION_REVISION_TIMEOUT_MS,
+              `Section ${call.section} revision timed out`,
+              () => revisionAbort.abort(),
+            );
+            result = revised;
+            state.sections[call.section] = revised;
+            emit({ type: 'section_revised', section: call.section, content: revised.content, review_token: reviewToken });
+            log.info({ section: call.section }, 'Section revised via Quick Fix feedback');
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            emit({
+              type: 'transparency',
+              stage: 'section_review',
+              message: 'Revision attempt failed — keeping the current draft so you can continue.',
+            });
+            emit({ type: 'section_error', section: call.section, error: message });
+            log.error({ section: call.section, error: message }, 'Section quick-fix revision failed');
+          }
           // Loop continues — re-present revised section for re-review
         } else {
           // Keep the review gate active until we receive an actionable response.
@@ -772,12 +806,37 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         if (!original) continue;
 
         const blueprintSlice = getSectionBlueprint(section, state.architect);
-        const revised = await withRetry(
-          () => runSectionRevision(section, original.content, instruction.instruction, blueprintSlice, state.architect!.global_rules),
-          { maxAttempts: 3, baseDelay: 1_000, onRetry: (attempt, error) => { log.warn({ section, attempt, error: error.message }, 'Section revision retry'); } },
-        );
-        state.sections[section] = revised;
-        emit({ type: 'section_revised', section, content: revised.content });
+        try {
+          const revisionAbort = new AbortController();
+          const revised = await withTimeout(
+            withRetry(
+              () => runSectionRevision(
+                section,
+                original.content,
+                instruction.instruction,
+                blueprintSlice,
+                state.architect!.global_rules,
+                { signal: revisionAbort.signal },
+              ),
+              {
+                maxAttempts: 3,
+                baseDelay: 1_000,
+                onRetry: (attempt, error) => {
+                  log.warn({ section, attempt, error: error.message }, 'Section revision retry');
+                },
+              },
+            ),
+            SECTION_REVISION_TIMEOUT_MS,
+            `Section ${section} revision timed out`,
+            () => revisionAbort.abort(),
+          );
+          state.sections[section] = revised;
+          emit({ type: 'section_revised', section, content: revised.content });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          emit({ type: 'section_error', section, error: message });
+          log.error({ section, error: message }, 'Auto-applied revision failed');
+        }
       }
 
       // High-priority fixes: present to user for approval (if feature flag enabled)
@@ -827,12 +886,37 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           : instruction.instruction;
 
         const blueprintSlice = getSectionBlueprint(section, state.architect);
-        const revised = await withRetry(
-          () => runSectionRevision(section, original.content, revisionInstruction, blueprintSlice, state.architect!.global_rules),
-          { maxAttempts: 3, baseDelay: 1_000, onRetry: (attempt, error) => { log.warn({ section, attempt, error: error.message }, 'Section revision retry'); } },
-        );
-        state.sections[section] = revised;
-        emit({ type: 'section_revised', section, content: revised.content });
+        try {
+          const revisionAbort = new AbortController();
+          const revised = await withTimeout(
+            withRetry(
+              () => runSectionRevision(
+                section,
+                original.content,
+                revisionInstruction,
+                blueprintSlice,
+                state.architect!.global_rules,
+                { signal: revisionAbort.signal },
+              ),
+              {
+                maxAttempts: 3,
+                baseDelay: 1_000,
+                onRetry: (attempt, error) => {
+                  log.warn({ section, attempt, error: error.message }, 'Section revision retry');
+                },
+              },
+            ),
+            SECTION_REVISION_TIMEOUT_MS,
+            `Section ${section} revision timed out`,
+            () => revisionAbort.abort(),
+          );
+          state.sections[section] = revised;
+          emit({ type: 'section_revised', section, content: revised.content });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          emit({ type: 'section_error', section, error: message });
+          log.error({ section, error: message }, 'Approved high-priority revision failed');
+        }
       }
 
       log.info({ revisions: allInstructions.length, approved: approvedFixIds.size }, 'Revision cycle complete');
@@ -877,24 +961,37 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         emit({ type: 'system_message', content: `Applying ATS fix to ${section}: ${finding.issue}` });
 
         const blueprintSlice = getSectionBlueprint(section, state.architect);
-        const revised = await withRetry(
-          () => runSectionRevision(
-            section,
-            original.content,
-            `${finding.issue}. ${finding.instruction}`,
-            blueprintSlice,
-            state.architect!.global_rules,
-          ),
-          {
-            maxAttempts: 3,
-            baseDelay: 1_000,
-            onRetry: (attempt, error) => {
-              log.warn({ section, attempt, error: error.message }, 'ATS revision retry');
-            },
-          },
-        );
-        state.sections[section] = revised;
-        emit({ type: 'section_revised', section, content: revised.content });
+        try {
+          const revisionAbort = new AbortController();
+          const revised = await withTimeout(
+            withRetry(
+              () => runSectionRevision(
+                section,
+                original.content,
+                `${finding.issue}. ${finding.instruction}`,
+                blueprintSlice,
+                state.architect!.global_rules,
+                { signal: revisionAbort.signal },
+              ),
+              {
+                maxAttempts: 3,
+                baseDelay: 1_000,
+                onRetry: (attempt, error) => {
+                  log.warn({ section, attempt, error: error.message }, 'ATS revision retry');
+                },
+              },
+            ),
+            SECTION_REVISION_TIMEOUT_MS,
+            `Section ${section} revision timed out`,
+            () => revisionAbort.abort(),
+          );
+          state.sections[section] = revised;
+          emit({ type: 'section_revised', section, content: revised.content });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          emit({ type: 'section_error', section, error: message });
+          log.error({ section, error: message }, 'ATS compliance revision failed');
+        }
       }
     }
 

@@ -197,6 +197,7 @@ sessions.get('/:id/sse', async (c) => {
 
   return streamSSE(c, async (stream) => {
     let emitter: ((event: SSEEvent) => void) | null = null;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
     let connectionClosed = false;
     const cleanupConnection = () => {
       if (connectionClosed || !emitter) return;
@@ -215,78 +216,83 @@ sessions.get('/:id/sse', async (c) => {
 
     addSSEConnection(sessionId, user.id, emitter);
 
-    await stream.writeSSE({
-      event: 'connected',
-      data: JSON.stringify({ session_id: sessionId }),
-    });
+    try {
+      await stream.writeSSE({
+        event: 'connected',
+        data: JSON.stringify({ session_id: sessionId }),
+      });
 
-    // Replay historical messages and session state on reconnect
-    // Lightweight validation before casting
-    if (!session.id || !session.user_id || !session.current_phase) {
-      logger.error({ sessionId }, 'SSE: Invalid session data');
-    }
-    const typedSession = session as CoachSession;
-    const chatMessages: Array<{ role: string; content: string }> = [];
-    for (const msg of typedSession.messages ?? []) {
-      if (msg.role === 'user') {
-        if (typeof msg.content === 'string') {
-          chatMessages.push({ role: 'user', content: msg.content });
-        }
-        // Skip tool_result arrays — they're internal
-      } else if (msg.role === 'assistant') {
-        if (typeof msg.content === 'string') {
-          chatMessages.push({ role: 'assistant', content: msg.content });
-        } else if (Array.isArray(msg.content)) {
-          const textParts = msg.content
-            .filter((b: { type: string; text?: string }) => b.type === 'text' && b.text)
-            .map((b: { text?: string }) => b.text)
-            .join('');
-          if (textParts) {
-            chatMessages.push({ role: 'assistant', content: textParts });
+      // Replay historical messages and session state on reconnect
+      // Lightweight validation before casting
+      if (!session.id || !session.user_id || !session.current_phase) {
+        logger.error({ sessionId }, 'SSE: Invalid session data');
+      }
+      const typedSession = session as CoachSession;
+      const chatMessages: Array<{ role: string; content: string }> = [];
+      for (const msg of typedSession.messages ?? []) {
+        if (msg.role === 'user') {
+          if (typeof msg.content === 'string') {
+            chatMessages.push({ role: 'user', content: msg.content });
+          }
+          // Skip tool_result arrays — they're internal
+        } else if (msg.role === 'assistant') {
+          if (typeof msg.content === 'string') {
+            chatMessages.push({ role: 'assistant', content: msg.content });
+          } else if (Array.isArray(msg.content)) {
+            const textParts = msg.content
+              .filter((b: { type: string; text?: string }) => b.type === 'text' && b.text)
+              .map((b: { text?: string }) => b.text)
+              .join('');
+            if (textParts) {
+              chatMessages.push({ role: 'assistant', content: textParts });
+            }
           }
         }
       }
-    }
 
-    // Cap restored messages to the 20 most recent to avoid huge SSE payloads
-    const MAX_RESTORE_MESSAGES = 20;
-    const restoredMessages = chatMessages.length > MAX_RESTORE_MESSAGES
-      ? chatMessages.slice(-MAX_RESTORE_MESSAGES)
-      : chatMessages;
+      // Cap restored messages to the 20 most recent to avoid huge SSE payloads
+      const MAX_RESTORE_MESSAGES = 20;
+      const restoredMessages = chatMessages.length > MAX_RESTORE_MESSAGES
+        ? chatMessages.slice(-MAX_RESTORE_MESSAGES)
+        : chatMessages;
 
-    if (restoredMessages.length > 0 || typedSession.current_phase !== 'onboarding') {
-      await stream.writeSSE({
-        event: 'session_restore',
-        data: JSON.stringify({
-          type: 'session_restore',
-          messages: restoredMessages,
-          current_phase: typedSession.current_phase,
-          pending_tool_call_id: typedSession.pending_tool_call_id,
-          pending_phase_transition: typedSession.pending_phase_transition,
-          last_panel_type: typedSession.last_panel_type ?? null,
-          last_panel_data: typedSession.last_panel_data ?? null,
-          pipeline_status: typedSession.pipeline_status ?? null,
-        }),
-      });
-    }
+      if (restoredMessages.length > 0 || typedSession.current_phase !== 'onboarding') {
+        await stream.writeSSE({
+          event: 'session_restore',
+          data: JSON.stringify({
+            type: 'session_restore',
+            messages: restoredMessages,
+            current_phase: typedSession.current_phase,
+            pending_tool_call_id: typedSession.pending_tool_call_id,
+            pending_phase_transition: typedSession.pending_phase_transition,
+            last_panel_type: typedSession.last_panel_type ?? null,
+            last_panel_data: typedSession.last_panel_data ?? null,
+            pipeline_status: typedSession.pipeline_status ?? null,
+          }),
+        });
+      }
 
-    const heartbeat = setInterval(() => {
-      void stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
-        logger.warn({ sessionId }, 'SSE heartbeat failed — cleaning up zombie connection');
-        clearInterval(heartbeat);
-        cleanupConnection();
-      });
-    }, 10_000);
-    heartbeat.unref();
+      heartbeat = setInterval(() => {
+        void stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
+          logger.warn({ sessionId }, 'SSE heartbeat failed — cleaning up zombie connection');
+          if (heartbeat) clearInterval(heartbeat);
+          cleanupConnection();
+        });
+      }, 10_000);
+      heartbeat.unref();
 
-    try {
       await new Promise<void>((resolve) => {
         stream.onAbort(() => {
           resolve();
         });
       });
+    } catch (err) {
+      logger.warn(
+        { sessionId, error: err instanceof Error ? err.message : String(err) },
+        'SSE stream terminated before completion',
+      );
     } finally {
-      clearInterval(heartbeat);
+      if (heartbeat) clearInterval(heartbeat);
       cleanupConnection();
     }
   });

@@ -1,5 +1,17 @@
+const TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504, 529]);
+const TRANSIENT_ERROR_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ETIMEDOUT',
+  'ECONNABORTED',
+  'EAI_AGAIN',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT',
+]);
 const TRANSIENT_PATTERNS = [
-  '429',
   'rate limit',
   'rate_limit',
   'too many requests',
@@ -7,16 +19,57 @@ const TRANSIENT_PATTERNS = [
   'temporarily unavailable',
   'aborted due to timeout',
   'timeout',
-  '529',
-  '500',
-  '502',
-  '503',
-  '504',
+  'socket hang up',
+  'fetch failed',
+  'network error',
+  'service unavailable',
+  'gateway timeout',
+  'bad gateway',
 ];
 
-function isTransient(error: Error): boolean {
+type HeaderBag = Headers | Record<string, string | undefined>;
+
+function readHeader(headers: HeaderBag | undefined, name: string): string | null {
+  if (!headers) return null;
+  if (headers instanceof Headers) {
+    return headers.get(name);
+  }
+  const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
+  const value = key ? headers[key] : undefined;
+  return typeof value === 'string' ? value : null;
+}
+
+function getStatusCode(error: unknown): number | null {
+  const fromTopLevel = (error as { status?: unknown; statusCode?: unknown }) ?? {};
+  const topStatus = typeof fromTopLevel.status === 'number'
+    ? fromTopLevel.status
+    : (typeof fromTopLevel.statusCode === 'number' ? fromTopLevel.statusCode : null);
+  if (topStatus != null) return topStatus;
+
+  const responseStatus = (error as { response?: { status?: unknown } })?.response?.status;
+  if (typeof responseStatus === 'number') return responseStatus;
+  return null;
+}
+
+function getErrorCode(error: unknown): string | null {
+  const code = (error as { code?: unknown })?.code;
+  return typeof code === 'string' ? code.toUpperCase() : null;
+}
+
+function isTransient(error: Error, rawError?: unknown): boolean {
+  const candidate = rawError ?? error;
+  const status = getStatusCode(candidate);
+  if (status != null && TRANSIENT_STATUSES.has(status)) return true;
+
+  const code = getErrorCode(candidate);
+  if (code && TRANSIENT_ERROR_CODES.has(code)) return true;
+
   const msg = error.message.toLowerCase();
-  return TRANSIENT_PATTERNS.some((p) => msg.includes(p));
+  if (TRANSIENT_PATTERNS.some((p) => msg.includes(p))) return true;
+
+  // Catch status text embedded in message ("Request failed with status 429")
+  if (/\b(408|425|429|500|502|503|504|529)\b/.test(msg)) return true;
+  return false;
 }
 
 /**
@@ -24,9 +77,10 @@ function isTransient(error: Error): boolean {
  * Returns delay in milliseconds, or 0 if not present.
  */
 function getRetryAfterMs(error: unknown): number {
-  // Anthropic SDK attaches headers to the error object
-  const headers = (error as { headers?: Record<string, string> })?.headers;
-  const retryAfter = headers?.['retry-after'];
+  // SDK errors may attach headers directly or under response.headers.
+  const topHeaders = (error as { headers?: HeaderBag })?.headers;
+  const responseHeaders = (error as { response?: { headers?: HeaderBag } })?.response?.headers;
+  const retryAfter = readHeader(topHeaders, 'retry-after') ?? readHeader(responseHeaders, 'retry-after');
   if (!retryAfter) return 0;
 
   const seconds = parseFloat(retryAfter);
@@ -56,7 +110,7 @@ export async function withRetry<T>(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
 
-      if (attempt >= maxAttempts || !isTransient(lastError)) {
+      if (attempt >= maxAttempts || !isTransient(lastError, err)) {
         throw lastError;
       }
 
