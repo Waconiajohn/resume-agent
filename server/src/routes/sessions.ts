@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware, getCachedUser, cacheUser } from '../middleware/auth.js';
@@ -28,6 +28,23 @@ const MAX_PROCESSING_SESSIONS_PER_USER = (() => {
   const parsed = Number.parseInt(process.env.MAX_PROCESSING_SESSIONS_PER_USER ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 6;
 })();
+const MAX_CREATE_SESSION_BODY_BYTES = (() => {
+  const parsed = Number.parseInt(process.env.MAX_CREATE_SESSION_BODY_BYTES ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 20_000;
+})();
+const MAX_MESSAGE_BODY_BYTES = (() => {
+  const parsed = Number.parseInt(process.env.MAX_MESSAGE_BODY_BYTES ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 120_000;
+})();
+
+function rejectOversizedJsonBody(c: Context, maxBytes: number): Response | null {
+  const contentLength = c.req.header('content-length');
+  if (!contentLength) return null;
+  const parsed = Number.parseInt(contentLength, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  if (parsed <= maxBytes) return null;
+  return c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413);
+}
 
 function addSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
   if (!sseConnections.has(sessionId)) {
@@ -290,6 +307,9 @@ sessions.use('*', authMiddleware);
 
 // POST /sessions — Create a new coaching session
 sessions.post('/', async (c) => {
+  const oversized = rejectOversizedJsonBody(c, MAX_CREATE_SESSION_BODY_BYTES);
+  if (oversized) return oversized;
+
   const user = c.get('user');
   const body = await c.req.json().catch(() => ({}));
 
@@ -470,6 +490,9 @@ processingCleanupTimer.unref();
 // POST /sessions/:id/messages — Send a message to the agent
 // Rate limit: 20 messages per user per minute
 sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
+  const oversized = rejectOversizedJsonBody(c, MAX_MESSAGE_BODY_BYTES);
+  if (oversized) return oversized;
+
   const user = c.get('user');
   const sessionId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
@@ -626,6 +649,8 @@ export function getSessionRouteStats() {
     processing_users_tracked: processingSessionsByUser.size,
     max_processing_sessions: MAX_PROCESSING_SESSIONS,
     max_processing_sessions_per_user: MAX_PROCESSING_SESSIONS_PER_USER,
+    max_create_session_body_bytes: MAX_CREATE_SESSION_BODY_BYTES,
+    max_message_body_bytes: MAX_MESSAGE_BODY_BYTES,
   };
 }
 

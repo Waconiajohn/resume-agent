@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -30,6 +30,18 @@ pipeline.use('*', authMiddleware);
 function parsePositiveInt(raw: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(raw ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const MAX_PIPELINE_START_BODY_BYTES = parsePositiveInt(process.env.MAX_PIPELINE_START_BODY_BYTES, 220_000);
+const MAX_PIPELINE_RESPOND_BODY_BYTES = parsePositiveInt(process.env.MAX_PIPELINE_RESPOND_BODY_BYTES, 120_000);
+
+function rejectOversizedJsonBody(c: Context, maxBytes: number): Response | null {
+  const contentLength = c.req.header('content-length');
+  if (!contentLength) return null;
+  const parsed = Number.parseInt(contentLength, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  if (parsed <= maxBytes) return null;
+  return c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413);
 }
 
 async function setPendingGate(sessionId: string, gate: string, data?: Record<string, unknown>) {
@@ -213,6 +225,8 @@ export function getPipelineRouteStats() {
     stale_recovery_last_count: staleRecoveredRows,
     queued_panel_persists: queuedPanelPersists.size,
     max_queued_panel_persists: MAX_QUEUED_PANEL_PERSISTS,
+    max_pipeline_start_body_bytes: MAX_PIPELINE_START_BODY_BYTES,
+    max_pipeline_respond_body_bytes: MAX_PIPELINE_RESPOND_BODY_BYTES,
   };
 }
 
@@ -549,6 +563,9 @@ async function resolveJobDescriptionInput(input: string): Promise<string> {
 // POST /pipeline/start
 // Body: { session_id, raw_resume_text, job_description, company_name }
 pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
+  const oversized = rejectOversizedJsonBody(c, MAX_PIPELINE_START_BODY_BYTES);
+  if (oversized) return oversized;
+
   const user = c.get('user');
   const body = await c.req.json().catch(() => ({}));
   const parsed = startSchema.safeParse(body);
@@ -831,6 +848,9 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
 // POST /pipeline/respond
 // Body: { session_id, gate, response }
 pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
+  const oversized = rejectOversizedJsonBody(c, MAX_PIPELINE_RESPOND_BODY_BYTES);
+  if (oversized) return oversized;
+
   const user = c.get('user');
   const body = await c.req.json().catch(() => ({}));
   const parsed = respondSchema.safeParse(body);
