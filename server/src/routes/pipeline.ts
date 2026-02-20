@@ -49,6 +49,10 @@ function truncateText(value: string, maxChars = MAX_SECTION_CONTEXT_TEXT_CHARS):
   return `${value.slice(0, maxChars)}...`;
 }
 
+function clampFiniteNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
 function sanitizeBlueprintSlice(slice: Record<string, unknown>): Record<string, unknown> {
   try {
     const serialized = JSON.stringify(slice);
@@ -90,8 +94,8 @@ function sanitizeSectionContext(event: Extract<PipelineSSEEvent, { type: 'sectio
     })),
     keywords: event.keywords.slice(0, MAX_SECTION_CONTEXT_KEYWORDS).map((k) => ({
       keyword: truncateText(k.keyword, 80),
-      target_density: k.target_density,
-      current_count: k.current_count,
+      target_density: clampFiniteNumber(k.target_density),
+      current_count: clampFiniteNumber(k.current_count),
     })),
     gap_mappings: event.gap_mappings.slice(0, MAX_SECTION_CONTEXT_GAPS).map((g) => ({
       requirement: truncateText(g.requirement, 180),

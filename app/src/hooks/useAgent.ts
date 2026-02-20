@@ -17,6 +17,92 @@ function safeParse(data: string): Record<string, any> | null {
   }
 }
 
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is string => typeof v === 'string')
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function asGapClassification(value: unknown): 'strong' | 'partial' | 'gap' {
+  if (value === 'strong' || value === 'partial' || value === 'gap') return value;
+  return 'gap';
+}
+
+function sanitizeSectionContextPayload(
+  data: Record<string, unknown>,
+): { section: string; context: SectionWorkbenchContext } | null {
+  const section = typeof data.section === 'string' ? data.section : '';
+  if (!section) return null;
+
+  const evidenceRaw = Array.isArray(data.evidence) ? data.evidence : [];
+  const keywordsRaw = Array.isArray(data.keywords) ? data.keywords : [];
+  const gapsRaw = Array.isArray(data.gap_mappings) ? data.gap_mappings : [];
+
+  const context: SectionWorkbenchContext = {
+    context_version: Number.isFinite(data.context_version as number)
+      ? Math.max(0, Math.floor(data.context_version as number))
+      : 0,
+    generated_at:
+      typeof data.generated_at === 'string'
+        ? data.generated_at
+        : new Date().toISOString(),
+    blueprint_slice:
+      data.blueprint_slice && typeof data.blueprint_slice === 'object' && !Array.isArray(data.blueprint_slice)
+        ? (data.blueprint_slice as Record<string, unknown>)
+        : {},
+    evidence: evidenceRaw
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      .map((item, idx) => {
+        const scopeMetrics: Record<string, string> = {};
+        if (item.scope_metrics && typeof item.scope_metrics === 'object' && !Array.isArray(item.scope_metrics)) {
+          for (const [k, v] of Object.entries(item.scope_metrics as Record<string, unknown>)) {
+            if (typeof k === 'string' && typeof v === 'string') {
+              scopeMetrics[k] = v;
+            }
+          }
+        }
+        return {
+          id:
+            typeof item.id === 'string' && item.id.trim()
+              ? item.id.trim()
+              : `evidence_${idx + 1}`,
+          situation: typeof item.situation === 'string' ? item.situation : '',
+          action: typeof item.action === 'string' ? item.action : '',
+          result: typeof item.result === 'string' ? item.result : '',
+          metrics_defensible: Boolean(item.metrics_defensible),
+          user_validated: Boolean(item.user_validated),
+          mapped_requirements: asStringArray(item.mapped_requirements),
+          scope_metrics: scopeMetrics,
+        };
+      }),
+    keywords: keywordsRaw
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      .map((item) => ({
+        keyword: typeof item.keyword === 'string' ? item.keyword : '',
+        target_density: Number.isFinite(item.target_density as number)
+          ? Math.max(0, item.target_density as number)
+          : 0,
+        current_count: Number.isFinite(item.current_count as number)
+          ? Math.max(0, item.current_count as number)
+          : 0,
+      }))
+      .filter((item) => item.keyword.length > 0),
+    gap_mappings: gapsRaw
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      .map((item) => ({
+        requirement: typeof item.requirement === 'string' ? item.requirement : '',
+        classification: asGapClassification(item.classification),
+      }))
+      .filter((item) => item.requirement.length > 0),
+    section_order: asStringArray(data.section_order),
+    sections_approved: asStringArray(data.sections_approved),
+  };
+
+  return { section, context };
+}
+
 export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState('');
@@ -626,19 +712,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'section_context': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  sectionContextRef.current = {
-                    section: data.section as string,
-                    context: {
-                      context_version: (data.context_version as number | undefined) ?? 0,
-                      generated_at: (data.generated_at as string | undefined) ?? new Date().toISOString(),
-                      blueprint_slice: data.blueprint_slice as Record<string, unknown>,
-                      evidence: data.evidence as SectionWorkbenchContext['evidence'],
-                      keywords: data.keywords as SectionWorkbenchContext['keywords'],
-                      gap_mappings: data.gap_mappings as SectionWorkbenchContext['gap_mappings'],
-                      section_order: data.section_order as string[],
-                      sections_approved: data.sections_approved as string[],
-                    },
-                  };
+                  const sanitized = sanitizeSectionContextPayload(data);
+                  if (!sanitized) break;
+                  sectionContextRef.current = sanitized;
                   break;
                 }
 

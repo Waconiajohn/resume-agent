@@ -206,11 +206,11 @@ function renderEducation(resume: FinalResume): PdfLine[] {
   if (!Array.isArray(resume.education) || resume.education.length === 0) return [];
   const lines: PdfLine[] = [{ text: 'EDUCATION', style: 'heading' }];
   for (const edu of resume.education) {
-    let text = edu.degree;
-    if (edu.field) text += ` in ${edu.field}`;
-    text += `, ${edu.institution}`;
-    if (edu.year) text += ` (${edu.year})`;
-    lines.push({ text, style: 'body' });
+    let text = (edu.degree ?? '').trim();
+    if (edu.field?.trim()) text += ` in ${edu.field.trim()}`;
+    if (edu.institution?.trim()) text += `${text ? ', ' : ''}${edu.institution.trim()}`;
+    if (edu.year?.trim()) text += ` (${edu.year.trim()})`;
+    if (text) lines.push({ text, style: 'body' });
   }
   lines.push({ text: '', style: 'blank' });
   return lines;
@@ -254,6 +254,7 @@ function buildPdfLines(resume: FinalResume): PdfLine[] {
   if (!hasStructuredContent && resume._raw_sections && Object.keys(resume._raw_sections).length > 0) {
     const rawOrder = resume.section_order ?? Object.keys(resume._raw_sections);
     let renderedExperience = false;
+    let renderedCombinedEducation = false;
     for (const sectionName of rawOrder) {
       if (sectionName.startsWith('experience_role_') || sectionName === 'earlier_career') {
         if (!renderedExperience) {
@@ -262,11 +263,47 @@ function buildPdfLines(resume: FinalResume): PdfLine[] {
         }
         continue;
       }
+
+      // Bridge split section_order keys to the combined raw key.
+      if (
+        !renderedCombinedEducation
+        && (sectionName === 'education' || sectionName === 'certifications')
+        && resume._raw_sections.education_and_certifications
+      ) {
+        const combined = resume._raw_sections.education_and_certifications;
+        lines.push({ text: 'EDUCATION AND CERTIFICATIONS', style: 'heading' });
+        for (const row of combined.split('\n').map((line) => line.trim()).filter(Boolean)) {
+          if (/^[•\-*]\s/.test(row)) {
+            lines.push({ text: row.replace(/^[•\-*]\s*/, ''), style: 'bullet' });
+          } else if (!/^[A-Z][A-Z0-9 &/]+$/.test(row)) {
+            lines.push({ text: row, style: 'body' });
+          }
+        }
+        lines.push({ text: '', style: 'blank' });
+        renderedCombinedEducation = true;
+        continue;
+      }
+
       const rawText = resume._raw_sections[sectionName];
       if (!rawText?.trim()) continue;
       const heading = sectionName.replace(/_/g, ' ').toUpperCase();
       lines.push({ text: heading, style: 'heading' });
       for (const row of rawText.split('\n').map((line) => line.trim()).filter(Boolean)) {
+        if (/^[•\-*]\s/.test(row)) {
+          lines.push({ text: row.replace(/^[•\-*]\s*/, ''), style: 'bullet' });
+        } else if (!/^[A-Z][A-Z0-9 &/]+$/.test(row)) {
+          lines.push({ text: row, style: 'body' });
+        }
+      }
+      lines.push({ text: '', style: 'blank' });
+      if (sectionName === 'education_and_certifications') {
+        renderedCombinedEducation = true;
+      }
+    }
+    if (!renderedCombinedEducation && resume._raw_sections.education_and_certifications) {
+      const combined = resume._raw_sections.education_and_certifications;
+      lines.push({ text: 'EDUCATION AND CERTIFICATIONS', style: 'heading' });
+      for (const row of combined.split('\n').map((line) => line.trim()).filter(Boolean)) {
         if (/^[•\-*]\s/.test(row)) {
           lines.push({ text: row.replace(/^[•\-*]\s*/, ''), style: 'bullet' });
         } else if (!/^[A-Z][A-Z0-9 &/]+$/.test(row)) {

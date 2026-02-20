@@ -176,7 +176,7 @@ export function WorkbenchEvidenceCards({
       <div className="space-y-2">
         {visible.map((item, idx) => (
           <EvidenceCard
-            key={item.id || `evidence_${idx}_${item.result.slice(0, 24)}`}
+            key={item.id || `evidence_${idx}_${(item.result ?? '').slice(0, 24)}`}
             item={item}
             content={content}
             onWeaveIn={onWeaveIn}

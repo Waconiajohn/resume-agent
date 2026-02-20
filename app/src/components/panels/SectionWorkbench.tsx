@@ -46,6 +46,7 @@ export function SectionWorkbench({
   const actionLockedRef = useRef(false);
   const lastActionAtRef = useRef(0);
   const refineWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const clearRefineWatchdog = useCallback(() => {
     if (refineWatchdogRef.current) {
@@ -90,6 +91,10 @@ export function SectionWorkbench({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        const target = e.target as Node | null;
+        if (rootRef.current && target && !rootRef.current.contains(target)) {
+          return;
+        }
         e.preventDefault();
         if (isRefining) {
           return;
@@ -184,15 +189,20 @@ export function SectionWorkbench({
       ? (context.blueprint_slice['positioning_angle'] as string)
       : null;
 
-  const sectionOrder = context?.section_order ?? [];
-  const sectionsApproved = context?.sections_approved ?? [];
+  const sectionOrder = Array.isArray(context?.section_order) ? context.section_order : [];
+  const sectionsApproved = Array.isArray(context?.sections_approved) ? context.sections_approved : [];
+  const evidence = Array.isArray(context?.evidence) ? context.evidence : [];
+  const keywords = Array.isArray(context?.keywords) ? context.keywords : [];
+  const gapMappings = Array.isArray(context?.gap_mappings) ? context.gap_mappings : [];
   const hasAdvancedContext = Boolean(
-    context && (context.evidence.length > 0 || context.keywords.length > 0 || context.gap_mappings.length > 0),
+    evidence.length > 0 || keywords.length > 0 || gapMappings.length > 0,
   );
-  const gapCount = context?.gap_mappings.filter((g) => g.classification !== 'strong').length ?? 0;
+  const gapCount = gapMappings.filter((g) => g.classification !== 'strong').length;
+  const contextVersion = typeof context?.context_version === 'number' ? context.context_version : 0;
 
   return (
     <div
+      ref={rootRef}
       className="flex h-full flex-col"
       data-panel-root
     >
@@ -256,7 +266,7 @@ export function SectionWorkbench({
                   Advanced Guidance
                   {context && (
                     <span className="ml-2 text-[10px] text-white/40">
-                      v{context.context_version} · {gapCount} open requirement{gapCount === 1 ? '' : 's'}
+                      v{contextVersion} · {gapCount} open requirement{gapCount === 1 ? '' : 's'}
                     </span>
                   )}
                 </span>
@@ -264,17 +274,17 @@ export function SectionWorkbench({
               </button>
               {showAdvanced && (
                 <div className="space-y-4 pt-3">
-                  {context && context.evidence.length > 0 && (
+                  {evidence.length > 0 && (
                     <WorkbenchEvidenceCards
-                      evidence={context.evidence}
+                      evidence={evidence}
                       content={localContent}
                       onWeaveIn={handleWeaveIn}
                     />
                   )}
 
-                  {context && context.keywords.length > 0 && (
+                  {keywords.length > 0 && (
                     <WorkbenchKeywordBar
-                      keywords={context.keywords}
+                      keywords={keywords}
                       content={localContent}
                       onKeywordAction={handleKeywordAction}
                     />

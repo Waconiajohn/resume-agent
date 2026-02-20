@@ -109,6 +109,48 @@ function recordUsage(usage: { input_tokens: number; output_tokens: number }, ses
   }
 }
 
+function createCombinedAbortSignal(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): { signal: AbortSignal; cleanup: () => void } {
+  const timeoutController = new AbortController();
+  const combinedController = new AbortController();
+  const timeout = setTimeout(() => {
+    timeoutController.abort(new Error(`Timed out after ${timeoutMs}ms`));
+  }, timeoutMs);
+  timeout.unref?.();
+
+  const abortCombined = (reason?: unknown) => {
+    if (combinedController.signal.aborted) return;
+    combinedController.abort(reason);
+  };
+
+  const onCallerAbort = () => abortCombined(callerSignal?.reason);
+  const onTimeoutAbort = () => abortCombined(timeoutController.signal.reason);
+
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      onCallerAbort();
+    } else {
+      callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+  }
+  timeoutController.signal.addEventListener('abort', onTimeoutAbort, { once: true });
+
+  const cleanup = () => {
+    clearTimeout(timeout);
+    if (callerSignal) {
+      callerSignal.removeEventListener('abort', onCallerAbort);
+    }
+    timeoutController.signal.removeEventListener('abort', onTimeoutAbort);
+    if (!timeoutController.signal.aborted) {
+      timeoutController.abort();
+    }
+  };
+
+  return { signal: combinedController.signal, cleanup };
+}
+
 // ─── Provider interface ──────────────────────────────────────────────
 
 export interface LLMProvider {
@@ -159,10 +201,10 @@ export class AnthropicProvider implements LLMProvider {
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
     const anthropic = getAnthropicClient();
-    const timeoutSignal = AbortSignal.timeout(300_000); // 5 minute timeout
-    const combinedSignal = params.signal
-      ? AbortSignal.any([params.signal, timeoutSignal])
-      : timeoutSignal;
+    const { signal: combinedSignal, cleanup: cleanupCombinedSignal } = createCombinedAbortSignal(
+      params.signal,
+      300_000,
+    );
 
     const streamParams: Parameters<typeof anthropic.messages.stream>[0] = {
       model: params.model,
@@ -218,6 +260,7 @@ export class AnthropicProvider implements LLMProvider {
       yield { type: 'done', usage };
     } finally {
       combinedSignal.removeEventListener('abort', abortHandler);
+      cleanupCombinedSignal();
       s.off('text', textListener);
       s.abort();
     }
@@ -243,79 +286,87 @@ export class ZAIProvider implements LLMProvider {
 
   async chat(params: ChatParams): Promise<ChatResponse> {
     const body = this.buildRequestBody(params, false);
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: params.signal ?? AbortSignal.timeout(180_000), // caller signal or 3 min default
-    });
+    const { signal: combinedSignal, cleanup: cleanupCombinedSignal } = createCombinedAbortSignal(
+      params.signal,
+      180_000,
+    );
+    try {
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: combinedSignal,
+      });
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`ZAI API error ${response.status}: ${errText}`);
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`ZAI API error ${response.status}: ${errText}`);
+      }
+
+      const data = await response.json() as OpenAIChatResponse;
+      const result = this.parseResponse(data);
+      recordUsage(result.usage, params.session_id);
+      return result;
+    } finally {
+      cleanupCombinedSignal();
     }
-
-    const data = await response.json() as OpenAIChatResponse;
-    const result = this.parseResponse(data);
-    recordUsage(result.usage, params.session_id);
-    return result;
   }
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
     const body = this.buildRequestBody(params, true);
-    // Combine caller's signal with a 5-minute timeout
-    const timeoutSignal = AbortSignal.timeout(300_000);
-    const combinedSignal = params.signal
-      ? AbortSignal.any([params.signal, timeoutSignal])
-      : timeoutSignal;
-
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: combinedSignal,
-    });
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`ZAI API error ${response.status}: ${errText}`);
-    }
-
-    if (!response.body) {
-      throw new Error('ZAI API returned no body for stream');
-    }
-
-    // Parse SSE stream
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let inputTokens = 0;
-    let outputTokens = 0;
-
-    // Accumulate tool calls across chunks (streamed incrementally)
-    const pendingToolCalls = new Map<number, { id: string; name: string; arguments: string }>();
-    let toolCallsFlushed = false;
-
-    const flushToolCalls = function* (): Generator<StreamEvent> {
-      if (toolCallsFlushed) return;
-      toolCallsFlushed = true;
-      for (const [, tc] of pendingToolCalls) {
-        let input: Record<string, unknown> = {};
-        try {
-          input = JSON.parse(tc.arguments);
-        } catch { /* empty */ }
-        yield { type: 'tool_call' as const, id: tc.id, name: tc.name, input };
-      }
-      pendingToolCalls.clear();
-    };
+    const { signal: combinedSignal, cleanup: cleanupCombinedSignal } = createCombinedAbortSignal(
+      params.signal,
+      300_000,
+    );
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
     try {
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: combinedSignal,
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`ZAI API error ${response.status}: ${errText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('ZAI API returned no body for stream');
+      }
+
+      // Parse SSE stream
+      reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let inputTokens = 0;
+      let outputTokens = 0;
+
+      // Accumulate tool calls across chunks (streamed incrementally)
+      const pendingToolCalls = new Map<number, { id: string; name: string; arguments: string }>();
+      let toolCallsFlushed = false;
+
+      const flushToolCalls = function* (): Generator<StreamEvent> {
+        if (toolCallsFlushed) return;
+        toolCallsFlushed = true;
+        for (const [, tc] of pendingToolCalls) {
+          let input: Record<string, unknown> = {};
+          try {
+            input = JSON.parse(tc.arguments);
+          } catch { /* empty */ }
+          yield { type: 'tool_call' as const, id: tc.id, name: tc.name, input };
+        }
+        pendingToolCalls.clear();
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -387,14 +438,15 @@ export class ZAIProvider implements LLMProvider {
           }
         }
       }
-    } finally {
-      reader.releaseLock();
-    }
 
-    // If we get here without [DONE], still emit done
-    const finalUsage = { input_tokens: inputTokens, output_tokens: outputTokens };
-    recordUsage(finalUsage, params.session_id);
-    yield { type: 'done', usage: finalUsage };
+      // If we get here without [DONE], still emit done
+      const finalUsage = { input_tokens: inputTokens, output_tokens: outputTokens };
+      recordUsage(finalUsage, params.session_id);
+      yield { type: 'done', usage: finalUsage };
+    } finally {
+      cleanupCombinedSignal();
+      reader?.releaseLock();
+    }
   }
 
   // ─── Translation helpers ─────────────────────────────────────────
