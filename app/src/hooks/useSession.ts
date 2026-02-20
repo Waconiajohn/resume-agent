@@ -31,6 +31,18 @@ export function useSession(accessToken: string | null) {
     return next;
   }, []);
 
+  const buildErrorMessage = useCallback(async (res: Response, fallback: string) => {
+    const data = await res.json().catch(() => ({} as { error?: string }));
+    let message = data.error ?? fallback;
+    if (res.status === 429) {
+      const retryAfter = res.headers.get('Retry-After');
+      if (retryAfter && /^\d+$/.test(retryAfter)) {
+        message = `${message} Please retry in about ${retryAfter} second${retryAfter === '1' ? '' : 's'}.`;
+      }
+    }
+    return message;
+  }, []);
+
   const listSessions = useCallback(async () => {
     if (!accessTokenRef.current) return;
     setLoading(true);
@@ -38,8 +50,8 @@ export function useSession(accessToken: string | null) {
     try {
       const res = await fetch(`${API_BASE}/sessions`, { headers: headers() });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to load sessions (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to load sessions (${res.status})`);
+        setError(message);
         return;
       }
       const data = await res.json();
@@ -49,7 +61,7 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const createSession = useCallback(async (masterResumeId?: string) => {
     if (!accessTokenRef.current) return null;
@@ -62,8 +74,8 @@ export function useSession(accessToken: string | null) {
         body: JSON.stringify({ master_resume_id: masterResumeId }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to create session (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to create session (${res.status})`);
+        setError(message);
         return null;
       }
       const data = await res.json();
@@ -76,7 +88,7 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const listResumes = useCallback(async () => {
     if (!accessTokenRef.current) return;
@@ -85,8 +97,8 @@ export function useSession(accessToken: string | null) {
     try {
       const res = await fetch(`${API_BASE}/resumes`, { headers: headers() });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to load resumes (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to load resumes (${res.status})`);
+        setError(message);
         return;
       }
       const data = await res.json();
@@ -96,7 +108,7 @@ export function useSession(accessToken: string | null) {
     } finally {
       setResumesLoading(false);
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const getDefaultResume = useCallback(async (): Promise<MasterResume | null> => {
     if (!accessTokenRef.current) return null;
@@ -104,8 +116,8 @@ export function useSession(accessToken: string | null) {
     try {
       const res = await fetch(`${API_BASE}/resumes/default`, { headers: headers() });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to load default resume (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to load default resume (${res.status})`);
+        setError(message);
         return null;
       }
       const data = await res.json();
@@ -114,7 +126,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error loading default resume');
       return null;
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const saveResumeAsBase = useCallback(async (
     resume: FinalResume,
@@ -140,8 +152,7 @@ export function useSession(accessToken: string | null) {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const message = data.error ?? `Failed to save resume (${res.status})`;
+        const message = await buildErrorMessage(res, `Failed to save resume (${res.status})`);
         setError(message);
         return { success: false, error: message };
       }
@@ -152,7 +163,7 @@ export function useSession(accessToken: string | null) {
       setError(message);
       return { success: false, error: message };
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const loadSession = useCallback(async (sessionId: string) => {
     if (!accessTokenRef.current) return null;
@@ -161,8 +172,8 @@ export function useSession(accessToken: string | null) {
     try {
       const res = await fetch(`${API_BASE}/sessions/${sessionId}`, { headers: headers() });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to load session (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to load session (${res.status})`);
+        setError(message);
         return null;
       }
       const data = await res.json();
@@ -175,7 +186,7 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const deleteSession = useCallback(async (sessionId: string): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
@@ -186,8 +197,8 @@ export function useSession(accessToken: string | null) {
         headers: headers(),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to delete session (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to delete session (${res.status})`);
+        setError(message);
         return false;
       }
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
@@ -197,7 +208,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error deleting session');
       return false;
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const setDefaultResume = useCallback(async (resumeId: string): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
@@ -208,8 +219,8 @@ export function useSession(accessToken: string | null) {
         headers: headers(),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to set default resume (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to set default resume (${res.status})`);
+        setError(message);
         return false;
       }
       const data = await res.json().catch(() => ({}));
@@ -225,7 +236,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error setting default resume');
       return false;
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const deleteResume = useCallback(async (resumeId: string): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
@@ -236,8 +247,8 @@ export function useSession(accessToken: string | null) {
         headers: headers(),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to delete resume (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to delete resume (${res.status})`);
+        setError(message);
         return false;
       }
       const data = await res.json().catch(() => ({}));
@@ -257,7 +268,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error deleting resume');
       return false;
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const sendMessage = useCallback(async (
     sessionId: string,
@@ -280,7 +291,7 @@ export function useSession(accessToken: string | null) {
         });
 
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
+          const data = await res.json().catch(() => ({} as { code?: string; error?: string }));
 
           // Duplicate idempotency key means the message was already accepted.
           if (res.status === 409 && data.code === 'DUPLICATE') {
@@ -293,7 +304,9 @@ export function useSession(accessToken: string | null) {
             continue;
           }
 
-          setError(data.error ?? `Failed to send message (${res.status})`);
+          const fallback = data.error ?? `Failed to send message (${res.status})`;
+          const message = await buildErrorMessage(res, fallback);
+          setError(message);
           return false;
         }
         return true;
@@ -307,7 +320,7 @@ export function useSession(accessToken: string | null) {
       }
     }
     return false;
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const startPipeline = useCallback(async (
     sessionId: string,
@@ -329,8 +342,8 @@ export function useSession(accessToken: string | null) {
         }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `Failed to start pipeline (${res.status})`);
+        const message = await buildErrorMessage(res, `Failed to start pipeline (${res.status})`);
+        setError(message);
         return false;
       }
       return true;
@@ -338,7 +351,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error starting pipeline');
       return false;
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   const respondToGate = useCallback(async (
     sessionId: string,
@@ -358,11 +371,13 @@ export function useSession(accessToken: string | null) {
         }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({} as { code?: string; error?: string }));
         if (data.code === 'STALE_PIPELINE') {
           setError('Session state became stale after a server restart. Please restart the pipeline from this session.');
         } else {
-          setError(data.error ?? `Failed to respond to gate (${res.status})`);
+          const fallback = data.error ?? `Failed to respond to gate (${res.status})`;
+          const message = await buildErrorMessage(res, fallback);
+          setError(message);
         }
         return false;
       }
@@ -371,7 +386,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error responding to gate');
       return false;
     }
-  }, [headers]);
+  }, [headers, buildErrorMessage]);
 
   return {
     sessions,
