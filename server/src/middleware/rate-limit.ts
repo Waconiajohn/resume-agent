@@ -35,6 +35,11 @@ export function getRateLimitStats() {
   };
 }
 
+// Test-only helper to avoid cross-test leakage from module-level state.
+export function resetRateLimitStateForTests() {
+  buckets.clear();
+}
+
 /**
  * Simple fixed-window rate limiter keyed by user ID (from auth) or IP.
  * @param maxRequests - Max requests allowed in the window
