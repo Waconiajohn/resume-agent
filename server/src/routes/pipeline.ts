@@ -603,6 +603,39 @@ function extractVisibleTextFromHtml(html: string): string {
   return decodeHtmlEntities(withoutTags).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+async function readResponseTextWithByteLimit(res: Response, maxBytes: number): Promise<string> {
+  const stream = res.body;
+  if (!stream) return '';
+
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      try {
+        await reader.cancel();
+      } catch {
+        // best effort
+      }
+      throw new Error('Job URL content is too large. Please paste the job description text directly.');
+    }
+    chunks.push(value);
+  }
+
+  const merged = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(merged);
+}
+
 async function resolveJobDescriptionInput(input: string): Promise<string> {
   const trimmed = input.trim();
   if (!JOB_URL_PATTERN.test(trimmed)) return trimmed;
@@ -668,10 +701,7 @@ async function resolveJobDescriptionInput(input: string): Promise<string> {
         }
       }
       const contentType = res.headers.get('content-type')?.toLowerCase() ?? '';
-      const body = await res.text();
-      if (body.length > MAX_JOB_FETCH_BYTES) {
-        throw new Error('Job URL content is too large. Please paste the job description text directly.');
-      }
+      const body = await readResponseTextWithByteLimit(res, MAX_JOB_FETCH_BYTES);
       const text = contentType.includes('text/plain') ? body.trim() : extractVisibleTextFromHtml(body);
       if (text.length < 200) {
         throw new Error('Could not extract enough job description text from the URL. Please paste JD text directly.');
