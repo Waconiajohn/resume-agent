@@ -7,6 +7,10 @@ interface RateLimitEntry {
 }
 
 const buckets = new Map<string, RateLimitEntry>();
+let allowedDecisions = 0;
+let deniedDecisions = 0;
+const deniedByScope = new Map<string, number>();
+const MAX_DENIED_SCOPE_ENTRIES = 200;
 const MAX_RATE_LIMIT_BUCKETS = (() => {
   const parsed = Number.parseInt(process.env.MAX_RATE_LIMIT_BUCKETS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 50_000;
@@ -29,15 +33,25 @@ const cleanupTimer = setInterval(() => {
 cleanupTimer.unref();
 
 export function getRateLimitStats() {
+  const topDeniedScopes = Array.from(deniedByScope.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([scope, count]) => ({ scope, count }));
   return {
     active_buckets: buckets.size,
     max_buckets: MAX_RATE_LIMIT_BUCKETS,
+    allowed_decisions: allowedDecisions,
+    denied_decisions: deniedDecisions,
+    denied_by_scope: topDeniedScopes,
   };
 }
 
 // Test-only helper to avoid cross-test leakage from module-level state.
 export function resetRateLimitStateForTests() {
   buckets.clear();
+  allowedDecisions = 0;
+  deniedDecisions = 0;
+  deniedByScope.clear();
 }
 
 /**
@@ -80,6 +94,13 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
     entry.count++;
 
     if (entry.count > maxRequests) {
+      deniedDecisions += 1;
+      deniedByScope.set(scope, (deniedByScope.get(scope) ?? 0) + 1);
+      while (deniedByScope.size > MAX_DENIED_SCOPE_ENTRIES) {
+        const oldest = deniedByScope.keys().next().value;
+        if (!oldest) break;
+        deniedByScope.delete(oldest);
+      }
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       c.header('Retry-After', String(retryAfter));
       logger.warn({
@@ -91,6 +112,7 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
       return c.json({ error: 'Too many requests. Please try again later.' }, 429);
     }
 
+    allowedDecisions += 1;
     await next();
   };
 }

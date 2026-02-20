@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Hono } from 'hono';
-import { rateLimitMiddleware, resetRateLimitStateForTests } from '../middleware/rate-limit.js';
+import { rateLimitMiddleware, resetRateLimitStateForTests, getRateLimitStats } from '../middleware/rate-limit.js';
 
 function buildApp(maxRequests: number, windowMs: number) {
   const app = new Hono();
@@ -74,5 +74,24 @@ describe('rateLimitMiddleware', () => {
       headers: { 'x-user-id': 'window-user' },
     });
     expect(afterReset.status).toBe(200);
+  });
+
+  it('tracks allowed and denied decisions in stats', async () => {
+    const app = buildApp(1, 10_000);
+
+    const first = await app.request('http://test/limited', {
+      headers: { 'x-user-id': 'metrics-user' },
+    });
+    const second = await app.request('http://test/limited', {
+      headers: { 'x-user-id': 'metrics-user' },
+    });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(429);
+
+    const stats = getRateLimitStats();
+    expect(stats.allowed_decisions).toBe(1);
+    expect(stats.denied_decisions).toBe(1);
+    expect(stats.denied_by_scope.some((item) => item.scope === 'GET:/limited' && item.count === 1)).toBe(true);
   });
 });
