@@ -75,3 +75,16 @@ export function getRequestMetrics() {
     },
   };
 }
+
+export function resetRequestMetricsForTest(): void {
+  counters.total = 0;
+  counters.status_2xx = 0;
+  counters.status_3xx = 0;
+  counters.status_4xx = 0;
+  counters.status_5xx = 0;
+  counters.status_429 = 0;
+  counters.status_503 = 0;
+  latencyCount = 0;
+  latencySumMs = 0;
+  latencyHistogram.fill(0);
+}
