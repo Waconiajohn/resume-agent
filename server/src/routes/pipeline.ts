@@ -11,6 +11,13 @@ import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 import { sleep } from '../lib/sleep.js';
 import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
+import {
+  getPendingGateQueueConfig,
+  getResponseQueue,
+  parsePendingGatePayload,
+  type PendingGatePayload,
+  withResponseQueue,
+} from '../lib/pending-gate-queue.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -336,6 +343,7 @@ async function hasRunningPipelineCapacity(limit: number, userId?: string): Promi
 }
 
 export function getPipelineRouteStats() {
+  const queueConfig = getPendingGateQueueConfig();
   return {
     running_pipelines_local: runningPipelines.size,
     max_running_pipelines_local: MAX_IN_PROCESS_PIPELINES,
@@ -357,6 +365,9 @@ export function getPipelineRouteStats() {
     max_section_context_order_items: MAX_SECTION_CONTEXT_ORDER_ITEMS,
     max_section_context_text_chars: MAX_SECTION_CONTEXT_TEXT_CHARS,
     max_section_context_blueprint_bytes: MAX_SECTION_CONTEXT_BLUEPRINT_BYTES,
+    max_buffered_responses: queueConfig.max_buffered_responses,
+    max_buffered_response_item_bytes: queueConfig.max_buffered_response_item_bytes,
+    max_buffered_responses_total_bytes: queueConfig.max_buffered_responses_total_bytes,
   };
 }
 
@@ -369,63 +380,6 @@ const PIPELINE_STAGES: PipelineStage[] = [
 const JOB_URL_PATTERN = /^https?:\/\/\S+$/i;
 const MAX_JOB_URL_REDIRECTS = 3;
 const MAX_JOB_FETCH_BYTES = 2_000_000; // 2MB safety cap to avoid oversized pages
-
-type PendingGatePayload = {
-  created_at?: string;
-  gate?: string;
-  response?: unknown;
-  response_gate?: string;
-  responded_at?: string;
-  response_queue?: Array<{
-    gate: string;
-    response: unknown;
-    responded_at: string;
-  }>;
-  // Legacy single-buffer fields (kept for migration compatibility)
-  buffered_gate?: string;
-  buffered_response?: unknown;
-  buffered_at?: string;
-};
-
-function parsePendingGatePayload(raw: unknown): PendingGatePayload {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-  return raw as PendingGatePayload;
-}
-
-const MAX_BUFFERED_RESPONSES = 25;
-
-function getResponseQueue(payload: PendingGatePayload): Array<{ gate: string; response: unknown; responded_at: string }> {
-  const queue = Array.isArray(payload.response_queue)
-    ? payload.response_queue.filter((item) =>
-      item
-      && typeof item === 'object'
-      && typeof (item as { gate?: unknown }).gate === 'string'
-      && 'response' in (item as Record<string, unknown>)
-      && typeof (item as { responded_at?: unknown }).responded_at === 'string')
-    : [];
-
-  // Backward compatibility: fold old single buffered fields into the queue.
-  if (payload.buffered_gate && 'buffered_response' in payload) {
-    queue.push({
-      gate: payload.buffered_gate,
-      response: payload.buffered_response,
-      responded_at: payload.buffered_at ?? new Date().toISOString(),
-    });
-  }
-
-  return queue.slice(-MAX_BUFFERED_RESPONSES);
-}
-
-function withResponseQueue(payload: PendingGatePayload, queue: Array<{ gate: string; response: unknown; responded_at: string }>): PendingGatePayload {
-  const normalized = {
-    ...payload,
-    response_queue: queue.slice(-MAX_BUFFERED_RESPONSES),
-  };
-  delete normalized.buffered_gate;
-  delete normalized.buffered_response;
-  delete normalized.buffered_at;
-  return normalized;
-}
 
 function gatePollDelayMs(attempt: number): number {
   const backoff = Math.min(GATE_POLL_MAX_MS, Math.floor(GATE_POLL_BASE_MS * Math.pow(1.35, attempt)));
