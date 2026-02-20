@@ -15,6 +15,10 @@ import logger from './lib/logger.js';
 const app = new Hono();
 
 const isProduction = process.env.NODE_ENV === 'production';
+const maxHeapUsedMb = (() => {
+  const parsed = Number.parseInt(process.env.MAX_HEAP_USED_MB ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+})();
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : isProduction
@@ -28,6 +32,19 @@ if (isProduction && !process.env.ALLOWED_ORIGINS) {
 app.use('*', requestIdMiddleware);
 
 app.use('*', async (c, next) => {
+  if (maxHeapUsedMb > 0) {
+    const heapUsedMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    const requestPath = c.req.path;
+    const bypass = requestPath === '/health' || requestPath === '/metrics';
+    if (!bypass && heapUsedMb >= maxHeapUsedMb) {
+      recordRequestMetric(503, 0);
+      return c.json({
+        error: 'Server temporarily overloaded. Please retry shortly.',
+        code: 'OVERLOADED',
+      }, 503);
+    }
+  }
+
   const startedAt = Date.now();
   let status = 500;
   try {
@@ -92,6 +109,11 @@ app.get('/metrics', (c) => {
     rate_limit_runtime: rateLimitStats,
     auth_cache_runtime: authCacheStats,
     http_runtime: requestStats,
+    load_shedding: {
+      max_heap_used_mb: maxHeapUsedMb,
+      active: maxHeapUsedMb > 0,
+      heap_used_mb_now: Math.round(memUsage.heapUsed / 1024 / 1024),
+    },
     memory: {
       rss_mb: Math.round(memUsage.rss / 1024 / 1024),
       heap_used_mb: Math.round(memUsage.heapUsed / 1024 / 1024),
