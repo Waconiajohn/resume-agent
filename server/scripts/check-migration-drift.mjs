@@ -38,6 +38,12 @@ function runSupabaseMigrationList() {
   );
 
   const initial = runList();
+  if (initial.error) {
+    if (typeof initial.error === 'object' && initial.error && 'code' in initial.error && initial.error.code === 'ENOENT') {
+      throw new Error('Supabase CLI not found. Install it or ensure it is on PATH.');
+    }
+    throw new Error(initial.error.message);
+  }
   const initialCombined = `${initial.stdout ?? ''}\n${initial.stderr ?? ''}`.trim();
 
   if (initial.status !== 0 && /Cannot find project ref/i.test(initialCombined) && process.env.SUPABASE_PROJECT_REF) {
@@ -46,11 +52,23 @@ function runSupabaseMigrationList() {
       ['link', '--project-ref', process.env.SUPABASE_PROJECT_REF, '--workdir', repoRoot, '--yes'],
       { encoding: 'utf8', env: process.env },
     );
+    if (link.error) {
+      if (typeof link.error === 'object' && link.error && 'code' in link.error && link.error.code === 'ENOENT') {
+        throw new Error('Supabase CLI not found. Install it or ensure it is on PATH.');
+      }
+      throw new Error(link.error.message);
+    }
     if (link.status !== 0) {
       const linkCombined = `${link.stdout ?? ''}\n${link.stderr ?? ''}`.trim();
       throw new Error(linkCombined || `supabase link exited ${link.status}`);
     }
     const retried = runList();
+    if (retried.error) {
+      if (typeof retried.error === 'object' && retried.error && 'code' in retried.error && retried.error.code === 'ENOENT') {
+        throw new Error('Supabase CLI not found. Install it or ensure it is on PATH.');
+      }
+      throw new Error(retried.error.message);
+    }
     const retriedCombined = `${retried.stdout ?? ''}\n${retried.stderr ?? ''}`.trim();
     if (retried.status !== 0) {
       throw new Error(retriedCombined || `supabase migration list exited ${retried.status}`);
