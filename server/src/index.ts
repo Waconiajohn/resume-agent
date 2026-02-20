@@ -9,6 +9,7 @@ import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
 import { getAuthCacheStats } from './middleware/auth.js';
+import { getRequestMetrics, recordRequestMetric } from './lib/request-metrics.js';
 import logger from './lib/logger.js';
 
 const app = new Hono();
@@ -25,6 +26,17 @@ if (isProduction && !process.env.ALLOWED_ORIGINS) {
 }
 
 app.use('*', requestIdMiddleware);
+
+app.use('*', async (c, next) => {
+  const startedAt = Date.now();
+  let status = 500;
+  try {
+    await next();
+    status = c.res.status;
+  } finally {
+    recordRequestMetric(status, Date.now() - startedAt);
+  }
+});
 
 app.use('*', cors({
   origin: allowedOrigins,
@@ -69,6 +81,7 @@ app.get('/metrics', (c) => {
   const pipelineStats = getPipelineRouteStats();
   const rateLimitStats = getRateLimitStats();
   const authCacheStats = getAuthCacheStats();
+  const requestStats = getRequestMetrics();
   return c.json({
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     // Backward-compatible top-level metrics
@@ -78,6 +91,7 @@ app.get('/metrics', (c) => {
     pipeline_runtime: pipelineStats,
     rate_limit_runtime: rateLimitStats,
     auth_cache_runtime: authCacheStats,
+    http_runtime: requestStats,
     memory: {
       rss_mb: Math.round(memUsage.rss / 1024 / 1024),
       heap_used_mb: Math.round(memUsage.heapUsed / 1024 / 1024),
