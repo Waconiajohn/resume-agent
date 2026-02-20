@@ -31,6 +31,16 @@ export function useSession(accessToken: string | null) {
     return next;
   }, []);
 
+  const fetchWithOneRetry = useCallback(async (url: string, init?: RequestInit): Promise<Response> => {
+    const attempt = async () => fetch(url, init);
+    let res = await attempt();
+    if (res.status === 429 || res.status >= 500) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      res = await attempt();
+    }
+    return res;
+  }, []);
+
   const buildErrorMessage = useCallback(async (
     res: Response,
     fallback: string,
@@ -52,7 +62,7 @@ export function useSession(accessToken: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/sessions`, { headers: headers() });
+      const res = await fetchWithOneRetry(`${API_BASE}/sessions`, { headers: headers() });
       if (!res.ok) {
         const message = await buildErrorMessage(res, `Failed to load sessions (${res.status})`);
         setError(message);
@@ -65,7 +75,7 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [headers, buildErrorMessage]);
+  }, [headers, buildErrorMessage, fetchWithOneRetry]);
 
   const createSession = useCallback(async (masterResumeId?: string) => {
     if (!accessTokenRef.current) return null;
@@ -99,7 +109,7 @@ export function useSession(accessToken: string | null) {
     setResumesLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/resumes`, { headers: headers() });
+      const res = await fetchWithOneRetry(`${API_BASE}/resumes`, { headers: headers() });
       if (!res.ok) {
         const message = await buildErrorMessage(res, `Failed to load resumes (${res.status})`);
         setError(message);
@@ -112,13 +122,13 @@ export function useSession(accessToken: string | null) {
     } finally {
       setResumesLoading(false);
     }
-  }, [headers, buildErrorMessage]);
+  }, [headers, buildErrorMessage, fetchWithOneRetry]);
 
   const getDefaultResume = useCallback(async (): Promise<MasterResume | null> => {
     if (!accessTokenRef.current) return null;
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/resumes/default`, { headers: headers() });
+      const res = await fetchWithOneRetry(`${API_BASE}/resumes/default`, { headers: headers() });
       if (!res.ok) {
         const message = await buildErrorMessage(res, `Failed to load default resume (${res.status})`);
         setError(message);
@@ -130,7 +140,7 @@ export function useSession(accessToken: string | null) {
       setError(err instanceof Error ? err.message : 'Network error loading default resume');
       return null;
     }
-  }, [headers, buildErrorMessage]);
+  }, [headers, buildErrorMessage, fetchWithOneRetry]);
 
   const saveResumeAsBase = useCallback(async (
     resume: FinalResume,
@@ -174,7 +184,7 @@ export function useSession(accessToken: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, { headers: headers() });
+      const res = await fetchWithOneRetry(`${API_BASE}/sessions/${sessionId}`, { headers: headers() });
       if (!res.ok) {
         const message = await buildErrorMessage(res, `Failed to load session (${res.status})`);
         setError(message);
@@ -190,7 +200,7 @@ export function useSession(accessToken: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [headers, buildErrorMessage]);
+  }, [headers, buildErrorMessage, fetchWithOneRetry]);
 
   const deleteSession = useCallback(async (sessionId: string): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
