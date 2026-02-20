@@ -24,7 +24,7 @@ const MAX_TOTAL_SSE_CONNECTIONS = (() => {
   const parsed = Number.parseInt(process.env.MAX_TOTAL_SSE_CONNECTIONS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5000;
 })();
-const MAX_PROCESSING_SESSIONS_PER_USER = (() => {
+const CONFIGURED_MAX_PROCESSING_SESSIONS_PER_USER = (() => {
   const parsed = Number.parseInt(process.env.MAX_PROCESSING_SESSIONS_PER_USER ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 6;
 })();
@@ -448,6 +448,17 @@ const MAX_PROCESSING_SESSIONS = (() => {
   const parsed = Number.parseInt(process.env.MAX_PROCESSING_SESSIONS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 2_000;
 })();
+const MAX_PROCESSING_SESSIONS_PER_USER = Math.min(
+  CONFIGURED_MAX_PROCESSING_SESSIONS_PER_USER,
+  MAX_PROCESSING_SESSIONS,
+);
+if (CONFIGURED_MAX_PROCESSING_SESSIONS_PER_USER > MAX_PROCESSING_SESSIONS) {
+  logger.warn({
+    configured_per_user: CONFIGURED_MAX_PROCESSING_SESSIONS_PER_USER,
+    max_processing_sessions: MAX_PROCESSING_SESSIONS,
+    effective_per_user: MAX_PROCESSING_SESSIONS_PER_USER,
+  }, 'Clamped MAX_PROCESSING_SESSIONS_PER_USER to MAX_PROCESSING_SESSIONS');
+}
 const PROCESSING_TTL_MS = (() => {
   const parsed = Number.parseInt(process.env.PROCESSING_TTL_MS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 15 * 60_000;
