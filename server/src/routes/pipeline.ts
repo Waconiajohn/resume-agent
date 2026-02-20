@@ -377,7 +377,7 @@ export function getPipelineRouteStats() {
 
 // Known pipeline stages for type-safe stale recovery
 const PIPELINE_STAGES: PipelineStage[] = [
-  'intake', 'positioning', 'research', 'gap_analysis', 'architect',
+  'intake', 'research', 'positioning', 'gap_analysis', 'architect',
   'architect_review', 'section_writing', 'section_review', 'quality_review', 'revision', 'complete',
 ];
 

@@ -1,6 +1,6 @@
 /**
  * Targeted tests for positioning interview hardening:
- * - Feature flag v1/v2 branching
+ * - Questionnaire feature flag parsing
  * - Abort-based timeout on LLM question generation
  * - Follow-up cap (MAX_FOLLOW_UPS)
  * - Question ID deduplication
@@ -23,22 +23,28 @@ describe('feature-flags', () => {
     process.env = originalEnv;
   });
 
-  it('positioning_v2 defaults to true', async () => {
-    delete process.env.FF_POSITIONING_V2;
-    const { FEATURE_FLAGS } = await import('../lib/feature-flags.js');
-    expect(FEATURE_FLAGS.positioning_v2).toBe(true);
+  it('questionnaire flags default to enabled', async () => {
+    delete process.env.FF_INTAKE_QUIZ;
+    delete process.env.FF_RESEARCH_VALIDATION;
+    delete process.env.FF_GAP_ANALYSIS_QUIZ;
+    delete process.env.FF_QUALITY_REVIEW_APPROVAL;
+    const { QUESTIONNAIRE_FLAGS } = await import('../lib/feature-flags.js');
+    expect(QUESTIONNAIRE_FLAGS.intake_quiz).toBe(true);
+    expect(QUESTIONNAIRE_FLAGS.research_validation).toBe(true);
+    expect(QUESTIONNAIRE_FLAGS.gap_analysis_quiz).toBe(true);
+    expect(QUESTIONNAIRE_FLAGS.quality_review_approval).toBe(true);
   });
 
-  it('FF_POSITIONING_V2=1 enables v2', async () => {
-    process.env.FF_POSITIONING_V2 = '1';
-    const { FEATURE_FLAGS } = await import('../lib/feature-flags.js');
-    expect(FEATURE_FLAGS.positioning_v2).toBe(true);
+  it('questionnaire flags can be disabled via env', async () => {
+    process.env.FF_RESEARCH_VALIDATION = '0';
+    const { QUESTIONNAIRE_FLAGS } = await import('../lib/feature-flags.js');
+    expect(QUESTIONNAIRE_FLAGS.research_validation).toBe(false);
   });
 
-  it('FF_POSITIONING_V2=0 disables v2', async () => {
-    process.env.FF_POSITIONING_V2 = '0';
-    const { FEATURE_FLAGS } = await import('../lib/feature-flags.js');
-    expect(FEATURE_FLAGS.positioning_v2).toBe(false);
+  it('questionnaire flags treat "true" as enabled', async () => {
+    process.env.FF_GAP_ANALYSIS_QUIZ = 'true';
+    const { QUESTIONNAIRE_FLAGS } = await import('../lib/feature-flags.js');
+    expect(QUESTIONNAIRE_FLAGS.gap_analysis_quiz).toBe(true);
   });
 });
 

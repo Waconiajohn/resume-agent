@@ -22,7 +22,7 @@ import { runArchitect } from './architect.js';
 import { runSectionWriter, runSectionRevision } from './section-writer.js';
 import { runQualityReviewer } from './quality-reviewer.js';
 import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
-import { isQuestionnaireEnabled, isFeatureEnabled, type QuestionnaireStage } from '../lib/feature-flags.js';
+import { isQuestionnaireEnabled, type QuestionnaireStage } from '../lib/feature-flags.js';
 import { buildQuestionnaireEvent, makeQuestion, getSelectedLabels } from '../lib/questionnaire-helpers.js';
 import type {
   PipelineState,
@@ -229,174 +229,111 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       log.info({ preferences: state.user_preferences }, 'Intake quiz complete');
     }
 
-    // positioning_v2: JD-informed positioning — runs research first (with 90s race timeout) so
-    // positioning questions can be tailored to specific JD requirements.
-    // Default is ON; FF_POSITIONING_V2=0 can be used as an emergency rollback to v1.
-    if (isFeatureEnabled('positioning_v2')) {
-      // ─── v2: Race research with 90s timeout, then positioning with JD-informed questions ───
-      emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
-      state.current_stage = 'research';
-      markStageStart('research');
+    // ─── Research-first flow: race research with 90s timeout, then run positioning ───
+    emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
+    state.current_stage = 'research';
+    markStageStart('research');
 
-      // Fire off research as a background promise (with retry for transient failures)
-      const researchPromise = withRetry(
-        () => runResearchAgent({
-          job_description: config.job_description,
-          company_name: config.company_name,
-          parsed_resume: state.intake!,
-        }),
-        { maxAttempts: 3, baseDelay: 2_000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'Research (v2 background) retry') },
-      );
+    // Fire off research as a background promise (with retry for transient failures)
+    const researchPromise = withRetry(
+      () => runResearchAgent({
+        job_description: config.job_description,
+        company_name: config.company_name,
+        parsed_resume: state.intake!,
+      }),
+      { maxAttempts: 3, baseDelay: 2_000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'Research background retry') },
+    );
 
-      // Race: give research 90s to complete before falling back
-      const RESEARCH_RACE_TIMEOUT_MS = 90_000;
-      const researchRaceResult = await Promise.race([
-        researchPromise.then(r => ({ resolved: true as const, data: r })),
-        sleep(RESEARCH_RACE_TIMEOUT_MS).then(() => ({ resolved: false as const, data: null })),
-      ]);
+    // Race: give research 90s to complete before falling back
+    const RESEARCH_RACE_TIMEOUT_MS = 90_000;
+    const researchRaceResult = await Promise.race([
+      researchPromise.then(r => ({ resolved: true as const, data: r })),
+      sleep(RESEARCH_RACE_TIMEOUT_MS).then(() => ({ resolved: false as const, data: null })),
+    ]);
 
-      if (researchRaceResult.resolved) {
-        state.research = researchRaceResult.data!;
-        markStageEnd('research');
-        emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
-        log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (within timeout)');
-      } else {
-        log.info('Research still running after timeout — starting positioning with fallback questions');
-        emit({ type: 'transparency', stage: 'research', message: 'Research is still running — starting your interview with general questions...' });
-      }
-
-      // Emit research dashboard if research is ready
-      if (state.research) {
-        emit({
-          type: 'right_panel_update',
-          panel_type: 'research_dashboard',
-          data: {
-            company: state.research.company_research,
-            jd_requirements: {
-              must_haves: state.research.jd_analysis.must_haves,
-              nice_to_haves: state.research.jd_analysis.nice_to_haves,
-              seniority_level: state.research.jd_analysis.seniority_level,
-            },
-            benchmark: state.research.benchmark_candidate,
-          },
-        });
-      }
-
-      // ─── Research Validation Quiz (if research is ready) ────────
-      if (state.research) {
-        const researchQuizQuestions = buildResearchQuizQuestions(state.research);
-        const researchSubmission = await runQuestionnaire(
-          'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
-          'Help us fine-tune our research findings',
-        );
-        if (researchSubmission) {
-          processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
-        }
-      }
-
-      // ─── Positioning Coach ──────────────────────────────────
-      emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
-      state.current_stage = 'positioning';
-      markStageStart('positioning');
-      state.positioning = await runPositioningStage(
-        state, config, emit, waitForUser, log,
-      );
-      markStageEnd('positioning');
-      emit({
-        type: 'stage_complete',
-        stage: 'positioning',
-        message: state.positioning_reuse_mode === 'reuse'
-          ? 'Using saved positioning profile'
-          : 'Positioning profile created and saved',
-        duration_ms: stageTimingsMs.positioning,
-      });
-
-      // ─── Await research if it hasn't finished yet ───────────
-      if (!state.research) {
-        try {
-          state.research = await researchPromise;
-        } catch (researchErr) {
-          // Research failed after positioning — retry once before giving up.
-          log.warn(
-            { error: researchErr instanceof Error ? researchErr.message : String(researchErr) },
-            'Late research promise rejected — retrying once',
-          );
-          try {
-            state.research = await withRetry(
-              () => runResearchAgent({
-                job_description: config.job_description,
-                company_name: config.company_name,
-                parsed_resume: state.intake!,
-              }),
-              { maxAttempts: 2, baseDelay: 3_000, onRetry: (a, e) => log.warn({ attempt: a, error: e.message }, 'Research retry') },
-            );
-          } catch (retryErr) {
-            log.error(
-              { error: retryErr instanceof Error ? retryErr.message : String(retryErr) },
-              'Research failed after retry — pipeline cannot continue without research',
-            );
-            throw retryErr;
-          }
-        }
-        markStageEnd('research');
-        emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
-        emit({
-          type: 'right_panel_update',
-          panel_type: 'research_dashboard',
-          data: {
-            company: state.research.company_research,
-            jd_requirements: {
-              must_haves: state.research.jd_analysis.must_haves,
-              nice_to_haves: state.research.jd_analysis.nice_to_haves,
-              seniority_level: state.research.jd_analysis.seniority_level,
-            },
-            benchmark: state.research.benchmark_candidate,
-          },
-        });
-        log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (after positioning)');
-
-        // Run research validation quiz now
-        const researchQuizQuestions = buildResearchQuizQuestions(state.research);
-        const researchSubmission = await runQuestionnaire(
-          'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
-          'Help us fine-tune our research findings',
-        );
-        if (researchSubmission) {
-          processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
-        }
-      }
+    if (researchRaceResult.resolved) {
+      state.research = researchRaceResult.data!;
+      markStageEnd('research');
+      emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
+      log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (within timeout)');
     } else {
-      // ─── v1: Positioning first, then research (original order) ───
-      emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
-      state.current_stage = 'positioning';
-      markStageStart('positioning');
-      state.positioning = await runPositioningStage(
-        state, config, emit, waitForUser, log,
-      );
-      markStageEnd('positioning');
+      log.info('Research still running after timeout — starting positioning with fallback questions');
+      emit({ type: 'transparency', stage: 'research', message: 'Research is still running — starting your interview with general questions...' });
+    }
+
+    // Emit research dashboard if research is ready
+    if (state.research) {
       emit({
-        type: 'stage_complete',
-        stage: 'positioning',
-        message: state.positioning_reuse_mode === 'reuse'
-          ? 'Using saved positioning profile'
-          : 'Positioning profile created and saved',
-        duration_ms: stageTimingsMs.positioning,
+        type: 'right_panel_update',
+        panel_type: 'research_dashboard',
+        data: {
+          company: state.research.company_research,
+          jd_requirements: {
+            must_haves: state.research.jd_analysis.must_haves,
+            nice_to_haves: state.research.jd_analysis.nice_to_haves,
+            seniority_level: state.research.jd_analysis.seniority_level,
+          },
+          benchmark: state.research.benchmark_candidate,
+        },
       });
+    }
 
-      // ─── Research ─────────────────────────────────────
-      emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
-      state.current_stage = 'research';
-      markStageStart('research');
-
-      state.research = await withRetry(
-        () => runResearchAgent({
-          job_description: config.job_description,
-          company_name: config.company_name,
-          parsed_resume: state.intake!,
-        }),
-        { maxAttempts: 3, baseDelay: 2_000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'Research (v1) retry') },
+    // ─── Research Validation Quiz (if research is ready) ────────
+    if (state.research) {
+      const researchQuizQuestions = buildResearchQuizQuestions(state.research);
+      const researchSubmission = await runQuestionnaire(
+        'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
+        'Help us fine-tune our research findings',
       );
+      if (researchSubmission) {
+        processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
+      }
+    }
 
+    // ─── Positioning Coach ──────────────────────────────────
+    emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
+    state.current_stage = 'positioning';
+    markStageStart('positioning');
+    state.positioning = await runPositioningStage(
+      state, config, emit, waitForUser, log,
+    );
+    markStageEnd('positioning');
+    emit({
+      type: 'stage_complete',
+      stage: 'positioning',
+      message: state.positioning_reuse_mode === 'reuse'
+        ? 'Using saved positioning profile'
+        : 'Positioning profile created and saved',
+      duration_ms: stageTimingsMs.positioning,
+    });
+
+    // ─── Await research if it hasn't finished yet ───────────
+    if (!state.research) {
+      try {
+        state.research = await researchPromise;
+      } catch (researchErr) {
+        // Research failed after positioning — retry once before giving up.
+        log.warn(
+          { error: researchErr instanceof Error ? researchErr.message : String(researchErr) },
+          'Late research promise rejected — retrying once',
+        );
+        try {
+          state.research = await withRetry(
+            () => runResearchAgent({
+              job_description: config.job_description,
+              company_name: config.company_name,
+              parsed_resume: state.intake!,
+            }),
+            { maxAttempts: 2, baseDelay: 3_000, onRetry: (a, e) => log.warn({ attempt: a, error: e.message }, 'Research retry') },
+          );
+        } catch (retryErr) {
+          log.error(
+            { error: retryErr instanceof Error ? retryErr.message : String(retryErr) },
+            'Research failed after retry — pipeline cannot continue without research',
+          );
+          throw retryErr;
+        }
+      }
       markStageEnd('research');
       emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
       emit({
@@ -412,10 +349,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           benchmark: state.research.benchmark_candidate,
         },
       });
+      log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (after positioning)');
 
-      log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete');
-
-      // ─── Research Validation Quiz (optional) ────────────────
+      // Run research validation quiz now
       const researchQuizQuestions = buildResearchQuizQuestions(state.research);
       const researchSubmission = await runQuestionnaire(
         'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
