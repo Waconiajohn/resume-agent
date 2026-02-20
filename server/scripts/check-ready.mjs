@@ -43,6 +43,14 @@ async function main() {
   let readyUrl = '';
   try {
     const parsed = new URL(baseUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      console.error(`[check-ready] Unsupported URL protocol: ${parsed.protocol}`);
+      process.exit(2);
+    }
+    if (parsed.username || parsed.password) {
+      console.error('[check-ready] URL must not include embedded credentials.');
+      process.exit(2);
+    }
     readyUrl = `${parsed.toString().replace(/\/+$/, '')}/ready`;
   } catch {
     console.error(`[check-ready] Invalid URL: ${baseUrl}`);
