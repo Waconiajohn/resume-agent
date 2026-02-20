@@ -149,6 +149,7 @@ const MAX_IN_PROCESS_PIPELINES = parsePositiveInt(process.env.MAX_IN_PROCESS_PIP
 const MAX_RUNNING_PIPELINES_PER_USER = parsePositiveInt(process.env.MAX_RUNNING_PIPELINES_PER_USER, 3);
 const MAX_RUNNING_PIPELINES_GLOBAL = parsePositiveInt(process.env.MAX_RUNNING_PIPELINES_GLOBAL, 1500);
 const STALE_RECOVERY_COOLDOWN_MS = parsePositiveInt(process.env.STALE_RECOVERY_COOLDOWN_MS, 60_000);
+const STALE_RECOVERY_BATCH_SIZE = parsePositiveInt(process.env.STALE_RECOVERY_BATCH_SIZE, 200);
 
 // Track running pipelines to prevent double-start (in-process guard, complements DB check)
 const runningPipelines = new Map<string, number>();
@@ -170,25 +171,34 @@ runningPipelinesCleanupTimer.unref();
 let lastStaleRecoveryAt = 0;
 let staleRecoveryRuns = 0;
 let staleRecoveredRows = 0;
+let staleRecoveryHadMore = false;
 
-async function recoverGlobalStalePipelines(now = Date.now()): Promise<void> {
-  if (now - lastStaleRecoveryAt < STALE_RECOVERY_COOLDOWN_MS) return;
+async function recoverGlobalStalePipelines(opts?: { now?: number; force?: boolean }): Promise<void> {
+  const now = opts?.now ?? Date.now();
+  if (!opts?.force && now - lastStaleRecoveryAt < STALE_RECOVERY_COOLDOWN_MS) return;
   lastStaleRecoveryAt = now;
   staleRecoveryRuns += 1;
   const staleBeforeIso = new Date(now - STALE_PIPELINE_MS).toISOString();
   try {
-    const { count, error: countError } = await supabaseAdmin
+    const { data: staleRows, error: staleScanError } = await supabaseAdmin
       .from('coach_sessions')
-      .select('id', { count: 'exact', head: true })
+      .select('id')
       .eq('pipeline_status', 'running')
-      .lt('updated_at', staleBeforeIso);
-    if (countError) {
-      logger.warn({ error: countError.message }, 'Failed to count stale running pipelines');
+      .lt('updated_at', staleBeforeIso)
+      .order('updated_at', { ascending: true })
+      .limit(STALE_RECOVERY_BATCH_SIZE);
+    if (staleScanError) {
+      logger.warn({ error: staleScanError.message }, 'Failed to scan stale running pipelines');
       return;
     }
 
-    if ((count ?? 0) <= 0) {
+    const staleIds = (staleRows ?? [])
+      .map((r) => r.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+    if (staleIds.length <= 0) {
       staleRecoveredRows = 0;
+      staleRecoveryHadMore = false;
       return;
     }
 
@@ -199,18 +209,39 @@ async function recoverGlobalStalePipelines(now = Date.now()): Promise<void> {
         pending_gate: null,
         pending_gate_data: null,
       })
-      .eq('pipeline_status', 'running')
-      .lt('updated_at', staleBeforeIso);
+      .in('id', staleIds)
+      .eq('pipeline_status', 'running');
     if (recoverError) {
       logger.warn({ error: recoverError.message }, 'Failed to recover stale running pipelines');
       return;
     }
 
-    staleRecoveredRows = count ?? 0;
-    logger.warn({ recovered: staleRecoveredRows }, 'Recovered stale running pipelines');
+    staleRecoveredRows = staleIds.length;
+    staleRecoveryHadMore = staleIds.length >= STALE_RECOVERY_BATCH_SIZE;
+    logger.warn(
+      { recovered: staleRecoveredRows, had_more: staleRecoveryHadMore },
+      'Recovered stale running pipelines',
+    );
   } catch (err) {
     logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Stale running pipeline recovery failed');
   }
+}
+
+async function hasRunningPipelineCapacity(limit: number, userId?: string): Promise<{ reached: boolean; error?: string }> {
+  let query = supabaseAdmin
+    .from('coach_sessions')
+    .select('id')
+    .eq('pipeline_status', 'running')
+    .order('updated_at', { ascending: false })
+    .limit(limit + 1);
+  if (userId) query = query.eq('user_id', userId);
+
+  const { data, error } = await query;
+  if (error) {
+    return { reached: false, error: error.message };
+  }
+
+  return { reached: (data?.length ?? 0) >= limit };
 }
 
 export function getPipelineRouteStats() {
@@ -221,8 +252,10 @@ export function getPipelineRouteStats() {
     max_running_pipelines_global: MAX_RUNNING_PIPELINES_GLOBAL,
     stale_recovery_runs: staleRecoveryRuns,
     stale_recovery_cooldown_ms: STALE_RECOVERY_COOLDOWN_MS,
+    stale_recovery_batch_size: STALE_RECOVERY_BATCH_SIZE,
     stale_recovery_last_at: lastStaleRecoveryAt ? new Date(lastStaleRecoveryAt).toISOString() : null,
     stale_recovery_last_count: staleRecoveredRows,
+    stale_recovery_last_had_more: staleRecoveryHadMore,
     queued_panel_persists: queuedPanelPersists.size,
     max_queued_panel_persists: MAX_QUEUED_PANEL_PERSISTS,
     max_pipeline_start_body_bytes: MAX_PIPELINE_START_BODY_BYTES,
@@ -644,31 +677,32 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
   }
 
-  const { count: runningForUser, error: userRunningError } = await supabaseAdmin
-    .from('coach_sessions')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('pipeline_status', 'running');
-  if (userRunningError) {
-    logger.error({ user_id: user.id, error: userRunningError.message }, 'Failed to read user running pipeline count');
+  const userCapacity = await hasRunningPipelineCapacity(MAX_RUNNING_PIPELINES_PER_USER, user.id);
+  if (userCapacity.error) {
+    logger.error({ user_id: user.id, error: userCapacity.error }, 'Failed to read user running pipeline count');
     return c.json({ error: 'Failed to verify pipeline capacity' }, 503);
   }
-  if ((runningForUser ?? 0) >= MAX_RUNNING_PIPELINES_PER_USER) {
+  if (userCapacity.reached) {
     return c.json({
       error: 'Too many active pipelines. Please wait for one to finish before starting another.',
       code: 'PIPELINE_CAPACITY',
     }, 429);
   }
 
-  const { count: runningGlobal, error: globalRunningError } = await supabaseAdmin
-    .from('coach_sessions')
-    .select('id', { count: 'exact', head: true })
-    .eq('pipeline_status', 'running');
-  if (globalRunningError) {
-    logger.error({ error: globalRunningError.message }, 'Failed to read global running pipeline count');
+  let globalCapacity = await hasRunningPipelineCapacity(MAX_RUNNING_PIPELINES_GLOBAL);
+  if (globalCapacity.error) {
+    logger.error({ error: globalCapacity.error }, 'Failed to read global running pipeline count');
     return c.json({ error: 'Failed to verify global pipeline capacity' }, 503);
   }
-  if ((runningGlobal ?? 0) >= MAX_RUNNING_PIPELINES_GLOBAL) {
+  if (globalCapacity.reached) {
+    await recoverGlobalStalePipelines({ force: true });
+    globalCapacity = await hasRunningPipelineCapacity(MAX_RUNNING_PIPELINES_GLOBAL);
+  }
+  if (globalCapacity.error) {
+    logger.error({ error: globalCapacity.error }, 'Failed to read global running pipeline count after stale recovery');
+    return c.json({ error: 'Failed to verify global pipeline capacity' }, 503);
+  }
+  if (globalCapacity.reached) {
     return c.json({
       error: 'Service is at pipeline capacity. Please retry shortly.',
       code: 'GLOBAL_PIPELINE_CAPACITY',

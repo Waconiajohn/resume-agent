@@ -477,6 +477,7 @@ async function main() {
         MAX_RUNNING_PIPELINES_PER_USER: env.MAX_RUNNING_PIPELINES_PER_USER ?? null,
         MAX_RUNNING_PIPELINES_GLOBAL: env.MAX_RUNNING_PIPELINES_GLOBAL ?? null,
         STALE_RECOVERY_COOLDOWN_MS: env.STALE_RECOVERY_COOLDOWN_MS ?? null,
+        STALE_RECOVERY_BATCH_SIZE: env.STALE_RECOVERY_BATCH_SIZE ?? null,
         MAX_QUEUED_PANEL_PERSISTS: env.MAX_QUEUED_PANEL_PERSISTS ?? null,
       },
       results: [readResult, sseChurnResult, pipelineResult].filter(Boolean),
