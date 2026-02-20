@@ -33,8 +33,10 @@ Workflow file: `.github/workflows/production-gates.yml`
 
 It runs:
 
-1. Migration drift checks on `pull_request` and `push` (for `server/**` and `supabase/migrations/**` changes).
-2. Optional staging readiness checks on manual dispatch when `ready_check_url` is provided.
+1. App verification (`app` typecheck/tests/build) on `pull_request` and `push`.
+2. Server verification (`server` typecheck/tests/build) on `pull_request` and `push`.
+3. Migration drift checks on `pull_request` and `push` (for `server/**` and `supabase/migrations/**` changes).
+4. Optional staging readiness checks on manual dispatch when `ready_check_url` is provided.
 
 Repository secrets required for migration drift checks:
 
@@ -43,4 +45,6 @@ Repository secrets required for migration drift checks:
 
 Recommended branch protection:
 
-- Require the `Production Gates / Migration Drift Gate` check before merge to `main`.
+- Require `Production Gates / App Verify`
+- Require `Production Gates / Server Verify`
+- Require `Production Gates / Migration Drift Gate`
