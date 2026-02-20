@@ -73,6 +73,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const staleNoticeActiveRef = useRef<boolean>(false);
   const staleCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stalePipelineNoticeRef = useRef<boolean>(false);
+  const hasAccessToken = Boolean(accessToken);
 
   const nextId = useCallback(() => {
     messageIdRef.current += 1;
@@ -154,7 +155,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
   // Connect to SSE with fetch-based streaming
   useEffect(() => {
-    if (!sessionId || !accessTokenRef.current) return;
+    if (!sessionId || !hasAccessToken || !accessTokenRef.current) return;
 
     function connectSSE() {
       // Update ref so handleDisconnect always uses the latest version
@@ -907,11 +908,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       toolCleanupTimersRef.current.clear();
       reconnectAttemptsRef.current = 0;
     };
-  }, [sessionId, nextId, flushDeltaBuffer, handleDisconnect]);
+  }, [sessionId, hasAccessToken, nextId, flushDeltaBuffer, handleDisconnect]);
 
   // Fallback status poll: when SSE is disconnected, keep pipeline stage/gate state synchronized.
   useEffect(() => {
-    if (!sessionId || !accessTokenRef.current || sessionComplete) return;
+    if (!sessionId || !hasAccessToken || !accessTokenRef.current || sessionComplete) return;
     let cancelled = false;
 
     const restoreCompletionFromSession = async () => {
@@ -1013,7 +1014,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [sessionId, connected, sessionComplete, nextId, setIsPipelineGateActive]);
+  }, [sessionId, hasAccessToken, connected, sessionComplete, nextId, setIsPipelineGateActive]);
 
   const addUserMessage = useCallback((content: string) => {
     setMessages((prev) => [

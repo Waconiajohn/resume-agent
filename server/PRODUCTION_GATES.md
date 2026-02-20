@@ -21,6 +21,12 @@ Optional readiness probe:
 READY_CHECK_URL=https://staging-api.example.com npm run check:ready
 ```
 
+Optional probe tuning:
+
+- `READY_CHECK_TIMEOUT_MS` (default `45000`)
+- `READY_CHECK_INTERVAL_MS` (default `1000`)
+- `READY_CHECK_REQUEST_TIMEOUT_MS` (default `min(interval, 5000)`)
+
 Run both together:
 
 ```bash
