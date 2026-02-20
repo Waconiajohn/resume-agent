@@ -1095,7 +1095,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
 
 // GET /pipeline/status
 // Returns whether a pipeline is running and what gate is pending
-pipeline.get('/status', async (c) => {
+pipeline.get('/status', rateLimitMiddleware(180, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.query('session_id');
 
