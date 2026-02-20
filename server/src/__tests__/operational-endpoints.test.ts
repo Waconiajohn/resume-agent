@@ -46,4 +46,9 @@ describe('operational endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('no-store');
   });
+
+  it('rejects malformed session ids on SSE endpoint before auth checks', async () => {
+    const res = await app.request('http://test/api/sessions/not-a-uuid/sse');
+    expect(res.status).toBe(400);
+  });
 });

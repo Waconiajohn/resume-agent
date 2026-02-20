@@ -42,10 +42,15 @@ const MAX_RESTORE_MESSAGES = (() => {
 const MAX_RESTORE_MESSAGE_CHARS = (() => {
   return parsePositiveInt(process.env.MAX_RESTORE_MESSAGE_CHARS, 4_000);
 })();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function truncateRestoreText(text: string): string {
   if (text.length <= MAX_RESTORE_MESSAGE_CHARS) return text;
   return `${text.slice(0, MAX_RESTORE_MESSAGE_CHARS)}...`;
+}
+
+function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value.trim());
 }
 
 function addSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
@@ -194,6 +199,9 @@ sseRateCleanupTimer.unref();
 // SSE endpoint — requires Authorization header with Bearer token
 sessions.get('/:id/sse', async (c) => {
   const sessionId = c.req.param('id');
+  if (!isValidUuid(sessionId)) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
 
   const authHeader = c.req.header('Authorization');
   let token: string | undefined;
@@ -429,6 +437,9 @@ sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
 sessions.get('/:id', async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('id');
+  if (!isValidUuid(sessionId)) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
 
   const { data, error } = await supabaseAdmin
     .from('coach_sessions')
@@ -448,6 +459,9 @@ sessions.get('/:id', async (c) => {
 sessions.delete('/:id', async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('id');
+  if (!isValidUuid(sessionId)) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
 
   const { data: existing, error: loadError } = await supabaseAdmin
     .from('coach_sessions')
@@ -550,6 +564,9 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   const user = c.get('user');
   const sessionId = c.req.param('id');
+  if (!isValidUuid(sessionId)) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
   const body = parsedBody.data as Record<string, unknown>;
   const { content, idempotency_key } = body as { content: string; idempotency_key?: string };
 
