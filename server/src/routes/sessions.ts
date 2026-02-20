@@ -61,22 +61,61 @@ function addSSEConnection(sessionId: string, userId: string, emitter: (event: SS
 function removeSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
   const ownerId = sseEmitterOwners.get(emitter) ?? userId;
   const emitters = sseConnections.get(sessionId);
+  let removed = false;
   if (emitters) {
     const idx = emitters.indexOf(emitter);
     if (idx !== -1) {
       emitters.splice(idx, 1);
       totalSSEConnections = Math.max(0, totalSSEConnections - 1);
       sseEmitterOwners.delete(emitter);
+      removed = true;
     }
     if (emitters.length === 0) sseConnections.delete(sessionId);
   }
-  const count = sseConnectionsByUser.get(ownerId) ?? 1;
-  if (count <= 1) {
+  if (!removed) return;
+  const count = sseConnectionsByUser.get(ownerId);
+  if (!count || count <= 1) {
     sseConnectionsByUser.delete(ownerId);
-  } else {
-    sseConnectionsByUser.set(ownerId, count - 1);
+    return;
+  }
+  sseConnectionsByUser.set(ownerId, count - 1);
+}
+
+function reconcileSSEConnectionsByUser(): void {
+  const actualByUser = new Map<string, number>();
+  for (const emitters of sseConnections.values()) {
+    for (const emitter of emitters) {
+      const ownerId = sseEmitterOwners.get(emitter);
+      if (!ownerId) continue;
+      actualByUser.set(ownerId, (actualByUser.get(ownerId) ?? 0) + 1);
+    }
+  }
+  sseConnectionsByUser.clear();
+  for (const [ownerId, count] of actualByUser.entries()) {
+    sseConnectionsByUser.set(ownerId, count);
   }
 }
+
+function resetSessionRouteRuntimeState(): void {
+  sseConnections.clear();
+  sseConnectionsByUser.clear();
+  sseConnectionTimestamps.clear();
+  recentIdempotencyKeys.clear();
+  processingSessions.clear();
+  processingSessionsByUser.clear();
+  totalSSEConnections = 0;
+}
+
+export function resetSessionRouteStateForTests() {
+  resetSessionRouteRuntimeState();
+}
+
+export const sessionRouteTestUtils = {
+  addSSEConnection,
+  removeSSEConnection,
+  reconcileSSEConnectionsByUser,
+  truncateRestoreText,
+};
 
 // Idempotency: track recent message keys to reject duplicates
 const recentIdempotencyKeys = new Map<string, number>();
@@ -148,18 +187,7 @@ const sseRateCleanupTimer = setInterval(() => {
     }
   }
   // Reconcile per-user SSE counts from active emitter ownership to heal drift.
-  const actualByUser = new Map<string, number>();
-  for (const emitters of sseConnections.values()) {
-    for (const emitter of emitters) {
-      const ownerId = sseEmitterOwners.get(emitter);
-      if (!ownerId) continue;
-      actualByUser.set(ownerId, (actualByUser.get(ownerId) ?? 0) + 1);
-    }
-  }
-  sseConnectionsByUser.clear();
-  for (const [ownerId, count] of actualByUser.entries()) {
-    sseConnectionsByUser.set(ownerId, count);
-  }
+  reconcileSSEConnectionsByUser();
 }, 60_000);
 sseRateCleanupTimer.unref();
 
