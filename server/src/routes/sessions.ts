@@ -35,6 +35,17 @@ const MAX_CREATE_SESSION_BODY_BYTES = (() => {
 const MAX_MESSAGE_BODY_BYTES = (() => {
   return parsePositiveInt(process.env.MAX_MESSAGE_BODY_BYTES, 120_000);
 })();
+const MAX_RESTORE_MESSAGES = (() => {
+  return parsePositiveInt(process.env.MAX_RESTORE_MESSAGES, 20);
+})();
+const MAX_RESTORE_MESSAGE_CHARS = (() => {
+  return parsePositiveInt(process.env.MAX_RESTORE_MESSAGE_CHARS, 4_000);
+})();
+
+function truncateRestoreText(text: string): string {
+  if (text.length <= MAX_RESTORE_MESSAGE_CHARS) return text;
+  return `${text.slice(0, MAX_RESTORE_MESSAGE_CHARS)}...`;
+}
 
 function addSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
   if (!sseConnections.has(sessionId)) {
@@ -232,26 +243,25 @@ sessions.get('/:id/sse', async (c) => {
       for (const msg of typedSession.messages ?? []) {
         if (msg.role === 'user') {
           if (typeof msg.content === 'string') {
-            chatMessages.push({ role: 'user', content: msg.content });
+            chatMessages.push({ role: 'user', content: truncateRestoreText(msg.content) });
           }
           // Skip tool_result arrays — they're internal
         } else if (msg.role === 'assistant') {
           if (typeof msg.content === 'string') {
-            chatMessages.push({ role: 'assistant', content: msg.content });
+            chatMessages.push({ role: 'assistant', content: truncateRestoreText(msg.content) });
           } else if (Array.isArray(msg.content)) {
             const textParts = msg.content
               .filter((b: { type: string; text?: string }) => b.type === 'text' && b.text)
               .map((b: { text?: string }) => b.text)
               .join('');
             if (textParts) {
-              chatMessages.push({ role: 'assistant', content: textParts });
+              chatMessages.push({ role: 'assistant', content: truncateRestoreText(textParts) });
             }
           }
         }
       }
 
-      // Cap restored messages to the 20 most recent to avoid huge SSE payloads
-      const MAX_RESTORE_MESSAGES = 20;
+      // Cap restored messages to the most recent items to avoid huge SSE payloads
       const restoredMessages = chatMessages.length > MAX_RESTORE_MESSAGES
         ? chatMessages.slice(-MAX_RESTORE_MESSAGES)
         : chatMessages;
@@ -666,6 +676,8 @@ export function getSessionRouteStats() {
     max_processing_sessions_per_user: MAX_PROCESSING_SESSIONS_PER_USER,
     max_create_session_body_bytes: MAX_CREATE_SESSION_BODY_BYTES,
     max_message_body_bytes: MAX_MESSAGE_BODY_BYTES,
+    max_restore_messages: MAX_RESTORE_MESSAGES,
+    max_restore_message_chars: MAX_RESTORE_MESSAGE_CHARS,
   };
 }
 
