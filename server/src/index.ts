@@ -4,7 +4,7 @@ import { cors } from 'hono/cors';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
-import { pipeline, getPipelineRouteStats } from './routes/pipeline.js';
+import { pipeline, getPipelineRouteStats, flushAllQueuedPanelPersists } from './routes/pipeline.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -246,15 +246,32 @@ function shutdown(signal: string) {
   shuttingDown = true;
   logger.info({ signal }, 'Graceful shutdown initiated');
 
-  // Release all session locks so users aren't blocked after restart
-  releaseAllLocks().catch((err) => {
-    logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Failed to release session locks during shutdown');
+  const flushTasks = Promise.allSettled([
+    releaseAllLocks(),
+    flushAllQueuedPanelPersists(),
+  ]).then((results) => {
+    const panelFlush = results[1];
+    if (panelFlush.status === 'fulfilled') {
+      logger.info({ flushed_panel_persists: panelFlush.value }, 'Completed shutdown flush tasks');
+    } else {
+      logger.warn({
+        error: panelFlush.reason instanceof Error ? panelFlush.reason.message : String(panelFlush.reason),
+      }, 'Panel persist flush failed during shutdown');
+    }
+  }).catch((err) => {
+    logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Shutdown flush tasks failed');
   });
 
   // Close HTTP server (stop accepting new connections)
   server.close(() => {
-    logger.info('HTTP server closed');
-    process.exit(0);
+    // Give shutdown flush tasks a short budget before exiting.
+    void Promise.race([
+      flushTasks,
+      new Promise((resolve) => setTimeout(resolve, 3_000)),
+    ]).finally(() => {
+      logger.info('HTTP server closed');
+      process.exit(0);
+    });
   });
 
   // Force exit after 10s if connections don't drain

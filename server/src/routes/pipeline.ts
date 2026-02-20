@@ -191,6 +191,28 @@ async function flushQueuedPanelPersist(sessionId: string) {
   await persistLastPanelState(sessionId, queued.panelType, queued.panelData);
 }
 
+export async function flushAllQueuedPanelPersists(): Promise<number> {
+  const entries = Array.from(queuedPanelPersists.entries());
+  for (const [sessionId, queued] of entries) {
+    clearTimeout(queued.timeout);
+    queuedPanelPersists.delete(sessionId);
+  }
+
+  if (entries.length === 0) return 0;
+
+  const results = await Promise.allSettled(
+    entries.map(([sessionId, queued]) =>
+      persistLastPanelState(sessionId, queued.panelType, queued.panelData),
+    ),
+  );
+
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  if (failed > 0) {
+    logger.warn({ attempted: entries.length, failed }, 'Some queued panel persists failed during flush');
+  }
+  return entries.length - failed;
+}
+
 const GATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const GATE_POLL_BASE_MS = 250;
 const GATE_POLL_MAX_MS = 2_000;
