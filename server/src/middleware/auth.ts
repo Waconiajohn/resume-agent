@@ -27,6 +27,25 @@ let cacheMisses = 0;
 let remoteAuthChecks = 0;
 let remoteAuthFailures = 0;
 
+function decodeJwtExpiryMs(token: string): number | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const payloadPart = parts[1];
+  if (!payloadPart) return null;
+  const padded = payloadPart
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(Math.ceil(payloadPart.length / 4) * 4, '=');
+  try {
+    const decoded = Buffer.from(padded, 'base64').toString('utf8');
+    const parsed = JSON.parse(decoded) as { exp?: unknown };
+    if (typeof parsed.exp !== 'number' || !Number.isFinite(parsed.exp)) return null;
+    return Math.floor(parsed.exp * 1000);
+  } catch {
+    return null;
+  }
+}
+
 const tokenCacheCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [token, entry] of tokenCache.entries()) {
@@ -77,7 +96,18 @@ export function cacheUser(token: string, user: AuthUser): void {
     const oldest = tokenCache.keys().next().value;
     if (oldest) tokenCache.delete(oldest);
   }
-  tokenCache.set(token, { user, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+  const now = Date.now();
+  const tokenExpMs = decodeJwtExpiryMs(token);
+  let expiresAt = now + TOKEN_CACHE_TTL_MS;
+  if (tokenExpMs != null) {
+    // Never cache beyond token expiry (with a 1s skew cushion).
+    expiresAt = Math.min(expiresAt, tokenExpMs - 1_000);
+  }
+  if (expiresAt <= now) {
+    // Token is already expired (or within skew) — do not cache it.
+    return;
+  }
+  tokenCache.set(token, { user, expiresAt });
 }
 
 // Test-only helper to avoid cross-test leakage from module-level state.

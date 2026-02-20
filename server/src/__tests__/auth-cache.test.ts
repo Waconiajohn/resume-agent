@@ -59,4 +59,35 @@ describe('auth cache', () => {
     expect(stats.cache_misses).toBe(1);
     expect(stats.active_tokens).toBe(0);
   });
+
+  it('limits cache lifetime to JWT expiry when token expires sooner than TTL', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-20T21:00:00.000Z'));
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const token = makeJwtWithExp(nowSeconds + 60); // 1 minute expiry
+    cacheUser(token, { ...user, accessToken: token });
+
+    expect(getCachedUser(token)).not.toBeNull();
+    vi.advanceTimersByTime(61_000);
+    expect(getCachedUser(token)).toBeNull();
+  });
+
+  it('does not cache already expired JWT tokens', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-20T21:00:00.000Z'));
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const expiredToken = makeJwtWithExp(nowSeconds - 30);
+    cacheUser(expiredToken, { ...user, accessToken: expiredToken });
+
+    expect(getCachedUser(expiredToken)).toBeNull();
+    expect(getAuthCacheStats().active_tokens).toBe(0);
+  });
 });
+
+function makeJwtWithExp(expSeconds: number): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ sub: 'user-1', exp: expSeconds })).toString('base64url');
+  return `${header}.${payload}.signature`;
+}
