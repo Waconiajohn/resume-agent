@@ -83,6 +83,7 @@ The tier runner additionally prints a one-table summary for all selected tiers.
 
 - `MAX_TOTAL_SSE_CONNECTIONS`, `MAX_SSE_RATE_USERS`
 - `MAX_HEAP_USED_MB` (optional load-shedding threshold)
+- `HEALTH_CHECK_CACHE_TTL_MS`
 - `MAX_RATE_LIMIT_BUCKETS`
 - `MAX_CREATE_SESSION_BODY_BYTES`, `MAX_MESSAGE_BODY_BYTES`
 - `MAX_PIPELINE_START_BODY_BYTES`, `MAX_PIPELINE_RESPOND_BODY_BYTES`

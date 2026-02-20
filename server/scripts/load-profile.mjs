@@ -465,6 +465,7 @@ async function main() {
       },
       env: {
         MAX_HEAP_USED_MB: env.MAX_HEAP_USED_MB ?? null,
+        HEALTH_CHECK_CACHE_TTL_MS: env.HEALTH_CHECK_CACHE_TTL_MS ?? null,
         MAX_TOTAL_SSE_CONNECTIONS: env.MAX_TOTAL_SSE_CONNECTIONS ?? null,
         MAX_SSE_RATE_USERS: env.MAX_SSE_RATE_USERS ?? null,
         MAX_RATE_LIMIT_BUCKETS: env.MAX_RATE_LIMIT_BUCKETS ?? null,

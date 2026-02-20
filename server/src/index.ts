@@ -20,6 +20,10 @@ const maxHeapUsedMb = (() => {
   const parsed = Number.parseInt(process.env.MAX_HEAP_USED_MB ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 })();
+const healthCheckCacheTtlMs = (() => {
+  const parsed = Number.parseInt(process.env.HEALTH_CHECK_CACHE_TTL_MS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5_000;
+})();
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : isProduction
@@ -67,27 +71,55 @@ app.use('*', cors({
   credentials: true,
 }));
 
-app.get('/health', async (c) => {
-  // Lightweight public health check — no config details exposed
-  let dbOk = false;
-  try {
-    const { error } = await supabaseAdmin.from('coach_sessions').select('id').limit(1);
-    dbOk = !error;
-  } catch {
-    // db down
-  }
+let cachedHealthCheck: {
+  checkedAt: number;
+  dbOk: boolean;
+  llmKeyPresent: boolean;
+} | null = null;
 
+app.get('/health', async (c) => {
   const configuredProvider = process.env.LLM_PROVIDER?.toLowerCase();
   const llmProvider = configuredProvider === 'zai' || configuredProvider === 'anthropic'
     ? configuredProvider
     : (process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
-  const llmKeyPresent = llmProvider === 'zai'
+  const llmKeyPresentNow = llmProvider === 'zai'
     ? Boolean(process.env.ZAI_API_KEY)
     : Boolean(process.env.ANTHROPIC_API_KEY);
+
+  const now = Date.now();
+  const cache = cachedHealthCheck;
+  const canUseCache =
+    cache
+    && now - cache.checkedAt < healthCheckCacheTtlMs
+    && cache.llmKeyPresent === llmKeyPresentNow;
+  let dbOk = false;
+  if (canUseCache && cache) {
+    dbOk = cache.dbOk;
+  } else {
+    // Lightweight public health check — no config details exposed
+    try {
+      const { error } = await supabaseAdmin.from('coach_sessions').select('id').limit(1);
+      dbOk = !error;
+    } catch {
+      // db down
+    }
+    cachedHealthCheck = {
+      checkedAt: now,
+      dbOk,
+      llmKeyPresent: llmKeyPresentNow,
+    };
+  }
+
   const status = shuttingDown
     ? 'draining'
-    : (dbOk && llmKeyPresent ? 'ok' : 'degraded');
-  return c.json({ status, shutting_down: shuttingDown, timestamp: new Date().toISOString() });
+    : (dbOk && llmKeyPresentNow ? 'ok' : 'degraded');
+  return c.json({
+    status,
+    shutting_down: shuttingDown,
+    cached: Boolean(canUseCache),
+    checked_at: cachedHealthCheck ? new Date(cachedHealthCheck.checkedAt).toISOString() : null,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 const startTime = Date.now();
@@ -123,6 +155,10 @@ app.get('/metrics', (c) => {
       max_heap_used_mb: maxHeapUsedMb,
       active: maxHeapUsedMb > 0,
       heap_used_mb_now: Math.round(memUsage.heapUsed / 1024 / 1024),
+    },
+    health_runtime: {
+      cache_ttl_ms: healthCheckCacheTtlMs,
+      cached_check_at: cachedHealthCheck ? new Date(cachedHealthCheck.checkedAt).toISOString() : null,
     },
     memory: {
       rss_mb: Math.round(memUsage.rss / 1024 / 1024),
