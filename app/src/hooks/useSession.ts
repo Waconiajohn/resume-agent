@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import { resumeToText } from '@/lib/export';
+import { retryDelayMsFromHeaders } from '@/lib/http-retry';
 
 const API_BASE = '/api';
 
@@ -35,7 +36,7 @@ export function useSession(accessToken: string | null) {
     const attempt = async () => fetch(url, init);
     let res = await attempt();
     if (res.status === 429 || res.status >= 500) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMsFromHeaders(res.headers, 300)));
       res = await attempt();
     }
     return res;
@@ -314,7 +315,7 @@ export function useSession(accessToken: string | null) {
 
           const retryable = res.status === 429 || res.status >= 500;
           if (retryable && attempt === 0) {
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMsFromHeaders(res.headers, 300)));
             continue;
           }
 
