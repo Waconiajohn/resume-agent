@@ -22,6 +22,10 @@ interface CacheEntry {
   expiresAt: number;
 }
 const tokenCache = new Map<string, CacheEntry>();
+let cacheHits = 0;
+let cacheMisses = 0;
+let remoteAuthChecks = 0;
+let remoteAuthFailures = 0;
 
 const tokenCacheCleanupTimer = setInterval(() => {
   const now = Date.now();
@@ -34,23 +38,35 @@ const tokenCacheCleanupTimer = setInterval(() => {
 tokenCacheCleanupTimer.unref();
 
 export function getAuthCacheStats() {
+  const totalLookups = cacheHits + cacheMisses;
+  const hitRate = totalLookups > 0 ? Number((cacheHits / totalLookups).toFixed(4)) : 0;
   return {
     active_tokens: tokenCache.size,
     max_tokens: MAX_TOKEN_CACHE_ENTRIES,
     ttl_ms: TOKEN_CACHE_TTL_MS,
+    cache_hits: cacheHits,
+    cache_misses: cacheMisses,
+    cache_hit_rate: hitRate,
+    remote_auth_checks: remoteAuthChecks,
+    remote_auth_failures: remoteAuthFailures,
   };
 }
 
 export function getCachedUser(token: string): AuthUser | null {
   const entry = tokenCache.get(token);
-  if (!entry) return null;
+  if (!entry) {
+    cacheMisses += 1;
+    return null;
+  }
   if (Date.now() >= entry.expiresAt) {
     tokenCache.delete(token);
+    cacheMisses += 1;
     return null;
   }
   // Refresh LRU position to keep active users in cache under load.
   tokenCache.delete(token);
   tokenCache.set(token, entry);
+  cacheHits += 1;
   return entry.user;
 }
 
@@ -62,6 +78,15 @@ export function cacheUser(token: string, user: AuthUser): void {
     if (oldest) tokenCache.delete(oldest);
   }
   tokenCache.set(token, { user, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+}
+
+// Test-only helper to avoid cross-test leakage from module-level state.
+export function resetAuthCacheForTests() {
+  tokenCache.clear();
+  cacheHits = 0;
+  cacheMisses = 0;
+  remoteAuthChecks = 0;
+  remoteAuthFailures = 0;
 }
 
 export async function authMiddleware(c: Context, next: Next) {
@@ -85,8 +110,10 @@ export async function authMiddleware(c: Context, next: Next) {
     data: { user },
     error,
   } = await supabaseAdmin.auth.getUser(token);
+  remoteAuthChecks += 1;
 
   if (error || !user) {
+    remoteAuthFailures += 1;
     return c.json({ error: 'Invalid or expired token' }, 401);
   }
 
