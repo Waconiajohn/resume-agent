@@ -22,10 +22,18 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
+concurrency:
+  group: production-gates-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   app-verify:
     name: App Verify
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: app
@@ -49,6 +57,7 @@ jobs:
   server-verify:
     name: Server Verify
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: server
@@ -72,6 +81,7 @@ jobs:
   migration-drift:
     name: Migration Drift Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: server
@@ -107,6 +117,7 @@ jobs:
     name: Staging Ready Gate
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.ready_check_url != '' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: server
