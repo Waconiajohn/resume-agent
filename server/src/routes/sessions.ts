@@ -306,7 +306,7 @@ sessions.get('/:id/sse', async (c) => {
 sessions.use('*', authMiddleware);
 
 // POST /sessions — Create a new coaching session
-sessions.post('/', async (c) => {
+sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
   const oversized = rejectOversizedJsonBody(c, MAX_CREATE_SESSION_BODY_BYTES);
   if (oversized) return oversized;
 
