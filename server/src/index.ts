@@ -13,6 +13,7 @@ import { getRequestMetrics, recordRequestMetric } from './lib/request-metrics.js
 import logger from './lib/logger.js';
 
 const app = new Hono();
+let shuttingDown = false;
 
 const isProduction = process.env.NODE_ENV === 'production';
 const maxHeapUsedMb = (() => {
@@ -32,22 +33,28 @@ if (isProduction && !process.env.ALLOWED_ORIGINS) {
 app.use('*', requestIdMiddleware);
 
 app.use('*', async (c, next) => {
-  if (maxHeapUsedMb > 0) {
-    const heapUsedMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-    const requestPath = c.req.path;
-    const bypass = requestPath === '/health' || requestPath === '/metrics';
-    if (!bypass && heapUsedMb >= maxHeapUsedMb) {
-      recordRequestMetric(503, 0);
-      return c.json({
-        error: 'Server temporarily overloaded. Please retry shortly.',
-        code: 'OVERLOADED',
-      }, 503);
-    }
-  }
-
   const startedAt = Date.now();
   let status = 500;
   try {
+    const requestPath = c.req.path;
+    const bypass = requestPath === '/health' || requestPath === '/metrics';
+
+    if (shuttingDown && !bypass) {
+      status = 503;
+      return c.json({ error: 'Server is restarting. Please retry shortly.' }, 503);
+    }
+
+    if (maxHeapUsedMb > 0 && !bypass) {
+      const heapUsedMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+      if (heapUsedMb >= maxHeapUsedMb) {
+        status = 503;
+        return c.json({
+          error: 'Server temporarily overloaded. Please retry shortly.',
+          code: 'OVERLOADED',
+        }, 503);
+      }
+    }
+
     await next();
     status = c.res.status;
   } finally {
@@ -77,8 +84,10 @@ app.get('/health', async (c) => {
   const llmKeyPresent = llmProvider === 'zai'
     ? Boolean(process.env.ZAI_API_KEY)
     : Boolean(process.env.ANTHROPIC_API_KEY);
-  const status = dbOk && llmKeyPresent ? 'ok' : 'degraded';
-  return c.json({ status, timestamp: new Date().toISOString() });
+  const status = shuttingDown
+    ? 'draining'
+    : (dbOk && llmKeyPresent ? 'ok' : 'degraded');
+  return c.json({ status, shutting_down: shuttingDown, timestamp: new Date().toISOString() });
 });
 
 const startTime = Date.now();
@@ -101,6 +110,7 @@ app.get('/metrics', (c) => {
   const requestStats = getRequestMetrics();
   return c.json({
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
+    shutting_down: shuttingDown,
     // Backward-compatible top-level metrics
     active_sse_sessions: sessionStats.active_sse_sessions,
     total_sse_emitters: sessionStats.total_sse_emitters,
@@ -145,8 +155,6 @@ const server = serve({ fetch: app.fetch, port });
 
 logger.info({ port }, `Server running at http://localhost:${port}`);
 
-// Graceful shutdown
-let shuttingDown = false;
 function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
