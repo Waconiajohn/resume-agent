@@ -12,6 +12,8 @@
     "load:profile:tiers": "node scripts/load-profile-tiers.mjs",
     "load:profile:tiers:quick": "node scripts/load-profile-tiers.mjs --tiers=small",
     "check:migrations": "node scripts/check-migration-drift.mjs --json=true",
+    "check:ready": "node scripts/check-ready.mjs",
+    "gate:staging": "npm run check:migrations && npm run check:ready",
     "typecheck": "tsc --noEmit",
     "lint": "npm run typecheck",
     "verify": "npm run typecheck && npm test && npm run build",

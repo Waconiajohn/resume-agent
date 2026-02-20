@@ -31,21 +31,37 @@ function toBool(value, fallback = false) {
 }
 
 function runSupabaseMigrationList() {
-  const child = spawnSync(
+  const runList = () => spawnSync(
     'supabase',
     ['migration', 'list', '--linked', '--workdir', repoRoot],
     { encoding: 'utf8', env: process.env },
   );
 
-  const stdout = child.stdout ?? '';
-  const stderr = child.stderr ?? '';
-  const combined = `${stdout}\n${stderr}`.trim();
+  const initial = runList();
+  const initialCombined = `${initial.stdout ?? ''}\n${initial.stderr ?? ''}`.trim();
 
-  if (child.status !== 0) {
-    throw new Error(combined || `supabase migration list exited ${child.status}`);
+  if (initial.status !== 0 && /Cannot find project ref/i.test(initialCombined) && process.env.SUPABASE_PROJECT_REF) {
+    const link = spawnSync(
+      'supabase',
+      ['link', '--project-ref', process.env.SUPABASE_PROJECT_REF, '--workdir', repoRoot, '--yes'],
+      { encoding: 'utf8', env: process.env },
+    );
+    if (link.status !== 0) {
+      const linkCombined = `${link.stdout ?? ''}\n${link.stderr ?? ''}`.trim();
+      throw new Error(linkCombined || `supabase link exited ${link.status}`);
+    }
+    const retried = runList();
+    const retriedCombined = `${retried.stdout ?? ''}\n${retried.stderr ?? ''}`.trim();
+    if (retried.status !== 0) {
+      throw new Error(retriedCombined || `supabase migration list exited ${retried.status}`);
+    }
+    return retriedCombined;
   }
 
-  return combined;
+  if (initial.status !== 0) {
+    throw new Error(initialCombined || `supabase migration list exited ${initial.status}`);
+  }
+  return initialCombined;
 }
 
 function parseListTable(output) {
