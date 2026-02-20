@@ -1791,6 +1791,7 @@ function parseExperienceRoleForStructuredPayload(
 function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): FinalResumePayload {
   const sections = state.sections ?? {};
   const intake = state.intake!;
+  const payloadLog = createSessionLogger(state.session_id);
   const sectionOrder = (state.architect?.section_plan.order ?? ['summary', 'experience', 'skills', 'education', 'certifications'])
     .flatMap((s) => {
       if (s === 'education_and_certifications') return ['education', 'certifications'];
@@ -1822,7 +1823,7 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
           const idx = parseInt(key.replace('experience_role_', ''), 10);
           const fallbackRole = intake.experience[idx];
           if (!fallbackRole) {
-            console.warn(`[pipeline] Skipping crafted role without matching intake entry: ${key}`);
+            payloadLog.warn({ section_key: key }, 'Skipping crafted role without matching intake entry');
             return null;
           }
           return parseExperienceRoleForStructuredPayload(sections[key]?.content, fallbackRole);
@@ -1873,7 +1874,7 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
     if (Object.keys(parsedSkills).length > 0) {
       resume.skills = parsedSkills;
     } else {
-      console.warn('[pipeline] Skills section could not be parsed into categories — falling back to intake skills');
+      payloadLog.warn('Skills section could not be parsed into categories; falling back to intake skills');
     }
   }
 
@@ -2104,7 +2105,7 @@ async function persistSession(
   } catch (err) {
     // Non-critical — log but don't fail the pipeline
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.warn('[pipeline] persistSession failed:', errMsg);
+    createSessionLogger(state.session_id).warn({ error: errMsg }, 'persistSession failed');
     // Notify the user so they know to export immediately before the session closes
     emit?.({
       type: 'transparency',
