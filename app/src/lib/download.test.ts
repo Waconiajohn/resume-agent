@@ -22,4 +22,8 @@ describe('normalizeDownloadFilename', () => {
   it('avoids reserved windows names', () => {
     expect(normalizeDownloadFilename('con', 'txt')).toBe('con_file.txt');
   });
+
+  it('strips invisible/bidi control characters', () => {
+    expect(normalizeDownloadFilename('John\u202E Resume', 'pdf')).toBe('John_Resume.pdf');
+  });
 });

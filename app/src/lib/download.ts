@@ -8,6 +8,7 @@ const WINDOWS_RESERVED_NAMES = new Set([
   'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9',
 ]);
 const MAX_FILENAME_BASE_CHARS = 120;
+const INVISIBLE_FILENAME_CHARS_RE = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
 
 function sanitizeFilenameBase(filename: string): string {
   const strippedExt = filename
@@ -15,7 +16,11 @@ function sanitizeFilenameBase(filename: string): string {
     .replace(/\.(txt|docx|pdf)\s*$/i, '')
     .trim();
 
-  const cleaned = strippedExt
+  const normalized = strippedExt
+    .normalize('NFKC')
+    .replace(INVISIBLE_FILENAME_CHARS_RE, '');
+
+  const cleaned = normalized
     .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_')
     .replace(/\s+/g, '_')
     .replace(/_+/g, '_')
