@@ -91,6 +91,26 @@ const SECTION_REVISION_TIMEOUT_MS = (() => {
   const parsed = Number.parseInt(process.env.SECTION_REVISION_TIMEOUT_MS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 180_000;
 })();
+const MAX_SECTION_REVIEW_FEEDBACK_CHARS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_SECTION_REVIEW_FEEDBACK_CHARS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2_000;
+})();
+const MAX_SECTION_REVIEW_EDITED_CHARS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_SECTION_REVIEW_EDITED_CHARS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 12_000;
+})();
+const MAX_SECTION_REVIEW_REFINEMENTS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_SECTION_REVIEW_REFINEMENTS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
+})();
+const MAX_SECTION_REVIEW_REFINEMENT_ID_CHARS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_SECTION_REVIEW_REFINEMENT_ID_CHARS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 80;
+})();
+const MAX_SECTION_REVIEW_TOKEN_CHARS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_SECTION_REVIEW_TOKEN_CHARS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
+})();
 
 interface FinalResumePayload {
   summary: string;
@@ -1587,14 +1607,25 @@ function normalizeSectionReviewResponse(
         };
   }
 
-  const editedContent = response.edited_content?.trim();
-  const feedback = response.feedback?.trim();
+  const editedContent = response.edited_content?.trim().slice(0, MAX_SECTION_REVIEW_EDITED_CHARS);
+  const feedback = response.feedback?.trim().slice(0, MAX_SECTION_REVIEW_FEEDBACK_CHARS);
+  const refinementIds = Array.from(
+    new Set(
+      (response.refinement_ids ?? [])
+        .filter((id): id is string => typeof id === 'string')
+        .map((id) => id.trim())
+        .filter(Boolean)
+        .map((id) => id.slice(0, MAX_SECTION_REVIEW_REFINEMENT_ID_CHARS)),
+    ),
+  ).slice(0, MAX_SECTION_REVIEW_REFINEMENTS);
+  const reviewToken = response.review_token?.trim().slice(0, MAX_SECTION_REVIEW_TOKEN_CHARS);
+
   return {
     approved: Boolean(response.approved),
     edited_content: editedContent ? editedContent : undefined,
     feedback: feedback ? feedback : undefined,
-    refinement_ids: response.refinement_ids?.filter(Boolean),
-    review_token: response.review_token?.trim() || undefined,
+    refinement_ids: refinementIds.length > 0 ? refinementIds : undefined,
+    review_token: reviewToken || undefined,
   };
 }
 
