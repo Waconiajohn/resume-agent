@@ -90,4 +90,23 @@ describe('parseJsonBodyWithLimit', () => {
     const body = await res.json() as { data: unknown };
     expect(body.data).toEqual({});
   });
+
+  it('rejects non-JSON content types with 415', async () => {
+    const app = new Hono();
+    app.post('/parse', async (c) => {
+      const parsed = await parseJsonBodyWithLimit(c, 200);
+      if (!parsed.ok) return parsed.response;
+      return c.json({ data: parsed.data });
+    });
+
+    const res = await app.request('http://test/parse', {
+      method: 'POST',
+      body: 'name=alice',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+
+    expect(res.status).toBe(415);
+    const body = await res.json() as { error?: string };
+    expect(body.error).toContain('application/json');
+  });
 });
