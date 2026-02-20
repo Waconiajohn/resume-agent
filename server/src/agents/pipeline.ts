@@ -230,8 +230,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     // positioning_v2: JD-informed positioning — runs research first (with 90s race timeout) so
-    // positioning questions can be tailored to specific JD requirements. Currently a canary flag
-    // (default false). TODO: flip default to true once stability is confirmed in production.
+    // positioning questions can be tailored to specific JD requirements.
+    // Default is ON; FF_POSITIONING_V2=0 can be used as an emergency rollback to v1.
     if (isFeatureEnabled('positioning_v2')) {
       // ─── v2: Race research with 90s timeout, then positioning with JD-informed questions ───
       emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });

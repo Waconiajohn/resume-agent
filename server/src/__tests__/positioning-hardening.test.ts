@@ -23,10 +23,10 @@ describe('feature-flags', () => {
     process.env = originalEnv;
   });
 
-  it('positioning_v2 defaults to false (safe canary)', async () => {
+  it('positioning_v2 defaults to true', async () => {
     delete process.env.FF_POSITIONING_V2;
     const { FEATURE_FLAGS } = await import('../lib/feature-flags.js');
-    expect(FEATURE_FLAGS.positioning_v2).toBe(false);
+    expect(FEATURE_FLAGS.positioning_v2).toBe(true);
   });
 
   it('FF_POSITIONING_V2=1 enables v2', async () => {
