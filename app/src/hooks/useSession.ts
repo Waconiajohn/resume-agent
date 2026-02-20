@@ -31,8 +31,12 @@ export function useSession(accessToken: string | null) {
     return next;
   }, []);
 
-  const buildErrorMessage = useCallback(async (res: Response, fallback: string) => {
-    const data = await res.json().catch(() => ({} as { error?: string }));
+  const buildErrorMessage = useCallback(async (
+    res: Response,
+    fallback: string,
+    preParsed?: { error?: string },
+  ) => {
+    const data = preParsed ?? await res.json().catch(() => ({} as { error?: string }));
     let message = data.error ?? fallback;
     if (res.status === 429) {
       const retryAfter = res.headers.get('Retry-After');
@@ -305,7 +309,7 @@ export function useSession(accessToken: string | null) {
           }
 
           const fallback = data.error ?? `Failed to send message (${res.status})`;
-          const message = await buildErrorMessage(res, fallback);
+          const message = await buildErrorMessage(res, fallback, data);
           setError(message);
           return false;
         }
@@ -376,7 +380,7 @@ export function useSession(accessToken: string | null) {
           setError('Session state became stale after a server restart. Please restart the pipeline from this session.');
         } else {
           const fallback = data.error ?? `Failed to respond to gate (${res.status})`;
-          const message = await buildErrorMessage(res, fallback);
+          const message = await buildErrorMessage(res, fallback, data);
           setError(message);
         }
         return false;
