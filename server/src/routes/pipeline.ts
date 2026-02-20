@@ -29,7 +29,7 @@ const startSchema = z.object({
 const respondSchema = z.object({
   session_id: z.string().uuid(),
   gate: z.string().min(1).max(100).optional(),
-  response: z.unknown(),
+  response: z.unknown().optional(),
 });
 
 const pipeline = new Hono();
@@ -1007,7 +1007,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
-  const { session_id, gate, response } = parsed.data;
+  const { session_id, gate } = parsed.data;
 
   // Verify session belongs to user
   const { data: session, error } = await supabaseAdmin
@@ -1028,6 +1028,15 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
 
   if (dbState.pipeline_status !== 'running') {
     return c.json({ error: 'Pipeline is not running for this session' }, 409);
+  }
+
+  const hasExplicitResponse = Object.prototype.hasOwnProperty.call(parsed.data, 'response');
+  const effectiveGate = gate ?? dbState.pending_gate ?? null;
+  const normalizedResponse = hasExplicitResponse
+    ? parsed.data.response
+    : (effectiveGate === 'architect_review' ? true : undefined);
+  if (!hasExplicitResponse && normalizedResponse === undefined) {
+    return c.json({ error: 'Missing response payload' }, 400);
   }
   const updatedAtMs = Date.parse(dbState.updated_at ?? '');
   const staleRunning = Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS);
@@ -1078,7 +1087,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
     const payload: PendingGatePayload = {
       ...currentPayload,
       gate: dbState.pending_gate,
-      response,
+      response: normalizedResponse,
       response_gate: dbState.pending_gate,
       responded_at: new Date().toISOString(),
     };
@@ -1103,7 +1112,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
     const queue = getResponseQueue(currentPayload).filter((item) => item.gate !== gate);
     queue.push({
       gate,
-      response,
+      response: normalizedResponse,
       responded_at: new Date().toISOString(),
     });
     const payload = withResponseQueue(currentPayload, queue);
