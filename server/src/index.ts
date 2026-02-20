@@ -50,7 +50,7 @@ app.use('*', async (c, next) => {
   let status = 500;
   try {
     const requestPath = c.req.path;
-    const bypass = requestPath === '/health' || requestPath === '/metrics';
+    const bypass = requestPath === '/health' || requestPath === '/ready' || requestPath === '/metrics';
 
     if (shuttingDown && !bypass) {
       status = 503;
@@ -139,6 +139,7 @@ async function getHealthSnapshot(now = Date.now()) {
 }
 
 app.get('/health', async (c) => {
+  c.header('Cache-Control', 'no-store');
   const health = await getHealthSnapshot();
   const status = shuttingDown
     ? 'draining'
@@ -155,6 +156,7 @@ app.get('/health', async (c) => {
 });
 
 app.get('/ready', async (c) => {
+  c.header('Cache-Control', 'no-store');
   const health = await getHealthSnapshot();
   const ready = !shuttingDown && health.dbOk && health.llmKeyPresent && !health.heapOverloaded;
   return c.json({
@@ -172,6 +174,7 @@ app.get('/ready', async (c) => {
 const startTime = Date.now();
 
 app.get('/metrics', (c) => {
+  c.header('Cache-Control', 'no-store');
   const metricsKey = process.env.METRICS_KEY;
   if (metricsKey) {
     if (c.req.header('Authorization') !== `Bearer ${metricsKey}`) {
