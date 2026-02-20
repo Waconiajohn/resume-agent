@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
@@ -233,16 +235,11 @@ app.onError((err, c) => {
   return c.json({ error: 'Internal server error', request_id: requestId }, 500);
 });
 
-const port = parseInt(process.env.PORT ?? '3001');
-
-logger.info({ port }, 'Resume Agent server starting');
-
-const server = serve({ fetch: app.fetch, port });
-
-logger.info({ port }, `Server running at http://localhost:${port}`);
+let server: ReturnType<typeof serve> | null = null;
 
 function shutdown(signal: string) {
   if (shuttingDown) return;
+  if (!server) return;
   shuttingDown = true;
   logger.info({ signal }, 'Graceful shutdown initiated');
 
@@ -281,13 +278,38 @@ function shutdown(signal: string) {
   }, 10_000).unref();
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('unhandledRejection', (reason) => {
-  logger.error({ reason }, 'Unhandled promise rejection');
-  shutdown('UNHANDLED_REJECTION');
-});
-process.on('uncaughtException', (err) => {
-  logger.error({ err }, 'Uncaught exception');
-  shutdown('UNCAUGHT_EXCEPTION');
-});
+const port = parseInt(process.env.PORT ?? '3001');
+
+export function startServer() {
+  if (server) return server;
+
+  logger.info({ port }, 'Resume Agent server starting');
+  server = serve({ fetch: app.fetch, port });
+  logger.info({ port }, `Server running at http://localhost:${port}`);
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ reason }, 'Unhandled promise rejection');
+    shutdown('UNHANDLED_REJECTION');
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error({ err }, 'Uncaught exception');
+    shutdown('UNCAUGHT_EXCEPTION');
+  });
+
+  return server;
+}
+
+function isMainModule(): boolean {
+  const current = fileURLToPath(import.meta.url);
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return path.resolve(entry) === path.resolve(current);
+}
+
+if (isMainModule()) {
+  startServer();
+}
+
+export { app };
