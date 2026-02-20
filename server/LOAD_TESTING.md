@@ -78,3 +78,12 @@ The script prints a JSON report with:
 - active hardening env values
 
 The tier runner additionally prints a one-table summary for all selected tiers.
+
+## Capacity Knobs To Tune During Profiling
+
+- `MAX_TOTAL_SSE_CONNECTIONS`, `MAX_SSE_RATE_USERS`
+- `MAX_RATE_LIMIT_BUCKETS`
+- `MAX_PROCESSING_SESSIONS`, `MAX_PROCESSING_SESSIONS_PER_USER`
+- `MAX_IN_PROCESS_PIPELINES`, `MAX_RUNNING_PIPELINES_PER_USER`, `MAX_RUNNING_PIPELINES_GLOBAL`
+- `STALE_RECOVERY_COOLDOWN_MS`
+- `MAX_QUEUED_PANEL_PERSISTS`
