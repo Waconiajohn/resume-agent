@@ -1,4 +1,4 @@
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import { z } from 'zod';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -10,6 +10,7 @@ import { runPipeline } from '../agents/pipeline.js';
 import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 import { sleep } from '../lib/sleep.js';
+import { parsePositiveInt, rejectOversizedJsonBody } from '../lib/http-body-guard.js';
 
 const startSchema = z.object({
   session_id: z.string().uuid(),
@@ -27,11 +28,6 @@ const respondSchema = z.object({
 const pipeline = new Hono();
 pipeline.use('*', authMiddleware);
 
-function parsePositiveInt(raw: string | undefined, fallback: number): number {
-  const parsed = Number.parseInt(raw ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 const MAX_PIPELINE_START_BODY_BYTES = parsePositiveInt(process.env.MAX_PIPELINE_START_BODY_BYTES, 220_000);
 const MAX_PIPELINE_RESPOND_BODY_BYTES = parsePositiveInt(process.env.MAX_PIPELINE_RESPOND_BODY_BYTES, 120_000);
 const MAX_SECTION_CONTEXT_EVIDENCE_ITEMS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_EVIDENCE_ITEMS, 20);
@@ -40,15 +36,6 @@ const MAX_SECTION_CONTEXT_GAPS = parsePositiveInt(process.env.MAX_SECTION_CONTEX
 const MAX_SECTION_CONTEXT_ORDER_ITEMS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_ORDER_ITEMS, 40);
 const MAX_SECTION_CONTEXT_TEXT_CHARS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_TEXT_CHARS, 700);
 const MAX_SECTION_CONTEXT_BLUEPRINT_BYTES = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_BLUEPRINT_BYTES, 120_000);
-
-function rejectOversizedJsonBody(c: Context, maxBytes: number): Response | null {
-  const contentLength = c.req.header('content-length');
-  if (!contentLength) return null;
-  const parsed = Number.parseInt(contentLength, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  if (parsed <= maxBytes) return null;
-  return c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413);
-}
 
 function truncateText(value: string, maxChars = MAX_SECTION_CONTEXT_TEXT_CHARS): string {
   if (value.length <= maxChars) return value;

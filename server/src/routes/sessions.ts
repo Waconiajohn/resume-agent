@@ -1,4 +1,4 @@
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware, getCachedUser, cacheUser } from '../middleware/auth.js';
@@ -11,6 +11,7 @@ import { withSessionLock } from '../lib/session-lock.js';
 import { saveSessionCheckpoint } from '../lib/save-session-checkpoint.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
+import { parsePositiveInt, rejectOversizedJsonBody } from '../lib/http-body-guard.js';
 
 const sessions = new Hono();
 
@@ -29,22 +30,11 @@ const CONFIGURED_MAX_PROCESSING_SESSIONS_PER_USER = (() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 6;
 })();
 const MAX_CREATE_SESSION_BODY_BYTES = (() => {
-  const parsed = Number.parseInt(process.env.MAX_CREATE_SESSION_BODY_BYTES ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 20_000;
+  return parsePositiveInt(process.env.MAX_CREATE_SESSION_BODY_BYTES, 20_000);
 })();
 const MAX_MESSAGE_BODY_BYTES = (() => {
-  const parsed = Number.parseInt(process.env.MAX_MESSAGE_BODY_BYTES ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 120_000;
+  return parsePositiveInt(process.env.MAX_MESSAGE_BODY_BYTES, 120_000);
 })();
-
-function rejectOversizedJsonBody(c: Context, maxBytes: number): Response | null {
-  const contentLength = c.req.header('content-length');
-  if (!contentLength) return null;
-  const parsed = Number.parseInt(contentLength, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  if (parsed <= maxBytes) return null;
-  return c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413);
-}
 
 function addSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
   if (!sseConnections.has(sessionId)) {

@@ -1,9 +1,10 @@
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
+import { parsePositiveInt, rejectOversizedJsonBody } from '../lib/http-body-guard.js';
 
 const createResumeSchema = z.object({
   raw_text: z.string().min(1).max(100_000),
@@ -36,21 +37,7 @@ const resumes = new Hono();
 
 resumes.use('*', authMiddleware);
 
-function parsePositiveInt(raw: string | undefined, fallback: number): number {
-  const parsed = Number.parseInt(raw ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 const MAX_CREATE_RESUME_BODY_BYTES = parsePositiveInt(process.env.MAX_CREATE_RESUME_BODY_BYTES, 220_000);
-
-function rejectOversizedJsonBody(c: Context, maxBytes: number): Response | null {
-  const contentLength = c.req.header('content-length');
-  if (!contentLength) return null;
-  const parsed = Number.parseInt(contentLength, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  if (parsed <= maxBytes) return null;
-  return c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413);
-}
 
 // GET /resumes — List user's master resumes
 resumes.get('/', async (c) => {
