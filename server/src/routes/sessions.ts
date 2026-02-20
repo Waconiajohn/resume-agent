@@ -24,6 +24,10 @@ const MAX_TOTAL_SSE_CONNECTIONS = (() => {
   const parsed = Number.parseInt(process.env.MAX_TOTAL_SSE_CONNECTIONS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5000;
 })();
+const MAX_PROCESSING_SESSIONS_PER_USER = (() => {
+  const parsed = Number.parseInt(process.env.MAX_PROCESSING_SESSIONS_PER_USER ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 6;
+})();
 
 function addSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
   if (!sseConnections.has(sessionId)) {
@@ -417,8 +421,8 @@ sessions.delete('/:id', async (c) => {
 });
 
 // Track in-flight processing per session to prevent concurrent submissions.
-// Timestamps let us evict stale entries if a worker wedges.
-const processingSessions = new Map<string, number>();
+// Includes user ownership for per-user concurrency caps.
+const processingSessions = new Map<string, { userId: string; startedAt: number }>();
 const MAX_PROCESSING_SESSIONS = (() => {
   const parsed = Number.parseInt(process.env.MAX_PROCESSING_SESSIONS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 2_000;
@@ -429,11 +433,19 @@ const PROCESSING_TTL_MS = (() => {
 })();
 
 function pruneStaleProcessingSessions(now: number): void {
-  for (const [sid, startedAt] of processingSessions.entries()) {
-    if (now - startedAt >= PROCESSING_TTL_MS) {
+  for (const [sid, entry] of processingSessions.entries()) {
+    if (now - entry.startedAt >= PROCESSING_TTL_MS) {
       processingSessions.delete(sid);
     }
   }
+}
+
+function getUserProcessingCount(userId: string): number {
+  let count = 0;
+  for (const entry of processingSessions.values()) {
+    if (entry.userId === userId) count += 1;
+  }
+  return count;
 }
 
 const processingCleanupTimer = setInterval(() => {
@@ -467,6 +479,9 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   if (processingSessions.size >= MAX_PROCESSING_SESSIONS) {
     return c.json({ error: 'Server is busy. Please retry shortly.' }, 503);
+  }
+  if (getUserProcessingCount(user.id) >= MAX_PROCESSING_SESSIONS_PER_USER) {
+    return c.json({ error: 'You have too many active requests. Please wait for one to finish.' }, 429);
   }
 
   if (idempotency_key) {
@@ -512,8 +527,13 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
   const emit = (event: SSEEvent) => {
     const emitters = sseConnections.get(sessionId);
     if (emitters) {
-      for (const emitter of emitters) {
-        try { emitter(event); } catch { /* Connection may have closed */ }
+      for (const emitter of [...emitters]) {
+        try {
+          emitter(event);
+        } catch {
+          // Drop dead emitter immediately to reduce repeated send failures.
+          removeSSEConnection(sessionId, user.id, emitter);
+        }
       }
     }
   };
@@ -527,7 +547,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   const log = createSessionLogger(sessionId);
 
-  processingSessions.set(sessionId, now);
+  processingSessions.set(sessionId, { userId: user.id, startedAt: now });
 
   withSessionLock(sessionId, async () => {
     try {
@@ -582,5 +602,16 @@ sessions.get('/', async (c) => {
 
   return c.json({ sessions: data });
 });
+
+export function getSessionRouteStats() {
+  return {
+    active_sse_sessions: sseConnections.size,
+    total_sse_emitters: totalSSEConnections,
+    sse_users_tracked: sseConnectionsByUser.size,
+    active_processing_sessions: processingSessions.size,
+    max_processing_sessions: MAX_PROCESSING_SESSIONS,
+    max_processing_sessions_per_user: MAX_PROCESSING_SESSIONS_PER_USER,
+  };
+}
 
 export { sessions, sseConnections };

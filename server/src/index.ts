@@ -2,11 +2,13 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { requestIdMiddleware } from './middleware/request-id.js';
-import { sessions, sseConnections } from './routes/sessions.js';
+import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
-import { pipeline } from './routes/pipeline.js';
+import { pipeline, getPipelineRouteStats } from './routes/pipeline.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
+import { getRateLimitStats } from './middleware/rate-limit.js';
+import { getAuthCacheStats } from './middleware/auth.js';
 import logger from './lib/logger.js';
 
 const app = new Hono();
@@ -63,10 +65,19 @@ app.get('/metrics', (c) => {
   }
 
   const memUsage = process.memoryUsage();
+  const sessionStats = getSessionRouteStats();
+  const pipelineStats = getPipelineRouteStats();
+  const rateLimitStats = getRateLimitStats();
+  const authCacheStats = getAuthCacheStats();
   return c.json({
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
-    active_sse_sessions: sseConnections.size,
-    total_sse_emitters: [...sseConnections.values()].reduce((sum, arr) => sum + arr.length, 0),
+    // Backward-compatible top-level metrics
+    active_sse_sessions: sessionStats.active_sse_sessions,
+    total_sse_emitters: sessionStats.total_sse_emitters,
+    session_runtime: sessionStats,
+    pipeline_runtime: pipelineStats,
+    rate_limit_runtime: rateLimitStats,
+    auth_cache_runtime: authCacheStats,
     memory: {
       rss_mb: Math.round(memUsage.rss / 1024 / 1024),
       heap_used_mb: Math.round(memUsage.heapUsed / 1024 / 1024),

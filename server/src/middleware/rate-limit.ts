@@ -28,6 +28,13 @@ const cleanupTimer = setInterval(() => {
 }, 60_000);
 cleanupTimer.unref();
 
+export function getRateLimitStats() {
+  return {
+    active_buckets: buckets.size,
+    max_buckets: MAX_RATE_LIMIT_BUCKETS,
+  };
+}
+
 /**
  * Simple fixed-window rate limiter keyed by user ID (from auth) or IP.
  * @param maxRequests - Max requests allowed in the window

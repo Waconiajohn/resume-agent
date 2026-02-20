@@ -134,6 +134,8 @@ const GATE_POLL_MAX_MS = 2_000;
 const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes without DB state updates
 const IN_PROCESS_PIPELINE_TTL_MS = 20 * 60 * 1000; // 20 minutes without process-local completion
 const MAX_IN_PROCESS_PIPELINES = parsePositiveInt(process.env.MAX_IN_PROCESS_PIPELINES, 5000);
+const MAX_RUNNING_PIPELINES_PER_USER = parsePositiveInt(process.env.MAX_RUNNING_PIPELINES_PER_USER, 3);
+const MAX_RUNNING_PIPELINES_GLOBAL = parsePositiveInt(process.env.MAX_RUNNING_PIPELINES_GLOBAL, 1500);
 
 // Track running pipelines to prevent double-start (in-process guard, complements DB check)
 const runningPipelines = new Map<string, number>();
@@ -151,6 +153,17 @@ const runningPipelinesCleanupTimer = setInterval(() => {
   if (runningPipelines.size > 0) pruneStaleRunningPipelines();
 }, 60_000);
 runningPipelinesCleanupTimer.unref();
+
+export function getPipelineRouteStats() {
+  return {
+    running_pipelines_local: runningPipelines.size,
+    max_running_pipelines_local: MAX_IN_PROCESS_PIPELINES,
+    max_running_pipelines_per_user: MAX_RUNNING_PIPELINES_PER_USER,
+    max_running_pipelines_global: MAX_RUNNING_PIPELINES_GLOBAL,
+    queued_panel_persists: queuedPanelPersists.size,
+    max_queued_panel_persists: MAX_QUEUED_PANEL_PERSISTS,
+  };
+}
 
 // Known pipeline stages for type-safe stale recovery
 const PIPELINE_STAGES: PipelineStage[] = [
@@ -559,6 +572,37 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       logger.error({ session_id, error: recoverError.message }, 'Failed to recover stale pipeline state');
       return c.json({ error: 'Failed to recover stale pipeline state' }, 500);
     }
+  }
+
+  const { count: runningForUser, error: userRunningError } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('pipeline_status', 'running');
+  if (userRunningError) {
+    logger.error({ user_id: user.id, error: userRunningError.message }, 'Failed to read user running pipeline count');
+    return c.json({ error: 'Failed to verify pipeline capacity' }, 503);
+  }
+  if ((runningForUser ?? 0) >= MAX_RUNNING_PIPELINES_PER_USER) {
+    return c.json({
+      error: 'Too many active pipelines. Please wait for one to finish before starting another.',
+      code: 'PIPELINE_CAPACITY',
+    }, 429);
+  }
+
+  const { count: runningGlobal, error: globalRunningError } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('pipeline_status', 'running');
+  if (globalRunningError) {
+    logger.error({ error: globalRunningError.message }, 'Failed to read global running pipeline count');
+    return c.json({ error: 'Failed to verify global pipeline capacity' }, 503);
+  }
+  if ((runningGlobal ?? 0) >= MAX_RUNNING_PIPELINES_GLOBAL) {
+    return c.json({
+      error: 'Service is at pipeline capacity. Please retry shortly.',
+      code: 'GLOBAL_PIPELINE_CAPACITY',
+    }, 503);
   }
 
   // Atomically claim this session's pipeline slot (cross-instance safe).

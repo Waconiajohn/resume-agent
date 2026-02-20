@@ -33,6 +33,14 @@ const tokenCacheCleanupTimer = setInterval(() => {
 }, 60_000);
 tokenCacheCleanupTimer.unref();
 
+export function getAuthCacheStats() {
+  return {
+    active_tokens: tokenCache.size,
+    max_tokens: MAX_TOKEN_CACHE_ENTRIES,
+    ttl_ms: TOKEN_CACHE_TTL_MS,
+  };
+}
+
 export function getCachedUser(token: string): AuthUser | null {
   const entry = tokenCache.get(token);
   if (!entry) return null;
