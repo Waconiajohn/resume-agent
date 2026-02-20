@@ -416,8 +416,30 @@ sessions.delete('/:id', async (c) => {
   return c.json({ status: 'deleted', session_id: sessionId });
 });
 
-// Track in-flight processing per session to prevent concurrent submissions
-const processingSessions = new Set<string>();
+// Track in-flight processing per session to prevent concurrent submissions.
+// Timestamps let us evict stale entries if a worker wedges.
+const processingSessions = new Map<string, number>();
+const MAX_PROCESSING_SESSIONS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_PROCESSING_SESSIONS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2_000;
+})();
+const PROCESSING_TTL_MS = (() => {
+  const parsed = Number.parseInt(process.env.PROCESSING_TTL_MS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15 * 60_000;
+})();
+
+function pruneStaleProcessingSessions(now: number): void {
+  for (const [sid, startedAt] of processingSessions.entries()) {
+    if (now - startedAt >= PROCESSING_TTL_MS) {
+      processingSessions.delete(sid);
+    }
+  }
+}
+
+const processingCleanupTimer = setInterval(() => {
+  pruneStaleProcessingSessions(Date.now());
+}, 60_000);
+processingCleanupTimer.unref();
 
 // POST /sessions/:id/messages — Send a message to the agent
 // Rate limit: 20 messages per user per minute
@@ -435,9 +457,16 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     return c.json({ error: 'Message too long' }, 400);
   }
 
+  const now = Date.now();
+  pruneStaleProcessingSessions(now);
+
   // Reject concurrent submissions for the same session
   if (processingSessions.has(sessionId)) {
     return c.json({ error: 'A message is already being processed. Please wait.', code: 'PROCESSING' }, 409);
+  }
+
+  if (processingSessions.size >= MAX_PROCESSING_SESSIONS) {
+    return c.json({ error: 'Server is busy. Please retry shortly.' }, 503);
   }
 
   if (idempotency_key) {
@@ -498,7 +527,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
   const log = createSessionLogger(sessionId);
 
-  processingSessions.add(sessionId);
+  processingSessions.set(sessionId, now);
 
   withSessionLock(sessionId, async () => {
     try {

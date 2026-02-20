@@ -7,6 +7,15 @@ interface RateLimitEntry {
 }
 
 const buckets = new Map<string, RateLimitEntry>();
+const MAX_RATE_LIMIT_BUCKETS = (() => {
+  const parsed = Number.parseInt(process.env.MAX_RATE_LIMIT_BUCKETS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 50_000;
+})();
+
+function trimKeySegment(value: string, maxLen = 128): string {
+  const trimmed = value.trim();
+  return trimmed.length > maxLen ? trimmed.slice(0, maxLen) : trimmed;
+}
 
 // Cleanup expired entries every 60 seconds
 const cleanupTimer = setInterval(() => {
@@ -30,9 +39,9 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
     const scope = `${c.req.method}:${c.req.path}`;
     let key: string;
     if (user?.id) {
-      key = `user:${user.id}:${scope}`;
+      key = `user:${trimKeySegment(user.id, 64)}:${scope}`;
     } else if (process.env.TRUST_PROXY === 'true') {
-      const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous';
+      const forwarded = trimKeySegment(c.req.header('x-forwarded-for')?.split(',')[0] ?? 'anonymous');
       key = `ip:${forwarded}:${scope}`;
     } else {
       key = `anonymous:${scope}`;
@@ -42,7 +51,17 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
     let entry = buckets.get(key);
 
     if (!entry || now >= entry.resetAt) {
+      // Keep memory bounded under key-space abuse.
+      while (buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+        const oldest = buckets.keys().next().value;
+        if (!oldest) break;
+        buckets.delete(oldest);
+      }
       entry = { count: 0, resetAt: now + windowMs };
+      buckets.set(key, entry);
+    } else {
+      // Refresh insertion order so oldest buckets are evicted first.
+      buckets.delete(key);
       buckets.set(key, entry);
     }
 
