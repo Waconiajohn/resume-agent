@@ -65,8 +65,13 @@ describe('rateLimitMiddleware', () => {
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
+    expect(first.headers.get('X-RateLimit-Limit')).toBe('2');
+    expect(first.headers.get('X-RateLimit-Remaining')).toBe('1');
+    expect(second.headers.get('X-RateLimit-Remaining')).toBe('0');
     expect(third.status).toBe(429);
     expect(third.headers.get('Retry-After')).toBe('1');
+    expect(third.headers.get('X-RateLimit-Remaining')).toBe('0');
+    expect(third.headers.get('X-RateLimit-Reset')).toBe('1');
 
     vi.advanceTimersByTime(1_001);
 
@@ -74,6 +79,7 @@ describe('rateLimitMiddleware', () => {
       headers: { 'x-user-id': 'window-user' },
     });
     expect(afterReset.status).toBe(200);
+    expect(afterReset.headers.get('X-RateLimit-Remaining')).toBe('1');
   });
 
   it('tracks allowed and denied decisions in stats', async () => {

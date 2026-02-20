@@ -92,6 +92,10 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
     }
 
     entry.count++;
+    const resetSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+    c.header('X-RateLimit-Limit', String(maxRequests));
+    c.header('X-RateLimit-Remaining', String(Math.max(0, maxRequests - entry.count)));
+    c.header('X-RateLimit-Reset', String(resetSeconds));
 
     if (entry.count > maxRequests) {
       deniedDecisions += 1;
@@ -101,8 +105,7 @@ export function rateLimitMiddleware(maxRequests: number, windowMs: number) {
         if (!oldest) break;
         deniedByScope.delete(oldest);
       }
-      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
-      c.header('Retry-After', String(retryAfter));
+      c.header('Retry-After', String(resetSeconds));
       logger.warn({
         key,
         scope,
