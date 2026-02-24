@@ -17,17 +17,24 @@ test.describe('Full Pipeline E2E', () => {
     page,
   }) => {
     // Capture browser console for debugging
+    // Suppress "Failed to load resource" errors — real API errors are captured
+    // by the response listener below which has proper URL-based filtering.
     page.on('console', (msg) => {
       if (msg.type() === 'error' || msg.type() === 'warning') {
+        const text = msg.text();
+        if (text.includes('Failed to load resource')) return;
         // eslint-disable-next-line no-console
-        console.log(`[browser] [${msg.type()}] ${msg.text()}`);
+        console.log(`[browser] [${msg.type()}] ${text}`);
       }
     });
 
     // Capture failed network requests with response bodies
+    // (suppress workflow artifact 500s — pre-existing noise from unapplied migration)
     page.on('response', (response) => {
       if (response.status() >= 400) {
         const url = response.url();
+        // Skip workflow artifact endpoint 500s — table migration not applied
+        if (url.includes('/api/workflow/') && url.includes('/node/')) return;
         // eslint-disable-next-line no-console
         console.log(`[network] ${response.status()} ${url}`);
         if (url.includes('/api/')) {

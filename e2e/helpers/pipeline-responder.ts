@@ -394,7 +394,16 @@ async function approveSectionReview(page: Page): Promise<void> {
     // eslint-disable-next-line no-console
     console.log('[pipeline-responder] Section review: clicking "Looks Good"');
     await looksGoodBtn.scrollIntoViewIfNeeded().catch(() => {});
-    await looksGoodBtn.click();
+    // Use timeout on click — after approving the last section, an overlay (z-50) covers
+    // the button while the pipeline advances to quality_review. Without timeout, Playwright
+    // waits indefinitely for the overlay to clear, hanging the entire responder loop.
+    try {
+      await looksGoodBtn.click({ timeout: 10_000 });
+    } catch {
+      // eslint-disable-next-line no-console
+      console.log('[pipeline-responder] Section review: click timed out (likely last section — overlay blocking)');
+      return;
+    }
     // API call — wait for response
     await page.waitForTimeout(POST_RESPONSE_DELAY_MS);
   } else {
@@ -510,7 +519,7 @@ export async function runPipelineToCompletion(page: Page): Promise<void> {
         lastActivityAt = Date.now(); // Reset to avoid spamming
       }
 
-      // Non-interactive panels — just wait
+      // Non-interactive panels — just wait (log heartbeat every ~30s so output shows test is alive)
       if (
         panelType === null ||
         panelType === 'processing' ||
@@ -518,6 +527,14 @@ export async function runPipelineToCompletion(page: Page): Promise<void> {
         panelType === 'gap_analysis' ||
         panelType === 'quality_dashboard'
       ) {
+        const elapsed = Math.round((Date.now() - start) / 1000);
+        const sinceActivity = Math.round((Date.now() - lastActivityAt) / 1000);
+        if (sinceActivity > 0 && sinceActivity % 30 < (POLL_INTERVAL_MS / 1000 + 1)) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[pipeline-responder] [${elapsed}s] Waiting... (${panelType ?? 'no panel'}, ${sinceActivity}s since last activity)`,
+          );
+        }
         await page.waitForTimeout(POLL_INTERVAL_MS);
         continue;
       }

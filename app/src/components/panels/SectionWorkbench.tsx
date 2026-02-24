@@ -70,6 +70,11 @@ export function SectionWorkbench({
     setTimeout(() => {
       onApprove();
     }, 400);
+    // Auto-dismiss overlay after 2s if no new section_draft resets it.
+    // For the last section, no new draft arrives, so the overlay would stay forever.
+    setTimeout(() => {
+      setIsApprovalAnimating(false);
+    }, 2000);
   }, [onApprove]);
 
   // Reset local state on new server draft content OR a new review token.
