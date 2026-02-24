@@ -7,6 +7,7 @@ import type {
   WorkflowNodeStatus,
   WorkspaceNodeSnapshot,
 } from '@/types/workflow';
+import { API_BASE } from '../lib/api';
 
 interface WorkflowSummaryNode {
   node_key: WorkflowNodeKey;
@@ -345,7 +346,7 @@ export function useWorkflowSession({
     setLoadingSummary(true);
     setError(null);
     try {
-      const res = await fetch(`/api/workflow/${encodeURIComponent(sessionId)}`, {
+      const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}`, {
         headers: buildHeaders(accessTokenRef.current),
         signal: controller.signal,
       });
@@ -372,7 +373,7 @@ export function useWorkflowSession({
     setLoadingNode(true);
     setError(null);
     try {
-      const res = await fetch(`/api/workflow/${encodeURIComponent(sessionId)}/node/${encodeURIComponent(nodeKey)}`, {
+      const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/node/${encodeURIComponent(nodeKey)}`, {
         headers: buildHeaders(accessTokenRef.current),
         signal: controller.signal,
       });
@@ -452,7 +453,7 @@ export function useWorkflowSession({
     setActionError(null);
     setActionMessage(null);
     try {
-      const res = await fetch(`/api/workflow/${encodeURIComponent(sessionId)}/benchmark/assumptions`, {
+      const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/benchmark/assumptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -488,7 +489,7 @@ export function useWorkflowSession({
     setActionError(null);
     setActionMessage(null);
     try {
-      const res = await fetch(`/api/workflow/${encodeURIComponent(sessionId)}/generate-draft-now`, {
+      const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/generate-draft-now`, {
         method: 'POST',
         headers: buildHeaders(accessTokenRef.current),
       });

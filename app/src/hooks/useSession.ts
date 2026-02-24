@@ -3,8 +3,7 @@ import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import { resumeToText } from '@/lib/export';
 import { retryDelayMsFromHeaders } from '@/lib/http-retry';
-
-const API_BASE = '/api';
+import { API_BASE } from '../lib/api';
 
 export function useSession(accessToken: string | null) {
   const [sessions, setSessions] = useState<CoachSession[]>([]);

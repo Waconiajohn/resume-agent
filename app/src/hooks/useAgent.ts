@@ -4,6 +4,7 @@ import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData, SectionWorkbenchContext, SectionSuggestion } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { requestNotificationPermission, sendGateNotification } from '@/lib/notifications';
+import { API_BASE } from '../lib/api';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_TOOL_STATUS_ENTRIES = 20;
@@ -342,7 +343,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         return;
       }
 
-      fetch(`/api/sessions/${sessionId}/sse`, {
+      fetch(`${API_BASE}/sessions/${sessionId}/sse`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -1095,7 +1096,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     const restoreCompletionFromSession = async () => {
       const token = accessTokenRef.current;
       if (!token) return;
-      const sessionRes = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+      const sessionRes = await fetch(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -1133,7 +1134,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       try {
         const token = accessTokenRef.current;
         if (!token) return;
-        const res = await fetch(`/api/pipeline/status?session_id=${encodeURIComponent(sessionId)}`, {
+        const res = await fetch(`${API_BASE}/pipeline/status?session_id=${encodeURIComponent(sessionId)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -1,0 +1,99 @@
+name: E2E Nightly
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 6am UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-nightly
+  cancel-in-progress: true
+
+jobs:
+  full-pipeline:
+    name: Full Pipeline E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      NODE_ENV: test
+      ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+      PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+      TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            app/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Install app dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build app
+        working-directory: app
+        run: npm run build
+
+      - name: Start server
+        working-directory: server
+        run: npm run dev &
+        env:
+          PORT: 3001
+
+      - name: Start app preview
+        working-directory: app
+        run: npx vite preview --port 5173 &
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for server..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health > /dev/null 2>&1; then
+              echo "Server ready"
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Waiting for app..."
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:5173 > /dev/null 2>&1; then
+              echo "App ready"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run E2E tests
+        run: npx playwright test --project=full-pipeline
+        timeout-minutes: 60
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

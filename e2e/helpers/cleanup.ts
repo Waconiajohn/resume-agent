@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const TEST_USER_ID = '5b756a7a-3e35-4465-bcf4-69d92f160f21';
+const TEST_USER_ID = process.env.TEST_USER_ID || '5b756a7a-3e35-4465-bcf4-69d92f160f21';
 
 function loadSupabaseConfig(): { url: string; serviceKey: string } {
   const envPath = resolve(process.cwd(), 'server/.env');

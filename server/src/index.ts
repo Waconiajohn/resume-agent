@@ -14,9 +14,13 @@ import { getRateLimitStats } from './middleware/rate-limit.js';
 import { getAuthCacheStats } from './middleware/auth.js';
 import { getRequestMetrics, recordRequestMetric } from './lib/request-metrics.js';
 import logger from './lib/logger.js';
+import { initSentry, captureError, flushSentry } from './lib/sentry.js';
 
 const app = new Hono();
 let shuttingDown = false;
+
+// Initialize Sentry error tracking (no-op if SENTRY_DSN not set)
+initSentry();
 
 const isProduction = process.env.NODE_ENV === 'production';
 const maxHeapUsedMb = (() => {
@@ -242,6 +246,7 @@ app.notFound((c) => {
 
 app.onError((err, c) => {
   const requestId = c.get('requestId');
+  captureError(err, { path: c.req.path, method: c.req.method, requestId });
   logger.error({ err, requestId }, 'Unhandled error');
   return c.json({ error: 'Internal server error', request_id: requestId }, 500);
 });
@@ -257,6 +262,7 @@ function shutdown(signal: string) {
   const flushTasks = Promise.allSettled([
     releaseAllLocks(),
     flushAllQueuedPanelPersists(),
+    flushSentry(2000),
   ]).then((results) => {
     const panelFlush = results[1];
     if (panelFlush.status === 'fulfilled') {
@@ -301,6 +307,7 @@ export function startServer() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('unhandledRejection', (reason) => {
+    captureError(reason, { source: 'unhandledRejection' });
     logger.error({ reason }, 'Unhandled promise rejection');
     shutdown('UNHANDLED_REJECTION');
   });

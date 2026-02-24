@@ -55,6 +55,10 @@ jobs:
         run: npm audit --audit-level=critical
         continue-on-error: true
 
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
       - name: Verify app
         run: npm run verify
 
@@ -84,6 +88,10 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=critical
+        continue-on-error: true
+
+      - name: Lint
+        run: npm run lint
         continue-on-error: true
 
       - name: Verify server
@@ -150,3 +158,52 @@ jobs:
           READY_CHECK_TIMEOUT_MS: '90000'
           READY_CHECK_INTERVAL_MS: '1500'
         run: node scripts/check-ready.mjs
+
+  e2e-smoke:
+    name: E2E Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install app dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build app
+        working-directory: app
+        run: npm run build
+
+      - name: Start app preview
+        working-directory: app
+        run: npx vite preview --port 5173 &
+
+      - name: Wait for app
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:5173 > /dev/null 2>&1; then
+              echo "App ready"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Smoke test - app loads
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173)
+          if [ "$STATUS" != "200" ]; then
+            echo "App returned HTTP $STATUS, expected 200"
+            exit 1
+          fi
+          echo "App loads successfully (HTTP 200)"

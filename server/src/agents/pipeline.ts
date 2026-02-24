@@ -8,6 +8,7 @@
  * The orchestrator itself uses no LLM calls — it's pure coordination logic.
  */
 
+import { setMaxListeners } from 'node:events';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { MODEL_PRICING } from '../lib/llm.js';
 import { startUsageTracking, stopUsageTracking, setUsageTrackingContext } from '../lib/llm-provider.js';
@@ -23,6 +24,7 @@ import { runSectionWriter, runSectionRevision } from './section-writer.js';
 import { runQualityReviewer } from './quality-reviewer.js';
 import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
 import { isQuestionnaireEnabled, GUIDED_SUGGESTIONS_ENABLED, type QuestionnaireStage } from '../lib/feature-flags.js';
+import { captureError } from '../lib/sentry.js';
 import { buildQuestionnaireEvent, makeQuestion, getSelectedLabels } from '../lib/questionnaire-helpers.js';
 import {
   generateDeterministicSuggestions,
@@ -282,6 +284,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // Fire off research as a background promise (with retry for transient failures)
     researchAbort = new AbortController();
+    setMaxListeners(20, researchAbort.signal);
     const researchPromise = withRetry(
       () => runResearchAgent({
         job_description: config.job_description,
@@ -543,6 +546,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
             await sleep(Math.min(index * 120, 900) + Math.floor(Math.random() * 120));
           }
           const sectionAbort = new AbortController();
+          setMaxListeners(20, sectionAbort.signal);
           // 5-minute wall-clock timeout per section to prevent stalled sections
           // from blocking the rest of the pipeline indefinitely.
           return withTimeout(
@@ -1117,6 +1121,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     researchAbort?.abort();
     stopUsageTracking(session_id);
     const errorMsg = error instanceof Error ? error.message : String(error);
+    captureError(error, { sessionId: session_id, stage: state.current_stage });
     log.error({ error: errorMsg, stage: state.current_stage }, 'Pipeline error');
     emit({ type: 'pipeline_error', stage: state.current_stage, error: errorMsg });
     throw error;
