@@ -167,7 +167,7 @@ async function setPendingGate(sessionId: string, gate: string, data?: Record<str
     })
     .eq('id', sessionId);
   if (error) {
-    logger.warn({ session_id: sessionId, gate, error: error.message }, 'Failed to persist pending gate');
+    throw new Error(`Failed to persist pending gate '${gate}' for session ${sessionId}: ${error.message}`);
   }
 }
 

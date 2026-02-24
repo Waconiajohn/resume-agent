@@ -1,5 +1,6 @@
 import { llm, MODEL_LIGHT } from './llm.js';
 import { createSessionLogger } from './logger.js';
+import { createCombinedAbortSignal } from './llm-provider.js';
 
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const PERPLEXITY_URL = 'https://api.perplexity.ai/chat/completions';
@@ -24,28 +25,33 @@ export async function queryPerplexity(
     throw new Error('PERPLEXITY_API_KEY environment variable is required');
   }
 
-  const response = await fetch(PERPLEXITY_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      temperature: options?.temperature ?? 0.2,
-      max_tokens: options?.max_tokens ?? 4096,
-    }),
-    signal: AbortSignal.timeout(60_000),
-  });
+  const { signal, cleanup } = createCombinedAbortSignal(undefined, 60_000);
+  try {
+    const response = await fetch(PERPLEXITY_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages,
+        temperature: options?.temperature ?? 0.2,
+        max_tokens: options?.max_tokens ?? 4096,
+      }),
+      signal,
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Perplexity API error (${response.status}): ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Perplexity API error (${response.status}): ${error}`);
+    }
+
+    const data = (await response.json()) as PerplexityResponse;
+    return data.choices[0]?.message?.content ?? '';
+  } finally {
+    cleanup();
   }
-
-  const data = (await response.json()) as PerplexityResponse;
-  return data.choices[0]?.message?.content ?? '';
 }
 
 /**
@@ -74,11 +80,15 @@ export async function queryWithFallback(
       system: claudeOptions?.system ?? '',
       messages: [{ role: 'user', content: claudeOptions?.prompt ?? messages[messages.length - 1].content }],
     });
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('LLM fallback timed out after 30s')), FALLBACK_TIMEOUT_MS),
-    );
-
-    const response = await Promise.race([llmPromise, timeoutPromise]);
-    return response.text;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('LLM fallback timed out after 30s')), FALLBACK_TIMEOUT_MS);
+      });
+      const response = await Promise.race([llmPromise, timeoutPromise]);
+      return response.text;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 }

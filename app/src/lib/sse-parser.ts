@@ -14,7 +14,7 @@ export async function* parseSSEStream(
       const { done, value } = await reader.read();
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
       // SSE messages are separated by double newlines
       let boundary = buffer.indexOf('\n\n');

@@ -316,10 +316,13 @@ export function useWorkflowSession({
   const loadedNodeVersionsRef = useRef<Partial<Record<WorkflowNodeKey, string>>>({});
   const summaryAbortRef = useRef<AbortController | null>(null);
   const nodeAbortRef = useRef<AbortController | null>(null);
+  const summaryRef = useRef(summary);
 
   useEffect(() => {
     accessTokenRef.current = accessToken;
   }, [accessToken]);
+
+  useEffect(() => { summaryRef.current = summary; }, [summary]);
 
   useEffect(() => {
     setSummary(null);
@@ -379,7 +382,7 @@ export function useWorkflowSession({
         return;
       }
       const data = await res.json() as WorkflowNodeArtifactsResponse;
-      const currentPhaseForSnapshot = summary?.session?.pipeline_stage ?? currentPhase;
+      const currentPhaseForSnapshot = summaryRef.current?.session?.pipeline_stage ?? currentPhase;
       const snapshot = data.artifacts
         .map((artifact) => snapshotFromArtifact(nodeKey, artifact, currentPhaseForSnapshot ?? currentPhase))
         .find((value): value is WorkspaceNodeSnapshot => Boolean(value));
@@ -397,7 +400,7 @@ export function useWorkflowSession({
     } finally {
       setLoadingNode(false);
     }
-  }, [sessionId, summary?.session?.pipeline_stage, currentPhase]);
+  }, [sessionId, currentPhase]);
 
   useEffect(() => {
     void refreshSummary();

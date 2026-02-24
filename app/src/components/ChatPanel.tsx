@@ -153,13 +153,13 @@ export function ChatPanel({
             <div className="flex gap-2">
               <GlassButton
                 variant="primary"
-                onClick={() => onSendMessage("Yes, let's move forward!")}
+                onClick={() => onPipelineRespond?.(phaseGate.toolCallId, { confirmed: true })}
               >
                 Continue
               </GlassButton>
               <GlassButton
                 variant="ghost"
-                onClick={() => onSendMessage("I'd like to revisit some things first.")}
+                onClick={() => onPipelineRespond?.(phaseGate.toolCallId, { confirmed: false })}
               >
                 Go Back
               </GlassButton>

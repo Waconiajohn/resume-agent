@@ -197,6 +197,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
   if (config.workflow_mode) {
     state.user_preferences = { workflow_mode: config.workflow_mode };
   }
+  let researchAbort: AbortController | undefined;
   const stageTimingsMs: StageTimingMap = {};
   const stageStart = new Map<PipelineStage, number>();
   const markStageStart = (stage: PipelineStage) => stageStart.set(stage, Date.now());
@@ -280,13 +281,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     markStageStart('research');
 
     // Fire off research as a background promise (with retry for transient failures)
+    researchAbort = new AbortController();
     const researchPromise = withRetry(
       () => runResearchAgent({
         job_description: config.job_description,
         company_name: config.company_name,
         parsed_resume: state.intake!,
       }),
-      { maxAttempts: 3, baseDelay: 2_000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'Research background retry') },
+      { maxAttempts: 3, baseDelay: 2_000, signal: researchAbort.signal, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'Research background retry') },
     );
 
     // Race: give research 90s to complete before falling back
@@ -369,7 +371,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
               company_name: config.company_name,
               parsed_resume: state.intake!,
             }),
-            { maxAttempts: 2, baseDelay: 3_000, onRetry: (a, e) => log.warn({ attempt: a, error: e.message }, 'Research retry') },
+            { maxAttempts: 2, baseDelay: 3_000, signal: researchAbort?.signal, onRetry: (a, e) => log.warn({ attempt: a, error: e.message }, 'Research retry') },
           );
         } catch (retryErr) {
           log.error(
@@ -1110,6 +1112,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     return state;
 
   } catch (error) {
+    researchAbort?.abort();
     stopUsageTracking(session_id);
     const errorMsg = error instanceof Error ? error.message : String(error);
     log.error({ error: errorMsg, stage: state.current_stage }, 'Pipeline error');

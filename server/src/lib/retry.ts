@@ -97,6 +97,7 @@ export async function withRetry<T>(
     maxAttempts?: number;
     baseDelay?: number;
     onRetry?: (attempt: number, error: Error) => void;
+    signal?: AbortSignal;
   },
 ): Promise<T> {
   const maxAttempts = options?.maxAttempts ?? 3;
@@ -105,6 +106,9 @@ export async function withRetry<T>(
   let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (options?.signal?.aborted) {
+      throw new Error('Retry aborted');
+    }
     try {
       return await fn();
     } catch (err) {

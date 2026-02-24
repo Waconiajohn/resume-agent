@@ -44,24 +44,38 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <GlassInput
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <GlassInput
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+          <div>
+            <label htmlFor="auth-email" className="sr-only">Email address</label>
+            <GlassInput
+              id="auth-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              aria-describedby={error ? 'auth-error' : undefined}
+            />
+          </div>
+          <div>
+            <label htmlFor="auth-password" className="sr-only">Password</label>
+            <GlassInput
+              id="auth-password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              aria-describedby={error ? 'auth-error' : undefined}
+            />
+          </div>
 
           {error && (
-            <p className="text-xs text-red-400">{error}</p>
+            <p id="auth-error" className="text-xs text-red-400" role="alert">{error}</p>
           )}
 
           <GlassButton type="submit" disabled={loading} className="w-full">

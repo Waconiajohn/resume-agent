@@ -109,7 +109,7 @@ function recordUsage(usage: { input_tokens: number; output_tokens: number }, ses
   }
 }
 
-function createCombinedAbortSignal(
+export function createCombinedAbortSignal(
   callerSignal: AbortSignal | undefined,
   timeoutMs: number,
 ): { signal: AbortSignal; cleanup: () => void } {
