@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, History, X } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
@@ -128,6 +128,7 @@ function BenchmarkInspectorCard({
     setKeywordsText((researchPanel.benchmark?.language_keywords ?? []).join('\n'));
     setDifferentiatorsText((researchPanel.benchmark?.competitive_differentiators ?? []).join('\n'));
     setIdealSummary(researchPanel.benchmark?.ideal_candidate_summary ?? '');
+    setNote('');
     setSaveMessage(null);
     setSaveError(null);
   }, [researchPanel]);
@@ -281,7 +282,7 @@ function BenchmarkInspectorCard({
             <GlassButton
               type="button"
               variant="ghost"
-              onClick={() => setEditing(false)}
+              onClick={() => { setEditing(false); setNote(''); }}
               className="h-auto px-3 py-2 text-xs"
             >
               Cancel
@@ -327,13 +328,6 @@ function computeNodeStatuses(
     result[node.key] = status;
   }
 
-  // Export should remain locked until we have either completion snapshot or session complete
-  if (!sessionComplete && !snapshots.export) {
-    result.export = activeNode === 'export'
-      ? (isGateActive ? 'blocked' : (isProcessing ? 'in_progress' : 'ready'))
-      : 'locked';
-  }
-
   return result;
 }
 
@@ -361,6 +355,7 @@ export function CoachScreen({
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const [localSnapshots, setLocalSnapshots] = useState<SnapshotMap>({});
+  const prevPanelDataRef = useRef<PanelData | null>(null);
 
   useEffect(() => {
     runPanelPayloadSmokeChecks();
@@ -388,12 +383,14 @@ export function CoachScreen({
     if (!panelData) return;
     const nodeKey = panelDataToWorkflowNode(panelData);
     if (!nodeKey) return;
+    const panelDataChanged = panelData !== prevPanelDataRef.current;
+    prevPanelDataRef.current = panelData;
     const nextSnapshot: WorkspaceNodeSnapshot = {
       nodeKey,
       panelType,
       panelData,
       resume,
-      capturedAt: new Date().toISOString(),
+      capturedAt: panelDataChanged ? new Date().toISOString() : (localSnapshots[nodeKey]?.capturedAt ?? new Date().toISOString()),
       currentPhase,
       isGateActive: Boolean(isPipelineGateActive),
     };

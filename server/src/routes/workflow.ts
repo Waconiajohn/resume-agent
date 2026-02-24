@@ -9,58 +9,26 @@ import {
   parsePendingGatePayload,
   withResponseQueue,
 } from '../lib/pending-gate-queue.js';
+import { sseConnections } from './sessions.js';
+import type { QuestionnaireSubmission } from '../agents/types.js';
+import {
+  WORKFLOW_NODE_KEYS,
+  type WorkflowNodeKey,
+  type WorkflowNodeStatus,
+  isWorkflowNodeKey,
+  workflowNodeFromStage,
+} from '../lib/workflow-nodes.js';
 
 const workflow = new Hono();
 workflow.use('*', authMiddleware);
 
-const WORKFLOW_NODE_KEYS = [
-  'overview',
-  'benchmark',
-  'gaps',
-  'questions',
-  'blueprint',
-  'sections',
-  'quality',
-  'export',
-] as const;
-
-type WorkflowNodeKey = (typeof WORKFLOW_NODE_KEYS)[number];
 const MAX_WORKFLOW_MUTATION_BODY_BYTES = 180_000;
 
-function isWorkflowNodeKey(value: string): value is WorkflowNodeKey {
-  return (WORKFLOW_NODE_KEYS as readonly string[]).includes(value);
-}
-
 function phaseToWorkflowNode(phase: string | null | undefined): WorkflowNodeKey {
-  switch (phase) {
-    case 'intake':
-    case 'onboarding':
-      return 'overview';
-    case 'research':
-      return 'benchmark';
-    case 'gap_analysis':
-      return 'gaps';
-    case 'positioning':
-    case 'architect_review':
-      return 'questions';
-    case 'architect':
-    case 'resume_design':
-      return 'blueprint';
-    case 'section_writing':
-    case 'section_review':
-    case 'section_craft':
-    case 'revision':
-      return 'sections';
-    case 'quality_review':
-      return 'quality';
-    case 'complete':
-      return 'export';
-    default:
-      return 'overview';
-  }
+  return workflowNodeFromStage(phase ?? '');
 }
 
-function normalizeNodeStatus(status: unknown): 'locked' | 'ready' | 'in_progress' | 'blocked' | 'complete' | 'stale' {
+function normalizeNodeStatus(status: unknown): WorkflowNodeStatus {
   return status === 'locked'
     || status === 'ready'
     || status === 'in_progress'
@@ -76,39 +44,25 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-async function nextArtifactVersion(sessionId: string, nodeKey: WorkflowNodeKey, artifactType: string) {
-  const { data, error } = await supabaseAdmin
-    .from('session_workflow_artifacts')
-    .select('version')
-    .eq('session_id', sessionId)
-    .eq('node_key', nodeKey)
-    .eq('artifact_type', artifactType)
-    .order('version', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+async function insertArtifact(
+  sessionId: string, nodeKey: WorkflowNodeKey, artifactType: string,
+  payload: unknown, createdBy = 'user', nodeStatus: WorkflowNodeStatus = 'complete',
+) {
+  const { data, error } = await supabaseAdmin.rpc('next_artifact_version', {
+    p_session_id: sessionId,
+    p_node_key: nodeKey,
+    p_artifact_type: artifactType,
+    p_payload: payload,
+    p_created_by: createdBy,
+  });
   if (error) throw new Error(error.message);
-  return ((data?.version as number | undefined) ?? 0) + 1;
-}
-
-async function insertArtifact(sessionId: string, nodeKey: WorkflowNodeKey, artifactType: string, payload: unknown, createdBy = 'user') {
-  const version = await nextArtifactVersion(sessionId, nodeKey, artifactType);
-  const { error } = await supabaseAdmin
-    .from('session_workflow_artifacts')
-    .insert({
-      session_id: sessionId,
-      node_key: nodeKey,
-      artifact_type: artifactType,
-      version,
-      payload,
-      created_by: createdBy,
-    });
-  if (error) throw new Error(error.message);
+  const version = typeof data === 'number' ? data : 1;
   await supabaseAdmin
     .from('session_workflow_nodes')
     .upsert({
       session_id: sessionId,
       node_key: nodeKey,
-      status: 'complete',
+      status: nodeStatus,
       active_version: version,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'session_id,node_key' });
@@ -166,7 +120,7 @@ async function persistPendingOrBufferedGateResponse(
   return { status: 'buffered' as const, gate };
 }
 
-function buildSkippedQuestionnaireSubmission(payload: unknown, gate: string) {
+function buildSkippedQuestionnaireSubmission(payload: unknown, gate: string): QuestionnaireSubmission | null {
   const event = asRecord(payload);
   const questionnaireId = gate.startsWith('questionnaire_')
     ? gate.slice('questionnaire_'.length)
@@ -391,7 +345,10 @@ const batchSubmitSchema = z.object({
     question_id: z.string().min(1).max(200),
     stage: z.string().min(1).max(100).optional(),
     status: z.enum(['answered', 'skipped', 'deferred']).optional(),
-    response: z.unknown().optional(),
+    response: z.unknown().optional().refine(
+      (v) => v === undefined || JSON.stringify(v).length <= 50_000,
+      'Response payload too large (50KB limit)',
+    ),
     impact_tag: z.string().max(100).optional(),
   })).min(1).max(100),
 });
@@ -427,7 +384,10 @@ workflow.post('/:sessionId/questions/batch-submit', rateLimitMiddleware(30, 60_0
 });
 
 const benchmarkAssumptionsSchema = z.object({
-  assumptions: z.record(z.string(), z.unknown()),
+  assumptions: z.record(z.string().max(200), z.unknown()).refine(
+    (v) => Object.keys(v).length <= 50,
+    'Too many assumption keys (max 50)',
+  ),
   note: z.string().max(1000).optional(),
 });
 
@@ -491,6 +451,15 @@ workflow.post('/:sessionId/generate-draft-now', rateLimitMiddleware(20, 60_000),
     });
   }
 
+  const STALE_PIPELINE_MS = 15 * 60 * 1000;
+  const updatedAtMs = Date.parse(session.updated_at as string ?? '');
+  if (Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS)) {
+    return c.json({
+      error: 'Pipeline appears stale. Please restart before using draft-now.',
+      code: 'STALE_PIPELINE',
+    }, 409);
+  }
+
   const pendingGate = typeof session.pending_gate === 'string' ? session.pending_gate : null;
   if (!pendingGate) {
     return c.json({
@@ -528,14 +497,34 @@ workflow.post('/:sessionId/generate-draft-now', rateLimitMiddleware(20, 60_000),
         if (submission) break;
       }
     }
-    if (submission) {
-      responseToGate = submission;
-      autoHandled = true;
+    if (!submission) {
+      const questionnaireId = pendingGate.startsWith('questionnaire_')
+        ? pendingGate.slice('questionnaire_'.length)
+        : pendingGate;
+      submission = {
+        questionnaire_id: questionnaireId,
+        schema_version: 1,
+        stage: (session.pipeline_stage as string) ?? 'unknown',
+        responses: [],
+        submitted_at: new Date().toISOString(),
+        generated_by: 'generate_draft_now_fallback',
+      };
     }
+    responseToGate = submission;
+    autoHandled = true;
   } else if (pendingGate === 'architect_review') {
     responseToGate = true;
     autoHandled = true;
   } else if (pendingGate.startsWith('section_review_')) {
+    const sectionName = pendingGate.slice('section_review_'.length);
+    const emitters = sseConnections.get(sessionId);
+    if (emitters) {
+      for (const emitter of emitters) {
+        try {
+          emitter({ type: 'transparency', stage: 'section_review', message: `Draft-now auto-approved section "${sectionName}" without user review` } as never);
+        } catch { /* closed */ }
+      }
+    }
     responseToGate = true;
     autoHandled = true;
   } else if (pendingGate === 'positioning_profile_choice') {

@@ -409,6 +409,7 @@ export interface QuestionnaireSubmission {
   stage: string;
   responses: QuestionnaireResponse[];
   submitted_at: string;
+  generated_by?: string;
 }
 
 // ─── Section Suggestions ─────────────────────────────────────────

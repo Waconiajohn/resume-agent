@@ -193,16 +193,11 @@ const queuedPanelPersists = new Map<string, {
   timeout: ReturnType<typeof setTimeout>;
 }>();
 
-type WorkflowNodeStatus = 'locked' | 'ready' | 'in_progress' | 'blocked' | 'complete' | 'stale';
-type WorkflowNodeKey =
-  | 'overview'
-  | 'benchmark'
-  | 'gaps'
-  | 'questions'
-  | 'blueprint'
-  | 'sections'
-  | 'quality'
-  | 'export';
+import {
+  type WorkflowNodeKey,
+  type WorkflowNodeStatus,
+  workflowNodeFromStage,
+} from '../lib/workflow-nodes.js';
 
 function workflowNodeFromPanelType(panelType: string): WorkflowNodeKey | null {
   switch (panelType) {
@@ -227,35 +222,6 @@ function workflowNodeFromPanelType(panelType: string): WorkflowNodeKey | null {
       return 'export';
     default:
       return null;
-  }
-}
-
-function workflowNodeFromStage(stage: string): WorkflowNodeKey {
-  switch (stage) {
-    case 'intake':
-    case 'onboarding':
-      return 'overview';
-    case 'research':
-      return 'benchmark';
-    case 'gap_analysis':
-      return 'gaps';
-    case 'positioning':
-    case 'architect_review':
-      return 'questions';
-    case 'architect':
-    case 'resume_design':
-      return 'blueprint';
-    case 'section_writing':
-    case 'section_review':
-    case 'section_craft':
-    case 'revision':
-      return 'sections';
-    case 'quality_review':
-      return 'quality';
-    case 'complete':
-      return 'export';
-    default:
-      return 'overview';
   }
 }
 
@@ -290,35 +256,13 @@ async function persistWorkflowArtifact(
   payload: unknown,
   createdBy = 'pipeline',
 ) {
-  const { data: latest, error: latestErr } = await supabaseAdmin
-    .from('session_workflow_artifacts')
-    .select('version')
-    .eq('session_id', sessionId)
-    .eq('node_key', nodeKey)
-    .eq('artifact_type', artifactType)
-    .order('version', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (latestErr) {
-    logger.warn(
-      { session_id: sessionId, node_key: nodeKey, artifact_type: artifactType, error: latestErr.message },
-      'Failed to read latest workflow artifact version',
-    );
-    return;
-  }
-
-  const nextVersion = ((latest?.version as number | undefined) ?? 0) + 1;
-  const insertPayload = {
-    session_id: sessionId,
-    node_key: nodeKey,
-    artifact_type: artifactType,
-    version: nextVersion,
-    payload,
-    created_by: createdBy,
-  };
-  const { error } = await supabaseAdmin
-    .from('session_workflow_artifacts')
-    .insert(insertPayload);
+  const { data, error } = await supabaseAdmin.rpc('next_artifact_version', {
+    p_session_id: sessionId,
+    p_node_key: nodeKey,
+    p_artifact_type: artifactType,
+    p_payload: payload,
+    p_created_by: createdBy,
+  });
   if (error) {
     logger.warn(
       { session_id: sessionId, node_key: nodeKey, artifact_type: artifactType, error: error.message },
@@ -326,8 +270,8 @@ async function persistWorkflowArtifact(
     );
     return;
   }
-
-  await upsertWorkflowNodeStatus(sessionId, nodeKey, 'complete', undefined, nextVersion);
+  const version = typeof data === 'number' ? data : 1;
+  await upsertWorkflowNodeStatus(sessionId, nodeKey, 'complete', undefined, version);
 }
 
 function persistWorkflowArtifactBestEffort(

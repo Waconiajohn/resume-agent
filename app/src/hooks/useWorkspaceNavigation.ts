@@ -89,6 +89,8 @@ export function useWorkspaceNavigation({
   const initializedSessionRef = useRef<string | null>(null);
   const prevActiveNodeRef = useRef<WorkflowNodeKey>(activeNode);
 
+  const pendingHistoryRef = useRef<{ node: WorkflowNodeKey; action: 'push' | 'replace' } | null>(null);
+
   const applySelection = useCallback((
     node: WorkflowNodeKey,
     options?: {
@@ -143,19 +145,8 @@ export function useWorkspaceNavigation({
     });
 
     if (!sessionId || typeof window === 'undefined') return;
-    const path = buildWorkspacePath(sessionId, node);
-    const currentPath = window.location.pathname;
-    const shouldReplace = Boolean(options?.replace);
     const shouldPush = Boolean(options?.push);
-    if (currentPath !== path) {
-      if (shouldReplace) {
-        window.history.replaceState({ workspace: true, sessionId, node }, '', path);
-      } else if (shouldPush) {
-        window.history.pushState({ workspace: true, sessionId, node }, '', path);
-      } else {
-        window.history.replaceState({ workspace: true, sessionId, node }, '', path);
-      }
-    }
+    pendingHistoryRef.current = { node, action: shouldPush ? 'push' : 'replace' };
   }, [sessionId]);
 
   const pushPathForNode = useCallback((node: WorkflowNodeKey) => {
@@ -165,6 +156,22 @@ export function useWorkspaceNavigation({
       window.history.pushState({ workspace: true, sessionId, node }, '', path);
     }
   }, [sessionId]);
+
+  // Flush pending history action after navState.selectedNode is committed
+  useEffect(() => {
+    if (!sessionId || typeof window === 'undefined') return;
+    const pending = pendingHistoryRef.current;
+    if (!pending) return;
+    pendingHistoryRef.current = null;
+    const path = buildWorkspacePath(sessionId, pending.node);
+    if (window.location.pathname !== path) {
+      if (pending.action === 'push') {
+        window.history.pushState({ workspace: true, sessionId, node: pending.node }, '', path);
+      } else {
+        window.history.replaceState({ workspace: true, sessionId, node: pending.node }, '', path);
+      }
+    }
+  }, [sessionId, navState.selectedNode]);
 
   // Session/bootstrap init
   useEffect(() => {
@@ -249,30 +256,34 @@ export function useWorkspaceNavigation({
 
   const goBack = useCallback(() => {
     if (!canGoBack) return;
+    let targetNode: WorkflowNodeKey | null = null;
     setNavState((prev) => {
       const nextCursor = Math.max(0, prev.cursor - 1);
       const node = prev.entries[nextCursor] ?? prev.selectedNode;
-      if (node) pushPathForNode(node);
+      targetNode = node ?? null;
       return {
         ...prev,
         cursor: nextCursor,
         selectedNode: node ?? prev.selectedNode,
       };
     });
+    if (targetNode) pushPathForNode(targetNode);
   }, [canGoBack, pushPathForNode]);
 
   const goForward = useCallback(() => {
     if (!canGoForward) return;
+    let targetNode: WorkflowNodeKey | null = null;
     setNavState((prev) => {
       const nextCursor = Math.min(prev.entries.length - 1, prev.cursor + 1);
       const node = prev.entries[nextCursor] ?? prev.selectedNode;
-      if (node) pushPathForNode(node);
+      targetNode = node ?? null;
       return {
         ...prev,
         cursor: nextCursor,
         selectedNode: node ?? prev.selectedNode,
       };
     });
+    if (targetNode) pushPathForNode(targetNode);
   }, [canGoForward, pushPathForNode]);
 
   const returnToActiveNode = useCallback(() => {

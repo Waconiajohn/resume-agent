@@ -56,7 +56,8 @@ async function extractFromHtml(file: File): Promise<string> {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const text = doc.body?.innerText ?? doc.documentElement?.textContent ?? html;
+    doc.querySelectorAll('script, style').forEach((el) => el.remove());
+    const text = doc.body?.textContent ?? doc.documentElement?.textContent ?? html;
     return normalizeText(text);
   } catch {
     return normalizeText(html.replace(/<[^>]+>/g, ' '));

@@ -110,7 +110,8 @@ export function panelTypeToWorkflowNode(panelType: PanelType | null): WorkflowNo
     case 'completion':
       return 'export';
     default:
-      return 'overview';
+      console.warn(`panelTypeToWorkflowNode: unhandled panel type "${panelType}"`);
+      return null;
   }
 }
 

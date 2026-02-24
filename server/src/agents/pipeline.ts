@@ -1188,9 +1188,11 @@ async function runPositioningStage(
   let previousEncouragingText: string | undefined;
   let followUpCount = 0;
   let budgetNoticeEmitted = false;
+  let draftNowConsumed = false;
 
   for (const question of questions) {
     if (await hasDraftNowRequest(config.session_id)) {
+      draftNowConsumed = true;
       emit({
         type: 'transparency',
         stage: 'positioning',
@@ -1307,6 +1309,15 @@ async function runPositioningStage(
         });
       }
     }
+  }
+
+  // Clear the draft-now flag after consumption so reruns don't re-trigger it
+  if (draftNowConsumed) {
+    await supabaseAdmin
+      .from('session_question_responses')
+      .update({ status: 'skipped', updated_at: new Date().toISOString() })
+      .eq('session_id', config.session_id)
+      .eq('question_id', '__generate_draft_now__');
   }
 
   // Synthesize the profile (research-aware when available)

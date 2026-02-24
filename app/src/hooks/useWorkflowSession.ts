@@ -69,7 +69,7 @@ interface UseWorkflowSessionResult {
   isSavingBenchmarkAssumptions: boolean;
   isGenerateDraftNowPending: boolean;
   refreshSummary: () => Promise<void>;
-  refreshNode: (nodeKey?: WorkflowNodeKey) => Promise<void>;
+  refreshNode: (nodeKey: WorkflowNodeKey) => Promise<void>;
   saveBenchmarkAssumptions: (
     assumptions: Record<string, unknown>,
     note?: string,
@@ -314,6 +314,8 @@ export function useWorkflowSession({
   const [isGenerateDraftNowPending, setIsGenerateDraftNowPending] = useState(false);
   const accessTokenRef = useRef<string | null>(accessToken);
   const loadedNodeVersionsRef = useRef<Partial<Record<WorkflowNodeKey, string>>>({});
+  const summaryAbortRef = useRef<AbortController | null>(null);
+  const nodeAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     accessTokenRef.current = accessToken;
@@ -326,15 +328,23 @@ export function useWorkflowSession({
     setActionMessage(null);
     setActionError(null);
     loadedNodeVersionsRef.current = {};
+    summaryAbortRef.current?.abort();
+    summaryAbortRef.current = null;
+    nodeAbortRef.current?.abort();
+    nodeAbortRef.current = null;
   }, [sessionId]);
 
   const refreshSummary = useCallback(async () => {
     if (!sessionId || !accessTokenRef.current) return;
+    summaryAbortRef.current?.abort();
+    const controller = new AbortController();
+    summaryAbortRef.current = controller;
     setLoadingSummary(true);
     setError(null);
     try {
       const res = await fetch(`/api/workflow/${encodeURIComponent(sessionId)}`, {
         headers: buildHeaders(accessTokenRef.current),
+        signal: controller.signal,
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({} as { error?: string }));
@@ -344,19 +354,24 @@ export function useWorkflowSession({
       const data = await res.json() as WorkflowSummaryResponse;
       setSummary(data);
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Network error loading workflow summary');
     } finally {
       setLoadingSummary(false);
     }
   }, [sessionId]);
 
-  const refreshNode = useCallback(async (nodeKey = selectedNode) => {
+  const refreshNode = useCallback(async (nodeKey: WorkflowNodeKey) => {
     if (!sessionId || !accessTokenRef.current) return;
+    nodeAbortRef.current?.abort();
+    const controller = new AbortController();
+    nodeAbortRef.current = controller;
     setLoadingNode(true);
     setError(null);
     try {
       const res = await fetch(`/api/workflow/${encodeURIComponent(sessionId)}/node/${encodeURIComponent(nodeKey)}`, {
         headers: buildHeaders(accessTokenRef.current),
+        signal: controller.signal,
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({} as { error?: string }));
@@ -377,11 +392,12 @@ export function useWorkflowSession({
         : 'none';
       loadedNodeVersionsRef.current[nodeKey] = versionKey;
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Network error loading workflow node');
     } finally {
       setLoadingNode(false);
     }
-  }, [sessionId, selectedNode, summary?.session?.pipeline_stage, currentPhase]);
+  }, [sessionId, summary?.session?.pipeline_stage, currentPhase]);
 
   useEffect(() => {
     void refreshSummary();
@@ -402,15 +418,16 @@ export function useWorkflowSession({
       void refreshNode(selectedNode);
     }
   }, [summary, selectedNode, refreshNode]);
+  // Note: selectedNode is explicitly in the dep array above so refreshNode doesn't need it as a dep
 
   // Light polling for summary while a session is active
   useEffect(() => {
-    if (!sessionId || !accessToken) return;
+    if (!sessionId) return;
     const interval = setInterval(() => {
       void refreshSummary();
     }, 12_000);
     return () => clearInterval(interval);
-  }, [sessionId, accessToken, refreshSummary]);
+  }, [sessionId, refreshSummary]);
 
   const nodeStatuses = useMemo(() => {
     const map: Partial<Record<WorkflowNodeKey, WorkflowNodeStatus>> = {};
