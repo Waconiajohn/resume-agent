@@ -25,7 +25,7 @@ import { runQualityReviewer } from './quality-reviewer.js';
 import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
 import { isQuestionnaireEnabled, GUIDED_SUGGESTIONS_ENABLED, type QuestionnaireStage } from '../lib/feature-flags.js';
 import { captureError } from '../lib/sentry.js';
-import { buildQuestionnaireEvent, makeQuestion, getSelectedLabels } from '../lib/questionnaire-helpers.js';
+import { buildQuestionnaireEvent, makeQuestion } from '../lib/questionnaire-helpers.js';
 import {
   generateDeterministicSuggestions,
   generateLLMEnrichedSuggestions,
@@ -41,7 +41,6 @@ import type {
   IntakeOutput,
   PositioningProfile,
   PositioningQuestion,
-  ResearchOutput,
   ArchitectOutput,
   SectionWriterOutput,
   SectionSuggestion,
@@ -93,6 +92,8 @@ export interface PipelineConfig {
   job_description: string;
   company_name: string;
   workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+  resume_priority?: 'authentic' | 'ats' | 'impact' | 'balanced';
+  seniority_delta?: 'same' | 'one_up' | 'big_jump' | 'step_back';
   emit: PipelineEmitter;
   waitForUser: WaitForUser;
 }
@@ -196,9 +197,11 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     revision_count: 0,
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
   };
-  if (config.workflow_mode) {
-    state.user_preferences = { workflow_mode: config.workflow_mode };
-  }
+  state.user_preferences = {
+    resume_priority: config.resume_priority ?? 'balanced',
+    seniority_delta: config.seniority_delta,
+    workflow_mode: config.workflow_mode,
+  };
   let researchAbort: AbortController | undefined;
   const stageTimingsMs: StageTimingMap = {};
   const stageStart = new Map<PipelineStage, number>();
@@ -236,46 +239,6 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     log.info({ experience_count: state.intake.experience.length }, 'Intake complete');
-
-    // ─── Intake Quiz (optional) ─────────────────────────────────
-    const intakeQuizQuestions = [
-      makeQuestion('goal', "What's your primary goal for this application?", 'single_choice', [
-        { id: 'dream_job', label: 'Dream job', description: 'This is THE role I really want' },
-        { id: 'exploring', label: 'Exploring options', description: "I'm actively looking and casting a wide net" },
-        { id: 'urgent', label: 'Urgent need', description: 'I need a new role quickly' },
-        { id: 'leverage', label: 'Building leverage', description: 'I want a strong application for negotiation' },
-      ]),
-      makeQuestion('priority', 'What matters most in your resume?', 'single_choice', [
-        { id: 'authentic', label: 'Sounds like me', description: 'Authentic voice that represents who I am' },
-        { id: 'ats', label: 'Beats the ATS', description: 'Maximum keyword coverage and formatting' },
-        { id: 'impact', label: 'Shows impact', description: 'Metrics-driven accomplishments front and center' },
-        { id: 'balanced', label: 'Balanced approach', description: 'A well-rounded resume that covers all bases' },
-      ]),
-      makeQuestion('seniority', 'How senior is this role compared to your current level?', 'single_choice', [
-        { id: 'same', label: 'Same level', description: 'Lateral move with similar responsibilities' },
-        { id: 'one_up', label: 'One step up', description: 'Natural next promotion' },
-        { id: 'big_jump', label: 'Big jump', description: 'Significant stretch role' },
-        { id: 'step_back', label: 'Step back', description: 'Intentionally moving to a less senior role' },
-      ], { allow_skip: true }),
-    ];
-
-    const intakeSubmission = await runQuestionnaire(
-      'intake_quiz', 'intake_quiz', 'Quick Setup', intakeQuizQuestions, emit, waitForUser,
-      "A few quick questions to tailor your resume experience",
-    );
-
-    if (intakeSubmission) {
-      const goalResp = intakeSubmission.responses.find(r => r.question_id === 'goal');
-      const priorityResp = intakeSubmission.responses.find(r => r.question_id === 'priority');
-      const seniorityResp = intakeSubmission.responses.find(r => r.question_id === 'seniority');
-      state.user_preferences = {
-        ...state.user_preferences,
-        primary_goal: goalResp?.selected_option_ids[0],
-        resume_priority: priorityResp?.selected_option_ids[0],
-        seniority_delta: seniorityResp?.skipped ? undefined : seniorityResp?.selected_option_ids[0],
-      };
-      log.info({ preferences: state.user_preferences }, 'Intake quiz complete');
-    }
 
     // ─── Research-first flow: race research with 90s timeout, then run positioning ───
     emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
@@ -326,18 +289,6 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           benchmark: state.research.benchmark_candidate,
         },
       });
-    }
-
-    // ─── Research Validation Quiz (if research is ready) ────────
-    if (state.research) {
-      const researchQuizQuestions = buildResearchQuizQuestions(state.research);
-      const researchSubmission = await runQuestionnaire(
-        'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
-        'Help us fine-tune our research findings',
-      );
-      if (researchSubmission) {
-        processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
-      }
     }
 
     // ─── Positioning Coach ──────────────────────────────────
@@ -400,16 +351,6 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         },
       });
       log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (after positioning)');
-
-      // Run research validation quiz now
-      const researchQuizQuestions = buildResearchQuizQuestions(state.research);
-      const researchSubmission = await runQuestionnaire(
-        'research_validation', 'research_validation', 'Validate Research', researchQuizQuestions, emit, waitForUser,
-        'Help us fine-tune our research findings',
-      );
-      if (researchSubmission) {
-        processResearchSubmission(state, researchSubmission, researchQuizQuestions, log);
-      }
     }
 
     // ─── Stage 4: Gap Analysis ───────────────────────────────────
@@ -499,7 +440,6 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         research: state.research!,
         gap_analysis: state.gap_analysis!,
         user_preferences: state.user_preferences,
-        research_preferences: state.research_preferences_summary,
       }),
       {
         maxAttempts: 2,
@@ -2271,51 +2211,6 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
     leadership_span: leadershipSpan,
     strengths: intake.experience.slice(0, 3).map(e => `${e.title} at ${e.company}`),
   };
-}
-
-// ─── Research quiz helpers (extracted to avoid duplication in v1/v2 paths) ────
-
-function buildResearchQuizQuestions(research: ResearchOutput): QuestionnaireQuestion[] {
-  return [
-    makeQuestion('top_requirements', 'Which requirements matter most for this role?', 'multi_choice',
-      research.jd_analysis.must_haves.slice(0, 6).map((req, i) => ({
-        id: `req_${i}`,
-        label: req,
-        source: 'jd' as const,
-      })),
-      { context: 'Select up to 3 that you think the hiring manager cares about most' },
-    ),
-    makeQuestion('culture_check', 'Does this company culture description sound right?', 'single_choice', [
-      { id: 'yes', label: 'Yes, spot on' },
-      { id: 'somewhat', label: 'Somewhat accurate' },
-      { id: 'not_quite', label: 'Not quite right' },
-    ], { allow_custom: true, context: `We found: ${research.company_research.culture_signals.slice(0, 3).join(', ')}` }),
-    makeQuestion('anything_else', 'Anything else we should know about this role?', 'single_choice', [
-      { id: 'nope', label: 'No, looks good' },
-    ], { allow_custom: true, allow_skip: true, context: 'Insider knowledge, team dynamics, or role nuances' }),
-  ];
-}
-
-function processResearchSubmission(
-  state: PipelineState,
-  submission: QuestionnaireSubmission,
-  quizQuestions: QuestionnaireQuestion[],
-  log: ReturnType<typeof createSessionLogger>,
-): void {
-  state.research_preferences = submission;
-  const topReqResponse = submission.responses.find((r) => r.question_id === 'top_requirements');
-  const cultureResponse = submission.responses.find((r) => r.question_id === 'culture_check');
-  const notesResponse = submission.responses.find((r) => r.question_id === 'anything_else');
-
-  state.research_preferences_summary = {
-    top_requirements: topReqResponse
-      ? getSelectedLabels(topReqResponse, quizQuestions[0]).slice(0, 3)
-      : [],
-    culture_alignment: (cultureResponse?.selected_option_ids[0] as 'yes' | 'somewhat' | 'not_quite' | undefined),
-    culture_notes: cultureResponse?.custom_text?.trim() || undefined,
-    additional_notes: notesResponse?.custom_text?.trim() || undefined,
-  };
-  log.info('Research validation quiz complete');
 }
 
 async function persistSession(

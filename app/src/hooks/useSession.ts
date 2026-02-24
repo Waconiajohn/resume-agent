@@ -362,6 +362,8 @@ export function useSession(accessToken: string | null) {
     jobDescription: string,
     companyName: string,
     workflowMode: 'fast_draft' | 'balanced' | 'deep_dive' = 'balanced',
+    resumePriority?: 'authentic' | 'ats' | 'impact' | 'balanced',
+    seniorityDelta?: 'same' | 'one_up' | 'big_jump' | 'step_back',
   ): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
     setError(null);
@@ -375,6 +377,8 @@ export function useSession(accessToken: string | null) {
           job_description: jobDescription,
           company_name: companyName,
           workflow_mode: workflowMode,
+          resume_priority: resumePriority,
+          seniority_delta: seniorityDelta,
         }),
       });
       if (!res.ok) {

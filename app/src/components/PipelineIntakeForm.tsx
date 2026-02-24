@@ -14,6 +14,8 @@ interface PipelineIntakeFormProps {
     jobDescription: string;
     companyName: string;
     workflowMode: 'fast_draft' | 'balanced' | 'deep_dive';
+    resumePriority: 'authentic' | 'ats' | 'impact' | 'balanced';
+    seniorityDelta: 'same' | 'one_up' | 'big_jump' | 'step_back';
   }) => void;
   onBack: () => void;
   loading?: boolean;
@@ -38,6 +40,8 @@ export function PipelineIntakeForm({
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [workflowMode, setWorkflowMode] = useState<'fast_draft' | 'balanced' | 'deep_dive'>('balanced');
+  const [resumePriority, setResumePriority] = useState<'authentic' | 'ats' | 'impact' | 'balanced'>('balanced');
+  const [seniorityDelta, setSeniorityDelta] = useState<'same' | 'one_up' | 'big_jump' | 'step_back'>('same');
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [savedResumeLoadError, setSavedResumeLoadError] = useState<string | null>(null);
@@ -150,8 +154,10 @@ export function PipelineIntakeForm({
       jobDescription: jobDescription.trim(),
       companyName: companyName.trim(),
       workflowMode,
+      resumePriority,
+      seniorityDelta,
     });
-  }, [isValid, loading, onSubmit, resumeText, jobDescription, companyName, workflowMode]);
+  }, [isValid, loading, onSubmit, resumeText, jobDescription, companyName, workflowMode, resumePriority, seniorityDelta]);
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] overflow-y-auto">
@@ -406,6 +412,60 @@ export function PipelineIntakeForm({
               <p className="text-xs text-white/50">
                 Choose based on how much time you have. You can always refine later.
               </p>
+            </div>
+
+            {/* Resume priority */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/80" htmlFor="resume-priority">
+                What matters most in your resume?
+              </label>
+              <select
+                id="resume-priority"
+                value={resumePriority}
+                onChange={(e) => setResumePriority(e.target.value as 'authentic' | 'ats' | 'impact' | 'balanced')}
+                disabled={loading}
+                className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2.5 text-sm text-white/90 outline-none focus:border-[#afc4ff]/45"
+              >
+                <option value="balanced" className="bg-[#0a0d14] text-white">
+                  Balanced (Recommended)
+                </option>
+                <option value="authentic" className="bg-[#0a0d14] text-white">
+                  Sounds like me — authentic voice
+                </option>
+                <option value="ats" className="bg-[#0a0d14] text-white">
+                  Beats the ATS — maximum keyword coverage
+                </option>
+                <option value="impact" className="bg-[#0a0d14] text-white">
+                  Shows impact — metrics front and center
+                </option>
+              </select>
+            </div>
+
+            {/* Seniority delta */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/80" htmlFor="seniority-delta">
+                How senior is this role compared to your current level?
+              </label>
+              <select
+                id="seniority-delta"
+                value={seniorityDelta}
+                onChange={(e) => setSeniorityDelta(e.target.value as 'same' | 'one_up' | 'big_jump' | 'step_back')}
+                disabled={loading}
+                className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2.5 text-sm text-white/90 outline-none focus:border-[#afc4ff]/45"
+              >
+                <option value="same" className="bg-[#0a0d14] text-white">
+                  Same level — lateral move
+                </option>
+                <option value="one_up" className="bg-[#0a0d14] text-white">
+                  One step up — natural promotion
+                </option>
+                <option value="big_jump" className="bg-[#0a0d14] text-white">
+                  Significant stretch — big jump
+                </option>
+                <option value="step_back" className="bg-[#0a0d14] text-white">
+                  Step back — intentionally less senior
+                </option>
+              </select>
             </div>
 
             {/* Submit button */}

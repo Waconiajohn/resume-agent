@@ -30,6 +30,8 @@ const startSchema = z.object({
   job_description: z.string().min(1).max(50_000),
   company_name: z.string().min(1).max(200),
   workflow_mode: z.enum(['fast_draft', 'balanced', 'deep_dive']).optional(),
+  resume_priority: z.enum(['authentic', 'ats', 'impact', 'balanced']).optional(),
+  seniority_delta: z.enum(['same', 'one_up', 'big_jump', 'step_back']).optional(),
 });
 
 const respondSchema = z.object({
@@ -873,7 +875,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
-  const { session_id, raw_resume_text, job_description, company_name, workflow_mode } = parsed.data;
+  const { session_id, raw_resume_text, job_description, company_name, workflow_mode, resume_priority, seniority_delta } = parsed.data;
   let resolvedJobDescription = job_description.trim();
   try {
     resolvedJobDescription = await resolveJobDescriptionInput(job_description);
@@ -1150,6 +1152,8 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     job_description: resolvedJobDescription,
     company_name,
     workflow_mode,
+    resume_priority,
+    seniority_delta,
     emit,
     waitForUser,
   }).then(async (state) => {

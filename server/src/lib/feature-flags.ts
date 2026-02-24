@@ -5,8 +5,8 @@ function envBool(key: string, fallback: boolean): boolean {
 }
 
 export const QUESTIONNAIRE_FLAGS = {
-  intake_quiz: envBool('FF_INTAKE_QUIZ', true),
-  research_validation: envBool('FF_RESEARCH_VALIDATION', true),
+  intake_quiz: envBool('FF_INTAKE_QUIZ', false),
+  research_validation: envBool('FF_RESEARCH_VALIDATION', false),
   gap_analysis_quiz: envBool('FF_GAP_ANALYSIS_QUIZ', true),
   quality_review_approval: envBool('FF_QUALITY_REVIEW_APPROVAL', true),
 };

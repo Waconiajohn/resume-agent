@@ -23,22 +23,22 @@ describe('feature-flags', () => {
     process.env = originalEnv;
   });
 
-  it('questionnaire flags default to enabled', async () => {
+  it('questionnaire flags have correct defaults', async () => {
     delete process.env.FF_INTAKE_QUIZ;
     delete process.env.FF_RESEARCH_VALIDATION;
     delete process.env.FF_GAP_ANALYSIS_QUIZ;
     delete process.env.FF_QUALITY_REVIEW_APPROVAL;
     const { QUESTIONNAIRE_FLAGS } = await import('../lib/feature-flags.js');
-    expect(QUESTIONNAIRE_FLAGS.intake_quiz).toBe(true);
-    expect(QUESTIONNAIRE_FLAGS.research_validation).toBe(true);
+    expect(QUESTIONNAIRE_FLAGS.intake_quiz).toBe(false);
+    expect(QUESTIONNAIRE_FLAGS.research_validation).toBe(false);
     expect(QUESTIONNAIRE_FLAGS.gap_analysis_quiz).toBe(true);
     expect(QUESTIONNAIRE_FLAGS.quality_review_approval).toBe(true);
   });
 
-  it('questionnaire flags can be disabled via env', async () => {
-    process.env.FF_RESEARCH_VALIDATION = '0';
+  it('questionnaire flags can be enabled via env', async () => {
+    process.env.FF_RESEARCH_VALIDATION = '1';
     const { QUESTIONNAIRE_FLAGS } = await import('../lib/feature-flags.js');
-    expect(QUESTIONNAIRE_FLAGS.research_validation).toBe(false);
+    expect(QUESTIONNAIRE_FLAGS.research_validation).toBe(true);
   });
 
   it('questionnaire flags treat "true" as enabled', async () => {

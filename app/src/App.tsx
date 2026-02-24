@@ -96,6 +96,8 @@ export default function App() {
       jobDescription: string;
       companyName: string;
       workflowMode: 'fast_draft' | 'balanced' | 'deep_dive';
+      resumePriority: 'authentic' | 'ats' | 'impact' | 'balanced';
+      seniorityDelta: 'same' | 'one_up' | 'big_jump' | 'step_back';
     }) => {
       setIntakeLoading(true);
       try {
@@ -111,6 +113,8 @@ export default function App() {
           data.jobDescription,
           data.companyName,
           data.workflowMode,
+          data.resumePriority,
+          data.seniorityDelta,
         );
         if (!started) {
           await deleteSession(s.id);
