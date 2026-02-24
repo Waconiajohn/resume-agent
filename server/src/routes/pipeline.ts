@@ -43,6 +43,20 @@ const MAX_SECTION_CONTEXT_GAPS = parsePositiveInt(process.env.MAX_SECTION_CONTEX
 const MAX_SECTION_CONTEXT_ORDER_ITEMS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_ORDER_ITEMS, 40);
 const MAX_SECTION_CONTEXT_TEXT_CHARS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_TEXT_CHARS, 700);
 const MAX_SECTION_CONTEXT_BLUEPRINT_BYTES = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_BLUEPRINT_BYTES, 120_000);
+const MAX_SECTION_CONTEXT_SUGGESTIONS = parsePositiveInt(process.env.MAX_SECTION_CONTEXT_SUGGESTIONS, 5);
+const MAX_SUGGESTION_QUESTION_TEXT_CHARS = parsePositiveInt(process.env.MAX_SUGGESTION_QUESTION_TEXT_CHARS, 300);
+const MAX_SUGGESTION_CONTEXT_CHARS = parsePositiveInt(process.env.MAX_SUGGESTION_CONTEXT_CHARS, 200);
+const MAX_SUGGESTION_OPTION_LABEL_CHARS = parsePositiveInt(process.env.MAX_SUGGESTION_OPTION_LABEL_CHARS, 40);
+const MAX_SUGGESTION_ID_CHARS = parsePositiveInt(process.env.MAX_SUGGESTION_ID_CHARS, 80);
+
+const VALID_SUGGESTION_INTENTS = new Set([
+  'address_requirement', 'weave_evidence', 'integrate_keyword',
+  'quantify_bullet', 'tighten', 'strengthen_verb', 'align_positioning',
+]);
+
+const VALID_RESOLUTION_TYPES = new Set([
+  'keyword_present', 'evidence_referenced', 'requirement_addressed', 'always_recheck',
+]);
 
 function truncateText(value: string, maxChars = MAX_SECTION_CONTEXT_TEXT_CHARS): string {
   if (value.length <= maxChars) return value;
@@ -103,6 +117,33 @@ function sanitizeSectionContext(event: Extract<PipelineSSEEvent, { type: 'sectio
     })),
     section_order: event.section_order.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(s, 60)),
     sections_approved: event.sections_approved.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(s, 60)),
+    suggestions: Array.isArray(event.suggestions)
+      ? event.suggestions
+          .filter((s) => s && typeof s === 'object' && typeof s.question_text === 'string' && VALID_SUGGESTION_INTENTS.has(s.intent))
+          .slice(0, MAX_SECTION_CONTEXT_SUGGESTIONS)
+          .map((s) => ({
+            id: truncateText(s.id, MAX_SUGGESTION_ID_CHARS),
+            intent: s.intent,
+            question_text: truncateText(s.question_text, MAX_SUGGESTION_QUESTION_TEXT_CHARS),
+            ...(s.context ? { context: truncateText(s.context, MAX_SUGGESTION_CONTEXT_CHARS) } : {}),
+            ...(s.target_id ? { target_id: truncateText(s.target_id, MAX_SUGGESTION_ID_CHARS) } : {}),
+            options: Array.isArray(s.options)
+              ? s.options.slice(0, 4).map((o: { id: string; label: string; action: string }) => ({
+                  id: truncateText(String(o.id ?? ''), MAX_SUGGESTION_ID_CHARS),
+                  label: truncateText(String(o.label ?? ''), MAX_SUGGESTION_OPTION_LABEL_CHARS),
+                  action: o.action === 'skip' ? 'skip' as const : 'apply' as const,
+                }))
+              : [],
+            priority: clampFiniteNumber(s.priority),
+            priority_tier: ['high', 'medium', 'low'].includes(s.priority_tier) ? s.priority_tier : 'low',
+            resolved_when: s.resolved_when && typeof s.resolved_when === 'object' && VALID_RESOLUTION_TYPES.has(s.resolved_when.type)
+              ? {
+                  type: s.resolved_when.type,
+                  target_id: truncateText(String(s.resolved_when.target_id ?? ''), MAX_SUGGESTION_ID_CHARS),
+                }
+              : { type: 'always_recheck' as const, target_id: '' },
+          }))
+      : undefined,
   };
 }
 
@@ -369,6 +410,11 @@ export function getPipelineRouteStats() {
     max_section_context_order_items: MAX_SECTION_CONTEXT_ORDER_ITEMS,
     max_section_context_text_chars: MAX_SECTION_CONTEXT_TEXT_CHARS,
     max_section_context_blueprint_bytes: MAX_SECTION_CONTEXT_BLUEPRINT_BYTES,
+    max_section_context_suggestions: MAX_SECTION_CONTEXT_SUGGESTIONS,
+    max_suggestion_question_text_chars: MAX_SUGGESTION_QUESTION_TEXT_CHARS,
+    max_suggestion_context_chars: MAX_SUGGESTION_CONTEXT_CHARS,
+    max_suggestion_option_label_chars: MAX_SUGGESTION_OPTION_LABEL_CHARS,
+    max_suggestion_id_chars: MAX_SUGGESTION_ID_CHARS,
     max_buffered_responses: queueConfig.max_buffered_responses,
     max_buffered_response_item_bytes: queueConfig.max_buffered_response_item_bytes,
     max_buffered_responses_total_bytes: queueConfig.max_buffered_responses_total_bytes,
@@ -794,24 +840,19 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   }
 
   // Atomically claim this session's pipeline slot (cross-instance safe).
-  const { data: claimedSession, error: claimError } = await supabaseAdmin
-    .from('coach_sessions')
-    .update({
-      pipeline_status: 'running',
-      pipeline_stage: 'intake',
-      pending_gate: null,
-      pending_gate_data: null,
-    })
-    .eq('id', session_id)
-    .eq('user_id', user.id)
-    .or('pipeline_status.is.null,pipeline_status.eq.error')
-    .select('id')
-    .maybeSingle();
+  // PostgREST does not support .or() on PATCH operations, so we use an RPC call
+  // that performs the conditional update atomically in a single SQL statement.
+  const { data: claimResult, error: claimError } = await supabaseAdmin
+    .rpc('claim_pipeline_slot', {
+      p_session_id: session_id,
+      p_user_id: user.id,
+    });
 
   if (claimError) {
-    logger.error({ session_id, error: claimError.message }, 'Failed to claim pipeline slot');
+    logger.error({ session_id, error: claimError.message, code: claimError.code, details: claimError.details, hint: claimError.hint }, 'Failed to claim pipeline slot');
     return c.json({ error: 'Failed to start pipeline' }, 500);
   }
+  const claimedSession = claimResult;
   if (!claimedSession) {
     return c.json({ error: 'Pipeline already running or completed for this session' }, 409);
   }

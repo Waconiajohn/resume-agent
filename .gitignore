@@ -12,3 +12,6 @@ server/.env
 *.jpeg
 .mcp.json
 supabase/.temp/
+.auth/
+playwright-report/
+test-results/

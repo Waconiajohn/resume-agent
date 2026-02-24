@@ -410,6 +410,36 @@ export interface QuestionnaireSubmission {
   submitted_at: string;
 }
 
+// ─── Section Suggestions ─────────────────────────────────────────
+
+export type SuggestionIntent =
+  | 'address_requirement'
+  | 'weave_evidence'
+  | 'integrate_keyword'
+  | 'quantify_bullet'
+  | 'tighten'
+  | 'strengthen_verb'
+  | 'align_positioning';
+
+export interface SectionSuggestion {
+  id: string;
+  intent: SuggestionIntent;
+  question_text: string;
+  context?: string;
+  target_id?: string;
+  options: Array<{
+    id: string;
+    label: string;
+    action: 'apply' | 'skip';
+  }>;
+  priority: number;
+  priority_tier: 'high' | 'medium' | 'low';
+  resolved_when: {
+    type: 'keyword_present' | 'evidence_referenced' | 'requirement_addressed' | 'always_recheck';
+    target_id: string;
+  };
+}
+
 // ─── Pipeline Orchestration ──────────────────────────────────────────
 
 export type PipelineStage =
@@ -502,6 +532,7 @@ export type PipelineSSEEvent =
       }>;
       section_order: string[];
       sections_approved: string[];
+      suggestions?: SectionSuggestion[];
     }
   | { type: 'quality_scores'; scores: QualityScores }
   | { type: 'revision_start'; instructions: RevisionInstruction[] }

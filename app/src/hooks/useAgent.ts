@@ -1,11 +1,24 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores, CategoryProgress } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { PanelType, PanelData, SectionWorkbenchContext } from '@/types/panels';
+import type { PanelType, PanelData, SectionWorkbenchContext, SectionSuggestion } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_TOOL_STATUS_ENTRIES = 20;
+
+const SUGGESTION_LIMITS = {
+  max_count: 5,
+  max_question_text_chars: 300,
+  max_context_chars: 200,
+  max_option_label_chars: 40,
+  max_id_chars: 80,
+};
+
+const VALID_INTENTS = new Set([
+  'address_requirement', 'weave_evidence', 'integrate_keyword',
+  'quantify_bullet', 'tighten', 'strengthen_verb', 'align_positioning',
+]);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function safeParse(data: string): Record<string, any> | null {
@@ -28,6 +41,11 @@ function asStringArray(value: unknown): string[] {
 function asGapClassification(value: unknown): 'strong' | 'partial' | 'gap' {
   if (value === 'strong' || value === 'partial' || value === 'gap') return value;
   return 'gap';
+}
+
+function asPriorityTier(value: unknown): 'high' | 'medium' | 'low' {
+  if (value === 'high' || value === 'medium' || value === 'low') return value;
+  return 'low';
 }
 
 function sanitizeSectionContextPayload(
@@ -100,6 +118,58 @@ function sanitizeSectionContextPayload(
     sections_approved: asStringArray(data.sections_approved),
   };
 
+  const suggestionsRaw = Array.isArray(data.suggestions) ? data.suggestions : [];
+  const suggestions: SectionSuggestion[] = suggestionsRaw
+    .filter((item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+      && typeof item.question_text === 'string'
+      && typeof item.intent === 'string' && VALID_INTENTS.has(item.intent as string)
+      && typeof item.target_id === 'string' && (item.target_id as string).length > 0
+    )
+    .slice(0, SUGGESTION_LIMITS.max_count)
+    .map((item) => ({
+      id: typeof item.id === 'string' ? item.id.slice(0, SUGGESTION_LIMITS.max_id_chars) : '',
+      intent: item.intent as SectionSuggestion['intent'],
+      question_text: typeof item.question_text === 'string'
+        ? item.question_text.slice(0, SUGGESTION_LIMITS.max_question_text_chars)
+        : '',
+      ...(typeof item.context === 'string'
+        ? { context: item.context.slice(0, SUGGESTION_LIMITS.max_context_chars) }
+        : {}),
+      ...(typeof item.target_id === 'string'
+        ? { target_id: item.target_id.slice(0, SUGGESTION_LIMITS.max_id_chars) }
+        : {}),
+      options: Array.isArray(item.options)
+        ? (item.options as Array<Record<string, unknown>>)
+            .filter((o): o is Record<string, unknown> => Boolean(o) && typeof o === 'object')
+            .slice(0, 4)
+            .map((o) => ({
+              id: typeof o.id === 'string' ? o.id.slice(0, SUGGESTION_LIMITS.max_id_chars) : '',
+              label: typeof o.label === 'string' ? o.label.slice(0, SUGGESTION_LIMITS.max_option_label_chars) : '',
+              action: (o.action === 'skip' ? 'skip' : 'apply') as 'apply' | 'skip',
+            }))
+        : [],
+      priority: Number.isFinite(item.priority as number) ? Math.max(0, item.priority as number) : 0,
+      priority_tier: asPriorityTier(item.priority_tier),
+      resolved_when: item.resolved_when && typeof item.resolved_when === 'object' && !Array.isArray(item.resolved_when)
+        ? {
+            type: (['keyword_present', 'evidence_referenced', 'requirement_addressed', 'always_recheck'].includes(
+              (item.resolved_when as Record<string, unknown>).type as string,
+            )
+              ? (item.resolved_when as Record<string, unknown>).type
+              : 'always_recheck') as SectionSuggestion['resolved_when']['type'],
+            target_id: typeof (item.resolved_when as Record<string, unknown>).target_id === 'string'
+              ? ((item.resolved_when as Record<string, unknown>).target_id as string).slice(0, SUGGESTION_LIMITS.max_id_chars)
+              : '',
+          }
+        : { type: 'always_recheck' as const, target_id: '' },
+    }))
+    .filter((s) => s.id.length > 0 && s.question_text.length > 0);
+
+  if (suggestions.length > 0) {
+    context.suggestions = suggestions;
+  }
+
   return { section, context };
 }
 
@@ -132,6 +202,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const sectionsMapRef = useRef<Record<string, string>>({});
   // Store the latest section workbench context, emitted before section_draft
   const sectionContextRef = useRef<{ section: string; context: SectionWorkbenchContext } | null>(null);
+  // Track dismissed suggestion IDs so they survive context version updates
+  const dismissedSuggestionIdsRef = useRef<Set<string>>(new Set());
   const messageIdRef = useRef(0);
 
   // Track last text_complete content to deduplicate
@@ -237,6 +309,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     staleNoticeActiveRef.current = false;
     stalePipelineNoticeRef.current = false;
     sectionContextRef.current = null;
+    dismissedSuggestionIdsRef.current = new Set();
   }, [sessionId]);
 
   // Connect to SSE with fetch-based streaming
@@ -714,6 +787,18 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (!data) break;
                   const sanitized = sanitizeSectionContextPayload(data);
                   if (!sanitized) break;
+                  // Only accept if version is strictly greater than current for the same section
+                  const current = sectionContextRef.current;
+                  if (current && current.section === sanitized.section
+                      && sanitized.context.context_version <= current.context.context_version) {
+                    break; // Ignore stale or same-version context
+                  }
+                  // Filter out previously dismissed suggestions (IDs persist across version updates)
+                  const dismissed = dismissedSuggestionIdsRef.current;
+                  if (dismissed.size > 0 && sanitized.context.suggestions) {
+                    const filtered = sanitized.context.suggestions.filter((s) => !dismissed.has(s.id));
+                    sanitized.context.suggestions = filtered.length > 0 ? filtered : undefined;
+                  }
                   sectionContextRef.current = sanitized;
                   break;
                 }
@@ -1092,6 +1177,22 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     };
   }, [sessionId, hasAccessToken, connected, sessionComplete, nextId, setIsPipelineGateActive]);
 
+  // Mark a suggestion as dismissed so it is filtered out of future context versions
+  const dismissSuggestion = useCallback((suggestionId: string) => {
+    dismissedSuggestionIdsRef.current.add(suggestionId);
+    // Also remove from the current in-memory context so UI reflects immediately
+    if (sectionContextRef.current?.context.suggestions) {
+      const filtered = sectionContextRef.current.context.suggestions.filter((s) => s.id !== suggestionId);
+      sectionContextRef.current = {
+        ...sectionContextRef.current,
+        context: {
+          ...sectionContextRef.current.context,
+          suggestions: filtered.length > 0 ? filtered : undefined,
+        },
+      };
+    }
+  }, []);
+
   const addUserMessage = useCallback((content: string) => {
     setMessages((prev) => [
       ...prev,
@@ -1133,5 +1234,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     qualityScores,
     isPipelineGateActive,
     setIsPipelineGateActive,
+    dismissSuggestion,
   };
 }

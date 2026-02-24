@@ -16,3 +16,5 @@ export type QuestionnaireStage = keyof typeof QUESTIONNAIRE_FLAGS;
 export function isQuestionnaireEnabled(stage: QuestionnaireStage): boolean {
   return QUESTIONNAIRE_FLAGS[stage];
 }
+
+export const GUIDED_SUGGESTIONS_ENABLED = envBool('FF_GUIDED_SUGGESTIONS', true);

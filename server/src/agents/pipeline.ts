@@ -22,8 +22,16 @@ import { runArchitect } from './architect.js';
 import { runSectionWriter, runSectionRevision } from './section-writer.js';
 import { runQualityReviewer } from './quality-reviewer.js';
 import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
-import { isQuestionnaireEnabled, type QuestionnaireStage } from '../lib/feature-flags.js';
+import { isQuestionnaireEnabled, GUIDED_SUGGESTIONS_ENABLED, type QuestionnaireStage } from '../lib/feature-flags.js';
 import { buildQuestionnaireEvent, makeQuestion, getSelectedLabels } from '../lib/questionnaire-helpers.js';
+import {
+  generateDeterministicSuggestions,
+  generateLLMEnrichedSuggestions,
+  buildUnresolvedGapMap,
+  buildRevisionInstruction,
+  markGapAddressed,
+  type ScoredGap,
+} from './section-suggestions.js';
 import type {
   PipelineState,
   PipelineStage,
@@ -34,6 +42,7 @@ import type {
   ResearchOutput,
   ArchitectOutput,
   SectionWriterOutput,
+  SectionSuggestion,
   QualityReviewerOutput,
   QuestionnaireQuestion,
   QuestionnaireSubmission,
@@ -430,6 +439,11 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       log.info({ enriched_coverage: state.gap_analysis.coverage_score }, 'Gap analysis enriched by user');
     }
 
+    // Build scored gap map for suggestion generation (after gap analysis + enrichment)
+    const unresolvedGapMap: ScoredGap[] = GUIDED_SUGGESTIONS_ENABLED
+      ? buildUnresolvedGapMap(state.gap_analysis!, state.research!.jd_analysis)
+      : [];
+
     // ─── Stage 5: Resume Architect ───────────────────────────────
     emit({ type: 'stage_start', stage: 'architect', message: 'Designing resume strategy...' });
     state.current_stage = 'architect';
@@ -517,6 +531,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // Track approved sections for section_context events
     const approvedSectionSet = new Set<string>();
     const sectionContextVersions = new Map<string, number>();
+    // Track last emitted suggestions per section for __suggestion__: lookup
+    const lastEmittedSuggestions = new Map<string, SectionSuggestion[]>();
 
     // Present sections sequentially for user review (LLM work already in flight)
     for (const call of sectionCalls) {
@@ -553,7 +569,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         const contextVersion = (sectionContextVersions.get(call.section) ?? 0) + 1;
         sectionContextVersions.set(call.section, contextVersion);
         const reviewToken = `${call.section}:${contextVersion}:${Date.now()}`;
-        // Emit section context before section draft for workbench enrichment
+        // Phase 1: Emit section context with deterministic suggestions (instant)
+        const deterministicSuggestions = GUIDED_SUGGESTIONS_ENABLED
+          ? generateDeterministicSuggestions(
+              call.section, result.content, unresolvedGapMap,
+              state.architect!, state.positioning!, state.research!,
+            )
+          : [];
+        lastEmittedSuggestions.set(call.section, deterministicSuggestions);
         emit({
           type: 'section_context',
           section: call.section,
@@ -565,7 +588,33 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           gap_mappings: buildGapMappingsForSection(state.gap_analysis!),
           section_order: expandedSectionOrder,
           sections_approved: Array.from(approvedSectionSet),
+          suggestions: deterministicSuggestions.length > 0 ? deterministicSuggestions : undefined,
         });
+
+        // Phase 2: Fire-and-forget LLM enrichment (non-blocking, MODEL_LIGHT is free)
+        if (GUIDED_SUGGESTIONS_ENABLED && deterministicSuggestions.length > 0) {
+          generateLLMEnrichedSuggestions(deterministicSuggestions, call.section, result.content)
+            .then(enriched => {
+              const enrichedVersion = (sectionContextVersions.get(call.section) ?? 0) + 1;
+              sectionContextVersions.set(call.section, enrichedVersion);
+              lastEmittedSuggestions.set(call.section, enriched);
+              emit({
+                type: 'section_context',
+                section: call.section,
+                context_version: enrichedVersion,
+                generated_at: new Date().toISOString(),
+                blueprint_slice: getSectionBlueprint(call.section, state.architect!),
+                evidence: filterEvidenceForSection(call.section, state.architect!, state.positioning!),
+                keywords: buildKeywordStatus(call.section, result.content, state.architect!),
+                gap_mappings: buildGapMappingsForSection(state.gap_analysis!),
+                section_order: expandedSectionOrder,
+                sections_approved: Array.from(approvedSectionSet),
+                suggestions: enriched.length > 0 ? enriched : undefined,
+              });
+            })
+            .catch(() => { /* swallow — deterministic suggestions are sufficient */ });
+        }
+
         // Emit section for progressive rendering / re-review
         emit({ type: 'section_draft', section: call.section, content: result.content, review_token: reviewToken });
 
@@ -614,6 +663,10 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         if (normalizedReview.approved) {
           emit({ type: 'section_approved', section: call.section });
           approvedSectionSet.add(call.section);
+          // Mark gap requirements as addressed in this section
+          if (GUIDED_SUGGESTIONS_ENABLED) {
+            markGapAddressed(unresolvedGapMap, call.section, result.content);
+          }
           sectionApproved = true;
         } else if (normalizedReview.edited_content) {
           // User directly edited — use their content without LLM rewrite
@@ -621,15 +674,34 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           state.sections[call.section] = result;
           emit({ type: 'section_approved', section: call.section });
           approvedSectionSet.add(call.section);
+          if (GUIDED_SUGGESTIONS_ENABLED) {
+            markGapAddressed(unresolvedGapMap, call.section, result.content);
+          }
           sectionApproved = true;
           log.info({ section: call.section }, 'Section directly edited by user');
         } else if (normalizedReview.feedback) {
           // Quick Fix: re-run section writer with user feedback as revision instruction
           const feedback = normalizedReview.feedback;
           const refinementIds = normalizedReview.refinement_ids;
-          const instruction = refinementIds?.length
-            ? `Apply these fixes: ${refinementIds.join(', ')}. User feedback: ${feedback}`
-            : feedback;
+
+          // Handle suggestion-based feedback: __suggestion__:ID → look up template instruction
+          let instruction: string;
+          if (feedback.startsWith('__suggestion__:')) {
+            const suggestionId = feedback.slice('__suggestion__:'.length);
+            const sectionSuggestions = lastEmittedSuggestions.get(call.section) ?? [];
+            const suggestion = sectionSuggestions.find(s => s.id === suggestionId);
+            if (suggestion) {
+              instruction = buildRevisionInstruction(suggestion);
+              log.info({ section: call.section, suggestion_id: suggestionId, intent: suggestion.intent }, 'Applying suggestion-based revision');
+            } else {
+              log.warn({ section: call.section, suggestion_id: suggestionId }, 'Suggestion ID not found — using generic instruction');
+              instruction = feedback;
+            }
+          } else {
+            instruction = refinementIds?.length
+              ? `Apply these fixes: ${refinementIds.join(', ')}. User feedback: ${feedback}`
+              : feedback;
+          }
 
           const blueprintSlice = getSectionBlueprint(call.section, state.architect!);
           try {

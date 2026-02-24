@@ -4,6 +4,7 @@ import { GlassButton } from '../GlassButton';
 import { WorkbenchProgressDots } from './workbench/WorkbenchProgressDots';
 import { WorkbenchContentEditor } from './workbench/WorkbenchContentEditor';
 import { WorkbenchActionChips } from './workbench/WorkbenchActionChips';
+import { WorkbenchSuggestions } from './workbench/WorkbenchSuggestions';
 import { WorkbenchEvidenceCards, type EvidenceItem } from './workbench/WorkbenchEvidenceCards';
 import { WorkbenchKeywordBar } from './workbench/WorkbenchKeywordBar';
 import { cn } from '@/lib/utils';
@@ -247,12 +248,26 @@ export function SectionWorkbench({
             </div>
           )}
 
-          {/* Action chips */}
-          <WorkbenchActionChips
-            section={section}
-            onAction={handleAction}
-            disabled={isRefining}
-          />
+          {/* Gap-first suggestions or fallback action chips */}
+          {Array.isArray(context?.suggestions) && context.suggestions.length > 0 ? (
+            <WorkbenchSuggestions
+              suggestions={context.suggestions}
+              content={localContent}
+              onApplySuggestion={(suggestionId) => {
+                handleAction(`__suggestion__:${suggestionId}`);
+              }}
+              onSkipSuggestion={() => {
+                // Telemetry: suggestion skipped (tracked client-side)
+              }}
+              disabled={isRefining}
+            />
+          ) : (
+            <WorkbenchActionChips
+              section={section}
+              onAction={handleAction}
+              disabled={isRefining}
+            />
+          )}
 
           {/* Advanced guidance — staged reveal to reduce cognitive load */}
           {hasAdvancedContext && (

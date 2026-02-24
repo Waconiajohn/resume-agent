@@ -171,7 +171,7 @@ function renderPanelBody(props: PanelRendererProps) {
         <BlueprintReviewPanel
           data={panelData}
           onApprove={() => {
-            onPipelineRespond?.('architect_review', undefined);
+            onPipelineRespond?.('architect_review', true);
           }}
         />
       );

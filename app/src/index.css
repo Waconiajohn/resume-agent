@@ -131,6 +131,56 @@
   .chat-overlay-enter {
     animation: chat-slide-in 200ms ease-out;
   }
+
+  /* Suggestion card slide animations */
+  @keyframes suggestion-slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes suggestion-slide-out {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+  }
+
+  @keyframes suggestion-resolved {
+    0% {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .suggestion-slide-in {
+    animation: suggestion-slide-in 250ms ease-out;
+  }
+
+  .suggestion-slide-out {
+    animation: suggestion-slide-out 200ms ease-in forwards;
+  }
+
+  .suggestion-resolved {
+    animation: suggestion-resolved 300ms ease-out;
+  }
 }
 
 body {
