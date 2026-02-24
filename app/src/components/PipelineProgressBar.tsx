@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { getStageInfo, getCompletedCount, TOTAL_PIPELINE_STAGES } from '@/constants/pipeline-stages';
 
 interface PipelineProgressBarProps {
@@ -30,9 +31,16 @@ export function PipelineProgressBar({ pipelineStage, isProcessing, sessionComple
     <div className="mx-auto max-w-6xl px-4 pb-1.5 pt-0.5">
       <div className="relative h-[3px] w-full overflow-hidden rounded-full bg-white/10">
         <div
-          className={`h-full bg-gradient-to-r from-[#7b9cff] via-[#afc4ff] to-[#d5e1ff] transition-[width] duration-500${isProcessing && !sessionComplete ? ' animate-pulse' : ''}`}
+          className={cn(
+            'h-full bg-gradient-to-r from-[#7b9cff] via-[#afc4ff] to-[#d5e1ff] transition-[width] duration-500',
+            isProcessing && !sessionComplete && 'relative overflow-hidden',
+          )}
           style={{ width: `${widthPct}%` }}
-        />
+        >
+          {isProcessing && !sessionComplete && (
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_25%,rgba(255,255,255,0.15)_50%,transparent_75%)] bg-[length:200%_100%] animate-progress-shimmer" />
+          )}
+        </div>
       </div>
       <div className="mt-0.5 flex items-center justify-between">
         <span className="text-[11px] text-white/60">{label}</span>

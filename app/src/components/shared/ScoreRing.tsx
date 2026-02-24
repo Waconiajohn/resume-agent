@@ -10,9 +10,14 @@ export function ScoreRing({ score, max, label, color }: { score: number; max: nu
           <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3" className="text-white/[0.10]" />
           <circle
             cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3"
-            strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+            strokeDasharray={circumference} strokeLinecap="round"
             className={color}
-            style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+            style={{
+              '--circumference': `${circumference}`,
+              '--offset': `${offset}`,
+              strokeDashoffset: circumference,
+              animation: 'score-ring-draw 800ms ease-out forwards',
+            } as React.CSSProperties}
           />
         </svg>
         <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white/90">

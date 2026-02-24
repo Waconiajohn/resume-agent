@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, ArrowRight, CheckCircle } from 'lucide-react';
+import { Send, Loader2, ArrowRight, CheckCircle, ChevronDown } from 'lucide-react';
 import { GlassTextarea } from './GlassInput';
 import { GlassButton } from './GlassButton';
 import { ChatMessage } from './ChatMessage';
@@ -54,8 +54,8 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [showResumePreview, setShowResumePreview] = useState(false);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const userScrolledUpRef = useRef(false);
   const isBusy = isProcessing || isPipelineGateActive || streamingText.length > 0 || tools.some((t) => t.status === 'running');
   const isGateLocked = Boolean(isPipelineGateActive) && panelData != null
     && panelData.type !== 'positioning_interview'; // positioning uses chat
@@ -71,16 +71,16 @@ export function ChatPanel({
     const el = scrollRef.current;
     if (!el) return;
     // Consider "near bottom" if within 100px of the bottom
-    userScrolledUpRef.current = el.scrollHeight - el.scrollTop - el.clientHeight > 100;
+    setUserScrolledUp(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
   }, []);
 
   const isStreaming = streamingText.length > 0;
   useEffect(() => {
-    if (!userScrolledUpRef.current) {
+    if (!userScrolledUp) {
       const behavior = isStreaming ? 'instant' : 'smooth';
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
     }
-  }, [messages, streamingText, tools, askPrompt, phaseGate, isStreaming]);
+  }, [messages, streamingText, tools, askPrompt, phaseGate, isStreaming, userScrolledUp]);
 
   const handleSubmit = () => {
     if (!input.trim() || isBusy) return;
@@ -116,7 +116,23 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden py-4 space-y-1">
+      <div className="relative flex-1 overflow-hidden">
+        {userScrolledUp && (
+          <button
+            type="button"
+            onClick={() => {
+              scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+              setUserScrolledUp(false);
+            }}
+            className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex items-center gap-1.5
+              rounded-full border border-white/[0.12] bg-black/60 backdrop-blur-lg px-3 py-1.5
+              text-[11px] text-white/70 shadow-lg transition-all hover:bg-black/80 hover:text-white/90"
+          >
+            <ChevronDown className="h-3 w-3" />
+            New messages
+          </button>
+        )}
+      <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto overflow-x-hidden py-4 space-y-1">
         {messages.map((msg) => (
           <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
         ))}
@@ -140,7 +156,7 @@ export function ChatPanel({
         {/* Streaming text */}
         {streamingText && (
           <div aria-live="polite">
-            <ChatMessage role="assistant" content={streamingText} />
+            <ChatMessage role="assistant" content={streamingText} animate={false} />
           </div>
         )}
 
@@ -226,6 +242,7 @@ export function ChatPanel({
         {askPrompt && (
           <AskUserPrompt prompt={askPrompt} onSubmit={onSendMessage} />
         )}
+      </div>
       </div>
 
       {/* Input */}

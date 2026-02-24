@@ -143,7 +143,9 @@ export function CompletionPanel({
     <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center gap-2">
-          <CheckCircle className="h-4 w-4 text-[#a8d7b8]" />
+          <div className="animate-celebration-check rounded-full animate-celebration-glow">
+            <CheckCircle className="h-5 w-5 text-[#a8d7b8]" />
+          </div>
           <span className="text-sm font-medium text-white/85">Session Complete</span>
         </div>
       </div>
@@ -185,13 +187,19 @@ export function CompletionPanel({
         {(data.ats_score != null || data.requirements_addressed != null) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {data.ats_score != null && (
-              <StatBadge label="ATS Score" value={`${data.ats_score}%`} />
+              <div className="opacity-0 animate-card-stagger" style={{ animationDelay: '0ms' }}>
+                <StatBadge label="ATS Score" value={`${data.ats_score}%`} />
+              </div>
             )}
             {data.requirements_addressed != null && (
-              <StatBadge label="Reqs Met" value={data.requirements_addressed} />
+              <div className="opacity-0 animate-card-stagger" style={{ animationDelay: '75ms' }}>
+                <StatBadge label="Reqs Met" value={data.requirements_addressed} />
+              </div>
             )}
             {data.sections_rewritten != null && (
-              <StatBadge label="Sections" value={data.sections_rewritten} />
+              <div className="opacity-0 animate-card-stagger" style={{ animationDelay: '150ms' }}>
+                <StatBadge label="Sections" value={data.sections_rewritten} />
+              </div>
             )}
           </div>
         )}

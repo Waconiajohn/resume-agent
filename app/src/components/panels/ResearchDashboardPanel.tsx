@@ -1,5 +1,6 @@
 import { Building2, Target, UserCheck } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { GlassSkeletonCard } from '../GlassSkeleton';
 import { cleanText, stripMarkdown } from '@/lib/clean-text';
 import type { ResearchDashboardData, BenchmarkSkill } from '@/types/panels';
 
@@ -42,7 +43,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             </h3>
           </div>
           {!company.company_name && !company.culture && (
-            <p className="text-xs text-white/60 italic">Researching company...</p>
+            <GlassSkeletonCard lines={3} />
           )}
           {company.company_name && (
             <p className="text-sm font-medium text-white mb-2">{company.company_name}</p>
@@ -77,7 +78,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           </div>
 
           {!jd_requirements.must_haves?.length && !jd_requirements.nice_to_haves?.length && (
-            <p className="text-xs text-white/60 italic">Analyzing job description...</p>
+            <GlassSkeletonCard lines={4} />
           )}
 
           {jd_requirements.seniority_level && (
@@ -129,7 +130,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           </div>
 
           {!benchmark.required_skills?.length && !benchmark.ideal_candidate_summary && (
-            <p className="text-xs text-white/60 italic">Building benchmark profile...</p>
+            <GlassSkeletonCard lines={3} />
           )}
 
           {benchmark.ideal_candidate_summary && (

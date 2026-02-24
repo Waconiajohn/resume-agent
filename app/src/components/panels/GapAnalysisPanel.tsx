@@ -156,19 +156,19 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
 
         {/* Count badges */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <GlassCard className="p-3 text-center">
+          <GlassCard className="opacity-0 animate-card-stagger p-3 text-center" style={{ animationDelay: '0ms' }}>
             <span className="text-lg font-semibold text-[#b5dec2]">{strong_count}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
               Strong
             </span>
           </GlassCard>
-          <GlassCard className="p-3 text-center">
+          <GlassCard className="opacity-0 animate-card-stagger p-3 text-center" style={{ animationDelay: '75ms' }}>
             <span className="text-lg font-semibold text-[#dfc797]">{partial_count}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
               Partial
             </span>
           </GlassCard>
-          <GlassCard className="p-3 text-center">
+          <GlassCard className="opacity-0 animate-card-stagger p-3 text-center" style={{ animationDelay: '150ms' }}>
             <span className="text-lg font-semibold text-[#dfa9a9]">{gap_count}</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
               Gap

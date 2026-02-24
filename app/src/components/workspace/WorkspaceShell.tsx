@@ -40,19 +40,19 @@ function statusStyles(status: WorkflowNodeStatus) {
   switch (status) {
     case 'complete':
       return {
-        dot: 'bg-emerald-300',
+        dot: 'bg-emerald-300 animate-node-complete-pop',
         pill: 'text-emerald-100/90 border-emerald-300/25 bg-emerald-400/[0.08]',
         label: 'Complete',
       };
     case 'blocked':
       return {
-        dot: 'bg-amber-300',
+        dot: 'bg-amber-300 animate-node-pulse',
         pill: 'text-amber-100/90 border-amber-300/20 bg-amber-300/[0.08]',
         label: 'Needs Input',
       };
     case 'in_progress':
       return {
-        dot: 'bg-[#afc4ff]',
+        dot: 'bg-[#afc4ff] animate-node-pulse',
         pill: 'text-[#d5e1ff] border-[#afc4ff]/25 bg-[#afc4ff]/[0.09]',
         label: 'Active',
       };

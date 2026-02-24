@@ -48,6 +48,15 @@
     opacity: 0.6;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   * {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
@@ -72,6 +81,7 @@
   .right-panel-shell {
     height: 100%;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    animation: panel-enter 250ms ease-out;
   }
 
   .inline-panel-host [data-panel-root] {

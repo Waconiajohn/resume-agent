@@ -6,14 +6,16 @@ import { Bot, User } from 'lucide-react';
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  animate?: boolean;
 }
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({ role, content, animate = true }: ChatMessageProps) {
   return (
     <div
       className={cn(
         'flex gap-3 px-4 py-3',
         role === 'user' && 'flex-row-reverse',
+        animate && (role === 'user' ? 'animate-msg-in-right' : 'animate-msg-in-left'),
       )}
     >
       <div
