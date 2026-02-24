@@ -52,7 +52,7 @@ function MiniWireframe({ sections }: { sections: string[] }) {
         };
         const isEmphasis = i === emphasisIndex;
         return (
-          <div key={i} className="flex items-center gap-2">
+          <div key={`section-${section}-${i}`} className="flex items-center gap-2">
             <span className="w-3 shrink-0 text-right text-[8px] text-white/30">{i + 1}</span>
             <div
               className={cn(
@@ -167,7 +167,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             <div className="space-y-3">
               {age_protection.flags.map((flag, i) => (
                 <div
-                  key={i}
+                  key={`age-flag-${flag.item.slice(0, 30)}-${i}`}
                   className="space-y-1 rounded-lg border border-white/[0.1] bg-white/[0.03] p-2.5"
                 >
                   <p className="text-xs font-medium text-white/85">{flag.item}</p>

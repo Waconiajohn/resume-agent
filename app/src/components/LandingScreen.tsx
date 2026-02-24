@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Plus, Star, Trash2, AlertTriangle } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { GlassButton } from './GlassButton';
@@ -52,6 +52,8 @@ export function LandingScreen({
   const [busySessionId, setBusySessionId] = useState<string | null>(null);
   const [toast, setToast] = useState<LandingToast | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     onLoadSessions();
@@ -63,6 +65,32 @@ export function LandingScreen({
     const timer = setTimeout(() => setToast(null), 3200);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Auto-focus cancel button and handle Escape key when modal opens
+  useEffect(() => {
+    if (!confirmState) return;
+    cancelButtonRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setConfirmState(null);
+      } else if (e.key === 'Tab') {
+        // Focus trap: wrap focus between cancel and confirm buttons
+        const focusable = [cancelButtonRef.current, confirmButtonRef.current].filter(Boolean) as HTMLButtonElement[];
+        if (focusable.length < 2) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [confirmState]);
 
   const showToast = (type: LandingToast['type'], message: string) => {
     setToast({ type, message });
@@ -262,15 +290,20 @@ export function LandingScreen({
       </div>
 
       {confirmState && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4"
+        >
           <GlassCard className="w-full max-w-sm border border-white/[0.18] p-5 text-left">
-            <h3 className="mb-2 text-sm font-semibold text-white/90">{confirmState.title}</h3>
+            <h3 id="confirm-dialog-title" className="mb-2 text-sm font-semibold text-white/90">{confirmState.title}</h3>
             <p className="mb-4 text-xs text-white/60">{confirmState.message}</p>
             <div className="flex justify-end gap-2">
-              <GlassButton variant="ghost" onClick={() => setConfirmState(null)}>
+              <GlassButton ref={cancelButtonRef} variant="ghost" onClick={() => setConfirmState(null)}>
                 Cancel
               </GlassButton>
-              <GlassButton variant="primary" onClick={() => void confirmAction()}>
+              <GlassButton ref={confirmButtonRef} variant="primary" onClick={() => void confirmAction()}>
                 {confirmState.confirmLabel}
               </GlassButton>
             </div>

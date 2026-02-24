@@ -281,7 +281,7 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
             <div className="space-y-0.5">
               {contentLines.map((line, i) => (
                 <EditableLine
-                  key={i}
+                  key={`line-${i}-${line.slice(0, 20)}`}
                   line={line}
                   index={i}
                   section={active_section}
@@ -299,7 +299,7 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
         ) : (
           /* Fallback: show diff cards if no WYSIWYG content */
           changes.map((change, i) => (
-            <ChangeBlock key={i} change={change} index={i} section={active_section} disabled={isProcessing} onSendMessage={onSendMessage} />
+            <ChangeBlock key={`change-fallback-${i}`} change={change} index={i} section={active_section} disabled={isProcessing} onSendMessage={onSendMessage} />
           ))
         )}
 
@@ -320,7 +320,7 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
             {showDiffs && (
               <div className="mt-2 space-y-2">
                 {changes.map((change, i) => (
-                  <ChangeBlock key={i} change={change} index={i} section={active_section} disabled={isProcessing} onSendMessage={onSendMessage} />
+                  <ChangeBlock key={`change-${i}`} change={change} index={i} section={active_section} disabled={isProcessing} onSendMessage={onSendMessage} />
                 ))}
               </div>
             )}

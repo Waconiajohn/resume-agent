@@ -18,9 +18,15 @@ import {
   isWorkflowNodeKey,
   workflowNodeFromStage,
 } from '../lib/workflow-nodes.js';
+import { STALE_PIPELINE_MS } from './pipeline.js';
 
 const workflow = new Hono();
 workflow.use('*', authMiddleware);
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value.trim());
+}
 
 const MAX_WORKFLOW_MUTATION_BODY_BYTES = 180_000;
 
@@ -171,6 +177,7 @@ async function persistDraftNowRequest(sessionId: string, stage: string | null | 
 workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
@@ -261,6 +268,7 @@ workflow.get('/:sessionId/node/:nodeKey', rateLimitMiddleware(240, 60_000), asyn
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
   const nodeKey = c.req.param('nodeKey');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   if (!isWorkflowNodeKey(nodeKey)) return c.json({ error: 'Invalid workflow node' }, 400);
 
   const session = await requireOwnedSession(sessionId, user.id);
@@ -286,6 +294,7 @@ workflow.get('/:sessionId/node/:nodeKey/history', rateLimitMiddleware(240, 60_00
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
   const nodeKey = c.req.param('nodeKey');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   if (!isWorkflowNodeKey(nodeKey)) return c.json({ error: 'Invalid workflow node' }, 400);
 
   const session = await requireOwnedSession(sessionId, user.id);
@@ -316,6 +325,7 @@ const deferQuestionSchema = z.object({
 workflow.post('/:sessionId/questions/defer', rateLimitMiddleware(60, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
@@ -356,6 +366,7 @@ const batchSubmitSchema = z.object({
 workflow.post('/:sessionId/questions/batch-submit', rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
@@ -394,6 +405,7 @@ const benchmarkAssumptionsSchema = z.object({
 workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
@@ -433,6 +445,7 @@ workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_00
 workflow.post('/:sessionId/generate-draft-now', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
@@ -451,8 +464,7 @@ workflow.post('/:sessionId/generate-draft-now', rateLimitMiddleware(20, 60_000),
     });
   }
 
-  const STALE_PIPELINE_MS = 15 * 60 * 1000;
-  const updatedAtMs = Date.parse(session.updated_at as string ?? '');
+  const updatedAtMs = Date.parse(session.updated_at ?? '');
   if (Number.isFinite(updatedAtMs) && (Date.now() - updatedAtMs > STALE_PIPELINE_MS)) {
     return c.json({
       error: 'Pipeline appears stale. Please restart before using draft-now.',

@@ -20,6 +20,7 @@ interface SectionWorkbenchProps {
   onApprove: () => void;
   onRequestChanges: (feedback: string, reviewToken?: string) => void;
   onDirectEdit: (editedContent: string, reviewToken?: string) => void;
+  onDismissSuggestion?: (id: string) => void;
 }
 
 function toTitleCase(str: string): string {
@@ -37,6 +38,7 @@ export function SectionWorkbench({
   onApprove,
   onRequestChanges,
   onDirectEdit,
+  onDismissSuggestion,
 }: SectionWorkbenchProps) {
   const [localContent, setLocalContent] = useState(content);
   const [hasLocalEdits, setHasLocalEdits] = useState(false);
@@ -266,8 +268,8 @@ export function SectionWorkbench({
               onApplySuggestion={(suggestionId) => {
                 handleAction(`__suggestion__:${suggestionId}`);
               }}
-              onSkipSuggestion={() => {
-                // Telemetry: suggestion skipped (tracked client-side)
+              onSkipSuggestion={(suggestionId) => {
+                onDismissSuggestion?.(suggestionId);
               }}
               disabled={isRefining}
             />

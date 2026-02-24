@@ -26,6 +26,7 @@ export interface PanelRendererProps {
   onSaveCurrentResumeAsBase?: (
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
+  onDismissSuggestion?: (id: string) => void;
 }
 
 type RenderVariant = 'inline' | 'pane';
@@ -127,6 +128,7 @@ function renderPanelBody(props: PanelRendererProps) {
     onSendMessage,
     onPipelineRespond,
     onSaveCurrentResumeAsBase,
+    onDismissSuggestion,
   } = props;
 
   if (!panelData) {
@@ -203,6 +205,7 @@ function renderPanelBody(props: PanelRendererProps) {
               review_token: reviewToken ?? panelData.review_token,
             });
           }}
+          onDismissSuggestion={onDismissSuggestion}
         />
       );
     }

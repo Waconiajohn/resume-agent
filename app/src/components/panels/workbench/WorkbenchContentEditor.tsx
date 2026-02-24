@@ -134,6 +134,7 @@ export function WorkbenchContentEditor({
                       onChange={(e) => setEditingLineValue(e.target.value)}
                       onBlur={handleLineBlur}
                       onKeyDown={handleLineKeyDown}
+                      aria-label="Edit resume line"
                       className="w-full resize-none bg-transparent text-sm leading-relaxed text-white/90 outline-none placeholder:text-white/30"
                       rows={1}
                     />

@@ -231,6 +231,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const lastProgressTimestampRef = useRef<number>(Date.now());
   // Prevent repeated stale notices while a single stall is ongoing.
   const staleNoticeActiveRef = useRef<boolean>(false);
+  // Ref mirror of isProcessing for reading inside interval callbacks without closing over stale state.
+  const isProcessingRef = useRef<boolean>(false);
   const staleCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stalePipelineNoticeRef = useRef<boolean>(false);
   const hasAccessToken = Boolean(accessToken);
@@ -243,6 +245,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   useEffect(() => {
     accessTokenRef.current = accessToken;
   }, [accessToken]);
+
+  useEffect(() => {
+    isProcessingRef.current = isProcessing;
+  }, [isProcessing]);
 
   // Flush delta buffer to state
   const flushDeltaBuffer = useCallback(() => {
@@ -711,7 +717,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   staleNoticeActiveRef.current = false;
                   setPipelineStage(data.stage as PipelineStage);
                   setIsProcessing(false);
-                  if (data.duration_ms) {
+                  if (data.duration_ms && import.meta.env.DEV) {
                     console.log(`[pipeline] ${data.stage} completed in ${(data.duration_ms as number / 1000).toFixed(1)}s`);
                   }
                   break;
@@ -1033,26 +1039,21 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     const STALE_THRESHOLD_MS = 120_000; // 2 min — first warning at 2 min
     staleCheckIntervalRef.current = setInterval(() => {
       if (!mountedRef.current) return;
-      // Use functional state read to avoid stale closure over isProcessing
-      setIsProcessing((currentlyProcessing) => {
-        if (currentlyProcessing && Date.now() - lastProgressTimestampRef.current > STALE_THRESHOLD_MS) {
-          if (!staleNoticeActiveRef.current) {
-            console.warn('[useAgent] Stale processing detected — no progress events for 120s. Resetting once.');
-            staleNoticeActiveRef.current = true;
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: nextId(),
-                role: 'system',
-                content: 'Session appears stalled. You can send a message to retry or refresh the page.',
-                timestamp: new Date().toISOString(),
-              },
-            ]);
-          }
-          return false; // reset isProcessing
+      if (isProcessingRef.current && Date.now() - lastProgressTimestampRef.current > STALE_THRESHOLD_MS) {
+        if (!staleNoticeActiveRef.current) {
+          staleNoticeActiveRef.current = true;
+          setIsProcessing(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: 'system',
+              content: 'Session appears stalled. You can send a message to retry or refresh the page.',
+              timestamp: new Date().toISOString(),
+            },
+          ]);
         }
-        return currentlyProcessing; // no change
-      });
+      }
     }, 10_000);
 
     return () => {

@@ -40,7 +40,7 @@ interface CoachScreenProps {
   panelType: PanelType | null;
   panelData: PanelData | null;
   error: string | null;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string) => void | Promise<void>;
   isPipelineGateActive?: boolean;
   onPipelineRespond?: (gate: string, response: unknown) => void;
   positioningProfileFound?: { profile: unknown; updated_at: string } | null;
@@ -48,6 +48,7 @@ interface CoachScreenProps {
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
   approvedSections?: Record<string, string>;
+  onDismissSuggestion?: (id: string) => void;
 }
 
 type SnapshotMap = Partial<Record<WorkflowNodeKey, WorkspaceNodeSnapshot>>;
@@ -69,9 +70,34 @@ function loadSnapshotMap(sessionId: string): SnapshotMap {
   }
 }
 
+const MAX_SNAPSHOT_SESSIONS = 20;
+const SNAPSHOT_KEY_PREFIX = 'resume-agent:workspace-snapshots:';
+
+function pruneSnapshotStorage() {
+  if (typeof window === 'undefined') return;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(SNAPSHOT_KEY_PREFIX)) {
+        keys.push(key);
+      }
+    }
+    if (keys.length > MAX_SNAPSHOT_SESSIONS) {
+      // Remove oldest keys (we have no timestamps, so just remove by insertion order)
+      keys.slice(0, keys.length - MAX_SNAPSHOT_SESSIONS).forEach((k) => {
+        window.localStorage.removeItem(k);
+      });
+    }
+  } catch {
+    // Best effort
+  }
+}
+
 function persistSnapshotMap(sessionId: string, map: SnapshotMap) {
   if (typeof window === 'undefined') return;
   try {
+    pruneSnapshotStorage();
     window.localStorage.setItem(snapshotsStorageKey(sessionId), JSON.stringify(map));
   } catch {
     // Best effort
@@ -353,6 +379,7 @@ export function CoachScreen({
   positioningProfileFound,
   onSaveCurrentResumeAsBase,
   approvedSections = {},
+  onDismissSuggestion,
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
@@ -387,19 +414,21 @@ export function CoachScreen({
     if (!nodeKey) return;
     const panelDataChanged = panelData !== prevPanelDataRef.current;
     prevPanelDataRef.current = panelData;
-    const nextSnapshot: WorkspaceNodeSnapshot = {
-      nodeKey,
-      panelType,
-      panelData,
-      resume,
-      capturedAt: panelDataChanged ? new Date().toISOString() : (localSnapshots[nodeKey]?.capturedAt ?? new Date().toISOString()),
-      currentPhase,
-      isGateActive: Boolean(isPipelineGateActive),
-    };
-    setLocalSnapshots((prev) => ({
-      ...prev,
-      [nodeKey]: nextSnapshot,
-    }));
+    setLocalSnapshots((prev) => {
+      const nextSnapshot: WorkspaceNodeSnapshot = {
+        nodeKey,
+        panelType,
+        panelData,
+        resume,
+        capturedAt: panelDataChanged ? new Date().toISOString() : (prev[nodeKey]?.capturedAt ?? new Date().toISOString()),
+        currentPhase,
+        isGateActive: Boolean(isPipelineGateActive),
+      };
+      return {
+        ...prev,
+        [nodeKey]: nextSnapshot,
+      };
+    });
   }, [panelData, panelType, resume, currentPhase, isPipelineGateActive]);
 
   // Keep export snapshot refreshed when completion resume changes
@@ -601,6 +630,7 @@ export function CoachScreen({
                 onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
                 onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
                 onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
+                onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
               />
             ) : displayResume ? (
               <ResumePanel resume={displayResume} />

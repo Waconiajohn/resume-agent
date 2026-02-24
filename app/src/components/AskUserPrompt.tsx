@@ -11,6 +11,7 @@ interface AskUserPromptProps {
 
 export function AskUserPrompt({ prompt, onSubmit }: AskUserPromptProps) {
   const [textAnswer, setTextAnswer] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   if (prompt.inputType === 'multiple_choice' && prompt.choices) {
     return (
@@ -22,8 +23,13 @@ export function AskUserPrompt({ prompt, onSubmit }: AskUserPromptProps) {
             <GlassButton
               key={choice.label}
               variant="ghost"
-              onClick={() => onSubmit(choice.label)}
-              className="w-full justify-start border border-white/[0.06] text-left"
+              disabled={isSubmitted}
+              onClick={() => {
+                if (isSubmitted) return;
+                setIsSubmitted(true);
+                onSubmit(choice.label);
+              }}
+              className="w-full justify-start border border-white/[0.06] text-left disabled:opacity-50"
             >
               <div>
                 <div className="text-sm text-white/80">{choice.label}</div>
@@ -34,10 +40,16 @@ export function AskUserPrompt({ prompt, onSubmit }: AskUserPromptProps) {
             </GlassButton>
           ))}
         </div>
-        {prompt.skipAllowed && (
+        {isSubmitted && (
+          <p className="mt-3 text-center text-xs text-white/50">Submitted</p>
+        )}
+        {prompt.skipAllowed && !isSubmitted && (
           <GlassButton
             variant="ghost"
-            onClick={() => onSubmit('[skipped]')}
+            onClick={() => {
+              setIsSubmitted(true);
+              onSubmit('[skipped]');
+            }}
             className="mt-2 text-xs"
           >
             Skip this question

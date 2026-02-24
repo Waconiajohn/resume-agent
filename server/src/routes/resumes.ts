@@ -33,6 +33,11 @@ type DefaultResumeRpcResult = {
 
 type CreateResumeRpcResult = Record<string, unknown>;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value.trim());
+}
+
 const resumes = new Hono();
 
 resumes.use('*', authMiddleware);
@@ -98,6 +103,7 @@ resumes.get('/default', async (c) => {
 resumes.get('/:id', async (c) => {
   const user = c.get('user');
   const resumeId = c.req.param('id');
+  if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   const { data, error } = await supabaseAdmin
     .from('master_resumes')
@@ -117,6 +123,7 @@ resumes.get('/:id', async (c) => {
 resumes.put('/:id/default', rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const resumeId = c.req.param('id');
+  if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   const { data, error } = await supabaseAdmin
     .rpc('set_default_master_resume', {
@@ -144,6 +151,7 @@ resumes.put('/:id/default', rateLimitMiddleware(30, 60_000), async (c) => {
 resumes.delete('/:id', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const resumeId = c.req.param('id');
+  if (!isValidUuid(resumeId)) return c.json({ error: 'Invalid resume id' }, 400);
 
   const { data, error } = await supabaseAdmin
     .rpc('delete_master_resume_with_fallback_default', {

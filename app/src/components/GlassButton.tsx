@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface GlassButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -5,14 +6,14 @@ interface GlassButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
   children: React.ReactNode;
 }
 
-export function GlassButton({
-  variant = 'primary',
-  className,
-  children,
-  ...props
-}: GlassButtonProps) {
+export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(function GlassButton(
+  { variant = 'primary', className, children, type = 'button', ...props },
+  ref,
+) {
   return (
     <button
+      ref={ref}
+      type={type}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium tracking-[0.01em] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45',
         variant === 'primary' &&
@@ -26,4 +27,4 @@ export function GlassButton({
       {children}
     </button>
   );
-}
+});

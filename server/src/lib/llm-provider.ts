@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getAnthropicClient } from './anthropic.js';
+import logger from './logger.js';
 
 // ─── Shared interfaces ───────────────────────────────────────────────
 
@@ -101,11 +102,9 @@ function recordUsage(usage: { input_tokens: number; output_tokens: number }, ses
     }
   }
 
-  // Backward-compatible fallback: if exactly one session is active, attribute usage to it.
+  // Drop usage rather than silently misattribute it to an unrelated session.
   if (sessionUsageAccumulators.size === 1) {
-    const acc = Array.from(sessionUsageAccumulators.values())[0];
-    acc.input_tokens += usage.input_tokens;
-    acc.output_tokens += usage.output_tokens;
+    logger.warn({ sessionId, usage }, 'recordUsage: no accumulator found for session, dropping usage to avoid misattribution');
   }
 }
 

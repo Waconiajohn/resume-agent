@@ -60,6 +60,7 @@ export default function App() {
     positioningProfileFound,
     isPipelineGateActive,
     setIsPipelineGateActive,
+    dismissSuggestion,
     approvedSections,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
@@ -256,7 +257,7 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary key={currentSession?.id ?? view}>
       <div className="h-screen bg-surface">
         <Header
           email={user.email}
@@ -327,6 +328,7 @@ export default function App() {
           positioningProfileFound={positioningProfileFound}
           onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
           approvedSections={approvedSections}
+          onDismissSuggestion={dismissSuggestion}
         />
       )}
       </div>

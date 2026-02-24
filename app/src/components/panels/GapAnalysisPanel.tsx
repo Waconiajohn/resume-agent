@@ -192,7 +192,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         {/* Requirement list */}
         <div className="space-y-2">
           {requirements.map((req, i) => (
-            <RequirementRow key={i} item={req} />
+            <RequirementRow key={`req-${req.requirement.slice(0, 40)}-${i}`} item={req} />
           ))}
         </div>
       </div>

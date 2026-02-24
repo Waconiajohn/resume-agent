@@ -19,6 +19,11 @@ import {
   withResponseQueue,
 } from '../lib/pending-gate-queue.js';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value.trim());
+}
+
 const startSchema = z.object({
   session_id: z.string().uuid(),
   raw_resume_text: z.string().min(50).max(100_000),
@@ -1114,6 +1119,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       upsertWorkflowNodeStatusBestEffort(session_id, workflowNodeFromStage(event.stage), 'stale', {
         error: event.error,
       });
+      cancelQueuedPanelPersist(session_id);
     }
     // Persist final completion payload with precedence over queued intermediate panels
     if (event.type === 'pipeline_complete') {
@@ -1121,9 +1127,6 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       void persistLastPanelState(session_id, 'completion', { resume: event.resume });
       upsertWorkflowNodeStatusBestEffort(session_id, 'export', 'complete');
       persistWorkflowArtifactBestEffort(session_id, 'export', 'completion', { resume: event.resume });
-    }
-    if (event.type === 'pipeline_error') {
-      cancelQueuedPanelPersist(session_id);
     }
     const emitters = sseConnections.get(session_id);
     if (emitters) {
@@ -1331,23 +1334,22 @@ pipeline.get('/status', rateLimitMiddleware(180, 60_000), async (c) => {
     return c.json({ error: 'Missing session_id' }, 400);
   }
 
-  // Verify session belongs to user
-  const { data: session } = await supabaseAdmin
+  if (!isValidUuid(sessionId)) {
+    return c.json({ error: 'Invalid session_id' }, 400);
+  }
+
+  // Verify session belongs to user and fetch status in one query
+  const { data: dbSession } = await supabaseAdmin
     .from('coach_sessions')
-    .select('id')
+    .select('id, pipeline_status, pipeline_stage, pending_gate, updated_at')
     .eq('id', sessionId)
     .eq('user_id', user.id)
     .single();
 
-  if (!session) {
+  if (!dbSession) {
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  const { data: dbSession } = await supabaseAdmin
-    .from('coach_sessions')
-    .select('pipeline_status, pipeline_stage, pending_gate, updated_at')
-    .eq('id', sessionId)
-    .single();
   const running = dbSession?.pipeline_status === 'running';
   const pendingGate = dbSession?.pending_gate ?? null;
   const updatedAtMs = Date.parse(dbSession?.updated_at ?? '');
@@ -1361,4 +1363,4 @@ pipeline.get('/status', rateLimitMiddleware(180, 60_000), async (c) => {
   });
 });
 
-export { pipeline };
+export { pipeline, STALE_PIPELINE_MS };

@@ -425,12 +425,13 @@ export function useWorkflowSession({
 
   // Light polling for summary while a session is active
   useEffect(() => {
-    if (!sessionId) return;
+    const sessionComplete = currentPhase === 'complete';
+    if (!sessionId || sessionComplete) return;
     const interval = setInterval(() => {
       void refreshSummary();
     }, 12_000);
     return () => clearInterval(interval);
-  }, [sessionId, refreshSummary]);
+  }, [sessionId, currentPhase, refreshSummary]);
 
   const nodeStatuses = useMemo(() => {
     const map: Partial<Record<WorkflowNodeKey, WorkflowNodeStatus>> = {};

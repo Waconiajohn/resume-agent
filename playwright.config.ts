@@ -26,11 +26,11 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         storageState: '.auth/user.json',
-        headless: false,
+        headless: !!process.env.CI,
         video: 'on',
         trace: 'on',
         viewport: { width: 1440, height: 900 },
-        launchOptions: { slowMo: 150 },
+        launchOptions: { slowMo: process.env.CI ? 0 : 150 },
       },
       dependencies: ['setup'],
     },

@@ -28,9 +28,12 @@ export function WorkbenchProgressDots({
           const isApproved = sectionsApproved.includes(section);
           const isCurrent = section === currentSection;
 
+          const statusLabel = isApproved ? 'approved' : isCurrent ? 'current' : 'pending';
           return (
             <div key={section} className="relative group">
               <div
+                role="img"
+                aria-label={`${toTitleCase(section)}: ${statusLabel}`}
                 className={cn(
                   'h-2 w-2 rounded-full transition-all duration-300 flex items-center justify-center',
                   isApproved && 'bg-[#a8d7b8]',

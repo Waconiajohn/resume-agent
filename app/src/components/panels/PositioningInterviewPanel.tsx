@@ -259,7 +259,27 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
 
       {/* Suggestions */}
       {suggestions.length > 0 && (
-        <div className="space-y-2" role="radiogroup" aria-label="Answer suggestions">
+        <div
+          className="space-y-2"
+          role="radiogroup"
+          aria-label="Answer suggestions"
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+            e.preventDefault();
+            const radios = Array.from(
+              (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'),
+            );
+            if (radios.length === 0) return;
+            const currentIndex = radios.findIndex((el) => el === document.activeElement);
+            let nextIndex: number;
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+              nextIndex = currentIndex < radios.length - 1 ? currentIndex + 1 : 0;
+            } else {
+              nextIndex = currentIndex > 0 ? currentIndex - 1 : radios.length - 1;
+            }
+            radios[nextIndex].focus();
+          }}
+        >
           {suggestions.map((s, i) => (
             <SuggestionCard
               key={i}

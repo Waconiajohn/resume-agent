@@ -223,6 +223,7 @@ export function WorkbenchSuggestions({
             {SKIP_REASON_PRESETS.map((preset) => (
               <button
                 key={preset}
+                type="button"
                 onClick={() => handleSkipConfirm(preset)}
                 disabled={disabled}
                 className={cn(
@@ -254,6 +255,7 @@ export function WorkbenchSuggestions({
               }}
             />
             <button
+              type="button"
               onClick={() => handleSkipConfirm(skipReasonInput.trim() || undefined)}
               disabled={disabled}
               className={cn(
@@ -272,6 +274,7 @@ export function WorkbenchSuggestions({
       {!showSkipReason && (
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <button
+            type="button"
             onClick={handleApply}
             disabled={disabled}
             className={cn(
@@ -283,6 +286,7 @@ export function WorkbenchSuggestions({
             {applyLabel}
           </button>
           <button
+            type="button"
             onClick={handleSkip}
             disabled={disabled}
             className={cn(

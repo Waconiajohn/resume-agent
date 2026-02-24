@@ -21,7 +21,7 @@ interface ChatPanelProps {
   phaseGate: PhaseGateData | null;
   currentPhase: string;
   isProcessing: boolean;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string) => void | Promise<void>;
   panelType: PanelType | null;
   panelData: PanelData | null;
   resume: FinalResume | null;
@@ -97,6 +97,10 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full flex-col">
+      {/* Visually hidden live region for screen reader phase announcements */}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {PHASE_LABELS[currentPhase] ?? currentPhase}
+      </span>
       {/* Phase indicator bar */}
       <div className="flex items-center gap-2 border-b border-white/[0.1] px-4 py-2">
         <span className="text-[10px] uppercase tracking-wider text-white/50">Phase</span>

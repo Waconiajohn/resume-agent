@@ -147,7 +147,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                   high: 'border-red-500/20 bg-red-500/10',
                 } as Record<string, string>)[rf.severity] ?? 'border-white/[0.1] bg-white/[0.04]';
                 return (
-                  <div key={i} className={`rounded-lg border p-2.5 ${severityColor}`}>
+                  <div key={`risk-flag-${rf.flag.slice(0, 30)}-${i}`} className={`rounded-lg border p-2.5 ${severityColor}`}>
                     <p className="text-xs text-white/85">{cleanText(rf.flag)}</p>
                     <p className="mt-1 text-[10px] text-white/60">{cleanText(rf.recommendation)}</p>
                   </div>
@@ -168,7 +168,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             </div>
             <div className="space-y-1.5">
               {age_bias_risks.map((risk, i) => (
-                <div key={i} className="flex items-start gap-2">
+                <div key={`age-bias-${risk.slice(0, 30)}-${i}`} className="flex items-start gap-2">
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white/38" />
                   <span className="text-xs text-white/70">{cleanText(risk)}</span>
                 </div>

@@ -154,6 +154,7 @@ export function WorkbenchActionChips({ section, onAction, disabled }: WorkbenchA
         {chips.map((chip) => (
           <button
             key={chip.label}
+            type="button"
             onClick={() => onAction(chip.instruction)}
             disabled={disabled}
             className={cn(

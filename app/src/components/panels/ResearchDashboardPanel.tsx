@@ -54,7 +54,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             <div className="flex flex-wrap gap-1.5 mb-2">
               {company.values.map((v, i) => (
                 <span
-                  key={i}
+                  key={`company-value-${v}-${i}`}
                   className="rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/75"
                 >
                   {v}
@@ -93,7 +93,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
               </span>
               <div className="space-y-1">
                 {jd_requirements.must_haves.map((req, i) => (
-                  <div key={i} className="flex items-start gap-2">
+                  <div key={`must-have-${req.slice(0, 40)}-${i}`} className="flex items-start gap-2">
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/42" />
                     <span className="text-xs text-white/85">{stripMarkdown(req)}</span>
                   </div>
@@ -109,7 +109,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
               </span>
               <div className="space-y-1">
                 {jd_requirements.nice_to_haves.map((req, i) => (
-                  <div key={i} className="flex items-start gap-2">
+                  <div key={`nice-to-have-${req.slice(0, 40)}-${i}`} className="flex items-start gap-2">
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/32" />
                     <span className="text-xs text-white/85">{stripMarkdown(req)}</span>
                   </div>
@@ -141,7 +141,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           {benchmark.required_skills?.length > 0 && (
             <div className="space-y-1.5 mb-3">
               {benchmark.required_skills.map((skill, i) => (
-                <div key={i} className="flex items-center justify-between gap-2">
+                <div key={`skill-${skill.requirement.slice(0, 40)}-${i}`} className="flex items-center justify-between gap-2">
                   <span className="text-xs text-white/85 truncate">{stripMarkdown(skill.requirement)}</span>
                   {importanceBadge(skill.importance)}
                 </div>
@@ -157,7 +157,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
               <div className="flex flex-wrap gap-1">
                 {benchmark.language_keywords.map((kw, i) => (
                   <span
-                    key={i}
+                    key={`kw-${kw}-${i}`}
                     className="rounded border border-white/10 bg-white/[0.08] px-1.5 py-0.5 text-[10px] text-white/70"
                   >
                     {kw}
