@@ -1128,7 +1128,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     const emitters = sseConnections.get(session_id);
     if (emitters) {
       for (const emitter of emitters) {
-        try { emitter(event as never); } catch { /* closed */ }
+        try { emitter(event); } catch { /* closed */ }
       }
     }
   };
@@ -1241,7 +1241,7 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
             type: 'pipeline_error',
             stage: staleStage,
             error: 'Pipeline state became stale after a server restart. Please restart the pipeline.',
-          } as never);
+          });
         } catch {
           // Connection may already be closed.
         }

@@ -68,7 +68,43 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
-  // Step 6: Give up — log raw snippet for debugging
+  // Step 6: Fix unquoted keys — { key: "value" } → { "key": "value" }
+  const quotedKeys = aggressive.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
+  try {
+    return JSON.parse(quotedKeys) as T;
+  } catch {
+    // continue
+  }
+
+  // Step 7: Partial JSON truncation — close unclosed braces/brackets
+  // Common with Z.AI timeouts. Count opens vs closes and append missing closers.
+  function closePartial(s: string): string {
+    const stack: string[] = [];
+    let inString = false;
+    let escape = false;
+    for (const ch of s) {
+      if (escape) { escape = false; continue; }
+      if (ch === '\\' && inString) { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') stack.push('}');
+      else if (ch === '[') stack.push(']');
+      else if (ch === '}' || ch === ']') stack.pop();
+    }
+    // Remove trailing comma before we close, then append missing closers
+    return s.replace(/,\s*$/, '') + stack.reverse().join('');
+  }
+
+  const closed = closePartial(quotedKeys);
+  if (closed !== quotedKeys) {
+    try {
+      return JSON.parse(closed) as T;
+    } catch {
+      // continue
+    }
+  }
+
+  // Step 8: Give up — log raw snippet for debugging
   logger.warn({ rawSnippet: text.substring(0, 300) }, 'Failed to repair JSON');
   return null;
 }

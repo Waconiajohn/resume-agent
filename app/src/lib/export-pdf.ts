@@ -52,8 +52,14 @@ function sanitizePdfText(input: string): string {
     .replace(/[\u00BD]/g, '1/2')                       // vulgar fraction 1/2
     .replace(/[\u00BC]/g, '1/4')                       // vulgar fraction 1/4
     .replace(/[\u00BE]/g, '3/4')                       // vulgar fraction 3/4
-    // Strip remaining non-ASCII (silent drop, not ?)
-    .replace(/[^\x20-\x7E]/g, '')
+    // Strip only actual control characters and problematic invisible characters.
+    // Preserve all printable Unicode (accented chars, CJK, etc.).
+    // U+0000-U+0008, U+000B-U+000C, U+000E-U+001F: C0 controls (keep \t \n \r)
+    // U+007F: DEL
+    // U+200B-U+200F: zero-width chars
+    // U+2028-U+2029: line/paragraph separators
+    // U+FEFF: BOM / zero-width no-break space
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\u200B-\u200F\u2028\u2029\uFEFF]/g, '')
     .trim();
 }
 

@@ -650,7 +650,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
                 suggestions: enriched.length > 0 ? enriched : undefined,
               });
             })
-            .catch(() => { /* swallow — deterministic suggestions are sufficient */ });
+            .catch((err: unknown) => {
+              log.warn({ err }, 'Enriched suggestion generation failed — using deterministic suggestions');
+            });
         }
 
         // Emit section for progressive rendering / re-review

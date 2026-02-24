@@ -574,7 +574,10 @@ export class ZAIProvider implements LLMProvider {
     const choice = data.choices?.[0];
     const message = choice?.message;
 
-    const text = message?.content ?? '';
+    const rawContent = message?.content;
+    const text = typeof rawContent === 'string'
+      ? rawContent
+      : (rawContent != null ? JSON.stringify(rawContent) : '');
     const tool_calls: ToolCall[] = [];
 
     if (message?.tool_calls) {

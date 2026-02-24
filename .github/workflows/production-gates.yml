@@ -54,6 +54,9 @@ jobs:
       - name: Verify app
         run: npm run verify
 
+      - name: Run tests
+        run: npx vitest run
+
   server-verify:
     name: Server Verify
     runs-on: ubuntu-latest
@@ -77,6 +80,9 @@ jobs:
 
       - name: Verify server
         run: npm run verify
+
+      - name: Run tests
+        run: npx vitest run
 
   migration-drift:
     name: Migration Drift Gate

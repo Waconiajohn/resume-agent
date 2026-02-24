@@ -12,11 +12,14 @@ import { saveSessionCheckpoint } from '../lib/save-session-checkpoint.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
+import type { PipelineSSEEvent } from '../agents/types.js';
 
 const sessions = new Hono();
 
-const sseConnections = new Map<string, Array<(event: SSEEvent) => void>>();
-const sseEmitterOwners = new WeakMap<(event: SSEEvent) => void, string>();
+type AnySSEEvent = SSEEvent | PipelineSSEEvent;
+
+const sseConnections = new Map<string, Array<(event: AnySSEEvent) => void>>();
+const sseEmitterOwners = new WeakMap<(event: AnySSEEvent) => void, string>();
 let totalSSEConnections = 0;
 
 // Track SSE connections per user to prevent resource exhaustion
@@ -53,7 +56,7 @@ function isValidUuid(value: string): boolean {
   return UUID_RE.test(value.trim());
 }
 
-function addSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
+function addSSEConnection(sessionId: string, userId: string, emitter: (event: AnySSEEvent) => void): void {
   if (!sseConnections.has(sessionId)) {
     sseConnections.set(sessionId, []);
   }
@@ -63,7 +66,7 @@ function addSSEConnection(sessionId: string, userId: string, emitter: (event: SS
   sseConnectionsByUser.set(userId, (sseConnectionsByUser.get(userId) ?? 0) + 1);
 }
 
-function removeSSEConnection(sessionId: string, userId: string, emitter: (event: SSEEvent) => void): void {
+function removeSSEConnection(sessionId: string, userId: string, emitter: (event: AnySSEEvent) => void): void {
   const ownerId = sseEmitterOwners.get(emitter) ?? userId;
   const emitters = sseConnections.get(sessionId);
   let removed = false;
@@ -253,7 +256,7 @@ sessions.get('/:id/sse', async (c) => {
   }
 
   return streamSSE(c, async (stream) => {
-    let emitter: ((event: SSEEvent) => void) | null = null;
+    let emitter: ((event: AnySSEEvent) => void) | null = null;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
     let connectionClosed = false;
     const cleanupConnection = () => {
@@ -261,7 +264,7 @@ sessions.get('/:id/sse', async (c) => {
       connectionClosed = true;
       removeSSEConnection(sessionId, user.id, emitter);
     };
-    emitter = (event: SSEEvent) => {
+    emitter = (event: AnySSEEvent) => {
       void stream.writeSSE({
         event: event.type,
         data: JSON.stringify(event),
@@ -637,7 +640,7 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 
     await ctx.loadMasterResume(supabaseAdmin);
 
-    const emit = (event: SSEEvent) => {
+    const emit = (event: AnySSEEvent) => {
       const emitters = sseConnections.get(sessionId);
       if (emitters) {
         for (const emitter of [...emitters]) {
