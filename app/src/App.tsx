@@ -60,6 +60,7 @@ export default function App() {
     positioningProfileFound,
     isPipelineGateActive,
     setIsPipelineGateActive,
+    approvedSections,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   const [view, setView] = useState<View>('landing');
@@ -257,7 +258,13 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="h-screen bg-surface">
-        <Header email={user.email} onSignOut={handleSignOut} />
+        <Header
+          email={user.email}
+          onSignOut={handleSignOut}
+          pipelineStage={view === 'coach' ? (pipelineStage ?? currentPhase) : null}
+          isProcessing={view === 'coach' ? isProcessing : false}
+          sessionComplete={view === 'coach' ? (sessionComplete ?? false) : false}
+        />
 
       {view === 'landing' && (
         <LandingScreen
@@ -319,6 +326,7 @@ export default function App() {
           onPipelineRespond={handlePipelineRespond}
           positioningProfileFound={positioningProfileFound}
           onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
+          approvedSections={approvedSections}
         />
       )}
       </div>

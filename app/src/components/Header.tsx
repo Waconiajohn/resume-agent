@@ -1,12 +1,16 @@
 import { LogOut, Sparkles } from 'lucide-react';
 import { GlassButton } from './GlassButton';
+import { PipelineProgressBar } from './PipelineProgressBar';
 
 interface HeaderProps {
   email?: string;
   onSignOut: () => void;
+  pipelineStage?: string | null;
+  isProcessing?: boolean;
+  sessionComplete?: boolean;
 }
 
-export function Header({ email, onSignOut }: HeaderProps) {
+export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionComplete }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.1] bg-[linear-gradient(180deg,rgba(15,20,30,0.78),rgba(11,16,24,0.68))] backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
@@ -24,6 +28,11 @@ export function Header({ email, onSignOut }: HeaderProps) {
           </div>
         )}
       </div>
+      <PipelineProgressBar
+        pipelineStage={pipelineStage ?? null}
+        isProcessing={isProcessing ?? false}
+        sessionComplete={sessionComplete ?? false}
+      />
     </header>
   );
 }

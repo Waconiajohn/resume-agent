@@ -140,7 +140,6 @@ export function PipelineIntakeForm({
     }
   }, [onLoadSavedResume]);
 
-  const latestSavedResumeId = savedResumes[0]?.id ?? null;
   const hasDefaultSavedResume = Boolean(defaultResumeId && initialResumeText?.trim());
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
@@ -198,33 +197,7 @@ export function PipelineIntakeForm({
                 Resume <span className="text-white/62">*</span>
               </label>
               <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                <div className="mb-2 text-xs font-medium text-white/72">Quick Start Sources</div>
-                <div className="flex flex-wrap gap-2">
-                  <GlassButton
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      if (!initialResumeText?.trim()) return;
-                      setResumeText(initialResumeText);
-                      setSavedResumeLoadError(null);
-                    }}
-                    disabled={loading || fileLoading || !hasDefaultSavedResume}
-                    className="h-auto px-3 py-2 text-xs"
-                  >
-                    Use Default Saved Resume
-                  </GlassButton>
-                  <GlassButton
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      if (!latestSavedResumeId) return;
-                      void loadSavedResume(latestSavedResumeId);
-                    }}
-                    disabled={loading || fileLoading || savedResumeLoadLoading || !latestSavedResumeId}
-                    className="h-auto px-3 py-2 text-xs"
-                  >
-                    {savedResumeLoadLoading ? 'Loading...' : 'Use Most Recent Saved'}
-                  </GlassButton>
+                {savedResumes.length === 0 ? (
                   <GlassButton
                     type="button"
                     variant="ghost"
@@ -234,39 +207,70 @@ export function PipelineIntakeForm({
                   >
                     {fileLoading ? 'Reading Resume File...' : 'Upload Resume File'}
                   </GlassButton>
-                </div>
-
-                {savedResumes.length > 0 && onLoadSavedResume && (
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <label htmlFor="saved-resume-select" className="text-xs text-white/60">
-                      Saved resume:
-                    </label>
-                    <select
-                      id="saved-resume-select"
-                      value={selectedSavedResumeId}
-                      onChange={(e) => setSelectedSavedResumeId(e.target.value)}
-                      disabled={loading || savedResumeLoadLoading}
-                      className="min-w-0 flex-1 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-xs text-white/85 outline-none focus:border-[#afc4ff]/40"
-                    >
-                      {savedResumes.map((resume) => (
-                        <option key={resume.id} value={resume.id} className="bg-[#0a0d14] text-white">
-                          {resume.is_default ? 'Default • ' : ''}v{resume.version} • {new Date(resume.updated_at).toLocaleDateString()}
-                        </option>
-                      ))}
-                    </select>
+                ) : (
+                  <>
+                    <div className="mb-2 text-xs font-medium text-white/72">Start from a saved resume</div>
+                    {hasDefaultSavedResume && (
+                      <div className="mb-2">
+                        <GlassButton
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            if (!initialResumeText?.trim()) return;
+                            setResumeText(initialResumeText);
+                            setSavedResumeLoadError(null);
+                          }}
+                          disabled={loading || fileLoading}
+                          className="h-auto px-3 py-2 text-xs"
+                        >
+                          Use Default Resume
+                        </GlassButton>
+                      </div>
+                    )}
+                    {onLoadSavedResume && (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <select
+                          id="saved-resume-select"
+                          value={selectedSavedResumeId}
+                          onChange={(e) => setSelectedSavedResumeId(e.target.value)}
+                          disabled={loading || savedResumeLoadLoading}
+                          className="min-w-0 flex-1 rounded-lg border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-xs text-white/85 outline-none focus:border-[#afc4ff]/40"
+                        >
+                          {savedResumes.map((resume) => (
+                            <option key={resume.id} value={resume.id} className="bg-[#0a0d14] text-white">
+                              {resume.is_default ? 'Default • ' : ''}v{resume.version} • {new Date(resume.updated_at).toLocaleDateString()}
+                            </option>
+                          ))}
+                        </select>
+                        <GlassButton
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            if (!selectedSavedResumeId) return;
+                            void loadSavedResume(selectedSavedResumeId);
+                          }}
+                          disabled={loading || savedResumeLoadLoading || !selectedSavedResumeId}
+                          className="h-auto px-3 py-2 text-xs"
+                        >
+                          {savedResumeLoadLoading ? 'Loading...' : 'Load Selected'}
+                        </GlassButton>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 my-2">
+                      <div className="flex-1 border-t border-white/[0.08]" />
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider">or start fresh</span>
+                      <div className="flex-1 border-t border-white/[0.08]" />
+                    </div>
                     <GlassButton
                       type="button"
                       variant="ghost"
-                      onClick={() => {
-                        if (!selectedSavedResumeId) return;
-                        void loadSavedResume(selectedSavedResumeId);
-                      }}
-                      disabled={loading || savedResumeLoadLoading || !selectedSavedResumeId}
+                      onClick={handleFileClick}
+                      disabled={loading || fileLoading}
                       className="h-auto px-3 py-2 text-xs"
                     >
-                      Load Selected
+                      {fileLoading ? 'Reading Resume File...' : 'Upload Resume File'}
                     </GlassButton>
-                  </div>
+                  </>
                 )}
                 {savedResumeLoadError && (
                   <p className="mt-2 text-xs text-red-400" role="alert">{savedResumeLoadError}</p>
@@ -380,7 +384,7 @@ export function PipelineIntakeForm({
             {/* Workflow mode */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white/80" htmlFor="workflow-mode">
-                Session Mode
+                How much time do you have?
               </label>
               <select
                 id="workflow-mode"
@@ -390,17 +394,17 @@ export function PipelineIntakeForm({
                 className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2.5 text-sm text-white/90 outline-none focus:border-[#afc4ff]/45"
               >
                 <option value="fast_draft" className="bg-[#0a0d14] text-white">
-                  Fast Draft (fewer questions, quicker first resume)
+                  Quick Review (~15 min)
                 </option>
                 <option value="balanced" className="bg-[#0a0d14] text-white">
-                  Balanced (recommended)
+                  Standard (~30 min) — Recommended
                 </option>
                 <option value="deep_dive" className="bg-[#0a0d14] text-white">
-                  Deep Dive (more questioning, max detail)
+                  Thorough (~45+ min)
                 </option>
               </select>
               <p className="text-xs text-white/50">
-                You can still move around the workspace and refine later. This mainly changes how aggressively the interview asks follow-up questions.
+                Choose based on how much time you have. You can always refine later.
               </p>
             </div>
 

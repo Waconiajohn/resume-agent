@@ -3,6 +3,7 @@ import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, Pipelin
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData, SectionWorkbenchContext, SectionSuggestion } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
+import { requestNotificationPermission, sendGateNotification } from '@/lib/notifications';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 const MAX_TOOL_STATUS_ENTRIES = 20;
@@ -193,6 +194,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [positioningProfileFound, setPositioningProfileFound] = useState<{ profile: unknown; updated_at: string } | null>(null);
   const [blueprintReady, setBlueprintReady] = useState<unknown>(null);
   const [sectionDraft, setSectionDraft] = useState<{ section: string; content: string } | null>(null);
+  const [approvedSections, setApprovedSections] = useState<Record<string, string>>({});
   const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
   // Ref mirror so pipeline_complete handler can read latest quality scores
   const qualityScoresRef = useRef<QualityScores | null>(null);
@@ -298,6 +300,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setPositioningProfileFound(null);
     setBlueprintReady(null);
     setSectionDraft(null);
+    setApprovedSections({});
     sectionsMapRef.current = {};
     lastTextCompleteRef.current = '';
     lastSeqRef.current = 0;
@@ -686,6 +689,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   setPipelineStage(data.stage as PipelineStage);
                   setCurrentPhase(data.stage as string);
                   setIsProcessing(true);
+                  if (data.stage === 'intake') {
+                    requestNotificationPermission();
+                  }
                   setMessages((prev) => [
                     ...prev,
                     {
@@ -728,6 +734,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     category_progress: data.category_progress as CategoryProgress[] | undefined,
                     encouraging_text: q.encouraging_text,
                   } as PanelData);
+                  sendGateNotification('Interview question is ready');
                   break;
                 }
 
@@ -747,6 +754,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     questions: data.questions,
                     current_index: data.current_index ?? 0,
                   } as PanelData);
+                  sendGateNotification('A questionnaire is ready for you');
                   break;
                 }
 
@@ -779,6 +787,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     evidence_allocation_count: ((bp.evidence_allocation as Record<string, unknown>)?.selected_accomplishments as unknown[] ?? []).length,
                     keyword_count: Object.keys((bp.keyword_map as Record<string, unknown>) ?? {}).length,
                   } as PanelData);
+                  sendGateNotification('Blueprint is ready for your review');
                   break;
                 }
 
@@ -827,6 +836,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     review_token: (data.review_token as string | undefined) ?? undefined,
                     ...(contextForSection ? { context: contextForSection } : {}),
                   } as PanelData);
+                  sendGateNotification('Section is ready for review');
                   break;
                 }
 
@@ -844,7 +854,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 }
 
                 case 'section_approved': {
-                  // Acknowledgement only — no state update needed
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  const section = data.section as string;
+                  if (section && sectionsMapRef.current[section]) {
+                    setApprovedSections((prev) => ({ ...prev, [section]: sectionsMapRef.current[section] }));
+                  }
                   break;
                 }
 
@@ -1235,5 +1250,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     isPipelineGateActive,
     setIsPipelineGateActive,
     dismissSuggestion,
+    approvedSections,
   };
 }

@@ -47,6 +47,7 @@ interface CoachScreenProps {
   onSaveCurrentResumeAsBase?: (
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
+  approvedSections?: Record<string, string>;
 }
 
 type SnapshotMap = Partial<Record<WorkflowNodeKey, WorkspaceNodeSnapshot>>;
@@ -91,8 +92,8 @@ function renderNodeContentPlaceholder(nodeKey: WorkflowNodeKey, isActiveNode: bo
         </div>
         <p className="max-w-xl text-sm text-white/56">
           {isActiveNode
-            ? 'This step is active, but no visual work product has been emitted yet. The panel will appear as soon as the pipeline sends it.'
-            : 'No snapshot has been captured for this step yet. Continue the pipeline to generate work product for this node.'}
+            ? 'Your coach is working on this step. Results will appear here shortly.'
+            : 'This step hasn\'t been reached yet. Continue your session to see results here.'}
         </p>
       </GlassCard>
     </div>
@@ -351,6 +352,7 @@ export function CoachScreen({
   onPipelineRespond,
   positioningProfileFound,
   onSaveCurrentResumeAsBase,
+  approvedSections = {},
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
@@ -521,7 +523,7 @@ export function CoachScreen({
 
   const workflowErrorBanner = workflowSession.error && (
     <div className="mx-3 mt-3 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-4 py-2 text-xs text-amber-100/90">
-      Workflow sync: {workflowSession.error}
+      Having trouble loading the latest data. Please refresh the page.
     </div>
   );
 
@@ -569,14 +571,14 @@ export function CoachScreen({
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-2 flex items-center gap-2 px-1">
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
-              Work Product
+              Your Resume Progress
             </span>
             <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/70">
               {PHASE_LABELS[displayPhase] ?? displayPhase}
             </span>
             {!isViewingLiveNode && (
               <span className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2 py-0.5 text-[10px] text-white/58">
-                Historical snapshot (read-only)
+                Previous version
               </span>
             )}
           </div>
@@ -628,6 +630,7 @@ export function CoachScreen({
         resume={resume}
         onPipelineRespond={onPipelineRespond}
         onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
+        approvedSections={approvedSections}
         hideWorkProduct
       />
     </div>
@@ -663,7 +666,7 @@ export function CoachScreen({
   return (
     <WorkspaceShell
       title="Resume Workspace"
-      subtitle={`${nodeTitle(selectedNode)}${isViewingLiveNode ? '' : ' • snapshot'}${sessionId ? ` • ${sessionId.slice(0, 8)}` : ''}`}
+      subtitle={isViewingLiveNode ? nodeTitle(selectedNode) : `${nodeTitle(selectedNode)} — Previous version`}
       nodes={navItems}
       selectedNode={selectedNode}
       activeNode={activeNode}

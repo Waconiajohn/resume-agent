@@ -6,7 +6,9 @@ import { ChatMessage } from './ChatMessage';
 import { AskUserPrompt } from './AskUserPrompt';
 import { SafePanelContent } from './panels/panel-renderer';
 import { ResumePanel } from './ResumePanel';
+import { PartialResumePreview } from './panels/PartialResumePreview';
 import { PHASE_LABELS } from '@/constants/phases';
+import { cn } from '@/lib/utils';
 import type { ChatMessage as ChatMessageType, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
 import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
@@ -29,6 +31,7 @@ interface ChatPanelProps {
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
   hideWorkProduct?: boolean;
+  approvedSections?: Record<string, string>;
 }
 
 export function ChatPanel({
@@ -47,16 +50,18 @@ export function ChatPanel({
   onPipelineRespond,
   onSaveCurrentResumeAsBase,
   hideWorkProduct = false,
+  approvedSections = {},
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [showResumePreview, setShowResumePreview] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
   const isBusy = isProcessing || isPipelineGateActive || streamingText.length > 0 || tools.some((t) => t.status === 'running');
+  const isGateLocked = Boolean(isPipelineGateActive) && panelData != null
+    && panelData.type !== 'positioning_interview'; // positioning uses chat
   const canOpenResumePreview =
-    !!resume
-    && !!panelData
-    && (panelData.type === 'quality_dashboard' || panelData.type === 'completion');
+    (!!resume && !!panelData && (panelData.type === 'quality_dashboard' || panelData.type === 'completion'))
+    || Object.keys(approvedSections).length > 0;
 
   useEffect(() => {
     setShowResumePreview(false);
@@ -192,7 +197,11 @@ export function ChatPanel({
             </div>
             <div className="p-0">
               {showResumePreview ? (
-                <ResumePanel resume={resume} />
+                resume ? (
+                  <ResumePanel resume={resume} />
+                ) : (
+                  <PartialResumePreview approvedSections={approvedSections} />
+                )
               ) : (
                 <SafePanelContent
                   panelType={panelType}
@@ -223,12 +232,14 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
+              isGateLocked ? 'Use the panel above to continue' :
               phaseGate ? 'Or type your own response...' :
               askPrompt ? 'Answer the question above...' :
               'Type a message...'
             }
             rows={1}
-            className="flex-1"
+            disabled={isGateLocked}
+            className={cn('flex-1', isGateLocked && 'opacity-50')}
           />
           <GlassButton
             onClick={handleSubmit}
@@ -243,6 +254,9 @@ export function ChatPanel({
             )}
           </GlassButton>
         </div>
+        {isGateLocked && (
+          <p className="mt-1.5 text-center text-[10px] text-white/40">Respond using the panel to continue</p>
+        )}
       </div>
     </div>
   );

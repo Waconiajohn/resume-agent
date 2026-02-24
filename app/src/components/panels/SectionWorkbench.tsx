@@ -41,6 +41,7 @@ export function SectionWorkbench({
   const [localContent, setLocalContent] = useState(content);
   const [hasLocalEdits, setHasLocalEdits] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [isApprovalAnimating, setIsApprovalAnimating] = useState(false);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -62,6 +63,13 @@ export function SectionWorkbench({
     clearRefineWatchdog();
   }, [clearRefineWatchdog]);
 
+  const handleApproveWithAnimation = useCallback(() => {
+    setIsApprovalAnimating(true);
+    setTimeout(() => {
+      onApprove();
+    }, 400);
+  }, [onApprove]);
+
   // Reset local state on new server draft content OR a new review token.
   // Token-only changes can happen when the server reissues a draft with unchanged text.
   useEffect(() => {
@@ -69,6 +77,7 @@ export function SectionWorkbench({
     setHasLocalEdits(false);
     setUndoStack([]);
     setRedoStack([]);
+    setIsApprovalAnimating(false);
     unlockRefineState();
   }, [content, reviewToken, unlockRefineState]);
 
@@ -79,6 +88,7 @@ export function SectionWorkbench({
     setUndoStack([]);
     setRedoStack([]);
     setShowAdvanced(false);
+    setIsApprovalAnimating(false);
     unlockRefineState();
   }, [section, unlockRefineState]);
 
@@ -104,13 +114,13 @@ export function SectionWorkbench({
           onDirectEdit(localContent, reviewToken);
           setHasLocalEdits(false);
         } else {
-          onApprove();
+          handleApproveWithAnimation();
         }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [hasLocalEdits, isRefining, localContent, onApprove, onDirectEdit, reviewToken]);
+  }, [handleApproveWithAnimation, hasLocalEdits, isRefining, localContent, onApprove, onDirectEdit, reviewToken]);
 
   const handleLocalContentChange = useCallback(
     (updated: string) => {
@@ -204,7 +214,7 @@ export function SectionWorkbench({
   return (
     <div
       ref={rootRef}
-      className="flex h-full flex-col"
+      className="relative flex h-full flex-col"
       data-panel-root
     >
       {/* Progress dots — sticky */}
@@ -314,6 +324,15 @@ export function SectionWorkbench({
         </div>
       </div>
 
+      {isApprovalAnimating && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-emerald-500/[0.08] backdrop-blur-sm animate-[fadeIn_200ms_ease-out]">
+          <div className="flex flex-col items-center gap-2 animate-[scaleIn_300ms_ease-out]">
+            <Check className="h-8 w-8 text-emerald-400" />
+            <span className="text-sm font-medium text-emerald-300">Section approved</span>
+          </div>
+        </div>
+      )}
+
       {/* Sticky bottom CTA bar */}
       <div className="border-t border-white/[0.12] bg-black/30 backdrop-blur-sm px-5 py-3">
         <div className="mx-auto max-w-3xl">
@@ -375,7 +394,7 @@ export function SectionWorkbench({
               <GlassButton
                 variant="primary"
                 className={cn('flex-1', isRefining && 'opacity-50 pointer-events-none')}
-                onClick={onApprove}
+                onClick={handleApproveWithAnimation}
                 disabled={isRefining}
               >
                 <Check className="mr-1.5 h-3.5 w-3.5" />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Download, FileText, CheckCircle, Loader2, FileDown, Save } from 'lucide-react';
+import { buildPositioningSummaryText } from '@/lib/export-positioning-summary';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { resumeToText, downloadAsText } from '@/lib/export';
@@ -272,6 +273,33 @@ export function CompletionPanel({
             </div>
           </GlassCard>
         )}
+
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-[#afc4ff]" />
+            <h3 className="text-sm font-medium text-white/85">Positioning Summary</h3>
+          </div>
+          <p className="mb-3 text-xs text-white/50">
+            Download a text summary of your positioning results for this session.
+          </p>
+          <GlassButton
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              const summaryText = buildPositioningSummaryText(resume ?? null, data);
+              const filename = buildResumeFilename(
+                resume?.contact_info,
+                resume?.company_name,
+                'Positioning-Summary',
+                'txt',
+              );
+              downloadAsText(summaryText, filename);
+            }}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Download Positioning Summary
+          </GlassButton>
+        </GlassCard>
 
       </div>
     </div>

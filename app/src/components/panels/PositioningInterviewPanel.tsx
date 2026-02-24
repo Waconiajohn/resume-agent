@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, CheckCircle2, GitBranch, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronDown, GitBranch, MessageSquare, Sparkles } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { cn } from '@/lib/utils';
@@ -156,6 +156,33 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Why This Question ───────────────────────────────────────────────────────
+
+function WhyThisQuestion({ requirements }: { requirements: string[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex items-center gap-1.5 text-[11px] text-white/45 transition-colors hover:text-white/65"
+      >
+        <ChevronDown className={cn('h-3 w-3 transition-transform', isOpen && 'rotate-180')} />
+        Why we're asking
+      </button>
+      {isOpen && (
+        <GlassCard className="mt-2 px-3 py-2.5">
+          <p className="text-xs text-white/60 leading-relaxed">
+            This question helps us address: <span className="text-white/75">{requirements.join(', ')}</span>.
+            A strong answer here will strengthen your positioning for this role.
+          </p>
+        </GlassCard>
+      )}
     </div>
   );
 }
@@ -391,6 +418,11 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
                     </span>
                   ))}
                 </div>
+              )}
+
+              {/* Why we're asking — collapsible */}
+              {Array.isArray(current_question.requirement_map) && current_question.requirement_map.length > 0 && (
+                <WhyThisQuestion requirements={current_question.requirement_map} />
               )}
             </div>
 
