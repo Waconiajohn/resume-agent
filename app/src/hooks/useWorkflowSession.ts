@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PanelData, PanelType } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 import type { PositioningQuestion, CategoryProgress } from '@/types/session';
+import type { WorkflowReplanUpdate } from '@/types/session';
 import type {
   WorkflowNodeKey,
   WorkflowNodeStatus,
@@ -35,6 +36,31 @@ interface WorkflowSummaryResponse {
     version: number;
     created_at: string;
   }>;
+  replan: {
+    pending: boolean;
+    reason: 'benchmark_assumptions_updated';
+    stale_nodes: WorkflowNodeKey[];
+    requires_restart: boolean;
+    rebuild_from_stage: string | null;
+    benchmark_edit_version: number | null;
+    current_stage: string | null;
+  } | null;
+  draft_readiness: {
+    evidence_count: number;
+    minimum_evidence_target: number;
+    coverage_score: number;
+    coverage_threshold: number;
+    ready: boolean;
+    workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
+    stage: string;
+    note?: string;
+    version: number | null;
+    created_at: string | null;
+  } | null;
+  replan_status: (WorkflowReplanUpdate & {
+    version: number | null;
+    created_at: string | null;
+  }) | null;
 }
 
 interface WorkflowNodeArtifactsResponse {
@@ -67,15 +93,18 @@ interface UseWorkflowSessionResult {
   error: string | null;
   actionMessage: string | null;
   actionError: string | null;
+  actionRequiresRestart: boolean;
   isSavingBenchmarkAssumptions: boolean;
   isGenerateDraftNowPending: boolean;
+  isRestartPipelinePending: boolean;
   refreshSummary: () => Promise<void>;
   refreshNode: (nodeKey: WorkflowNodeKey) => Promise<void>;
   saveBenchmarkAssumptions: (
     assumptions: Record<string, unknown>,
     note?: string,
-  ) => Promise<{ success: boolean; message: string }>;
+  ) => Promise<{ success: boolean; message: string; requiresRestart?: boolean }>;
   generateDraftNow: () => Promise<{ success: boolean; message: string }>;
+  restartPipeline: () => Promise<{ success: boolean; message: string }>;
   clearActionMessage: () => void;
 }
 
@@ -88,6 +117,14 @@ function buildHeaders(accessToken: string | null): Record<string, string> {
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
+}
+
+function isLateBenchmarkEditStage(stage: string | null | undefined): boolean {
+  return stage === 'section_writing'
+    || stage === 'section_review'
+    || stage === 'quality_review'
+    || stage === 'revision'
+    || stage === 'complete';
 }
 
 function buildBlueprintReviewPanelData(payload: unknown): PanelData | null {
@@ -311,8 +348,10 @@ export function useWorkflowSession({
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionRequiresRestart, setActionRequiresRestart] = useState(false);
   const [isSavingBenchmarkAssumptions, setIsSavingBenchmarkAssumptions] = useState(false);
   const [isGenerateDraftNowPending, setIsGenerateDraftNowPending] = useState(false);
+  const [isRestartPipelinePending, setIsRestartPipelinePending] = useState(false);
   const accessTokenRef = useRef<string | null>(accessToken);
   const loadedNodeVersionsRef = useRef<Partial<Record<WorkflowNodeKey, string>>>({});
   const summaryAbortRef = useRef<AbortController | null>(null);
@@ -452,34 +491,68 @@ export function useWorkflowSession({
     setIsSavingBenchmarkAssumptions(true);
     setActionError(null);
     setActionMessage(null);
+    setActionRequiresRestart(false);
     try {
-      const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/benchmark/assumptions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...buildHeaders(accessTokenRef.current),
-        },
-        body: JSON.stringify({ assumptions, note }),
-      });
-      const data = await res.json().catch(() => ({} as { error?: string; status?: string }));
-      if (!res.ok) {
-        const message = data.error ?? `Failed to save benchmark assumptions (${res.status})`;
-        setActionError(message);
-        return { success: false, message };
+      const postAssumptions = async (confirmRebuild?: boolean) => {
+        const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/benchmark/assumptions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...buildHeaders(accessTokenRef.current),
+          },
+          body: JSON.stringify({ assumptions, note, ...(confirmRebuild ? { confirm_rebuild: true } : {}) }),
+        });
+        const data = await res.json().catch(() => ({} as { error?: string; status?: string; code?: string; message?: string }));
+        return { res, data };
+      };
+
+      let { res, data } = await postAssumptions();
+      if (!res.ok && (data as { code?: string }).code === 'BENCHMARK_REBUILD_CONFIRM_REQUIRED') {
+        const currentStage = summaryRef.current?.session?.pipeline_stage ?? currentPhase;
+        const stageLabel = currentStage ? `Current stage: ${currentStage}. ` : '';
+        const confirmationText = `${stageLabel}${(data as { message?: string }).message ?? 'This will rebuild downstream work from gap analysis onward.'}\n\nContinue?`;
+        const shouldConfirm = typeof window !== 'undefined'
+          ? window.confirm(confirmationText)
+          : isLateBenchmarkEditStage(currentStage);
+        if (!shouldConfirm) {
+          const cancelled = 'Benchmark update cancelled.';
+          setActionMessage(cancelled);
+          return { success: false, message: cancelled, requiresRestart: false };
+        }
+        ({ res, data } = await postAssumptions(true));
       }
-      const message = 'Benchmark assumptions saved. Dependent steps were marked stale.';
+      if (!res.ok) {
+        const message = (data as { message?: string; error?: string }).message
+          ?? (data as { error?: string }).error
+          ?? `Failed to save benchmark assumptions (${res.status})`;
+        setActionError(message);
+        setActionRequiresRestart(false);
+        return { success: false, message, requiresRestart: false };
+      }
+      const typed = data as {
+        applies_to_current_run?: boolean;
+        apply_mode?: string;
+        requires_restart?: boolean;
+      };
+      const message = typed.requires_restart
+        ? 'Benchmark assumptions saved. Because section writing already started, restart the pipeline to rebuild downstream work consistently from gap analysis.'
+        : typed.applies_to_current_run
+          ? 'Benchmark assumptions saved. The current run will apply them at the next safe checkpoint and regenerate downstream steps.'
+          : 'Benchmark assumptions saved. Dependent steps were marked stale.';
       setActionMessage(message);
+      setActionRequiresRestart(Boolean(typed.requires_restart));
       await refreshSummary();
       await refreshNode('benchmark');
-      return { success: true, message };
+      return { success: true, message, requiresRestart: Boolean(typed.requires_restart) };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Network error saving benchmark assumptions';
       setActionError(message);
-      return { success: false, message };
+      setActionRequiresRestart(false);
+      return { success: false, message, requiresRestart: false };
     } finally {
       setIsSavingBenchmarkAssumptions(false);
     }
-  }, [sessionId, refreshNode, refreshSummary]);
+  }, [sessionId, refreshNode, refreshSummary, currentPhase]);
 
   const generateDraftNow = useCallback(async () => {
     if (!sessionId || !accessTokenRef.current) {
@@ -488,6 +561,7 @@ export function useWorkflowSession({
     setIsGenerateDraftNowPending(true);
     setActionError(null);
     setActionMessage(null);
+    setActionRequiresRestart(false);
     try {
       const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/generate-draft-now`, {
         method: 'POST',
@@ -497,6 +571,7 @@ export function useWorkflowSession({
       if (!res.ok) {
         const message = data.message ?? data.error ?? `Failed to request draft-now (${res.status})`;
         setActionError(message);
+        setActionRequiresRestart(false);
         await refreshSummary();
         return { success: false, message };
       }
@@ -507,15 +582,50 @@ export function useWorkflowSession({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Network error requesting draft-now';
       setActionError(message);
+      setActionRequiresRestart(false);
       return { success: false, message };
     } finally {
       setIsGenerateDraftNowPending(false);
     }
   }, [sessionId, refreshSummary]);
 
+  const restartPipeline = useCallback(async () => {
+    if (!sessionId || !accessTokenRef.current) {
+      return { success: false, message: 'No active session.' };
+    }
+    setIsRestartPipelinePending(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/restart`, {
+        method: 'POST',
+        headers: buildHeaders(accessTokenRef.current),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      if (!res.ok) {
+        const message = data.message ?? data.error ?? `Failed to restart pipeline (${res.status})`;
+        setActionError(message);
+        await refreshSummary();
+        return { success: false, message };
+      }
+      const message = data.message ?? 'Restarted the pipeline from saved session inputs.';
+      setActionMessage(message);
+      setActionRequiresRestart(false);
+      await refreshSummary();
+      return { success: true, message };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Network error restarting pipeline';
+      setActionError(message);
+      return { success: false, message };
+    } finally {
+      setIsRestartPipelinePending(false);
+    }
+  }, [sessionId, refreshSummary]);
+
   const clearActionMessage = useCallback(() => {
     setActionMessage(null);
     setActionError(null);
+    setActionRequiresRestart(false);
   }, []);
 
   return {
@@ -527,12 +637,15 @@ export function useWorkflowSession({
     error,
     actionMessage,
     actionError,
+    actionRequiresRestart,
     isSavingBenchmarkAssumptions,
     isGenerateDraftNowPending,
+    isRestartPipelinePending,
     refreshSummary,
     refreshNode,
     saveBenchmarkAssumptions,
     generateDraftNow,
+    restartPipeline,
     clearActionMessage,
   };
 }

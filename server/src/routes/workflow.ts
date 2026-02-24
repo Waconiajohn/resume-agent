@@ -18,7 +18,7 @@ import {
   isWorkflowNodeKey,
   workflowNodeFromStage,
 } from '../lib/workflow-nodes.js';
-import { STALE_PIPELINE_MS } from './pipeline.js';
+import { STALE_PIPELINE_MS, pipeline as pipelineRouter } from './pipeline.js';
 
 const workflow = new Hono();
 workflow.use('*', authMiddleware);
@@ -84,6 +84,20 @@ async function requireOwnedSession(sessionId: string, userId: string) {
     .single();
   if (error || !data) return null;
   return data;
+}
+
+async function getLatestPipelineStartRequestArtifact(sessionId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('session_workflow_artifacts')
+    .select('payload, version, created_at')
+    .eq('session_id', sessionId)
+    .eq('node_key', 'overview')
+    .eq('artifact_type', 'pipeline_start_request')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ?? null;
 }
 
 async function persistPendingOrBufferedGateResponse(
@@ -181,7 +195,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
-  const [{ data: nodeRows }, { data: artifactRows }] = await Promise.all([
+  const [{ data: nodeRows }, { data: artifactRows }, { data: draftReadinessRow }, { data: replanStatusRow }] = await Promise.all([
     supabaseAdmin
       .from('session_workflow_nodes')
       .select('node_key, status, active_version, meta, updated_at')
@@ -193,6 +207,24 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       .eq('session_id', sessionId)
       .order('created_at', { ascending: false })
       .limit(200),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'overview')
+      .eq('artifact_type', 'draft_readiness')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'overview')
+      .eq('artifact_type', 'workflow_replan_status')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const activeNode = phaseToWorkflowNode(session.pipeline_stage as string | null | undefined);
@@ -249,6 +281,12 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     }
   }
 
+  const replanStaleNodes = nodes.filter((node) => {
+    const meta = asRecord(node.meta);
+    return node.status === 'stale' && meta?.reason === 'benchmark_assumptions_updated';
+  });
+  const replanMeta = replanStaleNodes.length > 0 ? asRecord(replanStaleNodes[0]?.meta) : null;
+
   return c.json({
     session: {
       id: session.id,
@@ -261,6 +299,202 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     },
     nodes,
     latest_artifacts: Array.from(latestByNodeType.values()),
+    replan: replanStaleNodes.length > 0 ? {
+      pending: true,
+      reason: 'benchmark_assumptions_updated',
+      stale_nodes: replanStaleNodes.map((node) => node.node_key),
+      requires_restart: replanMeta?.requires_restart === true,
+      rebuild_from_stage: typeof replanMeta?.rebuild_from_stage === 'string' ? replanMeta.rebuild_from_stage : null,
+      benchmark_edit_version: typeof replanMeta?.benchmark_assumptions_version === 'number'
+        ? replanMeta.benchmark_assumptions_version
+        : null,
+      current_stage: session.pipeline_stage ?? null,
+    } : null,
+    draft_readiness: (() => {
+      const payload = asRecord(draftReadinessRow?.payload);
+      if (!payload) return null;
+      return {
+        evidence_count: typeof payload.evidence_count === 'number' ? payload.evidence_count : 0,
+        minimum_evidence_target: typeof payload.minimum_evidence_target === 'number' ? payload.minimum_evidence_target : 0,
+        coverage_score: typeof payload.coverage_score === 'number' ? payload.coverage_score : 0,
+        coverage_threshold: typeof payload.coverage_threshold === 'number' ? payload.coverage_threshold : 0,
+        ready: payload.ready === true,
+        workflow_mode: payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
+          ? payload.workflow_mode
+          : 'balanced',
+        stage: typeof payload.stage === 'string' ? payload.stage : 'gap_analysis',
+        note: typeof payload.note === 'string' ? payload.note : undefined,
+        version: typeof draftReadinessRow?.version === 'number' ? draftReadinessRow.version : null,
+        created_at: draftReadinessRow?.created_at ?? null,
+      };
+    })(),
+    replan_status: (() => {
+      const payload = asRecord(replanStatusRow?.payload);
+      if (!payload) return null;
+      const type = typeof payload.type === 'string' ? payload.type : '';
+      const state = type === 'workflow_replan_started'
+        ? 'in_progress'
+        : type === 'workflow_replan_completed'
+          ? 'completed'
+          : type === 'workflow_replan_requested'
+            ? 'requested'
+            : null;
+      if (!state) return null;
+      const currentStage = typeof payload.current_stage === 'string' ? payload.current_stage : null;
+      if (!currentStage) return null;
+      return {
+        state,
+        reason: payload.reason === 'benchmark_assumptions_updated' ? payload.reason : 'benchmark_assumptions_updated',
+        benchmark_edit_version: typeof payload.benchmark_edit_version === 'number' ? payload.benchmark_edit_version : 0,
+        rebuild_from_stage: 'gap_analysis',
+        requires_restart: payload.requires_restart === true,
+        current_stage: currentStage,
+        phase: payload.phase === 'apply_benchmark_overrides' || payload.phase === 'refresh_gap_analysis' || payload.phase === 'rebuild_blueprint'
+          ? payload.phase
+          : undefined,
+        rebuilt_through_stage: payload.rebuilt_through_stage === 'research'
+          || payload.rebuilt_through_stage === 'gap_analysis'
+          || payload.rebuilt_through_stage === 'architect'
+          ? payload.rebuilt_through_stage
+          : undefined,
+        stale_nodes: Array.isArray(payload.stale_nodes)
+          ? payload.stale_nodes.filter((n: unknown) => typeof n === 'string').slice(0, 8)
+          : undefined,
+        message: typeof payload.message === 'string' ? payload.message : undefined,
+        updated_at: replanStatusRow?.created_at ?? new Date().toISOString(),
+        version: typeof replanStatusRow?.version === 'number' ? replanStatusRow.version : null,
+        created_at: replanStatusRow?.created_at ?? null,
+      };
+    })(),
+  });
+});
+
+workflow.get('/:sessionId/restart-inputs', rateLimitMiddleware(60, 60_000), async (c) => {
+  const user = c.get('user');
+  const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
+
+  const session = await requireOwnedSession(sessionId, user.id);
+  if (!session) return c.json({ error: 'Session not found' }, 404);
+
+  let artifact: Awaited<ReturnType<typeof getLatestPipelineStartRequestArtifact>>;
+  try {
+    artifact = await getLatestPipelineStartRequestArtifact(sessionId);
+  } catch {
+    return c.json({ error: 'Failed to load restart inputs' }, 500);
+  }
+  const payload = asRecord(artifact?.payload);
+  if (!payload) {
+    return c.json({ error: 'No restart inputs are available for this session yet.' }, 404);
+  }
+
+  const rawResumeText = typeof payload.raw_resume_text === 'string' ? payload.raw_resume_text : '';
+  const jobDescription = typeof payload.job_description_resolved === 'string'
+    ? payload.job_description_resolved
+    : (typeof payload.job_description_input === 'string' ? payload.job_description_input : '');
+  const companyName = typeof payload.company_name === 'string' ? payload.company_name : '';
+  if (!rawResumeText || !jobDescription || !companyName) {
+    return c.json({ error: 'Stored restart inputs are incomplete for this session.' }, 409);
+  }
+
+  return c.json({
+    session_id: sessionId,
+    version: artifact?.version ?? null,
+    created_at: artifact?.created_at ?? null,
+    inputs: {
+      raw_resume_text: rawResumeText,
+      job_description: jobDescription,
+      company_name: companyName,
+      workflow_mode: payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
+        ? payload.workflow_mode
+        : 'balanced',
+      minimum_evidence_target: typeof payload.minimum_evidence_target === 'number'
+        ? payload.minimum_evidence_target
+        : null,
+      resume_priority: typeof payload.resume_priority === 'string' ? payload.resume_priority : null,
+      seniority_delta: typeof payload.seniority_delta === 'string' ? payload.seniority_delta : null,
+    },
+  });
+});
+
+workflow.post('/:sessionId/restart', rateLimitMiddleware(20, 60_000), async (c) => {
+  const user = c.get('user');
+  const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
+
+  const session = await requireOwnedSession(sessionId, user.id);
+  if (!session) return c.json({ error: 'Session not found' }, 404);
+
+  let artifact: Awaited<ReturnType<typeof getLatestPipelineStartRequestArtifact>>;
+  try {
+    artifact = await getLatestPipelineStartRequestArtifact(sessionId);
+  } catch {
+    return c.json({ error: 'Failed to load restart inputs' }, 500);
+  }
+  const payload = asRecord(artifact?.payload);
+  if (!payload) {
+    return c.json({ error: 'No restart inputs are available for this session yet.' }, 404);
+  }
+
+  const rawResumeText = typeof payload.raw_resume_text === 'string' ? payload.raw_resume_text : '';
+  const jobDescription = typeof payload.job_description_resolved === 'string'
+    ? payload.job_description_resolved
+    : (typeof payload.job_description_input === 'string' ? payload.job_description_input : '');
+  const companyName = typeof payload.company_name === 'string' ? payload.company_name : '';
+  if (!rawResumeText || !jobDescription || !companyName) {
+    return c.json({ error: 'Stored restart inputs are incomplete for this session.' }, 409);
+  }
+
+  const startBody = {
+    session_id: sessionId,
+    raw_resume_text: rawResumeText,
+    job_description: jobDescription,
+    company_name: companyName,
+    workflow_mode: payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
+      ? payload.workflow_mode
+      : 'balanced',
+    minimum_evidence_target: typeof payload.minimum_evidence_target === 'number'
+      ? payload.minimum_evidence_target
+      : undefined,
+    resume_priority: typeof payload.resume_priority === 'string' ? payload.resume_priority : undefined,
+    seniority_delta: typeof payload.seniority_delta === 'string' ? payload.seniority_delta : undefined,
+  };
+
+  const authHeader = c.req.header('Authorization');
+  const proxyRequest = new Request('http://internal/pipeline/start', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authHeader ? { Authorization: authHeader } : {}),
+    },
+    body: JSON.stringify(startBody),
+  });
+
+  let proxyResponse: Response;
+  try {
+    proxyResponse = await pipelineRouter.fetch(proxyRequest);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to restart pipeline';
+    return c.json({ error: message }, 500);
+  }
+
+  const proxyData = await proxyResponse.json().catch(() => ({} as { error?: string; status?: string }));
+  if (!proxyResponse.ok) {
+    const body = {
+      ...(proxyData && typeof proxyData === 'object' ? proxyData : {}),
+      restart_source: 'server_artifact',
+    };
+    return new Response(JSON.stringify(body), {
+      status: proxyResponse.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  return c.json({
+    ...(proxyData && typeof proxyData === 'object' ? proxyData : {}),
+    restart_source: 'server_artifact',
+    restarted_from_artifact_version: artifact?.version ?? null,
+    restart_inputs_created_at: artifact?.created_at ?? null,
   });
 });
 
@@ -400,7 +634,16 @@ const benchmarkAssumptionsSchema = z.object({
     'Too many assumption keys (max 50)',
   ),
   note: z.string().max(1000).optional(),
+  confirm_rebuild: z.boolean().optional(),
 });
+
+const BENCHMARK_REBUILD_CONFIRMATION_STAGES = new Set([
+  'section_writing',
+  'section_review',
+  'quality_review',
+  'revision',
+  'complete',
+]);
 
 workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
@@ -414,6 +657,18 @@ workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_00
   const parsed = benchmarkAssumptionsSchema.safeParse(parsedBody.data);
   if (!parsed.success) return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
 
+  const currentStage = typeof session.pipeline_stage === 'string' ? session.pipeline_stage : null;
+  const lateStageEdit = currentStage ? BENCHMARK_REBUILD_CONFIRMATION_STAGES.has(currentStage) : false;
+  if (lateStageEdit && parsed.data.confirm_rebuild !== true) {
+    return c.json({
+      error: 'Changing the benchmark after section writing starts requires a rebuild of downstream work.',
+      code: 'BENCHMARK_REBUILD_CONFIRM_REQUIRED',
+      current_stage: currentStage,
+      rebuild_from_stage: 'gap_analysis',
+      message: 'This will regenerate gap analysis, blueprint, sections, quality review, and export outputs using the updated benchmark.',
+    }, 409);
+  }
+
   let version = 0;
   try {
     version = await insertArtifact(sessionId, 'benchmark', 'benchmark_assumptions_edit', {
@@ -425,6 +680,22 @@ workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_00
     return c.json({ error: 'Failed to persist benchmark assumptions' }, 500);
   }
 
+  void insertArtifact(sessionId, 'overview', 'workflow_replan_status', {
+    type: 'workflow_replan_requested',
+    reason: 'benchmark_assumptions_updated',
+    benchmark_edit_version: version,
+    rebuild_from_stage: 'gap_analysis',
+    requires_restart: lateStageEdit && session.pipeline_status === 'running',
+    current_stage: (typeof session.pipeline_stage === 'string' ? session.pipeline_stage : 'research'),
+    stale_nodes: ['gaps', 'questions', 'blueprint', 'sections', 'quality', 'export'],
+    message: lateStageEdit
+      ? 'Benchmark assumptions were updated after section writing started. Restart is required to rebuild downstream work consistently.'
+      : 'Benchmark assumptions were updated. The current run will replan downstream work at the next safe checkpoint.',
+    requested_at: new Date().toISOString(),
+  }, 'system', 'in_progress').catch(() => {
+    // best effort: summary can still infer from stale nodes
+  });
+
   const staleNodes = ['gaps', 'questions', 'blueprint', 'sections', 'quality', 'export'];
   await supabaseAdmin
     .from('session_workflow_nodes')
@@ -434,12 +705,69 @@ workflow.post('/:sessionId/benchmark/assumptions', rateLimitMiddleware(20, 60_00
         node_key: nodeKey,
         status: 'stale',
         updated_at: new Date().toISOString(),
-        meta: { reason: 'benchmark_assumptions_updated' },
+        meta: {
+          reason: 'benchmark_assumptions_updated',
+          benchmark_assumptions_version: version,
+          requires_restart: lateStageEdit && session.pipeline_status === 'running',
+          rebuild_from_stage: 'gap_analysis',
+        },
       })),
       { onConflict: 'session_id,node_key' },
     );
 
-  return c.json({ status: 'ok', node_key: 'benchmark', version, marked_stale: staleNodes });
+  const emitters = sseConnections.get(sessionId);
+  if (emitters && session.pipeline_status === 'running') {
+    for (const emitter of emitters) {
+      try {
+        emitter({
+          type: 'workflow_replan_requested',
+          reason: 'benchmark_assumptions_updated',
+          benchmark_edit_version: version,
+          rebuild_from_stage: 'gap_analysis',
+          requires_restart: lateStageEdit,
+          current_stage: (typeof session.pipeline_stage === 'string'
+            ? session.pipeline_stage
+            : 'research') as
+            | 'intake'
+            | 'positioning'
+            | 'research'
+            | 'gap_analysis'
+            | 'architect'
+            | 'architect_review'
+            | 'section_writing'
+            | 'section_review'
+            | 'quality_review'
+            | 'revision'
+            | 'complete',
+          stale_nodes: ['gaps', 'questions', 'blueprint', 'sections', 'quality', 'export'],
+          message: lateStageEdit
+            ? 'Benchmark assumptions were updated after section writing started. Restart is required to rebuild downstream work consistently.'
+            : 'Benchmark assumptions were updated. The current run will replan downstream work at the next safe checkpoint.',
+        });
+        emitter({
+          type: 'transparency',
+          stage: 'research',
+          message: lateStageEdit
+            ? 'Benchmark assumptions updated after section writing started. Downstream work was marked stale; restart the pipeline to rebuild consistently from gap analysis.'
+            : 'Benchmark assumptions updated. The current run will apply the revised benchmark at the next safe checkpoint and regenerate downstream analysis.',
+        });
+      } catch {
+        // connection may be closed
+      }
+    }
+  }
+
+  return c.json({
+    status: 'ok',
+    node_key: 'benchmark',
+    version,
+    marked_stale: staleNodes,
+    applies_to_current_run: session.pipeline_status === 'running' && !lateStageEdit,
+    apply_mode: lateStageEdit ? 'restart_required' : 'next_safe_checkpoint',
+    requires_restart: lateStageEdit && session.pipeline_status === 'running',
+    rebuild_confirmed: lateStageEdit && parsed.data.confirm_rebuild === true,
+    rebuild_from_stage: lateStageEdit ? 'gap_analysis' : null,
+  });
 });
 
 workflow.post('/:sessionId/generate-draft-now', rateLimitMiddleware(20, 60_000), async (c) => {

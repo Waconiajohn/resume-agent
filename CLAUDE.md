@@ -14,6 +14,29 @@ We take mid-level executives and optimally position them for every job they appl
 
 This philosophy must guide all LLM prompts, tool implementations, and UX decisions. When writing system prompts or section content, prioritize authentic positioning over embellishment.
 
+## Interaction Principles
+
+- Produce a useful draft as early as possible, then improve iteratively.
+- Ask the minimum number of questions required to materially improve quality.
+- Prefer targeted evidence capture over exhaustive interviewing.
+- The user may navigate non-linearly across workflow steps.
+- Benchmark assumptions and gap conclusions must be inspectable and editable.
+- If benchmark assumptions are edited before section writing, apply them to the current run at the next safe checkpoint.
+- If benchmark assumptions are edited after section writing starts, require confirmation and rebuild downstream work from gap analysis.
+- Never trap the user in a step when a safe fallback draft can be produced.
+- Preserve authenticity at all times; never fabricate experience, metrics, credentials, or scope.
+
+## Question Budget & Stop Conditions
+
+- Support three workflow modes: `fast_draft`, `balanced`, and `deep_dive`.
+- `fast_draft` should aggressively reduce friction via batched questions, bundled reviews, and auto-approval of lower-risk steps.
+- `balanced` should preserve quality while reducing unnecessary gates and section-by-section approvals.
+- `deep_dive` may use the full interactive review experience.
+- Questioning should stop when the evidence target and coverage confidence threshold are met.
+- If evidence target is met but must-have coverage confidence is still below threshold, ask only a small number of high-impact follow-up questions and then draft.
+- Deferred or skipped non-critical questions should not block draft generation.
+- High-risk authenticity/evidence-integrity issues remain blocking in all modes.
+
 ## Technical Overview
 
 - **Backend**: Hono + Node.js (port 3001)

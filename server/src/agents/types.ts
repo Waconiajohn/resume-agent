@@ -209,6 +209,7 @@ export interface ArchitectInput {
     resume_priority?: string;
     seniority_delta?: string;
     workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target?: number;
   };
 }
 
@@ -471,10 +472,12 @@ export interface PipelineState {
     resume_priority?: string;
     seniority_delta?: string;
     workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target?: number;
   };
   // Metadata
   positioning_profile_id?: string;    // if reusing saved profile
   positioning_reuse_mode?: 'reuse' | 'update' | 'fresh';
+  benchmark_override_version?: number;
   revision_count: number;
   token_usage: {
     input_tokens: number;
@@ -521,6 +524,18 @@ export type PipelineSSEEvent =
       }>;
       section_order: string[];
       sections_approved: string[];
+      review_strategy?: 'per_section' | 'bundled';
+      review_required_sections?: string[];
+      auto_approved_sections?: string[];
+      current_review_bundle_key?: 'headline' | 'core_experience' | 'supporting';
+      review_bundles?: Array<{
+        key: 'headline' | 'core_experience' | 'supporting';
+        label: string;
+        total_sections: number;
+        review_required: number;
+        reviewed_required: number;
+        status: 'pending' | 'in_progress' | 'complete' | 'auto_approved';
+      }>;
       suggestions?: SectionSuggestion[];
     }
   | { type: 'quality_scores'; scores: QualityScores }
@@ -563,6 +578,45 @@ export type PipelineSSEEvent =
     }
   | { type: 'pipeline_error'; stage: PipelineStage; error: string }
   | { type: 'transparency'; message: string; stage: PipelineStage }
+  | {
+      type: 'draft_readiness_update';
+      stage: PipelineStage;
+      workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
+      evidence_count: number;
+      minimum_evidence_target: number;
+      coverage_score: number;
+      coverage_threshold: number;
+      ready: boolean;
+      note?: string;
+    }
+  | {
+      type: 'workflow_replan_requested';
+      reason: 'benchmark_assumptions_updated';
+      benchmark_edit_version: number;
+      rebuild_from_stage: 'gap_analysis';
+      requires_restart: boolean;
+      current_stage: PipelineStage;
+      stale_nodes: Array<'gaps' | 'questions' | 'blueprint' | 'sections' | 'quality' | 'export'>;
+      message?: string;
+    }
+  | {
+      type: 'workflow_replan_started';
+      reason: 'benchmark_assumptions_updated';
+      benchmark_edit_version: number;
+      rebuild_from_stage: 'gap_analysis';
+      current_stage: PipelineStage;
+      phase: 'apply_benchmark_overrides' | 'refresh_gap_analysis' | 'rebuild_blueprint';
+      message?: string;
+    }
+  | {
+      type: 'workflow_replan_completed';
+      reason: 'benchmark_assumptions_updated';
+      benchmark_edit_version: number;
+      rebuild_from_stage: 'gap_analysis';
+      current_stage: PipelineStage;
+      rebuilt_through_stage: 'research' | 'gap_analysis' | 'architect';
+      message?: string;
+    }
   | { type: 'system_message'; content: string }
   | { type: 'section_error'; section: string; error: string }
   | { type: 'right_panel_update'; panel_type: string; data: Record<string, unknown> }

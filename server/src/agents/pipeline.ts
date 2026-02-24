@@ -25,7 +25,7 @@ import { runQualityReviewer } from './quality-reviewer.js';
 import { runAtsComplianceCheck, type AtsFinding } from './ats-rules.js';
 import { isQuestionnaireEnabled, GUIDED_SUGGESTIONS_ENABLED, type QuestionnaireStage } from '../lib/feature-flags.js';
 import { captureError } from '../lib/sentry.js';
-import { buildQuestionnaireEvent, makeQuestion } from '../lib/questionnaire-helpers.js';
+import { buildQuestionnaireEvent, makeQuestion, getSelectedLabels } from '../lib/questionnaire-helpers.js';
 import {
   generateDeterministicSuggestions,
   generateLLMEnrichedSuggestions,
@@ -39,6 +39,10 @@ import type {
   PipelineStage,
   PipelineSSEEvent,
   IntakeOutput,
+  ResearchOutput,
+  BenchmarkCandidate,
+  CompanyResearch,
+  JDAnalysis,
   PositioningProfile,
   PositioningQuestion,
   ArchitectOutput,
@@ -59,6 +63,64 @@ export type PipelineEmitter = (event: PipelineSSEEvent) => void;
  * and the orchestrator calls this to wait for user input.
  */
 export type WaitForUser = <T>(gate: string) => Promise<T>;
+
+function buildResearchDashboardPanelBenchmark(
+  benchmark: BenchmarkCandidate,
+  jdAnalysis: JDAnalysis,
+  company: CompanyResearch,
+): Record<string, unknown> {
+  const mustHaves = jdAnalysis.must_haves ?? [];
+  const requiredSkills = mustHaves.slice(0, 12).map((requirement, index) => ({
+    requirement,
+    importance: index < Math.min(5, mustHaves.length) ? 'critical' : 'important',
+    category: 'job_requirement',
+  }));
+
+  const sectionExpectations = benchmark.section_expectations ?? {};
+  const competitiveDifferentiators = [
+    sectionExpectations.summary,
+    sectionExpectations.experience,
+    sectionExpectations.skills,
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim())
+    .slice(0, 6);
+
+  return {
+    // Legacy UI-facing shape (still used by panels + benchmark inspector)
+    required_skills: requiredSkills,
+    experience_expectations: sectionExpectations.experience ?? benchmark.ideal_profile ?? '',
+    culture_fit_traits: company.culture_signals ?? [],
+    communication_style: company.culture_signals?.[0] ?? '',
+    industry_standards: [],
+    competitive_differentiators: competitiveDifferentiators,
+    language_keywords: benchmark.language_keywords ?? [],
+    ideal_candidate_summary: benchmark.ideal_profile ?? '',
+    // Preserve current v2 benchmark fields for transparency + future UI migration
+    ideal_profile: benchmark.ideal_profile ?? '',
+    section_expectations: sectionExpectations,
+  };
+}
+
+function emitResearchDashboardPanel(emit: PipelineEmitter, research: ResearchOutput) {
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'research_dashboard',
+    data: {
+      company: research.company_research,
+      jd_requirements: {
+        must_haves: research.jd_analysis.must_haves,
+        nice_to_haves: research.jd_analysis.nice_to_haves,
+        seniority_level: research.jd_analysis.seniority_level,
+      },
+      benchmark: buildResearchDashboardPanelBenchmark(
+        research.benchmark_candidate,
+        research.jd_analysis,
+        research.company_research,
+      ),
+    },
+  });
+}
 
 /**
  * Generic questionnaire helper — checks feature flag, emits questionnaire SSE event,
@@ -92,6 +154,7 @@ export interface PipelineConfig {
   job_description: string;
   company_name: string;
   workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+  minimum_evidence_target?: number;
   resume_priority?: 'authentic' | 'ats' | 'impact' | 'balanced';
   seniority_delta?: 'same' | 'one_up' | 'big_jump' | 'step_back';
   emit: PipelineEmitter;
@@ -125,16 +188,140 @@ const MAX_SECTION_REVIEW_TOKEN_CHARS = (() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
 })();
 
-function getPositioningQuestionBudget(mode: 'fast_draft' | 'balanced' | 'deep_dive' | undefined) {
+type WorkflowMode = 'fast_draft' | 'balanced' | 'deep_dive';
+type SectionReviewStrategy = 'per_section' | 'bundled';
+
+interface WorkflowModePolicy {
+  positioning: {
+    maxQuestions: number;
+    maxFollowUps: number;
+    useBatchQuestionnaire: boolean;
+    batchSize: number;
+  };
+  gapQuiz: {
+    enabled: boolean;
+    maxQuestions: number;
+  };
+  draftReadiness: {
+    coverageThreshold: number;
+    defaultMinimumEvidenceTarget: number;
+  };
+  reviews: {
+    architectBlocking: boolean;
+    sectionStrategy: SectionReviewStrategy;
+    maxExperienceRoleReviews: number;
+    qualityFixApproval: 'none' | 'high_only' | 'all_high';
+  };
+}
+
+function getWorkflowModePolicy(mode: WorkflowMode | undefined): WorkflowModePolicy {
   switch (mode) {
     case 'fast_draft':
-      return { maxQuestions: 8, maxFollowUps: 1 };
+      return {
+        positioning: { maxQuestions: 6, maxFollowUps: 1, useBatchQuestionnaire: true, batchSize: 4 },
+        gapQuiz: { enabled: false, maxQuestions: 0 },
+        draftReadiness: { coverageThreshold: 65, defaultMinimumEvidenceTarget: 5 },
+        reviews: {
+          architectBlocking: false,
+          sectionStrategy: 'bundled',
+          maxExperienceRoleReviews: 1,
+          qualityFixApproval: 'none',
+        },
+      };
     case 'deep_dive':
-      return { maxQuestions: Number.POSITIVE_INFINITY, maxFollowUps: MAX_FOLLOW_UPS };
+      return {
+        positioning: {
+          maxQuestions: Number.POSITIVE_INFINITY,
+          maxFollowUps: MAX_FOLLOW_UPS,
+          useBatchQuestionnaire: false,
+          batchSize: 1,
+        },
+        gapQuiz: { enabled: true, maxQuestions: 6 },
+        draftReadiness: { coverageThreshold: 80, defaultMinimumEvidenceTarget: 12 },
+        reviews: {
+          architectBlocking: true,
+          sectionStrategy: 'per_section',
+          maxExperienceRoleReviews: Number.POSITIVE_INFINITY,
+          qualityFixApproval: 'all_high',
+        },
+      };
     case 'balanced':
     default:
-      return { maxQuestions: 14, maxFollowUps: Math.min(MAX_FOLLOW_UPS, 3) };
+      return {
+        positioning: {
+          maxQuestions: 10,
+          maxFollowUps: Math.min(MAX_FOLLOW_UPS, 2),
+          useBatchQuestionnaire: true,
+          batchSize: 4,
+        },
+        gapQuiz: { enabled: true, maxQuestions: 3 },
+        draftReadiness: { coverageThreshold: 70, defaultMinimumEvidenceTarget: 8 },
+        reviews: {
+          architectBlocking: true,
+          sectionStrategy: 'bundled',
+          maxExperienceRoleReviews: 2,
+          qualityFixApproval: 'high_only',
+        },
+      };
   }
+}
+
+function getPositioningQuestionBudget(mode: WorkflowMode | undefined) {
+  return getWorkflowModePolicy(mode).positioning;
+}
+
+function getMinimumEvidenceTarget(
+  state: PipelineState,
+  policy: WorkflowModePolicy,
+): number {
+  const raw = state.user_preferences?.minimum_evidence_target;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return policy.draftReadiness.defaultMinimumEvidenceTarget;
+  }
+  return Math.min(20, Math.max(3, Math.round(raw)));
+}
+
+function estimateDraftReadiness(
+  state: PipelineState,
+  policy: WorkflowModePolicy,
+): {
+  evidenceCount: number;
+  minimumEvidenceTarget: number;
+  coverageScore: number;
+  ready: boolean;
+} {
+  const evidenceCount = state.positioning?.evidence_library?.length ?? 0;
+  const minimumEvidenceTarget = getMinimumEvidenceTarget(state, policy);
+  const coverageScore = state.gap_analysis?.coverage_score ?? 0;
+  return {
+    evidenceCount,
+    minimumEvidenceTarget,
+    coverageScore,
+    ready: evidenceCount >= minimumEvidenceTarget && coverageScore >= policy.draftReadiness.coverageThreshold,
+  };
+}
+
+function emitDraftReadinessUpdate(
+  emit: PipelineEmitter,
+  state: PipelineState,
+  policy: WorkflowModePolicy,
+  stage: PipelineStage,
+  workflowMode: WorkflowMode | undefined,
+  note?: string,
+) {
+  const readiness = estimateDraftReadiness(state, policy);
+  emit({
+    type: 'draft_readiness_update',
+    stage,
+    workflow_mode: workflowMode ?? 'balanced',
+    evidence_count: readiness.evidenceCount,
+    minimum_evidence_target: readiness.minimumEvidenceTarget,
+    coverage_score: readiness.coverageScore,
+    coverage_threshold: policy.draftReadiness.coverageThreshold,
+    ready: readiness.ready,
+    ...(note ? { note } : {}),
+  });
+  return readiness;
 }
 
 async function hasDraftNowRequest(sessionId: string): Promise<boolean> {
@@ -154,6 +341,129 @@ function isDraftNowGateResponse(response: unknown): boolean {
   if (!response || typeof response !== 'object' || Array.isArray(response)) return false;
   const payload = response as Record<string, unknown>;
   return payload.draft_now === true;
+}
+
+function asObjectRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function normalizeSeniorityLevel(value: unknown): JDAnalysis['seniority_level'] | null {
+  if (typeof value !== 'string') return null;
+  const lower = value.trim().toLowerCase();
+  if (lower === 'entry' || lower === 'mid' || lower === 'senior' || lower === 'executive') {
+    return lower;
+  }
+  return null;
+}
+
+async function applyLatestBenchmarkAssumptionsIfNeeded(
+  state: PipelineState,
+  emit: PipelineEmitter,
+  log: ReturnType<typeof createSessionLogger>,
+): Promise<boolean> {
+  if (!state.research) return false;
+  const { data, error } = await supabaseAdmin
+    .from('session_workflow_artifacts')
+    .select('version, payload, created_at')
+    .eq('session_id', state.session_id)
+    .eq('node_key', 'benchmark')
+    .eq('artifact_type', 'benchmark_assumptions_edit')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return false;
+  const version = Number(data.version ?? 0);
+  if (!Number.isFinite(version) || version <= (state.benchmark_override_version ?? 0)) {
+    return false;
+  }
+  const payload = asObjectRecord(data.payload);
+  const assumptions = asObjectRecord(payload?.assumptions);
+  if (!assumptions) {
+    state.benchmark_override_version = version;
+    return false;
+  }
+
+  emit({
+    type: 'workflow_replan_started',
+    reason: 'benchmark_assumptions_updated',
+    benchmark_edit_version: version,
+    rebuild_from_stage: 'gap_analysis',
+    current_stage: state.current_stage,
+    phase: 'apply_benchmark_overrides',
+    message: 'Applying updated benchmark assumptions to the current run.',
+  });
+
+  const benchmark = { ...state.research.benchmark_candidate };
+  const jd = { ...state.research.jd_analysis };
+  const company = { ...state.research.company_research };
+
+  if (typeof assumptions.company_name === 'string' && assumptions.company_name.trim()) {
+    company.company_name = assumptions.company_name.trim();
+    if (typeof jd.company === 'string') {
+      jd.company = assumptions.company_name.trim();
+    }
+  }
+  const seniority = normalizeSeniorityLevel(assumptions.seniority_level);
+  if (seniority) {
+    jd.seniority_level = seniority;
+  }
+  if (Array.isArray(assumptions.must_haves)) {
+    jd.must_haves = assumptions.must_haves
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      .map((v) => v.trim())
+      .slice(0, 40);
+  }
+  if (Array.isArray(assumptions.benchmark_keywords)) {
+    benchmark.language_keywords = assumptions.benchmark_keywords
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      .map((v) => v.trim())
+      .slice(0, 80);
+  }
+  const idealSummary = typeof assumptions.ideal_candidate_summary === 'string'
+    ? assumptions.ideal_candidate_summary.trim()
+    : '';
+  if (idealSummary) {
+    benchmark.ideal_profile = idealSummary;
+  }
+  if (Array.isArray(assumptions.competitive_differentiators)) {
+    const differentiators = assumptions.competitive_differentiators
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      .map((v) => v.trim())
+      .slice(0, 6);
+    benchmark.section_expectations = {
+      ...benchmark.section_expectations,
+      ...(differentiators[0] ? { summary: differentiators[0] } : {}),
+      ...(differentiators[1] ? { experience: differentiators[1] } : {}),
+      ...(differentiators[2] ? { skills: differentiators[2] } : {}),
+    };
+  }
+
+  state.research = {
+    ...state.research,
+    jd_analysis: jd,
+    company_research: company,
+    benchmark_candidate: benchmark,
+  };
+  state.benchmark_override_version = version;
+
+  emit({
+    type: 'transparency',
+    stage: state.current_stage,
+    message: 'Applied updated benchmark assumptions to the current run. Downstream analysis will use the revised benchmark.',
+  });
+  emit({
+    type: 'workflow_replan_completed',
+    reason: 'benchmark_assumptions_updated',
+    benchmark_edit_version: version,
+    rebuild_from_stage: 'gap_analysis',
+    current_stage: state.current_stage,
+    rebuilt_through_stage: 'research',
+    message: 'Updated benchmark assumptions are now active for the current run.',
+  });
+  emitResearchDashboardPanel(emit, state.research);
+  log.info({ benchmark_override_version: version }, 'Applied benchmark assumption overrides to current pipeline state');
+  return true;
 }
 
 interface FinalResumePayload {
@@ -201,7 +511,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     resume_priority: config.resume_priority ?? 'balanced',
     seniority_delta: config.seniority_delta,
     workflow_mode: config.workflow_mode,
+    minimum_evidence_target: config.minimum_evidence_target,
   };
+  const workflowModePolicy = getWorkflowModePolicy(config.workflow_mode);
   let researchAbort: AbortController | undefined;
   const stageTimingsMs: StageTimingMap = {};
   const stageStart = new Map<PipelineStage, number>();
@@ -266,6 +578,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     if (researchRaceResult.resolved) {
       state.research = researchRaceResult.data!;
+      await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
       markStageEnd('research');
       emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
       log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (within timeout)');
@@ -276,19 +589,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // Emit research dashboard if research is ready
     if (state.research) {
-      emit({
-        type: 'right_panel_update',
-        panel_type: 'research_dashboard',
-        data: {
-          company: state.research.company_research,
-          jd_requirements: {
-            must_haves: state.research.jd_analysis.must_haves,
-            nice_to_haves: state.research.jd_analysis.nice_to_haves,
-            seniority_level: state.research.jd_analysis.seniority_level,
-          },
-          benchmark: state.research.benchmark_candidate,
-        },
-      });
+      emitResearchDashboardPanel(emit, state.research);
     }
 
     // ─── Positioning Coach ──────────────────────────────────
@@ -335,25 +636,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           throw retryErr;
         }
       }
+      await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
       markStageEnd('research');
       emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
-      emit({
-        type: 'right_panel_update',
-        panel_type: 'research_dashboard',
-        data: {
-          company: state.research.company_research,
-          jd_requirements: {
-            must_haves: state.research.jd_analysis.must_haves,
-            nice_to_haves: state.research.jd_analysis.nice_to_haves,
-            seniority_level: state.research.jd_analysis.seniority_level,
-          },
-          benchmark: state.research.benchmark_candidate,
-        },
-      });
+      emitResearchDashboardPanel(emit, state.research);
       log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (after positioning)');
     }
 
     // ─── Stage 4: Gap Analysis ───────────────────────────────────
+    await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
     emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Analyzing requirement gaps...' });
     state.current_stage = 'gap_analysis';
     markStageStart('gap_analysis');
@@ -389,15 +680,66 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     log.info({ coverage: state.gap_analysis.coverage_score, gaps: state.gap_analysis.critical_gaps.length }, 'Gap analysis complete');
 
-    // ─── Gap Analysis Quiz (optional) ───────────────────────────
-    const gapQuizQuestions = generateGapQuestions(state.gap_analysis);
-    const gapSubmission = await runQuestionnaire(
-      'gap_analysis_quiz', 'gap_analysis', 'Verify Your Skills', gapQuizQuestions, emit, waitForUser,
-      'Help us understand your true proficiency in these areas',
+    const draftReadinessBeforeGapQuiz = emitDraftReadinessUpdate(
+      emit,
+      state,
+      workflowModePolicy,
+      'gap_analysis',
+      config.workflow_mode,
+      'Initial draft readiness after gap analysis.',
     );
+    emit({
+      type: 'transparency',
+      stage: 'gap_analysis',
+      message: `Draft readiness check: ${draftReadinessBeforeGapQuiz.evidenceCount}/${draftReadinessBeforeGapQuiz.minimumEvidenceTarget} evidence items collected; coverage ${draftReadinessBeforeGapQuiz.coverageScore}% (mode target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`,
+    });
+
+    // ─── Gap Analysis Quiz (optional, mode-aware and draft-readiness-aware) ───────────
+    const allGapQuizQuestions = generateGapQuestions(state.gap_analysis);
+    const targetedCoverageBoosterNeeded = !draftReadinessBeforeGapQuiz.ready
+      && draftReadinessBeforeGapQuiz.evidenceCount >= draftReadinessBeforeGapQuiz.minimumEvidenceTarget
+      && draftReadinessBeforeGapQuiz.coverageScore < workflowModePolicy.draftReadiness.coverageThreshold;
+    const gapQuizQuestionLimit = workflowModePolicy.gapQuiz.enabled
+      ? workflowModePolicy.gapQuiz.maxQuestions
+      : (targetedCoverageBoosterNeeded ? 2 : 0);
+    const gapQuizQuestions = allGapQuizQuestions.slice(0, gapQuizQuestionLimit);
+    const shouldRunGapQuiz = workflowModePolicy.gapQuiz.enabled
+      ? (gapQuizQuestions.length > 0 && !draftReadinessBeforeGapQuiz.ready)
+      : (targetedCoverageBoosterNeeded && gapQuizQuestions.length > 0);
+    if (!shouldRunGapQuiz) {
+      emit({
+        type: 'transparency',
+        stage: 'gap_analysis',
+        message: draftReadinessBeforeGapQuiz.ready
+          ? 'Skipping additional gap questions because evidence and coverage are already strong enough to draft.'
+          : (workflowModePolicy.gapQuiz.enabled
+              ? 'No high-impact gap questions remain.'
+              : 'Skipping gap verification questions in this mode to keep momentum toward a draft.'),
+      });
+    } else if (!workflowModePolicy.gapQuiz.enabled && targetedCoverageBoosterNeeded) {
+      emit({
+        type: 'transparency',
+        stage: 'gap_analysis',
+        message: 'Fast Draft mode: asking up to 2 targeted gap questions because coverage is still below the draft threshold, then continuing to a draft.',
+      });
+    }
+    const gapSubmission = shouldRunGapQuiz
+      ? await runQuestionnaire(
+          'gap_analysis_quiz', 'gap_analysis', 'Verify Your Skills', gapQuizQuestions, emit, waitForUser,
+          'Help us understand your true proficiency in these areas',
+        )
+      : null;
 
     if (gapSubmission && gapQuizQuestions.length > 0) {
       state.gap_analysis = enrichGapAnalysis(state.gap_analysis, gapSubmission.responses, gapQuizQuestions);
+      const draftReadinessAfterGapQuiz = emitDraftReadinessUpdate(
+        emit,
+        state,
+        workflowModePolicy,
+        'gap_analysis',
+        config.workflow_mode,
+        'Updated draft readiness after gap question responses.',
+      );
       // Re-emit the updated gap panel
       const enrichedReqs = state.gap_analysis.requirements;
       const enrichedStrong = enrichedReqs.filter(r => r.classification === 'strong').length;
@@ -419,12 +761,69 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         },
       });
       log.info({ enriched_coverage: state.gap_analysis.coverage_score }, 'Gap analysis enriched by user');
+      emit({
+        type: 'transparency',
+        stage: 'gap_analysis',
+        message: `Updated draft readiness: ${draftReadinessAfterGapQuiz.evidenceCount}/${draftReadinessAfterGapQuiz.minimumEvidenceTarget} evidence items; coverage ${draftReadinessAfterGapQuiz.coverageScore}% (mode target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`,
+      });
     }
 
     // Build scored gap map for suggestion generation (after gap analysis + enrichment)
     const unresolvedGapMap: ScoredGap[] = GUIDED_SUGGESTIONS_ENABLED
       ? buildUnresolvedGapMap(state.gap_analysis!, state.research!.jd_analysis)
       : [];
+
+    // If benchmark assumptions changed after gap analysis, refresh gap analysis before architect.
+    if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
+      emit({
+        type: 'workflow_replan_started',
+        reason: 'benchmark_assumptions_updated',
+        benchmark_edit_version: state.benchmark_override_version ?? 0,
+        rebuild_from_stage: 'gap_analysis',
+        current_stage: state.current_stage,
+        phase: 'refresh_gap_analysis',
+        message: 'Regenerating the gap analysis to match the updated benchmark.',
+      });
+      emit({
+        type: 'transparency',
+        stage: 'gap_analysis',
+        message: 'Benchmark assumptions changed after gap analysis. Refreshing gap analysis before building the blueprint.',
+      });
+      state.gap_analysis = await runGapAnalyst({
+        parsed_resume: state.intake,
+        positioning: state.positioning,
+        jd_analysis: state.research.jd_analysis,
+        benchmark: state.research.benchmark_candidate,
+      });
+      const refreshedReqs = state.gap_analysis.requirements;
+      const refreshedStrong = refreshedReqs.filter(r => r.classification === 'strong').length;
+      const refreshedPartial = refreshedReqs.filter(r => r.classification === 'partial').length;
+      const refreshedGap = refreshedReqs.filter(r => r.classification === 'gap').length;
+      emit({
+        type: 'right_panel_update',
+        panel_type: 'gap_analysis',
+        data: {
+          requirements: refreshedReqs,
+          coverage_score: state.gap_analysis.coverage_score,
+          critical_gaps: state.gap_analysis.critical_gaps,
+          strength_summary: state.gap_analysis.strength_summary,
+          total: refreshedReqs.length,
+          addressed: refreshedStrong + refreshedPartial,
+          strong_count: refreshedStrong,
+          partial_count: refreshedPartial,
+          gap_count: refreshedGap,
+        },
+      });
+      emit({
+        type: 'workflow_replan_completed',
+        reason: 'benchmark_assumptions_updated',
+        benchmark_edit_version: state.benchmark_override_version ?? 0,
+        rebuild_from_stage: 'gap_analysis',
+        current_stage: state.current_stage,
+        rebuilt_through_stage: 'gap_analysis',
+        message: 'Gap analysis was regenerated with the updated benchmark.',
+      });
+    }
 
     // ─── Stage 5: Resume Architect ───────────────────────────────
     emit({ type: 'stage_start', stage: 'architect', message: 'Designing resume strategy...' });
@@ -458,9 +857,87 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     markStageStart('architect_review');
     // blueprint_ready event sets up BlueprintReviewPanel with approve button
     emit({ type: 'blueprint_ready', blueprint: state.architect });
-
-    await waitForUser<void>('architect_review');
+    if (workflowModePolicy.reviews.architectBlocking) {
+      await waitForUser<void>('architect_review');
+    } else {
+      emit({
+        type: 'transparency',
+        stage: 'architect',
+        message: 'Fast Draft mode: showing the blueprint but continuing automatically to keep momentum. You can still review it in the workspace.',
+      });
+    }
     markStageEnd('architect_review');
+
+    if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
+      emit({
+        type: 'workflow_replan_started',
+        reason: 'benchmark_assumptions_updated',
+        benchmark_edit_version: state.benchmark_override_version ?? 0,
+        rebuild_from_stage: 'gap_analysis',
+        current_stage: state.current_stage,
+        phase: 'rebuild_blueprint',
+        message: 'Rebuilding the blueprint to match the updated benchmark.',
+      });
+      emit({
+        type: 'transparency',
+        stage: 'architect',
+        message: 'Benchmark assumptions changed after the blueprint step. Rebuilding gap analysis and blueprint before section writing.',
+      });
+      state.gap_analysis = await runGapAnalyst({
+        parsed_resume: state.intake,
+        positioning: state.positioning,
+        jd_analysis: state.research.jd_analysis,
+        benchmark: state.research.benchmark_candidate,
+      });
+      const refreshedReqs = state.gap_analysis.requirements;
+      const refreshedStrong = refreshedReqs.filter(r => r.classification === 'strong').length;
+      const refreshedPartial = refreshedReqs.filter(r => r.classification === 'partial').length;
+      const refreshedGap = refreshedReqs.filter(r => r.classification === 'gap').length;
+      emit({
+        type: 'right_panel_update',
+        panel_type: 'gap_analysis',
+        data: {
+          requirements: refreshedReqs,
+          coverage_score: state.gap_analysis.coverage_score,
+          critical_gaps: state.gap_analysis.critical_gaps,
+          strength_summary: state.gap_analysis.strength_summary,
+          total: refreshedReqs.length,
+          addressed: refreshedStrong + refreshedPartial,
+          strong_count: refreshedStrong,
+          partial_count: refreshedPartial,
+          gap_count: refreshedGap,
+        },
+      });
+      state.architect = await withRetry(
+        () => runArchitect({
+          parsed_resume: state.intake!,
+          positioning: state.positioning!,
+          research: state.research!,
+          gap_analysis: state.gap_analysis!,
+          user_preferences: state.user_preferences,
+        }),
+        {
+          maxAttempts: 2,
+          baseDelay: 1_500,
+          onRetry: (attempt, error) => {
+            log.warn({ attempt, error: error.message }, 'Architect retry after benchmark override');
+          },
+        },
+      );
+      emit({ type: 'blueprint_ready', blueprint: state.architect });
+      if (workflowModePolicy.reviews.architectBlocking) {
+        await waitForUser<void>('architect_review');
+      }
+      emit({
+        type: 'workflow_replan_completed',
+        reason: 'benchmark_assumptions_updated',
+        benchmark_edit_version: state.benchmark_override_version ?? 0,
+        rebuild_from_stage: 'gap_analysis',
+        current_stage: state.current_stage,
+        rebuilt_through_stage: 'architect',
+        message: 'Blueprint was rebuilt using the updated benchmark assumptions.',
+      });
+    }
 
     log.info('Blueprint approved by user');
 
@@ -472,6 +949,16 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     const sectionCalls = buildSectionCalls(state.architect, state.intake, state.positioning);
     const expandedSectionOrder = sectionCalls.map((c) => c.section);
+    const reviewRequiredSections = buildSectionReviewRequiredSet(expandedSectionOrder, workflowModePolicy);
+    const autoApprovedByModeSections = expandedSectionOrder.filter((section) => !reviewRequiredSections.has(section));
+    if (workflowModePolicy.reviews.sectionStrategy === 'bundled') {
+      const reviewList = expandedSectionOrder.filter((section) => reviewRequiredSections.has(section));
+      emit({
+        type: 'transparency',
+        stage: 'section_review',
+        message: `${config.workflow_mode === 'fast_draft' ? 'Fast Draft' : 'Balanced'} mode will review ${reviewList.length} high-impact section${reviewList.length === 1 ? '' : 's'} (${reviewList.map((s) => s.replace(/_/g, ' ')).join(', ') || 'core sections'}) and auto-approve the rest. You can still revise any section later in the workspace.`,
+      });
+    }
 
     // Run section calls with bounded concurrency to reduce provider 429 bursts.
     const runWithSectionLimit = createConcurrencyLimiter(SECTION_WRITE_CONCURRENCY);
@@ -515,9 +1002,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     const sectionContextVersions = new Map<string, number>();
     // Track last emitted suggestions per section for __suggestion__: lookup
     const lastEmittedSuggestions = new Map<string, SectionSuggestion[]>();
+    let draftNowAppliedToSectionReviews = false;
+    let approveRemainingReviewBundle = false;
+    const autoApproveReviewBundles = new Set<SectionReviewBundleKey>();
 
     // Present sections sequentially for user review (LLM work already in flight)
     for (const call of sectionCalls) {
+      if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
+        throw new Error('Benchmark assumptions changed after section writing started. Restart the pipeline to rebuild sections consistently from gap analysis.');
+      }
       const outcome = await sectionPromises.get(call.section)!;
       let result: SectionWriterOutput;
       if (!outcome.ok) {
@@ -537,11 +1030,37 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       }
       state.sections[call.section] = result;
 
+      const autoApproveSectionForMode = workflowModePolicy.reviews.sectionStrategy === 'bundled'
+        && (!reviewRequiredSections.has(call.section)
+          || (approveRemainingReviewBundle && reviewRequiredSections.has(call.section))
+          || autoApproveReviewBundles.has(getSectionReviewBundleKey(call.section)));
+      if (autoApproveSectionForMode) {
+        emit({
+          type: 'transparency',
+          stage: 'section_review',
+          message: approveRemainingReviewBundle && reviewRequiredSections.has(call.section)
+            ? `Bundle review approved the remaining high-impact sections. Auto-approving ${call.section.replace(/_/g, ' ')} and moving on.`
+            : autoApproveReviewBundles.has(getSectionReviewBundleKey(call.section)) && reviewRequiredSections.has(call.section)
+              ? `Current bundle approved. Auto-approving ${call.section.replace(/_/g, ' ')} and moving to the next review bundle.`
+            : `${config.workflow_mode === 'fast_draft' ? 'Fast Draft' : 'Balanced'} mode auto-approved ${call.section.replace(/_/g, ' ')} to keep momentum. You can still revise it later in the workspace.`,
+        });
+        emit({ type: 'section_draft', section: call.section, content: result.content });
+        emit({ type: 'section_approved', section: call.section });
+        approvedSectionSet.add(call.section);
+        if (GUIDED_SUGGESTIONS_ENABLED) {
+          markGapAddressed(unresolvedGapMap, call.section, result.content);
+        }
+        continue;
+      }
+
       // Revision loop: keep presenting section until user approves
       const MAX_REVIEW_ITERATIONS = 5;
       let sectionApproved = false;
       let reviewIterations = 0;
       while (!sectionApproved) {
+        if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
+          throw new Error('Benchmark assumptions changed during section review. Restart the pipeline to rebuild sections consistently from gap analysis.');
+        }
         if (reviewIterations >= MAX_REVIEW_ITERATIONS) {
           log.warn({ section: call.section, iterations: reviewIterations }, 'Max review iterations exceeded — auto-approving section');
           emit({ type: 'section_approved', section: call.section });
@@ -570,6 +1089,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           gap_mappings: buildGapMappingsForSection(state.gap_analysis!),
           section_order: expandedSectionOrder,
           sections_approved: Array.from(approvedSectionSet),
+          review_strategy: workflowModePolicy.reviews.sectionStrategy,
+          review_required_sections: Array.from(reviewRequiredSections),
+          auto_approved_sections: autoApprovedByModeSections,
+          ...buildSectionReviewBundleMetadata(
+            expandedSectionOrder,
+            reviewRequiredSections,
+            approvedSectionSet,
+            call.section,
+          ),
           suggestions: deterministicSuggestions.length > 0 ? deterministicSuggestions : undefined,
         });
 
@@ -591,6 +1119,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
                 gap_mappings: buildGapMappingsForSection(state.gap_analysis!),
                 section_order: expandedSectionOrder,
                 sections_approved: Array.from(approvedSectionSet),
+                review_strategy: workflowModePolicy.reviews.sectionStrategy,
+                review_required_sections: Array.from(reviewRequiredSections),
+                auto_approved_sections: autoApprovedByModeSections,
+                ...buildSectionReviewBundleMetadata(
+                  expandedSectionOrder,
+                  reviewRequiredSections,
+                  approvedSectionSet,
+                  call.section,
+                ),
                 suggestions: enriched.length > 0 ? enriched : undefined,
               });
             })
@@ -602,6 +1139,22 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         // Emit section for progressive rendering / re-review
         emit({ type: 'section_draft', section: call.section, content: result.content, review_token: reviewToken });
 
+        if (await hasDraftNowRequest(config.session_id)) {
+          draftNowAppliedToSectionReviews = true;
+          emit({
+            type: 'transparency',
+            stage: 'section_review',
+            message: `Draft-now is active. Auto-approving ${call.section.replace(/_/g, ' ')} and continuing through the remaining section reviews.`,
+          });
+          emit({ type: 'section_approved', section: call.section });
+          approvedSectionSet.add(call.section);
+          if (GUIDED_SUGGESTIONS_ENABLED) {
+            markGapAddressed(unresolvedGapMap, call.section, result.content);
+          }
+          sectionApproved = true;
+          continue;
+        }
+
         // Gate: User approves, quick-fixes, directly edits, or provides feedback
         state.current_stage = 'section_review';
         const reviewResponse = await waitForUser<boolean | {
@@ -610,6 +1163,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           feedback?: string;
           refinement_ids?: string[];
           review_token?: string;
+          approve_remaining_review_bundle?: boolean;
+          approve_remaining_current_bundle?: boolean;
         }>(
           `section_review_${call.section}`,
         );
@@ -645,6 +1200,29 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         }
 
         if (normalizedReview.approved) {
+          if (
+            normalizedReview.approve_remaining_review_bundle
+            && workflowModePolicy.reviews.sectionStrategy === 'bundled'
+          ) {
+            approveRemainingReviewBundle = true;
+            emit({
+              type: 'transparency',
+              stage: 'section_review',
+              message: 'Bundle review approved. The remaining high-impact review sections will be auto-approved so you can move on to quality review faster.',
+            });
+          }
+          if (
+            normalizedReview.approve_remaining_current_bundle
+            && workflowModePolicy.reviews.sectionStrategy === 'bundled'
+          ) {
+            const currentBundleKey = getSectionReviewBundleKey(call.section);
+            autoApproveReviewBundles.add(currentBundleKey);
+            emit({
+              type: 'transparency',
+              stage: 'section_review',
+              message: `${getSectionReviewBundleLabel(currentBundleKey)} bundle approved. Remaining review sections in this bundle will be auto-approved.`,
+            });
+          }
           emit({ type: 'section_approved', section: call.section });
           approvedSectionSet.add(call.section);
           // Mark gap requirements as addressed in this section
@@ -743,6 +1321,18 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     emit({ type: 'stage_complete', stage: 'section_writing', message: 'All sections written', duration_ms: stageTimingsMs.section_writing });
 
     log.info({ sections: Object.keys(state.sections).length }, 'Section writing complete');
+
+    if (draftNowAppliedToSectionReviews) {
+      await supabaseAdmin
+        .from('session_question_responses')
+        .update({ status: 'skipped', updated_at: new Date().toISOString() })
+        .eq('session_id', config.session_id)
+        .eq('question_id', '__generate_draft_now__');
+    }
+
+    if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
+      throw new Error('Benchmark assumptions changed after section writing completed. Restart the pipeline to rebuild downstream work consistently from gap analysis.');
+    }
 
     // ─── Stage 7: Quality Review ─────────────────────────────────
     emit({ type: 'stage_start', stage: 'quality_review', message: 'Running quality review...' });
@@ -854,7 +1444,16 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       // High-priority fixes: present to user for approval (if feature flag enabled)
       let approvedFixIds: Set<string> = new Set(highPriority.map((_, i) => `fix_${i}`)); // default: apply all
       const customModifications = new Map<string, string>();
-      if (highPriority.length > 0) {
+      const requireHighFixApproval = workflowModePolicy.reviews.qualityFixApproval !== 'none'
+        || (state.quality_review.scores.evidence_integrity ?? 0) < 90;
+      if (highPriority.length > 0 && !requireHighFixApproval) {
+        emit({
+          type: 'transparency',
+          stage: 'quality_review',
+          message: 'Fast Draft mode: auto-applying high-priority quality fixes to preserve momentum (no evidence integrity issues detected).',
+        });
+      }
+      if (highPriority.length > 0 && requireHighFixApproval) {
         const fixQuestions = highPriority.map((inst, i) =>
           makeQuestion(`fix_${i}`, `${inst.target_section}: ${inst.issue}`, 'single_choice', [
             { id: 'apply', label: 'Apply this fix' },
@@ -1070,6 +1669,193 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
 // ─── Positioning stage (interactive) ─────────────────────────────────
 
+function buildPositioningBatchQuestions(
+  batch: PositioningQuestion[],
+  workflowMode: WorkflowMode | undefined,
+): QuestionnaireQuestion[] {
+  const categoryLabels: Record<string, string> = {
+    scale_and_scope: 'Scale & Scope',
+    requirement_mapped: 'Requirements',
+    career_narrative: 'Career Story',
+    hidden_accomplishments: 'Hidden Wins',
+    currency_and_adaptability: 'Adaptability',
+  };
+
+  return batch.map((question) => {
+    const payoffRequirements = (question.requirement_map ?? []).slice(0, 2);
+    const payoffParts: string[] = [];
+    if (question.category) {
+      payoffParts.push(`Focus: ${categoryLabels[question.category] ?? question.category}`);
+    }
+    if (payoffRequirements.length > 0) {
+      payoffParts.push(`Improves coverage for: ${payoffRequirements.join('; ')}`);
+    }
+    if (workflowMode && workflowMode !== 'deep_dive') {
+      payoffParts.push(workflowMode === 'fast_draft'
+        ? 'Fast Draft mode: concise answers are okay; add detail only where helpful.'
+        : 'Balanced mode: concise answers are fine, but metrics and scope details help.');
+    }
+
+    const context = [question.context, ...payoffParts].filter(Boolean).join(' ');
+    const options = (question.suggestions ?? []).map((suggestion, index) => ({
+      id: `opt_${index + 1}`,
+      label: suggestion.label,
+      description: suggestion.description,
+      source: suggestion.source,
+    }));
+
+    return makeQuestion(
+      question.id,
+      question.question_text,
+      question.input_type === 'multiple_choice' ? 'multi_choice' : 'single_choice',
+      options,
+      {
+        context: context || undefined,
+        allow_custom: true,
+        allow_skip: question.optional ?? true,
+      },
+    );
+  });
+}
+
+function isDraftNowQuestionnaireSubmission(submission: QuestionnaireSubmission | null): boolean {
+  if (!submission) return false;
+  return submission.generated_by === 'generate_draft_now'
+    || submission.generated_by === 'generate_draft_now_fallback';
+}
+
+function collectPositioningAnswersFromQuestionnaire(
+  submission: QuestionnaireSubmission,
+  questionnaireQuestions: QuestionnaireQuestion[],
+): Array<{ question_id: string; answer: string; selected_suggestion?: string }> {
+  const questionnaireById = new Map(questionnaireQuestions.map((q) => [q.id, q]));
+  const collected: Array<{ question_id: string; answer: string; selected_suggestion?: string }> = [];
+
+  for (const response of submission.responses) {
+    if (response.skipped) continue;
+    const questionnaireQuestion = questionnaireById.get(response.question_id);
+    const selectedLabels = questionnaireQuestion
+      ? getSelectedLabels(response, questionnaireQuestion)
+      : [];
+    const selectedSuggestion = selectedLabels[0];
+    const customText = typeof response.custom_text === 'string' ? response.custom_text.trim() : '';
+    const synthesizedAnswer = customText || selectedLabels.join('; ');
+    if (!synthesizedAnswer) continue;
+
+    collected.push({
+      question_id: response.question_id,
+      answer: tagPositioningAnswer(synthesizedAnswer, selectedSuggestion),
+      selected_suggestion: selectedSuggestion,
+    });
+  }
+
+  return collected;
+}
+
+function buildSectionReviewRequiredSet(
+  sectionNames: string[],
+  policy: WorkflowModePolicy,
+): Set<string> {
+  if (policy.reviews.sectionStrategy === 'per_section') {
+    return new Set(sectionNames);
+  }
+
+  const required = new Set<string>();
+  const headlineSections = ['summary', 'selected_accomplishments'];
+  for (const section of headlineSections) {
+    if (sectionNames.includes(section)) {
+      required.add(section);
+    }
+  }
+
+  const experienceSections = sectionNames
+    .filter((section) => section.startsWith('experience_role_'))
+    .sort(compareExperienceRoleKeys)
+    .slice(0, Math.max(0, Math.floor(policy.reviews.maxExperienceRoleReviews)));
+  for (const section of experienceSections) {
+    required.add(section);
+  }
+
+  if (required.size === 0 && sectionNames.length > 0) {
+    required.add(sectionNames[0]!);
+  }
+
+  return required;
+}
+
+type SectionReviewBundleKey = 'headline' | 'core_experience' | 'supporting';
+
+function getSectionReviewBundleKey(section: string): SectionReviewBundleKey {
+  if (section === 'summary' || section === 'selected_accomplishments') return 'headline';
+  if (section.startsWith('experience_role_')) return 'core_experience';
+  return 'supporting';
+}
+
+function getSectionReviewBundleLabel(bundleKey: SectionReviewBundleKey): string {
+  switch (bundleKey) {
+    case 'headline':
+      return 'Headline';
+    case 'core_experience':
+      return 'Core Experience';
+    case 'supporting':
+      return 'Supporting Sections';
+  }
+}
+
+function buildSectionReviewBundleMetadata(
+  sectionOrder: string[],
+  reviewRequiredSections: Set<string>,
+  approvedSections: Set<string>,
+  currentSection: string,
+): {
+  current_review_bundle_key: SectionReviewBundleKey;
+  review_bundles: Array<{
+    key: SectionReviewBundleKey;
+    label: string;
+    total_sections: number;
+    review_required: number;
+    reviewed_required: number;
+    status: 'pending' | 'in_progress' | 'complete' | 'auto_approved';
+  }>;
+} {
+  const bundleOrder: SectionReviewBundleKey[] = ['headline', 'core_experience', 'supporting'];
+  const sectionsByBundle = new Map<SectionReviewBundleKey, string[]>(
+    bundleOrder.map((key) => [key, []]),
+  );
+  for (const section of sectionOrder) {
+    const key = getSectionReviewBundleKey(section);
+    sectionsByBundle.get(key)!.push(section);
+  }
+
+  const currentBundle = getSectionReviewBundleKey(currentSection);
+  const bundles = bundleOrder.map((key) => {
+    const sections = sectionsByBundle.get(key) ?? [];
+    const reviewRequired = sections.filter((s) => reviewRequiredSections.has(s));
+    const reviewedRequired = reviewRequired.filter((s) => approvedSections.has(s));
+    let status: 'pending' | 'in_progress' | 'complete' | 'auto_approved' = 'pending';
+    if (reviewRequired.length === 0) {
+      status = sections.length > 0 ? 'auto_approved' : 'pending';
+    } else if (reviewedRequired.length >= reviewRequired.length) {
+      status = 'complete';
+    } else if (key === currentBundle || reviewedRequired.length > 0) {
+      status = 'in_progress';
+    }
+    return {
+      key,
+      label: getSectionReviewBundleLabel(key),
+      total_sections: sections.length,
+      review_required: reviewRequired.length,
+      reviewed_required: reviewedRequired.length,
+      status,
+    };
+  }).filter((bundle) => bundle.total_sections > 0);
+
+  return {
+    current_review_bundle_key: currentBundle,
+    review_bundles: bundles,
+  };
+}
+
 async function runPositioningStage(
   state: PipelineState,
   config: PipelineConfig,
@@ -1108,6 +1894,11 @@ async function runPositioningStage(
   const answers: Array<{ question_id: string; answer: string; selected_suggestion?: string }> = [];
   const workflowMode = state.user_preferences?.workflow_mode;
   const positioningBudget = getPositioningQuestionBudget(workflowMode);
+  const workflowModePolicy = getWorkflowModePolicy(workflowMode);
+  const minimumEvidenceTarget = getMinimumEvidenceTarget(state, workflowModePolicy);
+  const effectiveMaxQuestions = Number.isFinite(positioningBudget.maxQuestions)
+    ? Math.max(positioningBudget.maxQuestions, minimumEvidenceTarget)
+    : positioningBudget.maxQuestions;
 
   // Build category progress tracking
   const categoryLabels: Record<string, string> = {
@@ -1135,131 +1926,239 @@ async function runPositioningStage(
   };
 
   const answeredIds = new Set<string>();
-  let previousEncouragingText: string | undefined;
-  let followUpCount = 0;
   let budgetNoticeEmitted = false;
   let draftNowConsumed = false;
+  const useBatchPositioningQuestionnaire = workflowModePolicy.positioning.useBatchQuestionnaire
+    && isQuestionnaireEnabled('positioning_batch');
 
-  for (const question of questions) {
-    if (await hasDraftNowRequest(config.session_id)) {
-      draftNowConsumed = true;
+  if (useBatchPositioningQuestionnaire) {
+    emit({
+      type: 'transparency',
+      stage: 'positioning',
+      message: workflowMode === 'fast_draft'
+        ? 'Fast Draft mode: collecting a short batch of high-impact questions at a time.'
+        : 'Balanced mode: using batched questions to reduce back-and-forth while preserving strong evidence capture.',
+    });
+
+    const questionPool = Number.isFinite(effectiveMaxQuestions)
+      ? questions.slice(0, Math.max(0, Math.floor(effectiveMaxQuestions)))
+      : questions;
+    if (!budgetNoticeEmitted && workflowMode && workflowMode !== 'deep_dive' && questionPool.length < questions.length) {
+      budgetNoticeEmitted = true;
       emit({
         type: 'transparency',
         stage: 'positioning',
-        message: 'Draft-now was requested. Finishing the interview early and synthesizing your positioning profile from current evidence.',
+        message: workflowMode === 'fast_draft'
+          ? `Fast Draft mode is using the top ${questionPool.length} interview questions for your evidence target (${minimumEvidenceTarget}).`
+          : `Balanced mode is using the top ${questionPool.length} interview questions for your evidence target (${minimumEvidenceTarget}).`,
       });
-      break;
     }
-    if (Number.isFinite(positioningBudget.maxQuestions) && answeredIds.size >= positioningBudget.maxQuestions) {
-      if (!budgetNoticeEmitted && workflowMode && workflowMode !== 'deep_dive') {
-        budgetNoticeEmitted = true;
+
+    let batchNumber = 0;
+    for (let start = 0; start < questionPool.length; start += workflowModePolicy.positioning.batchSize) {
+      if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
         emit({
           type: 'transparency',
           stage: 'positioning',
-          message: workflowMode === 'fast_draft'
-            ? 'Fast Draft mode reached its interview budget. Moving on to synthesize your positioning profile from the strongest answers so far.'
-            : 'Balanced mode reached its interview budget. Moving on to synthesize your positioning profile from the answers collected so far.',
+          message: 'Benchmark assumptions changed during the interview. Ending the interview early and continuing with the updated benchmark.',
         });
+        break;
       }
-      break;
-    }
+      if (await hasDraftNowRequest(config.session_id)) {
+        draftNowConsumed = true;
+        emit({
+          type: 'transparency',
+          stage: 'positioning',
+          message: 'Draft-now was requested. Finishing the interview early and synthesizing your positioning profile from current evidence.',
+        });
+        break;
+      }
 
-    const catProgress = buildCategoryProgress(answeredIds);
-    emit({
-      type: 'positioning_question',
-      question: {
-        ...question,
-        encouraging_text: previousEncouragingText,
-      },
-      questions_total: questions.length,
-      category_progress: catProgress,
-    });
+      const batch = questionPool.slice(start, start + workflowModePolicy.positioning.batchSize);
+      if (batch.length === 0) break;
+      batchNumber++;
+      const questionnaireQuestions = buildPositioningBatchQuestions(batch, workflowMode);
+      const batchTitle = batchNumber === 1
+        ? 'Positioning Interview'
+        : `Positioning Interview (Batch ${batchNumber})`;
+      const batchSubtitle = workflowMode === 'fast_draft'
+        ? 'Answer briefly where you can. Select a suggestion, add details, or skip anything non-critical.'
+        : 'Select the closest option, then add details where helpful. Metrics and scope make the final resume stronger.';
 
-    let response: { answer: string; selected_suggestion?: string };
-    try {
-      response = await waitForUser<{ answer: string; selected_suggestion?: string }>(
-        `positioning_q_${question.id}`,
-      );
-    } catch (gateErr) {
-      const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);
-      if (errMsg.includes('Gate superseded')) {
-        log.warn({ question_id: question.id }, 'Positioning gate superseded — skipping question');
+      let submission: QuestionnaireSubmission | null;
+      try {
+        submission = await runQuestionnaire(
+          'positioning_batch',
+          `positioning_batch_${batchNumber}`,
+          batchTitle,
+          questionnaireQuestions,
+          emit,
+          waitForUser,
+          batchSubtitle,
+        );
+      } catch (gateErr) {
+        const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);
+        if (errMsg.includes('Gate superseded')) {
+          log.warn({ batch: batchNumber }, 'Positioning questionnaire batch superseded — continuing');
+          continue;
+        }
+        throw gateErr;
+      }
+
+      if (!submission) {
         continue;
       }
-      throw gateErr;
-    }
 
-    if (isDraftNowGateResponse(response)) {
-      emit({
-        type: 'transparency',
-        stage: 'positioning',
-        message: 'Draft-now was requested during the interview. Moving on with the answers collected so far.',
-      });
-      break;
-    }
-
-    // Tag answers where user selected a suggestion without providing custom text,
-    // so the synthesis LLM knows this is a suggested value rather than user-authored.
-    const taggedAnswer = tagPositioningAnswer(response.answer, response.selected_suggestion);
-    answers.push({
-      question_id: question.id,
-      answer: taggedAnswer,
-      selected_suggestion: response.selected_suggestion,
-    });
-    answeredIds.add(question.id);
-    previousEncouragingText = question.encouraging_text;
-
-    // Evaluate follow-up triggers (max 1 follow-up per question, capped globally)
-    if (followUpCount < positioningBudget.maxFollowUps) {
-      const followUp = evaluateFollowUp(question, response.answer);
-      if (followUp) {
-        followUpCount++;
-        const followUpQuestion: PositioningQuestion = {
-          ...followUp,
-          question_number: question.question_number,
-          is_follow_up: true,
-          parent_question_id: question.id,
-        };
-
+      if (isDraftNowQuestionnaireSubmission(submission) || (await hasDraftNowRequest(config.session_id))) {
+        draftNowConsumed = true;
         emit({
-          type: 'positioning_question',
-          question: followUpQuestion,
-          questions_total: questions.length,
-          category_progress: buildCategoryProgress(answeredIds),
+          type: 'transparency',
+          stage: 'positioning',
+          message: 'Draft-now was requested during a batched questionnaire. Moving on with the strongest evidence collected so far.',
         });
+        break;
+      }
 
-        let followUpResponse: { answer: string; selected_suggestion?: string };
-        try {
-          followUpResponse = await waitForUser<{ answer: string; selected_suggestion?: string }>(
-            `positioning_q_${followUpQuestion.id}`,
-          );
-        } catch (gateErr) {
-          const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);
-          if (errMsg.includes('Gate superseded')) {
-            log.warn({ question_id: followUpQuestion.id }, 'Follow-up gate superseded — skipping follow-up');
-            continue;
-          }
-          throw gateErr;
-        }
-
-        if (isDraftNowGateResponse(followUpResponse)) {
+      const batchAnswers = collectPositioningAnswersFromQuestionnaire(submission, questionnaireQuestions);
+      for (const answer of batchAnswers) {
+        answers.push(answer);
+        answeredIds.add(answer.question_id);
+      }
+    }
+  } else {
+    let previousEncouragingText: string | undefined;
+    let followUpCount = 0;
+    for (const question of questions) {
+      if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
+        emit({
+          type: 'transparency',
+          stage: 'positioning',
+          message: 'Benchmark assumptions changed during the interview. Ending the interview early and continuing with the updated benchmark.',
+        });
+        break;
+      }
+      if (await hasDraftNowRequest(config.session_id)) {
+        draftNowConsumed = true;
+        emit({
+          type: 'transparency',
+          stage: 'positioning',
+          message: 'Draft-now was requested. Finishing the interview early and synthesizing your positioning profile from current evidence.',
+        });
+        break;
+      }
+      if (Number.isFinite(effectiveMaxQuestions) && answeredIds.size >= effectiveMaxQuestions) {
+        if (!budgetNoticeEmitted && workflowMode && workflowMode !== 'deep_dive') {
+          budgetNoticeEmitted = true;
           emit({
             type: 'transparency',
             stage: 'positioning',
-            message: 'Draft-now was requested during a follow-up question. Moving on with current evidence.',
+            message: workflowMode === 'fast_draft'
+              ? `Fast Draft mode reached its interview budget for your evidence target (${minimumEvidenceTarget}). Moving on to synthesize your positioning profile from the strongest answers so far.`
+              : `Balanced mode reached its interview budget for your evidence target (${minimumEvidenceTarget}). Moving on to synthesize your positioning profile from the answers collected so far.`,
           });
-          break;
         }
+        break;
+      }
 
-        const taggedFollowUpAnswer = tagPositioningAnswer(followUpResponse.answer, followUpResponse.selected_suggestion);
-        answers.push({
-          question_id: followUpQuestion.id,
-          answer: taggedFollowUpAnswer,
-          selected_suggestion: followUpResponse.selected_suggestion,
+      const catProgress = buildCategoryProgress(answeredIds);
+      emit({
+        type: 'positioning_question',
+        question: {
+          ...question,
+          encouraging_text: previousEncouragingText,
+        },
+        questions_total: questions.length,
+        category_progress: catProgress,
+      });
+
+      let response: { answer: string; selected_suggestion?: string };
+      try {
+        response = await waitForUser<{ answer: string; selected_suggestion?: string }>(
+          `positioning_q_${question.id}`,
+        );
+      } catch (gateErr) {
+        const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);
+        if (errMsg.includes('Gate superseded')) {
+          log.warn({ question_id: question.id }, 'Positioning gate superseded — skipping question');
+          continue;
+        }
+        throw gateErr;
+      }
+
+      if (isDraftNowGateResponse(response)) {
+        emit({
+          type: 'transparency',
+          stage: 'positioning',
+          message: 'Draft-now was requested during the interview. Moving on with the answers collected so far.',
         });
+        break;
+      }
+
+      // Tag answers where user selected a suggestion without providing custom text,
+      // so the synthesis LLM knows this is a suggested value rather than user-authored.
+      const taggedAnswer = tagPositioningAnswer(response.answer, response.selected_suggestion);
+      answers.push({
+        question_id: question.id,
+        answer: taggedAnswer,
+        selected_suggestion: response.selected_suggestion,
+      });
+      answeredIds.add(question.id);
+      previousEncouragingText = question.encouraging_text;
+
+      // Evaluate follow-up triggers (max 1 follow-up per question, capped globally)
+      if (followUpCount < positioningBudget.maxFollowUps) {
+        const followUp = evaluateFollowUp(question, response.answer);
+        if (followUp) {
+          followUpCount++;
+          const followUpQuestion: PositioningQuestion = {
+            ...followUp,
+            question_number: question.question_number,
+            is_follow_up: true,
+            parent_question_id: question.id,
+          };
+
+          emit({
+            type: 'positioning_question',
+            question: followUpQuestion,
+            questions_total: questions.length,
+            category_progress: buildCategoryProgress(answeredIds),
+          });
+
+          let followUpResponse: { answer: string; selected_suggestion?: string };
+          try {
+            followUpResponse = await waitForUser<{ answer: string; selected_suggestion?: string }>(
+              `positioning_q_${followUpQuestion.id}`,
+            );
+          } catch (gateErr) {
+            const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);
+            if (errMsg.includes('Gate superseded')) {
+              log.warn({ question_id: followUpQuestion.id }, 'Follow-up gate superseded — skipping follow-up');
+              continue;
+            }
+            throw gateErr;
+          }
+
+          if (isDraftNowGateResponse(followUpResponse)) {
+            emit({
+              type: 'transparency',
+              stage: 'positioning',
+              message: 'Draft-now was requested during a follow-up question. Moving on with current evidence.',
+            });
+            break;
+          }
+
+          const taggedFollowUpAnswer = tagPositioningAnswer(followUpResponse.answer, followUpResponse.selected_suggestion);
+          answers.push({
+            question_id: followUpQuestion.id,
+            answer: taggedFollowUpAnswer,
+            selected_suggestion: followUpResponse.selected_suggestion,
+          });
+        }
       }
     }
   }
+
+  await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
 
   // Clear the draft-now flag after consumption so reruns don't re-trigger it
   if (draftNowConsumed) {
@@ -1273,7 +2172,10 @@ async function runPositioningStage(
   // Synthesize the profile (research-aware when available)
   emit({ type: 'transparency', message: 'Synthesizing your positioning profile...', stage: 'positioning' });
   const profile = await withRetry(
-    () => synthesizeProfile(state.intake!, answers, state.research ?? undefined),
+    () => synthesizeProfile(state.intake!, answers, state.research ?? undefined, {
+      workflow_mode: state.user_preferences?.workflow_mode,
+      minimum_evidence_target: state.user_preferences?.minimum_evidence_target,
+    }),
     { maxAttempts: 3, baseDelay: 2000, onRetry: (attempt, error) => log.warn({ attempt, error: error.message }, 'synthesizeProfile retry') },
   );
 
@@ -1637,6 +2539,8 @@ function normalizeSectionReviewResponse(
     feedback?: string;
     refinement_ids?: string[];
     review_token?: string;
+    approve_remaining_review_bundle?: boolean;
+    approve_remaining_current_bundle?: boolean;
   },
 ): {
   approved: boolean;
@@ -1644,6 +2548,8 @@ function normalizeSectionReviewResponse(
   feedback?: string;
   refinement_ids?: string[];
   review_token?: string;
+  approve_remaining_review_bundle?: boolean;
+  approve_remaining_current_bundle?: boolean;
 } {
   if (typeof response === 'boolean') {
     // Legacy false path: treat as a request for a generic improvement instead of auto-approving.
@@ -1674,6 +2580,8 @@ function normalizeSectionReviewResponse(
     feedback: feedback ? feedback : undefined,
     refinement_ids: refinementIds.length > 0 ? refinementIds : undefined,
     review_token: reviewToken || undefined,
+    approve_remaining_review_bundle: response.approve_remaining_review_bundle === true || undefined,
+    approve_remaining_current_bundle: response.approve_remaining_current_bundle === true || undefined,
   };
 }
 

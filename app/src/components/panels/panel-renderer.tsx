@@ -191,6 +191,20 @@ function renderPanelBody(props: PanelRendererProps) {
               review_token: panelData.review_token,
             });
           }}
+          onApproveRemainingBundle={() => {
+            onPipelineRespond?.(`section_review_${panelData.section}`, {
+              approved: true,
+              approve_remaining_review_bundle: true,
+              review_token: panelData.review_token,
+            });
+          }}
+          onApproveCurrentBundle={() => {
+            onPipelineRespond?.(`section_review_${panelData.section}`, {
+              approved: true,
+              approve_remaining_current_bundle: true,
+              review_token: panelData.review_token,
+            });
+          }}
           onRequestChanges={(feedback, reviewToken) => {
             onPipelineRespond?.(`section_review_${panelData.section}`, {
               approved: false,

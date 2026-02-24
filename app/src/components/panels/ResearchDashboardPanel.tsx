@@ -26,6 +26,9 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
   const company = data.company ?? {};
   const jd_requirements = data.jd_requirements ?? {};
   const benchmark = data.benchmark ?? { required_skills: [], language_keywords: [] };
+  const benchmarkSummary = benchmark.ideal_candidate_summary || benchmark.ideal_profile || '';
+  const sectionExpectations = benchmark.section_expectations ?? {};
+  const sectionExpectationEntries = Object.entries(sectionExpectations).filter(([, value]) => typeof value === 'string' && value.trim());
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -129,13 +132,13 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
             </h3>
           </div>
 
-          {!benchmark.required_skills?.length && !benchmark.ideal_candidate_summary && (
+          {!benchmark.required_skills?.length && !benchmarkSummary && (
             <GlassSkeletonCard lines={3} />
           )}
 
-          {benchmark.ideal_candidate_summary && (
+          {benchmarkSummary && (
             <p className="text-sm text-white/90 leading-relaxed mb-3">
-              {cleanText(benchmark.ideal_candidate_summary)}
+              {cleanText(benchmarkSummary)}
             </p>
           )}
 
@@ -163,6 +166,22 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
                   >
                     {kw}
                   </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {sectionExpectationEntries.length > 0 && (
+            <div className="mt-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50 mb-1.5 block">
+                Section Expectations
+              </span>
+              <div className="space-y-1.5">
+                {sectionExpectationEntries.map(([key, value]) => (
+                  <div key={key} className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/45">{key.replace(/_/g, ' ')}</div>
+                    <div className="mt-1 text-xs text-white/80">{cleanText(String(value))}</div>
+                  </div>
                 ))}
               </div>
             </div>

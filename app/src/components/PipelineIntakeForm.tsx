@@ -14,6 +14,7 @@ interface PipelineIntakeFormProps {
     jobDescription: string;
     companyName: string;
     workflowMode: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimumEvidenceTarget: number;
     resumePriority: 'authentic' | 'ats' | 'impact' | 'balanced';
     seniorityDelta: 'same' | 'one_up' | 'big_jump' | 'step_back';
   }) => void;
@@ -24,6 +25,18 @@ interface PipelineIntakeFormProps {
   savedResumes?: MasterResumeListItem[];
   onLoadSavedResume?: (resumeId: string) => Promise<string | null>;
   error?: string | null;
+}
+
+function defaultEvidenceTargetForMode(mode: 'fast_draft' | 'balanced' | 'deep_dive'): number {
+  switch (mode) {
+    case 'fast_draft':
+      return 5;
+    case 'deep_dive':
+      return 12;
+    case 'balanced':
+    default:
+      return 8;
+  }
 }
 
 export function PipelineIntakeForm({
@@ -40,6 +53,8 @@ export function PipelineIntakeForm({
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [workflowMode, setWorkflowMode] = useState<'fast_draft' | 'balanced' | 'deep_dive'>('balanced');
+  const [minimumEvidenceTarget, setMinimumEvidenceTarget] = useState<number>(defaultEvidenceTargetForMode('balanced'));
+  const [minimumEvidenceTargetTouched, setMinimumEvidenceTargetTouched] = useState(false);
   const [resumePriority, setResumePriority] = useState<'authentic' | 'ats' | 'impact' | 'balanced'>('balanced');
   const [seniorityDelta, setSeniorityDelta] = useState<'same' | 'one_up' | 'big_jump' | 'step_back'>('same');
   const [fileError, setFileError] = useState<string | null>(null);
@@ -68,6 +83,11 @@ export function PipelineIntakeForm({
     }
     setSelectedSavedResumeId((prev) => (prev && savedResumes.some((r) => r.id === prev) ? prev : savedResumes[0].id));
   }, [savedResumes]);
+
+  useEffect(() => {
+    if (minimumEvidenceTargetTouched) return;
+    setMinimumEvidenceTarget(defaultEvidenceTargetForMode(workflowMode));
+  }, [workflowMode, minimumEvidenceTargetTouched]);
 
   const isValid = resumeText.trim().length > 0 && jobDescription.trim().length > 0 && companyName.trim().length > 0;
 
@@ -154,10 +174,11 @@ export function PipelineIntakeForm({
       jobDescription: jobDescription.trim(),
       companyName: companyName.trim(),
       workflowMode,
+      minimumEvidenceTarget: Math.min(20, Math.max(3, Math.round(minimumEvidenceTarget || defaultEvidenceTargetForMode(workflowMode)))),
       resumePriority,
       seniorityDelta,
     });
-  }, [isValid, loading, onSubmit, resumeText, jobDescription, companyName, workflowMode, resumePriority, seniorityDelta]);
+  }, [isValid, loading, onSubmit, resumeText, jobDescription, companyName, workflowMode, minimumEvidenceTarget, resumePriority, seniorityDelta]);
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] overflow-y-auto">
@@ -411,6 +432,49 @@ export function PipelineIntakeForm({
               </select>
               <p className="text-xs text-white/50">
                 Choose based on how much time you have. You can always refine later.
+              </p>
+            </div>
+
+            {/* Minimum evidence target */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/80" htmlFor="minimum-evidence-target">
+                Minimum Evidence Target
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {[5, 8, 12].map((target) => (
+                  <GlassButton
+                    key={target}
+                    type="button"
+                    variant={minimumEvidenceTarget === target ? 'primary' : 'ghost'}
+                    onClick={() => {
+                      setMinimumEvidenceTarget(target);
+                      setMinimumEvidenceTargetTouched(true);
+                    }}
+                    disabled={loading}
+                    className="h-auto px-2 py-2 text-xs"
+                  >
+                    {target}
+                  </GlassButton>
+                ))}
+                <input
+                  id="minimum-evidence-target"
+                  type="number"
+                  min={3}
+                  max={20}
+                  step={1}
+                  value={minimumEvidenceTarget}
+                  onChange={(e) => {
+                    const next = Number.parseInt(e.target.value, 10);
+                    setMinimumEvidenceTarget(Number.isFinite(next) ? next : defaultEvidenceTargetForMode(workflowMode));
+                    setMinimumEvidenceTargetTouched(true);
+                  }}
+                  disabled={loading}
+                  className="w-full rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2 text-sm text-white/90 outline-none focus:border-[#afc4ff]/45"
+                  aria-describedby="minimum-evidence-target-help"
+                />
+              </div>
+              <p id="minimum-evidence-target-help" className="text-xs text-white/50">
+                Target number of concrete proof points to collect before drafting. Lower is faster; higher usually improves coverage.
               </p>
             </div>
 

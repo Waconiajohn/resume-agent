@@ -18,6 +18,8 @@ interface SectionWorkbenchProps {
   reviewToken?: string;
   context: SectionWorkbenchContext | null;
   onApprove: () => void;
+  onApproveRemainingBundle?: () => void;
+  onApproveCurrentBundle?: () => void;
   onRequestChanges: (feedback: string, reviewToken?: string) => void;
   onDirectEdit: (editedContent: string, reviewToken?: string) => void;
   onDismissSuggestion?: (id: string) => void;
@@ -36,6 +38,8 @@ export function SectionWorkbench({
   reviewToken,
   context,
   onApprove,
+  onApproveRemainingBundle,
+  onApproveCurrentBundle,
   onRequestChanges,
   onDirectEdit,
   onDismissSuggestion,
@@ -209,6 +213,29 @@ export function SectionWorkbench({
 
   const sectionOrder = Array.isArray(context?.section_order) ? context.section_order : [];
   const sectionsApproved = Array.isArray(context?.sections_approved) ? context.sections_approved : [];
+  const reviewStrategy = context?.review_strategy ?? 'per_section';
+  const reviewRequiredSections = Array.isArray(context?.review_required_sections) ? context.review_required_sections : [];
+  const autoApprovedSections = Array.isArray(context?.auto_approved_sections) ? context.auto_approved_sections : [];
+  const currentReviewBundleKey =
+    context?.current_review_bundle_key === 'headline'
+    || context?.current_review_bundle_key === 'core_experience'
+    || context?.current_review_bundle_key === 'supporting'
+      ? context.current_review_bundle_key
+      : undefined;
+  const reviewBundles = Array.isArray(context?.review_bundles)
+    ? context.review_bundles.filter((b) => b && typeof b === 'object')
+    : [];
+  const currentBundleMeta = currentReviewBundleKey
+    ? reviewBundles.find((bundle) => bundle.key === currentReviewBundleKey)
+    : undefined;
+  const approvedReviewSections = reviewRequiredSections.filter((s) => sectionsApproved.includes(s));
+  const remainingReviewSections = reviewRequiredSections.filter(
+    (s) => s !== section && !sectionsApproved.includes(s),
+  );
+  const reviewProgressTotal = reviewRequiredSections.length;
+  const reviewProgressPct = reviewProgressTotal > 0
+    ? Math.max(0, Math.min(100, Math.round((approvedReviewSections.length / reviewProgressTotal) * 100)))
+    : 0;
   const evidence = Array.isArray(context?.evidence) ? context.evidence : [];
   const keywords = Array.isArray(context?.keywords) ? context.keywords : [];
   const gapMappings = Array.isArray(context?.gap_mappings) ? context.gap_mappings : [];
@@ -247,6 +274,132 @@ export function SectionWorkbench({
               </p>
             )}
           </div>
+
+          {reviewStrategy === 'bundled' && (
+            <div className="rounded-2xl border border-white/[0.1] bg-white/[0.025] p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+                  Bundled Review
+                </span>
+                <span className="text-xs text-white/60">
+                  Reviewing {reviewRequiredSections.length || 1} high-impact section{(reviewRequiredSections.length || 1) === 1 ? '' : 's'}
+                </span>
+                {reviewRequiredSections.includes(section) ? (
+                  <span className="text-[11px] text-emerald-200/85">This section is in the review set.</span>
+                ) : (
+                  <span className="text-[11px] text-white/45">This section is editable, even if auto-approved by mode.</span>
+                )}
+              </div>
+              {reviewRequiredSections.length > 0 && (
+                <div className="mt-2 rounded-xl border border-white/[0.08] bg-black/20 p-2.5">
+                  {reviewBundles.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {reviewBundles.map((bundle) => {
+                        const isCurrentBundle = bundle.key === currentReviewBundleKey;
+                        const toneClass = bundle.status === 'complete'
+                          ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
+                          : bundle.status === 'in_progress'
+                            ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+                            : bundle.status === 'auto_approved'
+                              ? 'border-white/[0.08] bg-white/[0.03] text-white/65'
+                              : 'border-white/[0.06] bg-white/[0.02] text-white/50';
+                        return (
+                          <span
+                            key={bundle.key}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] ${toneClass}`}
+                            title={`${bundle.label}: ${bundle.reviewed_required}/${bundle.review_required} review sections approved`}
+                          >
+                            {bundle.label}
+                            {bundle.status === 'auto_approved'
+                              ? ' • auto'
+                              : ` • ${bundle.reviewed_required}/${bundle.review_required}`}
+                            {isCurrentBundle ? ' • current bundle' : ''}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/65">
+                    <span>Review set progress</span>
+                    <span>{approvedReviewSections.length}/{reviewRequiredSections.length} approved</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#7cb5ff]/80 to-[#b3e1ff]/85 transition-all duration-300"
+                      style={{ width: `${reviewProgressPct}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {reviewRequiredSections.map((reviewSection) => {
+                      const isCurrent = reviewSection === section;
+                      const isApproved = sectionsApproved.includes(reviewSection);
+                      return (
+                        <span
+                          key={reviewSection}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                            isApproved
+                              ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
+                              : isCurrent
+                                ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+                                : 'border-white/[0.08] bg-white/[0.02] text-white/55'
+                          }`}
+                          title={toTitleCase(reviewSection)}
+                        >
+                          {toTitleCase(reviewSection)}
+                          {isApproved ? ' • approved' : (isCurrent ? ' • current' : ' • pending')}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {reviewRequiredSections.length > 0 && (
+              <p className="mt-2 text-[11px] leading-relaxed text-white/50">
+                Review set: {reviewRequiredSections.map((s) => toTitleCase(s)).join(', ')}
+              </p>
+              )}
+              {reviewRequiredSections.includes(section)
+                && currentBundleMeta
+                && currentBundleMeta.review_required > 1
+                && currentBundleMeta.status !== 'complete'
+                && onApproveCurrentBundle && (
+                <div className="mt-2">
+                  <GlassButton
+                    variant="ghost"
+                    onClick={onApproveCurrentBundle}
+                    disabled={isRefining || hasLocalEdits}
+                    className="h-8 px-3 text-[11px]"
+                  >
+                    Approve Current Bundle ({currentBundleMeta.label})
+                  </GlassButton>
+                  <p className="mt-1 text-[10px] text-white/35">
+                    Approves the rest of this bundle&apos;s review sections and continues to the next bundle.
+                  </p>
+                </div>
+              )}
+              {reviewRequiredSections.includes(section) && remainingReviewSections.length > 0 && onApproveRemainingBundle && (
+                <div className="mt-2">
+                  <GlassButton
+                    variant="ghost"
+                    onClick={onApproveRemainingBundle}
+                    disabled={isRefining || hasLocalEdits}
+                    className="h-8 px-3 text-[11px]"
+                  >
+                    Approve Remaining Review Set ({remainingReviewSections.length})
+                  </GlassButton>
+                  <p className="mt-1 text-[10px] text-white/35">
+                    This approves the rest of the bundled review sections and moves faster to quality review.
+                  </p>
+                </div>
+              )}
+              {autoApprovedSections.length > 0 && (
+                <p className="mt-1 text-[11px] leading-relaxed text-white/40">
+                  Auto-approved by mode: {autoApprovedSections.slice(0, 6).map((s) => toTitleCase(s)).join(', ')}
+                  {autoApprovedSections.length > 6 ? ` +${autoApprovedSections.length - 6} more` : ''}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Content editor */}
           <WorkbenchContentEditor

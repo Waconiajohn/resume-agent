@@ -55,6 +55,12 @@ export interface BenchmarkProfile {
   competitive_differentiators: string[];
   language_keywords: string[];
   ideal_candidate_summary: string;
+  // v2 benchmark payload compatibility (server emits these and the UI can map/fallback)
+  ideal_profile?: string;
+  section_expectations?: Record<string, string>;
+  assumptions?: Record<string, unknown>;
+  confidence_by_assumption?: Record<string, number>;
+  why_inferred?: Record<string, string>;
 }
 
 export interface ResearchDashboardData {
@@ -229,6 +235,18 @@ export interface SectionWorkbenchContext {
   }>;
   section_order: string[];
   sections_approved: string[];
+  review_strategy?: 'per_section' | 'bundled';
+  review_required_sections?: string[];
+  auto_approved_sections?: string[];
+  current_review_bundle_key?: 'headline' | 'core_experience' | 'supporting';
+  review_bundles?: Array<{
+    key: 'headline' | 'core_experience' | 'supporting';
+    label: string;
+    total_sections: number;
+    review_required: number;
+    reviewed_required: number;
+    status: 'pending' | 'in_progress' | 'complete' | 'auto_approved';
+  }>;
   suggestions?: SectionSuggestion[];
 }
 

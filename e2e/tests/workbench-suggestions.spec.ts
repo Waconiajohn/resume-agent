@@ -186,6 +186,111 @@ test.describe('Workbench Suggestions', () => {
     expect(body.response.review_token).toBe(MOCK_REVIEW_TOKEN);
   });
 
+  test('bundled review banner renders and one-click bundle approval sends flag', async ({ page }) => {
+    const { captured } = await navigateToWorkbench(page, workbenchSSEEvents({ bundledReview: true }));
+
+    await expect(page.getByText('Bundled Review')).toBeVisible();
+    await expect(page.getByText(/Review set:/i)).toBeVisible();
+    await expect(page.getByText(/1\/3 bundles • Headline/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Approve Remaining Review Set/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /Approve Remaining Review Set/i }).click();
+    await page.waitForTimeout(500);
+
+    const respondReq = captured.find((r) => r.url.includes('/pipeline/respond'));
+    expect(respondReq).toBeTruthy();
+    const body = respondReq!.body as {
+      response: { approved: boolean; approve_remaining_review_bundle?: boolean; review_token: string };
+    };
+    expect(body.response.approved).toBe(true);
+    expect(body.response.approve_remaining_review_bundle).toBe(true);
+    expect(body.response.review_token).toBe(MOCK_REVIEW_TOKEN);
+  });
+
+  test('current bundle approval sends approve_remaining_current_bundle flag', async ({ page }) => {
+    const { captured } = await navigateToWorkbench(page, workbenchSSEEvents({ bundledReview: true }));
+
+    await expect(page.getByRole('button', { name: /Approve Current Bundle \(Headline\)/i })).toBeVisible();
+    await page.getByRole('button', { name: /Approve Current Bundle \(Headline\)/i }).click();
+    await page.waitForTimeout(500);
+
+    const respondReq = captured.find((r) => r.url.includes('/pipeline/respond'));
+    expect(respondReq).toBeTruthy();
+    const body = respondReq!.body as {
+      response: { approved: boolean; approve_remaining_current_bundle?: boolean; review_token: string };
+    };
+    expect(body.response.approved).toBe(true);
+    expect(body.response.approve_remaining_current_bundle).toBe(true);
+    expect(body.response.review_token).toBe(MOCK_REVIEW_TOKEN);
+  });
+
+  test('live draft readiness card renders from SSE update', async ({ page }) => {
+    await navigateToWorkbench(page, workbenchSSEEvents({ includeDraftReadiness: true }));
+
+    await expect(page.getByText('Ready To Draft')).toBeVisible();
+    await expect(page.getByText(/Evidence 5\/5/i)).toBeVisible();
+    await expect(page.getByText(/Coverage 74% \/ 65%/i)).toBeVisible();
+  });
+
+  test('live replan banner renders from SSE lifecycle event', async ({ page }) => {
+    await navigateToWorkbench(page, workbenchSSEEvents({ includeReplanStarted: true }));
+
+    await expect(page.getByText(/Regenerating/i)).toBeVisible();
+    await expect(page.getByText(/benchmark edit v1/i)).toBeVisible();
+  });
+
+  test('persisted replan status banner renders from workflow summary', async ({ page }) => {
+    await navigateToWorkbench(
+      page,
+      workbenchSSEEvents(),
+      {
+        workflowSummaryOverride: {
+          replan: null,
+          replan_status: {
+            state: 'completed',
+            reason: 'benchmark_assumptions_updated',
+            benchmark_edit_version: 3,
+            rebuild_from_stage: 'gap_analysis',
+            requires_restart: false,
+            current_stage: 'architect',
+            rebuilt_through_stage: 'architect',
+            message: 'Mock persisted replan completion.',
+            updated_at: new Date().toISOString(),
+            version: 3,
+            created_at: new Date().toISOString(),
+          },
+        },
+      },
+    );
+
+    await expect(page.getByText(/Benchmark replan applied for the current run \(v3\)/i)).toBeVisible();
+    await expect(page.getByText(/Regenerated through architect/i)).toBeVisible();
+  });
+
+  test('rebuild-required replan state hides "Generate Draft Now" in active gate banner', async ({ page }) => {
+    await navigateToWorkbench(
+      page,
+      workbenchSSEEvents(),
+      {
+        workflowSummaryOverride: {
+          replan: {
+            pending: true,
+            reason: 'benchmark_assumptions_updated',
+            stale_nodes: ['gaps', 'questions', 'blueprint', 'sections', 'quality', 'export'],
+            requires_restart: true,
+            rebuild_from_stage: 'gap_analysis',
+            benchmark_edit_version: 2,
+            current_stage: 'section_review',
+          },
+        },
+      },
+    );
+
+    await expect(page.getByRole('button', { name: /Generate Draft Now/i })).not.toBeVisible();
+    await expect(page.getByText(/marked stale/i)).toBeVisible();
+    await expect(page.getByText(/Rebuild required/i)).toBeVisible();
+  });
+
   test('direct edit shows "Save Edits" and "Discard" buttons', async ({ page }) => {
     await navigateToWorkbench(page, workbenchSSEEvents());
 

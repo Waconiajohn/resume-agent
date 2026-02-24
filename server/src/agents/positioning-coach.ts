@@ -49,6 +49,28 @@ interface RequirementGap {
 }
 
 const METRICS_PATTERN = /\$[\d,.]+|\d+%|\d+[xX]|\d+\+?\s*(million|billion|users|customers|clients|employees|team|reports|people|members)/i;
+const REQUIREMENT_STOPWORDS = new Set([
+  'with', 'and', 'the', 'for', 'from', 'into', 'across', 'through', 'using',
+  'experience', 'ability', 'strong', 'proven', 'demonstrated', 'knowledge', 'skills',
+  'work', 'working', 'lead', 'leading', 'manage', 'managed', 'management',
+]);
+
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9+/#\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function requirementKeywords(req: string): string[] {
+  const normalized = normalizeText(req);
+  return normalized
+    .split(/[\s,/&()-]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !REQUIREMENT_STOPWORDS.has(token))
+    .slice(0, 8);
+}
 
 /**
  * For each JD must-have, check if resume has keyword matches with metrics
@@ -59,36 +81,55 @@ function identifyRequirementGaps(
   research: ResearchOutput,
 ): RequirementGap[] {
   const allBullets = resume.experience.flatMap(e => e.bullets);
-  const allText = allBullets.join(' ').toLowerCase();
-  const skillsText = resume.skills.join(' ').toLowerCase();
+  const bulletRows = resume.experience.flatMap(e =>
+    e.bullets.map((bullet) => ({
+      text: bullet,
+      role: `${e.title} at ${e.company}`,
+    })),
+  );
+  const titlesText = normalizeText(resume.experience.map((e) => `${e.title} ${e.company}`).join(' '));
+  const summaryText = normalizeText(resume.summary ?? '');
+  const skillsText = normalizeText(resume.skills.join(' '));
+  const allResumeText = [summaryText, titlesText, skillsText, ...allBullets.map(normalizeText)].join(' ');
 
   return research.jd_analysis.must_haves.map(req => {
-    // Generate search keywords from the requirement
-    const keywords = req.toLowerCase()
-      .split(/[\s,/&]+/)
-      .filter(w => w.length > 3)
-      .slice(0, 5);
+    const normalizedRequirement = normalizeText(req);
+    const keywords = requirementKeywords(req);
+    const phraseTokens = normalizedRequirement.split(' ').filter(Boolean);
+    const hasPhraseMatch = normalizedRequirement.length >= 6 && allResumeText.includes(normalizedRequirement);
+    const keywordMatches = keywords.filter((kw) => allResumeText.includes(kw));
+    const keywordCoverage = keywords.length > 0 ? keywordMatches.length / keywords.length : 0;
 
-    const matchingBullets = allBullets.filter(b => {
-      const lower = b.toLowerCase();
-      return keywords.some(kw => lower.includes(kw));
+    const matchingBullets = bulletRows.filter((row) => {
+      const lower = normalizeText(row.text);
+      if (normalizedRequirement.length >= 6 && lower.includes(normalizedRequirement)) return true;
+      const rowKeywordMatches = keywords.filter((kw) => lower.includes(kw));
+      if (rowKeywordMatches.length >= Math.min(2, keywords.length)) return true;
+      // Handle short acronym-ish requirements (e.g., P&L, M&A) by raw text check
+      return phraseTokens.some((token) => token.length <= 4 && row.text.toLowerCase().includes(token));
     });
 
-    const hasSkillMatch = keywords.some(kw => skillsText.includes(kw));
+    const hasSkillMatch = keywords.some(kw => skillsText.includes(kw))
+      || (normalizedRequirement.length >= 6 && skillsText.includes(normalizedRequirement));
+    const hasTitleOrSummaryMatch = keywords.some((kw) => titlesText.includes(kw) || summaryText.includes(kw));
 
-    if (matchingBullets.length === 0 && !hasSkillMatch) {
+    if (matchingBullets.length === 0 && !hasSkillMatch && !hasTitleOrSummaryMatch && !hasPhraseMatch && keywordCoverage < 0.4) {
       return { requirement: req, gap_type: 'no_evidence' as const };
     }
 
-    const hasMetrics = matchingBullets.some(b => METRICS_PATTERN.test(b));
+    const hasMetrics = matchingBullets.some(({ text }) => METRICS_PATTERN.test(text));
     if (hasMetrics) {
       return { requirement: req, gap_type: 'strong' as const };
     }
 
+    const partialEvidence = matchingBullets[0]?.text
+      ?? (hasSkillMatch ? `Skill match in resume skills: ${req}` : undefined)
+      ?? (hasTitleOrSummaryMatch ? `Mentioned in title/summary context: ${req}` : undefined);
+
     return {
       requirement: req,
       gap_type: 'no_metrics' as const,
-      partial_evidence: matchingBullets[0]?.slice(0, 100),
+      partial_evidence: partialEvidence?.slice(0, 120),
     };
   });
 }
@@ -103,7 +144,13 @@ function identifyRequirementGaps(
 export async function generateQuestions(
   resume: IntakeOutput,
   research?: ResearchOutput,
-  preferences?: { primary_goal?: string; resume_priority?: string; seniority_delta?: string },
+  preferences?: {
+    primary_goal?: string;
+    resume_priority?: string;
+    seniority_delta?: string;
+    workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target?: number;
+  },
 ): Promise<PositioningQuestion[]> {
   // If no research available (e.g., pipeline reorder didn't happen), use fallback
   if (!research) {
@@ -144,11 +191,26 @@ async function generateQuestionsViaLLM(
   resume: IntakeOutput,
   research: ResearchOutput,
   gaps: RequirementGap[],
-  preferences?: { primary_goal?: string; resume_priority?: string; seniority_delta?: string },
+  preferences?: {
+    primary_goal?: string;
+    resume_priority?: string;
+    seniority_delta?: string;
+    workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target?: number;
+  },
   signal?: AbortSignal,
 ): Promise<PositioningQuestion[]> {
   const { llm, MODEL_MID } = await getLLMRuntime();
   const needsAgeProtection = resume.career_span_years > 15;
+  const mode = preferences?.workflow_mode ?? 'balanced';
+  const evidenceTarget = typeof preferences?.minimum_evidence_target === 'number'
+    ? Math.min(20, Math.max(3, Math.round(preferences.minimum_evidence_target)))
+    : undefined;
+  const targetQuestionCount = mode === 'fast_draft'
+    ? '6-9'
+    : mode === 'deep_dive'
+      ? '10-15'
+      : '8-12';
 
   const systemPrompt = `You are an elite executive career positioning strategist. Design a "Why Me" coaching interview that extracts the candidate's most powerful, authentic stories and maps them directly to what this specific role demands.
 
@@ -166,7 +228,12 @@ CATEGORIES (distribute questions across these):
 - hidden_accomplishments (1-2 questions): What's NOT on the resume — biggest wins they left off
 ${needsAgeProtection ? '- currency_and_adaptability (1-2 questions): Recent tech adoption, modern methodologies, continuous learning — ONLY because career_span > 15 years' : '- currency_and_adaptability: SKIP — career_span <= 15 years'}
 
-Generate 8-15 questions. Each question must have:
+PACE MODE:
+- fast_draft: ask only the highest-impact questions and rely heavily on suggestions
+- balanced: ask a focused but complete set of questions
+- deep_dive: ask a thorough set of questions
+
+Generate ${targetQuestionCount} questions based on the selected mode. Each question must have:
 - id: unique string (e.g., "scope_1", "req_pnl", "career_1", "hidden_1", "currency_1")
 - question_text: the coaching question
 - context: 1-2 sentences of context shown to the user
@@ -212,7 +279,9 @@ ${gapContext}
 ${preferences ? `USER PREFERENCES:
 Goal: ${preferences.primary_goal ?? 'not specified'}
 Priority: ${preferences.resume_priority ?? 'not specified'}
-Seniority delta: ${preferences.seniority_delta ?? 'not specified'}` : ''}
+Seniority delta: ${preferences.seniority_delta ?? 'not specified'}
+Workflow mode: ${preferences.workflow_mode ?? 'balanced'}
+Minimum evidence target: ${evidenceTarget ?? 'not specified'}` : ''}
 
 Generate the coaching interview questions as a JSON array.`;
 
@@ -521,8 +590,21 @@ export async function synthesizeProfile(
   resume: IntakeOutput,
   answers: Array<{ question_id: string; answer: string; selected_suggestion?: string }>,
   research?: ResearchOutput,
+  preferences?: {
+    workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target?: number;
+  },
 ): Promise<PositioningProfile> {
   const { llm, MODEL_PRIMARY } = await getLLMRuntime();
+  const evidenceTarget = typeof preferences?.minimum_evidence_target === 'number'
+    ? Math.min(20, Math.max(3, Math.round(preferences.minimum_evidence_target)))
+    : undefined;
+  const mode = preferences?.workflow_mode ?? 'balanced';
+  const evidenceExtractionGuidance = evidenceTarget != null
+    ? (mode === 'fast_draft'
+        ? `TARGET: Extract at least ${evidenceTarget} high-confidence evidence items. Prefer precision over volume. Do NOT infer extra evidence if the interview is sparse.`
+        : `TARGET: Extract at least ${evidenceTarget} evidence items if supported by the interview. Prefer concrete, defensible evidence over speculative extrapolation.`)
+    : 'TARGET: Extract 10-20 evidence items (STAR format) from the interview responses.';
   const answerBlock = answers.map(a => {
     const label = a.selected_suggestion ? ` [Selected: ${a.selected_suggestion}]` : '';
     return `Q: ${a.question_id}${label}\nA: ${a.answer}`;
@@ -545,7 +627,7 @@ Your output will be consumed by a Resume Architect agent that uses it to make st
 
 IMPORTANT: Capture the person's authentic language. When they use distinctive phrases or metaphors, preserve them in the "authentic_phrases" field. These will be woven into their resume to maintain their voice.
 
-TARGET: Extract 10-20 evidence items (STAR format) from the interview responses. Look for every concrete achievement, metric, scope indicator, and accomplishment mentioned. Even brief mentions should be captured.${research ? '\n\nMap each evidence item to specific JD requirements it addresses.' : ''}`,
+${evidenceExtractionGuidance} Look for every concrete achievement, metric, scope indicator, and accomplishment mentioned. Even brief mentions should be captured when defensible.${research ? '\n\nMap each evidence item to specific JD requirements it addresses.' : ''}`,
     messages: [{
       role: 'user',
       content: `Here is the professional's resume summary and recent experience for context:
@@ -602,7 +684,7 @@ Synthesize this into a positioning profile. Return ONLY valid JSON:
   "gaps_detected": ["JD requirements still not addressed after the interview"]
 }
 
-Extract 5-8 top capabilities, 10-20 evidence items, and as many authentic phrases as you can find. Be specific — "strategic thinker" is useless, "turns ambiguous stakeholder conflicts into aligned roadmaps" is valuable.`,
+Extract 5-8 top capabilities, ${evidenceTarget != null ? `at least ${evidenceTarget}` : '10-20'} evidence items when supported by the source material, and as many authentic phrases as you can find. Be specific — "strategic thinker" is useless, "turns ambiguous stakeholder conflicts into aligned roadmaps" is valuable.`,
     }],
   });
 

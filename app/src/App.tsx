@@ -37,6 +37,7 @@ export default function App() {
     sendMessage,
     setCurrentSession,
     startPipeline,
+    restartPipelineWithCachedInputs,
     respondToGate,
   } = useSession(accessToken);
 
@@ -58,6 +59,8 @@ export default function App() {
     addUserMessage,
     pipelineStage,
     positioningProfileFound,
+    draftReadiness,
+    workflowReplan,
     isPipelineGateActive,
     setIsPipelineGateActive,
     dismissSuggestion,
@@ -96,6 +99,7 @@ export default function App() {
       jobDescription: string;
       companyName: string;
       workflowMode: 'fast_draft' | 'balanced' | 'deep_dive';
+      minimumEvidenceTarget: number;
       resumePriority: 'authentic' | 'ats' | 'impact' | 'balanced';
       seniorityDelta: 'same' | 'one_up' | 'big_jump' | 'step_back';
     }) => {
@@ -113,6 +117,7 @@ export default function App() {
           data.jobDescription,
           data.companyName,
           data.workflowMode,
+          data.minimumEvidenceTarget,
           data.resumePriority,
           data.seniorityDelta,
         );
@@ -233,6 +238,11 @@ export default function App() {
     [currentSession, respondToGate, setIsPipelineGateActive],
   );
 
+  const handleRestartPipelineFromCache = useCallback(
+    async (sessionId: string) => restartPipelineWithCachedInputs(sessionId),
+    [restartPipelineWithCachedInputs],
+  );
+
   const handleSignOut = useCallback(async () => {
     await signOut();
     setCurrentSession(null);
@@ -333,6 +343,9 @@ export default function App() {
           onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
           approvedSections={approvedSections}
           onDismissSuggestion={dismissSuggestion}
+          onRestartPipelineFromLastInputs={handleRestartPipelineFromCache}
+          liveDraftReadiness={draftReadiness}
+          liveWorkflowReplan={workflowReplan}
         />
       )}
       </div>

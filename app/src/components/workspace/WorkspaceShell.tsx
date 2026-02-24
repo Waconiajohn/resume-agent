@@ -11,6 +11,7 @@ export interface WorkspaceNodeNavItem {
   description: string;
   status: WorkflowNodeStatus;
   hasSnapshot?: boolean;
+  detailLabel?: string;
 }
 
 interface WorkspaceShellProps {
@@ -210,6 +211,9 @@ export function WorkspaceShell({
                             {node.hasSnapshot && (
                               <span className="text-[10px] text-white/48">Saved view</span>
                             )}
+                            {node.detailLabel && (
+                              <span className="text-[10px] text-white/60">{node.detailLabel}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -242,6 +246,7 @@ export function WorkspaceShell({
                       isLocked && 'opacity-60',
                     )}
                     aria-label={`${node.label} (${styles.label})`}
+                    title={node.detailLabel ? `${node.label}: ${node.detailLabel}` : undefined}
                   >
                     {node.shortLabel}
                   </button>

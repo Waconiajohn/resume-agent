@@ -30,6 +30,7 @@ const startSchema = z.object({
   job_description: z.string().min(1).max(50_000),
   company_name: z.string().min(1).max(200),
   workflow_mode: z.enum(['fast_draft', 'balanced', 'deep_dive']).optional(),
+  minimum_evidence_target: z.number().int().min(3).max(20).optional(),
   resume_priority: z.enum(['authentic', 'ats', 'impact', 'balanced']).optional(),
   seniority_delta: z.enum(['same', 'one_up', 'big_jump', 'step_back']).optional(),
 });
@@ -125,6 +126,35 @@ function sanitizeSectionContext(event: Extract<PipelineSSEEvent, { type: 'sectio
     })),
     section_order: event.section_order.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(s, 60)),
     sections_approved: event.sections_approved.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(s, 60)),
+    review_strategy: event.review_strategy === 'bundled' ? 'bundled' : 'per_section',
+    review_required_sections: Array.isArray(event.review_required_sections)
+      ? event.review_required_sections.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(String(s), 60))
+      : undefined,
+    auto_approved_sections: Array.isArray(event.auto_approved_sections)
+      ? event.auto_approved_sections.slice(0, MAX_SECTION_CONTEXT_ORDER_ITEMS).map((s) => truncateText(String(s), 60))
+      : undefined,
+    current_review_bundle_key:
+      event.current_review_bundle_key === 'headline'
+      || event.current_review_bundle_key === 'core_experience'
+      || event.current_review_bundle_key === 'supporting'
+        ? event.current_review_bundle_key
+        : undefined,
+    review_bundles: Array.isArray(event.review_bundles)
+      ? event.review_bundles
+          .filter((b) => b && typeof b === 'object')
+          .slice(0, 6)
+          .map((b) => ({
+            key: (b.key === 'headline' || b.key === 'core_experience' || b.key === 'supporting') ? b.key : 'supporting',
+            label: truncateText(String(b.label ?? ''), 40),
+            total_sections: clampFiniteNumber(b.total_sections),
+            review_required: clampFiniteNumber(b.review_required),
+            reviewed_required: clampFiniteNumber(b.reviewed_required),
+            status:
+              b.status === 'complete' || b.status === 'in_progress' || b.status === 'auto_approved'
+                ? b.status
+                : 'pending',
+          }))
+      : undefined,
     suggestions: Array.isArray(event.suggestions)
       ? event.suggestions
           .filter((s) => s && typeof s === 'object' && typeof s.question_text === 'string' && VALID_SUGGESTION_INTENTS.has(s.intent))
@@ -201,6 +231,7 @@ const queuedPanelPersists = new Map<string, {
 }>();
 
 import {
+  WORKFLOW_NODE_KEYS,
   type WorkflowNodeKey,
   type WorkflowNodeStatus,
   workflowNodeFromStage,
@@ -298,6 +329,26 @@ function upsertWorkflowNodeStatusBestEffort(
   meta?: Record<string, unknown>,
 ) {
   void upsertWorkflowNodeStatus(sessionId, nodeKey, status, meta);
+}
+
+function resetWorkflowNodesForNewRunBestEffort(sessionId: string) {
+  void (async () => {
+    const now = new Date().toISOString();
+    const rows = WORKFLOW_NODE_KEYS.map((nodeKey) => ({
+      session_id: sessionId,
+      node_key: nodeKey,
+      status: nodeKey === 'overview' ? 'in_progress' : 'locked',
+      active_version: null,
+      updated_at: now,
+      meta: null,
+    }));
+    const { error } = await supabaseAdmin
+      .from('session_workflow_nodes')
+      .upsert(rows, { onConflict: 'session_id,node_key' });
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Failed to reset workflow nodes for new run');
+    }
+  })();
 }
 
 function inferQuestionResponseStatus(response: unknown): 'answered' | 'skipped' | 'deferred' {
@@ -875,7 +926,16 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
-  const { session_id, raw_resume_text, job_description, company_name, workflow_mode, resume_priority, seniority_delta } = parsed.data;
+  const {
+    session_id,
+    raw_resume_text,
+    job_description,
+    company_name,
+    workflow_mode,
+    minimum_evidence_target,
+    resume_priority,
+    seniority_delta,
+  } = parsed.data;
   let resolvedJobDescription = job_description.trim();
   try {
     resolvedJobDescription = await resolveJobDescriptionInput(job_description);
@@ -997,6 +1057,38 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     return c.json({ error: 'Pipeline already running or completed for this session' }, 409);
   }
 
+  resetWorkflowNodesForNewRunBestEffort(session_id);
+  persistWorkflowArtifactBestEffort(session_id, 'overview', 'draft_readiness', {
+    type: 'draft_readiness_update',
+    stage: 'intake',
+    workflow_mode: workflow_mode ?? 'balanced',
+    evidence_count: 0,
+    minimum_evidence_target: minimum_evidence_target ?? null,
+    coverage_score: 0,
+    coverage_threshold: null,
+    ready: false,
+    note: 'A new run has started. Draft readiness will update after gap analysis.',
+    reset_at: new Date().toISOString(),
+  }, 'system');
+  persistWorkflowArtifactBestEffort(session_id, 'overview', 'workflow_replan_status', {
+    type: 'workflow_replan_cleared',
+    cleared_at: new Date().toISOString(),
+    reason: 'new_pipeline_run_started',
+  }, 'system');
+
+  persistWorkflowArtifactBestEffort(session_id, 'overview', 'pipeline_start_request', {
+    session_id,
+    raw_resume_text,
+    job_description_input: job_description,
+    job_description_resolved: resolvedJobDescription,
+    company_name,
+    workflow_mode: workflow_mode ?? 'balanced',
+    minimum_evidence_target: minimum_evidence_target ?? null,
+    resume_priority: resume_priority ?? null,
+    seniority_delta: seniority_delta ?? null,
+    requested_at: new Date().toISOString(),
+  }, 'system');
+
   // Capture the most recently emitted section_context to merge into section_draft persistence.
   let latestSectionContext: {
     section: string;
@@ -1112,6 +1204,49 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       upsertWorkflowNodeStatusBestEffort(session_id, 'quality', 'complete');
       persistWorkflowArtifactBestEffort(session_id, 'quality', 'quality_scores', event.scores);
     }
+    if (event.type === 'draft_readiness_update') {
+      persistWorkflowArtifactBestEffort(session_id, 'overview', 'draft_readiness', event);
+      upsertWorkflowNodeStatusBestEffort(session_id, 'overview', event.ready ? 'complete' : 'in_progress', {
+        stage: event.stage,
+        draft_ready: event.ready,
+        evidence_count: event.evidence_count,
+        minimum_evidence_target: event.minimum_evidence_target,
+        coverage_score: event.coverage_score,
+        coverage_threshold: event.coverage_threshold,
+      });
+    }
+    if (
+      event.type === 'workflow_replan_requested'
+      || event.type === 'workflow_replan_started'
+      || event.type === 'workflow_replan_completed'
+    ) {
+      persistWorkflowArtifactBestEffort(session_id, 'overview', 'workflow_replan_status', event, 'system');
+      if (event.type === 'workflow_replan_requested') {
+        upsertWorkflowNodeStatusBestEffort(session_id, 'overview', 'in_progress', {
+          replan_state: 'requested',
+          replan_reason: event.reason,
+          benchmark_edit_version: event.benchmark_edit_version,
+          rebuild_from_stage: event.rebuild_from_stage,
+          requires_restart: event.requires_restart,
+        });
+      } else if (event.type === 'workflow_replan_started') {
+        upsertWorkflowNodeStatusBestEffort(session_id, 'overview', 'in_progress', {
+          replan_state: 'in_progress',
+          replan_reason: event.reason,
+          benchmark_edit_version: event.benchmark_edit_version,
+          rebuild_from_stage: event.rebuild_from_stage,
+          phase: event.phase,
+        });
+      } else {
+        upsertWorkflowNodeStatusBestEffort(session_id, 'overview', 'complete', {
+          replan_state: 'completed',
+          replan_reason: event.reason,
+          benchmark_edit_version: event.benchmark_edit_version,
+          rebuild_from_stage: event.rebuild_from_stage,
+          rebuilt_through_stage: event.rebuilt_through_stage,
+        });
+      }
+    }
     if (event.type === 'stage_complete') {
       upsertWorkflowNodeStatusBestEffort(session_id, workflowNodeFromStage(event.stage), 'complete', {
         stage: event.stage,
@@ -1152,6 +1287,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     job_description: resolvedJobDescription,
     company_name,
     workflow_mode,
+    minimum_evidence_target,
     resume_priority,
     seniority_delta,
     emit,

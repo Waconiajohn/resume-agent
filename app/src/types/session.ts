@@ -108,6 +108,31 @@ export interface QualityScores {
   blueprint_compliance: number;    // 0-100
 }
 
+export interface DraftReadinessUpdate {
+  stage: PipelineStage;
+  workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
+  evidence_count: number;
+  minimum_evidence_target: number;
+  coverage_score: number;
+  coverage_threshold: number;
+  ready: boolean;
+  note?: string;
+}
+
+export interface WorkflowReplanUpdate {
+  state: 'requested' | 'in_progress' | 'completed';
+  reason: 'benchmark_assumptions_updated';
+  benchmark_edit_version: number;
+  rebuild_from_stage: 'gap_analysis';
+  requires_restart?: boolean;
+  current_stage: PipelineStage;
+  phase?: 'apply_benchmark_overrides' | 'refresh_gap_analysis' | 'rebuild_blueprint';
+  rebuilt_through_stage?: 'research' | 'gap_analysis' | 'architect';
+  stale_nodes?: Array<'gaps' | 'questions' | 'blueprint' | 'sections' | 'quality' | 'export'>;
+  message?: string;
+  updated_at: string;
+}
+
 // Revision instruction from quality review
 export interface RevisionInstruction {
   target_section: string;

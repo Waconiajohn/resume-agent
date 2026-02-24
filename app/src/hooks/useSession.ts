@@ -5,6 +5,64 @@ import { resumeToText } from '@/lib/export';
 import { retryDelayMsFromHeaders } from '@/lib/http-retry';
 import { API_BASE } from '../lib/api';
 
+type WorkflowMode = 'fast_draft' | 'balanced' | 'deep_dive';
+type ResumePriority = 'authentic' | 'ats' | 'impact' | 'balanced';
+type SeniorityDelta = 'same' | 'one_up' | 'big_jump' | 'step_back';
+
+interface PipelineStartCacheEntry {
+  rawResumeText: string;
+  jobDescription: string;
+  companyName: string;
+  workflowMode: WorkflowMode;
+  minimumEvidenceTarget?: number;
+  resumePriority?: ResumePriority;
+  seniorityDelta?: SeniorityDelta;
+  savedAt: string;
+}
+
+const PIPELINE_START_CACHE_PREFIX = 'resume-agent:pipeline-start:';
+
+function pipelineStartCacheKey(sessionId: string): string {
+  return `${PIPELINE_START_CACHE_PREFIX}${sessionId}`;
+}
+
+function persistPipelineStartCache(sessionId: string, entry: PipelineStartCacheEntry) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(pipelineStartCacheKey(sessionId), JSON.stringify(entry));
+  } catch {
+    // Best effort
+  }
+}
+
+function loadPipelineStartCache(sessionId: string): PipelineStartCacheEntry | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(pipelineStartCacheKey(sessionId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PipelineStartCacheEntry> | null;
+    if (!parsed) return null;
+    if (typeof parsed.rawResumeText !== 'string' || typeof parsed.jobDescription !== 'string' || typeof parsed.companyName !== 'string') {
+      return null;
+    }
+    const workflowMode: WorkflowMode = parsed.workflowMode === 'fast_draft' || parsed.workflowMode === 'deep_dive'
+      ? parsed.workflowMode
+      : 'balanced';
+    return {
+      rawResumeText: parsed.rawResumeText,
+      jobDescription: parsed.jobDescription,
+      companyName: parsed.companyName,
+      workflowMode,
+      minimumEvidenceTarget: typeof parsed.minimumEvidenceTarget === 'number' ? parsed.minimumEvidenceTarget : undefined,
+      resumePriority: parsed.resumePriority,
+      seniorityDelta: parsed.seniorityDelta,
+      savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function useSession(accessToken: string | null) {
   const [sessions, setSessions] = useState<CoachSession[]>([]);
   const [resumes, setResumes] = useState<MasterResumeListItem[]>([]);
@@ -361,9 +419,10 @@ export function useSession(accessToken: string | null) {
     rawResumeText: string,
     jobDescription: string,
     companyName: string,
-    workflowMode: 'fast_draft' | 'balanced' | 'deep_dive' = 'balanced',
-    resumePriority?: 'authentic' | 'ats' | 'impact' | 'balanced',
-    seniorityDelta?: 'same' | 'one_up' | 'big_jump' | 'step_back',
+    workflowMode: WorkflowMode = 'balanced',
+    minimumEvidenceTarget?: number,
+    resumePriority?: ResumePriority,
+    seniorityDelta?: SeniorityDelta,
   ): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
     setError(null);
@@ -377,6 +436,7 @@ export function useSession(accessToken: string | null) {
           job_description: jobDescription,
           company_name: companyName,
           workflow_mode: workflowMode,
+          minimum_evidence_target: minimumEvidenceTarget,
           resume_priority: resumePriority,
           seniority_delta: seniorityDelta,
         }),
@@ -386,12 +446,112 @@ export function useSession(accessToken: string | null) {
         setError(message);
         return false;
       }
+      persistPipelineStartCache(sessionId, {
+        rawResumeText,
+        jobDescription,
+        companyName,
+        workflowMode,
+        minimumEvidenceTarget,
+        resumePriority,
+        seniorityDelta,
+        savedAt: new Date().toISOString(),
+      });
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error starting pipeline');
       return false;
     }
   }, [headers, buildErrorMessage]);
+
+  const restartPipelineWithCachedInputs = useCallback(async (
+    sessionId: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    if (accessTokenRef.current) {
+      try {
+        const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/restart`, {
+          method: 'POST',
+          headers: headers(),
+        });
+        const data = await res.json().catch(() => ({} as { error?: string; message?: string; status?: string }));
+        if (res.ok) {
+          const message = data.message ?? 'Restarted the pipeline from saved session inputs.';
+          return { success: true, message };
+        }
+        // If the server has a definitive response (e.g., already running/capacity), do not fallback.
+        if (res.status !== 404) {
+          const message = data.message ?? data.error ?? `Failed to restart pipeline (${res.status})`;
+          setError(message);
+          return { success: false, message };
+        }
+        // 404 means this server may not have the restart endpoint or no artifact exists — fall through.
+      } catch {
+        // Fall back to local cache + restart-inputs endpoint path below.
+      }
+    }
+
+    let cached = loadPipelineStartCache(sessionId);
+    if (!cached && accessTokenRef.current) {
+      try {
+        const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/restart-inputs`, {
+          headers: headers(),
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({} as {
+            inputs?: {
+              raw_resume_text?: string;
+              job_description?: string;
+              company_name?: string;
+              workflow_mode?: WorkflowMode;
+              minimum_evidence_target?: number | null;
+              resume_priority?: ResumePriority | null;
+              seniority_delta?: SeniorityDelta | null;
+            };
+          }));
+          const inputs = data.inputs;
+          if (inputs?.raw_resume_text && inputs?.job_description && inputs?.company_name) {
+            cached = {
+              rawResumeText: inputs.raw_resume_text,
+              jobDescription: inputs.job_description,
+              companyName: inputs.company_name,
+              workflowMode: inputs.workflow_mode === 'fast_draft' || inputs.workflow_mode === 'deep_dive'
+                ? inputs.workflow_mode
+                : 'balanced',
+              minimumEvidenceTarget: typeof inputs.minimum_evidence_target === 'number'
+                ? inputs.minimum_evidence_target
+                : undefined,
+              resumePriority: inputs.resume_priority ?? undefined,
+              seniorityDelta: inputs.seniority_delta ?? undefined,
+              savedAt: new Date().toISOString(),
+            };
+            persistPipelineStartCache(sessionId, cached);
+          }
+        }
+      } catch {
+        // Fall through to local cache / error path.
+      }
+    }
+    if (!cached) {
+      const message = 'No restart inputs are available for this session. Please restart from the intake form.';
+      setError(message);
+      return { success: false, message };
+    }
+    const started = await startPipeline(
+      sessionId,
+      cached.rawResumeText,
+      cached.jobDescription,
+      cached.companyName,
+      cached.workflowMode,
+      cached.minimumEvidenceTarget,
+      cached.resumePriority,
+      cached.seniorityDelta,
+    );
+    return {
+      success: started,
+      message: started
+        ? 'Restarted the pipeline with your last resume, job description, and workflow settings.'
+        : 'Failed to restart pipeline',
+    };
+  }, [startPipeline]);
 
   const respondToGate = useCallback(async (
     sessionId: string,
@@ -449,6 +609,7 @@ export function useSession(accessToken: string | null) {
     sendMessage,
     setCurrentSession,
     startPipeline,
+    restartPipelineWithCachedInputs,
     respondToGate,
   };
 }

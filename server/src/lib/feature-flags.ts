@@ -5,6 +5,7 @@ function envBool(key: string, fallback: boolean): boolean {
 }
 
 export const QUESTIONNAIRE_FLAGS = {
+  positioning_batch: envBool('FF_POSITIONING_BATCH', true),
   intake_quiz: envBool('FF_INTAKE_QUIZ', false),
   research_validation: envBool('FF_RESEARCH_VALIDATION', false),
   gap_analysis_quiz: envBool('FF_GAP_ANALYSIS_QUIZ', true),

@@ -1,9 +1,12 @@
 import type { SSEEvent } from './mock-sse';
 import {
   connectedEvent,
+  draftReadinessUpdateEvent,
   stageStartEvent,
   sectionContextEvent,
   sectionDraftEvent,
+  workflowReplanRequestedEvent,
+  workflowReplanStartedEvent,
 } from './mock-sse';
 
 export const MOCK_SESSION_ID = 'e2e-test-session-001';
@@ -126,6 +129,10 @@ export function workbenchSSEEvents(overrides?: {
   section?: string;
   content?: string;
   reviewToken?: string;
+  includeDraftReadiness?: boolean;
+  bundledReview?: boolean;
+  includeReplanRequested?: boolean;
+  includeReplanStarted?: boolean;
 }): SSEEvent[] {
   const section = overrides?.section ?? 'summary';
   const content = overrides?.content ?? SAMPLE_SECTION_CONTENT;
@@ -133,11 +140,64 @@ export function workbenchSSEEvents(overrides?: {
   const contextPayload = makeContextPayload({
     suggestions: overrides?.suggestions,
   });
+  const bundledContext = overrides?.bundledReview
+    ? {
+        review_strategy: 'bundled' as const,
+        review_required_sections: ['summary', 'experience_role_0'],
+        auto_approved_sections: ['skills', 'education_and_certifications'],
+        current_review_bundle_key: 'headline' as const,
+        review_bundles: [
+          {
+            key: 'headline' as const,
+            label: 'Headline',
+            total_sections: 2,
+            review_required: 2,
+            reviewed_required: 0,
+            status: 'in_progress' as const,
+          },
+          {
+            key: 'core_experience' as const,
+            label: 'Core Experience',
+            total_sections: 2,
+            review_required: 1,
+            reviewed_required: 0,
+            status: 'pending' as const,
+          },
+          {
+            key: 'supporting' as const,
+            label: 'Supporting Sections',
+            total_sections: 2,
+            review_required: 0,
+            reviewed_required: 0,
+            status: 'auto_approved' as const,
+          },
+        ],
+      }
+    : {};
 
-  return [
+  const events: SSEEvent[] = [
     connectedEvent(),
     stageStartEvent('section_writing', 'Writing summary section...'),
-    sectionContextEvent({ ...contextPayload, section }),
+    ...(overrides?.includeDraftReadiness
+      ? [draftReadinessUpdateEvent({
+          workflow_mode: 'fast_draft',
+          evidence_count: 5,
+          minimum_evidence_target: 5,
+          coverage_score: 74,
+          coverage_threshold: 65,
+          ready: true,
+          note: 'Mock readiness update for UI smoke test.',
+        })]
+      : []),
+    ...(overrides?.includeReplanRequested ? [workflowReplanRequestedEvent()] : []),
+    ...(overrides?.includeReplanStarted
+      ? [workflowReplanStartedEvent({
+          phase: 'refresh_gap_analysis',
+          message: 'Mock replan is regenerating gap analysis.',
+        })]
+      : []),
+    sectionContextEvent({ ...contextPayload, ...bundledContext, section }),
     sectionDraftEvent({ section, content, review_token: reviewToken }),
   ];
+  return events;
 }

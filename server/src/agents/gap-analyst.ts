@@ -278,9 +278,14 @@ export function enrichGapAnalysis(
       clone.evidence.push(`User-reported: ${response.custom_text.trim()}`);
     }
 
+    const hasCustomEvidence = Boolean(response.custom_text?.trim());
+
     if (req.classification === 'gap') {
       if (selectedId === 'significant') {
-        clone.classification = 'strong';
+        clone.classification = hasCustomEvidence ? 'strong' : 'partial';
+        if (!hasCustomEvidence) {
+          clone.strengthen = 'User reported significant experience but did not provide a concrete example yet.';
+        }
       } else if (selectedId === 'some') {
         clone.classification = 'partial';
       } else if (selectedId === 'adjacent') {

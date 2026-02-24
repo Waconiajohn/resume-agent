@@ -12,7 +12,7 @@ import { WorkspaceShell } from './workspace/WorkspaceShell';
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
 import { PHASE_LABELS } from '@/constants/phases';
-import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
+import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, DraftReadinessUpdate, WorkflowReplanUpdate } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
 import {
@@ -49,6 +49,9 @@ interface CoachScreenProps {
   ) => Promise<{ success: boolean; message: string }>;
   approvedSections?: Record<string, string>;
   onDismissSuggestion?: (id: string) => void;
+  onRestartPipelineFromLastInputs?: (sessionId: string) => Promise<{ success: boolean; message: string }>;
+  liveDraftReadiness?: DraftReadinessUpdate | null;
+  liveWorkflowReplan?: WorkflowReplanUpdate | null;
 }
 
 type SnapshotMap = Partial<Record<WorkflowNodeKey, WorkspaceNodeSnapshot>>;
@@ -108,6 +111,61 @@ function nodeTitle(nodeKey: WorkflowNodeKey): string {
   return WORKFLOW_NODES.find((node) => node.key === nodeKey)?.label ?? 'Workspace';
 }
 
+function getSectionsBundleNavDetail(snapshot: WorkspaceNodeSnapshot | undefined): string | null {
+  const panelData = snapshot?.panelData;
+  if (!panelData || panelData.type !== 'section_review') return null;
+  const context = panelData.context;
+  if (!context || context.review_strategy !== 'bundled' || !Array.isArray(context.review_bundles)) {
+    return null;
+  }
+  const bundles = context.review_bundles.filter((b) => b && typeof b === 'object');
+  if (bundles.length === 0) return null;
+  const completed = bundles.filter((b) => b.status === 'complete' || b.status === 'auto_approved').length;
+  const current = bundles.find((b) => b.key === context.current_review_bundle_key);
+  if (completed >= bundles.length) return 'Bundles 100%';
+  if (current?.label) {
+    return `${completed}/${bundles.length} bundles • ${current.label}`;
+  }
+  return `${completed}/${bundles.length} bundles`;
+}
+
+function buildReplanNodeDetailMap(
+  summaryReplan: {
+    pending: boolean;
+    stale_nodes: WorkflowNodeKey[];
+    requires_restart: boolean;
+  } | null | undefined,
+  liveReplan: WorkflowReplanUpdate | null | undefined,
+): Partial<Record<WorkflowNodeKey, string>> {
+  if (!summaryReplan && !liveReplan) return {};
+  const staleNodes = new Set<WorkflowNodeKey>(summaryReplan?.stale_nodes ?? []);
+  const details: Partial<Record<WorkflowNodeKey, string>> = {};
+
+  if (liveReplan?.state === 'in_progress') {
+    const label = liveReplan.phase === 'refresh_gap_analysis'
+      ? 'Regenerating'
+      : liveReplan.phase === 'rebuild_blueprint'
+        ? 'Rebuilding'
+        : 'Applying benchmark';
+    for (const node of staleNodes) details[node] = label;
+    return details;
+  }
+
+  if (summaryReplan?.pending || liveReplan?.state === 'requested') {
+    const label = summaryReplan?.requires_restart || liveReplan?.requires_restart
+      ? 'Rebuild required'
+      : 'Replan pending';
+    for (const node of staleNodes) details[node] = label;
+    return details;
+  }
+
+  if (liveReplan?.state === 'completed') {
+    details.benchmark = 'Replan applied';
+  }
+
+  return details;
+}
+
 function renderNodeContentPlaceholder(nodeKey: WorkflowNodeKey, isActiveNode: boolean) {
   return (
     <div className="h-full p-3 md:p-4">
@@ -144,8 +202,15 @@ function BenchmarkInspectorCard({
   const [seniorityValue, setSeniorityValue] = useState(researchPanel?.jd_requirements?.seniority_level ?? '');
   const [mustHavesText, setMustHavesText] = useState((researchPanel?.jd_requirements?.must_haves ?? []).join('\n'));
   const [keywordsText, setKeywordsText] = useState((researchPanel?.benchmark?.language_keywords ?? []).join('\n'));
-  const [differentiatorsText, setDifferentiatorsText] = useState((researchPanel?.benchmark?.competitive_differentiators ?? []).join('\n'));
-  const [idealSummary, setIdealSummary] = useState(researchPanel?.benchmark?.ideal_candidate_summary ?? '');
+  const [differentiatorsText, setDifferentiatorsText] = useState(
+    (
+      researchPanel?.benchmark?.competitive_differentiators
+      ?? Object.values(researchPanel?.benchmark?.section_expectations ?? {}).filter((v): v is string => typeof v === 'string')
+    ).join('\n'),
+  );
+  const [idealSummary, setIdealSummary] = useState(
+    researchPanel?.benchmark?.ideal_candidate_summary ?? researchPanel?.benchmark?.ideal_profile ?? '',
+  );
 
   useEffect(() => {
     if (!researchPanel) return;
@@ -153,8 +218,13 @@ function BenchmarkInspectorCard({
     setSeniorityValue(researchPanel.jd_requirements?.seniority_level ?? '');
     setMustHavesText((researchPanel.jd_requirements?.must_haves ?? []).join('\n'));
     setKeywordsText((researchPanel.benchmark?.language_keywords ?? []).join('\n'));
-    setDifferentiatorsText((researchPanel.benchmark?.competitive_differentiators ?? []).join('\n'));
-    setIdealSummary(researchPanel.benchmark?.ideal_candidate_summary ?? '');
+    setDifferentiatorsText(
+      (
+        researchPanel.benchmark?.competitive_differentiators
+        ?? Object.values(researchPanel.benchmark?.section_expectations ?? {}).filter((v): v is string => typeof v === 'string')
+      ).join('\n'),
+    );
+    setIdealSummary(researchPanel.benchmark?.ideal_candidate_summary ?? researchPanel.benchmark?.ideal_profile ?? '');
     setNote('');
     setSaveMessage(null);
     setSaveError(null);
@@ -166,7 +236,8 @@ function BenchmarkInspectorCard({
   const seniority = researchPanel.jd_requirements?.seniority_level ?? 'Not inferred yet';
   const mustHaveCount = researchPanel.jd_requirements?.must_haves?.length ?? 0;
   const keywordCount = researchPanel.benchmark?.language_keywords?.length ?? 0;
-  const differentiatorCount = researchPanel.benchmark?.competitive_differentiators?.length ?? 0;
+  const differentiatorCount = researchPanel.benchmark?.competitive_differentiators?.length
+    ?? Object.keys(researchPanel.benchmark?.section_expectations ?? {}).length;
 
   const handleSave = async () => {
     if (!onSaveAssumptions) return;
@@ -206,7 +277,7 @@ function BenchmarkInspectorCard({
         </div>
       </div>
       <p className="mb-3 text-xs text-white/56">
-        These are the current inferred benchmark assumptions driving positioning decisions. You can edit and save them to mark downstream steps stale for regeneration.
+        These are the current inferred benchmark assumptions driving positioning decisions. Edits apply immediately early in the process; after section writing starts, changes require confirmation and a downstream rebuild to stay consistent.
       </p>
       {saveMessage && (
         <div className="mb-3 rounded-lg border border-emerald-300/20 bg-emerald-400/[0.06] px-3 py-2 text-xs text-emerald-100/85">
@@ -380,9 +451,13 @@ export function CoachScreen({
   onSaveCurrentResumeAsBase,
   approvedSections = {},
   onDismissSuggestion,
+  onRestartPipelineFromLastInputs,
+  liveDraftReadiness = null,
+  liveWorkflowReplan = null,
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
+  const [isRestartingPipeline, setIsRestartingPipeline] = useState(false);
   const [localSnapshots, setLocalSnapshots] = useState<SnapshotMap>({});
   const prevPanelDataRef = useRef<PanelData | null>(null);
 
@@ -473,6 +548,12 @@ export function CoachScreen({
     currentPhase,
   });
 
+  useEffect(() => {
+    if (!liveWorkflowReplan) return;
+    if (liveWorkflowReplan.state !== 'completed') return;
+    void workflowSession.refreshSummary();
+  }, [liveWorkflowReplan, workflowSession.refreshSummary]);
+
   const mergedSnapshots: SnapshotMap = useMemo(
     () => ({
       ...localSnapshots,
@@ -506,13 +587,25 @@ export function CoachScreen({
   );
 
   const navItems = useMemo(
-    () => WORKFLOW_NODES.map((node) => ({
-      ...node,
-      status: nodeStatuses[node.key],
-      hasSnapshot: Boolean(mergedSnapshots[node.key])
-        || Boolean(workflowSession.summary?.latest_artifacts.some((artifact) => artifact.node_key === node.key)),
-    })),
-    [nodeStatuses, mergedSnapshots, workflowSession.summary],
+    () => {
+      const effectiveLiveReplan = liveWorkflowReplan ?? workflowSession.summary?.replan_status ?? null;
+      const replanNodeDetails = buildReplanNodeDetailMap(workflowSession.summary?.replan, effectiveLiveReplan);
+      return WORKFLOW_NODES.map((node) => {
+        const hasSnapshot = Boolean(mergedSnapshots[node.key])
+          || Boolean(workflowSession.summary?.latest_artifacts.some((artifact) => artifact.node_key === node.key));
+        const sectionBundleDetail = node.key === 'sections'
+          ? (getSectionsBundleNavDetail(mergedSnapshots.sections) ?? undefined)
+          : undefined;
+        const replanDetail = replanNodeDetails[node.key];
+        return {
+          ...node,
+          status: nodeStatuses[node.key],
+          hasSnapshot,
+          detailLabel: replanDetail ?? sectionBundleDetail,
+        };
+      });
+    },
+    [nodeStatuses, mergedSnapshots, workflowSession.summary, liveWorkflowReplan],
   );
 
   const liveSnapshot: WorkspaceNodeSnapshot = {
@@ -566,6 +659,26 @@ export function CoachScreen({
     >
       <div className="flex items-center gap-2">
         <span className="flex-1">{workflowSession.actionError ?? workflowSession.actionMessage}</span>
+        {workflowSession.actionRequiresRestart && sessionId && (
+          <GlassButton
+            variant="ghost"
+            disabled={isRestartingPipeline || workflowSession.isRestartPipelinePending || isProcessing}
+            onClick={async () => {
+              setIsRestartingPipeline(true);
+              try {
+                const usedWorkflowAction = await workflowSession.restartPipeline();
+                if (!usedWorkflowAction.success && onRestartPipelineFromLastInputs) {
+                  await onRestartPipelineFromLastInputs(sessionId);
+                }
+              } finally {
+                setIsRestartingPipeline(false);
+              }
+            }}
+            className="h-7 px-2.5 text-[11px]"
+          >
+            {(isRestartingPipeline || workflowSession.isRestartPipelinePending) ? 'Restarting…' : 'Restart & Rebuild'}
+          </GlassButton>
+        )}
         <button
           type="button"
           onClick={workflowSession.clearActionMessage}
@@ -577,6 +690,50 @@ export function CoachScreen({
       </div>
     </div>
   );
+
+  const workflowReplanBanner = (() => {
+    const summaryReplan = workflowSession.summary?.replan ?? null;
+    const summaryReplanStatus = workflowSession.summary?.replan_status ?? null;
+    const effectiveLiveReplan = liveWorkflowReplan ?? summaryReplanStatus;
+    if (!summaryReplan && !effectiveLiveReplan) return null;
+
+    const staleNodeList = summaryReplan?.stale_nodes?.join(', ') ?? effectiveLiveReplan?.stale_nodes?.join(', ') ?? 'downstream steps';
+    let body = '';
+
+    if (effectiveLiveReplan?.state === 'in_progress') {
+      const phaseLabel = effectiveLiveReplan.phase === 'refresh_gap_analysis'
+        ? 'Refreshing gap analysis'
+        : effectiveLiveReplan.phase === 'rebuild_blueprint'
+          ? 'Rebuilding blueprint'
+          : 'Applying updated benchmark assumptions';
+      body = `${phaseLabel} for benchmark edit v${effectiveLiveReplan.benchmark_edit_version}. ${effectiveLiveReplan.message ?? 'Downstream outputs are being regenerated.'}`;
+    } else if (effectiveLiveReplan?.state === 'completed') {
+      const rebuilt = effectiveLiveReplan.rebuilt_through_stage ?? 'architect';
+      body = `Benchmark replan applied for the current run (v${effectiveLiveReplan.benchmark_edit_version}). Regenerated through ${rebuilt}.`;
+    } else if (summaryReplan?.requires_restart || effectiveLiveReplan?.requires_restart) {
+      body = `Benchmark assumptions changed after section writing started. Downstream work (${staleNodeList}) is marked stale. Use "Restart & Rebuild" to regenerate from ${summaryReplan?.rebuild_from_stage ?? effectiveLiveReplan?.rebuild_from_stage ?? 'gap analysis'}.`;
+    } else {
+      body = `Benchmark assumptions changed. The pipeline will regenerate downstream work (${staleNodeList}) at the next safe checkpoint.`;
+    }
+
+    const toneClass = effectiveLiveReplan?.state === 'completed'
+      ? 'border-emerald-300/18 bg-emerald-400/[0.05] text-emerald-100/90'
+      : 'border-sky-300/18 bg-sky-400/[0.05] text-sky-100/90';
+
+    return (
+      <div className={`mx-3 mt-3 rounded-lg border px-4 py-2 text-xs ${toneClass}`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">{body}</span>
+          {effectiveLiveReplan?.state === 'in_progress' && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-sky-100/75">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-200/90" />
+              Regenerating
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  })();
 
   const profileChoice = positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
     <div className="px-3 pt-3">
@@ -590,11 +747,14 @@ export function CoachScreen({
     </div>
   );
 
+  const draftReadiness = liveDraftReadiness ?? workflowSession.summary?.draft_readiness ?? null;
+
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
       {errorBanner}
       {workflowErrorBanner}
       {workflowActionBanner}
+      {workflowReplanBanner}
       {profileChoice}
       <div className="min-h-0 flex-1 p-3 md:p-4">
         <div className="flex h-full min-h-0 flex-col">
@@ -611,6 +771,38 @@ export function CoachScreen({
               </span>
             )}
           </div>
+
+          {draftReadiness && (
+            <div className="mb-2 px-1">
+              <GlassCard className={`px-3 py-2.5 ${draftReadiness.ready ? 'border-emerald-300/25 bg-emerald-400/[0.05]' : ''}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                    draftReadiness.ready
+                      ? 'border-emerald-300/30 bg-emerald-400/[0.10] text-emerald-100/90'
+                      : 'border-white/[0.1] bg-white/[0.03] text-white/70'
+                  }`}>
+                    {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
+                  </span>
+                  <span className="text-[11px] text-white/70">
+                    Evidence {draftReadiness.evidence_count}/{draftReadiness.minimum_evidence_target}
+                  </span>
+                  <span className="text-[11px] text-white/60">•</span>
+                  <span className="text-[11px] text-white/70">
+                    Coverage {Math.round(draftReadiness.coverage_score)}% / {Math.round(draftReadiness.coverage_threshold)}%
+                  </span>
+                  <span className="text-[11px] text-white/60">•</span>
+                  <span className="text-[11px] text-white/65">
+                    {draftReadiness.workflow_mode.replace('_', ' ')}
+                  </span>
+                </div>
+                {draftReadiness.note && (
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-white/55">
+                    {draftReadiness.note}
+                  </p>
+                )}
+              </GlassCard>
+            </div>
+          )}
 
           {selectedNode === 'benchmark' && (
             <BenchmarkInspectorCard
@@ -709,7 +901,9 @@ export function CoachScreen({
         active: Boolean(isPipelineGateActive),
         activeNode,
         onReturn: returnToActiveNode,
-        onGenerateDraftNow: workflowSession.generateDraftNow,
+        onGenerateDraftNow: workflowSession.summary?.replan?.requires_restart
+          ? undefined
+          : workflowSession.generateDraftNow,
         isGenerateDraftNowPending: workflowSession.isGenerateDraftNowPending,
       }}
       main={mainPanel}

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { SSEEvent } from '../fixtures/mock-sse';
 import { interceptAllAPI } from './intercept-api';
+import type { CapturedRequest } from './intercept-api';
 import {
   SAMPLE_RESUME_TEXT,
   SAMPLE_JD_TEXT,
@@ -16,9 +17,12 @@ import {
 export async function navigateToWorkbench(
   page: Page,
   sseEvents: SSEEvent[],
-) {
+  options?: {
+    workflowSummaryOverride?: Record<string, unknown>;
+  },
+) : Promise<{ captured: CapturedRequest[] }> {
   // Unified route handler for all /api/** — includes SSE (async: adds init script)
-  const { captured } = await interceptAllAPI(page, sseEvents);
+  const { captured } = await interceptAllAPI(page, sseEvents, options);
 
   // Navigate to /app — storageState handles auth (/ shows SalesPage)
   await page.goto('/app');

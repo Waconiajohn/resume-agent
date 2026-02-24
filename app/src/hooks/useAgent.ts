@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores, CategoryProgress } from '@/types/session';
+import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores, CategoryProgress, DraftReadinessUpdate, WorkflowReplanUpdate } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData, SectionWorkbenchContext, SectionSuggestion } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
@@ -48,6 +48,19 @@ function asGapClassification(value: unknown): 'strong' | 'partial' | 'gap' {
 function asPriorityTier(value: unknown): 'high' | 'medium' | 'low' {
   if (value === 'high' || value === 'medium' || value === 'low') return value;
   return 'low';
+}
+
+function asReplanStaleNodes(value: unknown): WorkflowReplanUpdate['stale_nodes'] {
+  if (!Array.isArray(value)) return undefined;
+  const nodes = value.filter((v): v is NonNullable<WorkflowReplanUpdate['stale_nodes']>[number] => (
+    v === 'gaps'
+    || v === 'questions'
+    || v === 'blueprint'
+    || v === 'sections'
+    || v === 'quality'
+    || v === 'export'
+  ));
+  return nodes.length > 0 ? nodes : undefined;
 }
 
 function sanitizeSectionContextPayload(
@@ -118,6 +131,33 @@ function sanitizeSectionContextPayload(
       .filter((item) => item.requirement.length > 0),
     section_order: asStringArray(data.section_order),
     sections_approved: asStringArray(data.sections_approved),
+    review_strategy: data.review_strategy === 'bundled' ? 'bundled' : 'per_section',
+    review_required_sections: asStringArray(data.review_required_sections),
+    auto_approved_sections: asStringArray(data.auto_approved_sections),
+    current_review_bundle_key:
+      data.current_review_bundle_key === 'headline'
+      || data.current_review_bundle_key === 'core_experience'
+      || data.current_review_bundle_key === 'supporting'
+        ? data.current_review_bundle_key
+        : undefined,
+    review_bundles: Array.isArray(data.review_bundles)
+      ? data.review_bundles
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+          .map((item) => ({
+            key:
+              item.key === 'headline' || item.key === 'core_experience' || item.key === 'supporting'
+                ? item.key
+                : 'supporting',
+            label: typeof item.label === 'string' ? item.label : 'Bundle',
+            total_sections: Number.isFinite(item.total_sections as number) ? Math.max(0, Math.floor(item.total_sections as number)) : 0,
+            review_required: Number.isFinite(item.review_required as number) ? Math.max(0, Math.floor(item.review_required as number)) : 0,
+            reviewed_required: Number.isFinite(item.reviewed_required as number) ? Math.max(0, Math.floor(item.reviewed_required as number)) : 0,
+            status:
+              item.status === 'complete' || item.status === 'in_progress' || item.status === 'auto_approved'
+                ? item.status
+                : 'pending',
+          }))
+      : undefined,
   };
 
   const suggestionsRaw = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -197,6 +237,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [sectionDraft, setSectionDraft] = useState<{ section: string; content: string } | null>(null);
   const [approvedSections, setApprovedSections] = useState<Record<string, string>>({});
   const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
+  const [draftReadiness, setDraftReadiness] = useState<DraftReadinessUpdate | null>(null);
+  const [workflowReplan, setWorkflowReplan] = useState<WorkflowReplanUpdate | null>(null);
   // Ref mirror so pipeline_complete handler can read latest quality scores
   const qualityScoresRef = useRef<QualityScores | null>(null);
   const accessTokenRef = useRef<string | null>(accessToken);
@@ -312,6 +354,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     lastTextCompleteRef.current = '';
     lastSeqRef.current = 0;
     qualityScoresRef.current = null;
+    setDraftReadiness(null);
+    setWorkflowReplan(null);
     setQualityScores(null);
     setIsPipelineGateActive(false);
     reconnectAttemptsRef.current = 0;
@@ -894,6 +938,94 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'draft_readiness_update': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setDraftReadiness({
+                    stage: (data.stage as PipelineStage) ?? 'gap_analysis',
+                    workflow_mode: (data.workflow_mode === 'fast_draft' || data.workflow_mode === 'deep_dive'
+                      ? data.workflow_mode
+                      : 'balanced'),
+                    evidence_count: Number.isFinite(data.evidence_count as number) ? Number(data.evidence_count) : 0,
+                    minimum_evidence_target: Number.isFinite(data.minimum_evidence_target as number) ? Number(data.minimum_evidence_target) : 0,
+                    coverage_score: Number.isFinite(data.coverage_score as number) ? Number(data.coverage_score) : 0,
+                    coverage_threshold: Number.isFinite(data.coverage_threshold as number) ? Number(data.coverage_threshold) : 0,
+                    ready: data.ready === true,
+                    note: typeof data.note === 'string' ? data.note : undefined,
+                  });
+                  break;
+                }
+
+                case 'workflow_replan_requested': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setWorkflowReplan({
+                    state: 'requested',
+                    reason: 'benchmark_assumptions_updated',
+                    benchmark_edit_version: Number.isFinite(data.benchmark_edit_version as number)
+                      ? Number(data.benchmark_edit_version)
+                      : 0,
+                    rebuild_from_stage: 'gap_analysis',
+                    requires_restart: data.requires_restart === true,
+                    current_stage: ((data.current_stage as PipelineStage | undefined) ?? 'research'),
+                    stale_nodes: asReplanStaleNodes(data.stale_nodes),
+                    message: typeof data.message === 'string' ? data.message : undefined,
+                    updated_at: new Date().toISOString(),
+                  });
+                  break;
+                }
+
+                case 'workflow_replan_started': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setWorkflowReplan((prev) => ({
+                    state: 'in_progress',
+                    reason: 'benchmark_assumptions_updated',
+                    benchmark_edit_version: Number.isFinite(data.benchmark_edit_version as number)
+                      ? Number(data.benchmark_edit_version)
+                      : (prev?.benchmark_edit_version ?? 0),
+                    rebuild_from_stage: 'gap_analysis',
+                    requires_restart: prev?.requires_restart,
+                    current_stage: ((data.current_stage as PipelineStage | undefined) ?? prev?.current_stage ?? 'research'),
+                    phase:
+                      (data.phase === 'apply_benchmark_overrides'
+                        || data.phase === 'refresh_gap_analysis'
+                        || data.phase === 'rebuild_blueprint')
+                        ? data.phase
+                        : prev?.phase,
+                    stale_nodes: asReplanStaleNodes(data.stale_nodes) ?? prev?.stale_nodes,
+                    message: typeof data.message === 'string' ? data.message : undefined,
+                    updated_at: new Date().toISOString(),
+                  }));
+                  break;
+                }
+
+                case 'workflow_replan_completed': {
+                  const data = safeParse(msg.data);
+                  if (!data) break;
+                  setWorkflowReplan((prev) => ({
+                    state: 'completed',
+                    reason: 'benchmark_assumptions_updated',
+                    benchmark_edit_version: Number.isFinite(data.benchmark_edit_version as number)
+                      ? Number(data.benchmark_edit_version)
+                      : (prev?.benchmark_edit_version ?? 0),
+                    rebuild_from_stage: 'gap_analysis',
+                    requires_restart: false,
+                    current_stage: ((data.current_stage as PipelineStage | undefined) ?? prev?.current_stage ?? 'research'),
+                    phase: prev?.phase,
+                    rebuilt_through_stage:
+                      (data.rebuilt_through_stage === 'research'
+                        || data.rebuilt_through_stage === 'gap_analysis'
+                        || data.rebuilt_through_stage === 'architect')
+                        ? data.rebuilt_through_stage
+                        : prev?.rebuilt_through_stage,
+                    stale_nodes: asReplanStaleNodes(data.stale_nodes) ?? prev?.stale_nodes,
+                    message: typeof data.message === 'string' ? data.message : undefined,
+                    updated_at: new Date().toISOString(),
+                  }));
+                  break;
+                }
+
                 case 'revision_start': {
                   const data = safeParse(msg.data);
                   if (!data) break;
@@ -1249,6 +1381,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     blueprintReady,
     sectionDraft,
     qualityScores,
+    draftReadiness,
+    workflowReplan,
     isPipelineGateActive,
     setIsPipelineGateActive,
     dismissSuggestion,
