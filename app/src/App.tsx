@@ -28,6 +28,7 @@ export default function App() {
     listResumes,
     createSession,
     getDefaultResume,
+    getResumeById,
     loadSession,
     deleteSession,
     setDefaultResume,
@@ -70,15 +71,30 @@ export default function App() {
     setView('intake');
     setIntakeInitialResumeText('');
     setIntakeDefaultResumeId(null);
+    void listResumes();
     const defaultResume = await getDefaultResume();
     if (defaultResume?.raw_text?.trim()) {
       setIntakeInitialResumeText(defaultResume.raw_text);
       setIntakeDefaultResumeId(defaultResume.id);
     }
-  }, [getDefaultResume]);
+  }, [getDefaultResume, listResumes]);
+
+  const handleLoadSavedResumeForIntake = useCallback(
+    async (resumeId: string) => {
+      const resume = await getResumeById(resumeId);
+      if (!resume?.raw_text?.trim()) return null;
+      return resume.raw_text;
+    },
+    [getResumeById],
+  );
 
   const handleIntakeSubmit = useCallback(
-    async (data: { resumeText: string; jobDescription: string; companyName: string }) => {
+    async (data: {
+      resumeText: string;
+      jobDescription: string;
+      companyName: string;
+      workflowMode: 'fast_draft' | 'balanced' | 'deep_dive';
+    }) => {
       setIntakeLoading(true);
       try {
         const s = await createSession(intakeDefaultResumeId ?? undefined);
@@ -92,6 +108,7 @@ export default function App() {
           data.resumeText,
           data.jobDescription,
           data.companyName,
+          data.workflowMode,
         );
         if (!started) {
           await deleteSession(s.id);
@@ -265,6 +282,9 @@ export default function App() {
           onBack={() => setView('landing')}
           loading={intakeLoading}
           initialResumeText={intakeInitialResumeText}
+          defaultResumeId={intakeDefaultResumeId}
+          savedResumes={resumes}
+          onLoadSavedResume={handleLoadSavedResumeForIntake}
           error={sessionError}
         />
       )}
@@ -280,6 +300,8 @@ export default function App() {
 
       {view === 'coach' && (connected || sessionComplete || agentError || sessionError) && (
         <CoachScreen
+          sessionId={currentSession?.id ?? null}
+          accessToken={accessToken}
           messages={messages}
           streamingText={streamingText}
           tools={tools}

@@ -208,6 +208,7 @@ export interface ArchitectInput {
     primary_goal?: string;
     resume_priority?: string;
     seniority_delta?: string;
+    workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
   };
   research_preferences?: {
     top_requirements?: string[];
@@ -474,6 +475,7 @@ export interface PipelineState {
     primary_goal?: string;
     resume_priority?: string;
     seniority_delta?: string;
+    workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
   };
   research_preferences?: QuestionnaireSubmission;
   research_preferences_summary?: {

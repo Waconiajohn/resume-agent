@@ -24,6 +24,7 @@ const startSchema = z.object({
   raw_resume_text: z.string().min(50).max(100_000),
   job_description: z.string().min(1).max(50_000),
   company_name: z.string().min(1).max(200),
+  workflow_mode: z.enum(['fast_draft', 'balanced', 'deep_dive']).optional(),
 });
 
 const respondSchema = z.object({
@@ -191,6 +192,194 @@ const queuedPanelPersists = new Map<string, {
   panelData: unknown;
   timeout: ReturnType<typeof setTimeout>;
 }>();
+
+type WorkflowNodeStatus = 'locked' | 'ready' | 'in_progress' | 'blocked' | 'complete' | 'stale';
+type WorkflowNodeKey =
+  | 'overview'
+  | 'benchmark'
+  | 'gaps'
+  | 'questions'
+  | 'blueprint'
+  | 'sections'
+  | 'quality'
+  | 'export';
+
+function workflowNodeFromPanelType(panelType: string): WorkflowNodeKey | null {
+  switch (panelType) {
+    case 'onboarding_summary':
+      return 'overview';
+    case 'research_dashboard':
+      return 'benchmark';
+    case 'gap_analysis':
+      return 'gaps';
+    case 'questionnaire':
+    case 'positioning_interview':
+      return 'questions';
+    case 'blueprint_review':
+    case 'design_options':
+      return 'blueprint';
+    case 'section_review':
+    case 'live_resume':
+      return 'sections';
+    case 'quality_dashboard':
+      return 'quality';
+    case 'completion':
+      return 'export';
+    default:
+      return null;
+  }
+}
+
+function workflowNodeFromStage(stage: string): WorkflowNodeKey {
+  switch (stage) {
+    case 'intake':
+    case 'onboarding':
+      return 'overview';
+    case 'research':
+      return 'benchmark';
+    case 'gap_analysis':
+      return 'gaps';
+    case 'positioning':
+    case 'architect_review':
+      return 'questions';
+    case 'architect':
+    case 'resume_design':
+      return 'blueprint';
+    case 'section_writing':
+    case 'section_review':
+    case 'section_craft':
+    case 'revision':
+      return 'sections';
+    case 'quality_review':
+      return 'quality';
+    case 'complete':
+      return 'export';
+    default:
+      return 'overview';
+  }
+}
+
+async function upsertWorkflowNodeStatus(
+  sessionId: string,
+  nodeKey: WorkflowNodeKey,
+  status: WorkflowNodeStatus,
+  meta?: Record<string, unknown>,
+  activeVersion?: number | null,
+) {
+  const payload: Record<string, unknown> = {
+    session_id: sessionId,
+    node_key: nodeKey,
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  if (typeof activeVersion === 'number') payload.active_version = activeVersion;
+  if (meta) payload.meta = meta;
+
+  const { error } = await supabaseAdmin
+    .from('session_workflow_nodes')
+    .upsert(payload, { onConflict: 'session_id,node_key' });
+  if (error) {
+    logger.warn({ session_id: sessionId, node_key: nodeKey, status, error: error.message }, 'Failed to upsert workflow node status');
+  }
+}
+
+async function persistWorkflowArtifact(
+  sessionId: string,
+  nodeKey: WorkflowNodeKey,
+  artifactType: string,
+  payload: unknown,
+  createdBy = 'pipeline',
+) {
+  const { data: latest, error: latestErr } = await supabaseAdmin
+    .from('session_workflow_artifacts')
+    .select('version')
+    .eq('session_id', sessionId)
+    .eq('node_key', nodeKey)
+    .eq('artifact_type', artifactType)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestErr) {
+    logger.warn(
+      { session_id: sessionId, node_key: nodeKey, artifact_type: artifactType, error: latestErr.message },
+      'Failed to read latest workflow artifact version',
+    );
+    return;
+  }
+
+  const nextVersion = ((latest?.version as number | undefined) ?? 0) + 1;
+  const insertPayload = {
+    session_id: sessionId,
+    node_key: nodeKey,
+    artifact_type: artifactType,
+    version: nextVersion,
+    payload,
+    created_by: createdBy,
+  };
+  const { error } = await supabaseAdmin
+    .from('session_workflow_artifacts')
+    .insert(insertPayload);
+  if (error) {
+    logger.warn(
+      { session_id: sessionId, node_key: nodeKey, artifact_type: artifactType, error: error.message },
+      'Failed to persist workflow artifact',
+    );
+    return;
+  }
+
+  await upsertWorkflowNodeStatus(sessionId, nodeKey, 'complete', undefined, nextVersion);
+}
+
+function persistWorkflowArtifactBestEffort(
+  sessionId: string,
+  nodeKey: WorkflowNodeKey,
+  artifactType: string,
+  payload: unknown,
+  createdBy = 'pipeline',
+) {
+  void persistWorkflowArtifact(sessionId, nodeKey, artifactType, payload, createdBy);
+}
+
+function upsertWorkflowNodeStatusBestEffort(
+  sessionId: string,
+  nodeKey: WorkflowNodeKey,
+  status: WorkflowNodeStatus,
+  meta?: Record<string, unknown>,
+) {
+  void upsertWorkflowNodeStatus(sessionId, nodeKey, status, meta);
+}
+
+function inferQuestionResponseStatus(response: unknown): 'answered' | 'skipped' | 'deferred' {
+  if (response && typeof response === 'object') {
+    const r = response as Record<string, unknown>;
+    if (r.status === 'deferred' || r.deferred === true) return 'deferred';
+    if (r.skipped === true) return 'skipped';
+  }
+  return 'answered';
+}
+
+async function persistQuestionResponseBestEffort(
+  sessionId: string,
+  questionId: string,
+  stage: string,
+  response: unknown,
+) {
+  const status = inferQuestionResponseStatus(response);
+  const payload = {
+    session_id: sessionId,
+    question_id: questionId,
+    stage,
+    status,
+    response,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabaseAdmin
+    .from('session_question_responses')
+    .upsert(payload, { onConflict: 'session_id,question_id' });
+  if (error) {
+    logger.warn({ session_id: sessionId, question_id: questionId, error: error.message }, 'Failed to persist question response');
+  }
+}
 
 async function persistLastPanelState(sessionId: string, panelType: string, panelData: unknown) {
   const { error } = await supabaseAdmin
@@ -735,7 +924,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
   }
-  const { session_id, raw_resume_text, job_description, company_name } = parsed.data;
+  const { session_id, raw_resume_text, job_description, company_name, workflow_mode } = parsed.data;
   let resolvedJobDescription = job_description.trim();
   try {
     resolvedJobDescription = await resolveJobDescriptionInput(job_description);
@@ -891,6 +1080,9 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
     if (event.type === 'stage_start') {
+      upsertWorkflowNodeStatusBestEffort(session_id, workflowNodeFromStage(event.stage), 'in_progress', {
+        stage: event.stage,
+      });
       void (async () => {
         try {
           const { error } = await supabaseAdmin
@@ -911,10 +1103,19 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     // Persist questionnaire events for session restore
     if (event.type === 'questionnaire') {
       queuePanelPersist(session_id, 'questionnaire', event);
+      upsertWorkflowNodeStatusBestEffort(session_id, 'questions', 'blocked', {
+        stage: event.stage,
+        questionnaire_id: event.questionnaire_id,
+      });
+      persistWorkflowArtifactBestEffort(session_id, 'questions', 'questionnaire', event);
     }
     // Persist right_panel_update events for session restore
     if (event.type === 'right_panel_update') {
       queuePanelPersist(session_id, event.panel_type, event.data);
+      const nodeKey = workflowNodeFromPanelType(event.panel_type);
+      if (nodeKey) {
+        persistWorkflowArtifactBestEffort(session_id, nodeKey, `panel_${event.panel_type}`, event.data);
+      }
     }
     // Capture section_context for merging into subsequent section_draft persistence
     if (event.type === 'section_context') {
@@ -936,15 +1137,46 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
         review_token: event.review_token,
         ...(contextForSection ? { context: contextForSection } : {}),
       });
+      upsertWorkflowNodeStatusBestEffort(session_id, 'sections', 'blocked', { section: event.section });
+      persistWorkflowArtifactBestEffort(session_id, 'sections', 'section_review', {
+        section: event.section,
+        content: event.content,
+        review_token: event.review_token,
+        ...(contextForSection ? { context: contextForSection } : {}),
+      });
     }
     // Persist blueprint_ready for restore
     if (event.type === 'blueprint_ready') {
       queuePanelPersist(session_id, 'blueprint_review', event.blueprint);
+      upsertWorkflowNodeStatusBestEffort(session_id, 'blueprint', 'blocked');
+      persistWorkflowArtifactBestEffort(session_id, 'blueprint', 'blueprint', event.blueprint);
+    }
+    if (event.type === 'positioning_question') {
+      upsertWorkflowNodeStatusBestEffort(session_id, 'questions', 'blocked', {
+        question_id: event.question.id,
+      });
+      persistWorkflowArtifactBestEffort(session_id, 'questions', 'positioning_question', event);
+    }
+    if (event.type === 'quality_scores') {
+      upsertWorkflowNodeStatusBestEffort(session_id, 'quality', 'complete');
+      persistWorkflowArtifactBestEffort(session_id, 'quality', 'quality_scores', event.scores);
+    }
+    if (event.type === 'stage_complete') {
+      upsertWorkflowNodeStatusBestEffort(session_id, workflowNodeFromStage(event.stage), 'complete', {
+        stage: event.stage,
+      });
+    }
+    if (event.type === 'pipeline_error') {
+      upsertWorkflowNodeStatusBestEffort(session_id, workflowNodeFromStage(event.stage), 'stale', {
+        error: event.error,
+      });
     }
     // Persist final completion payload with precedence over queued intermediate panels
     if (event.type === 'pipeline_complete') {
       cancelQueuedPanelPersist(session_id);
       void persistLastPanelState(session_id, 'completion', { resume: event.resume });
+      upsertWorkflowNodeStatusBestEffort(session_id, 'export', 'complete');
+      persistWorkflowArtifactBestEffort(session_id, 'export', 'completion', { resume: event.resume });
     }
     if (event.type === 'pipeline_error') {
       cancelQueuedPanelPersist(session_id);
@@ -970,6 +1202,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     raw_resume_text,
     job_description: resolvedJobDescription,
     company_name,
+    workflow_mode,
     emit,
     waitForUser,
   }).then(async (state) => {
@@ -1103,6 +1336,13 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
       return c.json({ error: 'Failed to persist gate response' }, 500);
     }
 
+    void persistQuestionResponseBestEffort(
+      session_id,
+      dbState.pending_gate,
+      (dbState.pipeline_stage as string | null | undefined) ?? 'unknown',
+      normalizedResponse,
+    );
+
     return c.json({ status: 'ok', gate: dbState.pending_gate });
   }
 
@@ -1124,6 +1364,12 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
       logger.error({ session_id, gate, error: bufferError.message }, 'Failed to buffer early gate response');
       return c.json({ error: 'Failed to buffer gate response' }, 500);
     }
+    void persistQuestionResponseBestEffort(
+      session_id,
+      gate,
+      (dbState.pipeline_stage as string | null | undefined) ?? 'unknown',
+      normalizedResponse,
+    );
     logger.info({ session_id, gate }, 'Buffered early gate response in DB');
     return c.json({ status: 'buffered', gate });
   }

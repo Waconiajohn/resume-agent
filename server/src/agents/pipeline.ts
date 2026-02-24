@@ -90,6 +90,7 @@ export interface PipelineConfig {
   raw_resume_text: string;
   job_description: string;
   company_name: string;
+  workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
   emit: PipelineEmitter;
   waitForUser: WaitForUser;
 }
@@ -120,6 +121,37 @@ const MAX_SECTION_REVIEW_TOKEN_CHARS = (() => {
   const parsed = Number.parseInt(process.env.MAX_SECTION_REVIEW_TOKEN_CHARS ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 200;
 })();
+
+function getPositioningQuestionBudget(mode: 'fast_draft' | 'balanced' | 'deep_dive' | undefined) {
+  switch (mode) {
+    case 'fast_draft':
+      return { maxQuestions: 8, maxFollowUps: 1 };
+    case 'deep_dive':
+      return { maxQuestions: Number.POSITIVE_INFINITY, maxFollowUps: MAX_FOLLOW_UPS };
+    case 'balanced':
+    default:
+      return { maxQuestions: 14, maxFollowUps: Math.min(MAX_FOLLOW_UPS, 3) };
+  }
+}
+
+async function hasDraftNowRequest(sessionId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('session_question_responses')
+    .select('response, status')
+    .eq('session_id', sessionId)
+    .eq('question_id', '__generate_draft_now__')
+    .maybeSingle();
+  if (error || !data) return false;
+  if (data.status === 'skipped') return false;
+  if (!data.response || typeof data.response !== 'object' || Array.isArray(data.response)) return true;
+  return (data.response as { requested?: unknown }).requested !== false;
+}
+
+function isDraftNowGateResponse(response: unknown): boolean {
+  if (!response || typeof response !== 'object' || Array.isArray(response)) return false;
+  const payload = response as Record<string, unknown>;
+  return payload.draft_now === true;
+}
 
 interface FinalResumePayload {
   summary: string;
@@ -162,6 +194,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     revision_count: 0,
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
   };
+  if (config.workflow_mode) {
+    state.user_preferences = { workflow_mode: config.workflow_mode };
+  }
   const stageTimingsMs: StageTimingMap = {};
   const stageStart = new Map<PipelineStage, number>();
   const markStageStart = (stage: PipelineStage) => stageStart.set(stage, Date.now());
@@ -231,6 +266,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       const priorityResp = intakeSubmission.responses.find(r => r.question_id === 'priority');
       const seniorityResp = intakeSubmission.responses.find(r => r.question_id === 'seniority');
       state.user_preferences = {
+        ...state.user_preferences,
         primary_goal: goalResp?.selected_option_ids[0],
         resume_priority: priorityResp?.selected_option_ids[0],
         seniority_delta: seniorityResp?.skipped ? undefined : seniorityResp?.selected_option_ids[0],
@@ -1120,6 +1156,8 @@ async function runPositioningStage(
   // Generate JD-informed questions (async, LLM-powered when research is available)
   const questions = await generateQuestions(state.intake!, state.research ?? undefined, state.user_preferences);
   const answers: Array<{ question_id: string; answer: string; selected_suggestion?: string }> = [];
+  const workflowMode = state.user_preferences?.workflow_mode;
+  const positioningBudget = getPositioningQuestionBudget(workflowMode);
 
   // Build category progress tracking
   const categoryLabels: Record<string, string> = {
@@ -1149,8 +1187,31 @@ async function runPositioningStage(
   const answeredIds = new Set<string>();
   let previousEncouragingText: string | undefined;
   let followUpCount = 0;
+  let budgetNoticeEmitted = false;
 
   for (const question of questions) {
+    if (await hasDraftNowRequest(config.session_id)) {
+      emit({
+        type: 'transparency',
+        stage: 'positioning',
+        message: 'Draft-now was requested. Finishing the interview early and synthesizing your positioning profile from current evidence.',
+      });
+      break;
+    }
+    if (Number.isFinite(positioningBudget.maxQuestions) && answeredIds.size >= positioningBudget.maxQuestions) {
+      if (!budgetNoticeEmitted && workflowMode && workflowMode !== 'deep_dive') {
+        budgetNoticeEmitted = true;
+        emit({
+          type: 'transparency',
+          stage: 'positioning',
+          message: workflowMode === 'fast_draft'
+            ? 'Fast Draft mode reached its interview budget. Moving on to synthesize your positioning profile from the strongest answers so far.'
+            : 'Balanced mode reached its interview budget. Moving on to synthesize your positioning profile from the answers collected so far.',
+        });
+      }
+      break;
+    }
+
     const catProgress = buildCategoryProgress(answeredIds);
     emit({
       type: 'positioning_question',
@@ -1176,6 +1237,15 @@ async function runPositioningStage(
       throw gateErr;
     }
 
+    if (isDraftNowGateResponse(response)) {
+      emit({
+        type: 'transparency',
+        stage: 'positioning',
+        message: 'Draft-now was requested during the interview. Moving on with the answers collected so far.',
+      });
+      break;
+    }
+
     // Tag answers where user selected a suggestion without providing custom text,
     // so the synthesis LLM knows this is a suggested value rather than user-authored.
     const taggedAnswer = tagPositioningAnswer(response.answer, response.selected_suggestion);
@@ -1188,7 +1258,7 @@ async function runPositioningStage(
     previousEncouragingText = question.encouraging_text;
 
     // Evaluate follow-up triggers (max 1 follow-up per question, capped globally)
-    if (followUpCount < MAX_FOLLOW_UPS) {
+    if (followUpCount < positioningBudget.maxFollowUps) {
       const followUp = evaluateFollowUp(question, response.answer);
       if (followUp) {
         followUpCount++;
@@ -1218,6 +1288,15 @@ async function runPositioningStage(
             continue;
           }
           throw gateErr;
+        }
+
+        if (isDraftNowGateResponse(followUpResponse)) {
+          emit({
+            type: 'transparency',
+            stage: 'positioning',
+            message: 'Draft-now was requested during a follow-up question. Moving on with current evidence.',
+          });
+          break;
         }
 
         const taggedFollowUpAnswer = tagPositioningAnswer(followUpResponse.answer, followUpResponse.selected_suggestion);

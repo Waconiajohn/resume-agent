@@ -143,6 +143,26 @@ export function useSession(accessToken: string | null) {
     }
   }, [headers, buildErrorMessage, fetchWithOneRetry]);
 
+  const getResumeById = useCallback(async (resumeId: string): Promise<MasterResume | null> => {
+    if (!accessTokenRef.current) return null;
+    setError(null);
+    try {
+      const res = await fetchWithOneRetry(`${API_BASE}/resumes/${encodeURIComponent(resumeId)}`, {
+        headers: headers(),
+      });
+      if (!res.ok) {
+        const message = await buildErrorMessage(res, `Failed to load resume (${res.status})`);
+        setError(message);
+        return null;
+      }
+      const data = await res.json();
+      return (data.resume as MasterResume | null) ?? null;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error loading resume');
+      return null;
+    }
+  }, [headers, buildErrorMessage, fetchWithOneRetry]);
+
   const saveResumeAsBase = useCallback(async (
     resume: FinalResume,
     options: { setAsDefault: boolean; sourceSessionId?: string | null },
@@ -342,6 +362,7 @@ export function useSession(accessToken: string | null) {
     rawResumeText: string,
     jobDescription: string,
     companyName: string,
+    workflowMode: 'fast_draft' | 'balanced' | 'deep_dive' = 'balanced',
   ): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
     setError(null);
@@ -354,6 +375,7 @@ export function useSession(accessToken: string | null) {
           raw_resume_text: rawResumeText,
           job_description: jobDescription,
           company_name: companyName,
+          workflow_mode: workflowMode,
         }),
       });
       if (!res.ok) {
@@ -415,6 +437,7 @@ export function useSession(accessToken: string | null) {
     listResumes,
     createSession,
     getDefaultResume,
+    getResumeById,
     saveResumeAsBase,
     loadSession,
     deleteSession,
