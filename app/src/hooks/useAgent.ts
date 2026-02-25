@@ -916,11 +916,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                       ...prev,
                       current_activity_message:
                         prev.processing_state !== 'waiting_for_input'
-                          ? 'Backend heartbeat received. Processing is still running.'
+                          ? (prev.current_activity_message ?? 'Backend heartbeat received. Processing is still running.')
                           : prev.current_activity_message,
                       current_activity_source:
                         prev.processing_state !== 'waiting_for_input'
-                          ? 'system'
+                          ? (prev.current_activity_source ?? 'system')
                           : prev.current_activity_source,
                     }));
                   }

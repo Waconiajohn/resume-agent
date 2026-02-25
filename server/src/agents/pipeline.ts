@@ -1224,6 +1224,11 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // Fire off research as a background promise (with retry for transient failures)
     researchAbort = new AbortController();
     setMaxListeners(20, researchAbort.signal);
+    emit({
+      type: 'transparency',
+      stage: 'research',
+      message: 'Step 2 research started: extracting JD requirements, company signals, and benchmark assumptions.',
+    });
     const researchPromise = withRetry(
       () => runResearchAgent({
         job_description: config.job_description,
@@ -1281,6 +1286,11 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // ─── Finish Step 2 research if it is still running ─────────────────────
     if (!state.research) {
+      emit({
+        type: 'transparency',
+        stage: 'research',
+        message: 'Step 3 is complete. Waiting for Step 2 research to finish so Step 4 gap mapping can use the benchmark profile.',
+      });
       try {
         state.research = await researchPromise;
       } catch (researchErr) {
@@ -1289,6 +1299,11 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           { error: researchErr instanceof Error ? researchErr.message : String(researchErr) },
           'Late research promise rejected — retrying once',
         );
+        emit({
+          type: 'transparency',
+          stage: 'research',
+          message: 'Step 2 research hit a transient error after the Why Me interview. Retrying once before continuing.',
+        });
         try {
           state.research = await withRetry(
             () => runResearchAgent({
@@ -1299,6 +1314,11 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
             { maxAttempts: 2, baseDelay: 3_000, signal: researchAbort?.signal, onRetry: (a, e) => log.warn({ attempt: a, error: e.message }, 'Research retry') },
           );
         } catch (retryErr) {
+          emit({
+            type: 'transparency',
+            stage: 'research',
+            message: 'Step 2 research could not complete after retry. The pipeline cannot continue without a benchmark profile.',
+          });
           log.error(
             { error: retryErr instanceof Error ? retryErr.message : String(retryErr) },
             'Research failed after retry — pipeline cannot continue without research',
