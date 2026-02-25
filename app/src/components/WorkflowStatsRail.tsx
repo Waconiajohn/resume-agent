@@ -82,17 +82,32 @@ export function WorkflowStatsRail({
   compact = false,
 }: WorkflowStatsRailProps) {
   const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
-  const status = error
+  const runtimeState = pipelineActivity?.processing_state ?? (
+    error
+      ? 'error'
+      : stalledSuspected
+        ? 'stalled_suspected'
+        : (sessionComplete || currentPhase === 'complete')
+          ? 'complete'
+          : isGateActive
+            ? 'waiting_for_input'
+            : isProcessing
+              ? 'processing'
+              : 'idle'
+  );
+  const status = runtimeState === 'error'
     ? 'Error'
-    : stalledSuspected
+    : runtimeState === 'stalled_suspected'
       ? 'Potentially Stalled'
-    : (sessionComplete || currentPhase === 'complete')
-      ? 'Complete'
-      : isGateActive
-        ? 'Waiting for Input'
-      : isProcessing
-        ? 'Processing'
-        : 'Idle';
+      : runtimeState === 'complete'
+        ? 'Complete'
+        : runtimeState === 'waiting_for_input'
+          ? 'Waiting for Input'
+          : runtimeState === 'processing'
+            ? 'Processing'
+            : runtimeState === 'reconnecting'
+              ? 'Reconnecting'
+              : 'Idle';
   const statusClass = error
     ? 'text-red-100/90'
     : status === 'Potentially Stalled'

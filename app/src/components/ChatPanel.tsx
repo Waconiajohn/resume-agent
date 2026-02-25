@@ -84,20 +84,39 @@ export function ChatPanel({
     (!!resume && !!panelData && (panelData.type === 'quality_dashboard' || panelData.type === 'completion'))
     || Object.keys(approvedSections).length > 0;
   const pipelinePhaseActive = currentPhase !== 'onboarding' && currentPhase !== 'complete';
-  const statusLabel = stalledSuspected
-    ? 'Processing may be stalled'
-    : isProcessing
-    ? 'Working'
-    : (isPipelineGateActive
-        ? 'Waiting for your input'
-        : (connected ? (pipelinePhaseActive ? 'Connected (idle)' : 'Connected') : 'Reconnecting'));
-  const statusToneClass = stalledSuspected
-    ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/90'
-    : isProcessing
-    ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
-    : (isPipelineGateActive
-        ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
-        : (connected ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/90' : 'border-white/[0.1] bg-white/[0.03] text-white/70'));
+  const runtimeState = pipelineActivity?.processing_state ?? (
+    stalledSuspected
+      ? 'stalled_suspected'
+      : isProcessing
+        ? 'processing'
+        : (isPipelineGateActive ? 'waiting_for_input' : (connected ? 'idle' : 'reconnecting'))
+  );
+  const statusLabel =
+    runtimeState === 'stalled_suspected'
+      ? 'Processing may be stalled'
+      : runtimeState === 'processing'
+        ? 'Working'
+        : runtimeState === 'waiting_for_input'
+          ? 'Waiting for your input'
+          : runtimeState === 'reconnecting'
+            ? 'Reconnecting'
+            : runtimeState === 'complete'
+              ? 'Complete'
+              : runtimeState === 'error'
+                ? 'Error'
+                : (connected ? (pipelinePhaseActive ? 'Connected (idle)' : 'Connected') : 'Reconnecting');
+  const statusToneClass =
+    runtimeState === 'stalled_suspected'
+      ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/90'
+      : runtimeState === 'processing'
+        ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+        : runtimeState === 'waiting_for_input'
+          ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
+          : runtimeState === 'complete'
+            ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/90'
+            : runtimeState === 'error'
+              ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/90'
+              : (connected ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/90' : 'border-white/[0.1] bg-white/[0.03] text-white/70');
   const lastActivityText = (() => {
     if (!lastBackendActivityAt) return null;
     const ms = Date.now() - new Date(lastBackendActivityAt).getTime();

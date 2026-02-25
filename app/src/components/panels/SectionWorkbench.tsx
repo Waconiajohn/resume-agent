@@ -60,6 +60,7 @@ export function SectionWorkbench({
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showBundleDetails, setShowBundleDetails] = useState(false);
   const actionLockedRef = useRef(false);
   const lastActionAtRef = useRef(0);
   const refineWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,6 +109,7 @@ export function SectionWorkbench({
     setUndoStack([]);
     setRedoStack([]);
     setShowAdvanced(false);
+    setShowBundleDetails(false);
     setIsApprovalAnimating(false);
     unlockRefineState();
   }, [section, unlockRefineState]);
@@ -312,41 +314,47 @@ export function SectionWorkbench({
                   Reviewing {reviewRequiredSections.length || 1} high-impact section{(reviewRequiredSections.length || 1) === 1 ? '' : 's'}
                 </span>
                 {reviewRequiredSections.includes(section) ? (
-                  <span className="text-[11px] text-emerald-200/85">This section is in the review set.</span>
+                  <span className="text-[11px] text-emerald-200/85">Action required: this section is in the review set.</span>
                 ) : (
-                  <span className="text-[11px] text-white/45">This section is editable, even if auto-approved by mode.</span>
+                  <span className="text-[11px] text-white/45">Info only: this section is editable even if auto-approved by mode.</span>
                 )}
               </div>
               {reviewRequiredSections.length > 0 && (
                 <div className="mt-2 rounded-xl border border-white/[0.08] bg-black/20 p-2.5">
+                  <div className="mb-2 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
+                        What To Do
+                      </span>
+                      {reviewRequiredSections.includes(section) ? (
+                        <span className="text-white/78">
+                          Review this draft, then approve it or request changes.
+                        </span>
+                      ) : (
+                        <span className="text-white/62">
+                          This section is not blocking progress. You can still edit it if you want.
+                        </span>
+                      )}
+                      {currentBundleMeta && (
+                        <span className="text-white/52">
+                          Current bundle: {currentBundleMeta.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   {reviewBundles.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                      {reviewBundles.map((bundle) => {
-                        const isCurrentBundle = bundle.key === currentReviewBundleKey;
-                        const toneClass = bundle.status === 'complete'
-                          ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
-                          : bundle.status === 'in_progress'
-                            ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
-                            : bundle.status === 'auto_approved'
-                              ? 'border-white/[0.08] bg-white/[0.03] text-white/65'
-                              : 'border-white/[0.06] bg-white/[0.02] text-white/50';
-                        return (
-                          <span
-                            key={bundle.key}
-                            className={`rounded-full border px-2 py-0.5 text-[10px] ${toneClass}`}
-                            title={`${bundle.label}: ${bundle.reviewed_required}/${bundle.review_required} review sections approved`}
-                          >
-                            {bundle.label}
-                            {bundle.status === 'auto_approved'
-                              ? ' • auto'
-                              : ` • ${bundle.reviewed_required}/${bundle.review_required}`}
-                            {isCurrentBundle ? ' • current bundle' : ''}
-                          </span>
-                        );
-                      })}
+                    <div className="mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowBundleDetails((prev) => !prev)}
+                        className="flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2 text-left text-[11px] text-white/68 transition-colors hover:bg-white/[0.03] hover:text-white/82"
+                      >
+                        <span>Bundle details, section list, and auto-approved items</span>
+                        {showBundleDetails ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </button>
                     </div>
                   )}
-                  {reviewBundles.length > 0 && (
+                  {reviewBundles.length > 0 && showBundleDetails && (
                     <div className="mb-2 grid gap-2 sm:grid-cols-3">
                       {reviewBundles.map((bundle) => {
                         const bundleSections = sectionsByBundle[bundle.key as LocalBundleKey] ?? [];
@@ -416,6 +424,33 @@ export function SectionWorkbench({
                       })}
                     </div>
                   )}
+                  {reviewBundles.length > 0 && showBundleDetails && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {reviewBundles.map((bundle) => {
+                        const isCurrentBundle = bundle.key === currentReviewBundleKey;
+                        const toneClass = bundle.status === 'complete'
+                          ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
+                          : bundle.status === 'in_progress'
+                            ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+                            : bundle.status === 'auto_approved'
+                              ? 'border-white/[0.08] bg-white/[0.03] text-white/65'
+                              : 'border-white/[0.06] bg-white/[0.02] text-white/50';
+                        return (
+                          <span
+                            key={`bundle-pill-${bundle.key}`}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] ${toneClass}`}
+                            title={`${bundle.label}: ${bundle.reviewed_required}/${bundle.review_required} review sections approved`}
+                          >
+                            {bundle.label}
+                            {bundle.status === 'auto_approved'
+                              ? ' • auto'
+                              : ` • ${bundle.reviewed_required}/${bundle.review_required}`}
+                            {isCurrentBundle ? ' • current bundle' : ''}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/65">
                     <span>Review set progress</span>
                     <span>{approvedReviewSections.length}/{reviewRequiredSections.length} approved</span>
@@ -426,28 +461,30 @@ export function SectionWorkbench({
                       style={{ width: `${reviewProgressPct}%` }}
                     />
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {reviewRequiredSections.map((reviewSection) => {
-                      const isCurrent = reviewSection === section;
-                      const isApproved = sectionsApproved.includes(reviewSection);
-                      return (
-                        <span
-                          key={reviewSection}
-                          className={`rounded-full border px-2 py-0.5 text-[10px] ${
-                            isApproved
-                              ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
-                              : isCurrent
-                                ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
-                                : 'border-white/[0.08] bg-white/[0.02] text-white/55'
-                          }`}
-                          title={toTitleCase(reviewSection)}
-                        >
-                          {toTitleCase(reviewSection)}
-                          {isApproved ? ' • approved' : (isCurrent ? ' • current' : ' • pending')}
-                        </span>
-                      );
-                    })}
-                  </div>
+                  {showBundleDetails && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {reviewRequiredSections.map((reviewSection) => {
+                        const isCurrent = reviewSection === section;
+                        const isApproved = sectionsApproved.includes(reviewSection);
+                        return (
+                          <span
+                            key={reviewSection}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                              isApproved
+                                ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
+                                : isCurrent
+                                  ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+                                  : 'border-white/[0.08] bg-white/[0.02] text-white/55'
+                            }`}
+                            title={toTitleCase(reviewSection)}
+                          >
+                            {toTitleCase(reviewSection)}
+                            {isApproved ? ' • approved' : (isCurrent ? ' • current' : ' • pending')}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                   {(currentBundleMeta || nextPendingReviewBundleMeta || autoApprovedBundleCount > 0) && (
                     <div className="mt-2 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2 text-[11px] text-white/65">
                       <div className="flex flex-wrap items-center gap-2">
@@ -480,10 +517,10 @@ export function SectionWorkbench({
                   )}
                 </div>
               )}
-              {reviewRequiredSections.length > 0 && (
-              <p className="mt-2 text-[11px] leading-relaxed text-white/50">
-                Review set: {reviewRequiredSections.map((s) => toTitleCase(s)).join(', ')}
-              </p>
+              {reviewRequiredSections.length > 0 && showBundleDetails && (
+                <p className="mt-2 text-[11px] leading-relaxed text-white/50">
+                  Review set: {reviewRequiredSections.map((s) => toTitleCase(s)).join(', ')}
+                </p>
               )}
               {reviewRequiredSections.includes(section)
                 && currentBundleMeta
@@ -522,8 +559,14 @@ export function SectionWorkbench({
               )}
               {autoApprovedSections.length > 0 && (
                 <p className="mt-1 text-[11px] leading-relaxed text-white/40">
-                  Auto-approved by mode: {autoApprovedSections.slice(0, 6).map((s) => toTitleCase(s)).join(', ')}
-                  {autoApprovedSections.length > 6 ? ` +${autoApprovedSections.length - 6} more` : ''}
+                  {showBundleDetails ? (
+                    <>
+                      Auto-approved by mode: {autoApprovedSections.slice(0, 6).map((s) => toTitleCase(s)).join(', ')}
+                      {autoApprovedSections.length > 6 ? ` +${autoApprovedSections.length - 6} more` : ''}
+                    </>
+                  ) : (
+                    <>Auto-approved by mode: {autoApprovedSections.length} section{autoApprovedSections.length === 1 ? '' : 's'} (open bundle details to review names)</>
+                  )}
                 </p>
               )}
             </div>
