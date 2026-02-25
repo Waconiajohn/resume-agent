@@ -248,6 +248,10 @@ function renderQuestionsNodeSummaryPlaceholder(
     stage: 'positioning' | 'gap_analysis';
     questionnaire_kind: 'positioning_batch' | 'gap_analysis_quiz';
     skipped_count: number;
+    matched_by_topic_count: number;
+    matched_by_payoff_count: number;
+    prior_answered_count: number;
+    prior_deferred_count: number;
     benchmark_edit_version: number | null;
     sample_topics: string[];
     sample_payoffs: string[];
@@ -255,6 +259,18 @@ function renderQuestionsNodeSummaryPlaceholder(
     version: number | null;
     created_at: string | null;
   }> | null,
+  questionReuseMetrics?: {
+    total_skipped: number;
+    by_stage: {
+      positioning: { events: number; skipped_count: number };
+      gap_analysis: { events: number; skipped_count: number };
+    };
+    matched_by_topic_count: number;
+    matched_by_payoff_count: number;
+    prior_answered_count: number;
+    prior_deferred_count: number;
+    latest_created_at: string | null;
+  } | null,
   onOpenQuestions?: () => void,
 ) {
   const remaining = draftReadiness?.high_impact_remaining ?? [];
@@ -358,6 +374,28 @@ function renderQuestionsNodeSummaryPlaceholder(
             {Array.isArray(questionReuseSummaries) && questionReuseSummaries.length > 0 && (
               <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
                 <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">Question Reuse (to reduce repeats)</div>
+                {questionReuseMetrics && questionReuseMetrics.total_skipped > 0 && (
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-md border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Reuse Savings</div>
+                      <div className="mt-1 text-xs text-white/78">
+                        Reused {questionReuseMetrics.total_skipped} lower-impact question{questionReuseMetrics.total_skipped === 1 ? '' : 's'}
+                      </div>
+                      <div className="mt-1 text-[10px] text-white/45">
+                        Positioning {questionReuseMetrics.by_stage.positioning.skipped_count} • Gap Analysis {questionReuseMetrics.by_stage.gap_analysis.skipped_count}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Reuse Basis</div>
+                      <div className="mt-1 text-xs text-white/78">
+                        Topic match {questionReuseMetrics.matched_by_topic_count} • Payoff match {questionReuseMetrics.matched_by_payoff_count}
+                      </div>
+                      <div className="mt-1 text-[10px] text-white/45">
+                        Prior answered {questionReuseMetrics.prior_answered_count} • Prior deferred {questionReuseMetrics.prior_deferred_count}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="mt-2 space-y-1.5">
                   {questionReuseSummaries.slice(0, 4).map((item, index) => (
                     <div key={`${item.stage}:${item.version ?? index}:${index}`} className="rounded-md border border-white/[0.05] bg-white/[0.015] px-2 py-1.5">
@@ -368,6 +406,9 @@ function renderQuestionsNodeSummaryPlaceholder(
                         <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-1.5 py-0.5 text-sky-100/85">
                           Reused {item.skipped_count}
                         </span>
+                        <span className="text-white/45">
+                          topic {item.matched_by_topic_count} • payoff {item.matched_by_payoff_count}
+                        </span>
                         {typeof item.benchmark_edit_version === 'number' && (
                           <span className="text-white/40">benchmark v{item.benchmark_edit_version}</span>
                         )}
@@ -375,6 +416,13 @@ function renderQuestionsNodeSummaryPlaceholder(
                       {item.message && (
                         <div className="mt-1 text-[11px] leading-relaxed text-white/72">
                           {item.message}
+                        </div>
+                      )}
+                      {(item.prior_answered_count > 0 || item.prior_deferred_count > 0) && (
+                        <div className="mt-1 text-[10px] text-white/48">
+                          Based on prior {item.prior_answered_count > 0 ? `${item.prior_answered_count} answered` : '0 answered'}
+                          {item.prior_deferred_count > 0 ? ` and ${item.prior_deferred_count} deferred` : ''} response
+                          {item.prior_answered_count + item.prior_deferred_count === 1 ? '' : 's'}.
                         </div>
                       )}
                       {item.sample_payoffs.length > 0 && (
@@ -1562,6 +1610,7 @@ export function CoachScreen({
                 workflowSession.summary?.question_response_metrics ?? null,
                 workflowSession.summary?.question_response_history ?? null,
                 workflowSession.summary?.question_reuse_summaries ?? null,
+                workflowSession.summary?.question_reuse_metrics ?? null,
                 () => {
                   void workflowSession.refreshSummary();
                   void workflowSession.refreshNode('questions');

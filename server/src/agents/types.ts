@@ -648,6 +648,10 @@ export type PipelineSSEEvent =
       stage: 'positioning' | 'gap_analysis';
       questionnaire_kind: 'positioning_batch' | 'gap_analysis_quiz';
       skipped_count: number;
+      matched_by_topic_count?: number;
+      matched_by_payoff_count?: number;
+      prior_answered_count?: number;
+      prior_deferred_count?: number;
       benchmark_edit_version?: number | null;
       sample_topics?: string[];
       sample_payoffs?: string[];

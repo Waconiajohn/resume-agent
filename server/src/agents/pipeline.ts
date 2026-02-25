@@ -741,15 +741,41 @@ function filterQuestionnaireQuestionsByPayoffHistory(
     questionnaireStage?: string;
     currentBenchmarkEditVersion?: number | null;
   },
-): { questions: QuestionnaireQuestion[]; skippedCount: number; skippedQuestions: QuestionnaireQuestion[] } {
+): {
+  questions: QuestionnaireQuestion[];
+  skippedCount: number;
+  skippedQuestions: QuestionnaireQuestion[];
+  reuseStats: {
+    matchedByTopicCount: number;
+    matchedByPayoffCount: number;
+    priorAnsweredCount: number;
+    priorDeferredCount: number;
+  };
+} {
   if (questions.length === 0 || (reuseHistory.byPayoff.size === 0 && reuseHistory.byTopic.size === 0)) {
-    return { questions, skippedCount: 0, skippedQuestions: [] };
+    return {
+      questions,
+      skippedCount: 0,
+      skippedQuestions: [],
+      reuseStats: {
+        matchedByTopicCount: 0,
+        matchedByPayoffCount: 0,
+        priorAnsweredCount: 0,
+        priorDeferredCount: 0,
+      },
+    };
   }
   const questionnaireStage = options?.questionnaireStage ?? null;
   const currentBenchmarkEditVersion = options?.currentBenchmarkEditVersion ?? null;
   const filtered: QuestionnaireQuestion[] = [];
   let skippedCount = 0;
   const skippedQuestions: QuestionnaireQuestion[] = [];
+  const reuseStats = {
+    matchedByTopicCount: 0,
+    matchedByPayoffCount: 0,
+    priorAnsweredCount: 0,
+    priorDeferredCount: 0,
+  };
   for (const question of questions) {
     const impactTier = question.impact_tier ?? 'medium';
     const stageMatches = (entryStage: string) => questionnaireStage == null || entryStage === questionnaireStage;
@@ -766,25 +792,34 @@ function filterQuestionnaireQuestionsByPayoffHistory(
           .map((value) => normalizeQuestionTopicKey(value))
           .filter(Boolean)
       : [];
+    let matchBasis: 'topic' | 'payoff' | null = null;
     let prior = topicKeys
       .map((key) => reuseHistory.byTopic.get(key))
       .find((entry) => entry && stageMatches(entry.stage) && benchmarkMatches(entry.benchmarkEditVersion));
+    if (prior) {
+      matchBasis = 'topic';
+    }
 
     if (!prior && payoffKey) {
       const payoffEntry = reuseHistory.byPayoff.get(payoffKey);
       if (payoffEntry && stageMatches(payoffEntry.stage) && benchmarkMatches(payoffEntry.benchmarkEditVersion)) {
         prior = payoffEntry;
+        matchBasis = 'payoff';
       }
     }
 
     if (prior && (prior.status === 'answered' || prior.status === 'deferred')) {
       skippedCount += 1;
       skippedQuestions.push(question);
+      if (matchBasis === 'topic') reuseStats.matchedByTopicCount += 1;
+      if (matchBasis === 'payoff') reuseStats.matchedByPayoffCount += 1;
+      if (prior.status === 'deferred') reuseStats.priorDeferredCount += 1;
+      else reuseStats.priorAnsweredCount += 1;
       continue;
     }
     filtered.push(question);
   }
-  return { questions: filtered, skippedCount, skippedQuestions };
+  return { questions: filtered, skippedCount, skippedQuestions, reuseStats };
 }
 
 function emitQuestionnaireReuseSummary(
@@ -793,6 +828,12 @@ function emitQuestionnaireReuseSummary(
   questionnaireKind: 'positioning_batch' | 'gap_analysis_quiz',
   skippedQuestions: QuestionnaireQuestion[],
   benchmarkEditVersion: number | null,
+  reuseStats?: {
+    matchedByTopicCount: number;
+    matchedByPayoffCount: number;
+    priorAnsweredCount: number;
+    priorDeferredCount: number;
+  },
 ) {
   if (skippedQuestions.length === 0) return;
 
@@ -815,6 +856,12 @@ function emitQuestionnaireReuseSummary(
     stage,
     questionnaire_kind: questionnaireKind,
     skipped_count: skippedQuestions.length,
+    ...(reuseStats ? {
+      matched_by_topic_count: reuseStats.matchedByTopicCount,
+      matched_by_payoff_count: reuseStats.matchedByPayoffCount,
+      prior_answered_count: reuseStats.priorAnsweredCount,
+      prior_deferred_count: reuseStats.priorDeferredCount,
+    } : {}),
     benchmark_edit_version: benchmarkEditVersion,
     ...(sampleTopics.length > 0 ? { sample_topics: sampleTopics } : {}),
     ...(samplePayoffs.length > 0 ? { sample_payoffs: samplePayoffs } : {}),
@@ -1284,6 +1331,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       questions: filteredGapQuizQuestionPool,
       skippedCount: skippedPriorGapPrompts,
       skippedQuestions: skippedGapQuestions,
+      reuseStats: gapQuizReuseStats,
     } = filterQuestionnaireQuestionsByPayoffHistory(allGapQuizQuestions, gapQuizPayoffHistory, {
       questionnaireStage: 'gap_analysis',
       currentBenchmarkEditVersion: state.benchmark_override_version ?? null,
@@ -1295,6 +1343,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         'gap_analysis_quiz',
         skippedGapQuestions,
         state.benchmark_override_version ?? null,
+        gapQuizReuseStats,
       );
       emit({
         type: 'transparency',
@@ -2743,6 +2792,7 @@ async function runPositioningStage(
         questions: questionnaireQuestions,
         skippedCount: skippedPriorPrompts,
         skippedQuestions: skippedPositioningQuestions,
+        reuseStats: positioningReuseStats,
       } = filterQuestionnaireQuestionsByPayoffHistory(questionnaireQuestionsRaw, questionnairePayoffHistory, {
         questionnaireStage: 'positioning',
         currentBenchmarkEditVersion: state.benchmark_override_version ?? null,
@@ -2754,6 +2804,7 @@ async function runPositioningStage(
           'positioning_batch',
           skippedPositioningQuestions,
           state.benchmark_override_version ?? null,
+          positioningReuseStats,
         );
         dedupeNoticeEmitted = true;
         emit({

@@ -32,6 +32,14 @@ function toTitleCase(str: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+type LocalBundleKey = 'headline' | 'core_experience' | 'supporting';
+
+function sectionToBundleKey(section: string): LocalBundleKey {
+  if (section === 'summary' || section === 'selected_accomplishments') return 'headline';
+  if (section.startsWith('experience_role_')) return 'core_experience';
+  return 'supporting';
+}
+
 export function SectionWorkbench({
   section,
   content,
@@ -225,6 +233,10 @@ export function SectionWorkbench({
   const reviewBundles = Array.isArray(context?.review_bundles)
     ? context.review_bundles.filter((b) => b && typeof b === 'object')
     : [];
+  const sectionsByBundle = sectionOrder.reduce<Record<LocalBundleKey, string[]>>((acc, item) => {
+    acc[sectionToBundleKey(item)].push(item);
+    return acc;
+  }, { headline: [], core_experience: [], supporting: [] });
   const currentBundleMeta = currentReviewBundleKey
     ? reviewBundles.find((bundle) => bundle.key === currentReviewBundleKey)
     : undefined;
@@ -321,6 +333,76 @@ export function SectionWorkbench({
                               : ` • ${bundle.reviewed_required}/${bundle.review_required}`}
                             {isCurrentBundle ? ' • current bundle' : ''}
                           </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {reviewBundles.length > 0 && (
+                    <div className="mb-2 grid gap-2 sm:grid-cols-3">
+                      {reviewBundles.map((bundle) => {
+                        const bundleSections = sectionsByBundle[bundle.key as LocalBundleKey] ?? [];
+                        const isCurrentBundle = bundle.key === currentReviewBundleKey;
+                        const toneClass = bundle.status === 'complete'
+                          ? 'border-emerald-300/18 bg-emerald-400/[0.04]'
+                          : bundle.status === 'in_progress'
+                            ? 'border-sky-300/18 bg-sky-400/[0.04]'
+                            : bundle.status === 'auto_approved'
+                              ? 'border-white/[0.08] bg-white/[0.02]'
+                              : 'border-white/[0.06] bg-white/[0.015]';
+                        return (
+                          <div key={`bundle-card-${bundle.key}`} className={`rounded-lg border p-2 ${toneClass}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-[11px] font-medium text-white/82">{bundle.label}</div>
+                              <div className="text-[10px] text-white/45">
+                                {bundle.status === 'auto_approved'
+                                  ? 'auto'
+                                  : `${bundle.reviewed_required}/${bundle.review_required}`}
+                              </div>
+                            </div>
+                            <div className="mt-1 text-[10px] text-white/50">
+                              {isCurrentBundle ? 'Current bundle' : (
+                                bundle.status === 'complete'
+                                  ? 'Complete'
+                                  : bundle.status === 'in_progress'
+                                    ? 'In progress'
+                                    : bundle.status === 'auto_approved'
+                                      ? 'Auto-approved'
+                                      : 'Pending'
+                              )}
+                            </div>
+                            {bundleSections.length > 0 && (
+                              <div className="mt-1.5 space-y-1">
+                                {bundleSections.slice(0, 4).map((bundleSection) => {
+                                  const isApproved = sectionsApproved.includes(bundleSection);
+                                  const isCurrentSection = bundleSection === section;
+                                  const requiresReview = reviewRequiredSections.includes(bundleSection);
+                                  return (
+                                    <div
+                                      key={`${bundle.key}:${bundleSection}`}
+                                      className={`flex items-center justify-between gap-2 rounded-md border px-1.5 py-1 text-[10px] ${
+                                        isCurrentSection
+                                          ? 'border-sky-300/20 bg-sky-400/[0.06] text-sky-100/90'
+                                          : isApproved
+                                            ? 'border-emerald-300/18 bg-emerald-400/[0.04] text-emerald-100/85'
+                                            : 'border-white/[0.05] bg-white/[0.01] text-white/60'
+                                      }`}
+                                      title={toTitleCase(bundleSection)}
+                                    >
+                                      <span className="truncate">{toTitleCase(bundleSection)}</span>
+                                      <span className="text-[9px] text-white/45">
+                                        {isCurrentSection ? 'current' : isApproved ? 'approved' : (requiresReview ? 'review' : 'auto')}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                                {bundleSections.length > 4 && (
+                                  <div className="px-1.5 text-[10px] text-white/40">
+                                    +{bundleSections.length - 4} more section{bundleSections.length - 4 === 1 ? '' : 's'}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>

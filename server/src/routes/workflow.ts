@@ -448,6 +448,18 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
             ? 'gap_analysis_quiz'
             : 'positioning_batch',
           skipped_count: typeof payload.skipped_count === 'number' ? Math.max(0, payload.skipped_count) : 0,
+          matched_by_topic_count: typeof payload.matched_by_topic_count === 'number'
+            ? Math.max(0, payload.matched_by_topic_count)
+            : 0,
+          matched_by_payoff_count: typeof payload.matched_by_payoff_count === 'number'
+            ? Math.max(0, payload.matched_by_payoff_count)
+            : 0,
+          prior_answered_count: typeof payload.prior_answered_count === 'number'
+            ? Math.max(0, payload.prior_answered_count)
+            : 0,
+          prior_deferred_count: typeof payload.prior_deferred_count === 'number'
+            ? Math.max(0, payload.prior_deferred_count)
+            : 0,
           benchmark_edit_version: typeof payload.benchmark_edit_version === 'number'
             ? payload.benchmark_edit_version
             : null,
@@ -459,6 +471,37 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
         };
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row));
+  })();
+  const questionReuseMetrics = (() => {
+    const rows = questionReuseSummaries;
+    const byStage = {
+      positioning: { events: 0, skipped_count: 0 },
+      gap_analysis: { events: 0, skipped_count: 0 },
+    };
+    let totalSkipped = 0;
+    let totalByTopic = 0;
+    let totalByPayoff = 0;
+    let totalPriorAnswered = 0;
+    let totalPriorDeferred = 0;
+    for (const row of rows) {
+      const stageKey: keyof typeof byStage = row.stage === 'gap_analysis' ? 'gap_analysis' : 'positioning';
+      byStage[stageKey].events += 1;
+      byStage[stageKey].skipped_count += row.skipped_count;
+      totalSkipped += row.skipped_count;
+      totalByTopic += row.matched_by_topic_count;
+      totalByPayoff += row.matched_by_payoff_count;
+      totalPriorAnswered += row.prior_answered_count;
+      totalPriorDeferred += row.prior_deferred_count;
+    }
+    return {
+      total_skipped: totalSkipped,
+      by_stage: byStage,
+      matched_by_topic_count: totalByTopic,
+      matched_by_payoff_count: totalByPayoff,
+      prior_answered_count: totalPriorAnswered,
+      prior_deferred_count: totalPriorDeferred,
+      latest_created_at: rows[0]?.created_at ?? null,
+    };
   })();
 
   return c.json({
@@ -476,6 +519,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     question_response_metrics: questionnaireAnalytics,
     question_response_history: questionResponseHistory,
     question_reuse_summaries: questionReuseSummaries,
+    question_reuse_metrics: questionReuseMetrics,
     replan: replanStaleNodes.length > 0 ? {
       pending: true,
       reason: 'benchmark_assumptions_updated',

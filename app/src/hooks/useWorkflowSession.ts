@@ -63,6 +63,10 @@ interface WorkflowSummaryResponse {
     stage: 'positioning' | 'gap_analysis';
     questionnaire_kind: 'positioning_batch' | 'gap_analysis_quiz';
     skipped_count: number;
+    matched_by_topic_count: number;
+    matched_by_payoff_count: number;
+    prior_answered_count: number;
+    prior_deferred_count: number;
     benchmark_edit_version: number | null;
     sample_topics: string[];
     sample_payoffs: string[];
@@ -70,6 +74,18 @@ interface WorkflowSummaryResponse {
     version: number | null;
     created_at: string | null;
   }>;
+  question_reuse_metrics: {
+    total_skipped: number;
+    by_stage: {
+      positioning: { events: number; skipped_count: number };
+      gap_analysis: { events: number; skipped_count: number };
+    };
+    matched_by_topic_count: number;
+    matched_by_payoff_count: number;
+    prior_answered_count: number;
+    prior_deferred_count: number;
+    latest_created_at: string | null;
+  };
   workflow_preferences: {
     workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
     minimum_evidence_target: number | null;
