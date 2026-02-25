@@ -33,16 +33,23 @@ type PanelType =
   | 'processing'
   | null;
 
+function workspacePanelRoot(page: Page) {
+  // The interactive workflow panel is rendered in the center <main> area.
+  // Avoid matching sidebar/nav text (e.g., "Resume Blueprint" in the workflow rail).
+  return page.locator('main [data-panel-root]').first();
+}
+
 /**
  * Detect what panel is currently visible by checking for distinguishing UI elements.
  */
 async function detectCurrentPanel(page: Page): Promise<PanelType> {
+  const panelRoot = workspacePanelRoot(page);
+  const panelVisible = await panelRoot.isVisible().catch(() => false);
+
   // Check for completion first (terminal state)
-  const completionVisible = await page
-    .locator('[data-panel-root]')
-    .filter({ hasText: 'Session Complete' })
-    .isVisible()
-    .catch(() => false);
+  const completionVisible = panelVisible
+    ? await panelRoot.filter({ hasText: 'Session Complete' }).isVisible().catch(() => false)
+    : false;
   if (completionVisible) return 'completion';
 
   // Check for positioning profile choice — rendered in coach area, NOT [data-panel-root].
@@ -54,61 +61,60 @@ async function detectCurrentPanel(page: Page): Promise<PanelType> {
   if (profileChoiceVisible) return 'positioning_profile_choice';
 
   // Check for positioning interview — "Why Me Interview" header text
-  const positioningVisible = await page
-    .locator('[data-panel-root]')
-    .filter({ hasText: 'Why Me Interview' })
-    .isVisible()
-    .catch(() => false);
+  const positioningVisible = panelVisible
+    ? await panelRoot.filter({ hasText: 'Why Me Interview' }).isVisible().catch(() => false)
+    : false;
   if (positioningVisible) return 'positioning_interview';
 
-  // Check for blueprint review — "Resume Blueprint" header + approve button
-  const blueprintVisible = await page
-    .locator('[data-panel-root]')
-    .filter({ hasText: 'Resume Blueprint' })
-    .isVisible()
-    .catch(() => false);
-  if (blueprintVisible) return 'blueprint_review';
-
   // Check for section review — "Looks Good" button in workbench
-  const sectionWorkbench = await page
-    .getByRole('button', { name: /Looks Good/i })
-    .isVisible()
-    .catch(() => false);
+  const sectionWorkbench = panelVisible
+    ? await panelRoot.getByRole('button', { name: /Looks Good/i }).isVisible().catch(() => false)
+    : false;
   if (sectionWorkbench) return 'section_review';
 
-  // Check for questionnaire — panel with progress header + Continue/Submit button + options
-  const questionnairePanel = await page
-    .locator('[data-panel-root]')
-    .filter({ has: page.locator('[role="radiogroup"], [role="group"]') })
-    .filter({
-      has: page.getByRole('button', { name: /Continue|Submit/i }),
-    })
-    .isVisible()
-    .catch(() => false);
+  // Check for questionnaire — center panel with Back + Continue/Finish Batch actions.
+  // Some questionnaires use rating or text input only, so don't require option groups.
+  let questionnairePanel = false;
+  if (panelVisible) {
+    const hasBackButton = await panelRoot.getByRole('button', { name: /^Back$/i }).isVisible().catch(() => false);
+    const hasQuestionActionButton = await panelRoot
+      .getByRole('button', { name: /Continue|Submit|Finish Batch/i })
+      .isVisible()
+      .catch(() => false);
+    const hasLooksGoodButton = await panelRoot.getByRole('button', { name: /Looks Good/i }).isVisible().catch(() => false);
+    questionnairePanel = hasBackButton && hasQuestionActionButton && !hasLooksGoodButton;
+  }
   if (questionnairePanel) return 'questionnaire';
 
+  // Check for blueprint review — require both the header and the approve button
+  // to avoid false positives from sidebar/step-guide text mentioning "Resume Blueprint".
+  let blueprintVisible = false;
+  if (panelVisible) {
+    const hasBlueprintHeader = await panelRoot.filter({ hasText: 'Resume Blueprint' }).isVisible().catch(() => false);
+    const hasApproveButton = await panelRoot
+      .getByRole('button', { name: /Approve blueprint and start writing|Approve Blueprint/i })
+      .isVisible()
+      .catch(() => false);
+    blueprintVisible = hasBlueprintHeader && hasApproveButton;
+  }
+  if (blueprintVisible) return 'blueprint_review';
+
   // Check for quality dashboard — header says "Quality Dashboard", score rings show "ATS"
-  const qualityVisible = await page
-    .locator('[data-panel-root]')
-    .filter({ hasText: 'Quality Dashboard' })
-    .isVisible()
-    .catch(() => false);
+  const qualityVisible = panelVisible
+    ? await panelRoot.filter({ hasText: 'Quality Dashboard' }).isVisible().catch(() => false)
+    : false;
   if (qualityVisible) return 'quality_dashboard';
 
   // Check for research dashboard
-  const researchVisible = await page
-    .locator('[data-panel-root]')
-    .filter({ hasText: /Benchmark|Research/i })
-    .isVisible()
-    .catch(() => false);
+  const researchVisible = panelVisible
+    ? await panelRoot.filter({ hasText: /Benchmark|Research/i }).isVisible().catch(() => false)
+    : false;
   if (researchVisible) return 'research_dashboard';
 
   // Check for gap analysis
-  const gapVisible = await page
-    .locator('[data-panel-root]')
-    .filter({ hasText: /Gap Analysis/i })
-    .isVisible()
-    .catch(() => false);
+  const gapVisible = panelVisible
+    ? await panelRoot.filter({ hasText: /Gap Analysis/i }).isVisible().catch(() => false)
+    : false;
   if (gapVisible) return 'gap_analysis';
 
   return null;
@@ -121,7 +127,7 @@ async function detectCurrentPanel(page: Page): Promise<PanelType> {
 async function getPanelKey(page: Page): Promise<string> {
   const KEY_TIMEOUT = 3_000; // Never wait more than 3s for a panel key
 
-  const panelRoot = page.locator('[data-panel-root]').first();
+  const panelRoot = workspacePanelRoot(page);
   const exists = await panelRoot.isVisible().catch(() => false);
   if (!exists) {
     // For non-panel UI (like profile choice), use button text as key
@@ -186,7 +192,7 @@ async function respondToProfileChoice(page: Page): Promise<void> {
  * Each answer triggers an API call, so we add a generous delay.
  */
 async function respondToPositioningQuestion(page: Page): Promise<void> {
-  const panelRoot = page.locator('[data-panel-root]');
+  const panelRoot = workspacePanelRoot(page);
 
   // Check if there are suggestion cards with role="radio"
   const suggestions = panelRoot.locator('[role="radio"]');
@@ -235,11 +241,11 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
   for (let i = 0; i < MAX_QUESTIONS; i++) {
     await page.waitForTimeout(500);
 
-    const panelRoot = page.locator('[data-panel-root]');
+    const panelRoot = workspacePanelRoot(page);
 
     // Check if we're still on a questionnaire
     const continueOrSubmit = panelRoot.getByRole('button', {
-      name: /Continue|Submit/i,
+      name: /Continue|Submit|Finish Batch/i,
     });
     const hasContinue = await continueOrSubmit.isVisible().catch(() => false);
     if (!hasContinue) break;
@@ -298,7 +304,7 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
     const buttonText = await continueOrSubmit.textContent().catch(
       () => 'Continue',
     );
-    const isSubmit = /submit/i.test(buttonText ?? '');
+    const isSubmit = /submit|finish\s*batch/i.test(buttonText ?? '');
 
     await continueOrSubmit.click();
 
@@ -355,7 +361,7 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
  */
 async function approveBlueprint(page: Page): Promise<void> {
   // Scroll the panel container to the bottom to ensure the approve button is visible
-  const scrollContainer = page.locator('[data-panel-scroll]').first();
+  const scrollContainer = workspacePanelRoot(page).locator('[data-panel-scroll]').first();
   const scrollExists = await scrollContainer.isVisible().catch(() => false);
   if (scrollExists) {
     await scrollContainer.evaluate((el) => el.scrollTo(0, el.scrollHeight));
@@ -372,7 +378,7 @@ async function approveBlueprint(page: Page): Promise<void> {
   if (!found) {
     // eslint-disable-next-line no-console
     console.log('[pipeline-responder] Blueprint: aria-label locator missed, trying text match...');
-    approveBtn = page.locator('[data-panel-root] button').filter({
+    approveBtn = workspacePanelRoot(page).locator('button').filter({
       hasText: /Approve Blueprint/i,
     });
     found = await approveBtn.isVisible().catch(() => false);
@@ -403,7 +409,7 @@ async function approveBlueprint(page: Page): Promise<void> {
  * Get the current section title from the workbench h2 element.
  */
 async function getSectionTitle(page: Page): Promise<string | null> {
-  const panelRoot = page.locator('[data-panel-root]').first();
+  const panelRoot = workspacePanelRoot(page);
   const h2Count = await panelRoot.locator('h2').count().catch(() => 0);
   if (h2Count > 0) {
     return await panelRoot.locator('h2').first().textContent({ timeout: 3_000 }).catch(() => null);
@@ -420,7 +426,7 @@ async function getSectionTitle(page: Page): Promise<string | null> {
  * time between sections.
  */
 async function approveSectionReview(page: Page): Promise<void> {
-  const looksGoodBtn = page.getByRole('button', { name: /Looks Good/i });
+  const looksGoodBtn = workspacePanelRoot(page).getByRole('button', { name: /Looks Good/i });
   // Wait up to 30s for the button to be visible (section may still be writing/rendering)
   const isVisible = await looksGoodBtn
     .waitFor({ state: 'visible', timeout: 30_000 })
