@@ -9,7 +9,13 @@ import { ResumePanel } from './ResumePanel';
 import { PartialResumePreview } from './panels/PartialResumePreview';
 import { PHASE_LABELS } from '@/constants/phases';
 import { cn } from '@/lib/utils';
-import type { ChatMessage as ChatMessageType, ToolStatus, AskUserPromptData, PhaseGateData } from '@/types/session';
+import type {
+  ChatMessage as ChatMessageType,
+  ToolStatus,
+  AskUserPromptData,
+  PhaseGateData,
+  PipelineActivitySnapshot,
+} from '@/types/session';
 import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
@@ -24,6 +30,7 @@ interface ChatPanelProps {
   connected?: boolean;
   lastBackendActivityAt?: string | null;
   stalledSuspected?: boolean;
+  pipelineActivity?: PipelineActivitySnapshot | null;
   onReconnectStream?: () => void;
   onRefreshWorkflowState?: () => void | Promise<void>;
   isRefreshingWorkflowState?: boolean;
@@ -51,6 +58,7 @@ export function ChatPanel({
   connected = false,
   lastBackendActivityAt = null,
   stalledSuspected = false,
+  pipelineActivity = null,
   onReconnectStream,
   onRefreshWorkflowState,
   isRefreshingWorkflowState = false,
@@ -67,6 +75,7 @@ export function ChatPanel({
   const [input, setInput] = useState('');
   const [showResumePreview, setShowResumePreview] = useState(false);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [clockNow, setClockNow] = useState<number>(Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
   const isBusy = isProcessing || isPipelineGateActive || streamingText.length > 0 || tools.some((t) => t.status === 'running');
   const isGateLocked = Boolean(isPipelineGateActive) && panelData != null
@@ -101,10 +110,48 @@ export function ChatPanel({
     const hours = Math.floor(minutes / 60);
     return `${hours}h ago`;
   })();
+  const stageElapsedText = (() => {
+    if (!pipelineActivity?.stage_started_at) return null;
+    const ms = clockNow - new Date(pipelineActivity.stage_started_at).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(minutes / 60);
+    const rem = minutes % 60;
+    return `${hours}h ${rem}m`;
+  })();
+  const lastProgressText = (() => {
+    if (!pipelineActivity?.last_progress_at) return null;
+    const ms = clockNow - new Date(pipelineActivity.last_progress_at).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 2) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ago`;
+  })();
+  const heartbeatText = (() => {
+    if (!pipelineActivity?.last_heartbeat_at) return null;
+    const ms = clockNow - new Date(pipelineActivity.last_heartbeat_at).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 2) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ago`;
+  })();
 
   useEffect(() => {
     setShowResumePreview(false);
   }, [panelData?.type]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -181,6 +228,33 @@ export function ChatPanel({
           )}
         </div>
       </div>
+
+      {(pipelineActivity?.current_activity_message || stageElapsedText || lastProgressText || heartbeatText) && (
+        <div className="border-b border-white/[0.06] px-4 py-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="rounded-full border border-white/[0.1] bg-white/[0.025] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/52">
+              Backend
+            </span>
+            <span className="text-[11px] text-white/82">
+              {pipelineActivity?.current_activity_message
+                ?? (isPipelineGateActive ? 'Waiting for your input in the workspace.' : 'Waiting for backend updates.')}
+            </span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/48">
+            {pipelineActivity?.stage && (
+              <span>Stage: {PHASE_LABELS[pipelineActivity.stage] ?? pipelineActivity.stage}</span>
+            )}
+            {stageElapsedText && <span>Stage elapsed: {stageElapsedText}</span>}
+            {lastProgressText && <span>Progress: {lastProgressText}</span>}
+            {heartbeatText && <span>Heartbeat: {heartbeatText}</span>}
+          </div>
+          {pipelineActivity?.expected_next_action && (
+            <div className="mt-1 text-[10px] text-white/52">
+              Next: {pipelineActivity.expected_next_action}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="relative flex-1 overflow-hidden">

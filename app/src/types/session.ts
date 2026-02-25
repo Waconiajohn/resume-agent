@@ -154,6 +154,33 @@ export interface WorkflowReplanUpdate {
   updated_at: string;
 }
 
+export interface PipelineActivitySnapshot {
+  processing_state:
+    | 'processing'
+    | 'waiting_for_input'
+    | 'reconnecting'
+    | 'stalled_suspected'
+    | 'idle'
+    | 'complete'
+    | 'error';
+  stage: PipelineStage | null;
+  stage_started_at: string | null;
+  last_progress_at: string | null;
+  last_heartbeat_at: string | null;
+  last_backend_activity_at: string | null;
+  current_activity_message: string | null;
+  current_activity_source:
+    | 'stage_start'
+    | 'stage_complete'
+    | 'transparency'
+    | 'gate'
+    | 'poll'
+    | 'restore'
+    | 'system'
+    | null;
+  expected_next_action?: string | null;
+}
+
 // Revision instruction from quality review
 export interface RevisionInstruction {
   target_section: string;

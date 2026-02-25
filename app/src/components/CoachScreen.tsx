@@ -14,7 +14,15 @@ import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
 import { PROCESS_STEP_CONTRACTS, processStepFromPhase, processStepFromWorkflowNode } from '@/constants/process-contract';
 import { PHASE_LABELS } from '@/constants/phases';
-import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, DraftReadinessUpdate, WorkflowReplanUpdate } from '@/types/session';
+import type {
+  ChatMessage,
+  ToolStatus,
+  AskUserPromptData,
+  PhaseGateData,
+  DraftReadinessUpdate,
+  WorkflowReplanUpdate,
+  PipelineActivitySnapshot,
+} from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData } from '@/types/panels';
 import {
@@ -57,6 +65,7 @@ interface CoachScreenProps {
   onRestartPipelineFromLastInputs?: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   liveDraftReadiness?: DraftReadinessUpdate | null;
   liveWorkflowReplan?: WorkflowReplanUpdate | null;
+  pipelineActivity?: PipelineActivitySnapshot | null;
   onReconnectStream?: () => void;
 }
 
@@ -137,6 +146,33 @@ function formatReadinessPriorityLabel(priority: 'must_have' | 'implicit' | 'nice
   if (priority === 'must_have') return 'Must-have';
   if (priority === 'implicit') return 'Implicit';
   return 'Nice-to-have';
+}
+
+function formatRelativeShort(timestamp: string | null | undefined, now = Date.now()): string | null {
+  if (!timestamp) return null;
+  const ms = now - new Date(timestamp).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 2) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
+function formatDurationShort(startAt: string | null | undefined, now = Date.now()): string | null {
+  if (!startAt) return null;
+  const ms = now - new Date(startAt).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) return `${seconds}s`;
+  if (minutes < 60) return `${minutes}m ${seconds}s`;
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  return `${hours}h ${remMinutes}m`;
 }
 
 function getSectionsBundleNavDetail(snapshot: WorkspaceNodeSnapshot | undefined): string | null {
@@ -1015,6 +1051,7 @@ export function CoachScreen({
   onRestartPipelineFromLastInputs,
   liveDraftReadiness = null,
   liveWorkflowReplan = null,
+  pipelineActivity = null,
   onReconnectStream,
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
@@ -1022,10 +1059,16 @@ export function CoachScreen({
   const [isRestartingPipeline, setIsRestartingPipeline] = useState(false);
   const [evidenceTargetDraft, setEvidenceTargetDraft] = useState<number>(8);
   const [localSnapshots, setLocalSnapshots] = useState<SnapshotMap>({});
+  const [runtimeClockMs, setRuntimeClockMs] = useState<number>(Date.now());
   const prevPanelDataRef = useRef<PanelData | null>(null);
 
   useEffect(() => {
     runPanelPayloadSmokeChecks();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setRuntimeClockMs(Date.now()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -1271,6 +1314,39 @@ export function CoachScreen({
     </div>
   );
 
+  const pipelineActivityStageElapsed = formatDurationShort(pipelineActivity?.stage_started_at, runtimeClockMs);
+  const pipelineActivityLastProgress = formatRelativeShort(pipelineActivity?.last_progress_at, runtimeClockMs);
+  const pipelineActivityLastHeartbeat = formatRelativeShort(pipelineActivity?.last_heartbeat_at, runtimeClockMs);
+  const pipelineActivityBanner = isViewingLiveNode && pipelineActivity && (
+    (isProcessing || Boolean(isPipelineGateActive) || pipelineActivity.processing_state === 'reconnecting' || pipelineActivity.processing_state === 'stalled_suspected')
+      ? (
+        <div className="mx-3 mt-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-xs text-white/84">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="rounded-full border border-white/[0.1] bg-white/[0.025] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">
+              Backend Activity
+            </span>
+            <span className="text-white/88">
+              {pipelineActivity.current_activity_message
+                ?? (isPipelineGateActive ? 'Waiting for your input in the current step.' : 'Processing your resume workflow.')}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/55">
+            <span>State: {pipelineActivity.processing_state.replace(/_/g, ' ')}</span>
+            {pipelineActivity.stage && <span>Stage: {PHASE_LABELS[pipelineActivity.stage] ?? pipelineActivity.stage}</span>}
+            {pipelineActivityStageElapsed && <span>Stage elapsed: {pipelineActivityStageElapsed}</span>}
+            {pipelineActivityLastProgress && <span>Last progress: {pipelineActivityLastProgress}</span>}
+            {pipelineActivityLastHeartbeat && <span>Heartbeat: {pipelineActivityLastHeartbeat}</span>}
+          </div>
+          {pipelineActivity.expected_next_action && (
+            <div className="mt-1 text-[11px] text-white/62">
+              Next: {pipelineActivity.expected_next_action}
+            </div>
+          )}
+        </div>
+      )
+      : null
+  );
+
   const runtimeRecoveryBanner = (Boolean(stalledSuspected) || (!connected && Boolean(isProcessing))) && (
     <div className="mx-3 mt-3 rounded-lg border border-rose-300/14 bg-rose-400/[0.04] px-4 py-2 text-xs text-rose-100/90">
       <div className="flex flex-wrap items-center gap-2">
@@ -1279,6 +1355,16 @@ export function CoachScreen({
             ? 'Processing may be stalled. Use the controls below to reconnect and refresh state before restarting.'
             : 'The live connection is disconnected while processing is still expected.'}
         </span>
+        {pipelineActivityStageElapsed && (
+          <span className="rounded-full border border-rose-200/14 bg-rose-200/[0.04] px-2 py-0.5 text-[10px] text-rose-100/75">
+            Stage elapsed {pipelineActivityStageElapsed}
+          </span>
+        )}
+        {pipelineActivityLastProgress && (
+          <span className="rounded-full border border-rose-200/14 bg-rose-200/[0.04] px-2 py-0.5 text-[10px] text-rose-100/75">
+            Last progress {pipelineActivityLastProgress}
+          </span>
+        )}
         {onReconnectStream && (
           <GlassButton
             variant="ghost"
@@ -1515,6 +1601,7 @@ export function CoachScreen({
     <div className="flex h-full min-h-0 flex-col">
       {errorBanner}
       {workflowErrorBanner}
+      {pipelineActivityBanner}
       {runtimeRecoveryBanner}
       {workflowActionBanner}
       {workflowReplanBanner}
@@ -1830,6 +1917,7 @@ export function CoachScreen({
         connected={connected}
         lastBackendActivityAt={lastBackendActivityAt}
         stalledSuspected={stalledSuspected}
+        pipelineActivity={pipelineActivity}
         onReconnectStream={onReconnectStream}
         onRefreshWorkflowState={refreshWorkflowState}
         isRefreshingWorkflowState={workflowSession.loadingSummary || workflowSession.loadingNode}
@@ -1854,6 +1942,7 @@ export function CoachScreen({
           isProcessing={isProcessing}
           isGateActive={Boolean(isPipelineGateActive)}
           stalledSuspected={Boolean(stalledSuspected)}
+          pipelineActivity={pipelineActivity}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}
@@ -1867,6 +1956,7 @@ export function CoachScreen({
           isProcessing={isProcessing}
           isGateActive={Boolean(isPipelineGateActive)}
           stalledSuspected={Boolean(stalledSuspected)}
+          pipelineActivity={pipelineActivity}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}

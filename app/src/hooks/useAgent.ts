@@ -1,5 +1,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, PipelineStage, PositioningQuestion, QualityScores, CategoryProgress, DraftReadinessUpdate, WorkflowReplanUpdate } from '@/types/session';
+import type {
+  ChatMessage,
+  ToolStatus,
+  AskUserPromptData,
+  PhaseGateData,
+  PipelineStage,
+  PositioningQuestion,
+  QualityScores,
+  CategoryProgress,
+  DraftReadinessUpdate,
+  WorkflowReplanUpdate,
+  PipelineActivitySnapshot,
+} from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData, SectionWorkbenchContext, SectionSuggestion } from '@/types/panels';
 import { parseSSEStream } from '@/lib/sse-parser';
@@ -61,6 +73,20 @@ function asReplanStaleNodes(value: unknown): WorkflowReplanUpdate['stale_nodes']
     || v === 'export'
   ));
   return nodes.length > 0 ? nodes : undefined;
+}
+
+function emptyPipelineActivity(): PipelineActivitySnapshot {
+  return {
+    processing_state: 'idle',
+    stage: null,
+    stage_started_at: null,
+    last_progress_at: null,
+    last_heartbeat_at: null,
+    last_backend_activity_at: null,
+    current_activity_message: null,
+    current_activity_source: null,
+    expected_next_action: null,
+  };
 }
 
 function sanitizeSectionContextPayload(
@@ -227,6 +253,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [connected, setConnected] = useState(false);
   const [lastBackendActivityAt, setLastBackendActivityAt] = useState<string | null>(null);
   const [stalledSuspected, setStalledSuspected] = useState(false);
+  const [pipelineActivityMeta, setPipelineActivityMeta] = useState<PipelineActivitySnapshot>(emptyPipelineActivity);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [panelType, setPanelType] = useState<PanelType | null>(null);
@@ -287,6 +314,40 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     return `msg-${messageIdRef.current}`;
   }, []);
 
+  const patchPipelineActivityMeta = useCallback((patch: Partial<PipelineActivitySnapshot>) => {
+    setPipelineActivityMeta((prev) => ({
+      ...prev,
+      ...patch,
+    }));
+  }, []);
+
+  const markPipelineProgress = useCallback((
+    message: string | null | undefined,
+    source: PipelineActivitySnapshot['current_activity_source'],
+    options?: {
+      stage?: PipelineStage | null;
+      stageStartedAt?: string | null;
+      expectedNextAction?: string | null;
+    },
+  ) => {
+    const nowIso = new Date().toISOString();
+    lastProgressTimestampRef.current = Date.now();
+    staleNoticeActiveRef.current = false;
+    setLastBackendActivityAt(nowIso);
+    setStalledSuspected(false);
+    setPipelineActivityMeta((prev) => ({
+      ...prev,
+      last_backend_activity_at: nowIso,
+      last_progress_at: nowIso,
+      current_activity_message: typeof message === 'string' ? message : (prev.current_activity_message ?? null),
+      current_activity_source: source,
+      stage: options?.stage !== undefined ? options.stage : prev.stage,
+      stage_started_at: options?.stageStartedAt !== undefined ? options.stageStartedAt : prev.stage_started_at,
+      expected_next_action:
+        options?.expectedNextAction !== undefined ? options.expectedNextAction : prev.expected_next_action,
+    }));
+  }, []);
+
   useEffect(() => {
     accessTokenRef.current = accessToken;
   }, [accessToken]);
@@ -315,6 +376,16 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setStreamingText('');
     setTools([]);
     setAskPrompt(null);
+    patchPipelineActivityMeta({
+      processing_state: isProcessingRef.current ? 'reconnecting' : 'idle',
+      current_activity_message: isProcessingRef.current
+        ? 'Live connection dropped. Reconnecting to resume workflow stream...'
+        : 'Live connection disconnected. Reconnecting...',
+      current_activity_source: 'system',
+      expected_next_action: isProcessingRef.current
+        ? 'Reconnect to resume live stage updates'
+        : null,
+    });
 
     if (!mountedRef.current) return;
 
@@ -329,7 +400,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     } else {
       setError('Connection lost');
     }
-  }, []);
+  }, [patchPipelineActivityMeta]);
 
   // Reset derived score state on session change so completion metrics can't leak across sessions.
   useEffect(() => {
@@ -362,8 +433,16 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsPipelineGateActive(false);
     reconnectAttemptsRef.current = 0;
     lastProgressTimestampRef.current = Date.now();
-    setLastBackendActivityAt(new Date().toISOString());
+    const nowIso = new Date().toISOString();
+    setLastBackendActivityAt(nowIso);
     setStalledSuspected(false);
+    setPipelineActivityMeta({
+      ...emptyPipelineActivity(),
+      last_backend_activity_at: nowIso,
+      current_activity_message: sessionId ? 'Connecting to the live workflow stream.' : null,
+      current_activity_source: sessionId ? 'system' : null,
+      processing_state: sessionId ? 'reconnecting' : 'idle',
+    });
     staleNoticeActiveRef.current = false;
     stalePipelineNoticeRef.current = false;
     sectionContextRef.current = null;
@@ -385,6 +464,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
+      patchPipelineActivityMeta({
+        processing_state: 'reconnecting',
+        current_activity_message: 'Connecting to the live workflow stream...',
+        current_activity_source: 'system',
+        expected_next_action: 'Receive backend stage updates',
+      });
       const token = accessTokenRef.current;
       if (!token) {
         setError('Not authenticated');
@@ -415,14 +500,27 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           try {
             for await (const msg of parseSSEStream(response.body)) {
               if (controller.signal.aborted) break;
-              setLastBackendActivityAt(new Date().toISOString());
+              const backendEventAt = new Date().toISOString();
+              setLastBackendActivityAt(backendEventAt);
               setStalledSuspected(false);
+              setPipelineActivityMeta((prev) => ({
+                ...prev,
+                last_backend_activity_at: backendEventAt,
+                ...(msg.event === 'heartbeat' ? { last_heartbeat_at: backendEventAt } : {}),
+              }));
 
               switch (msg.event) {
                 case 'connected': {
                   setConnected(true);
                   setError(null);
                   reconnectAttemptsRef.current = 0;
+                  patchPipelineActivityMeta({
+                    processing_state: isProcessingRef.current ? 'processing' : 'idle',
+                    current_activity_message: isProcessingRef.current
+                      ? 'Live stream connected. Waiting for the next backend update...'
+                      : 'Live stream connected.',
+                    current_activity_source: 'system',
+                  });
                   break;
                 }
 
@@ -474,6 +572,22 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   // Restore processing state as best-effort until SSE or the status poll confirms the latest state.
                   setIsPipelineGateActive((prev) => prev || Boolean(pipelineRunning && pendingGate));
                   setIsProcessing(Boolean(pipelineRunning && !pendingGate));
+                  patchPipelineActivityMeta({
+                    stage:
+                      typeof data.pipeline_stage === 'string'
+                        ? (data.pipeline_stage as PipelineStage)
+                        : null,
+                    current_activity_message:
+                      pendingGate
+                        ? 'Session restored. Waiting for your input on the current workflow action.'
+                        : (pipelineRunning
+                            ? 'Session restored. Waiting for live backend updates.'
+                            : 'Session restored.'),
+                    current_activity_source: 'restore',
+                    expected_next_action: pendingGate
+                      ? 'Complete the active workflow action in the workspace'
+                      : null,
+                  });
                   // Restore pending phase gate so the user can confirm/reject after reconnect
                   if (data.pending_phase_transition && data.pending_tool_call_id) {
                     const restorePhase = (typeof data.pipeline_stage === 'string' ? data.pipeline_stage : data.current_phase) as string;
@@ -653,6 +767,26 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'transparency': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    typeof data.message === 'string' ? data.message : 'Backend is working on this step.',
+                    'transparency',
+                    {
+                      stage:
+                        data.stage === 'intake'
+                        || data.stage === 'positioning'
+                        || data.stage === 'research'
+                        || data.stage === 'gap_analysis'
+                        || data.stage === 'architect'
+                        || data.stage === 'architect_review'
+                        || data.stage === 'section_writing'
+                        || data.stage === 'section_review'
+                        || data.stage === 'quality_review'
+                        || data.stage === 'revision'
+                        || data.stage === 'complete'
+                          ? (data.stage as PipelineStage)
+                          : undefined,
+                    },
+                  );
                   setIsProcessing(true);
                   setMessages((prev) => [
                     ...prev,
@@ -708,6 +842,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'complete': {
                   // Session finished — stop processing, mark complete, close connection
                   const cData = safeParse(msg.data);
+                  markPipelineProgress(
+                    'Session complete. Final outputs are ready.',
+                    'stage_complete',
+                    {
+                      stage: 'complete',
+                      expectedNextAction: 'Review the final resume and export options',
+                    },
+                  );
                   setIsPipelineGateActive(false);
                   setIsProcessing(false);
                   setSessionComplete(true);
@@ -733,6 +875,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   if (typeof errorMsg === 'string' && errorMsg.startsWith('{')) {
                     errorMsg = 'Something went wrong processing your message. Please try again.';
                   }
+                  markPipelineProgress(
+                    typeof errorMsg === 'string' ? `Session error: ${errorMsg}` : 'Session error',
+                    'system',
+                    {
+                      expectedNextAction: 'Reconnect or refresh the workspace before retrying',
+                    },
+                  );
                   setIsPipelineGateActive(false);
                   setError(errorMsg as string);
                   setIsProcessing(false);
@@ -740,15 +889,34 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 }
 
                 case 'heartbeat': {
-                  // No-op, just keeps connection alive
+                  if (isProcessingRef.current) {
+                    setPipelineActivityMeta((prev) => ({
+                      ...prev,
+                      current_activity_message:
+                        prev.processing_state !== 'waiting_for_input'
+                          ? 'Backend heartbeat received. Processing is still running.'
+                          : prev.current_activity_message,
+                      current_activity_source:
+                        prev.processing_state !== 'waiting_for_input'
+                          ? 'system'
+                          : prev.current_activity_source,
+                    }));
+                  }
                   break;
                 }
 
                 case 'stage_start': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  const stageStartAt = new Date().toISOString();
+                  markPipelineProgress(
+                    typeof data.message === 'string' ? data.message : 'Starting next workflow step.',
+                    'stage_start',
+                    {
+                      stage: data.stage as PipelineStage,
+                      stageStartedAt: stageStartAt,
+                    },
+                  );
                   setIsPipelineGateActive(false);
                   setPipelineStage(data.stage as PipelineStage);
                   setCurrentPhase(data.stage as string);
@@ -771,8 +939,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'stage_complete': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  markPipelineProgress(
+                    typeof data.message === 'string' ? data.message : 'Workflow step completed.',
+                    'stage_complete',
+                    {
+                      stage: data.stage as PipelineStage,
+                    },
+                  );
                   setPipelineStage(data.stage as PipelineStage);
                   setIsProcessing(false);
                   if (data.duration_ms && import.meta.env.DEV) {
@@ -784,6 +957,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'positioning_question': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    'Step 3 question is ready. Waiting for your answer.',
+                    'gate',
+                    {
+                      stage: 'positioning',
+                      expectedNextAction: 'Answer the Why Me question in the workspace',
+                    },
+                  );
                   setIsProcessing(false);
                   setIsPipelineGateActive(true);
                   const q = data.question as PositioningQuestion;
@@ -805,6 +986,15 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'questionnaire': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    typeof data.title === 'string' && data.title.trim().length > 0
+                      ? `${data.title} is ready for your input.`
+                      : 'A questionnaire is ready for your input.',
+                    'gate',
+                    {
+                      expectedNextAction: 'Complete the questionnaire in the workspace',
+                    },
+                  );
                   setIsProcessing(false);
                   setIsPipelineGateActive(true);
                   setPanelType('questionnaire');
@@ -825,6 +1015,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'positioning_profile_found': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    'A saved positioning profile is available. Choose whether to use it, update it, or start fresh.',
+                    'gate',
+                    {
+                      stage: 'positioning',
+                      expectedNextAction: 'Choose how to start Step 3',
+                    },
+                  );
                   setIsProcessing(false);
                   setPositioningProfileFound({
                     profile: data.profile,
@@ -836,6 +1034,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'blueprint_ready': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    'Step 5 blueprint is ready for review.',
+                    'gate',
+                    {
+                      stage: 'architect_review',
+                      expectedNextAction: 'Review and approve the blueprint in the workspace',
+                    },
+                  );
                   setIsProcessing(false);
                   setIsPipelineGateActive(true);
                   setBlueprintReady(data.blueprint);
@@ -879,8 +1085,16 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'section_draft': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  markPipelineProgress(
+                    typeof data.section === 'string'
+                      ? `Section draft ready: ${data.section}`
+                      : 'A section draft is ready for review.',
+                    'gate',
+                    {
+                      stage: 'section_review',
+                      expectedNextAction: 'Review the section draft in Step 6',
+                    },
+                  );
                   setIsProcessing(false);
                   setIsPipelineGateActive(true);
                   const section = data.section as string;
@@ -908,8 +1122,15 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   // Revision from quality review — update resume preview, no approval needed
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  markPipelineProgress(
+                    typeof data.section === 'string'
+                      ? `Updated section after quality review: ${data.section}`
+                      : 'Updated a section after quality review.',
+                    'system',
+                    {
+                      stage: 'revision',
+                    },
+                  );
                   const section = data.section as string;
                   const content = data.content as string;
                   setSectionDraft({ section, content });
@@ -930,8 +1151,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'quality_scores': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  markPipelineProgress(
+                    'Step 7 quality review scores are ready.',
+                    'system',
+                    {
+                      stage: 'quality_review',
+                    },
+                  );
                   const scores = data.scores as QualityScores;
                   setQualityScores(scores);
                   qualityScoresRef.current = scores;
@@ -1032,6 +1258,18 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'workflow_replan_requested': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    typeof data.message === 'string'
+                      ? data.message
+                      : 'Benchmark assumptions changed. Downstream work will replan at the next safe checkpoint.',
+                    'system',
+                    {
+                      stage: (data.current_stage as PipelineStage | undefined),
+                      expectedNextAction: data.requires_restart === true
+                        ? 'Restart and rebuild from the workspace banner'
+                        : 'Wait for the pipeline to reach a safe checkpoint',
+                    },
+                  );
                   setWorkflowReplan({
                     state: 'requested',
                     reason: 'benchmark_assumptions_updated',
@@ -1051,6 +1289,15 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'workflow_replan_started': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    typeof data.message === 'string'
+                      ? data.message
+                      : 'Applying benchmark updates and rebuilding downstream steps.',
+                    'system',
+                    {
+                      stage: (data.current_stage as PipelineStage | undefined),
+                    },
+                  );
                   setWorkflowReplan((prev) => ({
                     state: 'in_progress',
                     reason: 'benchmark_assumptions_updated',
@@ -1076,6 +1323,15 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'workflow_replan_completed': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  markPipelineProgress(
+                    typeof data.message === 'string'
+                      ? data.message
+                      : 'Benchmark replan completed for the current run.',
+                    'system',
+                    {
+                      stage: (data.current_stage as PipelineStage | undefined),
+                    },
+                  );
                   setWorkflowReplan((prev) => ({
                     state: 'completed',
                     reason: 'benchmark_assumptions_updated',
@@ -1102,8 +1358,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'revision_start': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  markPipelineProgress(
+                    'Applying quality-review revisions to resume sections.',
+                    'system',
+                    {
+                      stage: 'revision',
+                    },
+                  );
                   setIsProcessing(true);
                   const instructionCount = Array.isArray(data.instructions) ? data.instructions.length : 0;
                   setMessages((prev) => [
@@ -1154,8 +1415,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
 
                 case 'pipeline_complete': {
                   const data = safeParse(msg.data);
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  markPipelineProgress(
+                    'Resume pipeline complete. Final resume and export checks are ready.',
+                    'stage_complete',
+                    {
+                      stage: 'complete',
+                      expectedNextAction: 'Review Step 7 results and export your resume',
+                    },
+                  );
                   setIsPipelineGateActive(false);
                   setIsProcessing(false);
                   setSessionComplete(true);
@@ -1201,8 +1468,27 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'pipeline_error': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  lastProgressTimestampRef.current = Date.now();
-                  staleNoticeActiveRef.current = false;
+                  markPipelineProgress(
+                    typeof data.error === 'string' ? `Pipeline error: ${data.error}` : 'Pipeline error',
+                    'system',
+                    {
+                      stage:
+                        data.stage === 'intake'
+                        || data.stage === 'positioning'
+                        || data.stage === 'research'
+                        || data.stage === 'gap_analysis'
+                        || data.stage === 'architect'
+                        || data.stage === 'architect_review'
+                        || data.stage === 'section_writing'
+                        || data.stage === 'section_review'
+                        || data.stage === 'quality_review'
+                        || data.stage === 'revision'
+                        || data.stage === 'complete'
+                          ? (data.stage as PipelineStage)
+                          : undefined,
+                      expectedNextAction: 'Reconnect or refresh state before restarting the pipeline',
+                    },
+                  );
                   setIsPipelineGateActive(false);
                   setIsProcessing(false);
                   setError(data.error as string ?? 'Pipeline error');
@@ -1254,6 +1540,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         if (!staleNoticeActiveRef.current) {
           staleNoticeActiveRef.current = true;
           setStalledSuspected(true);
+          setPipelineActivityMeta((prev) => ({
+            ...prev,
+            current_activity_message:
+              'No confirmed backend progress was detected for a while. The pipeline may be stalled.',
+            current_activity_source: 'system',
+            expected_next_action: 'Use Reconnect or Refresh State to confirm pipeline status',
+          }));
           setMessages((prev) => [
             ...prev,
             {
@@ -1296,7 +1589,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       toolCleanupTimersRef.current.clear();
       reconnectAttemptsRef.current = 0;
     };
-  }, [sessionId, hasAccessToken, nextId, flushDeltaBuffer, handleDisconnect]);
+  }, [sessionId, hasAccessToken, nextId, flushDeltaBuffer, handleDisconnect, markPipelineProgress, patchPipelineActivityMeta]);
 
   // Fallback status poll: when SSE is disconnected, keep pipeline stage/gate state synchronized.
   useEffect(() => {
@@ -1358,6 +1651,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         } | null;
         if (!data || cancelled) return;
         setLastBackendActivityAt(new Date().toISOString());
+        setPipelineActivityMeta((prev) => ({
+          ...prev,
+          last_backend_activity_at: new Date().toISOString(),
+        }));
         if (data.running) {
           setStalledSuspected(false);
         }
@@ -1385,9 +1682,30 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           if (data.pending_gate) {
             setIsPipelineGateActive(true);
           }
+          setPipelineActivityMeta((prev) => ({
+            ...prev,
+            stage: (data.pipeline_stage as PipelineStage | null) ?? prev.stage,
+            current_activity_message: data.pending_gate
+              ? 'Polling confirms the pipeline is waiting for your input.'
+              : 'Polling confirms the pipeline is still processing while the live stream reconnects.',
+            current_activity_source: 'poll',
+            expected_next_action: data.pending_gate
+              ? 'Complete the active workspace action'
+              : 'Wait for the live stream to reconnect or use Reconnect Stream',
+          }));
         } else {
           setIsPipelineGateActive(false);
           setIsProcessing(false);
+          setPipelineActivityMeta((prev) => ({
+            ...prev,
+            current_activity_message: data.pipeline_stage === 'complete'
+              ? 'Polling confirms the pipeline run is complete.'
+              : 'Polling confirms the pipeline is not actively processing.',
+            current_activity_source: 'poll',
+            expected_next_action: data.pipeline_stage === 'complete'
+              ? 'Review the final resume and export'
+              : null,
+          }));
           if (data.pipeline_stage === 'complete' && !sessionComplete) {
             await restoreCompletionFromSession();
           }
@@ -1453,13 +1771,37 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setStalledSuspected(false);
     setError(null);
     setConnected(false);
+    patchPipelineActivityMeta({
+      current_activity_message: 'Reconnecting to the live workflow stream...',
+      current_activity_source: 'system',
+      expected_next_action: 'Receive live backend updates',
+    });
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     // connectSSE reads the latest refs and safely aborts any stale connection before starting.
     connectSSERef.current?.();
-  }, []);
+  }, [patchPipelineActivityMeta]);
+
+  const pipelineActivity: PipelineActivitySnapshot = {
+    ...pipelineActivityMeta,
+    processing_state: error
+      ? 'error'
+      : sessionComplete
+        ? 'complete'
+        : stalledSuspected
+          ? 'stalled_suspected'
+          : (!connected && (isProcessing || isPipelineGateActive))
+            ? 'reconnecting'
+            : isPipelineGateActive
+              ? 'waiting_for_input'
+              : isProcessing
+                ? 'processing'
+                : 'idle',
+    stage: pipelineStage ?? pipelineActivityMeta.stage ?? null,
+    last_backend_activity_at: lastBackendActivityAt ?? pipelineActivityMeta.last_backend_activity_at ?? null,
+  };
 
   return {
     messages,
@@ -1487,6 +1829,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     qualityScores,
     draftReadiness,
     workflowReplan,
+    pipelineActivity,
     isPipelineGateActive,
     setIsPipelineGateActive,
     dismissSuggestion,

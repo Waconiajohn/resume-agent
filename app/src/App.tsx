@@ -63,6 +63,7 @@ export default function App() {
     positioningProfileFound,
     draftReadiness,
     workflowReplan,
+    pipelineActivity,
     isPipelineGateActive,
     setIsPipelineGateActive,
     dismissSuggestion,
@@ -351,9 +352,10 @@ export default function App() {
           onDismissSuggestion={dismissSuggestion}
           onRestartPipelineFromLastInputs={handleRestartPipelineFromCache}
           liveDraftReadiness={draftReadiness}
-              liveWorkflowReplan={workflowReplan}
-              onReconnectStream={reconnectStreamNow}
-            />
+          liveWorkflowReplan={workflowReplan}
+          pipelineActivity={pipelineActivity}
+          onReconnectStream={reconnectStreamNow}
+        />
       )}
       </div>
     </ErrorBoundary>

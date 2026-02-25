@@ -3,12 +3,14 @@ import { GlassCard } from './GlassCard';
 import { PHASE_LABELS } from '@/constants/phases';
 import type { PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
+import type { PipelineActivitySnapshot } from '@/types/session';
 
 interface WorkflowStatsRailProps {
   currentPhase: string;
   isProcessing: boolean;
   isGateActive?: boolean;
   stalledSuspected?: boolean;
+  pipelineActivity?: PipelineActivitySnapshot | null;
   sessionComplete?: boolean;
   error?: string | null;
   panelData: PanelData | null;
@@ -72,6 +74,7 @@ export function WorkflowStatsRail({
   isProcessing,
   isGateActive = false,
   stalledSuspected = false,
+  pipelineActivity = null,
   sessionComplete,
   error,
   panelData,
@@ -113,6 +116,19 @@ export function WorkflowStatsRail({
           {status}
         </span>
       </div>
+      {(pipelineActivity?.current_activity_message || pipelineActivity?.stage) && (
+        <div className="mt-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-3 py-2">
+          <div className="text-[10px] uppercase tracking-[0.12em] text-white/42">Backend</div>
+          <div className="mt-1 text-xs text-white/72">
+            {pipelineActivity.current_activity_message ?? 'Waiting for backend updates.'}
+          </div>
+          {pipelineActivity.stage && (
+            <div className="mt-1 text-[10px] text-white/45">
+              Stage: {phaseLabel(pipelineActivity.stage)}
+            </div>
+          )}
+        </div>
+      )}
     </GlassCard>
   );
 
