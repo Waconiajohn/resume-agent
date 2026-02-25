@@ -1326,11 +1326,14 @@ export function CoachScreen({
   );
 
   const effectivePipelineActivity = pipelineActivity ?? workflowSession.summary?.pipeline_activity_status ?? null;
+  const runtimeMetricsSummary = workflowSession.summary?.runtime_metrics ?? null;
 
   const pipelineActivityStageElapsed = formatDurationShort(effectivePipelineActivity?.stage_started_at, runtimeClockMs);
   const pipelineActivityLastProgress = formatRelativeShort(effectivePipelineActivity?.last_progress_at, runtimeClockMs);
   const pipelineActivityLastHeartbeat = formatRelativeShort(effectivePipelineActivity?.last_heartbeat_at, runtimeClockMs);
   const pipelineActivityLastStageDuration = formatMsDurationShort(effectivePipelineActivity?.last_stage_duration_ms);
+  const pipelineFirstProgressDuration = formatMsDurationShort(runtimeMetricsSummary?.first_progress_delay_ms);
+  const pipelineFirstActionReadyDuration = formatMsDurationShort(runtimeMetricsSummary?.first_action_ready_delay_ms);
   const pipelineActivityBanner = isViewingLiveNode && effectivePipelineActivity && (
     (isProcessing || Boolean(isPipelineGateActive) || effectivePipelineActivity.processing_state === 'reconnecting' || effectivePipelineActivity.processing_state === 'stalled_suspected')
       ? (
@@ -1351,6 +1354,8 @@ export function CoachScreen({
             {pipelineActivityLastStageDuration && <span>Last stage: {pipelineActivityLastStageDuration}</span>}
             {pipelineActivityLastProgress && <span>Last progress: {pipelineActivityLastProgress}</span>}
             {pipelineActivityLastHeartbeat && <span>Heartbeat: {pipelineActivityLastHeartbeat}</span>}
+            {pipelineFirstProgressDuration && <span>First progress: {pipelineFirstProgressDuration}</span>}
+            {pipelineFirstActionReadyDuration && <span>First action: {pipelineFirstActionReadyDuration}</span>}
           </div>
           {effectivePipelineActivity.expected_next_action && (
             <div className="mt-1 text-[11px] text-white/62">
@@ -1933,6 +1938,7 @@ export function CoachScreen({
         lastBackendActivityAt={lastBackendActivityAt}
         stalledSuspected={stalledSuspected}
         pipelineActivity={effectivePipelineActivity}
+        runtimeMetrics={runtimeMetricsSummary}
         onReconnectStream={onReconnectStream}
         onRefreshWorkflowState={refreshWorkflowState}
         isRefreshingWorkflowState={workflowSession.loadingSummary || workflowSession.loadingNode}
@@ -1958,6 +1964,7 @@ export function CoachScreen({
           isGateActive={Boolean(isPipelineGateActive)}
           stalledSuspected={Boolean(stalledSuspected)}
           pipelineActivity={effectivePipelineActivity}
+          runtimeMetrics={runtimeMetricsSummary}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}
@@ -1972,6 +1979,7 @@ export function CoachScreen({
           isGateActive={Boolean(isPipelineGateActive)}
           stalledSuspected={Boolean(stalledSuspected)}
           pipelineActivity={effectivePipelineActivity}
+          runtimeMetrics={runtimeMetricsSummary}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}

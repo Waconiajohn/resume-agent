@@ -182,6 +182,19 @@ export interface PipelineActivitySnapshot {
   expected_next_action?: string | null;
 }
 
+export interface PipelineRuntimeMetricsSnapshot {
+  run_started_at: string | null;
+  first_progress_at: string | null;
+  first_progress_event_type: string | null;
+  first_progress_delay_ms: number | null;
+  first_action_ready_at: string | null;
+  first_action_ready_event_type: string | null;
+  first_action_ready_delay_ms: number | null;
+  latest_event_at: string | null;
+  latest_event_type: string | null;
+  stage_durations_ms: Record<string, number>;
+}
+
 // Revision instruction from quality review
 export interface RevisionInstruction {
   target_section: string;

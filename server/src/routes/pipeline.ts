@@ -1235,12 +1235,44 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     source: 'pipeline_start',
     updated_at: new Date().toISOString(),
   }, 'system');
+  const pipelineRunStartedAt = new Date().toISOString();
+  persistWorkflowArtifactBestEffort(session_id, 'overview', 'pipeline_runtime_metrics', {
+    run_started_at: pipelineRunStartedAt,
+    first_progress_at: null,
+    first_progress_event_type: null,
+    first_progress_delay_ms: null,
+    first_action_ready_at: null,
+    first_action_ready_event_type: null,
+    first_action_ready_delay_ms: null,
+    latest_event_at: pipelineRunStartedAt,
+    latest_event_type: 'pipeline_start',
+    stage_durations_ms: {},
+  }, 'system');
 
   // Capture the most recently emitted section_context to merge into section_draft persistence.
   let latestSectionContext: {
     section: string;
     context: ReturnType<typeof sanitizeSectionContext>;
   } | null = null;
+  const runtimeMetricsState: {
+    run_started_at: string;
+    first_progress_at: string | null;
+    first_progress_event_type: string | null;
+    first_action_ready_at: string | null;
+    first_action_ready_event_type: string | null;
+    latest_event_at: string;
+    latest_event_type: string;
+    stage_durations_ms: Record<string, number>;
+  } = {
+    run_started_at: pipelineRunStartedAt,
+    first_progress_at: null,
+    first_progress_event_type: null,
+    first_action_ready_at: null,
+    first_action_ready_event_type: null,
+    latest_event_at: pipelineRunStartedAt,
+    latest_event_type: 'pipeline_start',
+    stage_durations_ms: {},
+  };
 
   const persistPipelineActivityStatusBestEffort = (event: PipelineSSEEvent) => {
     const nowIso = new Date().toISOString();
@@ -1367,9 +1399,82 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
   };
 
+  const persistPipelineRuntimeMetricsBestEffort = (event: PipelineSSEEvent) => {
+    const eventType = event.type;
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    runtimeMetricsState.latest_event_at = nowIso;
+    runtimeMetricsState.latest_event_type = eventType;
+
+    const isProgressEvent =
+      eventType === 'stage_start'
+      || eventType === 'stage_complete'
+      || eventType === 'transparency'
+      || eventType === 'positioning_question'
+      || eventType === 'questionnaire'
+      || eventType === 'positioning_profile_found'
+      || eventType === 'blueprint_ready'
+      || eventType === 'section_draft'
+      || eventType === 'quality_scores'
+      || eventType === 'revision_start'
+      || eventType === 'workflow_replan_requested'
+      || eventType === 'workflow_replan_started'
+      || eventType === 'workflow_replan_completed'
+      || eventType === 'pipeline_complete'
+      || eventType === 'pipeline_error';
+
+    if (isProgressEvent && !runtimeMetricsState.first_progress_at) {
+      runtimeMetricsState.first_progress_at = nowIso;
+      runtimeMetricsState.first_progress_event_type = eventType;
+    }
+
+    const isActionReadyEvent =
+      eventType === 'positioning_question'
+      || eventType === 'questionnaire'
+      || eventType === 'positioning_profile_found'
+      || eventType === 'blueprint_ready'
+      || eventType === 'section_draft';
+
+    if (isActionReadyEvent && !runtimeMetricsState.first_action_ready_at) {
+      runtimeMetricsState.first_action_ready_at = nowIso;
+      runtimeMetricsState.first_action_ready_event_type = eventType;
+    }
+
+    if (event.type === 'stage_complete' && typeof event.duration_ms === 'number' && Number.isFinite(event.duration_ms)) {
+      runtimeMetricsState.stage_durations_ms[event.stage] = Math.max(0, Math.round(event.duration_ms));
+    }
+
+    const shouldPersist = isProgressEvent;
+    if (!shouldPersist) return;
+
+    const runStartedMs = new Date(runtimeMetricsState.run_started_at).getTime();
+    const firstProgressMs = runtimeMetricsState.first_progress_at ? new Date(runtimeMetricsState.first_progress_at).getTime() : null;
+    const firstActionReadyMs = runtimeMetricsState.first_action_ready_at ? new Date(runtimeMetricsState.first_action_ready_at).getTime() : null;
+
+    persistWorkflowArtifactBestEffort(session_id, 'overview', 'pipeline_runtime_metrics', {
+      run_started_at: runtimeMetricsState.run_started_at,
+      first_progress_at: runtimeMetricsState.first_progress_at,
+      first_progress_event_type: runtimeMetricsState.first_progress_event_type,
+      first_progress_delay_ms:
+        firstProgressMs != null && Number.isFinite(runStartedMs)
+          ? Math.max(0, firstProgressMs - runStartedMs)
+          : null,
+      first_action_ready_at: runtimeMetricsState.first_action_ready_at,
+      first_action_ready_event_type: runtimeMetricsState.first_action_ready_event_type,
+      first_action_ready_delay_ms:
+        firstActionReadyMs != null && Number.isFinite(runStartedMs)
+          ? Math.max(0, firstActionReadyMs - runStartedMs)
+          : null,
+      latest_event_at: runtimeMetricsState.latest_event_at,
+      latest_event_type: runtimeMetricsState.latest_event_type,
+      stage_durations_ms: runtimeMetricsState.stage_durations_ms,
+    }, 'system');
+  };
+
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
     persistPipelineActivityStatusBestEffort(event);
+    persistPipelineRuntimeMetricsBestEffort(event);
     if (event.type === 'stage_start') {
       upsertWorkflowNodeStatusBestEffort(session_id, workflowNodeFromStage(event.stage), 'in_progress', {
         stage: event.stage,

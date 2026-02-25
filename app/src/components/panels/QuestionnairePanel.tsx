@@ -56,6 +56,14 @@ function buildEmptyResponse(questionId: string): QuestionnaireResponse {
 export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps) {
   const { questions, questionnaire_id, schema_version, stage, title, subtitle } = data;
   const processStep = processStepFromQuestionnaireStage(stage);
+  const batchModeLabel =
+    stage === 'positioning'
+      ? 'Quick Batch (Step 3)'
+      : stage === 'gap_analysis'
+        ? 'Targeted Gap Batch (Step 4)'
+        : stage === 'quality_fixes'
+          ? 'Quality Fix Batch (Step 7)'
+          : 'Question Batch';
 
   // Track responses keyed by question id
   const [responses, setResponses] = useState<QuestionnaireResponse[]>(() =>
@@ -261,6 +269,22 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
             />
           )}
 
+          {currentVisiblePos === 0 && (
+            <GlassCard className="px-3.5 py-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+                  {batchModeLabel}
+                </span>
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45">
+                  What To Do
+                </span>
+                <span className="text-[11px] text-white/65">
+                  Answer the action area below, then continue. Context and impact labels are informational. Finish Batch submits this set and returns to the workflow.
+                </span>
+              </div>
+            </GlassCard>
+          )}
+
           {currentVisiblePos === 0 && subtitle && (
             <p className="text-xs text-white/50 leading-relaxed">{subtitle}</p>
           )}
@@ -308,6 +332,14 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
           )}
 
           {/* Input area */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+              Action Required
+            </span>
+            <span className="text-[11px] text-white/55">
+              Choose an option, type an answer, or skip if allowed.
+            </span>
+          </div>
           {currentQuestion.input_type === 'rating' ? (
             <RatingInput
               value={currentResponse.selected_option_ids[0] ?? null}
@@ -337,10 +369,15 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
           {/* Custom text input */}
           {currentQuestion.allow_custom && (
             <div className="space-y-1">
-              <label className="text-xs text-white/50 pl-0.5">
-                {currentResponse.selected_option_ids.length > 0
-                  ? 'Add detail (optional)'
-                  : 'Or type your own answer'}
+              <label className="flex items-center gap-2 text-xs text-white/50 pl-0.5">
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-white/45">
+                  Action
+                </span>
+                <span>
+                  {currentResponse.selected_option_ids.length > 0
+                    ? 'Add detail (optional)'
+                    : 'Or type your own answer'}
+                </span>
               </label>
               <GlassTextarea
                 rows={3}
@@ -392,12 +429,17 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
           variant="primary"
           disabled={!canContinue()}
           onClick={handleContinue}
-          aria-label={isLast ? 'Submit questionnaire' : 'Continue to next question'}
+          aria-label={isLast ? 'Finish questionnaire batch' : 'Continue to next question'}
           className="gap-1.5"
         >
-          {isLast ? 'Submit' : 'Continue'}
+          {isLast ? 'Finish Batch' : 'Continue'}
           <ArrowRight className="h-3.5 w-3.5" />
         </GlassButton>
+      </div>
+      <div className="border-t border-white/[0.04] px-4 pb-2 text-center text-[10px] text-white/35">
+        {isLast
+          ? 'Finish Batch submits these answers and returns to the workflow.'
+          : 'Continue moves to the next question in this batch.'}
       </div>
     </div>
   );

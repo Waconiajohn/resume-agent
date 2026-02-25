@@ -564,7 +564,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   // Restore processing state as best-effort until SSE or the status poll confirms the latest state.
                   setIsPipelineGateActive(Boolean(pipelineRunning && pendingGate));
                   setIsProcessing(Boolean(pipelineRunning && !pendingGate));
+                  setAskPrompt(null);
                   patchPipelineActivityMeta({
+                    processing_state: pendingGate
+                      ? 'waiting_for_input'
+                      : (pipelineRunning ? 'reconnecting' : 'idle'),
                     stage:
                       typeof data.pipeline_stage === 'string'
                         ? (data.pipeline_stage as PipelineStage)
@@ -681,6 +685,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'ask_user': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  patchPipelineActivityMeta({
+                    processing_state: 'waiting_for_input',
+                    current_activity_message: 'A response is required in the right-column chat before the workflow can continue.',
+                    current_activity_source: 'gate',
+                    expected_next_action: 'Answer the prompt in this chat panel',
+                  });
                   setIsProcessing(false);
                   setAskPrompt({
                     toolCallId: data.tool_call_id,
@@ -696,6 +706,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'phase_gate': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  patchPipelineActivityMeta({
+                    processing_state: 'waiting_for_input',
+                    current_activity_message: 'Phase transition confirmation is waiting for your input.',
+                    current_activity_source: 'gate',
+                    expected_next_action: 'Confirm the phase transition in this chat panel',
+                  });
                   setIsProcessing(false);
                   setPhaseGate({
                     toolCallId: data.tool_call_id,
@@ -750,6 +766,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'phase_change': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  patchPipelineActivityMeta({
+                    current_activity_message: `Phase changed to ${String(data.to_phase).replace(/_/g, ' ')}.`,
+                    current_activity_source: 'system',
+                    expected_next_action: null,
+                  });
                   setCurrentPhase(data.to_phase);
                   setPhaseGate(null);
                   // Clear stale state on phase change
@@ -1633,8 +1654,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       setSessionComplete(true);
       setPipelineStage('complete');
       setCurrentPhase('complete');
+      setAskPrompt(null);
+      setPhaseGate(null);
       setIsPipelineGateActive(false);
       setIsProcessing(false);
+      patchPipelineActivityMeta({
+        processing_state: 'complete',
+        stage: 'complete',
+        current_activity_message: 'Restored final resume outputs from the completed pipeline run.',
+        current_activity_source: 'restore',
+        expected_next_action: 'Review the final resume and export options',
+      });
     };
 
     const pollStatus = async () => {
@@ -1675,7 +1705,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
               timestamp: new Date().toISOString(),
             },
           ]);
+          setIsPipelineGateActive(false);
+          setPhaseGate(null);
+          setAskPrompt(null);
           setIsProcessing(false);
+          setPipelineActivityMeta((prev) => ({
+            ...prev,
+            processing_state: 'idle',
+            current_activity_message: 'Pipeline state became stale. Restart the pipeline from this session to continue.',
+            current_activity_source: 'poll',
+            expected_next_action: 'Restart and rebuild from the workspace banner',
+          }));
           return;
         }
 
@@ -1686,8 +1726,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           }
           setIsPipelineGateActive(Boolean(data.pending_gate));
           setIsProcessing(!Boolean(data.pending_gate));
+          if (!data.pending_gate) {
+            setAskPrompt(null);
+            setPhaseGate(null);
+          }
           setPipelineActivityMeta((prev) => ({
             ...prev,
+            processing_state: data.pending_gate ? 'waiting_for_input' : 'reconnecting',
             stage: (data.pipeline_stage as PipelineStage | null) ?? prev.stage,
             current_activity_message: data.pending_gate
               ? 'Polling confirms the pipeline is waiting for your input.'
@@ -1698,10 +1743,18 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
               : 'Wait for the live stream to reconnect or use Reconnect Stream',
           }));
         } else {
+          if (data.pipeline_stage) {
+            setPipelineStage(data.pipeline_stage as PipelineStage);
+            setCurrentPhase(data.pipeline_stage);
+          }
           setIsPipelineGateActive(false);
+          setAskPrompt(null);
+          setPhaseGate(null);
           setIsProcessing(false);
           setPipelineActivityMeta((prev) => ({
             ...prev,
+            processing_state: data.pipeline_stage === 'complete' ? 'complete' : 'idle',
+            stage: (data.pipeline_stage as PipelineStage | null) ?? prev.stage,
             current_activity_message: data.pipeline_stage === 'complete'
               ? 'Polling confirms the pipeline run is complete.'
               : 'Polling confirms the pipeline is not actively processing.',
@@ -1728,7 +1781,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [sessionId, hasAccessToken, connected, sessionComplete, nextId, setIsPipelineGateActive]);
+  }, [sessionId, hasAccessToken, connected, sessionComplete, nextId, setIsPipelineGateActive, patchPipelineActivityMeta]);
 
   // Mark a suggestion as dismissed so it is filtered out of future context versions
   const dismissSuggestion = useCallback((suggestionId: string) => {

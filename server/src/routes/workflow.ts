@@ -202,6 +202,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     { data: questionReuseSummaryRows },
     { data: draftReadinessRow },
     { data: pipelineActivityStatusRow },
+    { data: pipelineRuntimeMetricsRow },
     { data: draftPathDecisionRow },
     { data: replanStatusRow },
     { data: sectionsBundleRow },
@@ -249,6 +250,15 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       .eq('session_id', sessionId)
       .eq('node_key', 'overview')
       .eq('artifact_type', 'pipeline_activity_status')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'overview')
+      .eq('artifact_type', 'pipeline_runtime_metrics')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -644,6 +654,37 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
         expected_next_action: typeof payload.expected_next_action === 'string' ? payload.expected_next_action : null,
         version: typeof pipelineActivityStatusRow?.version === 'number' ? pipelineActivityStatusRow.version : null,
         created_at: pipelineActivityStatusRow?.created_at ?? null,
+      };
+    })(),
+    runtime_metrics: (() => {
+      const payload = asRecord(pipelineRuntimeMetricsRow?.payload);
+      if (!payload) return null;
+      const stageDurationsRaw = asRecord(payload.stage_durations_ms);
+      const stageDurations: Record<string, number> = {};
+      if (stageDurationsRaw) {
+        for (const [key, value] of Object.entries(stageDurationsRaw)) {
+          if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+            stageDurations[key] = Math.round(value);
+          }
+        }
+      }
+      return {
+        run_started_at: typeof payload.run_started_at === 'string' ? payload.run_started_at : null,
+        first_progress_at: typeof payload.first_progress_at === 'string' ? payload.first_progress_at : null,
+        first_progress_event_type: typeof payload.first_progress_event_type === 'string' ? payload.first_progress_event_type : null,
+        first_progress_delay_ms: typeof payload.first_progress_delay_ms === 'number' && Number.isFinite(payload.first_progress_delay_ms)
+          ? Math.max(0, Math.round(payload.first_progress_delay_ms))
+          : null,
+        first_action_ready_at: typeof payload.first_action_ready_at === 'string' ? payload.first_action_ready_at : null,
+        first_action_ready_event_type: typeof payload.first_action_ready_event_type === 'string' ? payload.first_action_ready_event_type : null,
+        first_action_ready_delay_ms: typeof payload.first_action_ready_delay_ms === 'number' && Number.isFinite(payload.first_action_ready_delay_ms)
+          ? Math.max(0, Math.round(payload.first_action_ready_delay_ms))
+          : null,
+        latest_event_at: typeof payload.latest_event_at === 'string' ? payload.latest_event_at : null,
+        latest_event_type: typeof payload.latest_event_type === 'string' ? payload.latest_event_type : null,
+        stage_durations_ms: stageDurations,
+        version: typeof pipelineRuntimeMetricsRow?.version === 'number' ? pipelineRuntimeMetricsRow.version : null,
+        created_at: pipelineRuntimeMetricsRow?.created_at ?? null,
       };
     })(),
     draft_path_decision: (() => {

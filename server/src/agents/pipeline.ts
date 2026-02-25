@@ -3989,10 +3989,19 @@ function computeKeywordCoverage(
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
-  const experienceYears = Math.max(0, Math.floor(intake.career_span_years ?? 0));
+  const parsedCareerSpanYears = Math.max(0, Math.floor(intake.career_span_years ?? 0));
   const companiesCount = intake.experience.length;
   const skillsCount = intake.skills.length;
   const parseWarnings: string[] = [];
+  const currentYear = new Date().getFullYear();
+
+  const allRoleStartYears = intake.experience
+    .map((e) => parseInt(e.start_date))
+    .filter((year) => Number.isFinite(year) && year > 1950 && year <= currentYear + 1);
+  const derivedCareerSpanYears = allRoleStartYears.length > 0
+    ? Math.max(0, currentYear - Math.min(...allRoleStartYears))
+    : 0;
+  const experienceYears = parsedCareerSpanYears > 0 ? parsedCareerSpanYears : derivedCareerSpanYears;
 
   const leadershipRoles = intake.experience.filter(e =>
     /manager|director|vp|vice president|head of|lead|chief|principal|senior/i.test(e.title)
@@ -4001,8 +4010,10 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
     ? (() => {
         const years = leadershipRoles.map(e => parseInt(e.start_date)).filter(y => !isNaN(y));
         if (years.length === 0) return undefined;
-        const rawSpan = new Date().getFullYear() - Math.min(...years);
-        const span = Math.max(0, Math.min(rawSpan, experienceYears || rawSpan));
+        const rawSpan = currentYear - Math.min(...years);
+        const span = experienceYears > 0
+          ? Math.max(0, Math.min(rawSpan, experienceYears))
+          : 0;
         return span > 0 ? `${span}+ years` : undefined;
       })()
     : undefined;
@@ -4014,6 +4025,9 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
 
   if (intake.experience.length === 0) {
     parseWarnings.push('No work history was detected from the uploaded resume text.');
+  }
+  if (parsedCareerSpanYears <= 0 && derivedCareerSpanYears > 0) {
+    parseWarnings.push('Total experience was estimated from parsed role dates because a complete career span could not be read directly.');
   }
   if (rolesMissingDates > 0) {
     parseWarnings.push(`${rolesMissingDates} role${rolesMissingDates === 1 ? '' : 's'} have missing dates; experience totals may be approximate.`);
@@ -4039,7 +4053,11 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
     leadership_span: leadershipSpan,
     parse_confidence: parseConfidence,
     parse_warnings: parseWarnings,
-    strengths: intake.experience.slice(0, 3).map(e => `${e.title} at ${e.company}`),
+    strengths: intake.experience
+      .slice(0, 5)
+      .map((e) => [e.title?.trim(), e.company?.trim()].filter(Boolean).join(' at '))
+      .filter((label) => label.length > 0)
+      .slice(0, 3),
   };
 }
 

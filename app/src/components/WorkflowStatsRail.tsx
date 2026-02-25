@@ -3,7 +3,7 @@ import { GlassCard } from './GlassCard';
 import { PHASE_LABELS } from '@/constants/phases';
 import type { PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
-import type { PipelineActivitySnapshot } from '@/types/session';
+import type { PipelineActivitySnapshot, PipelineRuntimeMetricsSnapshot } from '@/types/session';
 
 interface WorkflowStatsRailProps {
   currentPhase: string;
@@ -11,6 +11,7 @@ interface WorkflowStatsRailProps {
   isGateActive?: boolean;
   stalledSuspected?: boolean;
   pipelineActivity?: PipelineActivitySnapshot | null;
+  runtimeMetrics?: PipelineRuntimeMetricsSnapshot | null;
   sessionComplete?: boolean;
   error?: string | null;
   panelData: PanelData | null;
@@ -75,6 +76,7 @@ export function WorkflowStatsRail({
   isGateActive = false,
   stalledSuspected = false,
   pipelineActivity = null,
+  runtimeMetrics = null,
   sessionComplete,
   error,
   panelData,
@@ -84,6 +86,28 @@ export function WorkflowStatsRail({
   const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
   const lastStageDurationText = (() => {
     const ms = pipelineActivity?.last_stage_duration_ms;
+    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  })();
+  const firstProgressText = (() => {
+    const ms = runtimeMetrics?.first_progress_delay_ms;
+    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  })();
+  const firstActionText = (() => {
+    const ms = runtimeMetrics?.first_action_ready_delay_ms;
     if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -156,6 +180,12 @@ export function WorkflowStatsRail({
           {lastStageDurationText && (
             <div className="mt-1 text-[10px] text-white/45">
               Last stage: {lastStageDurationText}
+            </div>
+          )}
+          {(firstProgressText || firstActionText) && (
+            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-white/42">
+              {firstProgressText && <span>First progress: {firstProgressText}</span>}
+              {firstActionText && <span>First action: {firstActionText}</span>}
             </div>
           )}
         </div>

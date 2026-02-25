@@ -15,6 +15,7 @@ import type {
   AskUserPromptData,
   PhaseGateData,
   PipelineActivitySnapshot,
+  PipelineRuntimeMetricsSnapshot,
 } from '@/types/session';
 import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
@@ -31,6 +32,7 @@ interface ChatPanelProps {
   lastBackendActivityAt?: string | null;
   stalledSuspected?: boolean;
   pipelineActivity?: PipelineActivitySnapshot | null;
+  runtimeMetrics?: PipelineRuntimeMetricsSnapshot | null;
   onReconnectStream?: () => void;
   onRefreshWorkflowState?: () => void | Promise<void>;
   isRefreshingWorkflowState?: boolean;
@@ -59,6 +61,7 @@ export function ChatPanel({
   lastBackendActivityAt = null,
   stalledSuspected = false,
   pipelineActivity = null,
+  runtimeMetrics = null,
   onReconnectStream,
   onRefreshWorkflowState,
   isRefreshingWorkflowState = false,
@@ -173,6 +176,28 @@ export function ChatPanel({
     const hours = Math.floor(minutes / 60);
     return `${hours}h ${minutes % 60}m`;
   })();
+  const firstProgressText = (() => {
+    const ms = runtimeMetrics?.first_progress_delay_ms;
+    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  })();
+  const firstActionReadyText = (() => {
+    const ms = runtimeMetrics?.first_action_ready_delay_ms;
+    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  })();
 
   useEffect(() => {
     setShowResumePreview(false);
@@ -267,7 +292,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      {(pipelineActivity?.current_activity_message || stageElapsedText || lastProgressText || heartbeatText || lastStageDurationText) && (
+      {(pipelineActivity?.current_activity_message || stageElapsedText || lastProgressText || heartbeatText || lastStageDurationText || firstProgressText || firstActionReadyText) && (
         <div className="border-b border-white/[0.06] px-4 py-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="rounded-full border border-white/[0.1] bg-white/[0.025] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/52">
@@ -284,6 +309,8 @@ export function ChatPanel({
             )}
             {stageElapsedText && <span>Stage elapsed: {stageElapsedText}</span>}
             {lastStageDurationText && <span>Last stage: {lastStageDurationText}</span>}
+            {firstProgressText && <span>First progress: {firstProgressText}</span>}
+            {firstActionReadyText && <span>First action: {firstActionReadyText}</span>}
             {lastProgressText && <span>Progress: {lastProgressText}</span>}
             {heartbeatText && <span>Heartbeat: {heartbeatText}</span>}
           </div>

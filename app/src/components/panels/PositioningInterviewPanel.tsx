@@ -435,12 +435,18 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
 
             <GlassCard className="px-3.5 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-indigo-300/20 bg-indigo-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-100/90">
+                  Single Question (Step 3)
+                </span>
                 <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
                   What To Do In This Panel
                 </span>
                 <span className="text-[11px] text-white/65">
                   Answer the question here. Progress bars, requirement chips, and context notes are informational.
                 </span>
+              </div>
+              <div className="mt-2 text-[11px] text-white/50">
+                Flow: answer this question {'->'} continue {'->'} we ask the next highest-value question or move to the gap map.
               </div>
             </GlassCard>
 

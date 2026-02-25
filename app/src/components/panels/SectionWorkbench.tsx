@@ -265,6 +265,7 @@ export function SectionWorkbench({
   );
   const gapCount = gapMappings.filter((g) => g.classification !== 'strong').length;
   const contextVersion = typeof context?.context_version === 'number' ? context.context_version : 0;
+  const showUndoRedoControls = hasLocalEdits || undoStack.length > 0 || redoStack.length > 0;
 
   return (
     <div
@@ -669,22 +670,28 @@ export function SectionWorkbench({
         <div className="mx-auto max-w-3xl">
           {hasLocalEdits ? (
             <div className="flex items-center gap-2">
-              <GlassButton
-                variant="ghost"
-                onClick={handleUndo}
-                disabled={undoStack.length === 0 || isRefining}
-                className="px-2.5"
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-              </GlassButton>
-              <GlassButton
-                variant="ghost"
-                onClick={handleRedo}
-                disabled={redoStack.length === 0 || isRefining}
-                className="px-2.5"
-              >
-                <Redo2 className="h-3.5 w-3.5" />
-              </GlassButton>
+              {showUndoRedoControls && (
+                <>
+                  <GlassButton
+                    variant="ghost"
+                    onClick={handleUndo}
+                    disabled={undoStack.length === 0 || isRefining}
+                    className="px-2.5"
+                    aria-label="Undo last inline edit"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    onClick={handleRedo}
+                    disabled={redoStack.length === 0 || isRefining}
+                    className="px-2.5"
+                    aria-label="Redo inline edit"
+                  >
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </GlassButton>
+                </>
+              )}
               <GlassButton
                 variant="primary"
                 className="flex-1"
@@ -706,22 +713,28 @@ export function SectionWorkbench({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <GlassButton
-                variant="ghost"
-                onClick={handleUndo}
-                disabled={undoStack.length === 0 || isRefining}
-                className="px-2.5"
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-              </GlassButton>
-              <GlassButton
-                variant="ghost"
-                onClick={handleRedo}
-                disabled={redoStack.length === 0 || isRefining}
-                className="px-2.5"
-              >
-                <Redo2 className="h-3.5 w-3.5" />
-              </GlassButton>
+              {showUndoRedoControls && (
+                <>
+                  <GlassButton
+                    variant="ghost"
+                    onClick={handleUndo}
+                    disabled={undoStack.length === 0 || isRefining}
+                    className="px-2.5"
+                    aria-label="Undo last inline edit"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    onClick={handleRedo}
+                    disabled={redoStack.length === 0 || isRefining}
+                    className="px-2.5"
+                    aria-label="Redo inline edit"
+                  >
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </GlassButton>
+                </>
+              )}
               <GlassButton
                 variant="primary"
                 className={cn('flex-1', isRefining && 'opacity-50 pointer-events-none')}
@@ -738,9 +751,11 @@ export function SectionWorkbench({
                   handleAction(instruction);
                 }}
                 disabled={isRefining}
-                className="flex-shrink-0"
+                className="flex-shrink-0 gap-1.5 px-3"
+                aria-label="Request a quick automatic refinement for this section"
               >
                 <Pencil className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Quick Refine</span>
               </GlassButton>
             </div>
           )}
