@@ -31,6 +31,7 @@ interface WorkspaceShellProps {
   activeGate?: {
     active: boolean;
     activeNode: WorkflowNodeKey;
+    label?: string;
     onReturn: () => void;
     onGenerateDraftNow?: () => void;
     isGenerateDraftNowPending?: boolean;
@@ -140,8 +141,8 @@ export function WorkspaceShell({
             <Sparkles className="h-3.5 w-3.5 text-amber-200/90" />
             <p className="min-w-0 flex-1 truncate text-xs text-amber-100/85">
               {selectedNode === activeGate.activeNode
-                ? 'A question is waiting in this step. You can answer it, or request a faster path to draft.'
-                : 'A question is waiting in another step. You can browse here and return when ready.'}
+                ? `An action is waiting in this step${activeGate.label ? `: ${activeGate.label}` : ''}. You can complete it here, or request a faster path to draft when available.`
+                : `An action is waiting in another step${activeGate.label ? `: ${activeGate.label}` : ''}. You can browse here and return when ready.`}
             </p>
             {selectedNode !== activeGate.activeNode && (
               <GlassButton

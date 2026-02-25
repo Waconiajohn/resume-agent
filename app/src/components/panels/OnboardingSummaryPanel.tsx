@@ -1,5 +1,6 @@
 import { Briefcase, Award, Users, TrendingUp, DollarSign, CheckCircle, AlertTriangle } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import type { OnboardingSummaryData } from '@/types/panels';
 
 interface OnboardingSummaryPanelProps {
@@ -58,11 +59,30 @@ function normalizeData(data: OnboardingSummaryData & Record<string, unknown>) {
     (data.immediate_observations as string[] | undefined) ??
     [];
 
-  return { cards, strengths, opportunities };
+  const parseConfidence = (
+    data.parse_confidence === 'high' || data.parse_confidence === 'medium' || data.parse_confidence === 'low'
+      ? data.parse_confidence
+      : undefined
+  );
+  const parseWarnings = Array.isArray(data.parse_warnings)
+    ? data.parse_warnings.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+
+  return { cards, strengths, opportunities, parseConfidence, parseWarnings };
 }
 
 export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
-  const { cards, strengths, opportunities } = normalizeData(data as OnboardingSummaryData & Record<string, unknown>);
+  const { cards, strengths, opportunities, parseConfidence, parseWarnings } = normalizeData(data as OnboardingSummaryData & Record<string, unknown>);
+  const confidenceTone = parseConfidence === 'high'
+    ? 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/90'
+    : parseConfidence === 'medium'
+      ? 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/90'
+      : 'border-rose-300/20 bg-rose-400/[0.06] text-rose-100/90';
+  const confidenceLabel = parseConfidence === 'high'
+    ? 'High confidence parse'
+    : parseConfidence === 'medium'
+      ? 'Review parse details'
+      : 'Low confidence parse';
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -71,6 +91,37 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
+        <ProcessStepGuideCard
+          step="intake"
+          tone="review"
+          userDoesOverride="Confirm the resume snapshot looks right. If key roles or dates are missing, fix the source resume before moving on."
+        />
+
+        {(parseConfidence || parseWarnings.length > 0) && (
+          <GlassCard className="p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {parseConfidence && (
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${confidenceTone}`}>
+                  {confidenceLabel}
+                </span>
+              )}
+              <span className="text-[11px] text-white/58">
+                This snapshot is auto-parsed from the uploaded resume and drives the rest of the workflow.
+              </span>
+            </div>
+            {parseWarnings.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {parseWarnings.map((warning, i) => (
+                  <div key={`${warning.slice(0, 32)}-${i}`} className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/55" />
+                    <span className="text-xs text-white/72">{warning}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        )}
+
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {cards.map(({ label, value, icon: Icon }, i) => {

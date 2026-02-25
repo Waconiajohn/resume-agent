@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowRight, SkipForward } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { GlassTextarea } from '../GlassInput';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
+import { processStepFromQuestionnaireStage } from '@/constants/process-contract';
 import { cn } from '@/lib/utils';
 import type { QuestionnaireData } from '@/types/panels';
 import type { QuestionnaireResponse, QuestionnaireSubmission } from '@/types/session';
@@ -53,6 +55,7 @@ function buildEmptyResponse(questionId: string): QuestionnaireResponse {
 
 export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps) {
   const { questions, questionnaire_id, schema_version, stage, title, subtitle } = data;
+  const processStep = processStepFromQuestionnaireStage(stage);
 
   // Track responses keyed by question id
   const [responses, setResponses] = useState<QuestionnaireResponse[]>(() =>
@@ -245,6 +248,19 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
           )}
         >
           {/* Subtitle (shown only on first question) */}
+          {currentVisiblePos === 0 && (
+            <ProcessStepGuideCard
+              step={processStep}
+              tone="action"
+              compact
+              userDoesOverride={
+                stage === 'quality_fixes'
+                  ? 'Review the suggested fixes and choose which ones to apply.'
+                  : 'Answer the questions in this panel. Skip low-value questions if needed and keep moving.'
+              }
+            />
+          )}
+
           {currentVisiblePos === 0 && subtitle && (
             <p className="text-xs text-white/50 leading-relaxed">{subtitle}</p>
           )}
@@ -281,6 +297,12 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
           {/* Context card */}
           {currentQuestion.context && (
             <GlassCard className="px-3.5 py-2.5">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45">
+                  Info only
+                </span>
+                <span className="text-[11px] text-white/50">Context / guidance</span>
+              </div>
               <p className="text-xs text-white/55 leading-relaxed">{currentQuestion.context}</p>
             </GlassCard>
           )}

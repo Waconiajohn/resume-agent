@@ -1,11 +1,14 @@
 import { Activity, Gauge, Hash, ShieldCheck, ListChecks } from 'lucide-react';
 import { GlassCard } from './GlassCard';
+import { PHASE_LABELS } from '@/constants/phases';
 import type { PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
 interface WorkflowStatsRailProps {
   currentPhase: string;
   isProcessing: boolean;
+  isGateActive?: boolean;
+  stalledSuspected?: boolean;
   sessionComplete?: boolean;
   error?: string | null;
   panelData: PanelData | null;
@@ -14,7 +17,7 @@ interface WorkflowStatsRailProps {
 }
 
 function phaseLabel(phase: string): string {
-  return phase.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return PHASE_LABELS[phase] ?? phase.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function metricSnapshot(panelData: PanelData | null, resume: FinalResume | null) {
@@ -67,6 +70,8 @@ function MetricRow({
 export function WorkflowStatsRail({
   currentPhase,
   isProcessing,
+  isGateActive = false,
+  stalledSuspected = false,
   sessionComplete,
   error,
   panelData,
@@ -76,13 +81,19 @@ export function WorkflowStatsRail({
   const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
   const status = error
     ? 'Error'
+    : stalledSuspected
+      ? 'Potentially Stalled'
     : (sessionComplete || currentPhase === 'complete')
       ? 'Complete'
+      : isGateActive
+        ? 'Waiting for Input'
       : isProcessing
         ? 'Processing'
         : 'Idle';
   const statusClass = error
     ? 'text-red-100/90'
+    : status === 'Potentially Stalled'
+      ? 'text-amber-100/90'
     : status === 'Complete'
       ? 'text-emerald-100/90'
       : 'text-white/62';

@@ -21,6 +21,8 @@ export interface OnboardingSummaryData {
   skills_count?: number;
   leadership_span?: string;
   budget_responsibility?: string;
+  parse_confidence?: 'high' | 'medium' | 'low';
+  parse_warnings?: string[];
   strengths?: string[];
   opportunities?: string[];
 }
@@ -75,6 +77,9 @@ export interface ResearchDashboardData {
   company: CompanyCard;
   jd_requirements: JDRequirements;
   benchmark: BenchmarkProfile;
+  loading_state?: 'running' | 'background_running' | 'complete';
+  status_note?: string;
+  next_expected?: string;
 }
 
 // --- Gap Analysis ---

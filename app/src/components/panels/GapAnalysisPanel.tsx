@@ -1,5 +1,6 @@
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { cleanText } from '@/lib/clean-text';
 import type { GapAnalysisData, RequirementFitItem } from '@/types/panels';
 
@@ -138,6 +139,12 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
+        <ProcessStepGuideCard
+          step="gap_analysis"
+          tone="review"
+          userDoesOverride="Use this as a reality check. Strong means covered well, Partial means usable but thin, Gap means we still need stronger evidence or a strategy."
+        />
+
         {/* Progress bar */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-2">
@@ -187,6 +194,10 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
               </div>
             );
           })}
+        </div>
+
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-white/58">
+          If something is misclassified, answer the follow-up questions when they appear. Those answers update the gap map before writing.
         </div>
 
         {/* Requirement list */}

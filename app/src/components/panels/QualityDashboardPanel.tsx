@@ -1,5 +1,6 @@
 import { ShieldCheck, ScanSearch, Fingerprint, AlertTriangle, Flag } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { ScoreRing } from '@/components/shared/ScoreRing';
 import { cleanText } from '@/lib/clean-text';
 import type { QualityDashboardData } from '@/types/panels';
@@ -26,6 +27,13 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
+        <ProcessStepGuideCard
+          step="quality_review"
+          tone="review"
+          userDoesOverride="Use this as the final quality gate. Review any high-risk flags before exporting."
+          nextOverride="If quality looks good, export and optionally save this as a reusable base resume."
+        />
+
         {/* Score rings */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-around">

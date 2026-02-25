@@ -225,6 +225,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [resume, setResume] = useState<FinalResume | null>(null);
   const [connected, setConnected] = useState(false);
+  const [lastBackendActivityAt, setLastBackendActivityAt] = useState<string | null>(null);
+  const [stalledSuspected, setStalledSuspected] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [panelType, setPanelType] = useState<PanelType | null>(null);
@@ -360,6 +362,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsPipelineGateActive(false);
     reconnectAttemptsRef.current = 0;
     lastProgressTimestampRef.current = Date.now();
+    setLastBackendActivityAt(new Date().toISOString());
+    setStalledSuspected(false);
     staleNoticeActiveRef.current = false;
     stalePipelineNoticeRef.current = false;
     sectionContextRef.current = null;
@@ -411,6 +415,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           try {
             for await (const msg of parseSSEStream(response.body)) {
               if (controller.signal.aborted) break;
+              setLastBackendActivityAt(new Date().toISOString());
+              setStalledSuspected(false);
 
               switch (msg.event) {
                 case 'connected': {
@@ -423,7 +429,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'session_restore': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  if (data.current_phase) {
+                  if (data.pipeline_stage && typeof data.pipeline_stage === 'string') {
+                    setPipelineStage(data.pipeline_stage as PipelineStage);
+                    setCurrentPhase(data.pipeline_stage as string);
+                  } else if (data.current_phase) {
                     setCurrentPhase(data.current_phase as string);
                   }
                   if (Array.isArray(data.messages) && data.messages.length) {
@@ -460,13 +469,17 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                       pipelineRunning && gateTypes.includes(data.last_panel_type as string),
                     );
                   }
-                  // On restore, clear processing state — the agent loop isn't running
-                  setIsProcessing(false);
+                  const pipelineRunning = data.pipeline_status === 'running';
+                  const pendingGate = typeof data.pending_gate === 'string' ? data.pending_gate : null;
+                  // Restore processing state as best-effort until SSE or the status poll confirms the latest state.
+                  setIsPipelineGateActive((prev) => prev || Boolean(pipelineRunning && pendingGate));
+                  setIsProcessing(Boolean(pipelineRunning && !pendingGate));
                   // Restore pending phase gate so the user can confirm/reject after reconnect
                   if (data.pending_phase_transition && data.pending_tool_call_id) {
+                    const restorePhase = (typeof data.pipeline_stage === 'string' ? data.pipeline_stage : data.current_phase) as string;
                     setPhaseGate({
                       toolCallId: data.pending_tool_call_id as string,
-                      currentPhase: data.current_phase as string,
+                      currentPhase: restorePhase,
                       nextPhase: data.pending_phase_transition as string,
                       phaseSummary: 'Phase complete (restored after reconnect)',
                       nextPhasePreview: '',
@@ -1240,13 +1253,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       if (isProcessingRef.current && Date.now() - lastProgressTimestampRef.current > STALE_THRESHOLD_MS) {
         if (!staleNoticeActiveRef.current) {
           staleNoticeActiveRef.current = true;
-          setIsProcessing(false);
+          setStalledSuspected(true);
           setMessages((prev) => [
             ...prev,
             {
               id: nextId(),
               role: 'system',
-              content: 'Session appears stalled. You can send a message to retry or refresh the page.',
+              content: 'Processing looks stalled (no confirmed backend updates for a while). Try reconnecting or refreshing the page. If the pipeline is waiting for input, check the center workspace for a questionnaire or review step.',
               timestamp: new Date().toISOString(),
             },
           ]);
@@ -1344,6 +1357,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           pipeline_stage?: string | null;
         } | null;
         if (!data || cancelled) return;
+        setLastBackendActivityAt(new Date().toISOString());
+        if (data.running) {
+          setStalledSuspected(false);
+        }
 
         if (data.stale_pipeline && !stalePipelineNoticeRef.current) {
           stalePipelineNoticeRef.current = true;
@@ -1424,6 +1441,26 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsProcessing(true);
   }, [nextId]);
 
+  const reconnectStreamNow = useCallback(() => {
+    if (!mountedRef.current) return;
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    reconnectAttemptsRef.current = 0;
+    staleNoticeActiveRef.current = false;
+    stalePipelineNoticeRef.current = false;
+    setStalledSuspected(false);
+    setError(null);
+    setConnected(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    // connectSSE reads the latest refs and safely aborts any stale connection before starting.
+    connectSSERef.current?.();
+  }, []);
+
   return {
     messages,
     streamingText,
@@ -1435,6 +1472,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsProcessing,
     resume,
     connected,
+    lastBackendActivityAt,
+    stalledSuspected,
     sessionComplete,
     error,
     panelType,
@@ -1452,5 +1491,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsPipelineGateActive,
     dismissSuggestion,
     approvedSections,
+    reconnectStreamNow,
   };
 }

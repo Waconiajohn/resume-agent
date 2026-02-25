@@ -1,6 +1,7 @@
 import { Building2, Target, UserCheck } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassSkeletonCard } from '../GlassSkeleton';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { cleanText, stripMarkdown } from '@/lib/clean-text';
 import type { ResearchDashboardData, BenchmarkSkill } from '@/types/panels';
 
@@ -61,6 +62,11 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
     .slice(0, 8);
   const confidenceByAssumption = benchmark.confidence_by_assumption ?? {};
   const whyInferred = benchmark.why_inferred ?? {};
+  const researchStatusTone = data.loading_state === 'running'
+    ? 'border-sky-300/20 bg-sky-400/[0.06] text-sky-100/90'
+    : data.loading_state === 'background_running'
+      ? 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/90'
+      : 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/90';
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -69,6 +75,34 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
+        <ProcessStepGuideCard
+          step="research"
+          tone="review"
+          userDoesOverride="Review the JD requirements and benchmark assumptions. Edit benchmark assumptions if they are off before the draft strategy is built."
+        />
+
+        {(data.status_note || data.next_expected || data.loading_state) && (
+          <GlassCard className="p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${researchStatusTone}`}>
+                {data.loading_state === 'running'
+                  ? 'Research running'
+                  : data.loading_state === 'background_running'
+                    ? 'Research running in background'
+                    : 'Research ready'}
+              </span>
+              {data.status_note && (
+                <span className="text-[11px] text-white/70">{data.status_note}</span>
+              )}
+            </div>
+            {data.next_expected && (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-white/55">
+                Next: {data.next_expected}
+              </p>
+            )}
+          </GlassCard>
+        )}
+
         {/* Company Card */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -177,7 +211,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           {assumptionEntries.length > 0 && (
             <div className="mb-3">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50 mb-1.5 block">
-                Inferred Assumptions
+                Benchmark Assumptions (Review These First)
               </span>
               <div className="space-y-1.5">
                 {assumptionEntries.map(([key, value]) => {

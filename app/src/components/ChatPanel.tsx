@@ -21,6 +21,12 @@ interface ChatPanelProps {
   phaseGate: PhaseGateData | null;
   currentPhase: string;
   isProcessing: boolean;
+  connected?: boolean;
+  lastBackendActivityAt?: string | null;
+  stalledSuspected?: boolean;
+  onReconnectStream?: () => void;
+  onRefreshWorkflowState?: () => void | Promise<void>;
+  isRefreshingWorkflowState?: boolean;
   onSendMessage: (content: string) => void | Promise<void>;
   panelType: PanelType | null;
   panelData: PanelData | null;
@@ -42,6 +48,12 @@ export function ChatPanel({
   phaseGate,
   currentPhase,
   isProcessing,
+  connected = false,
+  lastBackendActivityAt = null,
+  stalledSuspected = false,
+  onReconnectStream,
+  onRefreshWorkflowState,
+  isRefreshingWorkflowState = false,
   onSendMessage,
   panelType,
   panelData,
@@ -62,6 +74,33 @@ export function ChatPanel({
   const canOpenResumePreview =
     (!!resume && !!panelData && (panelData.type === 'quality_dashboard' || panelData.type === 'completion'))
     || Object.keys(approvedSections).length > 0;
+  const pipelinePhaseActive = currentPhase !== 'onboarding' && currentPhase !== 'complete';
+  const statusLabel = stalledSuspected
+    ? 'Processing may be stalled'
+    : isProcessing
+    ? 'Working'
+    : (isPipelineGateActive
+        ? 'Waiting for your input'
+        : (connected ? (pipelinePhaseActive ? 'Connected (idle)' : 'Connected') : 'Reconnecting'));
+  const statusToneClass = stalledSuspected
+    ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/90'
+    : isProcessing
+    ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+    : (isPipelineGateActive
+        ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
+        : (connected ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/90' : 'border-white/[0.1] bg-white/[0.03] text-white/70'));
+  const lastActivityText = (() => {
+    if (!lastBackendActivityAt) return null;
+    const ms = Date.now() - new Date(lastBackendActivityAt).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 2) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  })();
 
   useEffect(() => {
     setShowResumePreview(false);
@@ -107,12 +146,40 @@ export function ChatPanel({
         <span className="rounded-full border border-white/[0.12] bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-white/78">
           {PHASE_LABELS[currentPhase] ?? currentPhase}
         </span>
-        {isBusy && (
-          <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-2">
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${statusToneClass}`}>
+            {statusLabel}
+          </span>
+          {lastActivityText && (
+            <span className="text-[10px] text-white/50">
+              Last update {lastActivityText}
+            </span>
+          )}
+          {(stalledSuspected || !connected) && onReconnectStream && (
+            <GlassButton
+              type="button"
+              variant="ghost"
+              onClick={onReconnectStream}
+              className="h-auto px-2 py-1 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Reconnect
+            </GlassButton>
+          )}
+          {onRefreshWorkflowState && (
+            <GlassButton
+              type="button"
+              variant="ghost"
+              onClick={() => { void onRefreshWorkflowState(); }}
+              loading={isRefreshingWorkflowState}
+              className="h-auto px-2 py-1 text-[10px] uppercase tracking-[0.12em]"
+            >
+              Refresh State
+            </GlassButton>
+          )}
+          {isBusy && (
             <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />
-            <span className="text-[10px] text-white/60">Working...</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Messages */}

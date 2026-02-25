@@ -3,6 +3,7 @@ import { Download, FileText, CheckCircle, Loader2, FileDown, Save } from 'lucide
 import { buildPositioningSummaryText } from '@/lib/export-positioning-summary';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { validateResumeForExport } from '@/lib/export-validation';
@@ -151,6 +152,13 @@ export function CompletionPanel({
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
+        <ProcessStepGuideCard
+          step="quality_review"
+          tone="export"
+          userDoesOverride="Download the tailored resume, then optionally save it as your default or alternate base resume for future sessions."
+          nextOverride="Use this version for this job, or save it as a stronger reusable starting point."
+        />
+
         {/* Export error banner */}
         {exportError && (
           <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('error')}`}>

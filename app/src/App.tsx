@@ -52,6 +52,8 @@ export default function App() {
     setIsProcessing,
     resume,
     connected,
+    lastBackendActivityAt,
+    stalledSuspected,
     sessionComplete,
     error: agentError,
     panelType,
@@ -65,6 +67,7 @@ export default function App() {
     setIsPipelineGateActive,
     dismissSuggestion,
     approvedSections,
+    reconnectStreamNow,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   const [view, setView] = useState<View>('landing');
@@ -331,6 +334,9 @@ export default function App() {
           phaseGate={phaseGate}
           currentPhase={pipelineStage ?? currentPhase}
           isProcessing={isProcessing}
+          connected={connected}
+          lastBackendActivityAt={lastBackendActivityAt}
+          stalledSuspected={stalledSuspected}
           sessionComplete={sessionComplete}
           resume={resume}
           panelType={panelType}
@@ -345,8 +351,9 @@ export default function App() {
           onDismissSuggestion={dismissSuggestion}
           onRestartPipelineFromLastInputs={handleRestartPipelineFromCache}
           liveDraftReadiness={draftReadiness}
-          liveWorkflowReplan={workflowReplan}
-        />
+              liveWorkflowReplan={workflowReplan}
+              onReconnectStream={reconnectStreamNow}
+            />
       )}
       </div>
     </ErrorBoundary>

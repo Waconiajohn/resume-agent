@@ -1,6 +1,7 @@
 import { ShieldCheck, AlertTriangle, ClipboardList, CheckCircle2, ArrowRight } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { cn } from '@/lib/utils';
 import type { BlueprintReviewData } from '@/types/panels';
 
@@ -109,6 +110,13 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-3">
+        <ProcessStepGuideCard
+          step="architect"
+          tone="review"
+          userDoesOverride="Confirm the positioning angle and section order make sense for this job. Approving starts section writing."
+          nextOverride="Section drafts will be written and reviewed next."
+        />
+
         {/* Target Role & Positioning Angle */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -202,7 +210,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             aria-label="Approve blueprint and start writing"
           >
             <ShieldCheck className="h-4 w-4" />
-            Approve Blueprint &amp; Start Writing
+            Approve Blueprint &amp; Start Section Writing
             <ArrowRight className="h-4 w-4 ml-auto" />
           </GlassButton>
         </div>

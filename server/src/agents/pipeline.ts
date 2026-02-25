@@ -265,6 +265,46 @@ function emitResearchDashboardPanel(
         research.company_research,
         options,
       ),
+      loading_state: 'complete',
+      status_note: 'Research completed. Review the JD requirements and benchmark assumptions before moving deeper into drafting.',
+      next_expected: 'If the benchmark assumptions look right, continue to gap analysis and blueprint design.',
+    },
+  });
+}
+
+function emitResearchDashboardLoadingPanel(
+  emit: PipelineEmitter,
+  options: {
+    companyName?: string;
+    loadingState: 'running' | 'background_running';
+    statusNote: string;
+    nextExpected: string;
+  },
+) {
+  emit({
+    type: 'right_panel_update',
+    panel_type: 'research_dashboard',
+    data: {
+      company: {
+        ...(options.companyName ? { company_name: options.companyName } : {}),
+      },
+      jd_requirements: {
+        must_haves: [],
+        nice_to_haves: [],
+      },
+      benchmark: {
+        required_skills: [],
+        language_keywords: [],
+        experience_expectations: '',
+        culture_fit_traits: [],
+        communication_style: '',
+        industry_standards: [],
+        competitive_differentiators: [],
+        ideal_candidate_summary: '',
+      },
+      loading_state: options.loadingState,
+      status_note: options.statusNote,
+      next_expected: options.nextExpected,
     },
   });
 }
@@ -1143,7 +1183,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
   try {
     // ─── Stage 1: Intake ─────────────────────────────────────────
-    emit({ type: 'stage_start', stage: 'intake', message: 'Parsing your resume...' });
+    emit({ type: 'stage_start', stage: 'intake', message: 'Step 1 of 7: Parsing and structuring your resume...' });
     state.current_stage = 'intake';
     markStageStart('intake');
 
@@ -1153,7 +1193,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     markStageEnd('intake');
-    emit({ type: 'stage_complete', stage: 'intake', message: 'Resume parsed successfully', duration_ms: stageTimingsMs.intake });
+    emit({ type: 'stage_complete', stage: 'intake', message: 'Step 1 of 7 complete: resume snapshot ready', duration_ms: stageTimingsMs.intake });
     emit({
       type: 'right_panel_update',
       panel_type: 'onboarding_summary',
@@ -1170,10 +1210,16 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     log.info({ experience_count: state.intake.experience.length }, 'Intake complete');
 
-    // ─── Research-first flow: race research with 90s timeout, then run positioning ───
-    emit({ type: 'stage_start', stage: 'research', message: 'Researching company, role, and industry...' });
+    // ─── Steps 2-3: Research-first flow (race research, then start positioning) ───────
+    emit({ type: 'stage_start', stage: 'research', message: 'Step 2 of 7: Analyzing the job and building a benchmark profile...' });
     state.current_stage = 'research';
     markStageStart('research');
+    emitResearchDashboardLoadingPanel(emit, {
+      companyName: config.company_name,
+      loadingState: 'running',
+      statusNote: 'Research has started. The system is extracting requirements, company signals, and benchmark assumptions.',
+      nextExpected: 'A benchmark profile and JD requirement summary will appear here.',
+    });
 
     // Fire off research as a background promise (with retry for transient failures)
     researchAbort = new AbortController();
@@ -1198,11 +1244,17 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       state.research = researchRaceResult.data!;
       await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
       markStageEnd('research');
-      emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
+      emit({ type: 'stage_complete', stage: 'research', message: 'Step 2 of 7 complete: benchmark profile ready', duration_ms: stageTimingsMs.research });
       log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (within timeout)');
     } else {
       log.info('Research still running after timeout — starting positioning with fallback questions');
-      emit({ type: 'transparency', stage: 'research', message: 'Research is still running — starting your interview with general questions...' });
+      emit({ type: 'transparency', stage: 'research', message: 'Step 2 is still running. Starting Step 3 (Why Me) with general questions so you do not have to wait.' });
+      emitResearchDashboardLoadingPanel(emit, {
+        companyName: config.company_name,
+        loadingState: 'background_running',
+        statusNote: 'Research is still running in the background while the Why Me interview starts.',
+        nextExpected: 'This panel will update automatically when research finishes.',
+      });
     }
 
     // Emit research dashboard if research is ready
@@ -1210,8 +1262,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       emitResearchDashboardPanel(emit, state.research, getBenchmarkPanelPayloadOptions(state, state.research));
     }
 
-    // ─── Positioning Coach ──────────────────────────────────
-    emit({ type: 'stage_start', stage: 'positioning', message: 'Starting positioning interview...' });
+    // ─── Step 3: Positioning Coach (Why Me interview) ──────────────────────
+    emit({ type: 'stage_start', stage: 'positioning', message: 'Step 3 of 7: Building your Why Me positioning profile...' });
     state.current_stage = 'positioning';
     markStageStart('positioning');
     state.positioning = await runPositioningStage(
@@ -1222,12 +1274,12 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       type: 'stage_complete',
       stage: 'positioning',
       message: state.positioning_reuse_mode === 'reuse'
-        ? 'Using saved positioning profile'
-        : 'Positioning profile created and saved',
+        ? 'Step 3 of 7 complete: using saved positioning profile'
+        : 'Step 3 of 7 complete: positioning profile created',
       duration_ms: stageTimingsMs.positioning,
     });
 
-    // ─── Await research if it hasn't finished yet ───────────
+    // ─── Finish Step 2 research if it is still running ─────────────────────
     if (!state.research) {
       try {
         state.research = await researchPromise;
@@ -1256,15 +1308,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       }
       await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
       markStageEnd('research');
-      emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
+      emit({ type: 'stage_complete', stage: 'research', message: 'Step 2 of 7 complete: benchmark profile ready', duration_ms: stageTimingsMs.research });
       emitResearchDashboardPanel(emit, state.research, getBenchmarkPanelPayloadOptions(state, state.research));
       log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (after positioning)');
     }
 
-    // ─── Stage 4: Gap Analysis ───────────────────────────────────
+    // ─── Step 4: Gap Analysis ───────────────────────────────────────────────
     await refreshWorkflowModePolicy();
     await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
-    emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Analyzing requirement gaps...' });
+    emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Step 4 of 7: Comparing your evidence to the JD and benchmark...' });
     state.current_stage = 'gap_analysis';
     markStageStart('gap_analysis');
 
@@ -1276,7 +1328,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     });
 
     markStageEnd('gap_analysis');
-    emit({ type: 'stage_complete', stage: 'gap_analysis', message: `Coverage: ${state.gap_analysis.coverage_score}%`, duration_ms: stageTimingsMs.gap_analysis });
+    emit({ type: 'stage_complete', stage: 'gap_analysis', message: `Step 4 of 7 complete: coverage ${state.gap_analysis.coverage_score}%`, duration_ms: stageTimingsMs.gap_analysis });
     const gapReqs = state.gap_analysis.requirements;
     const gapStrong = gapReqs.filter(r => r.classification === 'strong').length;
     const gapPartial = gapReqs.filter(r => r.classification === 'partial').length;
@@ -1386,9 +1438,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
     const gapSubmission = shouldRunGapQuiz
       ? await runQuestionnaire(
-          'gap_analysis_quiz', 'gap_analysis', 'Verify Your Skills', gapQuizQuestions, emit, waitForUser,
+          'gap_analysis_quiz', 'gap_analysis', 'Step 4 of 7: Verify Gap-Close Evidence', gapQuizQuestions, emit, waitForUser,
           [
-            'Help us understand your true proficiency in these areas',
+            'These answers refine the gap map before blueprint design.',
             gapQuizReuseSubtitleNote,
           ].filter(Boolean).join(' '),
         )
@@ -1551,9 +1603,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       message: finalDraftPathDecisionMessage,
     });
 
-    // ─── Stage 5: Resume Architect ───────────────────────────────
+    // ─── Step 5: Resume Architect (Blueprint) ──────────────────────────────
     await refreshWorkflowModePolicy();
-    emit({ type: 'stage_start', stage: 'architect', message: 'Designing resume strategy...' });
+    emit({ type: 'stage_start', stage: 'architect', message: 'Step 5 of 7: Designing the resume blueprint...' });
     state.current_stage = 'architect';
     markStageStart('architect');
 
@@ -1577,7 +1629,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     );
 
     markStageEnd('architect');
-    emit({ type: 'stage_complete', stage: 'architect', message: 'Blueprint ready for review', duration_ms: stageTimingsMs.architect });
+    emit({ type: 'stage_complete', stage: 'architect', message: 'Step 5 of 7 complete: blueprint ready for review', duration_ms: stageTimingsMs.architect });
 
     // ─── Gate: User reviews blueprint ────────────────────────────
     state.current_stage = 'architect_review';
@@ -1676,9 +1728,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     log.info('Blueprint approved by user');
 
-    // ─── Stage 6: Section Writing ────────────────────────────────
+    // ─── Step 6: Section Writing ────────────────────────────────────────────
     await refreshWorkflowModePolicy();
-    emit({ type: 'stage_start', stage: 'section_writing', message: 'Writing resume sections...' });
+    emit({ type: 'stage_start', stage: 'section_writing', message: 'Step 6 of 7: Writing resume sections...' });
     state.current_stage = 'section_writing';
     markStageStart('section_writing');
     state.sections = {};
@@ -2095,7 +2147,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     markStageEnd('section_writing');
-    emit({ type: 'stage_complete', stage: 'section_writing', message: 'All sections written', duration_ms: stageTimingsMs.section_writing });
+    emit({ type: 'stage_complete', stage: 'section_writing', message: 'Step 6 of 7 complete: section drafts ready', duration_ms: stageTimingsMs.section_writing });
 
     log.info({ sections: Object.keys(state.sections).length }, 'Section writing complete');
 
@@ -2111,9 +2163,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       throw new Error('Benchmark assumptions changed after section writing completed. Restart the pipeline to rebuild downstream work consistently from gap analysis.');
     }
 
-    // ─── Stage 7: Quality Review ─────────────────────────────────
+    // ─── Step 7: Quality Review & Export Readiness ─────────────────────────
     await refreshWorkflowModePolicy();
-    emit({ type: 'stage_start', stage: 'quality_review', message: 'Running quality review...' });
+    emit({ type: 'stage_start', stage: 'quality_review', message: 'Step 7 of 7: Running quality review and final checks...' });
     state.current_stage = 'quality_review';
     markStageStart('quality_review');
 
@@ -2241,8 +2293,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         );
 
         const fixSubmission = await runQuestionnaire(
-          'quality_review_approval', 'quality_fixes', 'Review Suggested Fixes', fixQuestions, emit, waitForUser,
-          `${highPriority.length} important fix${highPriority.length > 1 ? 'es' : ''} need your approval`,
+          'quality_review_approval', 'quality_fixes', 'Step 7 of 7: Review High-Priority Fixes', fixQuestions, emit, waitForUser,
+          `${highPriority.length} important fix${highPriority.length > 1 ? 'es' : ''} need your approval before export`,
         );
 
         if (fixSubmission) {
@@ -2385,7 +2437,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     markStageEnd('quality_review');
-    emit({ type: 'stage_complete', stage: 'quality_review', message: 'Quality review complete', duration_ms: stageTimingsMs.quality_review });
+    emit({ type: 'stage_complete', stage: 'quality_review', message: 'Step 7 of 7 complete: final resume ready for export', duration_ms: stageTimingsMs.quality_review });
 
     // ─── Complete ────────────────────────────────────────────────
     state.current_stage = 'complete';
@@ -2818,11 +2870,11 @@ async function runPositioningStage(
         continue;
       }
       const batchTitle = batchNumber === 1
-        ? 'Positioning Interview'
-        : `Positioning Interview (Batch ${batchNumber})`;
+        ? 'Step 3 of 7: Why Me Positioning'
+        : `Step 3 of 7: Why Me Positioning (Batch ${batchNumber})`;
       const batchSubtitle = workflowMode === 'fast_draft'
-        ? 'Answer briefly where you can. Select a suggestion, add details, or skip anything non-critical.'
-        : 'Select the closest option, then add details where helpful. Metrics and scope make the final resume stronger.';
+        ? 'Answer briefly where you can. Select a suggestion, add details, or skip anything non-critical. We are building the evidence library for the draft.'
+        : 'Select the closest option, then add details where helpful. Metrics and scope make the final resume stronger and improve the gap map.';
       const finalBatchSubtitle = [batchSubtitle, positioningReuseSubtitleNote].filter(Boolean).join(' ');
 
       let submission: QuestionnaireSubmission | null;
@@ -3937,9 +3989,10 @@ function computeKeywordCoverage(
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
-  const experienceYears = intake.career_span_years;
+  const experienceYears = Math.max(0, Math.floor(intake.career_span_years ?? 0));
   const companiesCount = intake.experience.length;
   const skillsCount = intake.skills.length;
+  const parseWarnings: string[] = [];
 
   const leadershipRoles = intake.experience.filter(e =>
     /manager|director|vp|vice president|head of|lead|chief|principal|senior/i.test(e.title)
@@ -3948,16 +4001,44 @@ function buildOnboardingSummary(intake: IntakeOutput): Record<string, unknown> {
     ? (() => {
         const years = leadershipRoles.map(e => parseInt(e.start_date)).filter(y => !isNaN(y));
         if (years.length === 0) return undefined;
-        const span = new Date().getFullYear() - Math.min(...years);
+        const rawSpan = new Date().getFullYear() - Math.min(...years);
+        const span = Math.max(0, Math.min(rawSpan, experienceYears || rawSpan));
         return span > 0 ? `${span}+ years` : undefined;
       })()
     : undefined;
+
+  const rolesMissingDates = intake.experience.filter((e) => !e.start_date || !e.end_date).length;
+  const rolesMissingCompanyOrTitle = intake.experience.filter((e) => !e.company?.trim() || !e.title?.trim()).length;
+  const rolesWithoutBullets = intake.experience.filter((e) => !Array.isArray(e.bullets) || e.bullets.length === 0).length;
+  const educationSparse = intake.education.length > 0 && intake.education.every((ed) => !ed.institution?.trim() && !ed.degree?.trim());
+
+  if (intake.experience.length === 0) {
+    parseWarnings.push('No work history was detected from the uploaded resume text.');
+  }
+  if (rolesMissingDates > 0) {
+    parseWarnings.push(`${rolesMissingDates} role${rolesMissingDates === 1 ? '' : 's'} have missing dates; experience totals may be approximate.`);
+  }
+  if (rolesMissingCompanyOrTitle > 0) {
+    parseWarnings.push(`${rolesMissingCompanyOrTitle} role${rolesMissingCompanyOrTitle === 1 ? '' : 's'} are missing a company or title.`);
+  }
+  if (rolesWithoutBullets > 0) {
+    parseWarnings.push(`${rolesWithoutBullets} role${rolesWithoutBullets === 1 ? '' : 's'} have no parsed bullets, which can weaken evidence extraction.`);
+  }
+  if (educationSparse) {
+    parseWarnings.push('Education details were only partially parsed.');
+  }
+
+  const parseConfidence: 'high' | 'medium' | 'low' = parseWarnings.length === 0
+    ? 'high'
+    : (parseWarnings.length <= 2 ? 'medium' : 'low');
 
   return {
     years_of_experience: experienceYears,
     companies_count: companiesCount,
     skills_count: skillsCount,
     leadership_span: leadershipSpan,
+    parse_confidence: parseConfidence,
+    parse_warnings: parseWarnings,
     strengths: intake.experience.slice(0, 3).map(e => `${e.title} at ${e.company}`),
   };
 }

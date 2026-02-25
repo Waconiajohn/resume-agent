@@ -31,49 +31,49 @@ export const WORKFLOW_NODES: WorkflowNodeDefinition[] = [
     key: 'overview',
     label: 'Overview',
     shortLabel: 'Overview',
-    description: 'Intake summary and session setup',
+    description: 'Step 1: Resume intake and parsed snapshot check',
   },
   {
     key: 'benchmark',
     label: 'Benchmark',
     shortLabel: 'Benchmark',
-    description: 'Role research and benchmark profile',
+    description: 'Step 2: Job research and benchmark candidate profile',
   },
   {
     key: 'gaps',
     label: 'Gap Map',
     shortLabel: 'Gaps',
-    description: 'Requirement coverage and evidence gaps',
+    description: 'Step 4: Requirement coverage and evidence gaps',
   },
   {
     key: 'questions',
     label: 'Questions',
     shortLabel: 'Questions',
-    description: 'Targeted user input and questionnaires',
+    description: 'Steps 3-4: Why Me interview and targeted follow-up questions',
   },
   {
     key: 'blueprint',
     label: 'Blueprint',
     shortLabel: 'Blueprint',
-    description: 'Resume architecture and positioning plan',
+    description: 'Step 5: Resume blueprint and structure plan',
   },
   {
     key: 'sections',
     label: 'Sections',
     shortLabel: 'Sections',
-    description: 'Section drafting and review',
+    description: 'Step 6: Section drafting and review',
   },
   {
     key: 'quality',
     label: 'Quality',
     shortLabel: 'Quality',
-    description: 'ATS and hiring-manager quality review',
+    description: 'Step 7: Quality checks and final improvements',
   },
   {
     key: 'export',
     label: 'Export',
     shortLabel: 'Export',
-    description: 'Completion and export',
+    description: 'Step 7: Export and save reusable base resume',
   },
 ];
 
@@ -125,9 +125,10 @@ export function phaseToWorkflowNode(phase: string | null | undefined): WorkflowN
     case 'gap_analysis':
       return 'gaps';
     case 'positioning':
-    case 'architect_review':
+    case 'positioning_profile_choice':
       return 'questions';
     case 'architect':
+    case 'architect_review':
     case 'resume_design':
       return 'blueprint';
     case 'section_writing':

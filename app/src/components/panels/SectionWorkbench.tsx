@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, Pencil, ChevronDown, ChevronUp, Redo2, Undo2 } from 'lucide-react';
 import { GlassButton } from '../GlassButton';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { WorkbenchProgressDots } from './workbench/WorkbenchProgressDots';
 import { WorkbenchContentEditor } from './workbench/WorkbenchContentEditor';
 import { WorkbenchActionChips } from './workbench/WorkbenchActionChips';
@@ -281,6 +282,14 @@ export function SectionWorkbench({
       {/* Scrollable body */}
       <div data-panel-scroll className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-5 py-6 space-y-6">
+          <ProcessStepGuideCard
+            step="section_writing"
+            tone="review"
+            compact
+            userDoesOverride="Review this section, approve it, or request changes. Informational chips and progress bars are here to help, not to block you."
+            nextOverride="Once review sections are approved, the process moves to quality review."
+          />
+
           {/* Section title */}
           <div className="text-center space-y-1">
             <h2 className="text-xl font-semibold text-white/90 tracking-tight">

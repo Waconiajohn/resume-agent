@@ -12,6 +12,7 @@ import { runPanelPayloadSmokeChecks } from './panels/panel-smoke';
 import { WorkspaceShell } from './workspace/WorkspaceShell';
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
+import { PROCESS_STEP_CONTRACTS, processStepFromPhase, processStepFromWorkflowNode } from '@/constants/process-contract';
 import { PHASE_LABELS } from '@/constants/phases';
 import type { ChatMessage, ToolStatus, AskUserPromptData, PhaseGateData, DraftReadinessUpdate, WorkflowReplanUpdate } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
@@ -36,6 +37,9 @@ interface CoachScreenProps {
   phaseGate: PhaseGateData | null;
   currentPhase: string;
   isProcessing: boolean;
+  connected?: boolean;
+  lastBackendActivityAt?: string | null;
+  stalledSuspected?: boolean;
   sessionComplete?: boolean;
   resume: FinalResume | null;
   panelType: PanelType | null;
@@ -53,6 +57,7 @@ interface CoachScreenProps {
   onRestartPipelineFromLastInputs?: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   liveDraftReadiness?: DraftReadinessUpdate | null;
   liveWorkflowReplan?: WorkflowReplanUpdate | null;
+  onReconnectStream?: () => void;
 }
 
 type SnapshotMap = Partial<Record<WorkflowNodeKey, WorkspaceNodeSnapshot>>;
@@ -110,6 +115,16 @@ function persistSnapshotMap(sessionId: string, map: SnapshotMap) {
 
 function nodeTitle(nodeKey: WorkflowNodeKey): string {
   return WORKFLOW_NODES.find((node) => node.key === nodeKey)?.label ?? 'Workspace';
+}
+
+function formatPendingGateLabelForWorkspace(gate: string | null | undefined): string | undefined {
+  if (!gate) return undefined;
+  if (gate === 'positioning_profile_choice') return 'Choose how to use the saved positioning profile';
+  if (gate === 'architect_review') return 'Review and approve the resume blueprint';
+  if (gate.startsWith('positioning_q_')) return 'Answer the current Why Me question';
+  if (gate.startsWith('questionnaire_')) return 'Complete the current questionnaire';
+  if (gate.startsWith('section_review_')) return 'Review the current section draft';
+  return gate.replace(/_/g, ' ');
 }
 
 function defaultEvidenceTargetForMode(mode: 'fast_draft' | 'balanced' | 'deep_dive'): number {
@@ -982,6 +997,9 @@ export function CoachScreen({
   phaseGate,
   currentPhase,
   isProcessing,
+  connected = false,
+  lastBackendActivityAt = null,
+  stalledSuspected = false,
   sessionComplete,
   resume,
   panelType,
@@ -997,6 +1015,7 @@ export function CoachScreen({
   onRestartPipelineFromLastInputs,
   liveDraftReadiness = null,
   liveWorkflowReplan = null,
+  onReconnectStream,
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
@@ -1091,6 +1110,8 @@ export function CoachScreen({
     selectedNode,
     currentPhase,
   });
+  const authoritativePipelinePhase = workflowSession.summary?.session.pipeline_stage ?? null;
+  const effectiveCurrentPhase = authoritativePipelinePhase || currentPhase;
 
   useEffect(() => {
     if (!liveWorkflowReplan) return;
@@ -1198,7 +1219,7 @@ export function CoachScreen({
     panelData,
     resume,
     capturedAt: new Date().toISOString(),
-    currentPhase,
+    currentPhase: effectiveCurrentPhase,
     isGateActive: Boolean(isPipelineGateActive),
   };
 
@@ -1210,7 +1231,11 @@ export function CoachScreen({
   const displayPanelType = selectedSnapshot?.panelType ?? null;
   const displayPanelData = selectedSnapshot?.panelData ?? null;
   const displayResume = selectedSnapshot?.resume ?? resume;
-  const displayPhase = selectedSnapshot?.currentPhase ?? currentPhase;
+  const displayPhase = isViewingLiveNode
+    ? effectiveCurrentPhase
+    : (selectedSnapshot?.currentPhase ?? effectiveCurrentPhase);
+  const displayProcessStepKey = processStepFromWorkflowNode(selectedNode, { currentPhase: displayPhase });
+  const displayProcessStep = PROCESS_STEP_CONTRACTS[displayProcessStepKey] ?? PROCESS_STEP_CONTRACTS[processStepFromPhase(displayPhase)];
 
   const errorBanner = error && !errorDismissed && (
     <div className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-red-300/28 bg-red-500/[0.08] px-4 py-2.5 backdrop-blur-xl">
@@ -1229,7 +1254,53 @@ export function CoachScreen({
 
   const workflowErrorBanner = workflowSession.error && (
     <div className="mx-3 mt-3 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-4 py-2 text-xs text-amber-100/90">
-      Having trouble loading the latest data. Please refresh the page.
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex-1">Having trouble loading the latest workflow state.</span>
+        <GlassButton
+          variant="ghost"
+          className="h-7 px-2.5 text-[11px]"
+          loading={workflowSession.loadingSummary || workflowSession.loadingNode}
+          onClick={async () => {
+            await workflowSession.refreshSummary();
+            await workflowSession.refreshNode(selectedNode);
+          }}
+        >
+          Refresh State
+        </GlassButton>
+      </div>
+    </div>
+  );
+
+  const runtimeRecoveryBanner = (Boolean(stalledSuspected) || (!connected && Boolean(isProcessing))) && (
+    <div className="mx-3 mt-3 rounded-lg border border-rose-300/14 bg-rose-400/[0.04] px-4 py-2 text-xs text-rose-100/90">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex-1">
+          {stalledSuspected
+            ? 'Processing may be stalled. Use the controls below to reconnect and refresh state before restarting.'
+            : 'The live connection is disconnected while processing is still expected.'}
+        </span>
+        {onReconnectStream && (
+          <GlassButton
+            variant="ghost"
+            className="h-7 px-2.5 text-[11px]"
+            onClick={onReconnectStream}
+          >
+            Reconnect Stream
+          </GlassButton>
+        )}
+        <GlassButton
+          variant="ghost"
+          className="h-7 px-2.5 text-[11px]"
+          loading={workflowSession.loadingSummary || workflowSession.loadingNode}
+          onClick={async () => {
+            await workflowSession.refreshSummary();
+            await workflowSession.refreshNode(selectedNode);
+            await workflowSession.refreshNode(activeNode);
+          }}
+        >
+          Refresh State
+        </GlassButton>
+      </div>
     </div>
   );
 
@@ -1444,6 +1515,7 @@ export function CoachScreen({
     <div className="flex h-full min-h-0 flex-col">
       {errorBanner}
       {workflowErrorBanner}
+      {runtimeRecoveryBanner}
       {workflowActionBanner}
       {workflowReplanBanner}
       {profileChoice}
@@ -1453,6 +1525,9 @@ export function CoachScreen({
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
               Your Resume Progress
             </span>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/75">
+              Step {displayProcessStep.number} of 7
+            </span>
             <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/70">
               {PHASE_LABELS[displayPhase] ?? displayPhase}
             </span>
@@ -1461,6 +1536,17 @@ export function CoachScreen({
                 Previous version
               </span>
             )}
+          </div>
+          <div className="mb-2 px-1">
+            <GlassCard className="px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-white/86">{displayProcessStep.title}</span>
+                <span className="text-[10px] text-white/45">•</span>
+                <span className="text-[11px] text-white/58">
+                  {displayProcessStep.summary}
+                </span>
+              </div>
+            </GlassCard>
           </div>
 
           {draftReadiness && (
@@ -1725,6 +1811,12 @@ export function CoachScreen({
     </div>
   );
 
+  const refreshWorkflowState = async () => {
+    await workflowSession.refreshSummary();
+    const nodesToRefresh = new Set<WorkflowNodeKey>([selectedNode, activeNode]);
+    await Promise.all(Array.from(nodesToRefresh).map((node) => workflowSession.refreshNode(node)));
+  };
+
   const sidePanel = (
     <div className="flex h-full min-h-0 flex-col">
       <ChatPanel
@@ -1733,8 +1825,14 @@ export function CoachScreen({
         tools={tools}
         askPrompt={askPrompt}
         phaseGate={phaseGate}
-        currentPhase={currentPhase}
+        currentPhase={effectiveCurrentPhase}
         isProcessing={isProcessing}
+        connected={connected}
+        lastBackendActivityAt={lastBackendActivityAt}
+        stalledSuspected={stalledSuspected}
+        onReconnectStream={onReconnectStream}
+        onRefreshWorkflowState={refreshWorkflowState}
+        isRefreshingWorkflowState={workflowSession.loadingSummary || workflowSession.loadingNode}
         onSendMessage={onSendMessage}
         isPipelineGateActive={isPipelineGateActive}
         panelType={panelType}
@@ -1752,8 +1850,10 @@ export function CoachScreen({
     <>
       <div className="hidden lg:block">
         <WorkflowStatsRail
-          currentPhase={currentPhase}
+          currentPhase={effectiveCurrentPhase}
           isProcessing={isProcessing}
+          isGateActive={Boolean(isPipelineGateActive)}
+          stalledSuspected={Boolean(stalledSuspected)}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}
@@ -1763,8 +1863,10 @@ export function CoachScreen({
       </div>
       <div className="lg:hidden">
         <WorkflowStatsRail
-          currentPhase={currentPhase}
+          currentPhase={effectiveCurrentPhase}
           isProcessing={isProcessing}
+          isGateActive={Boolean(isPipelineGateActive)}
+          stalledSuspected={Boolean(stalledSuspected)}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}
@@ -1790,6 +1892,7 @@ export function CoachScreen({
       activeGate={{
         active: Boolean(isPipelineGateActive),
         activeNode,
+        label: formatPendingGateLabelForWorkspace(workflowSession.summary?.session.pending_gate ?? null),
         onReturn: returnToActiveNode,
         onGenerateDraftNow: workflowSession.summary?.replan?.requires_restart
           ? undefined

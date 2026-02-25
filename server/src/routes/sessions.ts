@@ -56,6 +56,80 @@ function isValidUuid(value: string): boolean {
   return UUID_RE.test(value.trim());
 }
 
+function formatPipelineStageLabel(stage: unknown): string {
+  if (typeof stage !== 'string' || !stage.trim()) return 'processing';
+  const labels: Record<string, string> = {
+    intake: 'Step 1: Resume Intake',
+    research: 'Step 2: Research & Benchmark',
+    positioning: 'Step 3: Why Me Positioning',
+    gap_analysis: 'Step 4: Gap Map & Evidence Fill',
+    architect: 'Step 5: Resume Blueprint',
+    architect_review: 'Step 5: Blueprint Review',
+    section_writing: 'Step 6: Section Writing',
+    section_review: 'Step 6: Section Review',
+    revision: 'Step 6: Revisions',
+    quality_review: 'Step 7: Quality Review & Export',
+    complete: 'Step 7: Complete',
+  };
+  return labels[stage] ?? stage.replace(/_/g, ' ');
+}
+
+function formatPendingGateLabel(gate: unknown): string | null {
+  if (typeof gate !== 'string' || !gate.trim()) return null;
+  if (gate === 'positioning_profile_choice') {
+    return 'positioning profile choice (reuse, update, or start fresh)';
+  }
+  if (gate.startsWith('questionnaire_')) {
+    return 'questionnaire in the center workspace';
+  }
+  if (gate.startsWith('section_review_')) {
+    return 'section review in the center workspace';
+  }
+  if (gate === 'architect_review') {
+    return 'blueprint review in the center workspace';
+  }
+  if (gate.startsWith('positioning_q_')) {
+    return 'positioning interview question in the center workspace';
+  }
+  return gate.replace(/_/g, ' ');
+}
+
+function buildGroundedPipelineChatReply(sessionRow: Record<string, unknown>): string {
+  const pipelineStatus = typeof sessionRow.pipeline_status === 'string' ? sessionRow.pipeline_status : null;
+  const pipelineStage = typeof sessionRow.pipeline_stage === 'string' ? sessionRow.pipeline_stage : null;
+  const pendingGate = typeof sessionRow.pending_gate === 'string' ? sessionRow.pending_gate : null;
+  const lastPanelType = typeof sessionRow.last_panel_type === 'string' ? sessionRow.last_panel_type : null;
+  const updatedAt = typeof sessionRow.updated_at === 'string' ? sessionRow.updated_at : null;
+
+  const statusLine = pipelineStatus === 'running'
+    ? `The resume pipeline is currently running (${formatPipelineStageLabel(pipelineStage)}).`
+    : (pipelineStatus === 'complete'
+        ? 'The resume pipeline is complete for this session.'
+        : `The pipeline is not currently running${pipelineStage ? ` (last stage: ${formatPipelineStageLabel(pipelineStage)})` : ''}.`);
+
+  const gateLabel = formatPendingGateLabel(pendingGate);
+  const gateLine = gateLabel
+    ? `It is waiting on your input: ${gateLabel}.`
+    : (pipelineStatus === 'running'
+        ? 'It is still processing and has not emitted the next user action yet.'
+        : null);
+
+  const panelLine = lastPanelType
+    ? `Last confirmed workspace panel: ${lastPanelType.replace(/_/g, ' ')}.`
+    : null;
+  const updatedLine = updatedAt
+    ? `Last confirmed backend update: ${new Date(updatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}.`
+    : null;
+
+  return [
+    `Verified status: ${statusLine}`,
+    gateLine ? `Verified next action: ${gateLine}` : null,
+    panelLine ? `Verified workspace state: ${panelLine}` : null,
+    updatedLine ? `Verified backend activity: ${updatedLine}` : null,
+    'I can explain the current step and what to do next, but I will not guess about panel contents or progress the pipeline has not confirmed.',
+  ].filter(Boolean).join(' ');
+}
+
 function addSSEConnection(sessionId: string, userId: string, emitter: (event: AnySSEEvent) => void): void {
   if (!sseConnections.has(sessionId)) {
     sseConnections.set(sessionId, []);
@@ -653,6 +727,22 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
         }
       }
     };
+
+    const sessionRow = sessionData as Record<string, unknown>;
+    const pipelineStatus = typeof sessionRow.pipeline_status === 'string' ? sessionRow.pipeline_status : null;
+    const pendingGate = typeof sessionRow.pending_gate === 'string' ? sessionRow.pending_gate : null;
+    const pipelineStage = typeof sessionRow.pipeline_stage === 'string' ? sessionRow.pipeline_stage : null;
+
+    // Production safety guard: when the v2 pipeline is active (or waiting on a pipeline gate),
+    // keep the right-column chat grounded to verified session state instead of invoking the
+    // legacy freeform agent loop, which can contradict pipeline progress/panels.
+    if (pipelineStatus === 'running' || pendingGate || (pipelineStage && pipelineStatus !== 'complete')) {
+      const groundedReply = buildGroundedPipelineChatReply(sessionRow);
+      emit({ type: 'text_complete', content: groundedReply });
+      releaseProcessingSession(sessionId);
+      handedOff = true;
+      return c.json({ status: 'grounded_status' });
+    }
 
     if (ctx.pendingToolCallId) {
       const lastResponse = ctx.interviewResponses[ctx.interviewResponses.length - 1];

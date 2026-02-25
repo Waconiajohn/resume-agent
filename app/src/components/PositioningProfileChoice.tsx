@@ -30,9 +30,15 @@ export function PositioningProfileChoice({
       {/* Header row */}
       <div className="flex items-center gap-2 mb-1">
         <Sparkles className="h-4 w-4 flex-shrink-0 text-[#afc4ff]" />
-        <p className="text-sm font-medium text-white/90">Found Your Positioning Profile</p>
+        <p className="text-sm font-medium text-white/90">Saved Positioning Profile Found</p>
+        <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+          Step 3 of 7
+        </span>
       </div>
-      <p className="mb-4 text-xs text-white/60">
+      <p className="text-xs text-white/70">
+        This is your previously saved "Why Me" interview profile (career story, strengths, and evidence). It only affects how Step 3 starts and can speed up this run.
+      </p>
+      <p className="mb-4 mt-1 text-xs text-white/55">
         Last updated: {formatDate(updatedAt)}
       </p>
 
@@ -44,8 +50,8 @@ export function PositioningProfileChoice({
           className="flex-1 min-w-0"
         >
           <span className="truncate">
-            Use it
-            <span className="ml-1 text-[10px] font-normal text-white/56">(faster)</span>
+            Use Saved Profile
+            <span className="ml-1 text-[10px] font-normal text-white/56">(fastest)</span>
           </span>
         </GlassButton>
 
@@ -55,8 +61,8 @@ export function PositioningProfileChoice({
           className="flex-1 min-w-0 border border-white/[0.06]"
         >
           <span className="truncate">
-            Update
-            <span className="ml-1 text-[10px] font-normal text-white/40">(review)</span>
+            Update It
+            <span className="ml-1 text-[10px] font-normal text-white/40">(add/edit answers)</span>
           </span>
         </GlassButton>
 
@@ -67,10 +73,13 @@ export function PositioningProfileChoice({
         >
           <span className="truncate">
             Start fresh
-            <span className="ml-1 text-[10px] font-normal text-white/30">(redo all)</span>
+            <span className="ml-1 text-[10px] font-normal text-white/30">(new interview)</span>
           </span>
         </GlassButton>
       </div>
+      <p className="mt-3 text-[11px] leading-relaxed text-white/45">
+        You can continue with the resume process either way. This choice only changes how the positioning interview starts.
+      </p>
     </GlassCard>
   );
 }
