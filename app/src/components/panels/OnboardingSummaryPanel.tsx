@@ -97,6 +97,31 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
           userDoesOverride="Confirm the resume snapshot looks right. If key roles or dates are missing, fix the source resume before moving on."
         />
 
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+              What To Do In This Panel
+            </span>
+            <span className="text-[11px] text-white/62">
+              Confirm the parsed resume snapshot looks accurate before moving deeper into benchmarking and drafting.
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
+              Info only: metrics, strengths, and parse warnings
+            </span>
+            <span className={`rounded-full border px-2 py-0.5 ${
+              parseWarnings.length > 0 || parseConfidence === 'low'
+                ? 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/85'
+                : 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/85'
+            }`}>
+              {parseWarnings.length > 0 || parseConfidence === 'low'
+                ? 'Action: review the source resume if anything important is missing'
+                : 'Next step: proceed to research and benchmarking'}
+            </span>
+          </div>
+        </GlassCard>
+
         {(parseConfidence || parseWarnings.length > 0) && (
           <GlassCard className="p-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -123,7 +148,14 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
         )}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+              Info only
+            </span>
+            <span className="text-[11px] text-white/55">Parsed snapshot metrics from the uploaded resume</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {cards.map(({ label, value, icon: Icon }, i) => {
             if (value == null) return null;
             return (
@@ -138,6 +170,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
               </GlassCard>
             );
           })}
+          </div>
         </div>
 
         {/* Strengths */}

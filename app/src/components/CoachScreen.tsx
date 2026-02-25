@@ -1314,11 +1314,13 @@ export function CoachScreen({
     </div>
   );
 
-  const pipelineActivityStageElapsed = formatDurationShort(pipelineActivity?.stage_started_at, runtimeClockMs);
-  const pipelineActivityLastProgress = formatRelativeShort(pipelineActivity?.last_progress_at, runtimeClockMs);
-  const pipelineActivityLastHeartbeat = formatRelativeShort(pipelineActivity?.last_heartbeat_at, runtimeClockMs);
-  const pipelineActivityBanner = isViewingLiveNode && pipelineActivity && (
-    (isProcessing || Boolean(isPipelineGateActive) || pipelineActivity.processing_state === 'reconnecting' || pipelineActivity.processing_state === 'stalled_suspected')
+  const effectivePipelineActivity = pipelineActivity ?? workflowSession.summary?.pipeline_activity_status ?? null;
+
+  const pipelineActivityStageElapsed = formatDurationShort(effectivePipelineActivity?.stage_started_at, runtimeClockMs);
+  const pipelineActivityLastProgress = formatRelativeShort(effectivePipelineActivity?.last_progress_at, runtimeClockMs);
+  const pipelineActivityLastHeartbeat = formatRelativeShort(effectivePipelineActivity?.last_heartbeat_at, runtimeClockMs);
+  const pipelineActivityBanner = isViewingLiveNode && effectivePipelineActivity && (
+    (isProcessing || Boolean(isPipelineGateActive) || effectivePipelineActivity.processing_state === 'reconnecting' || effectivePipelineActivity.processing_state === 'stalled_suspected')
       ? (
         <div className="mx-3 mt-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-xs text-white/84">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1326,20 +1328,20 @@ export function CoachScreen({
               Backend Activity
             </span>
             <span className="text-white/88">
-              {pipelineActivity.current_activity_message
+              {effectivePipelineActivity.current_activity_message
                 ?? (isPipelineGateActive ? 'Waiting for your input in the current step.' : 'Processing your resume workflow.')}
             </span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/55">
-            <span>State: {pipelineActivity.processing_state.replace(/_/g, ' ')}</span>
-            {pipelineActivity.stage && <span>Stage: {PHASE_LABELS[pipelineActivity.stage] ?? pipelineActivity.stage}</span>}
+            <span>State: {effectivePipelineActivity.processing_state.replace(/_/g, ' ')}</span>
+            {effectivePipelineActivity.stage && <span>Stage: {PHASE_LABELS[effectivePipelineActivity.stage] ?? effectivePipelineActivity.stage}</span>}
             {pipelineActivityStageElapsed && <span>Stage elapsed: {pipelineActivityStageElapsed}</span>}
             {pipelineActivityLastProgress && <span>Last progress: {pipelineActivityLastProgress}</span>}
             {pipelineActivityLastHeartbeat && <span>Heartbeat: {pipelineActivityLastHeartbeat}</span>}
           </div>
-          {pipelineActivity.expected_next_action && (
+          {effectivePipelineActivity.expected_next_action && (
             <div className="mt-1 text-[11px] text-white/62">
-              Next: {pipelineActivity.expected_next_action}
+              Next: {effectivePipelineActivity.expected_next_action}
             </div>
           )}
         </div>
@@ -1917,7 +1919,7 @@ export function CoachScreen({
         connected={connected}
         lastBackendActivityAt={lastBackendActivityAt}
         stalledSuspected={stalledSuspected}
-        pipelineActivity={pipelineActivity}
+        pipelineActivity={effectivePipelineActivity}
         onReconnectStream={onReconnectStream}
         onRefreshWorkflowState={refreshWorkflowState}
         isRefreshingWorkflowState={workflowSession.loadingSummary || workflowSession.loadingNode}
@@ -1942,7 +1944,7 @@ export function CoachScreen({
           isProcessing={isProcessing}
           isGateActive={Boolean(isPipelineGateActive)}
           stalledSuspected={Boolean(stalledSuspected)}
-          pipelineActivity={pipelineActivity}
+          pipelineActivity={effectivePipelineActivity}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}
@@ -1956,7 +1958,7 @@ export function CoachScreen({
           isProcessing={isProcessing}
           isGateActive={Boolean(isPipelineGateActive)}
           stalledSuspected={Boolean(stalledSuspected)}
-          pipelineActivity={pipelineActivity}
+          pipelineActivity={effectivePipelineActivity}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}

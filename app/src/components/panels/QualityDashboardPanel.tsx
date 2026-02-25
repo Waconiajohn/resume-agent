@@ -19,6 +19,11 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
     age_bias_risks,
     overall_assessment,
   } = data;
+  const highRiskCount = Array.isArray(risk_flags)
+    ? risk_flags.filter((rf) => rf?.severity === 'high').length
+    : 0;
+  const hasAgeRisks = Array.isArray(age_bias_risks) && age_bias_risks.length > 0;
+  const hasActionableRisks = highRiskCount > 0 || hasAgeRisks;
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -33,6 +38,31 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
           userDoesOverride="Use this as the final quality gate. Review any high-risk flags before exporting."
           nextOverride="If quality looks good, export and optionally save this as a reusable base resume."
         />
+
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+              What To Do In This Panel
+            </span>
+            <span className="text-[11px] text-white/62">
+              Check the final scores, then review any high-risk flags before exporting.
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
+              Info only: scores and assessment summaries
+            </span>
+            <span className={`rounded-full border px-2 py-0.5 ${
+              hasActionableRisks
+                ? 'border-amber-300/18 bg-amber-400/[0.06] text-amber-100/85'
+                : 'border-emerald-300/18 bg-emerald-400/[0.06] text-emerald-100/85'
+            }`}>
+              {hasActionableRisks
+                ? 'Action required: review risk sections before export'
+                : 'Next step: move to export'}
+            </span>
+          </div>
+        </GlassCard>
 
         {/* Score rings */}
         <GlassCard className="p-4">
@@ -125,6 +155,9 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {overall_assessment && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-2">
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+                Info only
+              </span>
               <ScanSearch className="h-3.5 w-3.5 text-[#afc4ff]" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Assessment
@@ -142,6 +175,13 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {risk_flags && risk_flags.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                highRiskCount > 0
+                  ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
+                  : 'border-white/[0.08] bg-white/[0.02] text-white/48'
+              }`}>
+                {highRiskCount > 0 ? 'Action required' : 'Review'}
+              </span>
               <Flag className="h-3.5 w-3.5 text-white/62" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Risk Flags
@@ -169,6 +209,9 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {age_bias_risks && age_bias_risks.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
+              <span className="rounded-full border border-amber-300/20 bg-amber-400/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-100/85">
+                Action required
+              </span>
               <AlertTriangle className="h-3.5 w-3.5 text-white/62" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Age-Bias Risks

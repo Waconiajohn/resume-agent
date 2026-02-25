@@ -201,6 +201,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     { data: questionResponseRows },
     { data: questionReuseSummaryRows },
     { data: draftReadinessRow },
+    { data: pipelineActivityStatusRow },
     { data: draftPathDecisionRow },
     { data: replanStatusRow },
     { data: sectionsBundleRow },
@@ -239,6 +240,15 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       .eq('session_id', sessionId)
       .eq('node_key', 'overview')
       .eq('artifact_type', 'draft_readiness')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'overview')
+      .eq('artifact_type', 'pipeline_activity_status')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -594,6 +604,43 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
         note: typeof payload.note === 'string' ? payload.note : undefined,
         version: typeof draftReadinessRow?.version === 'number' ? draftReadinessRow.version : null,
         created_at: draftReadinessRow?.created_at ?? null,
+      };
+    })(),
+    pipeline_activity_status: (() => {
+      const payload = asRecord(pipelineActivityStatusRow?.payload);
+      if (!payload) return null;
+      const processingState = typeof payload.processing_state === 'string' ? payload.processing_state : null;
+      const currentActivitySource = typeof payload.current_activity_source === 'string' ? payload.current_activity_source : null;
+      return {
+        processing_state:
+          processingState === 'processing'
+          || processingState === 'waiting_for_input'
+          || processingState === 'reconnecting'
+          || processingState === 'stalled_suspected'
+          || processingState === 'idle'
+          || processingState === 'complete'
+          || processingState === 'error'
+            ? processingState
+            : 'idle',
+        stage: typeof payload.stage === 'string' ? payload.stage : null,
+        stage_started_at: typeof payload.stage_started_at === 'string' ? payload.stage_started_at : null,
+        last_progress_at: typeof payload.last_progress_at === 'string' ? payload.last_progress_at : null,
+        last_heartbeat_at: typeof payload.last_heartbeat_at === 'string' ? payload.last_heartbeat_at : null,
+        last_backend_activity_at: typeof payload.last_backend_activity_at === 'string' ? payload.last_backend_activity_at : null,
+        current_activity_message: typeof payload.current_activity_message === 'string' ? payload.current_activity_message : null,
+        current_activity_source:
+          currentActivitySource === 'stage_start'
+          || currentActivitySource === 'stage_complete'
+          || currentActivitySource === 'transparency'
+          || currentActivitySource === 'gate'
+          || currentActivitySource === 'poll'
+          || currentActivitySource === 'restore'
+          || currentActivitySource === 'system'
+            ? currentActivitySource
+            : null,
+        expected_next_action: typeof payload.expected_next_action === 'string' ? payload.expected_next_action : null,
+        version: typeof pipelineActivityStatusRow?.version === 'number' ? pipelineActivityStatusRow.version : null,
+        created_at: pipelineActivityStatusRow?.created_at ?? null,
       };
     })(),
     draft_path_decision: (() => {

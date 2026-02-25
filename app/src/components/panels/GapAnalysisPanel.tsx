@@ -131,6 +131,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
   const { requirements, strong_count, partial_count, gap_count, total, addressed } = normalizeData(data as GapAnalysisData & Record<string, unknown>);
 
   const progressPct = total > 0 ? Math.round((addressed / total) * 100) : 0;
+  const hasOpenItems = partial_count > 0 || gap_count > 0;
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -144,6 +145,31 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
           tone="review"
           userDoesOverride="Use this as a reality check. Strong means covered well, Partial means usable but thin, Gap means we still need stronger evidence or a strategy."
         />
+
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+              What To Do In This Panel
+            </span>
+            <span className="text-[11px] text-white/62">
+              Review the classifications below. If anything looks wrong or incomplete, answer the follow-up questions when they appear.
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
+              Info only: this panel is a gap map summary
+            </span>
+            <span className={`rounded-full border px-2 py-0.5 ${
+              hasOpenItems
+                ? 'border-amber-300/18 bg-amber-400/[0.06] text-amber-100/85'
+                : 'border-emerald-300/18 bg-emerald-400/[0.06] text-emerald-100/85'
+            }`}>
+              {hasOpenItems
+                ? 'Action later: fill evidence gaps in the next questions'
+                : 'Next step: move to blueprint and section writing'}
+            </span>
+          </div>
+        </GlassCard>
 
         {/* Progress bar */}
         <GlassCard className="p-4">
@@ -197,14 +223,24 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         </div>
 
         <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-white/58">
-          If something is misclassified, answer the follow-up questions when they appear. Those answers update the gap map before writing.
+          Info only: this map updates as the system collects more evidence. If something is misclassified, fix it by answering the follow-up questions (not by editing this list directly).
         </div>
 
         {/* Requirement list */}
-        <div className="space-y-2">
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+              Info only
+            </span>
+            <span className="text-[11px] text-white/56">
+              Requirement-by-requirement evidence and strategy summary
+            </span>
+          </div>
+          <div className="space-y-2">
           {requirements.map((req, i) => (
             <RequirementRow key={`req-${req.requirement.slice(0, 40)}-${i}`} item={req} />
           ))}
+          </div>
         </div>
       </div>
     </div>

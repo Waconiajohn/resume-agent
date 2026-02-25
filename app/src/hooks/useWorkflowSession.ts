@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PanelData, PanelType } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
-import type { PositioningQuestion, CategoryProgress } from '@/types/session';
-import type { WorkflowReplanUpdate } from '@/types/session';
+import type { PositioningQuestion, CategoryProgress, PipelineActivitySnapshot, WorkflowReplanUpdate } from '@/types/session';
 import type {
   WorkflowNodeKey,
   WorkflowNodeStatus,
@@ -135,6 +134,10 @@ interface WorkflowSummaryResponse {
     version: number | null;
     created_at: string | null;
   } | null;
+  pipeline_activity_status: (PipelineActivitySnapshot & {
+    version: number | null;
+    created_at: string | null;
+  }) | null;
   draft_path_decision: {
     stage: 'gap_analysis';
     workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';

@@ -527,6 +527,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'session_restore': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  const pipelineRunning = data.pipeline_status === 'running';
+                  const pendingGate = typeof data.pending_gate === 'string' ? data.pending_gate : null;
                   if (data.pipeline_stage && typeof data.pipeline_stage === 'string') {
                     setPipelineStage(data.pipeline_stage as PipelineStage);
                     setCurrentPhase(data.pipeline_stage as string);
@@ -557,20 +559,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     if (data.last_panel_type === 'completion' && panelPayload.resume) {
                       setResume(panelPayload.resume as FinalResume);
                     }
-                    // Restore gate-active state for interactive panels, but only if
-                    // the pipeline is actually running (not completed/errored).
-                    // After server restart, runningPipelines is empty and the gate
-                    // may already be resolved server-side.
-                    const gateTypes = ['questionnaire', 'section_review', 'blueprint_review', 'positioning_interview'];
-                    const pipelineRunning = data.pipeline_status === 'running';
-                    setIsPipelineGateActive(
-                      pipelineRunning && gateTypes.includes(data.last_panel_type as string),
-                    );
                   }
-                  const pipelineRunning = data.pipeline_status === 'running';
-                  const pendingGate = typeof data.pending_gate === 'string' ? data.pending_gate : null;
                   // Restore processing state as best-effort until SSE or the status poll confirms the latest state.
-                  setIsPipelineGateActive((prev) => prev || Boolean(pipelineRunning && pendingGate));
+                  setIsPipelineGateActive(Boolean(pipelineRunning && pendingGate));
                   setIsProcessing(Boolean(pipelineRunning && !pendingGate));
                   patchPipelineActivityMeta({
                     stage:
@@ -598,6 +589,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                       phaseSummary: 'Phase complete (restored after reconnect)',
                       nextPhasePreview: '',
                     });
+                  } else {
+                    setPhaseGate(null);
                   }
                   break;
                 }
@@ -1015,6 +1008,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'positioning_profile_found': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  setIsPipelineGateActive(true);
                   markPipelineProgress(
                     'A saved positioning profile is available. Choose whether to use it, update it, or start fresh.',
                     'gate',
@@ -1679,9 +1673,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
             setPipelineStage(data.pipeline_stage as PipelineStage);
             setCurrentPhase(data.pipeline_stage);
           }
-          if (data.pending_gate) {
-            setIsPipelineGateActive(true);
-          }
+          setIsPipelineGateActive(Boolean(data.pending_gate));
+          setIsProcessing(!Boolean(data.pending_gate));
           setPipelineActivityMeta((prev) => ({
             ...prev,
             stage: (data.pipeline_stage as PipelineStage | null) ?? prev.stage,

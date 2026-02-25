@@ -117,9 +117,35 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
           nextOverride="Section drafts will be written and reviewed next."
         />
 
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+              What To Do In This Panel
+            </span>
+            <span className="text-[11px] text-white/62">
+              Review the strategy and layout. Approve if it matches the target role before section writing starts.
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
+              Info only: target role, layout, age-protection checks
+            </span>
+            <span className={`rounded-full border px-2 py-0.5 ${
+              onApprove
+                ? 'border-emerald-300/18 bg-emerald-400/[0.06] text-emerald-100/85'
+                : 'border-white/[0.08] bg-white/[0.02] text-white/55'
+            }`}>
+              {onApprove ? 'Action required: approve blueprint to continue' : 'This run will continue automatically in this mode'}
+            </span>
+          </div>
+        </GlassCard>
+
         {/* Target Role & Positioning Angle */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+              Info only
+            </span>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
               Target
             </span>
@@ -138,6 +164,9 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {section_plan?.order?.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+                Info only
+              </span>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                 Section Layout
               </span>
@@ -167,6 +196,9 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {hasAgeFlags ? (
           <GlassCard className="p-4 border-white/[0.14]">
             <div className="flex items-center gap-2 mb-3">
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+                Info only
+              </span>
               <AlertTriangle className="h-3.5 w-3.5 text-white/62" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Age Protection
@@ -194,6 +226,9 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         ) : (
           <GlassCard className="p-3 border-white/[0.14]">
             <div className="flex items-center gap-2">
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+                Info only
+              </span>
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
               <span className="text-xs font-medium text-white/76">No age signals detected</span>
             </div>
@@ -202,6 +237,11 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
 
         {/* Approve Button */}
         <div className="pt-1 pb-2">
+          {!onApprove && (
+            <div className="mb-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56">
+              This blueprint is shown for transparency. In your current mode, the pipeline may continue automatically without a manual approval step.
+            </div>
+          )}
           <GlassButton
             variant="primary"
             className="w-full"

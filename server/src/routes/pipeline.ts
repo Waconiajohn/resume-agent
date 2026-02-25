@@ -1242,8 +1242,133 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     context: ReturnType<typeof sanitizeSectionContext>;
   } | null = null;
 
+  const persistPipelineActivityStatusBestEffort = (event: PipelineSSEEvent) => {
+    const nowIso = new Date().toISOString();
+    let payload: Record<string, unknown> | null = null;
+
+    if (event.type === 'stage_start') {
+      payload = {
+        processing_state: 'processing',
+        stage: event.stage,
+        stage_started_at: nowIso,
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: event.message,
+        current_activity_source: 'stage_start',
+        expected_next_action: 'Wait for the next backend update or a review/question step',
+      };
+    } else if (event.type === 'stage_complete') {
+      payload = {
+        processing_state: 'idle',
+        stage: event.stage,
+        stage_started_at: null,
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: event.message,
+        current_activity_source: 'stage_complete',
+        expected_next_action: 'Wait for the next workflow step or required action',
+      };
+    } else if (event.type === 'transparency') {
+      payload = {
+        processing_state: 'processing',
+        stage: event.stage,
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: event.message,
+        current_activity_source: 'transparency',
+      };
+    } else if (event.type === 'positioning_question') {
+      payload = {
+        processing_state: 'waiting_for_input',
+        stage: 'positioning',
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: 'Step 3 question is ready. Waiting for your answer.',
+        current_activity_source: 'gate',
+        expected_next_action: 'Answer the Why Me question in the workspace',
+      };
+    } else if (event.type === 'questionnaire') {
+      payload = {
+        processing_state: 'waiting_for_input',
+        stage: typeof event.stage === 'string' ? event.stage : null,
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: typeof event.title === 'string' ? `${event.title} is ready for your input.` : 'A questionnaire is ready for your input.',
+        current_activity_source: 'gate',
+        expected_next_action: 'Complete the questionnaire in the workspace',
+      };
+    } else if (event.type === 'blueprint_ready') {
+      payload = {
+        processing_state: 'waiting_for_input',
+        stage: 'architect_review',
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: 'Step 5 blueprint is ready for review.',
+        current_activity_source: 'gate',
+        expected_next_action: 'Review and approve the blueprint in the workspace',
+      };
+    } else if (event.type === 'section_draft') {
+      payload = {
+        processing_state: 'waiting_for_input',
+        stage: 'section_review',
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: `Section draft ready: ${event.section}`,
+        current_activity_source: 'gate',
+        expected_next_action: 'Review the section draft in Step 6',
+      };
+    } else if (event.type === 'pipeline_complete') {
+      payload = {
+        processing_state: 'complete',
+        stage: 'complete',
+        stage_started_at: null,
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: 'Resume pipeline complete. Final resume and export checks are ready.',
+        current_activity_source: 'stage_complete',
+        expected_next_action: 'Review Step 7 results and export your resume',
+      };
+    } else if (event.type === 'pipeline_error') {
+      payload = {
+        processing_state: 'error',
+        stage: event.stage,
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: `Pipeline error: ${event.error}`,
+        current_activity_source: 'system',
+        expected_next_action: 'Refresh state or restart the pipeline',
+      };
+    } else if (
+      event.type === 'workflow_replan_requested'
+      || event.type === 'workflow_replan_started'
+      || event.type === 'workflow_replan_completed'
+    ) {
+      payload = {
+        processing_state: event.type === 'workflow_replan_completed' ? 'idle' : 'processing',
+        stage: event.current_stage,
+        last_progress_at: nowIso,
+        last_backend_activity_at: nowIso,
+        current_activity_message: event.message
+          ?? (event.type === 'workflow_replan_requested'
+            ? 'Benchmark assumptions changed. The pipeline will replan downstream work.'
+            : event.type === 'workflow_replan_started'
+              ? 'Applying benchmark updates and rebuilding downstream work.'
+              : 'Benchmark replan completed for the current run.'),
+        current_activity_source: 'system',
+        expected_next_action: event.type === 'workflow_replan_requested' && event.requires_restart
+          ? 'Restart and rebuild from the workspace banner'
+          : null,
+      };
+    }
+
+    if (payload) {
+      persistWorkflowArtifactBestEffort(session_id, 'overview', 'pipeline_activity_status', payload, 'system');
+    }
+  };
+
   // Create emit function that bridges to SSE
   const emit = (event: PipelineSSEEvent) => {
+    persistPipelineActivityStatusBestEffort(event);
     if (event.type === 'stage_start') {
       upsertWorkflowNodeStatusBestEffort(session_id, workflowNodeFromStage(event.stage), 'in_progress', {
         stage: event.stage,

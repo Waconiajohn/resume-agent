@@ -54,6 +54,7 @@ export function CompletionPanel({
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const validationIssues = validateResumeForExport(resume);
   const blockingIssue = validationIssues.find((i) => i.severity === 'error');
+  const hasWarnings = validationIssues.some((i) => i.severity === 'warning') || Boolean(data.export_validation && !data.export_validation.passed);
 
   const handleResumeDocx = async () => {
     if (!resume) return;
@@ -159,6 +160,35 @@ export function CompletionPanel({
           nextOverride="Use this version for this job, or save it as a stronger reusable starting point."
         />
 
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+              What To Do Now
+            </span>
+            <span className="text-[11px] text-white/62">
+              Export the tailored resume for this job. Saving as a base resume is optional and helps future sessions start faster.
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <span className={`rounded-full border px-2 py-0.5 ${
+              blockingIssue
+                ? 'border-red-300/20 bg-red-400/[0.07] text-red-100/90'
+                : hasWarnings
+                  ? 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/85'
+                  : 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/85'
+            }`}>
+              {blockingIssue
+                ? 'Action required: fix blocking export issues first'
+                : hasWarnings
+                  ? 'Recommended: review warnings before exporting'
+                  : 'Ready to export'}
+            </span>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
+              Optional: save this version as a future base resume
+            </span>
+          </div>
+        </GlassCard>
+
         {/* Export error banner */}
         {exportError && (
           <div className={`rounded-lg border px-3 py-2 text-xs ${toneClass('error')}`}>
@@ -222,6 +252,9 @@ export function CompletionPanel({
         {/* Resume Export */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
+            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-sky-100/85">
+              Action
+            </span>
             <FileText className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-sm font-medium text-white/85">Tailored Resume</h3>
           </div>
@@ -256,9 +289,15 @@ export function CompletionPanel({
         {resume && onSaveCurrentResumeAsBase && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+                Optional
+              </span>
               <Save className="h-4 w-4 text-[#a8d7b8]" />
               <h3 className="text-sm font-medium text-white/85">Save As Base Resume</h3>
             </div>
+            <p className="mb-3 text-xs text-white/55">
+              Use this if you want future sessions to start from this improved resume instead of your original base.
+            </p>
             <div className="space-y-2">
               <GlassButton
                 variant="primary"
@@ -292,6 +331,9 @@ export function CompletionPanel({
 
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
+              Optional
+            </span>
             <FileText className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-sm font-medium text-white/85">Positioning Summary</h3>
           </div>
