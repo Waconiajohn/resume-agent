@@ -170,8 +170,8 @@ export function WorkspaceShell({
 
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-[270px] shrink-0 border-r border-white/[0.08] bg-white/[0.015] lg:block">
-          <div className="flex h-full flex-col gap-3 p-3">
-            <GlassCard className="p-3">
+          <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
+            <GlassCard className="min-h-0 shrink-0 p-3">
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
                 Workflow
               </div>

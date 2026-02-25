@@ -1684,7 +1684,7 @@ export function CoachScreen({
             />
           )}
 
-          <GlassCard className="min-h-0 flex-1 overflow-hidden">
+          <GlassCard className="min-h-0 flex-1 overflow-y-auto">
             {displayPanelData ? (
               <SafePanelContent
                 panelType={displayPanelType}

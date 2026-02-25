@@ -1196,6 +1196,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   break;
                 }
 
+                case 'draft_path_decision':
+                case 'questionnaire_reuse_summary':
+                  // Handled via workflow REST API, not SSE — ignore silently.
+                  break;
+
                 default: {
                   console.warn('[useAgent] Unknown SSE event:', msg.event);
                   break;
