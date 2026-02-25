@@ -75,6 +75,19 @@ export default function App() {
   const [intakeLoading, setIntakeLoading] = useState(false);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
+  const hasLiveWorkspaceState = Boolean(
+    currentSession
+    && (
+      messages.length > 0
+      || panelType
+      || panelData
+      || resume
+      || isProcessing
+      || isPipelineGateActive
+      || (pipelineStage && pipelineStage !== 'intake')
+      || (currentPhase && currentPhase !== 'onboarding')
+    ),
+  );
 
   const handleNewSession = useCallback(async () => {
     setView('intake');
@@ -315,7 +328,7 @@ export default function App() {
         />
       )}
 
-      {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && (
+      {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && !hasLiveWorkspaceState && (
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
@@ -324,7 +337,7 @@ export default function App() {
         </div>
       )}
 
-      {view === 'coach' && (connected || sessionComplete || agentError || sessionError) && (
+      {view === 'coach' && (connected || hasLiveWorkspaceState || sessionComplete || agentError || sessionError) && (
         <CoachScreen
           sessionId={currentSession?.id ?? null}
           accessToken={accessToken}

@@ -212,6 +212,14 @@ export function ChatPanel({
         <span className="rounded-full border border-white/[0.12] bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-white/78">
           {PHASE_LABELS[currentPhase] ?? currentPhase}
         </span>
+        {pipelinePhaseActive && (
+          <span
+            className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2 py-0.5 text-[10px] text-white/55"
+            title="During an active resume pipeline run, this chat is grounded to verified workflow state and safe next-step guidance."
+          >
+            Grounded workflow help
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <span className={`rounded-full border px-2 py-0.5 text-[10px] ${statusToneClass}`}>
             {statusLabel}
@@ -270,6 +278,11 @@ export function ChatPanel({
           {pipelineActivity?.expected_next_action && (
             <div className="mt-1 text-[10px] text-white/52">
               Next: {pipelineActivity.expected_next_action}
+            </div>
+          )}
+          {isPipelineGateActive && (
+            <div className="mt-1 text-[10px] text-white/46">
+              Action is taken in the center workspace. Use this chat for clarification or status questions.
             </div>
           )}
         </div>
