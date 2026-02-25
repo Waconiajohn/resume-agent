@@ -5,6 +5,7 @@ import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { WorkflowStatsRail } from './WorkflowStatsRail';
 import { GlassCard } from './GlassCard';
 import { GlassButton } from './GlassButton';
+import { GlassInput } from './GlassInput';
 import { ResumePanel } from './ResumePanel';
 import { SafePanelContent } from './panels/panel-renderer';
 import { runPanelPayloadSmokeChecks } from './panels/panel-smoke';
@@ -109,6 +110,12 @@ function persistSnapshotMap(sessionId: string, map: SnapshotMap) {
 
 function nodeTitle(nodeKey: WorkflowNodeKey): string {
   return WORKFLOW_NODES.find((node) => node.key === nodeKey)?.label ?? 'Workspace';
+}
+
+function defaultEvidenceTargetForMode(mode: 'fast_draft' | 'balanced' | 'deep_dive'): number {
+  if (mode === 'fast_draft') return 5;
+  if (mode === 'deep_dive') return 12;
+  return 8;
 }
 
 function getSectionsBundleNavDetail(snapshot: WorkspaceNodeSnapshot | undefined): string | null {
@@ -473,6 +480,7 @@ export function CoachScreen({
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const [isRestartingPipeline, setIsRestartingPipeline] = useState(false);
+  const [evidenceTargetDraft, setEvidenceTargetDraft] = useState<number>(8);
   const [localSnapshots, setLocalSnapshots] = useState<SnapshotMap>({});
   const prevPanelDataRef = useRef<PanelData | null>(null);
 
@@ -771,6 +779,112 @@ export function CoachScreen({
   );
 
   const draftReadiness = liveDraftReadiness ?? workflowSession.summary?.draft_readiness ?? null;
+  const workflowPreferences = workflowSession.summary?.workflow_preferences ?? null;
+  const activeWorkflowMode =
+    workflowPreferences?.workflow_mode
+    ?? draftReadiness?.workflow_mode
+    ?? 'balanced';
+  const activeMinimumEvidenceTarget =
+    (typeof workflowPreferences?.minimum_evidence_target === 'number'
+      ? workflowPreferences.minimum_evidence_target
+      : (typeof draftReadiness?.minimum_evidence_target === 'number'
+          ? draftReadiness.minimum_evidence_target
+          : defaultEvidenceTargetForMode(activeWorkflowMode)));
+
+  useEffect(() => {
+    setEvidenceTargetDraft(activeMinimumEvidenceTarget);
+  }, [activeMinimumEvidenceTarget, sessionId]);
+
+  const workflowPreferencesCard = (
+    <div className="mb-2 px-1">
+      <GlassCard className="px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+            Run Settings
+          </span>
+          <span className="text-[11px] text-white/55">
+            Changes apply at the next safe checkpoint
+          </span>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ['fast_draft', 'Fast Draft'],
+              ['balanced', 'Balanced'],
+              ['deep_dive', 'Deep Dive'],
+            ] as const).map(([modeKey, label]) => (
+              <GlassButton
+                key={modeKey}
+                variant={activeWorkflowMode === modeKey ? 'primary' : 'ghost'}
+                className="h-8 px-3 text-[11px]"
+                disabled={workflowSession.isUpdatingWorkflowPreferences}
+                onClick={async () => {
+                  if (activeWorkflowMode === modeKey) return;
+                  await workflowSession.updateWorkflowPreferences({ workflow_mode: modeKey });
+                }}
+              >
+                {label}
+              </GlassButton>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-white/60 whitespace-nowrap">Min evidence</span>
+            <GlassInput
+              type="number"
+              min={3}
+              max={20}
+              value={evidenceTargetDraft}
+              onChange={(e) => {
+                const next = Number.parseInt(e.target.value || '', 10);
+                if (Number.isFinite(next)) {
+                  setEvidenceTargetDraft(Math.min(20, Math.max(3, next)));
+                } else {
+                  setEvidenceTargetDraft(3);
+                }
+              }}
+              className="h-8 w-20 rounded-lg px-2.5 py-1 text-xs"
+            />
+            <GlassButton
+              variant="ghost"
+              className="h-8 px-3 text-[11px]"
+              loading={workflowSession.isUpdatingWorkflowPreferences}
+              disabled={workflowSession.isUpdatingWorkflowPreferences || evidenceTargetDraft === activeMinimumEvidenceTarget}
+              onClick={async () => {
+                await workflowSession.updateWorkflowPreferences({
+                  minimum_evidence_target: evidenceTargetDraft,
+                });
+              }}
+            >
+              Apply
+            </GlassButton>
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {[5, 8, 12].map((target) => (
+            <GlassButton
+              key={target}
+              variant={activeMinimumEvidenceTarget === target ? 'primary' : 'ghost'}
+              className="h-7 px-2.5 text-[10px]"
+              disabled={workflowSession.isUpdatingWorkflowPreferences}
+              onClick={async () => {
+                setEvidenceTargetDraft(target);
+                if (activeMinimumEvidenceTarget !== target) {
+                  await workflowSession.updateWorkflowPreferences({ minimum_evidence_target: target });
+                }
+              }}
+            >
+              {target}
+            </GlassButton>
+          ))}
+          {workflowPreferences?.source && (
+            <span className="ml-1 text-[10px] text-white/40">
+              Source: {workflowPreferences.source === 'workflow_preferences' ? 'updated in workspace' : workflowPreferences.source.replace(/_/g, ' ')}
+            </span>
+          )}
+        </div>
+      </GlassCard>
+    </div>
+  );
 
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
@@ -826,6 +940,8 @@ export function CoachScreen({
               </GlassCard>
             </div>
           )}
+
+          {workflowPreferencesCard}
 
           {selectedNode === 'benchmark' && (
             <BenchmarkInspectorCard

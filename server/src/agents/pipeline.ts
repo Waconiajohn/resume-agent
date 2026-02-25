@@ -357,6 +357,70 @@ function normalizeSeniorityLevel(value: unknown): JDAnalysis['seniority_level'] 
   return null;
 }
 
+function normalizeWorkflowMode(value: unknown): WorkflowMode | null {
+  if (value === 'fast_draft' || value === 'balanced' || value === 'deep_dive') return value;
+  return null;
+}
+
+async function applyLatestWorkflowPreferencesIfNeeded(
+  state: PipelineState,
+  emit: PipelineEmitter,
+  log: ReturnType<typeof createSessionLogger>,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('session_workflow_artifacts')
+    .select('version, payload, created_at')
+    .eq('session_id', state.session_id)
+    .eq('node_key', 'overview')
+    .eq('artifact_type', 'workflow_preferences')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return false;
+
+  const version = Number(data.version ?? 0);
+  if (!Number.isFinite(version) || version <= (state.workflow_preferences_version ?? 0)) {
+    return false;
+  }
+
+  const payload = asObjectRecord(data.payload);
+  const nextMode = normalizeWorkflowMode(payload?.workflow_mode);
+  const payloadMinimumEvidenceTarget = payload?.minimum_evidence_target;
+  const rawTarget = typeof payloadMinimumEvidenceTarget === 'number'
+    ? Math.min(20, Math.max(3, Math.round(payloadMinimumEvidenceTarget)))
+    : null;
+
+  const prevMode = state.user_preferences?.workflow_mode;
+  const prevTarget = typeof state.user_preferences?.minimum_evidence_target === 'number'
+    ? state.user_preferences.minimum_evidence_target
+    : null;
+
+  state.user_preferences = {
+    ...state.user_preferences,
+    ...(nextMode ? { workflow_mode: nextMode } : {}),
+    ...(rawTarget != null ? { minimum_evidence_target: rawTarget } : {}),
+  };
+  state.workflow_preferences_version = version;
+
+  const modeChanged = nextMode != null && nextMode !== prevMode;
+  const targetChanged = rawTarget != null && rawTarget !== prevTarget;
+  if (!modeChanged && !targetChanged) {
+    return false;
+  }
+
+  const changedParts = [
+    ...(modeChanged ? [`mode=${nextMode}`] : []),
+    ...(targetChanged ? [`minimum evidence=${rawTarget}`] : []),
+  ];
+  emit({
+    type: 'transparency',
+    stage: state.current_stage,
+    message: `Applied updated workflow preferences (${changedParts.join(', ')}). New settings will affect the remaining run at safe checkpoints.`,
+  });
+  log.info({ workflow_preferences_version: version, mode: nextMode, minimum_evidence_target: rawTarget }, 'Applied workflow preferences to current pipeline state');
+  return true;
+}
+
 async function applyLatestBenchmarkAssumptionsIfNeeded(
   state: PipelineState,
   emit: PipelineEmitter,
@@ -513,7 +577,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     workflow_mode: config.workflow_mode,
     minimum_evidence_target: config.minimum_evidence_target,
   };
-  const workflowModePolicy = getWorkflowModePolicy(config.workflow_mode);
+  let workflowModePolicy = getWorkflowModePolicy(state.user_preferences.workflow_mode);
+  const refreshWorkflowModePolicy = async () => {
+    if (await applyLatestWorkflowPreferencesIfNeeded(state, emit, log)) {
+      workflowModePolicy = getWorkflowModePolicy(state.user_preferences?.workflow_mode);
+      return true;
+    }
+    return false;
+  };
   let researchAbort: AbortController | undefined;
   const stageTimingsMs: StageTimingMap = {};
   const stageStart = new Map<PipelineStage, number>();
@@ -644,6 +715,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     // ─── Stage 4: Gap Analysis ───────────────────────────────────
+    await refreshWorkflowModePolicy();
     await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
     emit({ type: 'stage_start', stage: 'gap_analysis', message: 'Analyzing requirement gaps...' });
     state.current_stage = 'gap_analysis';
@@ -680,12 +752,13 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     log.info({ coverage: state.gap_analysis.coverage_score, gaps: state.gap_analysis.critical_gaps.length }, 'Gap analysis complete');
 
+    await refreshWorkflowModePolicy();
     const draftReadinessBeforeGapQuiz = emitDraftReadinessUpdate(
       emit,
       state,
       workflowModePolicy,
       'gap_analysis',
-      config.workflow_mode,
+      state.user_preferences?.workflow_mode,
       'Initial draft readiness after gap analysis.',
     );
     emit({
@@ -731,13 +804,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       : null;
 
     if (gapSubmission && gapQuizQuestions.length > 0) {
+      await refreshWorkflowModePolicy();
       state.gap_analysis = enrichGapAnalysis(state.gap_analysis, gapSubmission.responses, gapQuizQuestions);
       const draftReadinessAfterGapQuiz = emitDraftReadinessUpdate(
         emit,
         state,
         workflowModePolicy,
         'gap_analysis',
-        config.workflow_mode,
+        state.user_preferences?.workflow_mode,
         'Updated draft readiness after gap question responses.',
       );
       // Re-emit the updated gap panel
@@ -826,6 +900,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     // ─── Stage 5: Resume Architect ───────────────────────────────
+    await refreshWorkflowModePolicy();
     emit({ type: 'stage_start', stage: 'architect', message: 'Designing resume strategy...' });
     state.current_stage = 'architect';
     markStageStart('architect');
@@ -942,6 +1017,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     log.info('Blueprint approved by user');
 
     // ─── Stage 6: Section Writing ────────────────────────────────
+    await refreshWorkflowModePolicy();
     emit({ type: 'stage_start', stage: 'section_writing', message: 'Writing resume sections...' });
     state.current_stage = 'section_writing';
     markStageStart('section_writing');
@@ -956,7 +1032,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       emit({
         type: 'transparency',
         stage: 'section_review',
-        message: `${config.workflow_mode === 'fast_draft' ? 'Fast Draft' : 'Balanced'} mode will review ${reviewList.length} high-impact section${reviewList.length === 1 ? '' : 's'} (${reviewList.map((s) => s.replace(/_/g, ' ')).join(', ') || 'core sections'}) and auto-approve the rest. You can still revise any section later in the workspace.`,
+        message: `${state.user_preferences?.workflow_mode === 'fast_draft' ? 'Fast Draft' : 'Balanced'} mode will review ${reviewList.length} high-impact section${reviewList.length === 1 ? '' : 's'} (${reviewList.map((s) => s.replace(/_/g, ' ')).join(', ') || 'core sections'}) and auto-approve the rest. You can still revise any section later in the workspace.`,
       });
     }
 
@@ -1042,7 +1118,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
             ? `Bundle review approved the remaining high-impact sections. Auto-approving ${call.section.replace(/_/g, ' ')} and moving on.`
             : autoApproveReviewBundles.has(getSectionReviewBundleKey(call.section)) && reviewRequiredSections.has(call.section)
               ? `Current bundle approved. Auto-approving ${call.section.replace(/_/g, ' ')} and moving to the next review bundle.`
-            : `${config.workflow_mode === 'fast_draft' ? 'Fast Draft' : 'Balanced'} mode auto-approved ${call.section.replace(/_/g, ' ')} to keep momentum. You can still revise it later in the workspace.`,
+            : `${state.user_preferences?.workflow_mode === 'fast_draft' ? 'Fast Draft' : 'Balanced'} mode auto-approved ${call.section.replace(/_/g, ' ')} to keep momentum. You can still revise it later in the workspace.`,
         });
         emit({ type: 'section_draft', section: call.section, content: result.content });
         emit({ type: 'section_approved', section: call.section });
@@ -1335,6 +1411,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     }
 
     // ─── Stage 7: Quality Review ─────────────────────────────────
+    await refreshWorkflowModePolicy();
     emit({ type: 'stage_start', stage: 'quality_review', message: 'Running quality review...' });
     state.current_stage = 'quality_review';
     markStageStart('quality_review');
@@ -1890,15 +1967,27 @@ async function runPositioningStage(
   }
 
   // Generate JD-informed questions (async, LLM-powered when research is available)
+  await applyLatestWorkflowPreferencesIfNeeded(state, emit, log);
   const questions = await generateQuestions(state.intake!, state.research ?? undefined, state.user_preferences);
   const answers: Array<{ question_id: string; answer: string; selected_suggestion?: string }> = [];
-  const workflowMode = state.user_preferences?.workflow_mode;
-  const positioningBudget = getPositioningQuestionBudget(workflowMode);
-  const workflowModePolicy = getWorkflowModePolicy(workflowMode);
-  const minimumEvidenceTarget = getMinimumEvidenceTarget(state, workflowModePolicy);
-  const effectiveMaxQuestions = Number.isFinite(positioningBudget.maxQuestions)
+  let workflowMode = state.user_preferences?.workflow_mode;
+  let positioningBudget = getPositioningQuestionBudget(workflowMode);
+  let workflowModePolicy = getWorkflowModePolicy(workflowMode);
+  let minimumEvidenceTarget = getMinimumEvidenceTarget(state, workflowModePolicy);
+  let effectiveMaxQuestions = Number.isFinite(positioningBudget.maxQuestions)
     ? Math.max(positioningBudget.maxQuestions, minimumEvidenceTarget)
     : positioningBudget.maxQuestions;
+  const refreshPositioningPreferences = async () => {
+    if (!(await applyLatestWorkflowPreferencesIfNeeded(state, emit, log))) return false;
+    workflowMode = state.user_preferences?.workflow_mode;
+    positioningBudget = getPositioningQuestionBudget(workflowMode);
+    workflowModePolicy = getWorkflowModePolicy(workflowMode);
+    minimumEvidenceTarget = getMinimumEvidenceTarget(state, workflowModePolicy);
+    effectiveMaxQuestions = Number.isFinite(positioningBudget.maxQuestions)
+      ? Math.max(positioningBudget.maxQuestions, minimumEvidenceTarget)
+      : positioningBudget.maxQuestions;
+    return true;
+  };
 
   // Build category progress tracking
   const categoryLabels: Record<string, string> = {
@@ -1956,6 +2045,7 @@ async function runPositioningStage(
 
     let batchNumber = 0;
     for (let start = 0; start < questionPool.length; start += workflowModePolicy.positioning.batchSize) {
+      await refreshPositioningPreferences();
       if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
         emit({
           type: 'transparency',
@@ -2029,6 +2119,7 @@ async function runPositioningStage(
     let previousEncouragingText: string | undefined;
     let followUpCount = 0;
     for (const question of questions) {
+      await refreshPositioningPreferences();
       if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
         emit({
           type: 'transparency',

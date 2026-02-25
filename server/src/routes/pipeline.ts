@@ -1145,6 +1145,12 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     seniority_delta: seniority_delta ?? null,
     requested_at: new Date().toISOString(),
   }, 'system');
+  persistWorkflowArtifactBestEffort(session_id, 'overview', 'workflow_preferences', {
+    workflow_mode: workflow_mode ?? 'balanced',
+    minimum_evidence_target: minimum_evidence_target ?? null,
+    source: 'pipeline_start',
+    updated_at: new Date().toISOString(),
+  }, 'system');
 
   // Capture the most recently emitted section_context to merge into section_draft persistence.
   let latestSectionContext: {

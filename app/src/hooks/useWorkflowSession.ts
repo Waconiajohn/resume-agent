@@ -37,6 +37,13 @@ interface WorkflowSummaryResponse {
     version: number;
     created_at: string;
   }>;
+  workflow_preferences: {
+    workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target: number | null;
+    source: 'workflow_preferences' | 'pipeline_start_request' | 'default';
+    version: number | null;
+    created_at: string | null;
+  };
   replan: {
     pending: boolean;
     reason: 'benchmark_assumptions_updated';
@@ -112,6 +119,7 @@ interface UseWorkflowSessionResult {
   actionError: string | null;
   actionRequiresRestart: boolean;
   isSavingBenchmarkAssumptions: boolean;
+  isUpdatingWorkflowPreferences: boolean;
   isGenerateDraftNowPending: boolean;
   isRestartPipelinePending: boolean;
   refreshSummary: () => Promise<void>;
@@ -120,6 +128,10 @@ interface UseWorkflowSessionResult {
     assumptions: Record<string, unknown>,
     note?: string,
   ) => Promise<{ success: boolean; message: string; requiresRestart?: boolean }>;
+  updateWorkflowPreferences: (payload: {
+    workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target?: number;
+  }) => Promise<{ success: boolean; message: string }>;
   generateDraftNow: () => Promise<{ success: boolean; message: string }>;
   restartPipeline: () => Promise<{ success: boolean; message: string }>;
   clearActionMessage: () => void;
@@ -367,6 +379,7 @@ export function useWorkflowSession({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionRequiresRestart, setActionRequiresRestart] = useState(false);
   const [isSavingBenchmarkAssumptions, setIsSavingBenchmarkAssumptions] = useState(false);
+  const [isUpdatingWorkflowPreferences, setIsUpdatingWorkflowPreferences] = useState(false);
   const [isGenerateDraftNowPending, setIsGenerateDraftNowPending] = useState(false);
   const [isRestartPipelinePending, setIsRestartPipelinePending] = useState(false);
   const accessTokenRef = useRef<string | null>(accessToken);
@@ -606,6 +619,52 @@ export function useWorkflowSession({
     }
   }, [sessionId, refreshSummary]);
 
+  const updateWorkflowPreferences = useCallback(async (payload: {
+    workflow_mode?: 'fast_draft' | 'balanced' | 'deep_dive';
+    minimum_evidence_target?: number;
+  }) => {
+    if (!sessionId || !accessTokenRef.current) {
+      return { success: false, message: 'No active session.' };
+    }
+    setIsUpdatingWorkflowPreferences(true);
+    setActionError(null);
+    setActionMessage(null);
+    setActionRequiresRestart(false);
+    try {
+      const body: Record<string, unknown> = {};
+      if (payload.workflow_mode) body.workflow_mode = payload.workflow_mode;
+      if (typeof payload.minimum_evidence_target === 'number' && Number.isFinite(payload.minimum_evidence_target)) {
+        body.minimum_evidence_target = Math.min(20, Math.max(3, Math.round(payload.minimum_evidence_target)));
+      }
+      const res = await fetch(`${API_BASE}/workflow/${encodeURIComponent(sessionId)}/preferences`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...buildHeaders(accessTokenRef.current),
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string; message?: string; apply_mode?: string }));
+      if (!res.ok) {
+        const message = data.message ?? data.error ?? `Failed to update workflow preferences (${res.status})`;
+        setActionError(message);
+        return { success: false, message };
+      }
+      const message = (data as { apply_mode?: string }).apply_mode === 'next_safe_checkpoint'
+        ? 'Workflow preferences saved. The current run will apply them at the next safe checkpoint.'
+        : 'Workflow preferences saved.';
+      setActionMessage(message);
+      await refreshSummary();
+      return { success: true, message };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Network error updating workflow preferences';
+      setActionError(message);
+      return { success: false, message };
+    } finally {
+      setIsUpdatingWorkflowPreferences(false);
+    }
+  }, [sessionId, refreshSummary]);
+
   const restartPipeline = useCallback(async () => {
     if (!sessionId || !accessTokenRef.current) {
       return { success: false, message: 'No active session.' };
@@ -656,11 +715,13 @@ export function useWorkflowSession({
     actionError,
     actionRequiresRestart,
     isSavingBenchmarkAssumptions,
+    isUpdatingWorkflowPreferences,
     isGenerateDraftNowPending,
     isRestartPipelinePending,
     refreshSummary,
     refreshNode,
     saveBenchmarkAssumptions,
+    updateWorkflowPreferences,
     generateDraftNow,
     restartPipeline,
     clearActionMessage,

@@ -478,6 +478,7 @@ export interface PipelineState {
   positioning_profile_id?: string;    // if reusing saved profile
   positioning_reuse_mode?: 'reuse' | 'update' | 'fresh';
   benchmark_override_version?: number;
+  workflow_preferences_version?: number;
   revision_count: number;
   token_usage: {
     input_tokens: number;

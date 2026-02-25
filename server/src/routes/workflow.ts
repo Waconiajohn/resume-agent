@@ -195,7 +195,15 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
-  const [{ data: nodeRows }, { data: artifactRows }, { data: draftReadinessRow }, { data: replanStatusRow }, { data: sectionsBundleRow }] = await Promise.all([
+  const [
+    { data: nodeRows },
+    { data: artifactRows },
+    { data: draftReadinessRow },
+    { data: replanStatusRow },
+    { data: sectionsBundleRow },
+    { data: workflowPreferencesRow },
+    { data: pipelineStartRequestRow },
+  ] = await Promise.all([
     supabaseAdmin
       .from('session_workflow_nodes')
       .select('node_key, status, active_version, meta, updated_at')
@@ -231,6 +239,24 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       .eq('session_id', sessionId)
       .eq('node_key', 'sections')
       .eq('artifact_type', 'sections_bundle_review_status')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'overview')
+      .eq('artifact_type', 'workflow_preferences')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'overview')
+      .eq('artifact_type', 'pipeline_start_request')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -380,6 +406,33 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
           })),
         version: typeof sectionsBundleRow?.version === 'number' ? sectionsBundleRow.version : null,
         created_at: sectionsBundleRow?.created_at ?? null,
+      };
+    })(),
+    workflow_preferences: (() => {
+      const prefsPayload = asRecord(workflowPreferencesRow?.payload);
+      const startPayload = asRecord(pipelineStartRequestRow?.payload);
+      const workflowMode = (prefsPayload?.workflow_mode === 'fast_draft'
+        || prefsPayload?.workflow_mode === 'deep_dive'
+        || prefsPayload?.workflow_mode === 'balanced')
+        ? prefsPayload.workflow_mode
+        : (
+            startPayload?.workflow_mode === 'fast_draft'
+            || startPayload?.workflow_mode === 'deep_dive'
+            || startPayload?.workflow_mode === 'balanced'
+              ? startPayload.workflow_mode
+              : 'balanced'
+          );
+      const minimumEvidenceTarget = typeof prefsPayload?.minimum_evidence_target === 'number'
+        ? prefsPayload.minimum_evidence_target
+        : (typeof startPayload?.minimum_evidence_target === 'number'
+            ? startPayload.minimum_evidence_target
+            : null);
+      return {
+        workflow_mode: workflowMode,
+        minimum_evidence_target: minimumEvidenceTarget,
+        source: prefsPayload ? 'workflow_preferences' : (startPayload ? 'pipeline_start_request' : 'default'),
+        version: typeof workflowPreferencesRow?.version === 'number' ? workflowPreferencesRow.version : null,
+        created_at: workflowPreferencesRow?.created_at ?? pipelineStartRequestRow?.created_at ?? null,
       };
     })(),
     replan_status: (() => {
@@ -651,6 +704,14 @@ const batchSubmitSchema = z.object({
   })).min(1).max(100),
 });
 
+const workflowPreferencesSchema = z.object({
+  workflow_mode: z.enum(['fast_draft', 'balanced', 'deep_dive']).optional(),
+  minimum_evidence_target: z.number().int().min(3).max(20).optional(),
+}).refine(
+  (v) => v.workflow_mode !== undefined || v.minimum_evidence_target !== undefined,
+  'Provide at least one preference to update',
+);
+
 workflow.post('/:sessionId/questions/batch-submit', rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const sessionId = c.req.param('sessionId');
@@ -680,6 +741,82 @@ workflow.post('/:sessionId/questions/batch-submit', rateLimitMiddleware(30, 60_0
   if (error) return c.json({ error: 'Failed to save question responses' }, 500);
 
   return c.json({ status: 'ok', count: rows.length });
+});
+
+workflow.post('/:sessionId/preferences', rateLimitMiddleware(40, 60_000), async (c) => {
+  const user = c.get('user');
+  const sessionId = c.req.param('sessionId');
+  if (!isValidUuid(sessionId)) return c.json({ error: 'Invalid session id' }, 400);
+  const session = await requireOwnedSession(sessionId, user.id);
+  if (!session) return c.json({ error: 'Session not found' }, 404);
+
+  const parsedBody = await parseJsonBodyWithLimit(c, MAX_WORKFLOW_MUTATION_BODY_BYTES);
+  if (!parsedBody.ok) return parsedBody.response;
+  const parsed = workflowPreferencesSchema.safeParse(parsedBody.data);
+  if (!parsed.success) return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
+
+  const nextPreferences = {
+    ...(parsed.data.workflow_mode ? { workflow_mode: parsed.data.workflow_mode } : {}),
+    ...(typeof parsed.data.minimum_evidence_target === 'number'
+      ? { minimum_evidence_target: parsed.data.minimum_evidence_target }
+      : {}),
+    updated_at: new Date().toISOString(),
+  };
+
+  let version = 0;
+  try {
+    version = await insertArtifact(sessionId, 'overview', 'workflow_preferences', nextPreferences, 'user', 'in_progress');
+  } catch {
+    return c.json({ error: 'Failed to persist workflow preferences' }, 500);
+  }
+
+  await supabaseAdmin
+    .from('session_workflow_nodes')
+    .upsert({
+      session_id: sessionId,
+      node_key: 'overview',
+      status: 'in_progress',
+      updated_at: new Date().toISOString(),
+      meta: {
+        workflow_preferences_version: version,
+        workflow_mode: nextPreferences.workflow_mode ?? null,
+        minimum_evidence_target: nextPreferences.minimum_evidence_target ?? null,
+      },
+    }, { onConflict: 'session_id,node_key' });
+
+  const emitters = sseConnections.get(sessionId);
+  if (emitters && session.pipeline_status === 'running') {
+    for (const emitter of emitters) {
+      try {
+        emitter({
+          type: 'transparency',
+          stage: (typeof session.pipeline_stage === 'string' ? session.pipeline_stage : 'positioning') as
+            | 'intake'
+            | 'positioning'
+            | 'research'
+            | 'gap_analysis'
+            | 'architect'
+            | 'architect_review'
+            | 'section_writing'
+            | 'section_review'
+            | 'quality_review'
+            | 'revision'
+            | 'complete',
+          message: 'Updated workflow preferences were saved. The current run will apply them at the next safe checkpoint.',
+        });
+      } catch {
+        // connection may be closed
+      }
+    }
+  }
+
+  return c.json({
+    status: 'ok',
+    version,
+    preferences: nextPreferences,
+    applies_to_current_run: session.pipeline_status === 'running',
+    apply_mode: session.pipeline_status === 'running' ? 'next_safe_checkpoint' : 'next_run',
+  });
 });
 
 const benchmarkAssumptionsSchema = z.object({
