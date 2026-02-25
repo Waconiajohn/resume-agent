@@ -82,6 +82,17 @@ export function WorkflowStatsRail({
   compact = false,
 }: WorkflowStatsRailProps) {
   const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
+  const lastStageDurationText = (() => {
+    const ms = pipelineActivity?.last_stage_duration_ms;
+    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  })();
   const runtimeState = pipelineActivity?.processing_state ?? (
     error
       ? 'error'
@@ -140,6 +151,11 @@ export function WorkflowStatsRail({
           {pipelineActivity.stage && (
             <div className="mt-1 text-[10px] text-white/45">
               Stage: {phaseLabel(pipelineActivity.stage)}
+            </div>
+          )}
+          {lastStageDurationText && (
+            <div className="mt-1 text-[10px] text-white/45">
+              Last stage: {lastStageDurationText}
             </div>
           )}
         </div>

@@ -168,6 +168,7 @@ export interface PipelineActivitySnapshot {
   last_progress_at: string | null;
   last_heartbeat_at: string | null;
   last_backend_activity_at: string | null;
+  last_stage_duration_ms?: number | null;
   current_activity_message: string | null;
   current_activity_source:
     | 'stage_start'

@@ -175,6 +175,17 @@ function formatDurationShort(startAt: string | null | undefined, now = Date.now(
   return `${hours}h ${remMinutes}m`;
 }
 
+function formatMsDurationShort(msValue: number | null | undefined): string | null {
+  if (typeof msValue !== 'number' || !Number.isFinite(msValue) || msValue < 0) return null;
+  const totalSeconds = Math.floor(msValue / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) return `${seconds}s`;
+  if (minutes < 60) return `${minutes}m ${seconds}s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
+
 function getSectionsBundleNavDetail(snapshot: WorkspaceNodeSnapshot | undefined): string | null {
   const panelData = snapshot?.panelData;
   if (!panelData || panelData.type !== 'section_review') return null;
@@ -1319,6 +1330,7 @@ export function CoachScreen({
   const pipelineActivityStageElapsed = formatDurationShort(effectivePipelineActivity?.stage_started_at, runtimeClockMs);
   const pipelineActivityLastProgress = formatRelativeShort(effectivePipelineActivity?.last_progress_at, runtimeClockMs);
   const pipelineActivityLastHeartbeat = formatRelativeShort(effectivePipelineActivity?.last_heartbeat_at, runtimeClockMs);
+  const pipelineActivityLastStageDuration = formatMsDurationShort(effectivePipelineActivity?.last_stage_duration_ms);
   const pipelineActivityBanner = isViewingLiveNode && effectivePipelineActivity && (
     (isProcessing || Boolean(isPipelineGateActive) || effectivePipelineActivity.processing_state === 'reconnecting' || effectivePipelineActivity.processing_state === 'stalled_suspected')
       ? (
@@ -1336,6 +1348,7 @@ export function CoachScreen({
             <span>State: {effectivePipelineActivity.processing_state.replace(/_/g, ' ')}</span>
             {effectivePipelineActivity.stage && <span>Stage: {PHASE_LABELS[effectivePipelineActivity.stage] ?? effectivePipelineActivity.stage}</span>}
             {pipelineActivityStageElapsed && <span>Stage elapsed: {pipelineActivityStageElapsed}</span>}
+            {pipelineActivityLastStageDuration && <span>Last stage: {pipelineActivityLastStageDuration}</span>}
             {pipelineActivityLastProgress && <span>Last progress: {pipelineActivityLastProgress}</span>}
             {pipelineActivityLastHeartbeat && <span>Heartbeat: {pipelineActivityLastHeartbeat}</span>}
           </div>

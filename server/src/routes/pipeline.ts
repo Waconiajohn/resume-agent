@@ -1264,6 +1264,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
         stage_started_at: null,
         last_progress_at: nowIso,
         last_backend_activity_at: nowIso,
+        last_stage_duration_ms: typeof event.duration_ms === 'number' ? Math.max(0, event.duration_ms) : null,
         current_activity_message: event.message,
         current_activity_source: 'stage_complete',
         expected_next_action: 'Wait for the next workflow step or required action',

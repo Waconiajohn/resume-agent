@@ -162,6 +162,17 @@ export function ChatPanel({
     const minutes = Math.floor(seconds / 60);
     return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ago`;
   })();
+  const lastStageDurationText = (() => {
+    const ms = pipelineActivity?.last_stage_duration_ms;
+    if (!Number.isFinite(ms as number) || (ms as number) < 0) return null;
+    const totalSeconds = Math.floor((ms as number) / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  })();
 
   useEffect(() => {
     setShowResumePreview(false);
@@ -256,7 +267,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      {(pipelineActivity?.current_activity_message || stageElapsedText || lastProgressText || heartbeatText) && (
+      {(pipelineActivity?.current_activity_message || stageElapsedText || lastProgressText || heartbeatText || lastStageDurationText) && (
         <div className="border-b border-white/[0.06] px-4 py-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="rounded-full border border-white/[0.1] bg-white/[0.025] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/52">
@@ -272,6 +283,7 @@ export function ChatPanel({
               <span>Stage: {PHASE_LABELS[pipelineActivity.stage] ?? pipelineActivity.stage}</span>
             )}
             {stageElapsedText && <span>Stage elapsed: {stageElapsedText}</span>}
+            {lastStageDurationText && <span>Last stage: {lastStageDurationText}</span>}
             {lastProgressText && <span>Progress: {lastProgressText}</span>}
             {heartbeatText && <span>Heartbeat: {heartbeatText}</span>}
           </div>

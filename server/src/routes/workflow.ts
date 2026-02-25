@@ -627,6 +627,9 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
         last_progress_at: typeof payload.last_progress_at === 'string' ? payload.last_progress_at : null,
         last_heartbeat_at: typeof payload.last_heartbeat_at === 'string' ? payload.last_heartbeat_at : null,
         last_backend_activity_at: typeof payload.last_backend_activity_at === 'string' ? payload.last_backend_activity_at : null,
+        last_stage_duration_ms: typeof payload.last_stage_duration_ms === 'number'
+          ? Math.max(0, payload.last_stage_duration_ms)
+          : null,
         current_activity_message: typeof payload.current_activity_message === 'string' ? payload.current_activity_message : null,
         current_activity_source:
           currentActivitySource === 'stage_start'

@@ -83,6 +83,7 @@ function emptyPipelineActivity(): PipelineActivitySnapshot {
     last_progress_at: null,
     last_heartbeat_at: null,
     last_backend_activity_at: null,
+    last_stage_duration_ms: null,
     current_activity_message: null,
     current_activity_source: null,
     expected_next_action: null,
@@ -914,6 +915,10 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   setPipelineStage(data.stage as PipelineStage);
                   setCurrentPhase(data.stage as string);
                   setIsProcessing(true);
+                  setPipelineActivityMeta((prev) => ({
+                    ...prev,
+                    last_stage_duration_ms: null,
+                  }));
                   if (data.stage === 'intake') {
                     requestNotificationPermission();
                   }
@@ -941,6 +946,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   );
                   setPipelineStage(data.stage as PipelineStage);
                   setIsProcessing(false);
+                  setPipelineActivityMeta((prev) => ({
+                    ...prev,
+                    last_stage_duration_ms: Number.isFinite(data.duration_ms as number)
+                      ? Math.max(0, Number(data.duration_ms))
+                      : prev.last_stage_duration_ms ?? null,
+                  }));
                   if (data.duration_ms && import.meta.env.DEV) {
                     console.log(`[pipeline] ${data.stage} completed in ${(data.duration_ms as number / 1000).toFixed(1)}s`);
                   }
