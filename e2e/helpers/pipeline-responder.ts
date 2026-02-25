@@ -87,11 +87,10 @@ async function detectCurrentPanel(page: Page): Promise<PanelType> {
     .catch(() => false);
   if (questionnairePanel) return 'questionnaire';
 
-  // Check for quality dashboard
+  // Check for quality dashboard — header says "Quality Dashboard", score rings show "ATS"
   const qualityVisible = await page
     .locator('[data-panel-root]')
-    .filter({ hasText: 'Quality' })
-    .locator('text=ATS Score')
+    .filter({ hasText: 'Quality Dashboard' })
     .isVisible()
     .catch(() => false);
   if (qualityVisible) return 'quality_dashboard';
@@ -304,16 +303,45 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
     await continueOrSubmit.click();
 
     if (isSubmit) {
-      // Submit triggers an API call. Return immediately — do NOT stay in
-      // this inner loop. The outer poll loop will detect the next panel.
+      // Submit triggers an API call. Wait for the panel to actually advance
+      // before returning — the pipeline may take 1-5 min on Z.AI to process
+      // (e.g., quality review after section writing). Without this, the outer
+      // loop re-detects 'questionnaire' and re-submits repeatedly.
       // eslint-disable-next-line no-console
       console.log(
         '[pipeline-responder] Questionnaire submitted, waiting for pipeline to advance...',
       );
-      // Wait longer after submit (10s) to give the pipeline time to
-      // advance to the next stage before the outer loop polls again.
-      await page.waitForTimeout(10_000);
-      return; // Exit respondToQuestionnaire entirely
+
+      const QUESTIONNAIRE_ADVANCE_TIMEOUT_MS = 5 * 60 * 1_000;
+      const QUESTIONNAIRE_POLL_MS = 5_000;
+      const advanceStart = Date.now();
+
+      while (Date.now() - advanceStart < QUESTIONNAIRE_ADVANCE_TIMEOUT_MS) {
+        await page.waitForTimeout(QUESTIONNAIRE_POLL_MS);
+        const currentPanel = await detectCurrentPanel(page);
+        if (currentPanel !== 'questionnaire') {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[pipeline-responder] Questionnaire: panel advanced to ${currentPanel ?? 'processing'}`,
+          );
+          return;
+        }
+        // Heartbeat every ~30s
+        const waitSec = Math.round((Date.now() - advanceStart) / 1000);
+        if (waitSec > 0 && waitSec % 30 < (QUESTIONNAIRE_POLL_MS / 1000 + 1)) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[pipeline-responder] Questionnaire: waiting for advance... (${waitSec}s)`,
+          );
+        }
+      }
+
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[pipeline-responder] Questionnaire: timed out waiting for advance after ` +
+          `${Math.round(QUESTIONNAIRE_ADVANCE_TIMEOUT_MS / 60_000)} min`,
+      );
+      return;
     }
 
     // Continue is client-side only — brief pause for UI transition
@@ -372,7 +400,24 @@ async function approveBlueprint(page: Page): Promise<void> {
 }
 
 /**
+ * Get the current section title from the workbench h2 element.
+ */
+async function getSectionTitle(page: Page): Promise<string | null> {
+  const panelRoot = page.locator('[data-panel-root]').first();
+  const h2Count = await panelRoot.locator('h2').count().catch(() => 0);
+  if (h2Count > 0) {
+    return await panelRoot.locator('h2').first().textContent({ timeout: 3_000 }).catch(() => null);
+  }
+  return null;
+}
+
+/**
  * Approve a section in the workbench (click "Looks Good — Next Section").
+ *
+ * After clicking, waits for the panel to advance (new section title arrives, or
+ * the panel type changes entirely) before returning to the main loop. This
+ * prevents duplicate "Looks Good" clicks during the 1-5 minute Z.AI processing
+ * time between sections.
  */
 async function approveSectionReview(page: Page): Promise<void> {
   const looksGoodBtn = page.getByRole('button', { name: /Looks Good/i });
@@ -387,29 +432,78 @@ async function approveSectionReview(page: Page): Promise<void> {
     return;
   }
 
+  // Capture the current section title before clicking so we can detect when it changes
+  const currentTitle = await getSectionTitle(page);
+
   // Wait for the button to become enabled (it may be locked during action processing)
   await page.waitForTimeout(1_000);
   const isEnabled = await looksGoodBtn.isEnabled().catch(() => false);
-  if (isEnabled) {
-    // eslint-disable-next-line no-console
-    console.log('[pipeline-responder] Section review: clicking "Looks Good"');
-    await looksGoodBtn.scrollIntoViewIfNeeded().catch(() => {});
-    // Use timeout on click — after approving the last section, an overlay (z-50) covers
-    // the button while the pipeline advances to quality_review. Without timeout, Playwright
-    // waits indefinitely for the overlay to clear, hanging the entire responder loop.
-    try {
-      await looksGoodBtn.click({ timeout: 10_000 });
-    } catch {
-      // eslint-disable-next-line no-console
-      console.log('[pipeline-responder] Section review: click timed out (likely last section — overlay blocking)');
-      return;
-    }
-    // API call — wait for response
-    await page.waitForTimeout(POST_RESPONSE_DELAY_MS);
-  } else {
+  if (!isEnabled) {
     // eslint-disable-next-line no-console
     console.warn('[pipeline-responder] Section review: "Looks Good" button disabled');
+    return;
   }
+
+  // eslint-disable-next-line no-console
+  console.log(`[pipeline-responder] Section review: clicking "Looks Good" for "${currentTitle}"`);
+  await looksGoodBtn.scrollIntoViewIfNeeded().catch(() => {});
+  // Use timeout on click — after approving the last section, an overlay (z-50) covers
+  // the button while the pipeline advances to quality_review. Without timeout, Playwright
+  // waits indefinitely for the overlay to clear, hanging the entire responder loop.
+  try {
+    await looksGoodBtn.click({ timeout: 10_000 });
+  } catch {
+    // eslint-disable-next-line no-console
+    console.log('[pipeline-responder] Section review: click timed out (likely overlay blocking)');
+    // Fall through to the advance-wait loop — the click may have succeeded before the overlay appeared.
+  }
+
+  // After clicking, wait for the panel to advance. The pipeline needs to:
+  // 1. Receive our gate response (POST /api/pipeline/respond)
+  // 2. Process approval + optionally start writing the next section (LLM call, 1-5 min)
+  // 3. Emit the next event (section_draft for next section, quality_scores, or pipeline_complete)
+  //
+  // We poll until the panel changes. During this time, the "Looks Good" button stays
+  // visible for the old section — we must NOT re-click it.
+  const SECTION_ADVANCE_TIMEOUT_MS = 5 * 60 * 1_000; // 5 min for Z.AI latency
+  const SECTION_POLL_MS = 5_000;
+  const advanceStart = Date.now();
+
+  // eslint-disable-next-line no-console
+  console.log('[pipeline-responder] Section review: waiting for panel to advance...');
+
+  while (Date.now() - advanceStart < SECTION_ADVANCE_TIMEOUT_MS) {
+    await page.waitForTimeout(SECTION_POLL_MS);
+
+    // Check if we've moved to a completely different panel type
+    const currentPanel = await detectCurrentPanel(page);
+    if (currentPanel !== 'section_review') {
+      // eslint-disable-next-line no-console
+      console.log(`[pipeline-responder] Section review: panel advanced to ${currentPanel ?? 'processing'}`);
+      return;
+    }
+
+    // Check if the section title changed (next section arrived via section_draft SSE)
+    const newTitle = await getSectionTitle(page);
+    if (newTitle && newTitle !== currentTitle) {
+      // eslint-disable-next-line no-console
+      console.log(`[pipeline-responder] Section review: new section arrived: "${currentTitle}" -> "${newTitle}"`);
+      return;
+    }
+
+    // Heartbeat log every ~30s so output shows test is alive
+    const waitSec = Math.round((Date.now() - advanceStart) / 1000);
+    if (waitSec > 0 && waitSec % 30 < (SECTION_POLL_MS / 1000 + 1)) {
+      // eslint-disable-next-line no-console
+      console.log(`[pipeline-responder] Section review: waiting for advance... (${waitSec}s, current: "${currentTitle}")`);
+    }
+  }
+
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[pipeline-responder] Section review: timed out waiting for advance after ` +
+      `${Math.round(SECTION_ADVANCE_TIMEOUT_MS / 60_000)} min (section: "${currentTitle}")`,
+  );
 }
 
 // ─── Main Loop ────────────────────────────────────────────────────────────────

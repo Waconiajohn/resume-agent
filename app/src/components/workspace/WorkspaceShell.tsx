@@ -169,7 +169,7 @@ export function WorkspaceShell({
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-[270px] shrink-0 border-r border-white/[0.08] bg-white/[0.015] lg:block">
+        <aside className="hidden w-[270px] shrink-0 overflow-hidden border-r border-white/[0.08] bg-white/[0.015] lg:block">
           <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
             <GlassCard className="min-h-0 shrink-0 p-3">
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
@@ -256,7 +256,7 @@ export function WorkspaceShell({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-            <main className="min-h-[300px] min-w-0 flex-1 border-b border-white/[0.06] xl:border-b-0 xl:border-r xl:border-white/[0.06]">
+            <main className="min-h-[300px] min-w-0 flex-1 overflow-y-auto border-b border-white/[0.06] xl:border-b-0 xl:border-r xl:border-white/[0.06]">
               {main}
             </main>
             <aside className="flex min-h-[320px] w-full min-w-0 flex-col xl:w-[430px] xl:shrink-0">
