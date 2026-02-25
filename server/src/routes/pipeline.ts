@@ -185,6 +185,63 @@ function sanitizeSectionContext(event: Extract<PipelineSSEEvent, { type: 'sectio
   };
 }
 
+function deriveSectionBundleStatusFromContext(
+  context: ReturnType<typeof sanitizeSectionContext>,
+  justApprovedSection?: string,
+) {
+  if (context.review_strategy !== 'bundled' || !Array.isArray(context.review_bundles) || context.review_bundles.length === 0) {
+    return null;
+  }
+
+  const approved = new Set(context.sections_approved);
+  if (justApprovedSection) approved.add(justApprovedSection);
+  const reviewRequiredSet = new Set(context.review_required_sections ?? []);
+
+  const sectionToBundle = (section: string): 'headline' | 'core_experience' | 'supporting' => {
+    if (section === 'summary' || section === 'selected_accomplishments') return 'headline';
+    if (section.startsWith('experience_role_')) return 'core_experience';
+    return 'supporting';
+  };
+
+  const bundles = context.review_bundles.map((bundle) => {
+    const sectionsInBundle = context.section_order.filter((section) => sectionToBundle(section) === bundle.key);
+    const reviewRequiredSections = sectionsInBundle.filter((section) => reviewRequiredSet.has(section));
+    const reviewedRequired = reviewRequiredSections.filter((section) => approved.has(section)).length;
+    let status: 'pending' | 'in_progress' | 'complete' | 'auto_approved' = 'pending';
+    if (reviewRequiredSections.length === 0) {
+      status = sectionsInBundle.length > 0 ? 'auto_approved' : 'pending';
+    } else if (reviewedRequired >= reviewRequiredSections.length) {
+      status = 'complete';
+    } else if (bundle.key === context.current_review_bundle_key || reviewedRequired > 0) {
+      status = 'in_progress';
+    }
+    return {
+      key: bundle.key,
+      label: bundle.label,
+      total_sections: sectionsInBundle.length,
+      review_required: reviewRequiredSections.length,
+      reviewed_required: reviewedRequired,
+      status,
+    };
+  });
+
+  const totalBundles = bundles.length;
+  const completedBundles = bundles.filter((bundle) => bundle.status === 'complete' || bundle.status === 'auto_approved').length;
+
+  return {
+    review_strategy: 'bundled' as const,
+    current_review_bundle_key: context.current_review_bundle_key ?? null,
+    review_required_sections: context.review_required_sections ?? [],
+    auto_approved_sections: context.auto_approved_sections ?? [],
+    total_bundles: totalBundles,
+    completed_bundles: completedBundles,
+    bundles,
+    sections_approved_count: approved.size,
+    section_order_count: context.section_order.length,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 async function setPendingGate(sessionId: string, gate: string, data?: Record<string, unknown>) {
   // Preserve any queued early responses when opening a new gate.
   const { data: existing } = await supabaseAdmin
@@ -1092,32 +1149,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // Capture the most recently emitted section_context to merge into section_draft persistence.
   let latestSectionContext: {
     section: string;
-    context: {
-      context_version: number;
-      generated_at: string;
-      blueprint_slice: Record<string, unknown>;
-      evidence: Array<{
-        id: string;
-        situation: string;
-        action: string;
-        result: string;
-        metrics_defensible: boolean;
-        user_validated: boolean;
-        mapped_requirements: string[];
-        scope_metrics: Record<string, string>;
-      }>;
-      keywords: Array<{
-        keyword: string;
-        target_density: number;
-        current_count: number;
-      }>;
-      gap_mappings: Array<{
-        requirement: string;
-        classification: 'strong' | 'partial' | 'gap';
-      }>;
-      section_order: string[];
-      sections_approved: string[];
-    };
+    context: ReturnType<typeof sanitizeSectionContext>;
   } | null = null;
 
   // Create emit function that bridges to SSE
@@ -1167,6 +1199,10 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
         section: event.section,
         context: sanitizedContext,
       };
+      const bundleStatus = deriveSectionBundleStatusFromContext(sanitizedContext);
+      if (bundleStatus) {
+        persistWorkflowArtifactBestEffort(session_id, 'sections', 'sections_bundle_review_status', bundleStatus, 'system');
+      }
     }
     // Persist section_draft as section_review panel for restore, merging any section_context
     if (event.type === 'section_draft') {
@@ -1203,6 +1239,18 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     if (event.type === 'quality_scores') {
       upsertWorkflowNodeStatusBestEffort(session_id, 'quality', 'complete');
       persistWorkflowArtifactBestEffort(session_id, 'quality', 'quality_scores', event.scores);
+    }
+    if (event.type === 'section_approved') {
+      const contextForSection =
+        latestSectionContext?.section === event.section
+          ? latestSectionContext.context
+          : null;
+      if (contextForSection) {
+        const bundleStatus = deriveSectionBundleStatusFromContext(contextForSection, event.section);
+        if (bundleStatus) {
+          persistWorkflowArtifactBestEffort(session_id, 'sections', 'sections_bundle_review_status', bundleStatus, 'system');
+        }
+      }
     }
     if (event.type === 'draft_readiness_update') {
       persistWorkflowArtifactBestEffort(session_id, 'overview', 'draft_readiness', event);

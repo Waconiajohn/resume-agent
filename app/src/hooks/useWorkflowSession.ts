@@ -16,6 +16,7 @@ interface WorkflowSummaryNode {
   active_version: number | null;
   updated_at: string;
   meta: Record<string, unknown> | null;
+  blocking_state: 'rebuild_required' | null;
 }
 
 interface WorkflowSummaryResponse {
@@ -54,6 +55,22 @@ interface WorkflowSummaryResponse {
     workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
     stage: string;
     note?: string;
+    version: number | null;
+    created_at: string | null;
+  } | null;
+  sections_bundle_review: {
+    review_strategy: 'per_section' | 'bundled';
+    current_review_bundle_key: 'headline' | 'core_experience' | 'supporting' | null;
+    total_bundles: number;
+    completed_bundles: number;
+    bundles: Array<{
+      key: 'headline' | 'core_experience' | 'supporting';
+      label: string;
+      total_sections: number;
+      review_required: number;
+      reviewed_required: number;
+      status: 'pending' | 'in_progress' | 'complete' | 'auto_approved';
+    }>;
     version: number | null;
     created_at: string | null;
   } | null;

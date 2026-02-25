@@ -129,6 +129,21 @@ function getSectionsBundleNavDetail(snapshot: WorkspaceNodeSnapshot | undefined)
   return `${completed}/${bundles.length} bundles`;
 }
 
+function getSectionsBundleNavDetailFromSummary(
+  bundleSummary: {
+    total_bundles: number;
+    completed_bundles: number;
+    current_review_bundle_key: 'headline' | 'core_experience' | 'supporting' | null;
+    bundles: Array<{ key: 'headline' | 'core_experience' | 'supporting'; label: string }>;
+  } | null | undefined,
+): string | null {
+  if (!bundleSummary || bundleSummary.total_bundles <= 0) return null;
+  if (bundleSummary.completed_bundles >= bundleSummary.total_bundles) return 'Bundles 100%';
+  const current = bundleSummary.bundles.find((bundle) => bundle.key === bundleSummary.current_review_bundle_key);
+  if (current?.label) return `${bundleSummary.completed_bundles}/${bundleSummary.total_bundles} bundles • ${current.label}`;
+  return `${bundleSummary.completed_bundles}/${bundleSummary.total_bundles} bundles`;
+}
+
 function buildReplanNodeDetailMap(
   summaryReplan: {
     pending: boolean;
@@ -591,17 +606,25 @@ export function CoachScreen({
       const effectiveLiveReplan = liveWorkflowReplan ?? workflowSession.summary?.replan_status ?? null;
       const replanNodeDetails = buildReplanNodeDetailMap(workflowSession.summary?.replan, effectiveLiveReplan);
       return WORKFLOW_NODES.map((node) => {
+        const summaryNode = workflowSession.summary?.nodes.find((n) => n.node_key === node.key);
         const hasSnapshot = Boolean(mergedSnapshots[node.key])
           || Boolean(workflowSession.summary?.latest_artifacts.some((artifact) => artifact.node_key === node.key));
         const sectionBundleDetail = node.key === 'sections'
-          ? (getSectionsBundleNavDetail(mergedSnapshots.sections) ?? undefined)
+          ? (
+              getSectionsBundleNavDetail(mergedSnapshots.sections)
+              ?? getSectionsBundleNavDetailFromSummary(workflowSession.summary?.sections_bundle_review)
+              ?? undefined
+            )
           : undefined;
         const replanDetail = replanNodeDetails[node.key];
         return {
           ...node,
           status: nodeStatuses[node.key],
           hasSnapshot,
-          detailLabel: replanDetail ?? sectionBundleDetail,
+          detailLabel:
+            (summaryNode?.blocking_state === 'rebuild_required' ? 'Rebuild required' : undefined)
+            ?? replanDetail
+            ?? sectionBundleDetail,
         };
       });
     },

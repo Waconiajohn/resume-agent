@@ -195,7 +195,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
   const session = await requireOwnedSession(sessionId, user.id);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
-  const [{ data: nodeRows }, { data: artifactRows }, { data: draftReadinessRow }, { data: replanStatusRow }] = await Promise.all([
+  const [{ data: nodeRows }, { data: artifactRows }, { data: draftReadinessRow }, { data: replanStatusRow }, { data: sectionsBundleRow }] = await Promise.all([
     supabaseAdmin
       .from('session_workflow_nodes')
       .select('node_key, status, active_version, meta, updated_at')
@@ -222,6 +222,15 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       .eq('session_id', sessionId)
       .eq('node_key', 'overview')
       .eq('artifact_type', 'workflow_replan_status')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'sections')
+      .eq('artifact_type', 'sections_bundle_review_status')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -264,6 +273,17 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       active_version: row?.active_version ?? null,
       updated_at: row?.updated_at ?? session.updated_at,
       meta: row?.meta ?? null,
+      blocking_state: (() => {
+        const meta = asRecord(row?.meta);
+        if (
+          status === 'stale'
+          && meta?.reason === 'benchmark_assumptions_updated'
+          && meta?.requires_restart === true
+        ) {
+          return 'rebuild_required';
+        }
+        return null;
+      })(),
     };
   });
 
@@ -326,6 +346,40 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
         note: typeof payload.note === 'string' ? payload.note : undefined,
         version: typeof draftReadinessRow?.version === 'number' ? draftReadinessRow.version : null,
         created_at: draftReadinessRow?.created_at ?? null,
+      };
+    })(),
+    sections_bundle_review: (() => {
+      const payload = asRecord(sectionsBundleRow?.payload);
+      if (!payload) return null;
+      const bundlesRaw = Array.isArray(payload.bundles) ? payload.bundles : [];
+      return {
+        review_strategy: payload.review_strategy === 'bundled' ? 'bundled' : 'per_section',
+        current_review_bundle_key:
+          payload.current_review_bundle_key === 'headline'
+          || payload.current_review_bundle_key === 'core_experience'
+          || payload.current_review_bundle_key === 'supporting'
+            ? payload.current_review_bundle_key
+            : null,
+        total_bundles: typeof payload.total_bundles === 'number' ? payload.total_bundles : 0,
+        completed_bundles: typeof payload.completed_bundles === 'number' ? payload.completed_bundles : 0,
+        bundles: bundlesRaw
+          .filter((b): b is Record<string, unknown> => Boolean(b) && typeof b === 'object')
+          .map((b) => ({
+            key:
+              b.key === 'headline' || b.key === 'core_experience' || b.key === 'supporting'
+                ? b.key
+                : 'supporting',
+            label: typeof b.label === 'string' ? b.label : 'Bundle',
+            total_sections: typeof b.total_sections === 'number' ? b.total_sections : 0,
+            review_required: typeof b.review_required === 'number' ? b.review_required : 0,
+            reviewed_required: typeof b.reviewed_required === 'number' ? b.reviewed_required : 0,
+            status:
+              b.status === 'in_progress' || b.status === 'complete' || b.status === 'auto_approved'
+                ? b.status
+                : 'pending',
+          })),
+        version: typeof sectionsBundleRow?.version === 'number' ? sectionsBundleRow.version : null,
+        created_at: sectionsBundleRow?.created_at ?? null,
       };
     })(),
     replan_status: (() => {
