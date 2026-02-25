@@ -941,6 +941,34 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'draft_readiness_update': {
                   const data = safeParse(msg.data);
                   if (!data) break;
+                  const gapBreakdownRaw = data.gap_breakdown && typeof data.gap_breakdown === 'object' && !Array.isArray(data.gap_breakdown)
+                    ? (data.gap_breakdown as Record<string, unknown>)
+                    : null;
+                  const evidenceQualityRaw = data.evidence_quality && typeof data.evidence_quality === 'object' && !Array.isArray(data.evidence_quality)
+                    ? (data.evidence_quality as Record<string, unknown>)
+                    : null;
+                  const highImpactRemaining: DraftReadinessUpdate['high_impact_remaining'] = Array.isArray(data.high_impact_remaining)
+                    ? data.high_impact_remaining
+                        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+                        .map((item) => {
+                          const priority: 'must_have' | 'implicit' | 'nice_to_have' =
+                            item.priority === 'must_have' || item.priority === 'implicit' || item.priority === 'nice_to_have'
+                              ? item.priority
+                              : 'nice_to_have';
+                          return {
+                            requirement: typeof item.requirement === 'string' ? item.requirement : '',
+                            classification: (item.classification === 'partial' ? 'partial' : 'gap') as 'partial' | 'gap',
+                            priority,
+                            evidence_count: Number.isFinite(item.evidence_count as number) ? Math.max(0, Number(item.evidence_count)) : 0,
+                          };
+                        })
+                        .filter((item) => item.requirement.length > 0)
+                    : undefined;
+                  const blockingReasons = Array.isArray(data.blocking_reasons)
+                    ? data.blocking_reasons.filter((reason): reason is 'evidence_target' | 'coverage_threshold' => (
+                      reason === 'evidence_target' || reason === 'coverage_threshold'
+                    ))
+                    : undefined;
                   setDraftReadiness({
                     stage: (data.stage as PipelineStage) ?? 'gap_analysis',
                     workflow_mode: (data.workflow_mode === 'fast_draft' || data.workflow_mode === 'deep_dive'
@@ -951,6 +979,38 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                     coverage_score: Number.isFinite(data.coverage_score as number) ? Number(data.coverage_score) : 0,
                     coverage_threshold: Number.isFinite(data.coverage_threshold as number) ? Number(data.coverage_threshold) : 0,
                     ready: data.ready === true,
+                    remaining_evidence_needed: Number.isFinite(data.remaining_evidence_needed as number)
+                      ? Math.max(0, Number(data.remaining_evidence_needed))
+                      : undefined,
+                    remaining_coverage_needed: Number.isFinite(data.remaining_coverage_needed as number)
+                      ? Math.max(0, Number(data.remaining_coverage_needed))
+                      : undefined,
+                    blocking_reasons: blockingReasons,
+                    gap_breakdown: gapBreakdownRaw
+                      ? {
+                          total: Number.isFinite(gapBreakdownRaw.total as number) ? Math.max(0, Number(gapBreakdownRaw.total)) : 0,
+                          strong: Number.isFinite(gapBreakdownRaw.strong as number) ? Math.max(0, Number(gapBreakdownRaw.strong)) : 0,
+                          partial: Number.isFinite(gapBreakdownRaw.partial as number) ? Math.max(0, Number(gapBreakdownRaw.partial)) : 0,
+                          gap: Number.isFinite(gapBreakdownRaw.gap as number) ? Math.max(0, Number(gapBreakdownRaw.gap)) : 0,
+                        }
+                      : undefined,
+                    evidence_quality: evidenceQualityRaw
+                      ? {
+                          user_validated_count: Number.isFinite(evidenceQualityRaw.user_validated_count as number)
+                            ? Math.max(0, Number(evidenceQualityRaw.user_validated_count))
+                            : 0,
+                          metrics_defensible_count: Number.isFinite(evidenceQualityRaw.metrics_defensible_count as number)
+                            ? Math.max(0, Number(evidenceQualityRaw.metrics_defensible_count))
+                            : 0,
+                          mapped_requirement_evidence_count: Number.isFinite(evidenceQualityRaw.mapped_requirement_evidence_count as number)
+                            ? Math.max(0, Number(evidenceQualityRaw.mapped_requirement_evidence_count))
+                            : 0,
+                        }
+                      : undefined,
+                    high_impact_remaining: highImpactRemaining,
+                    suggested_question_count: Number.isFinite(data.suggested_question_count as number)
+                      ? Math.max(0, Number(data.suggested_question_count))
+                      : undefined,
                     note: typeof data.note === 'string' ? data.note : undefined,
                   });
                   break;

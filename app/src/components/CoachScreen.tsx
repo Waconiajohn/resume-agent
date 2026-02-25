@@ -118,6 +118,12 @@ function defaultEvidenceTargetForMode(mode: 'fast_draft' | 'balanced' | 'deep_di
   return 8;
 }
 
+function formatReadinessPriorityLabel(priority: 'must_have' | 'implicit' | 'nice_to_have'): string {
+  if (priority === 'must_have') return 'Must-have';
+  if (priority === 'implicit') return 'Implicit';
+  return 'Nice-to-have';
+}
+
 function getSectionsBundleNavDetail(snapshot: WorkspaceNodeSnapshot | undefined): string | null {
   const panelData = snapshot?.panelData;
   if (!panelData || panelData.type !== 'section_review') return null;
@@ -216,12 +222,36 @@ function BenchmarkInspectorCard({
   isSaving?: boolean;
 }) {
   const researchPanel = panelData?.type === 'research_dashboard' ? panelData : null;
+  const benchmarkAssumptions = (researchPanel?.benchmark?.assumptions && typeof researchPanel.benchmark.assumptions === 'object')
+    ? researchPanel.benchmark.assumptions as Record<string, unknown>
+    : {};
+  const inferredAssumptions = (researchPanel?.benchmark?.inferred_assumptions && typeof researchPanel.benchmark.inferred_assumptions === 'object')
+    ? researchPanel.benchmark.inferred_assumptions as Record<string, unknown>
+    : {};
+  const assumptionProvenance = (researchPanel?.benchmark?.assumption_provenance && typeof researchPanel.benchmark.assumption_provenance === 'object')
+    ? researchPanel.benchmark.assumption_provenance
+    : {};
+  const confidenceByAssumption = (researchPanel?.benchmark?.confidence_by_assumption && typeof researchPanel.benchmark.confidence_by_assumption === 'object')
+    ? researchPanel.benchmark.confidence_by_assumption
+    : {};
+  const whyInferred = (researchPanel?.benchmark?.why_inferred && typeof researchPanel.benchmark.why_inferred === 'object')
+    ? researchPanel.benchmark.why_inferred
+    : {};
+  const assumptionEntries = Object.entries(benchmarkAssumptions).filter(([, value]) => value != null);
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState('');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [companyValue, setCompanyValue] = useState(researchPanel?.company?.company_name ?? '');
-  const [seniorityValue, setSeniorityValue] = useState(researchPanel?.jd_requirements?.seniority_level ?? '');
+  const [companyValue, setCompanyValue] = useState(
+    (typeof benchmarkAssumptions.company_name === 'string' ? benchmarkAssumptions.company_name : null)
+    ?? researchPanel?.company?.company_name
+    ?? '',
+  );
+  const [seniorityValue, setSeniorityValue] = useState(
+    (typeof benchmarkAssumptions.seniority_level === 'string' ? benchmarkAssumptions.seniority_level : null)
+    ?? researchPanel?.jd_requirements?.seniority_level
+    ?? '',
+  );
   const [mustHavesText, setMustHavesText] = useState((researchPanel?.jd_requirements?.must_haves ?? []).join('\n'));
   const [keywordsText, setKeywordsText] = useState((researchPanel?.benchmark?.language_keywords ?? []).join('\n'));
   const [differentiatorsText, setDifferentiatorsText] = useState(
@@ -236,8 +266,19 @@ function BenchmarkInspectorCard({
 
   useEffect(() => {
     if (!researchPanel) return;
-    setCompanyValue(researchPanel.company?.company_name ?? '');
-    setSeniorityValue(researchPanel.jd_requirements?.seniority_level ?? '');
+    const assumptions = (researchPanel.benchmark?.assumptions && typeof researchPanel.benchmark.assumptions === 'object')
+      ? researchPanel.benchmark.assumptions as Record<string, unknown>
+      : {};
+    setCompanyValue(
+      (typeof assumptions.company_name === 'string' ? assumptions.company_name : null)
+      ?? researchPanel.company?.company_name
+      ?? '',
+    );
+    setSeniorityValue(
+      (typeof assumptions.seniority_level === 'string' ? assumptions.seniority_level : null)
+      ?? researchPanel.jd_requirements?.seniority_level
+      ?? '',
+    );
     setMustHavesText((researchPanel.jd_requirements?.must_haves ?? []).join('\n'));
     setKeywordsText((researchPanel.benchmark?.language_keywords ?? []).join('\n'));
     setDifferentiatorsText(
@@ -260,6 +301,12 @@ function BenchmarkInspectorCard({
   const keywordCount = researchPanel.benchmark?.language_keywords?.length ?? 0;
   const differentiatorCount = researchPanel.benchmark?.competitive_differentiators?.length
     ?? Object.keys(researchPanel.benchmark?.section_expectations ?? {}).length;
+  const visibleAssumptionEntries = assumptionEntries
+    .filter(([_, value]) => {
+      if (typeof value === 'string') return value.trim().length > 0;
+      return value != null;
+    })
+    .slice(0, 8);
 
   const handleSave = async () => {
     if (!onSaveAssumptions) return;
@@ -301,6 +348,73 @@ function BenchmarkInspectorCard({
       <p className="mb-3 text-xs text-white/56">
         These are the current inferred benchmark assumptions driving positioning decisions. Edits apply immediately early in the process; after section writing starts, changes require confirmation and a downstream rebuild to stay consistent.
       </p>
+      {visibleAssumptionEntries.length > 0 && (
+        <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
+            Inferred Assumptions (Why + Confidence)
+          </div>
+          <div className="space-y-2">
+            {visibleAssumptionEntries.map(([key, value]) => {
+              const confidence = typeof confidenceByAssumption[key] === 'number'
+                ? confidenceByAssumption[key]
+                : null;
+              const why = typeof whyInferred[key] === 'string' ? whyInferred[key] : null;
+              const provenance = assumptionProvenance[key];
+              const isUserEdited = provenance?.source === 'user_edited';
+              const originalValue = inferredAssumptions[key];
+              const stringValue = Array.isArray(value)
+                ? value.filter((v): v is string | number => typeof v === 'string' || typeof v === 'number').slice(0, 5).join(', ')
+                : typeof value === 'number'
+                  ? String(value)
+                  : (typeof value === 'string' ? value : JSON.stringify(value));
+              const originalStringValue = Array.isArray(originalValue)
+                ? originalValue.filter((v): v is string | number => typeof v === 'string' || typeof v === 'number').slice(0, 5).join(', ')
+                : typeof originalValue === 'number'
+                  ? String(originalValue)
+                  : (typeof originalValue === 'string' ? originalValue : (originalValue == null ? '' : JSON.stringify(originalValue)));
+              const confidenceClass = confidence == null
+                ? 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                : confidence >= 0.85
+                  ? 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/85'
+                  : confidence >= 0.65
+                    ? 'border-sky-300/20 bg-sky-400/[0.06] text-sky-100/85'
+                    : 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/85';
+              return (
+                <div key={key} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.12em] text-white/45">
+                      {key.replace(/_/g, ' ')}
+                    </span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                      isUserEdited
+                        ? 'border-violet-300/20 bg-violet-400/[0.08] text-violet-100/85'
+                        : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                    }`}>
+                      {isUserEdited ? 'User edited' : 'Inferred'}
+                    </span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${confidenceClass}`}>
+                      {confidence == null ? 'Confidence n/a' : `Confidence ${Math.round(confidence * 100)}%`}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-white/84 break-words">
+                    {String(stringValue ?? 'Not inferred')}
+                  </div>
+                  {isUserEdited && originalStringValue && originalStringValue !== String(stringValue ?? '') && (
+                    <div className="mt-1 text-[10px] text-white/45 break-words">
+                      Originally inferred: {originalStringValue}
+                    </div>
+                  )}
+                  {why && (
+                    <div className="mt-1 text-[10px] leading-relaxed text-white/50">
+                      {why}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {saveMessage && (
         <div className="mb-3 rounded-lg border border-emerald-300/20 bg-emerald-400/[0.06] px-3 py-2 text-xs text-emerald-100/85">
           {saveMessage}
@@ -936,6 +1050,103 @@ export function CoachScreen({
                   <p className="mt-1.5 text-[11px] leading-relaxed text-white/55">
                     {draftReadiness.note}
                   </p>
+                )}
+                {(
+                  typeof draftReadiness.remaining_evidence_needed === 'number'
+                  || typeof draftReadiness.remaining_coverage_needed === 'number'
+                  || typeof draftReadiness.suggested_question_count === 'number'
+                ) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {typeof draftReadiness.remaining_evidence_needed === 'number' && draftReadiness.remaining_evidence_needed > 0 && (
+                      <span className="rounded-full border border-amber-300/20 bg-amber-400/[0.06] px-2 py-0.5 text-[10px] text-amber-100/85">
+                        Need {draftReadiness.remaining_evidence_needed} more evidence item{draftReadiness.remaining_evidence_needed === 1 ? '' : 's'}
+                      </span>
+                    )}
+                    {typeof draftReadiness.remaining_coverage_needed === 'number' && draftReadiness.remaining_coverage_needed > 0 && (
+                      <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.06] px-2 py-0.5 text-[10px] text-sky-100/85">
+                        Need +{draftReadiness.remaining_coverage_needed}% coverage
+                      </span>
+                    )}
+                    {typeof draftReadiness.suggested_question_count === 'number' && draftReadiness.suggested_question_count > 0 && (
+                      <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/70">
+                        ~{draftReadiness.suggested_question_count} targeted question{draftReadiness.suggested_question_count === 1 ? '' : 's'} likely
+                      </span>
+                    )}
+                  </div>
+                )}
+                {draftReadiness.gap_breakdown && draftReadiness.gap_breakdown.total > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-white/55">
+                    <span>Requirements</span>
+                    <span className="rounded-full border border-emerald-300/18 bg-emerald-400/[0.05] px-2 py-0.5 text-emerald-100/80">
+                      Strong {draftReadiness.gap_breakdown.strong}
+                    </span>
+                    <span className="rounded-full border border-amber-300/18 bg-amber-400/[0.05] px-2 py-0.5 text-amber-100/80">
+                      Partial {draftReadiness.gap_breakdown.partial}
+                    </span>
+                    <span className="rounded-full border border-rose-300/18 bg-rose-400/[0.05] px-2 py-0.5 text-rose-100/80">
+                      Gaps {draftReadiness.gap_breakdown.gap}
+                    </span>
+                  </div>
+                )}
+                {draftReadiness.evidence_quality && draftReadiness.evidence_count > 0 && (
+                  <div className="mt-2 grid gap-1 sm:grid-cols-3">
+                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Validated</div>
+                      <div className="mt-0.5 text-[11px] text-white/78">
+                        {draftReadiness.evidence_quality.user_validated_count}/{draftReadiness.evidence_count}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Metrics</div>
+                      <div className="mt-0.5 text-[11px] text-white/78">
+                        {draftReadiness.evidence_quality.metrics_defensible_count}/{draftReadiness.evidence_count}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Mapped To JD</div>
+                      <div className="mt-0.5 text-[11px] text-white/78">
+                        {draftReadiness.evidence_quality.mapped_requirement_evidence_count}/{draftReadiness.evidence_count}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {Array.isArray(draftReadiness.high_impact_remaining) && draftReadiness.high_impact_remaining.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-[10px] uppercase tracking-[0.08em] text-white/40">
+                      Highest-Impact Remaining Coverage
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {draftReadiness.high_impact_remaining.slice(0, 4).map((item, index) => (
+                        <div
+                          key={`${item.requirement}-${index}`}
+                          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[10px] leading-relaxed text-white/75"
+                        >
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                            <span className={`rounded-full border px-1.5 py-0.5 ${
+                              item.priority === 'must_have'
+                                ? 'border-rose-300/25 bg-rose-400/[0.08] text-rose-100/85'
+                                : item.priority === 'implicit'
+                                  ? 'border-amber-300/25 bg-amber-400/[0.08] text-amber-100/85'
+                                  : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                            }`}>
+                              {formatReadinessPriorityLabel(item.priority)}
+                            </span>
+                            <span className={`${
+                              item.classification === 'gap' ? 'text-rose-100/80' : 'text-amber-100/80'
+                            }`}>
+                              {item.classification === 'gap' ? 'Gap' : 'Partial'}
+                            </span>
+                            {item.evidence_count > 0 && (
+                              <span className="text-white/45">evidence {item.evidence_count}</span>
+                            )}
+                          </div>
+                          <div className="mt-1 max-w-[24rem] truncate" title={item.requirement}>
+                            {item.requirement}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </GlassCard>
             </div>

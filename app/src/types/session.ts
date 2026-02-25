@@ -116,6 +116,27 @@ export interface DraftReadinessUpdate {
   coverage_score: number;
   coverage_threshold: number;
   ready: boolean;
+  remaining_evidence_needed?: number;
+  remaining_coverage_needed?: number;
+  blocking_reasons?: Array<'evidence_target' | 'coverage_threshold'>;
+  gap_breakdown?: {
+    total: number;
+    strong: number;
+    partial: number;
+    gap: number;
+  };
+  evidence_quality?: {
+    user_validated_count: number;
+    metrics_defensible_count: number;
+    mapped_requirement_evidence_count: number;
+  };
+  high_impact_remaining?: Array<{
+    requirement: string;
+    classification: 'partial' | 'gap';
+    priority: 'must_have' | 'implicit' | 'nice_to_have';
+    evidence_count: number;
+  }>;
+  suggested_question_count?: number;
   note?: string;
 }
 

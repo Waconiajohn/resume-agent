@@ -478,6 +478,13 @@ export interface PipelineState {
   positioning_profile_id?: string;    // if reusing saved profile
   positioning_reuse_mode?: 'reuse' | 'update' | 'fresh';
   benchmark_override_version?: number;
+  benchmark_inferred_assumptions?: Record<string, unknown>;
+  benchmark_user_overrides?: Record<string, unknown>;
+  benchmark_override_meta?: {
+    version: number;
+    edited_at?: string;
+    note?: string | null;
+  };
   workflow_preferences_version?: number;
   revision_count: number;
   token_usage: {
@@ -588,6 +595,27 @@ export type PipelineSSEEvent =
       coverage_score: number;
       coverage_threshold: number;
       ready: boolean;
+      remaining_evidence_needed?: number;
+      remaining_coverage_needed?: number;
+      blocking_reasons?: Array<'evidence_target' | 'coverage_threshold'>;
+      gap_breakdown?: {
+        total: number;
+        strong: number;
+        partial: number;
+        gap: number;
+      };
+      evidence_quality?: {
+        user_validated_count: number;
+        metrics_defensible_count: number;
+        mapped_requirement_evidence_count: number;
+      };
+      high_impact_remaining?: Array<{
+        requirement: string;
+        classification: 'partial' | 'gap';
+        priority: 'must_have' | 'implicit' | 'nice_to_have';
+        evidence_count: number;
+      }>;
+      suggested_question_count?: number;
       note?: string;
     }
   | {

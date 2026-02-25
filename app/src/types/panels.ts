@@ -59,6 +59,14 @@ export interface BenchmarkProfile {
   ideal_profile?: string;
   section_expectations?: Record<string, string>;
   assumptions?: Record<string, unknown>;
+  inferred_assumptions?: Record<string, unknown>;
+  user_overrides?: Record<string, unknown>;
+  assumption_provenance?: Record<string, {
+    source?: 'inferred' | 'user_edited' | string;
+    edit_version?: number | null;
+    edited_at?: string | null;
+    note?: string | null;
+  }>;
   confidence_by_assumption?: Record<string, number>;
   why_inferred?: Record<string, string>;
 }

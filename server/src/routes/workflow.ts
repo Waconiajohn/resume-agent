@@ -359,12 +359,59 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     draft_readiness: (() => {
       const payload = asRecord(draftReadinessRow?.payload);
       if (!payload) return null;
+      const gapBreakdown = asRecord(payload.gap_breakdown);
+      const evidenceQuality = asRecord(payload.evidence_quality);
+      const highImpactRemaining = Array.isArray(payload.high_impact_remaining)
+        ? payload.high_impact_remaining
+            .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+            .map((item) => ({
+              requirement: typeof item.requirement === 'string' ? item.requirement : '',
+              classification: item.classification === 'partial' ? 'partial' : 'gap',
+              priority:
+                item.priority === 'must_have' || item.priority === 'implicit' || item.priority === 'nice_to_have'
+                  ? item.priority
+                  : 'nice_to_have',
+              evidence_count: typeof item.evidence_count === 'number' ? item.evidence_count : 0,
+            }))
+            .filter((item) => item.requirement.length > 0)
+        : [];
+      const blockingReasons = Array.isArray(payload.blocking_reasons)
+        ? payload.blocking_reasons.filter((reason): reason is 'evidence_target' | 'coverage_threshold' => (
+          reason === 'evidence_target' || reason === 'coverage_threshold'
+        ))
+        : [];
       return {
         evidence_count: typeof payload.evidence_count === 'number' ? payload.evidence_count : 0,
         minimum_evidence_target: typeof payload.minimum_evidence_target === 'number' ? payload.minimum_evidence_target : 0,
         coverage_score: typeof payload.coverage_score === 'number' ? payload.coverage_score : 0,
         coverage_threshold: typeof payload.coverage_threshold === 'number' ? payload.coverage_threshold : 0,
         ready: payload.ready === true,
+        remaining_evidence_needed: typeof payload.remaining_evidence_needed === 'number'
+          ? payload.remaining_evidence_needed
+          : undefined,
+        remaining_coverage_needed: typeof payload.remaining_coverage_needed === 'number'
+          ? payload.remaining_coverage_needed
+          : undefined,
+        blocking_reasons: blockingReasons.length > 0 ? blockingReasons : undefined,
+        gap_breakdown: gapBreakdown
+          ? {
+              total: typeof gapBreakdown.total === 'number' ? gapBreakdown.total : 0,
+              strong: typeof gapBreakdown.strong === 'number' ? gapBreakdown.strong : 0,
+              partial: typeof gapBreakdown.partial === 'number' ? gapBreakdown.partial : 0,
+              gap: typeof gapBreakdown.gap === 'number' ? gapBreakdown.gap : 0,
+            }
+          : undefined,
+        evidence_quality: evidenceQuality
+          ? {
+              user_validated_count: typeof evidenceQuality.user_validated_count === 'number' ? evidenceQuality.user_validated_count : 0,
+              metrics_defensible_count: typeof evidenceQuality.metrics_defensible_count === 'number' ? evidenceQuality.metrics_defensible_count : 0,
+              mapped_requirement_evidence_count: typeof evidenceQuality.mapped_requirement_evidence_count === 'number' ? evidenceQuality.mapped_requirement_evidence_count : 0,
+            }
+          : undefined,
+        high_impact_remaining: highImpactRemaining.length > 0 ? highImpactRemaining : undefined,
+        suggested_question_count: typeof payload.suggested_question_count === 'number'
+          ? payload.suggested_question_count
+          : undefined,
         workflow_mode: payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
           ? payload.workflow_mode
           : 'balanced',

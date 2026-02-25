@@ -68,6 +68,15 @@ function buildResearchDashboardPanelBenchmark(
   benchmark: BenchmarkCandidate,
   jdAnalysis: JDAnalysis,
   company: CompanyResearch,
+  options?: {
+    inferredAssumptions?: Record<string, unknown>;
+    userOverrides?: Record<string, unknown>;
+    overrideMeta?: {
+      version: number;
+      edited_at?: string;
+      note?: string | null;
+    };
+  },
 ): Record<string, unknown> {
   const mustHaves = jdAnalysis.must_haves ?? [];
   const requiredSkills = mustHaves.slice(0, 12).map((requirement, index) => ({
@@ -86,6 +95,53 @@ function buildResearchDashboardPanelBenchmark(
     .map((value) => value.trim())
     .slice(0, 6);
 
+  const inferredAssumptions = options?.inferredAssumptions ?? {
+    role_title: jdAnalysis.role_title ?? '',
+    seniority_level: jdAnalysis.seniority_level ?? '',
+    company_name: company.company_name ?? jdAnalysis.company ?? '',
+    industry: company.industry ?? '',
+    company_size: company.size ?? '',
+    must_have_count: mustHaves.length,
+    language_keyword_count: (benchmark.language_keywords ?? []).length,
+  };
+  const assumptions = {
+    ...inferredAssumptions,
+    ...(options?.userOverrides ?? {}),
+  };
+  const confidenceByAssumption = {
+    role_title: typeof inferredAssumptions.role_title === 'string' && inferredAssumptions.role_title.trim() ? 0.92 : 0.35,
+    seniority_level: typeof inferredAssumptions.seniority_level === 'string' && inferredAssumptions.seniority_level ? 0.86 : 0.4,
+    company_name: typeof inferredAssumptions.company_name === 'string' && inferredAssumptions.company_name.trim() ? 0.96 : 0.45,
+    industry: typeof inferredAssumptions.industry === 'string' && inferredAssumptions.industry.trim() ? 0.78 : 0.42,
+    company_size: typeof inferredAssumptions.company_size === 'string' && inferredAssumptions.company_size.trim() ? 0.7 : 0.38,
+    must_have_count: mustHaves.length > 0 ? 0.95 : 0.5,
+    language_keyword_count: (benchmark.language_keywords ?? []).length > 0 ? 0.8 : 0.45,
+  };
+  const whyInferred = {
+    role_title: 'Parsed from the job description title and heading language.',
+    seniority_level: 'Inferred from the JD scope, ownership, and leadership language.',
+    company_name: 'Taken from company research and/or the job description employer name.',
+    industry: 'Derived from company research signals.',
+    company_size: 'Derived from company research signals and public profile sizing.',
+    must_have_count: 'Counted from JD must-have requirements used to benchmark fit.',
+    language_keyword_count: 'Counted from benchmark/JD language patterns selected for keyword echoing.',
+  };
+  const userOverrides = options?.userOverrides ?? {};
+  const assumptionProvenance = Object.keys(assumptions).reduce<Record<string, Record<string, unknown>>>((acc, key) => {
+    const userEdited = Object.prototype.hasOwnProperty.call(userOverrides, key);
+    acc[key] = {
+      source: userEdited ? 'user_edited' : 'inferred',
+      ...(userEdited && options?.overrideMeta
+        ? {
+            edit_version: options.overrideMeta.version,
+            edited_at: options.overrideMeta.edited_at ?? null,
+            note: options.overrideMeta.note ?? null,
+          }
+        : {}),
+    };
+    return acc;
+  }, {});
+
   return {
     // Legacy UI-facing shape (still used by panels + benchmark inspector)
     required_skills: requiredSkills,
@@ -99,10 +155,100 @@ function buildResearchDashboardPanelBenchmark(
     // Preserve current v2 benchmark fields for transparency + future UI migration
     ideal_profile: benchmark.ideal_profile ?? '',
     section_expectations: sectionExpectations,
+    assumptions,
+    inferred_assumptions: inferredAssumptions,
+    user_overrides: userOverrides,
+    assumption_provenance: assumptionProvenance,
+    confidence_by_assumption: confidenceByAssumption,
+    why_inferred: whyInferred,
   };
 }
 
-function emitResearchDashboardPanel(emit: PipelineEmitter, research: ResearchOutput) {
+function buildBenchmarkAssumptionsSnapshot(
+  benchmark: BenchmarkCandidate,
+  jdAnalysis: JDAnalysis,
+  company: CompanyResearch,
+): Record<string, unknown> {
+  return {
+    role_title: jdAnalysis.role_title ?? '',
+    seniority_level: jdAnalysis.seniority_level ?? '',
+    company_name: company.company_name ?? jdAnalysis.company ?? '',
+    industry: company.industry ?? '',
+    company_size: company.size ?? '',
+    must_have_count: (jdAnalysis.must_haves ?? []).length,
+    language_keyword_count: (benchmark.language_keywords ?? []).length,
+  };
+}
+
+function extractBenchmarkUserOverrides(assumptions: Record<string, unknown>): Record<string, unknown> {
+  const overrides: Record<string, unknown> = {};
+  for (const [key, rawValue] of Object.entries(assumptions)) {
+    if (typeof rawValue === 'string') {
+      const value = rawValue.trim();
+      if (!value) continue;
+      overrides[key] = value;
+      continue;
+    }
+    if (Array.isArray(rawValue)) {
+      const items = rawValue
+        .filter((v): v is string | number | boolean => (
+          typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+        ))
+        .map((v) => (typeof v === 'string' ? v.trim() : v))
+        .filter((v) => !(typeof v === 'string' && v.length === 0));
+      if (items.length === 0) continue;
+      overrides[key] = items;
+      continue;
+    }
+    if (typeof rawValue === 'number') {
+      if (!Number.isFinite(rawValue)) continue;
+      overrides[key] = rawValue;
+      continue;
+    }
+    if (typeof rawValue === 'boolean') {
+      overrides[key] = rawValue;
+      continue;
+    }
+    if (rawValue && typeof rawValue === 'object') {
+      overrides[key] = rawValue;
+    }
+  }
+  return overrides;
+}
+
+function getBenchmarkPanelPayloadOptions(
+  state: Pick<PipelineState, 'benchmark_inferred_assumptions' | 'benchmark_user_overrides' | 'benchmark_override_meta'>,
+  research: ResearchOutput,
+): {
+  inferredAssumptions?: Record<string, unknown>;
+  userOverrides?: Record<string, unknown>;
+  overrideMeta?: {
+    version: number;
+    edited_at?: string;
+    note?: string | null;
+  };
+} {
+  return {
+    inferredAssumptions: state.benchmark_inferred_assumptions
+      ?? buildBenchmarkAssumptionsSnapshot(research.benchmark_candidate, research.jd_analysis, research.company_research),
+    ...(state.benchmark_user_overrides ? { userOverrides: state.benchmark_user_overrides } : {}),
+    ...(state.benchmark_override_meta ? { overrideMeta: state.benchmark_override_meta } : {}),
+  };
+}
+
+function emitResearchDashboardPanel(
+  emit: PipelineEmitter,
+  research: ResearchOutput,
+  options?: {
+    inferredAssumptions?: Record<string, unknown>;
+    userOverrides?: Record<string, unknown>;
+    overrideMeta?: {
+      version: number;
+      edited_at?: string;
+      note?: string | null;
+    };
+  },
+) {
   emit({
     type: 'right_panel_update',
     panel_type: 'research_dashboard',
@@ -117,6 +263,7 @@ function emitResearchDashboardPanel(emit: PipelineEmitter, research: ResearchOut
         research.benchmark_candidate,
         research.jd_analysis,
         research.company_research,
+        options,
       ),
     },
   });
@@ -281,6 +428,139 @@ function getMinimumEvidenceTarget(
   return Math.min(20, Math.max(3, Math.round(raw)));
 }
 
+type DraftReadinessBlockingReason = 'evidence_target' | 'coverage_threshold';
+type DraftReadinessRequirementPriority = 'must_have' | 'implicit' | 'nice_to_have';
+
+function normalizeRequirementKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function buildDraftReadinessDetails(
+  state: PipelineState,
+  policy: WorkflowModePolicy,
+): {
+  evidenceCount: number;
+  minimumEvidenceTarget: number;
+  coverageScore: number;
+  ready: boolean;
+  remainingEvidenceNeeded: number;
+  remainingCoverageNeeded: number;
+  blockingReasons: DraftReadinessBlockingReason[];
+  gapBreakdown: {
+    total: number;
+    strong: number;
+    partial: number;
+    gap: number;
+  };
+  evidenceQuality: {
+    userValidatedCount: number;
+    metricsDefensibleCount: number;
+    mappedRequirementEvidenceCount: number;
+  };
+  highImpactRemaining: Array<{
+    requirement: string;
+    classification: 'partial' | 'gap';
+    priority: DraftReadinessRequirementPriority;
+    evidenceCount: number;
+  }>;
+  suggestedQuestionCount: number;
+} {
+  const evidence = state.positioning?.evidence_library ?? [];
+  const evidenceCount = evidence.length;
+  const minimumEvidenceTarget = getMinimumEvidenceTarget(state, policy);
+  const coverageScore = state.gap_analysis?.coverage_score ?? 0;
+  const remainingEvidenceNeeded = Math.max(0, minimumEvidenceTarget - evidenceCount);
+  const remainingCoverageNeeded = Math.max(0, Math.ceil(policy.draftReadiness.coverageThreshold - coverageScore));
+  const ready = remainingEvidenceNeeded === 0 && remainingCoverageNeeded === 0;
+  const blockingReasons: DraftReadinessBlockingReason[] = [
+    ...(remainingEvidenceNeeded > 0 ? ['evidence_target' as const] : []),
+    ...(remainingCoverageNeeded > 0 ? ['coverage_threshold' as const] : []),
+  ];
+
+  const requirements = state.gap_analysis?.requirements ?? [];
+  const strong = requirements.filter((r) => r.classification === 'strong').length;
+  const partial = requirements.filter((r) => r.classification === 'partial').length;
+  const gap = requirements.filter((r) => r.classification === 'gap').length;
+
+  const mustHaveSet = new Set((state.research?.jd_analysis.must_haves ?? []).map(normalizeRequirementKey));
+  const implicitSet = new Set((state.research?.jd_analysis.implicit_requirements ?? []).map(normalizeRequirementKey));
+  const priorityWeight: Record<DraftReadinessRequirementPriority, number> = {
+    must_have: 0,
+    implicit: 1,
+    nice_to_have: 2,
+  };
+  const classificationWeight: Record<'partial' | 'gap', number> = {
+    gap: 0,
+    partial: 1,
+  };
+
+  const highImpactRemaining = requirements
+    .filter((r): r is typeof r & { classification: 'partial' | 'gap' } => (
+      r.classification === 'partial' || r.classification === 'gap'
+    ))
+    .map((r) => {
+      const key = normalizeRequirementKey(r.requirement);
+      const priority: DraftReadinessRequirementPriority = mustHaveSet.has(key)
+        ? 'must_have'
+        : implicitSet.has(key)
+          ? 'implicit'
+          : 'nice_to_have';
+      return {
+        requirement: r.requirement,
+        classification: r.classification,
+        priority,
+        evidenceCount: Array.isArray(r.evidence) ? r.evidence.filter(Boolean).length : 0,
+      };
+    })
+    .sort((a, b) => {
+      if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
+        return priorityWeight[a.priority] - priorityWeight[b.priority];
+      }
+      if (classificationWeight[a.classification] !== classificationWeight[b.classification]) {
+        return classificationWeight[a.classification] - classificationWeight[b.classification];
+      }
+      if (a.evidenceCount !== b.evidenceCount) return a.evidenceCount - b.evidenceCount;
+      return a.requirement.localeCompare(b.requirement);
+    })
+    .slice(0, 5);
+
+  const userValidatedCount = evidence.filter((item) => item.user_validated).length;
+  const metricsDefensibleCount = evidence.filter((item) => item.metrics_defensible).length;
+  const mappedRequirementEvidenceCount = evidence.filter(
+    (item) => Array.isArray(item.mapped_requirements) && item.mapped_requirements.length > 0,
+  ).length;
+
+  const suggestedQuestionCount = ready
+    ? 0
+    : Math.min(
+        remainingEvidenceNeeded > 0 ? 5 : 2,
+        Math.max(1, highImpactRemaining.length),
+      );
+
+  return {
+    evidenceCount,
+    minimumEvidenceTarget,
+    coverageScore,
+    ready,
+    remainingEvidenceNeeded,
+    remainingCoverageNeeded,
+    blockingReasons,
+    gapBreakdown: {
+      total: requirements.length,
+      strong,
+      partial,
+      gap,
+    },
+    evidenceQuality: {
+      userValidatedCount,
+      metricsDefensibleCount,
+      mappedRequirementEvidenceCount,
+    },
+    highImpactRemaining,
+    suggestedQuestionCount,
+  };
+}
+
 function estimateDraftReadiness(
   state: PipelineState,
   policy: WorkflowModePolicy,
@@ -289,16 +569,29 @@ function estimateDraftReadiness(
   minimumEvidenceTarget: number;
   coverageScore: number;
   ready: boolean;
-} {
-  const evidenceCount = state.positioning?.evidence_library?.length ?? 0;
-  const minimumEvidenceTarget = getMinimumEvidenceTarget(state, policy);
-  const coverageScore = state.gap_analysis?.coverage_score ?? 0;
-  return {
-    evidenceCount,
-    minimumEvidenceTarget,
-    coverageScore,
-    ready: evidenceCount >= minimumEvidenceTarget && coverageScore >= policy.draftReadiness.coverageThreshold,
+  remainingEvidenceNeeded: number;
+  remainingCoverageNeeded: number;
+  blockingReasons: DraftReadinessBlockingReason[];
+  gapBreakdown: {
+    total: number;
+    strong: number;
+    partial: number;
+    gap: number;
   };
+  evidenceQuality: {
+    userValidatedCount: number;
+    metricsDefensibleCount: number;
+    mappedRequirementEvidenceCount: number;
+  };
+  highImpactRemaining: Array<{
+    requirement: string;
+    classification: 'partial' | 'gap';
+    priority: DraftReadinessRequirementPriority;
+    evidenceCount: number;
+  }>;
+  suggestedQuestionCount: number;
+} {
+  return buildDraftReadinessDetails(state, policy);
 }
 
 function emitDraftReadinessUpdate(
@@ -319,6 +612,27 @@ function emitDraftReadinessUpdate(
     coverage_score: readiness.coverageScore,
     coverage_threshold: policy.draftReadiness.coverageThreshold,
     ready: readiness.ready,
+    remaining_evidence_needed: readiness.remainingEvidenceNeeded,
+    remaining_coverage_needed: readiness.remainingCoverageNeeded,
+    blocking_reasons: readiness.blockingReasons,
+    gap_breakdown: {
+      total: readiness.gapBreakdown.total,
+      strong: readiness.gapBreakdown.strong,
+      partial: readiness.gapBreakdown.partial,
+      gap: readiness.gapBreakdown.gap,
+    },
+    evidence_quality: {
+      user_validated_count: readiness.evidenceQuality.userValidatedCount,
+      metrics_defensible_count: readiness.evidenceQuality.metricsDefensibleCount,
+      mapped_requirement_evidence_count: readiness.evidenceQuality.mappedRequirementEvidenceCount,
+    },
+    high_impact_remaining: readiness.highImpactRemaining.map((item) => ({
+      requirement: item.requirement,
+      classification: item.classification,
+      priority: item.priority,
+      evidence_count: item.evidenceCount,
+    })),
+    suggested_question_count: readiness.suggestedQuestionCount,
     ...(note ? { note } : {}),
   });
   return readiness;
@@ -461,6 +775,19 @@ async function applyLatestBenchmarkAssumptionsIfNeeded(
   const benchmark = { ...state.research.benchmark_candidate };
   const jd = { ...state.research.jd_analysis };
   const company = { ...state.research.company_research };
+  if (!state.benchmark_inferred_assumptions) {
+    state.benchmark_inferred_assumptions = buildBenchmarkAssumptionsSnapshot(
+      benchmark,
+      jd,
+      company,
+    );
+  }
+  state.benchmark_user_overrides = extractBenchmarkUserOverrides(assumptions);
+  state.benchmark_override_meta = {
+    version,
+    edited_at: typeof payload?.edited_at === 'string' ? payload.edited_at : undefined,
+    note: typeof payload?.note === 'string' ? payload.note : null,
+  };
 
   if (typeof assumptions.company_name === 'string' && assumptions.company_name.trim()) {
     company.company_name = assumptions.company_name.trim();
@@ -525,7 +852,7 @@ async function applyLatestBenchmarkAssumptionsIfNeeded(
     rebuilt_through_stage: 'research',
     message: 'Updated benchmark assumptions are now active for the current run.',
   });
-  emitResearchDashboardPanel(emit, state.research);
+  emitResearchDashboardPanel(emit, state.research, getBenchmarkPanelPayloadOptions(state, state.research));
   log.info({ benchmark_override_version: version }, 'Applied benchmark assumption overrides to current pipeline state');
   return true;
 }
@@ -660,7 +987,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // Emit research dashboard if research is ready
     if (state.research) {
-      emitResearchDashboardPanel(emit, state.research);
+      emitResearchDashboardPanel(emit, state.research, getBenchmarkPanelPayloadOptions(state, state.research));
     }
 
     // ─── Positioning Coach ──────────────────────────────────
@@ -710,7 +1037,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log);
       markStageEnd('research');
       emit({ type: 'stage_complete', stage: 'research', message: 'Research complete', duration_ms: stageTimingsMs.research });
-      emitResearchDashboardPanel(emit, state.research);
+      emitResearchDashboardPanel(emit, state.research, getBenchmarkPanelPayloadOptions(state, state.research));
       log.info({ coverage_keywords: state.research.jd_analysis.language_keywords.length }, 'Research complete (after positioning)');
     }
 
@@ -888,6 +1215,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           gap_count: refreshedGap,
         },
       });
+      emitDraftReadinessUpdate(
+        emit,
+        state,
+        workflowModePolicy,
+        'gap_analysis',
+        state.user_preferences?.workflow_mode,
+        'Draft readiness refreshed after benchmark replan updated the gap analysis.',
+      );
       emit({
         type: 'workflow_replan_completed',
         reason: 'benchmark_assumptions_updated',
@@ -983,6 +1318,14 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
           gap_count: refreshedGap,
         },
       });
+      emitDraftReadinessUpdate(
+        emit,
+        state,
+        workflowModePolicy,
+        'gap_analysis',
+        state.user_preferences?.workflow_mode,
+        'Draft readiness refreshed after benchmark replan rebuilt the gap analysis and blueprint inputs.',
+      );
       state.architect = await withRetry(
         () => runArchitect({
           parsed_resume: state.intake!,
@@ -1025,16 +1368,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     const sectionCalls = buildSectionCalls(state.architect, state.intake, state.positioning);
     const expandedSectionOrder = sectionCalls.map((c) => c.section);
-    const reviewRequiredSections = buildSectionReviewRequiredSet(expandedSectionOrder, workflowModePolicy);
-    const autoApprovedByModeSections = expandedSectionOrder.filter((section) => !reviewRequiredSections.has(section));
-    if (workflowModePolicy.reviews.sectionStrategy === 'bundled') {
-      const reviewList = expandedSectionOrder.filter((section) => reviewRequiredSections.has(section));
-      emit({
-        type: 'transparency',
-        stage: 'section_review',
-        message: `${state.user_preferences?.workflow_mode === 'fast_draft' ? 'Fast Draft' : 'Balanced'} mode will review ${reviewList.length} high-impact section${reviewList.length === 1 ? '' : 's'} (${reviewList.map((s) => s.replace(/_/g, ' ')).join(', ') || 'core sections'}) and auto-approve the rest. You can still revise any section later in the workspace.`,
-      });
-    }
+    let reviewRequiredSections = buildSectionReviewRequiredSet(expandedSectionOrder, workflowModePolicy);
+    let autoApprovedByModeSections = expandedSectionOrder.filter((section) => !reviewRequiredSections.has(section));
 
     // Run section calls with bounded concurrency to reduce provider 429 bursts.
     const runWithSectionLimit = createConcurrencyLimiter(SECTION_WRITE_CONCURRENCY);
@@ -1081,9 +1416,55 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     let draftNowAppliedToSectionReviews = false;
     let approveRemainingReviewBundle = false;
     const autoApproveReviewBundles = new Set<SectionReviewBundleKey>();
+    let lastSectionReviewPlanSignature = '';
+    const refreshSectionReviewPlan = (announceChanges = false) => {
+      const nextReviewRequired = buildSectionReviewRequiredSet(expandedSectionOrder, workflowModePolicy);
+      const nextAutoApproved = expandedSectionOrder.filter((section) => !nextReviewRequired.has(section));
+      const signature = JSON.stringify({
+        mode: state.user_preferences?.workflow_mode ?? 'balanced',
+        strategy: workflowModePolicy.reviews.sectionStrategy,
+        maxExperienceRoleReviews: workflowModePolicy.reviews.maxExperienceRoleReviews,
+        required: Array.from(nextReviewRequired).sort(),
+      });
+      const changed = signature !== lastSectionReviewPlanSignature;
+      reviewRequiredSections = nextReviewRequired;
+      autoApprovedByModeSections = nextAutoApproved;
+
+      if (workflowModePolicy.reviews.sectionStrategy !== 'bundled') {
+        approveRemainingReviewBundle = false;
+        autoApproveReviewBundles.clear();
+      }
+
+      if (announceChanges && changed) {
+        if (workflowModePolicy.reviews.sectionStrategy === 'bundled') {
+          const reviewList = expandedSectionOrder.filter((section) => reviewRequiredSections.has(section));
+          const modeLabel = state.user_preferences?.workflow_mode === 'fast_draft'
+            ? 'Fast Draft'
+            : 'Balanced';
+          emit({
+            type: 'transparency',
+            stage: 'section_review',
+            message: `${modeLabel} mode will review ${reviewList.length} high-impact section${reviewList.length === 1 ? '' : 's'} (${reviewList.map((s) => s.replace(/_/g, ' ')).join(', ') || 'core sections'}) and auto-approve the rest. You can still revise any section later in the workspace.`,
+          });
+        } else {
+          emit({
+            type: 'transparency',
+            stage: 'section_review',
+            message: 'Deep Dive mode is now active. The remaining sections will use per-section review (bundle auto-approvals have been disabled).',
+          });
+        }
+      }
+
+      lastSectionReviewPlanSignature = signature;
+      return changed;
+    };
+    refreshSectionReviewPlan(true);
 
     // Present sections sequentially for user review (LLM work already in flight)
     for (const call of sectionCalls) {
+      if (await refreshWorkflowModePolicy()) {
+        refreshSectionReviewPlan(true);
+      }
       if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
         throw new Error('Benchmark assumptions changed after section writing started. Restart the pipeline to rebuild sections consistently from gap analysis.');
       }
@@ -1134,6 +1515,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       let sectionApproved = false;
       let reviewIterations = 0;
       while (!sectionApproved) {
+        if (await refreshWorkflowModePolicy()) {
+          refreshSectionReviewPlan(true);
+        }
         if (await applyLatestBenchmarkAssumptionsIfNeeded(state, emit, log)) {
           throw new Error('Benchmark assumptions changed during section review. Restart the pipeline to rebuild sections consistently from gap analysis.');
         }
