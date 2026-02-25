@@ -384,6 +384,10 @@ export interface QuestionnaireQuestion {
   id: string;
   question_text: string;
   context?: string;
+  impact_tier?: 'high' | 'medium' | 'low';
+  payoff_hint?: string;
+  topic_keys?: string[];
+  benchmark_edit_version?: number | null;
   input_type: 'single_choice' | 'multi_choice' | 'rating';
   options?: QuestionnaireOption[];
   allow_custom: boolean;
@@ -396,6 +400,10 @@ export interface QuestionnaireResponse {
   selected_option_ids: string[];
   custom_text?: string;
   skipped: boolean;
+  impact_tag?: 'high' | 'medium' | 'low';
+  payoff_hint?: string;
+  topic_keys?: string[];
+  benchmark_edit_version?: number | null;
 }
 
 export interface QuestionnaireSubmission {
@@ -617,6 +625,33 @@ export type PipelineSSEEvent =
       }>;
       suggested_question_count?: number;
       note?: string;
+    }
+  | {
+      type: 'draft_path_decision';
+      stage: 'gap_analysis';
+      workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
+      ready: boolean;
+      proceeding_reason: 'readiness_met' | 'momentum_mode';
+      blocking_reasons?: Array<'evidence_target' | 'coverage_threshold'>;
+      remaining_evidence_needed?: number;
+      remaining_coverage_needed?: number;
+      top_remaining?: {
+        requirement: string;
+        classification: 'partial' | 'gap';
+        priority: 'must_have' | 'implicit' | 'nice_to_have';
+        evidence_count: number;
+      };
+      message: string;
+    }
+  | {
+      type: 'questionnaire_reuse_summary';
+      stage: 'positioning' | 'gap_analysis';
+      questionnaire_kind: 'positioning_batch' | 'gap_analysis_quiz';
+      skipped_count: number;
+      benchmark_edit_version?: number | null;
+      sample_topics?: string[];
+      sample_payoffs?: string[];
+      message?: string;
     }
   | {
       type: 'workflow_replan_requested';

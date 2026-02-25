@@ -196,21 +196,52 @@ const PARTIAL_OPTIONS = [
   { id: 'not_applicable', label: 'Not really applicable', description: "This doesn't reflect my experience accurately" },
 ];
 
+function normalizeGapQuestionTopicKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 /**
  * Generate evidence-probing questionnaire questions for partial/gap requirements.
  * Gaps are prioritized over partials; capped at 6 questions total.
  * Questions differ by classification — gaps ask if experience exists, partials ask
  * whether stronger evidence can be surfaced.
  */
-export function generateGapQuestions(analysis: GapAnalystOutput): QuestionnaireQuestion[] {
+export function generateGapQuestions(
+  analysis: GapAnalystOutput,
+  options?: {
+    benchmarkEditVersion?: number | null;
+  },
+): QuestionnaireQuestion[] {
+  const criticalGapSet = new Set(
+    (analysis.critical_gaps ?? []).map((value) => value.trim().toLowerCase()),
+  );
   const gaps = analysis.requirements.filter(r => r.classification === 'gap');
   const partials = analysis.requirements.filter(r => r.classification === 'partial');
 
-  // Prioritize gaps first, then partials, cap at 6
-  const candidates = [...gaps, ...partials].slice(0, 6);
+  // Prioritize critical gaps first, then other gaps, then partials; cap at 6
+  const candidates = [...gaps, ...partials]
+    .sort((a, b) => {
+      const aCritical = criticalGapSet.has(a.requirement.trim().toLowerCase()) ? 0 : 1;
+      const bCritical = criticalGapSet.has(b.requirement.trim().toLowerCase()) ? 0 : 1;
+      if (aCritical !== bCritical) return aCritical - bCritical;
+      if (a.classification !== b.classification) return a.classification === 'gap' ? -1 : 1;
+      return a.requirement.localeCompare(b.requirement);
+    })
+    .slice(0, 6);
 
   return candidates.map((req, i) => {
+    const isCritical = criticalGapSet.has(req.requirement.trim().toLowerCase());
+    const topicKeys = [
+      `requirement:${normalizeGapQuestionTopicKey(req.requirement)}`,
+      `classification:${req.classification}`,
+      ...(isCritical ? ['priority:critical'] : ['priority:non_critical']),
+    ];
     if (req.classification === 'gap') {
+      const contextParts = [
+        isCritical ? 'High-impact requirement: closing this gap will materially improve fit for the role.' : null,
+        req.mitigation ? `Possible positioning angle: ${req.mitigation}` : null,
+        'Describe a specific situation where you demonstrated this (or an adjacent version) — what happened and what resulted?',
+      ].filter(Boolean) as string[];
       return makeQuestion(
         `gap_${i}`,
         `The role requires ${req.requirement} — do you have experience with this?`,
@@ -218,12 +249,23 @@ export function generateGapQuestions(analysis: GapAnalystOutput): QuestionnaireQ
         GAP_OPTIONS,
         {
           allow_custom: true,
-          context: 'Describe a specific situation where you demonstrated this — what happened and what resulted?',
+          impact_tier: isCritical ? 'high' : 'medium',
+          payoff_hint: isCritical
+            ? 'High-impact requirement. Closing this gap can materially improve overall fit.'
+            : 'Improving this requirement can strengthen benchmark alignment.',
+          topic_keys: topicKeys,
+          benchmark_edit_version: options?.benchmarkEditVersion ?? null,
+          context: contextParts.join(' '),
         },
       );
     } else {
       // partial
       const existingEvidence = (req.evidence ?? []).slice(0, 2).join('; ');
+      const contextParts = [
+        isCritical ? 'High-impact requirement: a stronger example here can significantly improve your match.' : null,
+        existingEvidence ? `Existing evidence: ${existingEvidence}` : null,
+        req.strengthen ? `How to strengthen: ${req.strengthen}` : null,
+      ].filter(Boolean) as string[];
       return makeQuestion(
         `gap_${i}`,
         `We found some evidence for ${req.requirement} — can you strengthen it?`,
@@ -231,9 +273,13 @@ export function generateGapQuestions(analysis: GapAnalystOutput): QuestionnaireQ
         PARTIAL_OPTIONS,
         {
           allow_custom: true,
-          context: existingEvidence
-            ? `Existing evidence: ${existingEvidence}`
-            : undefined,
+          impact_tier: isCritical ? 'high' : 'medium',
+          payoff_hint: isCritical
+            ? 'High-impact requirement. A stronger example here can improve draft confidence quickly.'
+            : 'A stronger example here can improve coverage and reduce follow-up questions.',
+          topic_keys: topicKeys,
+          benchmark_edit_version: options?.benchmarkEditVersion ?? null,
+          context: contextParts.length > 0 ? contextParts.join(' ') : undefined,
         },
       );
     }

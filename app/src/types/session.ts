@@ -175,6 +175,10 @@ export interface QuestionnaireQuestion {
   id: string;
   question_text: string;
   context?: string;
+  impact_tier?: 'high' | 'medium' | 'low';
+  payoff_hint?: string;
+  topic_keys?: string[];
+  benchmark_edit_version?: number | null;
   input_type: 'single_choice' | 'multi_choice' | 'rating';
   options?: QuestionnaireOption[];
   allow_custom: boolean;
@@ -187,6 +191,10 @@ export interface QuestionnaireResponse {
   selected_option_ids: string[];
   custom_text?: string;
   skipped: boolean;
+  impact_tag?: 'high' | 'medium' | 'low';
+  payoff_hint?: string;
+  topic_keys?: string[];
+  benchmark_edit_version?: number | null;
 }
 
 export interface QuestionnaireSubmission {

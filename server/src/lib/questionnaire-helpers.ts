@@ -6,12 +6,25 @@ export function makeQuestion(
   text: string,
   input_type: QuestionnaireQuestion['input_type'],
   options: Array<{ id: string; label: string; description?: string; source?: QuestionnaireOption['source'] }>,
-  config?: { context?: string; allow_custom?: boolean; allow_skip?: boolean; depends_on?: QuestionnaireQuestion['depends_on'] }
+  config?: {
+    context?: string;
+    payoff_hint?: string;
+    impact_tier?: QuestionnaireQuestion['impact_tier'];
+    topic_keys?: QuestionnaireQuestion['topic_keys'];
+    benchmark_edit_version?: QuestionnaireQuestion['benchmark_edit_version'];
+    allow_custom?: boolean;
+    allow_skip?: boolean;
+    depends_on?: QuestionnaireQuestion['depends_on'];
+  }
 ): QuestionnaireQuestion {
   return {
     id,
     question_text: text,
     context: config?.context,
+    payoff_hint: config?.payoff_hint,
+    impact_tier: config?.impact_tier,
+    topic_keys: config?.topic_keys,
+    benchmark_edit_version: config?.benchmark_edit_version,
     input_type,
     options: options.map(o => ({ id: o.id, label: o.label, description: o.description, source: o.source })),
     allow_custom: config?.allow_custom ?? false,

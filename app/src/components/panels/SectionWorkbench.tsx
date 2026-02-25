@@ -228,6 +228,12 @@ export function SectionWorkbench({
   const currentBundleMeta = currentReviewBundleKey
     ? reviewBundles.find((bundle) => bundle.key === currentReviewBundleKey)
     : undefined;
+  const nextPendingReviewBundleMeta = reviewBundles.find((bundle) =>
+    bundle.key !== currentReviewBundleKey
+    && (bundle.status === 'pending' || bundle.status === 'in_progress')
+    && Number(bundle.review_required) > 0,
+  );
+  const autoApprovedBundleCount = reviewBundles.filter((bundle) => bundle.status === 'auto_approved').length;
   const approvedReviewSections = reviewRequiredSections.filter((s) => sectionsApproved.includes(s));
   const remainingReviewSections = reviewRequiredSections.filter(
     (s) => s !== section && !sectionsApproved.includes(s),
@@ -351,6 +357,36 @@ export function SectionWorkbench({
                       );
                     })}
                   </div>
+                  {(currentBundleMeta || nextPendingReviewBundleMeta || autoApprovedBundleCount > 0) && (
+                    <div className="mt-2 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2 text-[11px] text-white/65">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {currentBundleMeta && (
+                          <span>
+                            Current bundle: <span className="text-white/82">{currentBundleMeta.label}</span>
+                            {typeof currentBundleMeta.reviewed_required === 'number' && typeof currentBundleMeta.review_required === 'number'
+                              ? ` (${currentBundleMeta.reviewed_required}/${currentBundleMeta.review_required})`
+                              : ''}
+                          </span>
+                        )}
+                        {nextPendingReviewBundleMeta && (
+                          <span>
+                            Next: <span className="text-white/78">{nextPendingReviewBundleMeta.label}</span>
+                            {typeof nextPendingReviewBundleMeta.review_required === 'number'
+                              ? ` (${nextPendingReviewBundleMeta.review_required} review section${nextPendingReviewBundleMeta.review_required === 1 ? '' : 's'})`
+                              : ''}
+                          </span>
+                        )}
+                        {!nextPendingReviewBundleMeta && currentBundleMeta?.status === 'complete' && (
+                          <span className="text-emerald-200/80">Current bundle is complete.</span>
+                        )}
+                        {autoApprovedBundleCount > 0 && (
+                          <span className="text-white/45">
+                            {autoApprovedBundleCount} bundle{autoApprovedBundleCount === 1 ? '' : 's'} auto-approved by mode
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {reviewRequiredSections.length > 0 && (
@@ -367,13 +403,14 @@ export function SectionWorkbench({
                   <GlassButton
                     variant="ghost"
                     onClick={onApproveCurrentBundle}
-                    disabled={isRefining || hasLocalEdits}
-                    className="h-8 px-3 text-[11px]"
-                  >
-                    Approve Current Bundle ({currentBundleMeta.label})
+                  disabled={isRefining || hasLocalEdits}
+                  className="h-8 px-3 text-[11px]"
+                >
+                    Finish {currentBundleMeta.label} Bundle
                   </GlassButton>
                   <p className="mt-1 text-[10px] text-white/35">
-                    Approves the rest of this bundle&apos;s review sections and continues to the next bundle.
+                    Approves the rest of this bundle&apos;s review sections
+                    {nextPendingReviewBundleMeta ? ` and continues to ${nextPendingReviewBundleMeta.label}.` : '.'}
                   </p>
                 </div>
               )}

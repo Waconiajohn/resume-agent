@@ -417,6 +417,72 @@ function inferQuestionResponseStatus(response: unknown): 'answered' | 'skipped' 
   return 'answered';
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function extractQuestionnaireResponsesForPersistence(response: unknown): Array<{
+  question_id: string;
+  stage: string;
+  status: 'answered' | 'skipped' | 'deferred';
+  response: unknown;
+  impact_tag?: string | null;
+}> {
+  const payload = asRecord(response);
+  if (!payload) return [];
+  const questionnaireId = typeof payload.questionnaire_id === 'string' ? payload.questionnaire_id.trim() : '';
+  const stage = typeof payload.stage === 'string' && payload.stage.trim() ? payload.stage.trim() : 'unknown';
+  const responses = Array.isArray(payload.responses) ? payload.responses : [];
+  if (!questionnaireId || responses.length === 0) return [];
+
+  const rows: Array<{
+    question_id: string;
+    stage: string;
+    status: 'answered' | 'skipped' | 'deferred';
+    response: unknown;
+    impact_tag?: string | null;
+  }> = [];
+
+  for (const item of responses) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    const rec = item as Record<string, unknown>;
+    const rawQuestionId = typeof rec.question_id === 'string' ? rec.question_id.trim() : '';
+    if (!rawQuestionId) continue;
+    const impactTag = rec.impact_tag === 'high' || rec.impact_tag === 'medium' || rec.impact_tag === 'low'
+      ? rec.impact_tag
+      : null;
+    rows.push({
+      question_id: `${questionnaireId}:${rawQuestionId}`,
+      stage,
+      status: inferQuestionResponseStatus(rec),
+      response: {
+        selected_option_ids: Array.isArray(rec.selected_option_ids)
+          ? rec.selected_option_ids.filter((v): v is string => typeof v === 'string').slice(0, 12)
+          : [],
+        ...(typeof rec.custom_text === 'string' ? { custom_text: rec.custom_text } : {}),
+        skipped: rec.skipped === true,
+        ...(impactTag ? { impact_tag: impactTag } : {}),
+        ...(typeof rec.payoff_hint === 'string' ? { payoff_hint: rec.payoff_hint.slice(0, 240) } : {}),
+        ...(Array.isArray(rec.topic_keys)
+          ? {
+              topic_keys: rec.topic_keys
+                .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+                .map((v) => v.trim().toLowerCase())
+                .slice(0, 8),
+            }
+          : {}),
+        ...(typeof rec.benchmark_edit_version === 'number'
+          ? { benchmark_edit_version: rec.benchmark_edit_version }
+          : (rec.benchmark_edit_version === null ? { benchmark_edit_version: null } : {})),
+      },
+      impact_tag: impactTag,
+    });
+  }
+
+  return rows;
+}
+
 async function persistQuestionResponseBestEffort(
   sessionId: string,
   questionId: string,
@@ -437,6 +503,24 @@ async function persistQuestionResponseBestEffort(
     .upsert(payload, { onConflict: 'session_id,question_id' });
   if (error) {
     logger.warn({ session_id: sessionId, question_id: questionId, error: error.message }, 'Failed to persist question response');
+  }
+
+  const nestedQuestionnaireRows = extractQuestionnaireResponsesForPersistence(response).map((row) => ({
+    session_id: sessionId,
+    question_id: row.question_id,
+    stage: row.stage,
+    status: row.status,
+    response: row.response,
+    impact_tag: row.impact_tag ?? null,
+    updated_at: new Date().toISOString(),
+  }));
+  if (nestedQuestionnaireRows.length > 0) {
+    const { error: nestedError } = await supabaseAdmin
+      .from('session_question_responses')
+      .upsert(nestedQuestionnaireRows, { onConflict: 'session_id,question_id' });
+    if (nestedError) {
+      logger.warn({ session_id: sessionId, question_id: questionId, error: nestedError.message }, 'Failed to persist questionnaire response analytics rows');
+    }
   }
 }
 
@@ -1268,6 +1352,12 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
         coverage_score: event.coverage_score,
         coverage_threshold: event.coverage_threshold,
       });
+    }
+    if (event.type === 'draft_path_decision') {
+      persistWorkflowArtifactBestEffort(session_id, 'overview', 'draft_path_decision', event, 'system');
+    }
+    if (event.type === 'questionnaire_reuse_summary') {
+      persistWorkflowArtifactBestEffort(session_id, 'questions', 'questionnaire_reuse_summary', event, 'system');
     }
     if (
       event.type === 'workflow_replan_requested'

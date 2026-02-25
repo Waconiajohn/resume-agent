@@ -173,14 +173,37 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
   }
 
   function submitQuestionnaire() {
+    const visibleQuestionById = new Map(
+      visibleIndices
+        .map((idx) => questions[idx])
+        .filter((q): q is QuestionnaireData['questions'][number] => Boolean(q))
+        .map((q) => [q.id, q]),
+    );
     const submission: QuestionnaireSubmission = {
       questionnaire_id,
       schema_version,
       stage,
-      responses: responses.filter((r) => {
-        // Only include responses for visible questions
-        return visibleIndices.some((idx) => questions[idx]?.id === r.question_id);
-      }),
+      responses: responses
+        .filter((r) => {
+          // Only include responses for visible questions
+          return visibleQuestionById.has(r.question_id);
+        })
+        .map((r) => {
+          const question = visibleQuestionById.get(r.question_id);
+          return {
+            ...r,
+            ...(question?.impact_tier ? { impact_tag: question.impact_tier } : {}),
+            ...(typeof question?.payoff_hint === 'string' && question.payoff_hint.trim()
+              ? { payoff_hint: question.payoff_hint.trim().slice(0, 240) }
+              : {}),
+            ...(Array.isArray(question?.topic_keys) && question.topic_keys.length > 0
+              ? { topic_keys: question.topic_keys.filter((k): k is string => typeof k === 'string' && k.trim().length > 0).slice(0, 8) }
+              : {}),
+            ...(typeof question?.benchmark_edit_version === 'number'
+              ? { benchmark_edit_version: question.benchmark_edit_version }
+              : (question?.benchmark_edit_version === null ? { benchmark_edit_version: null } : {})),
+          };
+        }),
       submitted_at: new Date().toISOString(),
     };
     onComplete(submission);
@@ -224,6 +247,28 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
           {/* Subtitle (shown only on first question) */}
           {currentVisiblePos === 0 && subtitle && (
             <p className="text-xs text-white/50 leading-relaxed">{subtitle}</p>
+          )}
+
+          {(currentQuestion.impact_tier || currentQuestion.payoff_hint) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {currentQuestion.impact_tier && (
+                <span
+                  className={cn(
+                    'rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                    currentQuestion.impact_tier === 'high'
+                      ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/85'
+                      : currentQuestion.impact_tier === 'medium'
+                        ? 'border-sky-300/20 bg-sky-400/[0.07] text-sky-100/85'
+                        : 'border-white/[0.1] bg-white/[0.03] text-white/60',
+                  )}
+                >
+                  {currentQuestion.impact_tier === 'high' ? 'High Impact' : currentQuestion.impact_tier === 'medium' ? 'Medium Impact' : 'Low Impact'}
+                </span>
+              )}
+              {currentQuestion.payoff_hint && (
+                <span className="text-[11px] text-white/62">{currentQuestion.payoff_hint}</span>
+              )}
+            </div>
           )}
 
           {/* Question text */}

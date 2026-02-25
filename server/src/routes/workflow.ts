@@ -198,9 +198,13 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
   const [
     { data: nodeRows },
     { data: artifactRows },
+    { data: questionResponseRows },
+    { data: questionReuseSummaryRows },
     { data: draftReadinessRow },
+    { data: draftPathDecisionRow },
     { data: replanStatusRow },
     { data: sectionsBundleRow },
+    { data: benchmarkEditRow },
     { data: workflowPreferencesRow },
     { data: pipelineStartRequestRow },
   ] = await Promise.all([
@@ -216,11 +220,34 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       .order('created_at', { ascending: false })
       .limit(200),
     supabaseAdmin
+      .from('session_question_responses')
+      .select('question_id, stage, status, impact_tag, response, updated_at')
+      .eq('session_id', sessionId)
+      .order('updated_at', { ascending: false })
+      .limit(500),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'questions')
+      .eq('artifact_type', 'questionnaire_reuse_summary')
+      .order('created_at', { ascending: false })
+      .limit(12),
+    supabaseAdmin
       .from('session_workflow_artifacts')
       .select('payload, version, created_at')
       .eq('session_id', sessionId)
       .eq('node_key', 'overview')
       .eq('artifact_type', 'draft_readiness')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'overview')
+      .eq('artifact_type', 'draft_path_decision')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -239,6 +266,15 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       .eq('session_id', sessionId)
       .eq('node_key', 'sections')
       .eq('artifact_type', 'sections_bundle_review_status')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('session_workflow_artifacts')
+      .select('payload, version, created_at')
+      .eq('session_id', sessionId)
+      .eq('node_key', 'benchmark')
+      .eq('artifact_type', 'benchmark_assumptions_edit')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -332,6 +368,98 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     return node.status === 'stale' && meta?.reason === 'benchmark_assumptions_updated';
   });
   const replanMeta = replanStaleNodes.length > 0 ? asRecord(replanStaleNodes[0]?.meta) : null;
+  const questionnaireAnalytics = (() => {
+    type ResponseStatus = 'answered' | 'skipped' | 'deferred';
+    type ImpactBucket = 'high' | 'medium' | 'low' | 'untagged';
+    const rows = (questionResponseRows ?? []).filter((row) => {
+      const qid = typeof row.question_id === 'string' ? row.question_id : '';
+      return qid.includes(':');
+    });
+    const baseCounts = { total: 0, answered: 0, skipped: 0, deferred: 0 };
+    const byImpact = {
+      high: { total: 0, answered: 0, skipped: 0, deferred: 0 },
+      medium: { total: 0, answered: 0, skipped: 0, deferred: 0 },
+      low: { total: 0, answered: 0, skipped: 0, deferred: 0 },
+      untagged: { total: 0, answered: 0, skipped: 0, deferred: 0 },
+    };
+    let latestActivityAt: string | null = null;
+
+    for (const row of rows) {
+      const status: ResponseStatus = row.status === 'skipped' || row.status === 'deferred' ? row.status : 'answered';
+      const impactKey: ImpactBucket = row.impact_tag === 'high' || row.impact_tag === 'medium' || row.impact_tag === 'low'
+        ? row.impact_tag
+        : 'untagged';
+      baseCounts.total += 1;
+      baseCounts[status] += 1;
+      byImpact[impactKey].total += 1;
+      byImpact[impactKey][status] += 1;
+      if (!latestActivityAt && typeof row.updated_at === 'string') latestActivityAt = row.updated_at;
+    }
+
+    return {
+      ...baseCounts,
+      by_impact: byImpact,
+      latest_activity_at: latestActivityAt,
+    };
+  })();
+  const questionResponseHistory = (() => {
+    return (questionResponseRows ?? [])
+      .filter((row) => typeof row.question_id === 'string' && row.question_id.includes(':'))
+      .map((row) => {
+        const rawQuestionId = row.question_id as string;
+        const [questionnaireId, ...questionIdParts] = rawQuestionId.split(':');
+        const questionId = questionIdParts.join(':');
+        const payload = asRecord(row.response);
+        return {
+          questionnaire_id: questionnaireId,
+          question_id: questionId || rawQuestionId,
+          stage: typeof row.stage === 'string' ? row.stage : 'unknown',
+          status: row.status === 'skipped' || row.status === 'deferred' ? row.status : 'answered',
+          impact_tag: row.impact_tag === 'high' || row.impact_tag === 'medium' || row.impact_tag === 'low'
+            ? row.impact_tag
+            : null,
+          payoff_hint: typeof payload?.payoff_hint === 'string' ? payload.payoff_hint : null,
+          updated_at: typeof row.updated_at === 'string' ? row.updated_at : null,
+        };
+      })
+      .filter((row) => Boolean(row.payoff_hint))
+      .slice(0, 12);
+  })();
+  const questionReuseSummaries = (() => {
+    return (questionReuseSummaryRows ?? [])
+      .map((row) => {
+        const payload = asRecord(row.payload);
+        if (!payload) return null;
+        const sampleTopics = Array.isArray(payload.sample_topics)
+          ? payload.sample_topics
+              .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+              .map((v) => v.trim())
+              .slice(0, 8)
+          : [];
+        const samplePayoffs = Array.isArray(payload.sample_payoffs)
+          ? payload.sample_payoffs
+              .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+              .map((v) => v.trim())
+              .slice(0, 6)
+          : [];
+        return {
+          stage: payload.stage === 'gap_analysis' ? 'gap_analysis' : 'positioning',
+          questionnaire_kind: payload.questionnaire_kind === 'gap_analysis_quiz'
+            ? 'gap_analysis_quiz'
+            : 'positioning_batch',
+          skipped_count: typeof payload.skipped_count === 'number' ? Math.max(0, payload.skipped_count) : 0,
+          benchmark_edit_version: typeof payload.benchmark_edit_version === 'number'
+            ? payload.benchmark_edit_version
+            : null,
+          sample_topics: sampleTopics,
+          sample_payoffs: samplePayoffs,
+          message: typeof payload.message === 'string' ? payload.message : null,
+          version: typeof row.version === 'number' ? row.version : null,
+          created_at: typeof row.created_at === 'string' ? row.created_at : null,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
+  })();
 
   return c.json({
     session: {
@@ -345,6 +473,9 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     },
     nodes,
     latest_artifacts: Array.from(latestByNodeType.values()),
+    question_response_metrics: questionnaireAnalytics,
+    question_response_history: questionResponseHistory,
+    question_reuse_summaries: questionReuseSummaries,
     replan: replanStaleNodes.length > 0 ? {
       pending: true,
       reason: 'benchmark_assumptions_updated',
@@ -421,6 +552,45 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
         created_at: draftReadinessRow?.created_at ?? null,
       };
     })(),
+    draft_path_decision: (() => {
+      const payload = asRecord(draftPathDecisionRow?.payload);
+      if (!payload) return null;
+      const blockingReasons = Array.isArray(payload.blocking_reasons)
+        ? payload.blocking_reasons.filter((reason): reason is 'evidence_target' | 'coverage_threshold' => (
+          reason === 'evidence_target' || reason === 'coverage_threshold'
+        ))
+        : [];
+      const topRemaining = asRecord(payload.top_remaining);
+      return {
+        stage: payload.stage === 'gap_analysis' ? 'gap_analysis' : 'gap_analysis',
+        workflow_mode: payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
+          ? payload.workflow_mode
+          : 'balanced',
+        ready: payload.ready === true,
+        proceeding_reason: payload.proceeding_reason === 'readiness_met' ? 'readiness_met' : 'momentum_mode',
+        blocking_reasons: blockingReasons.length > 0 ? blockingReasons : undefined,
+        remaining_evidence_needed: typeof payload.remaining_evidence_needed === 'number'
+          ? payload.remaining_evidence_needed
+          : undefined,
+        remaining_coverage_needed: typeof payload.remaining_coverage_needed === 'number'
+          ? payload.remaining_coverage_needed
+          : undefined,
+        top_remaining: topRemaining
+          ? {
+              requirement: typeof topRemaining.requirement === 'string' ? topRemaining.requirement : '',
+              classification: topRemaining.classification === 'partial' ? 'partial' : 'gap',
+              priority:
+                topRemaining.priority === 'must_have' || topRemaining.priority === 'implicit' || topRemaining.priority === 'nice_to_have'
+                  ? topRemaining.priority
+                  : 'nice_to_have',
+              evidence_count: typeof topRemaining.evidence_count === 'number' ? topRemaining.evidence_count : 0,
+            }
+          : undefined,
+        message: typeof payload.message === 'string' ? payload.message : '',
+        version: typeof draftPathDecisionRow?.version === 'number' ? draftPathDecisionRow.version : null,
+        created_at: draftPathDecisionRow?.created_at ?? null,
+      };
+    })(),
     sections_bundle_review: (() => {
       const payload = asRecord(sectionsBundleRow?.payload);
       if (!payload) return null;
@@ -453,6 +623,20 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
           })),
         version: typeof sectionsBundleRow?.version === 'number' ? sectionsBundleRow.version : null,
         created_at: sectionsBundleRow?.created_at ?? null,
+      };
+    })(),
+    benchmark_edit: (() => {
+      const payload = asRecord(benchmarkEditRow?.payload);
+      if (!payload) return null;
+      const assumptions = asRecord(payload.assumptions);
+      const assumptionKeys = assumptions ? Object.keys(assumptions).slice(0, 50) : [];
+      return {
+        version: typeof benchmarkEditRow?.version === 'number' ? benchmarkEditRow.version : null,
+        created_at: benchmarkEditRow?.created_at ?? null,
+        edited_at: typeof payload.edited_at === 'string' ? payload.edited_at : (benchmarkEditRow?.created_at ?? null),
+        note: typeof payload.note === 'string' ? payload.note : null,
+        assumption_key_count: assumptionKeys.length,
+        assumption_keys: assumptionKeys,
       };
     })(),
     workflow_preferences: (() => {

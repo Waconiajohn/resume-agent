@@ -676,6 +676,179 @@ function normalizeWorkflowMode(value: unknown): WorkflowMode | null {
   return null;
 }
 
+function normalizePayoffHintKey(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ');
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeQuestionTopicKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+async function loadQuestionnairePayoffHistory(
+  sessionId: string,
+): Promise<{
+  byPayoff: Map<string, { status: 'answered' | 'skipped' | 'deferred'; impactTag: 'high' | 'medium' | 'low' | null; stage: string; benchmarkEditVersion: number | null }>;
+  byTopic: Map<string, { status: 'answered' | 'skipped' | 'deferred'; impactTag: 'high' | 'medium' | 'low' | null; stage: string; benchmarkEditVersion: number | null }>;
+}> {
+  const byPayoff = new Map<string, { status: 'answered' | 'skipped' | 'deferred'; impactTag: 'high' | 'medium' | 'low' | null; stage: string; benchmarkEditVersion: number | null }>();
+  const byTopic = new Map<string, { status: 'answered' | 'skipped' | 'deferred'; impactTag: 'high' | 'medium' | 'low' | null; stage: string; benchmarkEditVersion: number | null }>();
+  const { data, error } = await supabaseAdmin
+    .from('session_question_responses')
+    .select('question_id, stage, status, impact_tag, response, updated_at')
+    .eq('session_id', sessionId)
+    .order('updated_at', { ascending: false })
+    .limit(500);
+  if (error || !data) return { byPayoff, byTopic };
+
+  for (const row of data) {
+    const questionId = typeof row.question_id === 'string' ? row.question_id : '';
+    if (!questionId.includes(':')) continue; // only nested questionnaire analytics rows
+    const response = asObjectRecord(row.response);
+    const payoffKey = normalizePayoffHintKey(response?.payoff_hint);
+    const status = row.status === 'skipped' || row.status === 'deferred' ? row.status : 'answered';
+    const impactTag = row.impact_tag === 'high' || row.impact_tag === 'medium' || row.impact_tag === 'low'
+      ? row.impact_tag
+      : null;
+    const stage = typeof row.stage === 'string' ? row.stage : 'unknown';
+    const benchmarkEditVersion = typeof response?.benchmark_edit_version === 'number'
+      ? response.benchmark_edit_version
+      : (response?.benchmark_edit_version === null ? null : null);
+    const entry = { status, impactTag, stage, benchmarkEditVersion };
+    if (payoffKey && !byPayoff.has(payoffKey)) {
+      byPayoff.set(payoffKey, entry);
+    }
+    if (Array.isArray(response?.topic_keys)) {
+      for (const rawTopic of response.topic_keys) {
+        if (typeof rawTopic !== 'string') continue;
+        const topicKey = normalizeQuestionTopicKey(rawTopic);
+        if (!topicKey || byTopic.has(topicKey)) continue;
+        byTopic.set(topicKey, entry);
+      }
+    }
+  }
+  return { byPayoff, byTopic };
+}
+
+function filterQuestionnaireQuestionsByPayoffHistory(
+  questions: QuestionnaireQuestion[],
+  reuseHistory: {
+    byPayoff: Map<string, { status: 'answered' | 'skipped' | 'deferred'; impactTag: 'high' | 'medium' | 'low' | null; stage: string; benchmarkEditVersion: number | null }>;
+    byTopic: Map<string, { status: 'answered' | 'skipped' | 'deferred'; impactTag: 'high' | 'medium' | 'low' | null; stage: string; benchmarkEditVersion: number | null }>;
+  },
+  options?: {
+    questionnaireStage?: string;
+    currentBenchmarkEditVersion?: number | null;
+  },
+): { questions: QuestionnaireQuestion[]; skippedCount: number; skippedQuestions: QuestionnaireQuestion[] } {
+  if (questions.length === 0 || (reuseHistory.byPayoff.size === 0 && reuseHistory.byTopic.size === 0)) {
+    return { questions, skippedCount: 0, skippedQuestions: [] };
+  }
+  const questionnaireStage = options?.questionnaireStage ?? null;
+  const currentBenchmarkEditVersion = options?.currentBenchmarkEditVersion ?? null;
+  const filtered: QuestionnaireQuestion[] = [];
+  let skippedCount = 0;
+  const skippedQuestions: QuestionnaireQuestion[] = [];
+  for (const question of questions) {
+    const impactTier = question.impact_tier ?? 'medium';
+    const stageMatches = (entryStage: string) => questionnaireStage == null || entryStage === questionnaireStage;
+    const benchmarkMatches = (entryVersion: number | null) => (entryVersion ?? null) === currentBenchmarkEditVersion;
+    const payoffKey = normalizePayoffHintKey(question.payoff_hint);
+    if (!payoffKey || impactTier === 'high') {
+      filtered.push(question);
+      continue;
+    }
+
+    const topicKeys = Array.isArray(question.topic_keys)
+      ? question.topic_keys
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => normalizeQuestionTopicKey(value))
+          .filter(Boolean)
+      : [];
+    let prior = topicKeys
+      .map((key) => reuseHistory.byTopic.get(key))
+      .find((entry) => entry && stageMatches(entry.stage) && benchmarkMatches(entry.benchmarkEditVersion));
+
+    if (!prior && payoffKey) {
+      const payoffEntry = reuseHistory.byPayoff.get(payoffKey);
+      if (payoffEntry && stageMatches(payoffEntry.stage) && benchmarkMatches(payoffEntry.benchmarkEditVersion)) {
+        prior = payoffEntry;
+      }
+    }
+
+    if (prior && (prior.status === 'answered' || prior.status === 'deferred')) {
+      skippedCount += 1;
+      skippedQuestions.push(question);
+      continue;
+    }
+    filtered.push(question);
+  }
+  return { questions: filtered, skippedCount, skippedQuestions };
+}
+
+function emitQuestionnaireReuseSummary(
+  emit: PipelineEmitter,
+  stage: 'positioning' | 'gap_analysis',
+  questionnaireKind: 'positioning_batch' | 'gap_analysis_quiz',
+  skippedQuestions: QuestionnaireQuestion[],
+  benchmarkEditVersion: number | null,
+) {
+  if (skippedQuestions.length === 0) return;
+
+  const sampleTopics = Array.from(new Set(
+    skippedQuestions
+      .flatMap((question) => Array.isArray(question.topic_keys) ? question.topic_keys : [])
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .map((value) => value.trim())
+      .slice(0, 12),
+  )).slice(0, 6);
+  const samplePayoffs = Array.from(new Set(
+    skippedQuestions
+      .map((question) => (typeof question.payoff_hint === 'string' ? question.payoff_hint.trim() : ''))
+      .filter((value) => value.length > 0)
+      .slice(0, 12),
+  )).slice(0, 4);
+
+  emit({
+    type: 'questionnaire_reuse_summary',
+    stage,
+    questionnaire_kind: questionnaireKind,
+    skipped_count: skippedQuestions.length,
+    benchmark_edit_version: benchmarkEditVersion,
+    ...(sampleTopics.length > 0 ? { sample_topics: sampleTopics } : {}),
+    ...(samplePayoffs.length > 0 ? { sample_payoffs: samplePayoffs } : {}),
+    message: skippedQuestions.length === 1
+      ? 'Reused one prior lower-impact answer to reduce repeat questioning.'
+      : `Reused ${skippedQuestions.length} prior lower-impact answers to reduce repeat questioning.`,
+  });
+}
+
+function buildQuestionnaireReuseSubtitleNote(skippedQuestions: QuestionnaireQuestion[]): string | null {
+  if (skippedQuestions.length === 0) return null;
+  const topicLabels = Array.from(new Set(
+    skippedQuestions
+      .flatMap((question) => Array.isArray(question.topic_keys) ? question.topic_keys : [])
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .map((value) => value.trim())
+      .map((value) => {
+        const [prefix, ...rest] = value.split(':');
+        const body = rest.join(':').replace(/_/g, ' ').trim();
+        if (!body) return '';
+        if (prefix === 'requirement') return body;
+        if (prefix === 'category') return `category: ${body}`;
+        return body;
+      })
+      .filter((value) => value.length > 0)
+      .slice(0, 12),
+  )).slice(0, 2);
+
+  const topicText = topicLabels.length > 0 ? ` (reused topics: ${topicLabels.join('; ')})` : '';
+  return skippedQuestions.length === 1
+    ? `Reused one prior lower-impact answer to save time${topicText}.`
+    : `Reused ${skippedQuestions.length} prior lower-impact answers to save time${topicText}.`;
+}
+
 async function applyLatestWorkflowPreferencesIfNeeded(
   state: PipelineState,
   emit: PipelineEmitter,
@@ -1088,45 +1261,87 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       state.user_preferences?.workflow_mode,
       'Initial draft readiness after gap analysis.',
     );
+    const initialBlockingSummary = draftReadinessBeforeGapQuiz.blockingReasons
+      .map((reason) => reason === 'evidence_target'
+        ? `${draftReadinessBeforeGapQuiz.remainingEvidenceNeeded} more evidence item${draftReadinessBeforeGapQuiz.remainingEvidenceNeeded === 1 ? '' : 's'}`
+        : `${draftReadinessBeforeGapQuiz.remainingCoverageNeeded}% more coverage`)
+      .join(' and ');
+    const initialTopRemaining = draftReadinessBeforeGapQuiz.highImpactRemaining[0];
     emit({
       type: 'transparency',
       stage: 'gap_analysis',
-      message: `Draft readiness check: ${draftReadinessBeforeGapQuiz.evidenceCount}/${draftReadinessBeforeGapQuiz.minimumEvidenceTarget} evidence items collected; coverage ${draftReadinessBeforeGapQuiz.coverageScore}% (mode target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`,
+      message: draftReadinessBeforeGapQuiz.ready
+        ? `Draft readiness check: ready to draft (${draftReadinessBeforeGapQuiz.evidenceCount}/${draftReadinessBeforeGapQuiz.minimumEvidenceTarget} evidence items, coverage ${draftReadinessBeforeGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`
+        : `Draft readiness check: not ready yet (${draftReadinessBeforeGapQuiz.evidenceCount}/${draftReadinessBeforeGapQuiz.minimumEvidenceTarget} evidence items, coverage ${draftReadinessBeforeGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%). Still needed: ${initialBlockingSummary || 'additional evidence/coverage'}.${initialTopRemaining ? ` Highest-impact remaining area: ${initialTopRemaining.requirement}.` : ''}`,
     });
 
     // ─── Gap Analysis Quiz (optional, mode-aware and draft-readiness-aware) ───────────
-    const allGapQuizQuestions = generateGapQuestions(state.gap_analysis);
+    const allGapQuizQuestions = generateGapQuestions(state.gap_analysis, {
+      benchmarkEditVersion: state.benchmark_override_version ?? null,
+    });
+    const gapQuizPayoffHistory = await loadQuestionnairePayoffHistory(state.session_id);
+    const {
+      questions: filteredGapQuizQuestionPool,
+      skippedCount: skippedPriorGapPrompts,
+      skippedQuestions: skippedGapQuestions,
+    } = filterQuestionnaireQuestionsByPayoffHistory(allGapQuizQuestions, gapQuizPayoffHistory, {
+      questionnaireStage: 'gap_analysis',
+      currentBenchmarkEditVersion: state.benchmark_override_version ?? null,
+    });
+    if (skippedPriorGapPrompts > 0) {
+      emitQuestionnaireReuseSummary(
+        emit,
+        'gap_analysis',
+        'gap_analysis_quiz',
+        skippedGapQuestions,
+        state.benchmark_override_version ?? null,
+      );
+      emit({
+        type: 'transparency',
+        stage: 'gap_analysis',
+        message: `Skipping ${skippedPriorGapPrompts} previously answered lower-impact gap question${skippedPriorGapPrompts === 1 ? '' : 's'} from this session so we can focus on unresolved high-value gaps.`,
+      });
+    }
+    const gapQuizReuseSubtitleNote = buildQuestionnaireReuseSubtitleNote(skippedGapQuestions);
     const targetedCoverageBoosterNeeded = !draftReadinessBeforeGapQuiz.ready
       && draftReadinessBeforeGapQuiz.evidenceCount >= draftReadinessBeforeGapQuiz.minimumEvidenceTarget
       && draftReadinessBeforeGapQuiz.coverageScore < workflowModePolicy.draftReadiness.coverageThreshold;
     const gapQuizQuestionLimit = workflowModePolicy.gapQuiz.enabled
       ? workflowModePolicy.gapQuiz.maxQuestions
       : (targetedCoverageBoosterNeeded ? 2 : 0);
-    const gapQuizQuestions = allGapQuizQuestions.slice(0, gapQuizQuestionLimit);
+    const gapQuizQuestions = filteredGapQuizQuestionPool.slice(0, gapQuizQuestionLimit);
     const shouldRunGapQuiz = workflowModePolicy.gapQuiz.enabled
       ? (gapQuizQuestions.length > 0 && !draftReadinessBeforeGapQuiz.ready)
       : (targetedCoverageBoosterNeeded && gapQuizQuestions.length > 0);
     if (!shouldRunGapQuiz) {
+      const topRemaining = draftReadinessBeforeGapQuiz.highImpactRemaining[0];
       emit({
         type: 'transparency',
         stage: 'gap_analysis',
         message: draftReadinessBeforeGapQuiz.ready
           ? 'Skipping additional gap questions because evidence and coverage are already strong enough to draft.'
           : (workflowModePolicy.gapQuiz.enabled
-              ? 'No high-impact gap questions remain.'
-              : 'Skipping gap verification questions in this mode to keep momentum toward a draft.'),
+              ? `No high-impact gap questions remain${topRemaining ? ` (top unresolved area: ${topRemaining.requirement})` : ''}.`
+              : `Skipping gap verification questions in this mode to keep momentum toward a draft${topRemaining ? `; the top unresolved area is ${topRemaining.requirement}` : ''}.`),
       });
     } else if (!workflowModePolicy.gapQuiz.enabled && targetedCoverageBoosterNeeded) {
+      const topTargets = draftReadinessBeforeGapQuiz.highImpactRemaining
+        .slice(0, 2)
+        .map((item) => item.requirement)
+        .join('; ');
       emit({
         type: 'transparency',
         stage: 'gap_analysis',
-        message: 'Fast Draft mode: asking up to 2 targeted gap questions because coverage is still below the draft threshold, then continuing to a draft.',
+        message: `Fast Draft mode: asking up to 2 targeted gap questions because coverage is still below the draft threshold, then continuing to a draft${topTargets ? `. Priority areas: ${topTargets}.` : '.'}`,
       });
     }
     const gapSubmission = shouldRunGapQuiz
       ? await runQuestionnaire(
           'gap_analysis_quiz', 'gap_analysis', 'Verify Your Skills', gapQuizQuestions, emit, waitForUser,
-          'Help us understand your true proficiency in these areas',
+          [
+            'Help us understand your true proficiency in these areas',
+            gapQuizReuseSubtitleNote,
+          ].filter(Boolean).join(' '),
         )
       : null;
 
@@ -1141,6 +1356,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         state.user_preferences?.workflow_mode,
         'Updated draft readiness after gap question responses.',
       );
+      const postGapTopRemaining = draftReadinessAfterGapQuiz.highImpactRemaining[0];
       // Re-emit the updated gap panel
       const enrichedReqs = state.gap_analysis.requirements;
       const enrichedStrong = enrichedReqs.filter(r => r.classification === 'strong').length;
@@ -1165,7 +1381,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       emit({
         type: 'transparency',
         stage: 'gap_analysis',
-        message: `Updated draft readiness: ${draftReadinessAfterGapQuiz.evidenceCount}/${draftReadinessAfterGapQuiz.minimumEvidenceTarget} evidence items; coverage ${draftReadinessAfterGapQuiz.coverageScore}% (mode target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`,
+        message: draftReadinessAfterGapQuiz.ready
+          ? `Updated draft readiness: ready to draft (${draftReadinessAfterGapQuiz.evidenceCount}/${draftReadinessAfterGapQuiz.minimumEvidenceTarget} evidence items; coverage ${draftReadinessAfterGapQuiz.coverageScore}%).`
+          : `Updated draft readiness: ${draftReadinessAfterGapQuiz.evidenceCount}/${draftReadinessAfterGapQuiz.minimumEvidenceTarget} evidence items; coverage ${draftReadinessAfterGapQuiz.coverageScore}% (mode target ${workflowModePolicy.draftReadiness.coverageThreshold}%).${postGapTopRemaining ? ` Top remaining area: ${postGapTopRemaining.requirement}.` : ''}`,
       });
     }
 
@@ -1233,6 +1451,56 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         message: 'Gap analysis was regenerated with the updated benchmark.',
       });
     }
+
+    await refreshWorkflowModePolicy();
+    const finalDraftReadinessBeforeArchitect = emitDraftReadinessUpdate(
+      emit,
+      state,
+      workflowModePolicy,
+      'gap_analysis',
+      state.user_preferences?.workflow_mode,
+      'Final draft readiness checkpoint before blueprint design.',
+    );
+    const finalTopRemaining = finalDraftReadinessBeforeArchitect.highImpactRemaining[0];
+    const finalDraftPathDecisionMessage = finalDraftReadinessBeforeArchitect.ready
+      ? `Proceeding to blueprint design because draft readiness is strong enough (${finalDraftReadinessBeforeArchitect.evidenceCount}/${finalDraftReadinessBeforeArchitect.minimumEvidenceTarget} evidence items; coverage ${finalDraftReadinessBeforeArchitect.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`
+      : `Proceeding to blueprint design to keep momentum in ${state.user_preferences?.workflow_mode ?? 'balanced'} mode, even though readiness is not fully complete yet. Remaining blockers: ${finalDraftReadinessBeforeArchitect.blockingReasons.map((reason) => (
+          reason === 'evidence_target'
+            ? `${finalDraftReadinessBeforeArchitect.remainingEvidenceNeeded} more evidence item${finalDraftReadinessBeforeArchitect.remainingEvidenceNeeded === 1 ? '' : 's'}`
+            : `${finalDraftReadinessBeforeArchitect.remainingCoverageNeeded}% more coverage`
+        )).join(' and ') || 'additional evidence/coverage'}${finalTopRemaining ? `. Highest-impact remaining area: ${finalTopRemaining.requirement}.` : '.'}`;
+    emit({
+      type: 'draft_path_decision',
+      stage: 'gap_analysis',
+      workflow_mode: state.user_preferences?.workflow_mode ?? 'balanced',
+      ready: finalDraftReadinessBeforeArchitect.ready,
+      proceeding_reason: finalDraftReadinessBeforeArchitect.ready ? 'readiness_met' : 'momentum_mode',
+      ...(finalDraftReadinessBeforeArchitect.blockingReasons.length > 0
+        ? { blocking_reasons: finalDraftReadinessBeforeArchitect.blockingReasons }
+        : {}),
+      ...(typeof finalDraftReadinessBeforeArchitect.remainingEvidenceNeeded === 'number'
+        ? { remaining_evidence_needed: finalDraftReadinessBeforeArchitect.remainingEvidenceNeeded }
+        : {}),
+      ...(typeof finalDraftReadinessBeforeArchitect.remainingCoverageNeeded === 'number'
+        ? { remaining_coverage_needed: finalDraftReadinessBeforeArchitect.remainingCoverageNeeded }
+        : {}),
+      ...(finalTopRemaining
+        ? {
+            top_remaining: {
+              requirement: finalTopRemaining.requirement,
+              classification: finalTopRemaining.classification,
+              priority: finalTopRemaining.priority,
+              evidence_count: finalTopRemaining.evidenceCount,
+            },
+          }
+        : {}),
+      message: finalDraftPathDecisionMessage,
+    });
+    emit({
+      type: 'transparency',
+      stage: 'gap_analysis',
+      message: finalDraftPathDecisionMessage,
+    });
 
     // ─── Stage 5: Resume Architect ───────────────────────────────
     await refreshWorkflowModePolicy();
@@ -2133,6 +2401,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 function buildPositioningBatchQuestions(
   batch: PositioningQuestion[],
   workflowMode: WorkflowMode | undefined,
+  config?: {
+    benchmarkEditVersion?: number | null;
+  },
 ): QuestionnaireQuestion[] {
   const categoryLabels: Record<string, string> = {
     scale_and_scope: 'Scale & Scope',
@@ -2145,12 +2416,20 @@ function buildPositioningBatchQuestions(
   return batch.map((question) => {
     const payoffRequirements = (question.requirement_map ?? []).slice(0, 2);
     const payoffParts: string[] = [];
+    let payoffHint: string | undefined;
+    let impactTier: 'high' | 'medium' | 'low' = 'medium';
     if (question.category) {
       payoffParts.push(`Focus: ${categoryLabels[question.category] ?? question.category}`);
     }
     if (payoffRequirements.length > 0) {
       payoffParts.push(`Improves coverage for: ${payoffRequirements.join('; ')}`);
+      payoffHint = `Improves JD coverage for ${payoffRequirements.slice(0, 2).join(' and ')}`;
+      impactTier = 'high';
     }
+    const topicKeys = [
+      ...payoffRequirements.map((req) => `requirement:${normalizeQuestionTopicKey(req)}`),
+      ...(question.category ? [`category:${question.category}`] : []),
+    ];
     if (workflowMode && workflowMode !== 'deep_dive') {
       payoffParts.push(workflowMode === 'fast_draft'
         ? 'Fast Draft mode: concise answers are okay; add detail only where helpful.'
@@ -2158,7 +2437,7 @@ function buildPositioningBatchQuestions(
     }
 
     const context = [question.context, ...payoffParts].filter(Boolean).join(' ');
-    const options = (question.suggestions ?? []).map((suggestion, index) => ({
+    const answerOptions = (question.suggestions ?? []).map((suggestion, index) => ({
       id: `opt_${index + 1}`,
       label: suggestion.label,
       description: suggestion.description,
@@ -2169,9 +2448,13 @@ function buildPositioningBatchQuestions(
       question.id,
       question.question_text,
       question.input_type === 'multiple_choice' ? 'multi_choice' : 'single_choice',
-      options,
+      answerOptions,
       {
         context: context || undefined,
+        payoff_hint: payoffHint,
+        impact_tier: impactTier,
+        topic_keys: topicKeys.length > 0 ? topicKeys : undefined,
+        benchmark_edit_version: config?.benchmarkEditVersion ?? null,
         allow_custom: true,
         allow_skip: question.optional ?? true,
       },
@@ -2401,6 +2684,8 @@ async function runPositioningStage(
   const answeredIds = new Set<string>();
   let budgetNoticeEmitted = false;
   let draftNowConsumed = false;
+  const questionnairePayoffHistory = await loadQuestionnairePayoffHistory(state.session_id);
+  let dedupeNoticeEmitted = false;
   const useBatchPositioningQuestionnaire = workflowModePolicy.positioning.useBatchQuestionnaire
     && isQuestionnaireEnabled('positioning_batch');
 
@@ -2451,13 +2736,43 @@ async function runPositioningStage(
       const batch = questionPool.slice(start, start + workflowModePolicy.positioning.batchSize);
       if (batch.length === 0) break;
       batchNumber++;
-      const questionnaireQuestions = buildPositioningBatchQuestions(batch, workflowMode);
+      const questionnaireQuestionsRaw = buildPositioningBatchQuestions(batch, workflowMode, {
+        benchmarkEditVersion: state.benchmark_override_version ?? null,
+      });
+      const {
+        questions: questionnaireQuestions,
+        skippedCount: skippedPriorPrompts,
+        skippedQuestions: skippedPositioningQuestions,
+      } = filterQuestionnaireQuestionsByPayoffHistory(questionnaireQuestionsRaw, questionnairePayoffHistory, {
+        questionnaireStage: 'positioning',
+        currentBenchmarkEditVersion: state.benchmark_override_version ?? null,
+      });
+      if (skippedPriorPrompts > 0 && !dedupeNoticeEmitted) {
+        emitQuestionnaireReuseSummary(
+          emit,
+          'positioning',
+          'positioning_batch',
+          skippedPositioningQuestions,
+          state.benchmark_override_version ?? null,
+        );
+        dedupeNoticeEmitted = true;
+        emit({
+          type: 'transparency',
+          stage: 'positioning',
+          message: `Reusing prior interview answers for ${skippedPriorPrompts} lower-impact question${skippedPriorPrompts === 1 ? '' : 's'} from this session, so the next batches focus on higher-value evidence.`,
+        });
+      }
+      const positioningReuseSubtitleNote = buildQuestionnaireReuseSubtitleNote(skippedPositioningQuestions);
+      if (questionnaireQuestions.length === 0) {
+        continue;
+      }
       const batchTitle = batchNumber === 1
         ? 'Positioning Interview'
         : `Positioning Interview (Batch ${batchNumber})`;
       const batchSubtitle = workflowMode === 'fast_draft'
         ? 'Answer briefly where you can. Select a suggestion, add details, or skip anything non-critical.'
         : 'Select the closest option, then add details where helpful. Metrics and scope make the final resume stronger.';
+      const finalBatchSubtitle = [batchSubtitle, positioningReuseSubtitleNote].filter(Boolean).join(' ');
 
       let submission: QuestionnaireSubmission | null;
       try {
@@ -2468,7 +2783,7 @@ async function runPositioningStage(
           questionnaireQuestions,
           emit,
           waitForUser,
-          batchSubtitle,
+          finalBatchSubtitle,
         );
       } catch (gateErr) {
         const errMsg = gateErr instanceof Error ? gateErr.message : String(gateErr);

@@ -37,6 +37,39 @@ interface WorkflowSummaryResponse {
     version: number;
     created_at: string;
   }>;
+  question_response_metrics: {
+    total: number;
+    answered: number;
+    skipped: number;
+    deferred: number;
+    by_impact: {
+      high: { total: number; answered: number; skipped: number; deferred: number };
+      medium: { total: number; answered: number; skipped: number; deferred: number };
+      low: { total: number; answered: number; skipped: number; deferred: number };
+      untagged: { total: number; answered: number; skipped: number; deferred: number };
+    };
+    latest_activity_at: string | null;
+  };
+  question_response_history: Array<{
+    questionnaire_id: string;
+    question_id: string;
+    stage: string;
+    status: 'answered' | 'skipped' | 'deferred';
+    impact_tag: 'high' | 'medium' | 'low' | null;
+    payoff_hint: string | null;
+    updated_at: string | null;
+  }>;
+  question_reuse_summaries: Array<{
+    stage: 'positioning' | 'gap_analysis';
+    questionnaire_kind: 'positioning_batch' | 'gap_analysis_quiz';
+    skipped_count: number;
+    benchmark_edit_version: number | null;
+    sample_topics: string[];
+    sample_payoffs: string[];
+    message: string | null;
+    version: number | null;
+    created_at: string | null;
+  }>;
   workflow_preferences: {
     workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
     minimum_evidence_target: number | null;
@@ -86,6 +119,24 @@ interface WorkflowSummaryResponse {
     version: number | null;
     created_at: string | null;
   } | null;
+  draft_path_decision: {
+    stage: 'gap_analysis';
+    workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
+    ready: boolean;
+    proceeding_reason: 'readiness_met' | 'momentum_mode';
+    blocking_reasons?: Array<'evidence_target' | 'coverage_threshold'>;
+    remaining_evidence_needed?: number;
+    remaining_coverage_needed?: number;
+    top_remaining?: {
+      requirement: string;
+      classification: 'partial' | 'gap';
+      priority: 'must_have' | 'implicit' | 'nice_to_have';
+      evidence_count: number;
+    };
+    message: string;
+    version: number | null;
+    created_at: string | null;
+  } | null;
   sections_bundle_review: {
     review_strategy: 'per_section' | 'bundled';
     current_review_bundle_key: 'headline' | 'core_experience' | 'supporting' | null;
@@ -101,6 +152,14 @@ interface WorkflowSummaryResponse {
     }>;
     version: number | null;
     created_at: string | null;
+  } | null;
+  benchmark_edit: {
+    version: number | null;
+    created_at: string | null;
+    edited_at: string | null;
+    note: string | null;
+    assumption_key_count: number;
+    assumption_keys: string[];
   } | null;
   replan_status: (WorkflowReplanUpdate & {
     version: number | null;

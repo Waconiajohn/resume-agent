@@ -212,12 +212,234 @@ function renderNodeContentPlaceholder(nodeKey: WorkflowNodeKey, isActiveNode: bo
   );
 }
 
+function renderQuestionsNodeSummaryPlaceholder(
+  isActiveNode: boolean,
+  draftReadiness: {
+    high_impact_remaining?: Array<{
+      requirement: string;
+      classification: 'partial' | 'gap';
+      priority: 'must_have' | 'implicit' | 'nice_to_have';
+      evidence_count: number;
+    }>;
+  } | null,
+  questionMetrics?: {
+    total: number;
+    answered: number;
+    skipped: number;
+    deferred: number;
+    by_impact: {
+      high: { total: number; answered: number; skipped: number; deferred: number };
+      medium: { total: number; answered: number; skipped: number; deferred: number };
+      low: { total: number; answered: number; skipped: number; deferred: number };
+      untagged: { total: number; answered: number; skipped: number; deferred: number };
+    };
+    latest_activity_at: string | null;
+  } | null,
+  questionHistory?: Array<{
+    questionnaire_id: string;
+    question_id: string;
+    stage: string;
+    status: 'answered' | 'skipped' | 'deferred';
+    impact_tag: 'high' | 'medium' | 'low' | null;
+    payoff_hint: string | null;
+    updated_at: string | null;
+  }> | null,
+  questionReuseSummaries?: Array<{
+    stage: 'positioning' | 'gap_analysis';
+    questionnaire_kind: 'positioning_batch' | 'gap_analysis_quiz';
+    skipped_count: number;
+    benchmark_edit_version: number | null;
+    sample_topics: string[];
+    sample_payoffs: string[];
+    message: string | null;
+    version: number | null;
+    created_at: string | null;
+  }> | null,
+  onOpenQuestions?: () => void,
+) {
+  const remaining = draftReadiness?.high_impact_remaining ?? [];
+  return (
+    <div className="h-full p-3 md:p-4">
+      <GlassCard className="h-full p-6">
+        <div className="mb-2 flex items-center gap-2 text-white/78">
+          <History className="h-4 w-4 text-white/45" />
+          <h3 className="text-sm font-semibold">Questions</h3>
+        </div>
+        {remaining.length > 0 ? (
+          <>
+            <p className="max-w-2xl text-sm text-white/56">
+              {isActiveNode
+                ? 'The coach is between question batches. These are the highest-impact remaining areas it is likely to ask about next.'
+                : 'These are the highest-impact remaining areas the coach is likely to ask about next.'}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {remaining.slice(0, 6).map((item, index) => (
+                <div
+                  key={`${item.requirement}-${index}`}
+                  className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-2.5 py-2 text-xs text-white/80"
+                >
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
+                      item.priority === 'must_have'
+                        ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/85'
+                        : item.priority === 'implicit'
+                          ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
+                          : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                    }`}>
+                      {item.priority === 'must_have' ? 'Must-have' : item.priority === 'implicit' ? 'Implicit' : 'Nice-to-have'}
+                    </span>
+                    <span className={item.classification === 'gap' ? 'text-rose-100/80' : 'text-amber-100/80'}>
+                      {item.classification === 'gap' ? 'Gap' : 'Partial'}
+                    </span>
+                  </div>
+                  <div className="mt-1 max-w-[32rem]">{item.requirement}</div>
+                </div>
+              ))}
+            </div>
+            {questionMetrics && questionMetrics.total > 0 && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">Question Progress</div>
+                  <div className="mt-1 text-xs text-white/78">
+                    Answered {questionMetrics.answered} • Deferred {questionMetrics.deferred} • Skipped {questionMetrics.skipped}
+                  </div>
+                  {questionMetrics.latest_activity_at && (
+                    <div className="mt-1 text-[10px] text-white/45">
+                      Last activity: {new Date(questionMetrics.latest_activity_at).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">High-Impact Questions</div>
+                  <div className="mt-1 text-xs text-white/78">
+                    Answered {questionMetrics.by_impact.high.answered} / {questionMetrics.by_impact.high.total}
+                  </div>
+                  <div className="mt-1 text-[10px] text-white/50">
+                    Deferred {questionMetrics.by_impact.high.deferred} • Skipped {questionMetrics.by_impact.high.skipped}
+                  </div>
+                </div>
+              </div>
+            )}
+            {Array.isArray(questionHistory) && questionHistory.length > 0 && (
+              <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">Recent Question Rationale</div>
+                <div className="mt-2 space-y-1.5">
+                  {questionHistory.slice(0, 5).map((item, index) => (
+                    <div key={`${item.questionnaire_id}:${item.question_id}:${index}`} className="rounded-md border border-white/[0.05] bg-white/[0.015] px-2 py-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                        <span className={`rounded-full border px-1.5 py-0.5 ${
+                          item.impact_tag === 'high'
+                            ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/85'
+                            : item.impact_tag === 'medium'
+                              ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/85'
+                              : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                        }`}>
+                          {item.impact_tag ? `${item.impact_tag} impact` : 'untagged'}
+                        </span>
+                        <span className={`rounded-full border px-1.5 py-0.5 ${
+                          item.status === 'answered'
+                            ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/85'
+                            : item.status === 'deferred'
+                              ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
+                              : 'border-white/[0.1] bg-white/[0.03] text-white/60'
+                        }`}>
+                          {item.status}
+                        </span>
+                        <span className="text-white/45">{item.stage.replace(/_/g, ' ')}</span>
+                      </div>
+                      <div className="mt-1 text-[11px] leading-relaxed text-white/74">
+                        {item.payoff_hint}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {Array.isArray(questionReuseSummaries) && questionReuseSummaries.length > 0 && (
+              <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+                <div className="text-[10px] uppercase tracking-[0.1em] text-white/40">Question Reuse (to reduce repeats)</div>
+                <div className="mt-2 space-y-1.5">
+                  {questionReuseSummaries.slice(0, 4).map((item, index) => (
+                    <div key={`${item.stage}:${item.version ?? index}:${index}`} className="rounded-md border border-white/[0.05] bg-white/[0.015] px-2 py-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                        <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-1.5 py-0.5 text-white/70">
+                          {item.stage === 'positioning' ? 'Positioning' : 'Gap Analysis'}
+                        </span>
+                        <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-1.5 py-0.5 text-sky-100/85">
+                          Reused {item.skipped_count}
+                        </span>
+                        {typeof item.benchmark_edit_version === 'number' && (
+                          <span className="text-white/40">benchmark v{item.benchmark_edit_version}</span>
+                        )}
+                      </div>
+                      {item.message && (
+                        <div className="mt-1 text-[11px] leading-relaxed text-white/72">
+                          {item.message}
+                        </div>
+                      )}
+                      {item.sample_payoffs.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {item.sample_payoffs.slice(0, 2).map((payoff, payoffIndex) => (
+                            <span
+                              key={`${payoff}-${payoffIndex}`}
+                              className="rounded-full border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[10px] text-white/60"
+                              title={payoff}
+                            >
+                              {payoff.length > 44 ? `${payoff.slice(0, 44)}...` : payoff}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {onOpenQuestions && (
+              <div className="mt-3">
+                <GlassButton type="button" variant="ghost" className="h-8 px-3 text-xs" onClick={onOpenQuestions}>
+                  Refresh Questions
+                </GlassButton>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="max-w-xl text-sm text-white/56">
+            {isActiveNode
+              ? 'Your coach is working on this step. Results will appear here shortly.'
+              : 'This step hasn\'t been reached yet. Continue your session to see results here.'}
+          </p>
+        )}
+      </GlassCard>
+    </div>
+  );
+}
+
 function BenchmarkInspectorCard({
   panelData,
+  benchmarkEditSummary,
+  replanSummary,
+  replanStatus,
   onSaveAssumptions,
   isSaving,
 }: {
   panelData: PanelData | null;
+  benchmarkEditSummary?: {
+    version: number | null;
+    edited_at: string | null;
+    note: string | null;
+    assumption_key_count: number;
+    assumption_keys: string[];
+  } | null;
+  replanSummary?: {
+    pending: boolean;
+    requires_restart: boolean;
+    benchmark_edit_version: number | null;
+  } | null;
+  replanStatus?: {
+    state: 'requested' | 'in_progress' | 'completed';
+    benchmark_edit_version: number;
+  } | null;
   onSaveAssumptions?: (assumptions: Record<string, unknown>, note?: string) => Promise<{ success: boolean; message: string }>;
   isSaving?: boolean;
 }) {
@@ -307,6 +529,16 @@ function BenchmarkInspectorCard({
       return value != null;
     })
     .slice(0, 8);
+  const latestEditVersion = benchmarkEditSummary?.version ?? null;
+  const pendingReplanForLatestEdit = latestEditVersion != null
+    && (
+      replanSummary?.pending === true && replanSummary.benchmark_edit_version === latestEditVersion
+      || replanStatus?.state === 'requested' && replanStatus.benchmark_edit_version === latestEditVersion
+      || replanStatus?.state === 'in_progress' && replanStatus.benchmark_edit_version === latestEditVersion
+    );
+  const appliedLatestEdit = latestEditVersion != null
+    && replanStatus?.state === 'completed'
+    && replanStatus.benchmark_edit_version === latestEditVersion;
 
   const handleSave = async () => {
     if (!onSaveAssumptions) return;
@@ -348,6 +580,45 @@ function BenchmarkInspectorCard({
       <p className="mb-3 text-xs text-white/56">
         These are the current inferred benchmark assumptions driving positioning decisions. Edits apply immediately early in the process; after section writing starts, changes require confirmation and a downstream rebuild to stay consistent.
       </p>
+      {benchmarkEditSummary?.version != null && (
+        <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
+              Latest Benchmark Edit
+            </span>
+            <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/70">
+              v{benchmarkEditSummary.version}
+            </span>
+            {pendingReplanForLatestEdit && (
+              <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.06] px-2 py-0.5 text-[10px] text-sky-100/85">
+                Pending apply
+              </span>
+            )}
+            {appliedLatestEdit && (
+              <span className="rounded-full border border-emerald-300/20 bg-emerald-400/[0.06] px-2 py-0.5 text-[10px] text-emerald-100/85">
+                Applied to run
+              </span>
+            )}
+            {!pendingReplanForLatestEdit && !appliedLatestEdit && (
+              <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/60">
+                Saved
+              </span>
+            )}
+          </div>
+          <div className="mt-1 text-[11px] text-white/55">
+            {benchmarkEditSummary.edited_at
+              ? `Edited ${new Date(benchmarkEditSummary.edited_at).toLocaleString()}`
+              : 'Edit time unavailable'}
+            {' • '}
+            {benchmarkEditSummary.assumption_key_count} field{benchmarkEditSummary.assumption_key_count === 1 ? '' : 's'} changed
+          </div>
+          {benchmarkEditSummary.note && (
+            <div className="mt-1 text-[11px] leading-relaxed text-white/62">
+              Note: {benchmarkEditSummary.note}
+            </div>
+          )}
+        </div>
+      )}
       {visibleAssumptionEntries.length > 0 && (
         <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
@@ -726,6 +997,7 @@ export function CoachScreen({
   const navItems = useMemo(
     () => {
       const effectiveLiveReplan = liveWorkflowReplan ?? workflowSession.summary?.replan_status ?? null;
+      const effectiveDraftReadiness = liveDraftReadiness ?? workflowSession.summary?.draft_readiness ?? null;
       const replanNodeDetails = buildReplanNodeDetailMap(workflowSession.summary?.replan, effectiveLiveReplan);
       return WORKFLOW_NODES.map((node) => {
         const summaryNode = workflowSession.summary?.nodes.find((n) => n.node_key === node.key);
@@ -738,6 +1010,29 @@ export function CoachScreen({
               ?? undefined
             )
           : undefined;
+        const questionsDetail = node.key === 'questions'
+          ? (() => {
+              const metrics = workflowSession.summary?.question_response_metrics ?? null;
+              const highImpactTotal = metrics?.by_impact.high.total ?? 0;
+              const highImpactAnswered = metrics?.by_impact.high.answered ?? 0;
+              const highImpactRemaining = effectiveDraftReadiness?.high_impact_remaining?.filter((item) => item.priority === 'must_have').length
+                ?? effectiveDraftReadiness?.high_impact_remaining?.length
+                ?? 0;
+              if (highImpactTotal > 0) {
+                if (highImpactRemaining > 0) {
+                  return `High impact ${highImpactAnswered}/${highImpactTotal} • ${highImpactRemaining} remaining`;
+                }
+                return `High impact ${highImpactAnswered}/${highImpactTotal}`;
+              }
+              if (highImpactRemaining > 0) {
+                return `${highImpactRemaining} high-impact remaining`;
+              }
+              if ((metrics?.total ?? 0) > 0) {
+                return `Answered ${metrics?.answered ?? 0} • Deferred ${metrics?.deferred ?? 0}`;
+              }
+              return undefined;
+            })()
+          : undefined;
         const replanDetail = replanNodeDetails[node.key];
         return {
           ...node,
@@ -746,11 +1041,12 @@ export function CoachScreen({
           detailLabel:
             (summaryNode?.blocking_state === 'rebuild_required' ? 'Rebuild required' : undefined)
             ?? replanDetail
+            ?? questionsDetail
             ?? sectionBundleDetail,
         };
       });
     },
-    [nodeStatuses, mergedSnapshots, workflowSession.summary, liveWorkflowReplan],
+    [nodeStatuses, mergedSnapshots, workflowSession.summary, liveWorkflowReplan, liveDraftReadiness],
   );
 
   const liveSnapshot: WorkspaceNodeSnapshot = {
@@ -893,6 +1189,7 @@ export function CoachScreen({
   );
 
   const draftReadiness = liveDraftReadiness ?? workflowSession.summary?.draft_readiness ?? null;
+  const draftPathDecision = workflowSession.summary?.draft_path_decision ?? null;
   const workflowPreferences = workflowSession.summary?.workflow_preferences ?? null;
   const activeWorkflowMode =
     workflowPreferences?.workflow_mode
@@ -1051,6 +1348,61 @@ export function CoachScreen({
                     {draftReadiness.note}
                   </p>
                 )}
+                {draftPathDecision && (displayPhase === 'gap_analysis' || displayPhase === 'architect' || displayPhase === 'architect_review' || displayPhase === 'section_writing' || displayPhase === 'section_review' || displayPhase === 'quality_review' || displayPhase === 'revision' || displayPhase === 'complete') && (
+                  <div className={`mt-2 rounded-lg border px-2.5 py-2 ${
+                    draftPathDecision.proceeding_reason === 'momentum_mode'
+                      ? 'border-amber-300/18 bg-amber-400/[0.04]'
+                      : 'border-emerald-300/18 bg-emerald-400/[0.04]'
+                  }`}>
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className={`rounded-full border px-1.5 py-0.5 ${
+                        draftPathDecision.proceeding_reason === 'momentum_mode'
+                          ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
+                          : 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/85'
+                      }`}>
+                        {draftPathDecision.proceeding_reason === 'momentum_mode'
+                          ? 'Proceeding with open items'
+                          : 'Proceeding: readiness met'}
+                      </span>
+                      <span className="text-white/50">
+                        {draftPathDecision.workflow_mode.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-white/72">
+                      {draftPathDecision.message}
+                    </p>
+                    {(draftPathDecision.top_remaining || (draftPathDecision.blocking_reasons?.length ?? 0) > 0) && (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {draftPathDecision.blocking_reasons?.includes('evidence_target')
+                          && typeof draftPathDecision.remaining_evidence_needed === 'number'
+                          && draftPathDecision.remaining_evidence_needed > 0 && (
+                            <span className="rounded-full border border-amber-300/20 bg-amber-400/[0.06] px-2 py-0.5 text-[10px] text-amber-100/85">
+                              {draftPathDecision.remaining_evidence_needed} evidence item{draftPathDecision.remaining_evidence_needed === 1 ? '' : 's'} still open
+                            </span>
+                          )}
+                        {draftPathDecision.blocking_reasons?.includes('coverage_threshold')
+                          && typeof draftPathDecision.remaining_coverage_needed === 'number'
+                          && draftPathDecision.remaining_coverage_needed > 0 && (
+                            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.06] px-2 py-0.5 text-[10px] text-sky-100/85">
+                              +{draftPathDecision.remaining_coverage_needed}% coverage still open
+                            </span>
+                          )}
+                        {draftPathDecision.top_remaining && (
+                          <GlassButton
+                            type="button"
+                            variant="ghost"
+                            className="h-6 px-2.5 text-[10px]"
+                            onClick={() => goToNode('questions')}
+                          >
+                            Review: {draftPathDecision.top_remaining.requirement.length > 42
+                              ? `${draftPathDecision.top_remaining.requirement.slice(0, 42)}...`
+                              : draftPathDecision.top_remaining.requirement}
+                          </GlassButton>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {(
                   typeof draftReadiness.remaining_evidence_needed === 'number'
                   || typeof draftReadiness.remaining_coverage_needed === 'number'
@@ -1071,6 +1423,16 @@ export function CoachScreen({
                       <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/70">
                         ~{draftReadiness.suggested_question_count} targeted question{draftReadiness.suggested_question_count === 1 ? '' : 's'} likely
                       </span>
+                    )}
+                    {!draftReadiness.ready && Array.isArray(draftReadiness.high_impact_remaining) && draftReadiness.high_impact_remaining.length > 0 && (
+                      <GlassButton
+                        type="button"
+                        variant="ghost"
+                        className="h-6 px-2.5 text-[10px]"
+                        onClick={() => goToNode('questions')}
+                      >
+                        Open Questions
+                      </GlassButton>
                     )}
                   </div>
                 )}
@@ -1119,7 +1481,16 @@ export function CoachScreen({
                       {draftReadiness.high_impact_remaining.slice(0, 4).map((item, index) => (
                         <div
                           key={`${item.requirement}-${index}`}
-                          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[10px] leading-relaxed text-white/75"
+                          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[10px] leading-relaxed text-white/75 transition-colors hover:border-white/[0.12] hover:bg-white/[0.03] cursor-pointer"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => goToNode('questions')}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              goToNode('questions');
+                            }
+                          }}
                         >
                           <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                             <span className={`rounded-full border px-1.5 py-0.5 ${
@@ -1157,6 +1528,14 @@ export function CoachScreen({
           {selectedNode === 'benchmark' && (
             <BenchmarkInspectorCard
               panelData={displayPanelData}
+              benchmarkEditSummary={workflowSession.summary?.benchmark_edit ?? null}
+              replanSummary={workflowSession.summary?.replan ?? null}
+              replanStatus={workflowSession.summary?.replan_status
+                ? {
+                    state: workflowSession.summary.replan_status.state,
+                    benchmark_edit_version: workflowSession.summary.replan_status.benchmark_edit_version,
+                  }
+                : null}
               onSaveAssumptions={workflowSession.saveBenchmarkAssumptions}
               isSaving={workflowSession.isSavingBenchmarkAssumptions}
             />
@@ -1176,6 +1555,18 @@ export function CoachScreen({
               />
             ) : displayResume ? (
               <ResumePanel resume={displayResume} />
+            ) : selectedNode === 'questions' ? (
+              renderQuestionsNodeSummaryPlaceholder(
+                isViewingLiveNode,
+                draftReadiness,
+                workflowSession.summary?.question_response_metrics ?? null,
+                workflowSession.summary?.question_response_history ?? null,
+                workflowSession.summary?.question_reuse_summaries ?? null,
+                () => {
+                  void workflowSession.refreshSummary();
+                  void workflowSession.refreshNode('questions');
+                },
+              )
             ) : (
               renderNodeContentPlaceholder(selectedNode, isViewingLiveNode)
             )}

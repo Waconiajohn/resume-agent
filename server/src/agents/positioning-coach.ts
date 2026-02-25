@@ -596,10 +596,11 @@ export async function synthesizeProfile(
   },
 ): Promise<PositioningProfile> {
   const { llm, MODEL_PRIMARY } = await getLLMRuntime();
+  const mode = preferences?.workflow_mode ?? 'balanced';
+  const defaultEvidenceTarget = mode === 'fast_draft' ? 5 : mode === 'deep_dive' ? 12 : 8;
   const evidenceTarget = typeof preferences?.minimum_evidence_target === 'number'
     ? Math.min(20, Math.max(3, Math.round(preferences.minimum_evidence_target)))
-    : undefined;
-  const mode = preferences?.workflow_mode ?? 'balanced';
+    : defaultEvidenceTarget;
   const evidenceExtractionGuidance = evidenceTarget != null
     ? (mode === 'fast_draft'
         ? `TARGET: Extract at least ${evidenceTarget} high-confidence evidence items. Prefer precision over volume. Do NOT infer extra evidence if the interview is sparse.`
@@ -684,7 +685,7 @@ Synthesize this into a positioning profile. Return ONLY valid JSON:
   "gaps_detected": ["JD requirements still not addressed after the interview"]
 }
 
-Extract 5-8 top capabilities, ${evidenceTarget != null ? `at least ${evidenceTarget}` : '10-20'} evidence items when supported by the source material, and as many authentic phrases as you can find. Be specific — "strategic thinker" is useless, "turns ambiguous stakeholder conflicts into aligned roadmaps" is valuable.`,
+Extract 5-8 top capabilities, at least ${evidenceTarget} evidence items when supported by the source material, and as many authentic phrases as you can find. Be specific — "strategic thinker" is useless, "turns ambiguous stakeholder conflicts into aligned roadmaps" is valuable.`,
     }],
   });
 
