@@ -400,6 +400,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       }, delay);
     } else {
       setError('Connection lost');
+      patchPipelineActivityMeta({
+        processing_state: 'error',
+        current_activity_message: 'Live workflow connection could not be restored after multiple retries.',
+        current_activity_source: 'system',
+        expected_next_action: 'Use Reconnect or Refresh State to confirm the pipeline status',
+      });
     }
   }, [patchPipelineActivityMeta]);
 
@@ -767,6 +773,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const data = safeParse(msg.data);
                   if (!data) break;
                   patchPipelineActivityMeta({
+                    processing_state: data.to_phase === 'complete' ? 'complete' : 'processing',
                     current_activity_message: `Phase changed to ${String(data.to_phase).replace(/_/g, ' ')}.`,
                     current_activity_source: 'system',
                     expected_next_action: null,
