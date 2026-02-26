@@ -6,7 +6,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { sseConnections } from './sessions.js';
-import { runPipeline } from '../agents/pipeline.js';
+import { runPipeline } from '../agents/coordinator.js';
 import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 import { sleep } from '../lib/sleep.js';

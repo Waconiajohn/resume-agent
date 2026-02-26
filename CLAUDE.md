@@ -52,7 +52,15 @@ app/                          # Frontend (Vite + React 19)
   src/hooks/                  # useAgent.ts (SSE), usePipeline.ts, useSession.ts, useAuth.ts
   src/types/                  # panels.ts (PanelData union), session.ts, resume.ts
 server/                       # Backend (Hono + Node.js)
-  src/agents/                 # 7 pipeline agents + types.ts + pipeline.ts orchestrator
+  src/agents/
+    runtime/                  # Agent loop, bus, protocol, context (shared infrastructure)
+    knowledge/                # Rules (resume-guide), formatting-guide (structured extracts)
+    strategist/               # Agent 1: Understanding + intelligence + positioning
+    craftsman/                # Agent 2: Content creation + self-review
+    producer/                 # Agent 3: Quality assurance + document production
+    coordinator.ts            # Thin orchestrator (~800 lines) — sequences agents, manages gates
+    types.ts                  # PipelineState, PipelineSSEEvent, agent I/O interfaces
+  src/agent/                  # Legacy monolithic loop (used by chat route, being phased out)
   src/routes/                 # pipeline.ts, sessions.ts, resumes.ts
   src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts
 supabase/
@@ -77,21 +85,45 @@ supabase/
 
 ## Server Architecture
 
-### Pipeline (v2 Multi-Agent)
+### Agent Architecture (3 Agents + Coordinator)
 
-The pipeline orchestrator (`server/src/agents/pipeline.ts`) is pure coordination logic with zero LLM calls. It runs 7 specialized agents in sequence, passing typed data between them:
+This app is the cornerstone product of a 33-agent platform. It is built around 3 collaborative AI agents that demonstrate the power of agentic AI.
 
-| Stage | Agent File | What It Does |
-|-------|-----------|--------------|
-| `intake` | `intake.ts` | Parses raw resume into structured `IntakeOutput` |
-| `positioning` | `positioning-coach.ts` | "Why Me" interview — surfaces career arc, capabilities, evidence library |
-| `research` | `research.ts` | JD analysis, company research, benchmark candidate profiling |
-| `gap_analysis` | `gap-analyst.ts` | Maps requirements → strong/partial/gap with evidence |
-| `architect` | `architect.ts` | Creates section-level blueprint with keyword targets, age protection |
-| `section_writing` | `section-writer.ts` | Writes each resume section from blueprint instructions |
-| `quality_review` | `quality-reviewer.ts` | Scores hiring-manager impact, ATS, authenticity, requirement coverage |
+**Coordinator** (`server/src/agents/coordinator.ts`) — Thin orchestration layer (~800 lines) that sequences agents, manages user interaction (SSE events, gates), and routes inter-agent messages. Makes zero content decisions.
 
-Additional: `ats-rules.ts` provides rule-based ATS compliance checks (no LLM needed).
+#### Resume Strategist (`server/src/agents/strategist/`)
+Owns understanding, intelligence, and positioning. Interviews the candidate like a world-class executive recruiter, researches the market, identifies competitive advantages, and designs the resume strategy. Runs as an agentic loop — the LLM decides which tools to call and when to iterate.
+
+**Tools:** `parse_resume`, `analyze_jd`, `research_company`, `build_benchmark`, `interview_candidate`, `classify_fit`, `design_blueprint`, `emit_transparency`
+
+**Rules it owns:** `AGE_AWARENESS_RULES`, `QUALITY_CHECKLIST`, `SECTION_GUIDANCE` (structure)
+
+#### Resume Craftsman (`server/src/agents/craftsman/`)
+Owns content creation. Writes each section following the detailed rules in resume-guide.ts (section guidance, bullet frameworks, keyword targets, anti-patterns). Self-reviews every section before presenting to the user. Iterates based on feedback.
+
+**Tools:** `write_section`, `self_review_section`, `revise_section`, `check_keyword_coverage`, `check_anti_patterns`, `check_evidence_integrity`, `present_to_user`, `emit_transparency`
+
+**Rules it owns:** `SECTION_GUIDANCE` (writing), `RESUME_ANTI_PATTERNS`, `ATS_FORMATTING_RULES`
+
+#### Resume Producer (`server/src/agents/producer/`)
+Owns document production and quality assurance. Selects from 5 executive templates (resume-formatting-guide.md), verifies ATS compliance across 5 systems, runs multi-perspective quality checks. Can request content revisions from the Craftsman.
+
+**Tools:** `select_template`, `adversarial_review`, `ats_compliance_check`, `humanize_check`, `check_blueprint_compliance`, `verify_cross_section_consistency`, `request_content_revision`, `emit_transparency`
+
+**Rules it owns:** `resume-formatting-guide.md` (756 lines), 5 executive templates, ATS compatibility rules
+
+#### Inter-Agent Communication
+Agents communicate through a standard message bus (`server/src/agents/runtime/agent-bus.ts`) using a protocol designed for the 33-agent platform. The Strategist passes strategy to the Craftsman. The Craftsman passes content to the Producer. The Producer can request revisions from the Craftsman.
+
+#### Agent Runtime (`server/src/agents/runtime/`)
+- `agent-loop.ts` — Core agentic loop: multi-round LLM + tool calling with retries, timeouts
+- `agent-bus.ts` — In-memory inter-agent message routing
+- `agent-protocol.ts` — Standard types: AgentTool, AgentContext, AgentConfig, AgentMessage
+- `agent-context.ts` — Creates runtime context (pipeline state, SSE, gates) for tools
+
+#### Knowledge Layer (`server/src/agents/knowledge/`)
+- `rules.ts` — Re-exports SECTION_GUIDANCE, QUALITY_CHECKLIST, RESUME_ANTI_PATTERNS, AGE_AWARENESS_RULES, ATS rules
+- `formatting-guide.ts` — Structured extracts from resume-formatting-guide.md (templates, typography, margins)
 
 All agent types are in `server/src/agents/types.ts` — `PipelineState`, `PipelineStage`, `PipelineSSEEvent`, and per-agent I/O interfaces.
 
@@ -181,9 +213,12 @@ Migrations in `supabase/migrations/` — numbered sequentially (001–012, then 
 
 ## Key Patterns & Conventions
 
-- **Agent pattern**: Each agent in `server/src/agents/` is a pure function: typed input → typed output. No shared state — all data flows through `PipelineState`.
+- **Agentic loop**: Each agent runs as a multi-round LLM loop (`agent-loop.ts`). The LLM decides which tools to call and when to stop. Tools execute against the shared `AgentContext`.
+- **Agent tools**: Typed objects `{ name, description, input_schema, execute }`. Tools wrap existing pipeline functions (e.g., `parse_resume` wraps `runIntakeAgent`). The LLM sees the schema; `execute` runs when called.
+- **Inter-agent messaging**: Agents communicate through `AgentBus` using standard `AgentMessage` format. The coordinator subscribes to bus events to handle cross-agent requests (e.g., Producer → Craftsman revision requests).
+- **Self-review loop**: The Craftsman writes each section, then self-reviews against quality checklist and anti-pattern list before presenting to the user. This write-review-revise cycle happens autonomously within the agent loop.
 - **Pipeline gates**: `waitForUser()` pauses → SSE event to frontend → user interacts → `POST /api/pipeline/respond` → pipeline resumes.
-- **Tool-to-model routing**: `getModelForTool(toolName)` in `llm.ts` maps each tool to the right cost tier.
+- **Tool-to-model routing**: `getModelForTool(toolName)` in `llm.ts` maps each tool to the right cost tier. Agent loops use `MODEL_ORCHESTRATOR` (cheap) for reasoning; individual tools route to their own cost tiers.
 - **Panel rendering**: `panel-renderer.tsx` maps `PanelData.type` → component. `PanelErrorBoundary` wraps each panel.
 - **Message format**: Internal content-block format; `ZAIProvider` translates to/from OpenAI format when active.
 - **Imports**: `@/` alias for app imports; `.js` extensions for server imports (ESM).

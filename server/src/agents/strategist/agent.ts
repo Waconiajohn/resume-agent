@@ -1,0 +1,58 @@
+/**
+ * Strategist Agent — Configuration
+ *
+ * Wires together the system prompt and tools into an AgentConfig that
+ * the agent loop can execute. The Strategist drives the entire intelligence
+ * phase: intake → research → interview → gap analysis → blueprint.
+ *
+ * Handed off to the Craftsman when design_blueprint completes successfully.
+ */
+
+import type { AgentConfig } from '../runtime/agent-protocol.js';
+import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
+import { STRATEGIST_SYSTEM_PROMPT } from './prompts.js';
+import { strategistTools } from './tools.js';
+
+export const strategistConfig: AgentConfig = {
+  identity: {
+    name: 'strategist',
+    domain: 'resume',
+  },
+
+  system_prompt: STRATEGIST_SYSTEM_PROMPT,
+
+  tools: strategistTools,
+
+  /**
+   * Model for the Strategist's main LLM loop (tool selection + reasoning).
+   * Individual tools override this with their own model_tier when they make
+   * downstream LLM calls (e.g., design_blueprint uses MODEL_PRIMARY).
+   */
+  model: MODEL_ORCHESTRATOR,
+
+  /**
+   * Max LLM round-trips. Each round may call 1+ tools.
+   * Breakdown estimate:
+   *  1 round  — parse_resume + emit_transparency
+   *  1 round  — analyze_jd + research_company (may be combined)
+   *  1 round  — build_benchmark
+   *  5-8 rounds — interview_candidate (one per question)
+   *  1 round  — classify_fit
+   *  1 round  — design_blueprint
+   * = ~12-15 rounds typical, 20 as safe ceiling
+   */
+  max_rounds: 20,
+
+  /**
+   * Timeout per individual LLM round (ms).
+   * Z.AI can take 1-5 min per call. Set to 3 min to match existing pipeline timeout.
+   */
+  round_timeout_ms: 180_000,
+
+  /**
+   * Timeout for the entire Strategist invocation (ms).
+   * Full strategy phase (parse + research + 10 interview Qs + gap + blueprint):
+   * 15 min is generous but necessary for slow Z.AI days.
+   */
+  overall_timeout_ms: 900_000,
+};
