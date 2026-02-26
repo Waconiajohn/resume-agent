@@ -1334,12 +1334,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     state.current_stage = 'gap_analysis';
     markStageStart('gap_analysis');
 
-    state.gap_analysis = await runGapAnalyst({
-      parsed_resume: state.intake,
-      positioning: state.positioning,
-      jd_analysis: state.research.jd_analysis,
-      benchmark: state.research.benchmark_candidate,
-    });
+    state.gap_analysis = await withRetry(
+      () => runGapAnalyst({
+        parsed_resume: state.intake!,
+        positioning: state.positioning!,
+        jd_analysis: state.research!.jd_analysis,
+        benchmark: state.research!.benchmark_candidate,
+      }),
+      { maxAttempts: 2, baseDelay: 3000 },
+    );
 
     markStageEnd('gap_analysis');
     emit({ type: 'stage_complete', stage: 'gap_analysis', message: `Step 4 of 7 complete: coverage ${state.gap_analysis.coverage_score}%`, duration_ms: stageTimingsMs.gap_analysis });
