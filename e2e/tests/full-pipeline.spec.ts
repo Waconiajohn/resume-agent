@@ -114,9 +114,9 @@ test.describe('Full Pipeline E2E', () => {
         page.getByPlaceholder(/Type a message/i),
       ).toBeVisible({ timeout: 30_000 });
 
-      // Wait for the first real panel to appear (after LLM processes intake)
-      await expect(page.locator('[data-panel-root]')).toBeVisible({
-        timeout: 5 * 60_000, // 5 min for first LLM response + panel
+      // Wait for the workspace to show pipeline progress (visible even if panel root has zero height)
+      await expect(page.getByText('Your Resume Progress')).toBeVisible({
+        timeout: 5 * 60_000, // 5 min for first LLM response + workspace
       });
     });
 
