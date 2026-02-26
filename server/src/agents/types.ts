@@ -605,7 +605,7 @@ export type PipelineSSEEvent =
       ready: boolean;
       remaining_evidence_needed?: number;
       remaining_coverage_needed?: number;
-      blocking_reasons?: Array<'evidence_target' | 'coverage_threshold'>;
+      blocking_reasons?: Array<'coverage_threshold'>;
       gap_breakdown?: {
         total: number;
         strong: number;
@@ -632,7 +632,7 @@ export type PipelineSSEEvent =
       workflow_mode: 'fast_draft' | 'balanced' | 'deep_dive';
       ready: boolean;
       proceeding_reason: 'readiness_met' | 'momentum_mode';
-      blocking_reasons?: Array<'evidence_target' | 'coverage_threshold'>;
+      blocking_reasons?: Array<'coverage_threshold'>;
       remaining_evidence_needed?: number;
       remaining_coverage_needed?: number;
       top_remaining?: {

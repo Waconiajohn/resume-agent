@@ -1237,8 +1237,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                         .filter((item) => item.requirement.length > 0)
                     : undefined;
                   const blockingReasons = Array.isArray(data.blocking_reasons)
-                    ? data.blocking_reasons.filter((reason): reason is 'evidence_target' | 'coverage_threshold' => (
-                      reason === 'evidence_target' || reason === 'coverage_threshold'
+                    ? data.blocking_reasons.filter((reason): reason is 'coverage_threshold' => (
+                      reason === 'coverage_threshold'
                     ))
                     : undefined;
                   setDraftReadiness({

@@ -468,7 +468,7 @@ function getMinimumEvidenceTarget(
   return Math.min(20, Math.max(3, Math.round(raw)));
 }
 
-type DraftReadinessBlockingReason = 'evidence_target' | 'coverage_threshold';
+type DraftReadinessBlockingReason = 'coverage_threshold';
 type DraftReadinessRequirementPriority = 'must_have' | 'implicit' | 'nice_to_have';
 
 function normalizeRequirementKey(value: string): string {
@@ -511,9 +511,8 @@ function buildDraftReadinessDetails(
   const coverageScore = state.gap_analysis?.coverage_score ?? 0;
   const remainingEvidenceNeeded = Math.max(0, minimumEvidenceTarget - evidenceCount);
   const remainingCoverageNeeded = Math.max(0, Math.ceil(policy.draftReadiness.coverageThreshold - coverageScore));
-  const ready = remainingEvidenceNeeded === 0 && remainingCoverageNeeded === 0;
+  const ready = remainingCoverageNeeded === 0;
   const blockingReasons: DraftReadinessBlockingReason[] = [
-    ...(remainingEvidenceNeeded > 0 ? ['evidence_target' as const] : []),
     ...(remainingCoverageNeeded > 0 ? ['coverage_threshold' as const] : []),
   ];
 
@@ -570,12 +569,7 @@ function buildDraftReadinessDetails(
     (item) => Array.isArray(item.mapped_requirements) && item.mapped_requirements.length > 0,
   ).length;
 
-  const suggestedQuestionCount = ready
-    ? 0
-    : Math.min(
-        remainingEvidenceNeeded > 0 ? 5 : 2,
-        Math.max(1, highImpactRemaining.length),
-      );
+  const suggestedQuestionCount = ready ? 0 : Math.min(2, Math.max(1, highImpactRemaining.length));
 
   return {
     evidenceCount,
@@ -1381,17 +1375,15 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       'Initial draft readiness after gap analysis.',
     );
     const initialBlockingSummary = draftReadinessBeforeGapQuiz.blockingReasons
-      .map((reason) => reason === 'evidence_target'
-        ? `${draftReadinessBeforeGapQuiz.remainingEvidenceNeeded} more evidence item${draftReadinessBeforeGapQuiz.remainingEvidenceNeeded === 1 ? '' : 's'}`
-        : `${draftReadinessBeforeGapQuiz.remainingCoverageNeeded}% more coverage`)
+      .map(() => `${draftReadinessBeforeGapQuiz.remainingCoverageNeeded}% more coverage`)
       .join(' and ');
     const initialTopRemaining = draftReadinessBeforeGapQuiz.highImpactRemaining[0];
     emit({
       type: 'transparency',
       stage: 'gap_analysis',
       message: draftReadinessBeforeGapQuiz.ready
-        ? `Draft readiness check: ready to draft (${draftReadinessBeforeGapQuiz.evidenceCount}/${draftReadinessBeforeGapQuiz.minimumEvidenceTarget} evidence items, coverage ${draftReadinessBeforeGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`
-        : `Draft readiness check: not ready yet (${draftReadinessBeforeGapQuiz.evidenceCount}/${draftReadinessBeforeGapQuiz.minimumEvidenceTarget} evidence items, coverage ${draftReadinessBeforeGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%). Still needed: ${initialBlockingSummary || 'additional evidence/coverage'}.${initialTopRemaining ? ` Highest-impact remaining area: ${initialTopRemaining.requirement}.` : ''}`,
+        ? `Draft readiness check: ready to draft (coverage ${draftReadinessBeforeGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`
+        : `Draft readiness check: not ready yet (coverage ${draftReadinessBeforeGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%). Still needed: ${initialBlockingSummary || 'additional coverage'}.${initialTopRemaining ? ` Highest-impact remaining area: ${initialTopRemaining.requirement}.` : ''}`,
     });
 
     // ─── Gap Analysis Quiz (optional, mode-aware and draft-readiness-aware) ───────────
@@ -1424,9 +1416,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       });
     }
     const gapQuizReuseSubtitleNote = buildQuestionnaireReuseSubtitleNote(skippedGapQuestions);
-    const targetedCoverageBoosterNeeded = !draftReadinessBeforeGapQuiz.ready
-      && draftReadinessBeforeGapQuiz.evidenceCount >= draftReadinessBeforeGapQuiz.minimumEvidenceTarget
-      && draftReadinessBeforeGapQuiz.coverageScore < workflowModePolicy.draftReadiness.coverageThreshold;
+    const targetedCoverageBoosterNeeded = !draftReadinessBeforeGapQuiz.ready;
     const gapQuizQuestionLimit = workflowModePolicy.gapQuiz.enabled
       ? workflowModePolicy.gapQuiz.maxQuestions
       : (targetedCoverageBoosterNeeded ? 2 : 0);
@@ -1503,8 +1493,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
         type: 'transparency',
         stage: 'gap_analysis',
         message: draftReadinessAfterGapQuiz.ready
-          ? `Updated draft readiness: ready to draft (${draftReadinessAfterGapQuiz.evidenceCount}/${draftReadinessAfterGapQuiz.minimumEvidenceTarget} evidence items; coverage ${draftReadinessAfterGapQuiz.coverageScore}%).`
-          : `Updated draft readiness: ${draftReadinessAfterGapQuiz.evidenceCount}/${draftReadinessAfterGapQuiz.minimumEvidenceTarget} evidence items; coverage ${draftReadinessAfterGapQuiz.coverageScore}% (mode target ${workflowModePolicy.draftReadiness.coverageThreshold}%).${postGapTopRemaining ? ` Top remaining area: ${postGapTopRemaining.requirement}.` : ''}`,
+          ? `Updated draft readiness: ready to draft (coverage ${draftReadinessAfterGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`
+          : `Updated draft readiness: coverage ${draftReadinessAfterGapQuiz.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%.${postGapTopRemaining ? ` Top remaining area: ${postGapTopRemaining.requirement}.` : ''}`,
       });
     }
 
@@ -1584,12 +1574,8 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     );
     const finalTopRemaining = finalDraftReadinessBeforeArchitect.highImpactRemaining[0];
     const finalDraftPathDecisionMessage = finalDraftReadinessBeforeArchitect.ready
-      ? `Proceeding to blueprint design because draft readiness is strong enough (${finalDraftReadinessBeforeArchitect.evidenceCount}/${finalDraftReadinessBeforeArchitect.minimumEvidenceTarget} evidence items; coverage ${finalDraftReadinessBeforeArchitect.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`
-      : `Proceeding to blueprint design to keep momentum in ${state.user_preferences?.workflow_mode ?? 'balanced'} mode, even though readiness is not fully complete yet. Remaining blockers: ${finalDraftReadinessBeforeArchitect.blockingReasons.map((reason) => (
-          reason === 'evidence_target'
-            ? `${finalDraftReadinessBeforeArchitect.remainingEvidenceNeeded} more evidence item${finalDraftReadinessBeforeArchitect.remainingEvidenceNeeded === 1 ? '' : 's'}`
-            : `${finalDraftReadinessBeforeArchitect.remainingCoverageNeeded}% more coverage`
-        )).join(' and ') || 'additional evidence/coverage'}${finalTopRemaining ? `. Highest-impact remaining area: ${finalTopRemaining.requirement}.` : '.'}`;
+      ? `Proceeding to blueprint design because draft readiness is strong enough (coverage ${finalDraftReadinessBeforeArchitect.coverageScore}% vs target ${workflowModePolicy.draftReadiness.coverageThreshold}%).`
+      : `Proceeding to blueprint design to keep momentum in ${state.user_preferences?.workflow_mode ?? 'balanced'} mode, even though readiness is not fully complete yet. Remaining blockers: ${finalDraftReadinessBeforeArchitect.blockingReasons.map(() => `${finalDraftReadinessBeforeArchitect.remainingCoverageNeeded}% more coverage`).join(' and ') || 'additional coverage'}${finalTopRemaining ? `. Highest-impact remaining area: ${finalTopRemaining.requirement}.` : '.'}`;
     emit({
       type: 'draft_path_decision',
       stage: 'gap_analysis',

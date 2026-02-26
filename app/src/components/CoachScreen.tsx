@@ -1668,7 +1668,7 @@ export function CoachScreen({
                     {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
                   </span>
                   <span className="text-[11px] text-white/70">
-                    Evidence {draftReadiness.evidence_count}/{draftReadiness.minimum_evidence_target}
+                    Evidence: {draftReadiness.evidence_count}
                   </span>
                   <span className="text-[11px] text-white/60">•</span>
                   <span className="text-[11px] text-white/70">
@@ -1709,13 +1709,6 @@ export function CoachScreen({
                     </p>
                     {(draftPathDecision.top_remaining || (draftPathDecision.blocking_reasons?.length ?? 0) > 0) && (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {draftPathDecision.blocking_reasons?.includes('evidence_target')
-                          && typeof draftPathDecision.remaining_evidence_needed === 'number'
-                          && draftPathDecision.remaining_evidence_needed > 0 && (
-                            <span className="rounded-full border border-amber-300/20 bg-amber-400/[0.06] px-2 py-0.5 text-[10px] text-amber-100/85">
-                              {draftPathDecision.remaining_evidence_needed} evidence item{draftPathDecision.remaining_evidence_needed === 1 ? '' : 's'} still open
-                            </span>
-                          )}
                         {draftPathDecision.blocking_reasons?.includes('coverage_threshold')
                           && typeof draftPathDecision.remaining_coverage_needed === 'number'
                           && draftPathDecision.remaining_coverage_needed > 0 && (
@@ -1745,11 +1738,6 @@ export function CoachScreen({
                   || typeof draftReadiness.suggested_question_count === 'number'
                 ) && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {typeof draftReadiness.remaining_evidence_needed === 'number' && draftReadiness.remaining_evidence_needed > 0 && (
-                      <span className="rounded-full border border-amber-300/20 bg-amber-400/[0.06] px-2 py-0.5 text-[10px] text-amber-100/85">
-                        Need {draftReadiness.remaining_evidence_needed} more evidence item{draftReadiness.remaining_evidence_needed === 1 ? '' : 's'}
-                      </span>
-                    )}
                     {typeof draftReadiness.remaining_coverage_needed === 'number' && draftReadiness.remaining_coverage_needed > 0 && (
                       <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.06] px-2 py-0.5 text-[10px] text-sky-100/85">
                         Need +{draftReadiness.remaining_coverage_needed}% coverage

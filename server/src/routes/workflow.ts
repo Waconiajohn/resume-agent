@@ -571,8 +571,8 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
             .filter((item) => item.requirement.length > 0)
         : [];
       const blockingReasons = Array.isArray(payload.blocking_reasons)
-        ? payload.blocking_reasons.filter((reason): reason is 'evidence_target' | 'coverage_threshold' => (
-          reason === 'evidence_target' || reason === 'coverage_threshold'
+        ? payload.blocking_reasons.filter((reason): reason is 'coverage_threshold' => (
+          reason === 'coverage_threshold'
         ))
         : [];
       return {
@@ -691,8 +691,8 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
       const payload = asRecord(draftPathDecisionRow?.payload);
       if (!payload) return null;
       const blockingReasons = Array.isArray(payload.blocking_reasons)
-        ? payload.blocking_reasons.filter((reason): reason is 'evidence_target' | 'coverage_threshold' => (
-          reason === 'evidence_target' || reason === 'coverage_threshold'
+        ? payload.blocking_reasons.filter((reason): reason is 'coverage_threshold' => (
+          reason === 'coverage_threshold'
         ))
         : [];
       const topRemaining = asRecord(payload.top_remaining);

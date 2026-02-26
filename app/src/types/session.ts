@@ -118,7 +118,7 @@ export interface DraftReadinessUpdate {
   ready: boolean;
   remaining_evidence_needed?: number;
   remaining_coverage_needed?: number;
-  blocking_reasons?: Array<'evidence_target' | 'coverage_threshold'>;
+  blocking_reasons?: Array<'coverage_threshold'>;
   gap_breakdown?: {
     total: number;
     strong: number;
