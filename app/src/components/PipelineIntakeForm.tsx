@@ -438,7 +438,7 @@ export function PipelineIntakeForm({
             {/* Minimum evidence target */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white/80" htmlFor="minimum-evidence-target">
-                Minimum Evidence Target
+                Evidence Target (Positioning Hint)
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[5, 8, 12].map((target) => (
@@ -474,7 +474,7 @@ export function PipelineIntakeForm({
                 />
               </div>
               <p id="minimum-evidence-target-help" className="text-xs text-white/50">
-                Target number of concrete proof points to collect before drafting. Lower is faster; higher usually improves coverage.
+                Target number of concrete proof points to collect for stronger positioning and examples. Draft readiness is based on requirement coverage.
               </p>
             </div>
 

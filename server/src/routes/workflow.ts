@@ -5,6 +5,11 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import {
+  buildCoverageOnlyDraftPathDecisionMessage,
+  normalizeCoverageOnlyReadiness,
+  normalizeDraftPathDecisionCompat,
+} from '../lib/draft-readiness-compat.js';
+import {
   getResponseQueue,
   parsePendingGatePayload,
   withResponseQueue,
@@ -554,6 +559,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     draft_readiness: (() => {
       const payload = asRecord(draftReadinessRow?.payload);
       if (!payload) return null;
+      const readinessCompat = normalizeCoverageOnlyReadiness(payload);
       const gapBreakdown = asRecord(payload.gap_breakdown);
       const evidenceQuality = asRecord(payload.evidence_quality);
       const highImpactRemaining = Array.isArray(payload.high_impact_remaining)
@@ -570,24 +576,19 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
             }))
             .filter((item) => item.requirement.length > 0)
         : [];
-      const blockingReasons = Array.isArray(payload.blocking_reasons)
-        ? payload.blocking_reasons.filter((reason): reason is 'coverage_threshold' => (
-          reason === 'coverage_threshold'
-        ))
-        : [];
       return {
         evidence_count: typeof payload.evidence_count === 'number' ? payload.evidence_count : 0,
         minimum_evidence_target: typeof payload.minimum_evidence_target === 'number' ? payload.minimum_evidence_target : 0,
         coverage_score: typeof payload.coverage_score === 'number' ? payload.coverage_score : 0,
         coverage_threshold: typeof payload.coverage_threshold === 'number' ? payload.coverage_threshold : 0,
-        ready: payload.ready === true,
+        ready: readinessCompat.ready,
         remaining_evidence_needed: typeof payload.remaining_evidence_needed === 'number'
           ? payload.remaining_evidence_needed
           : undefined,
-        remaining_coverage_needed: typeof payload.remaining_coverage_needed === 'number'
-          ? payload.remaining_coverage_needed
-          : undefined,
-        blocking_reasons: blockingReasons.length > 0 ? blockingReasons : undefined,
+        remaining_coverage_needed: typeof readinessCompat.remainingCoverageNeeded === 'number'
+          ? readinessCompat.remainingCoverageNeeded
+          : (typeof payload.remaining_coverage_needed === 'number' ? payload.remaining_coverage_needed : undefined),
+        blocking_reasons: readinessCompat.blockingReasons.length > 0 ? readinessCompat.blockingReasons : undefined,
         gap_breakdown: gapBreakdown
           ? {
               total: typeof gapBreakdown.total === 'number' ? gapBreakdown.total : 0,
@@ -690,26 +691,37 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
     draft_path_decision: (() => {
       const payload = asRecord(draftPathDecisionRow?.payload);
       if (!payload) return null;
-      const blockingReasons = Array.isArray(payload.blocking_reasons)
-        ? payload.blocking_reasons.filter((reason): reason is 'coverage_threshold' => (
-          reason === 'coverage_threshold'
-        ))
-        : [];
+      const pathDecisionCompat = normalizeDraftPathDecisionCompat(payload);
       const topRemaining = asRecord(payload.top_remaining);
+      const normalizedWorkflowMode = payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
+        ? payload.workflow_mode
+        : 'balanced';
+      const topRemainingRequirement = topRemaining && typeof topRemaining.requirement === 'string'
+        ? topRemaining.requirement
+        : null;
+      const normalizedMessage = pathDecisionCompat.shouldRewriteMessage
+        ? buildCoverageOnlyDraftPathDecisionMessage({
+            workflowMode: normalizedWorkflowMode,
+            coverageScore: typeof payload.coverage_score === 'number' ? payload.coverage_score : undefined,
+            coverageThreshold: typeof payload.coverage_threshold === 'number' ? payload.coverage_threshold : undefined,
+            ready: pathDecisionCompat.ready,
+            proceedingReason: pathDecisionCompat.proceedingReason,
+            remainingCoverageNeeded: pathDecisionCompat.remainingCoverageNeeded,
+            topRemainingRequirement,
+          })
+        : (typeof payload.message === 'string' ? payload.message : '');
       return {
         stage: payload.stage === 'gap_analysis' ? 'gap_analysis' : 'gap_analysis',
-        workflow_mode: payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
-          ? payload.workflow_mode
-          : 'balanced',
-        ready: payload.ready === true,
-        proceeding_reason: payload.proceeding_reason === 'readiness_met' ? 'readiness_met' : 'momentum_mode',
-        blocking_reasons: blockingReasons.length > 0 ? blockingReasons : undefined,
+        workflow_mode: normalizedWorkflowMode,
+        ready: pathDecisionCompat.ready,
+        proceeding_reason: pathDecisionCompat.proceedingReason,
+        blocking_reasons: pathDecisionCompat.blockingReasons.length > 0 ? pathDecisionCompat.blockingReasons : undefined,
         remaining_evidence_needed: typeof payload.remaining_evidence_needed === 'number'
           ? payload.remaining_evidence_needed
           : undefined,
-        remaining_coverage_needed: typeof payload.remaining_coverage_needed === 'number'
-          ? payload.remaining_coverage_needed
-          : undefined,
+        remaining_coverage_needed: typeof pathDecisionCompat.remainingCoverageNeeded === 'number'
+          ? pathDecisionCompat.remainingCoverageNeeded
+          : (typeof payload.remaining_coverage_needed === 'number' ? payload.remaining_coverage_needed : undefined),
         top_remaining: topRemaining
           ? {
               requirement: typeof topRemaining.requirement === 'string' ? topRemaining.requirement : '',
@@ -721,7 +733,7 @@ workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
               evidence_count: typeof topRemaining.evidence_count === 'number' ? topRemaining.evidence_count : 0,
             }
           : undefined,
-        message: typeof payload.message === 'string' ? payload.message : '',
+        message: normalizedMessage,
         version: typeof draftPathDecisionRow?.version === 'number' ? draftPathDecisionRow.version : null,
         created_at: draftPathDecisionRow?.created_at ?? null,
       };

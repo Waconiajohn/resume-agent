@@ -1559,7 +1559,12 @@ export function CoachScreen({
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-white/60 whitespace-nowrap">Min evidence</span>
+            <span
+              className="text-[11px] text-white/60 whitespace-nowrap"
+              title="Positioning hint for evidence depth. Draft readiness uses coverage."
+            >
+              Evidence hint
+            </span>
             <GlassInput
               type="number"
               min={3}
@@ -1612,6 +1617,9 @@ export function CoachScreen({
               Source: {workflowPreferences.source === 'workflow_preferences' ? 'updated in workspace' : workflowPreferences.source.replace(/_/g, ' ')}
             </span>
           )}
+          <span className="text-[10px] text-white/35">
+            Readiness uses coverage.
+          </span>
         </div>
       </GlassCard>
     </div>
