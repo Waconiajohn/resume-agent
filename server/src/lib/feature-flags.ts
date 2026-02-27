@@ -19,3 +19,5 @@ export function isQuestionnaireEnabled(stage: QuestionnaireStage): boolean {
 }
 
 export const GUIDED_SUGGESTIONS_ENABLED = envBool('FF_GUIDED_SUGGESTIONS', true);
+
+export const FF_BLUEPRINT_APPROVAL = envBool('FF_BLUEPRINT_APPROVAL', true);

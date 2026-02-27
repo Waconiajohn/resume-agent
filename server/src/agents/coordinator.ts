@@ -19,6 +19,7 @@ import { createSessionLogger } from '../lib/logger.js';
 import { MODEL_PRICING } from '../lib/llm.js';
 import { captureError } from '../lib/sentry.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { FF_BLUEPRINT_APPROVAL } from '../lib/feature-flags.js';
 import { runAtsComplianceCheck } from './ats-rules.js';
 import { runAgentLoop } from './runtime/agent-loop.js';
 import { AgentBus } from './runtime/agent-bus.js';
@@ -829,6 +830,33 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     // Save positioning profile after Strategist completes
     if (state.positioning) {
       await savePositioningProfile(state);
+    }
+
+    // ──── Blueprint approval gate ────────────────────────────────
+    // The Strategist already emitted `blueprint_ready` from design_blueprint,
+    // so the frontend has the BlueprintReviewPanel ready. We just need to wait
+    // for the user's approval (or auto-approve in fast_draft / flag-off mode).
+    if (FF_BLUEPRINT_APPROVAL && config.workflow_mode !== 'fast_draft') {
+      log.info('Coordinator: waiting for blueprint approval');
+      const blueprintResponse = await waitForUser<
+        true | { approved?: boolean; edits?: { positioning_angle?: string; section_order?: string[] } }
+      >('architect_review');
+
+      // Apply user edits if provided
+      if (typeof blueprintResponse === 'object' && state.architect) {
+        const edits = blueprintResponse.edits;
+        if (edits?.positioning_angle) {
+          state.architect.positioning_angle = edits.positioning_angle;
+          log.info({ angle: edits.positioning_angle }, 'User edited positioning angle');
+        }
+        if (edits?.section_order?.length) {
+          state.architect.section_plan.order = edits.section_order;
+          log.info({ order: edits.section_order }, 'User reordered sections');
+        }
+      }
+      log.info('Coordinator: blueprint approved, proceeding to Craftsman');
+    } else {
+      log.info('Coordinator: blueprint gate skipped (fast_draft or flag off)');
     }
 
     // ──────────────────────────────────────────────────────────────
