@@ -652,7 +652,7 @@ const presentToUserTool: AgentTool = {
     // Wait for user response via the section_review gate
     const userResponse = await ctx.waitForUser<
       true | { approved: false; feedback?: string; edited_content?: string }
-    >('section_review');
+    >(`section_review_${section}`);
 
     // If the user directly edited the content, update the scratchpad
     if (

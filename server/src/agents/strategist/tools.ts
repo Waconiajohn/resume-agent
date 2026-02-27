@@ -326,7 +326,7 @@ const interviewCandidateTool: AgentTool = {
     });
 
     // Wait for the candidate's response
-    const answer = await ctx.waitForUser<string>('positioning_response');
+    const answer = await ctx.waitForUser<string>(`positioning_q_${question.id}`);
 
     // Accumulate the answer in scratchpad
     const answerRecord = {
