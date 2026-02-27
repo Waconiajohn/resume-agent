@@ -651,12 +651,11 @@ const presentToUserTool: AgentTool = {
 
     // Wait for user response via the section_review gate
     const userResponse = await ctx.waitForUser<
-      true | { approved: false; feedback?: string; edited_content?: string }
+      true | { approved: boolean; feedback?: string; edited_content?: string; review_token?: string }
     >(`section_review_${section}`);
 
     // If the user directly edited the content, update the scratchpad
     if (
-      userResponse !== true &&
       typeof userResponse === 'object' &&
       userResponse.edited_content
     ) {
@@ -668,7 +667,7 @@ const presentToUserTool: AgentTool = {
         };
       }
       ctx.emit({ type: 'section_approved', section });
-    } else if (userResponse === true) {
+    } else if (userResponse === true || (typeof userResponse === 'object' && userResponse.approved === true)) {
       ctx.emit({ type: 'section_approved', section });
     }
 

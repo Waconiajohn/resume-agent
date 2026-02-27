@@ -177,6 +177,7 @@ function buildCraftsmanMessage(state: PipelineState): string {
   const blueprint  = state.architect!;
   const positioning = state.positioning;
   const gapAnalysis = state.gap_analysis;
+  const transcript = state.interview_transcript;
 
   return [
     '## Architect Blueprint',
@@ -186,6 +187,18 @@ function buildCraftsmanMessage(state: PipelineState): string {
       '## Evidence Library (Positioning Profile)',
       JSON.stringify(positioning.evidence_library, null, 2),
       '',
+      '## Candidate Voice',
+      `Career Arc: ${positioning.career_arc.label}`,
+      `In their own words: "${positioning.career_arc.user_description}"`,
+      `Authentic Phrases: ${positioning.authentic_phrases.map(p => `"${p}"`).join(', ')}`,
+      '',
+    ] : []),
+    ...(transcript && transcript.length > 0 ? [
+      '## Interview Transcript (Candidate\'s Own Words)',
+      '**Use these answers as source material for the candidate\'s authentic voice.**',
+      '**Echo their phrasing, their way of describing impact, their natural language.**',
+      '',
+      ...transcript.map(t => `Q: ${t.question_text}\nA: ${t.answer}\n`),
     ] : []),
     ...(gapAnalysis ? [
       '## Gap Analysis',

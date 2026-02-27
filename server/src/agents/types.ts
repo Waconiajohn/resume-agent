@@ -475,6 +475,14 @@ export interface PipelineState {
   quality_review?: QualityReviewerOutput;
   selected_template?: { id: string; name: string; font: string; accent: string };
 
+  // Raw interview Q&A — preserves the candidate's authentic voice for downstream agents
+  interview_transcript?: Array<{
+    question_id: string;
+    question_text: string;
+    category: string;
+    answer: string;
+  }>;
+
   // Questionnaire data
   user_preferences?: {
     primary_goal?: string;

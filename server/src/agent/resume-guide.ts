@@ -69,11 +69,7 @@ DON'T:
 - Repeat exact bullets that appear in work experience below
 - Include personal achievements unrelated to business value
 
-BULLET CONSTRUCTION — CAR Method (Challenge-Action-Result) Compressed:
-[Specific achievement with metric] + [through/by what method] + [resulting business impact]
-
-WEAK: "Responsible for leading the sales team and improving performance."
-STRONG: "Grew regional sales 47% ($8.2M to $12.1M) in 18 months by restructuring compensation model and implementing data-driven territory management across 25-person team."
+Each bullet: [Specific achievement with metric] + [method] + [business impact]. Keep to 1-2 lines.
 
 AGE 45+ STRATEGIES:
 - Highlight recent wins prominently — weight last 5 years more heavily
@@ -114,26 +110,13 @@ DON'T:
 - Include month/year for roles older than 15 years
 - Use passive voice and weak verbs ("Helped with," "Assisted in," "Worked on")
 
-BULLET CONSTRUCTION FORMULAS:
-
-1. RAS (Result-Action-Situation) — Front-loaded with impact:
+BULLET CONSTRUCTION — RAS (Result-Action-Situation):
 [Quantified result/outcome] + [action you took] + [context/situation]
 Example: "Increased customer retention 32% (from 68% to 90%) by redesigning onboarding process and implementing predictive churn analytics across 50,000-customer base."
 
-2. CAR (Challenge-Action-Result):
-[Brief challenge/context] + [specific actions with verbs] + [measurable results]
-Example: "Faced with declining market share (22% to 16% in 2 years), launched competitive intelligence program and repositioned product portfolio, recovering 8 points of share within 18 months."
+Alternate frameworks: CAR (Challenge-Action-Result) for turnaround stories; STAR (Situation-Task-Action-Result) for complex multi-step initiatives. Keep all bullets to 1-2 lines.
 
-3. STAR (Situation-Task-Action-Result) — More context, 2 lines max:
-Example: "When acquired business unit struggled with 15% profit margins and $12M annual losses, restructured operations including 3 facility consolidations and renegotiated supplier contracts, achieving 24% margins and $8M profitability within 14 months."
-
-BULLET CATEGORIES TO INCLUDE (mix across these):
-- Financial Impact: revenue growth, cost reduction, profit improvement, ROI
-- Operational Excellence: process improvement, efficiency gains, quality metrics
-- Strategic Initiatives: M&A, market expansion, product launches, transformations
-- People Leadership: team building, talent development, culture change, retention
-- Technology/Innovation: system implementations, digital transformation, automation
-- Customer/Market Focus: NPS, market share, retention, satisfaction
+Mix bullet categories across financial, operational, strategic, people, technology, and customer dimensions.
 
 AGE 45+ STRATEGIES:
 - Consolidate older roles — positions 15+ years ago as "Prior Experience" section
@@ -171,13 +154,6 @@ DON'T:
 - List more than 20 skills (looks unfocused)
 - List skills the candidate doesn't actually possess or can't discuss in depth
 - Use generic management buzzwords without specificity
-
-KEYWORD DENSITY TARGETS:
-- Total: 15-25 relevant keywords per resume
-- Professional Summary: 3-5 keywords
-- Skills Section: 10-15 keywords
-- Experience bullets: integrated naturally
-- Natural integration: "Led Salesforce CRM implementation for 500+ users" beats keyword stuffing
 
 AGE 45+ STRATEGIES:
 - Modernize skill list — replace dated terms with current equivalents
@@ -339,16 +315,7 @@ STRUCTURAL ANTI-PATTERNS:
 - Passive constructions throughout
 - Job-description-copy language (reads like duty list, not achievement list)
 
-AGE-SENSITIVE FLAGS (separate category):
-- Mentions "30+ years of experience" or similar dating language
-- Includes graduation years from 20+ years ago
-- References obsolete technologies (Lotus Notes, BlackBerry, etc.)
-- Uses outdated business terminology
-- Objective statement instead of professional summary
-- "References available upon request"
-- Street address in header (phone + email + LinkedIn only)
-- Hobbies/personal interests section
-- Skills that date the candidate (early-career operational tasks)`;
+Note: Age-sensitive patterns (dating language, obsolete tech, graduation years) are covered by AGE_AWARENESS_RULES.`;
 
 /**
  * Age-awareness rules injected into the system prompt BASE_PROMPT.
@@ -357,12 +324,12 @@ export const AGE_AWARENESS_RULES = `## Age 45+ Awareness (Active in All Phases)
 
 You are coaching professionals aged 45+ who may face unconscious age bias in hiring. Apply these principles throughout:
 
-POSITIONING:
-- Frame experience as strategic advantage, never as "long tenure"
+FRAMING:
+- Frame experience as strategic advantage, never as "long tenure" or duration
 - Emphasize recent impact (last 5-10 years) over career span
 - Show adaptability and continuous evolution — modern tools, current methodologies
-- Signal innovation and forward-thinking, not legacy expertise
-- Use language that conveys energy and relevance
+- Use forward-looking language: "Currently leading…" beats "Have spent 25 years…"
+- Describe evolution and depth of impact, not length of service
 
 REMOVE OR AVOID:
 - Graduation years for degrees earned 20+ years ago
@@ -377,16 +344,9 @@ EMPHASIZE:
 - Modern skills: AI, cloud, data analytics, digital transformation (where truthful)
 - Recent achievements weighted prominently
 - Adaptability and transformation examples
-- Strategic thinking and vision
-- Executive presence through scope and scale
+- Strategic thinking, vision, and executive presence through scope and scale
 - Continuous learning and professional development
-- LinkedIn profile URL (signals professional digital presence)
-
-LANGUAGE:
-- Use present-tense, forward-looking framing
-- "Currently leading…" beats "Have spent 25 years…"
-- Describe evolution, not duration
-- Frame career longevity as depth of impact, not length of service`;
+- LinkedIn profile URL (signals professional digital presence)`;
 
 /**
  * Recommended section order for the section_craft phase.

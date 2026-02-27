@@ -342,6 +342,16 @@ const interviewCandidateTool: AgentTool = {
     }
     (ctx.scratchpad.interview_answers as typeof answerRecord[]).push(answerRecord);
 
+    // Persist raw Q&A to pipeline state so the Craftsman can hear the candidate's voice
+    const transcript = ctx.getState().interview_transcript ?? [];
+    transcript.push({
+      question_id: question.id,
+      question_text: questionText,
+      category,
+      answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
+    });
+    ctx.updateState({ interview_transcript: transcript });
+
     // Also build a minimal evidence item from the answer so classify_fit can use it
     const evidenceItem: EvidenceItem = {
       id: `ev_interview_${questionNumber}`,
@@ -415,7 +425,7 @@ const classifyFitTool: AgentTool = {
     const positioning: PositioningProfile = {
       career_arc: {
         label: positioningSummary,
-        evidence: interviewAnswers.map(a => a.answer).join('; ').slice(0, 500),
+        evidence: interviewAnswers.map(a => a.answer).join('; ').slice(0, 2000),
         user_description: interviewAnswers.find(a => a.category === 'career_narrative')?.answer ?? positioningSummary,
       },
       top_capabilities: parsedResume.skills.slice(0, 5).map(skill => ({
@@ -428,8 +438,8 @@ const classifyFitTool: AgentTool = {
       unconscious_competence: interviewAnswers.find(a => a.category === 'hidden_accomplishments')?.answer ?? '',
       domain_insight: interviewAnswers.find(a => a.category === 'currency_and_adaptability')?.answer ?? '',
       authentic_phrases: interviewAnswers
-        .flatMap(a => a.answer.split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 100))
-        .slice(0, 5),
+        .flatMap(a => a.answer.split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 200))
+        .slice(0, 10),
       gaps_detected: [],
     };
 
