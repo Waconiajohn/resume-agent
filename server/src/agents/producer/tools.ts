@@ -1,19 +1,20 @@
 /**
  * Producer Agent — Tools
  *
- * Seven tools for document production and quality assurance:
+ * Nine tools for document production and quality assurance:
  *
- * 1. select_template          — Heuristic template selection (no LLM)
- * 2. adversarial_review       — Wraps runQualityReviewer() (hiring manager perspective)
- * 3. ats_compliance_check     — Wraps runAtsComplianceCheck() (rule-based, no LLM)
- * 4. humanize_check           — LLM scan for AI patterns and clichés (MODEL_LIGHT)
- * 5. check_blueprint_compliance — Verifies sections match the architect's blueprint
+ * 1. select_template               — Heuristic template selection (no LLM) + transparency SSE
+ * 2. adversarial_review            — Wraps runQualityReviewer() (hiring manager perspective)
+ * 3. ats_compliance_check          — Wraps runAtsComplianceCheck() (rule-based, no LLM)
+ * 4. humanize_check                — LLM scan for AI patterns and clichés (MODEL_LIGHT)
+ * 5. check_blueprint_compliance    — Verifies sections match the architect's blueprint
  * 6. verify_cross_section_consistency — Date/tense/contact/formatting consistency
- * 7. request_content_revision — Routes a targeted revision request to the Craftsman
- * 8. emit_transparency        — Emits a transparency SSE event
+ * 7. check_narrative_coherence     — LLM narrative arc + duplication + tone check (MODEL_MID)
+ * 8. request_content_revision      — Routes a targeted revision request to the Craftsman
+ * 9. emit_transparency             — Emits a transparency SSE event
  */
 
-import { llm, MODEL_LIGHT } from '../../lib/llm.js';
+import { llm, MODEL_LIGHT, MODEL_MID } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import { runQualityReviewer } from '../quality-reviewer.js';
 import { runAtsComplianceCheck } from '../ats-rules.js';
@@ -195,6 +196,14 @@ const selectTemplate: AgentTool = {
         font: selected.font,
         accent: selected.accent,
       },
+    });
+
+    // Emit transparency so the user sees the template decision
+    const alternatives = templateScores.slice(1, 4).map(ts => `${ts.template.name} (score: ${ts.score})`).join(', ');
+    ctx.emit({
+      type: 'transparency',
+      stage: ctx.getState().current_stage,
+      message: `Producer: Selected "${selected.name}" template. ${alternatives ? `Alternatives considered: ${alternatives}` : ''}`,
     });
 
     return {
@@ -765,6 +774,78 @@ const emitTransparency: AgentTool = {
   },
 };
 
+// ─── Tool: check_narrative_coherence ──────────────────────────────────
+
+const checkNarrativeCoherence: AgentTool = {
+  name: 'check_narrative_coherence',
+  description:
+    'Evaluate all resume sections together as a cohesive narrative. Checks if summary → experience → accomplishments tell one story, identifies achievement duplication across sections, verifies positioning angle is threaded throughout, and assesses tonal consistency. Uses MODEL_MID. Returns { coherence_score: number (0-100), issues: string[] }.',
+  model_tier: 'mid',
+  input_schema: {
+    type: 'object',
+    properties: {
+      sections: {
+        type: 'object',
+        description: 'Record<string, string> — all section names mapped to their content',
+      },
+      positioning_angle: {
+        type: 'string',
+        description: 'The positioning angle from the architect blueprint',
+      },
+    },
+    required: ['sections', 'positioning_angle'],
+  },
+
+  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+    const sections = (input.sections ?? {}) as Record<string, string>;
+    const positioningAngle = safeStr(input.positioning_angle);
+
+    const sectionText = Object.entries(sections)
+      .map(([name, content]) => `=== ${name} ===\n${content}`)
+      .join('\n\n');
+
+    const response = await llm.chat({
+      model: MODEL_MID,
+      max_tokens: 2048,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
+      system: `You are a resume narrative analyst. You read ALL sections of a resume together and evaluate whether they form a cohesive, non-repetitive narrative that consistently reinforces the candidate's positioning.
+
+Score on a 0-100 scale:
+- 90-100: Unified narrative, clear throughline, no duplication, consistent voice
+- 70-89: Mostly cohesive, minor duplication or tone shifts
+- 50-69: Noticeable gaps in narrative arc, achievement duplication, or tonal inconsistency
+- Below 50: Sections read like separate documents, significant duplication
+
+Evaluate:
+1. NARRATIVE ARC — Does the summary set up a story that experience and accomplishments prove?
+2. DUPLICATION — Are the same achievements described in multiple sections?
+3. POSITIONING — Is the positioning angle woven throughout, not just in the summary?
+4. TONAL CONSISTENCY — Does every section sound like the same person wrote it?
+5. MOMENTUM — Does the resume build toward a clear conclusion about who this candidate is?
+
+Return ONLY valid JSON: { "coherence_score": 82, "issues": ["specific issues found"] }`,
+      messages: [{
+        role: 'user',
+        content: `Evaluate this resume's narrative coherence. The positioning angle is: "${positioningAngle}"\n\n${sectionText.slice(0, 12000)}`,
+      }],
+    });
+
+    const parsed = repairJSON<Record<string, unknown>>(response.text);
+    if (!parsed) {
+      return { coherence_score: 75, issues: ['Narrative coherence check could not parse response — manual review recommended'] };
+    }
+
+    const coherenceScore = Math.max(0, Math.min(100, safeNum(parsed.coherence_score, 75)));
+    const issues = safeStringArray(parsed.issues);
+
+    ctx.scratchpad.narrative_coherence_score = coherenceScore;
+    ctx.scratchpad.narrative_coherence_issues = issues;
+
+    return { coherence_score: coherenceScore, issues };
+  },
+};
+
 // ─── Exports ─────────────────────────────────────────────────────────
 
 export const producerTools: AgentTool[] = [
@@ -774,6 +855,7 @@ export const producerTools: AgentTool[] = [
   humanizeCheck,
   checkBlueprintCompliance,
   verifyCrossSectionConsistency,
+  checkNarrativeCoherence,
   requestContentRevision,
   emitTransparency,
 ];

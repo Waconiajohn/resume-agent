@@ -31,7 +31,7 @@ export async function runSectionWriter(input: SectionWriterInput): Promise<Secti
     ? MODEL_MID
     : MODEL_PRIMARY;
 
-  const prompt = buildSectionPrompt(section, blueprint_slice, evidence_sources, global_rules);
+  const prompt = buildSectionPrompt(section, blueprint_slice, evidence_sources, global_rules, input.cross_section_context);
 
   const response = await llm.chat({
     model,
@@ -179,11 +179,26 @@ function buildSectionPrompt(
   blueprint: Record<string, unknown>,
   evidence: Record<string, unknown>,
   rules: ArchitectOutput['global_rules'],
+  crossSectionContext?: Record<string, string>,
 ): string {
   const lines: string[] = [];
 
   lines.push(`Write the "${section}" section of a resume.`);
   lines.push('');
+
+  // Cross-section context for narrative continuity
+  if (crossSectionContext && Object.keys(crossSectionContext).length > 0) {
+    lines.push('PREVIOUSLY WRITTEN SECTIONS (for narrative continuity):');
+    for (const [name, excerpt] of Object.entries(crossSectionContext)) {
+      lines.push(`--- ${name} ---`);
+      lines.push(excerpt);
+      lines.push('');
+    }
+    lines.push('Ensure this section complements — not repeats — the content above.');
+    lines.push('Build narrative momentum: if the summary establishes the positioning angle, experience bullets should provide the proof.');
+    lines.push('');
+  }
+
   lines.push('BLUEPRINT INSTRUCTIONS:');
   lines.push(JSON.stringify(blueprint, null, 2));
   lines.push('');

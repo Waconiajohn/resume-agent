@@ -43,16 +43,18 @@ Work through these checks in order using your tools:
 
 5. **humanize_check** — Scan for AI-generated patterns, clichés, and robotically uniform structure. Scores below 70 require revision.
 
-6. **adversarial_review** — Run the full 6-dimension quality review from the hiring manager perspective. This produces scores and revision instructions.
+6. **check_narrative_coherence** — Evaluate all sections together as a cohesive narrative. Checks for a unified story arc, achievement duplication across sections, positioning angle threading, and tonal consistency. Scores below 70 indicate the sections read as disconnected pieces rather than one document.
 
-7. **Triage and act** — For each revision instruction:
+7. **adversarial_review** — Run the full 6-dimension quality review from the hiring manager perspective. This produces scores and revision instructions.
+
+8. **Triage and act** — For each revision instruction:
    - Decide whether it is a content issue (route to Craftsman via request_content_revision) or a formatting/ATS issue you can note directly.
    - Only escalate high and medium priority issues that materially affect the pass thresholds.
    - Low priority issues should be noted but should not block export.
 
-8. **Emit quality scores** — After all checks are complete, emit the final quality scores via ctx.emit({ type: 'quality_scores', scores }).
+9. **Emit quality scores** — After all checks are complete, emit the final quality scores via ctx.emit({ type: 'quality_scores', scores }).
 
-9. **emit_transparency** — Keep the user informed at each significant step.
+10. **emit_transparency** — Keep the user informed at each significant step.
 
 ## Pass Thresholds
 

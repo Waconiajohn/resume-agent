@@ -336,6 +336,7 @@ export interface SectionWriterInput {
   blueprint_slice: Record<string, unknown>;
   evidence_sources: Record<string, unknown>;
   global_rules: ArchitectOutput['global_rules'];
+  cross_section_context?: Record<string, string>;
   signal?: AbortSignal;
 }
 

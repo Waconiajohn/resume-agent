@@ -184,11 +184,23 @@ const writeSectionTool: AgentTool = {
     const evidence_sources = input.evidence_sources as Record<string, unknown>;
     const global_rules = input.global_rules as ArchitectOutput['global_rules'];
 
+    // Build cross-section context from previously completed sections
+    const crossSectionContext: Record<string, string> = {};
+    for (const [key, val] of Object.entries(ctx.scratchpad)) {
+      if (key.startsWith('section_')) {
+        const sectionVal = val as { content?: string } | undefined;
+        if (sectionVal?.content) {
+          crossSectionContext[key.replace('section_', '')] = sectionVal.content.slice(0, 300);
+        }
+      }
+    }
+
     const writerInput: SectionWriterInput = {
       section,
       blueprint_slice,
       evidence_sources,
       global_rules,
+      cross_section_context: Object.keys(crossSectionContext).length > 0 ? crossSectionContext : undefined,
       signal: ctx.signal,
     };
 
