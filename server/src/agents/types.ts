@@ -473,6 +473,7 @@ export interface PipelineState {
   architect?: ArchitectOutput;
   sections?: Record<string, SectionWriterOutput>;
   quality_review?: QualityReviewerOutput;
+  selected_template?: { id: string; name: string; font: string; accent: string };
 
   // Questionnaire data
   user_preferences?: {

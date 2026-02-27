@@ -76,7 +76,7 @@ const selectTemplate: AgentTool = {
     required: ['role_title', 'industry', 'candidate_career_span'],
   },
 
-  async execute(input: Record<string, unknown>): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
     const role = safeStr(input.role_title).toLowerCase();
     const industry = safeStr(input.industry).toLowerCase();
     const careerSpan = safeNum(input.candidate_career_span, 15);
@@ -186,6 +186,16 @@ const selectTemplate: AgentTool = {
     // Sort descending by score; ties broken by array order (preserves intent)
     templateScores.sort((a, b) => b.score - a.score);
     const selected = templateScores[0].template;
+
+    // Store in pipeline state so coordinator can pass to export
+    ctx.updateState({
+      selected_template: {
+        id: selected.id,
+        name: selected.name,
+        font: selected.font,
+        accent: selected.accent,
+      },
+    });
 
     return {
       selected_template_id: selected.id,

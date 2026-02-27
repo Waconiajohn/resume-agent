@@ -82,6 +82,7 @@ interface FinalResumePayload {
   company_name?: string;
   job_title?: string;
   _raw_sections?: Record<string, string>;
+  selected_template?: { id: string; name: string; font: string; accent: string };
 }
 
 // ─── Stage timing helpers ─────────────────────────────────────────────
@@ -491,6 +492,7 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
     _raw_sections: Object.fromEntries(
       Object.entries(sections).map(([k, v]) => [k, stripLeadingSectionTitle(v.content)]),
     ),
+    selected_template: state.selected_template,
   };
 
   // Best-effort: parse skills section into structured categories when present

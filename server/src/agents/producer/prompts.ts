@@ -12,7 +12,7 @@
  */
 
 import { getFormattingGuide, EXECUTIVE_TEMPLATES } from '../knowledge/formatting-guide.js';
-import { ATS_FORMATTING_RULES, QUALITY_CHECKLIST } from '../knowledge/rules.js';
+import { ATS_FORMATTING_RULES, QUALITY_CHECKLIST, RESUME_ANTI_PATTERNS, AGE_AWARENESS_RULES } from '../knowledge/rules.js';
 
 // ─── Template descriptions for the system prompt ─────────────────────
 
@@ -88,11 +88,23 @@ Every section will be evaluated against these criteria:
 
 ${QUALITY_CHECKLIST.map((item, i) => `${i + 1}. ${item}`).join('\n')}
 
+## Anti-Patterns Reference
+
+Flag any section that contains these patterns — they are quality failures:
+
+${RESUME_ANTI_PATTERNS}
+
+## Age Awareness
+
+Our clients are mid-to-upper level executives, typically aged 45+. Flag any content that violates these rules:
+
+${AGE_AWARENESS_RULES}
+
 ## Formatting Guide Reference
 
 The full formatting guide drives document production. Key specifications:
 
-${getFormattingGuide().slice(0, 6000)}
+${getFormattingGuide()}
 
 ## Key Principles
 

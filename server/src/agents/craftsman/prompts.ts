@@ -11,6 +11,8 @@ import {
   SECTION_GUIDANCE,
   RESUME_ANTI_PATTERNS,
   ATS_FORMATTING_RULES,
+  AGE_AWARENESS_RULES,
+  QUALITY_CHECKLIST,
 } from '../knowledge/rules.js';
 
 export const CRAFTSMAN_SYSTEM_PROMPT = `You are the Resume Craftsman — an expert resume writer responsible for producing polished, authentic, and ATS-optimized resume content.
@@ -67,6 +69,22 @@ ${RESUME_ANTI_PATTERNS}
 ## ATS Formatting Standards
 
 ${ATS_FORMATTING_RULES}
+
+---
+
+## Age Awareness
+
+Executives aged 45+ face systemic bias. Apply these rules to every section you write:
+
+${AGE_AWARENESS_RULES}
+
+---
+
+## Quality Checklist
+
+Every section you write will be evaluated against these criteria. Write to pass them:
+
+${QUALITY_CHECKLIST.map((item, i) => `${i + 1}. ${item}`).join('\n')}
 
 ---
 

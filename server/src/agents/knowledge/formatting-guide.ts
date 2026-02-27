@@ -44,7 +44,7 @@ export const TYPOGRAPHY = {
   name: { min: 18, max: 24 },
   section_heading: { min: 12, max: 14 },
   body: { min: 10, max: 11 },
-  contact_info: { min: 9, max: 10 },
+  contact_info: { min: 10, max: 11 },
 } as const;
 
 /** Margin specs (inches) */
