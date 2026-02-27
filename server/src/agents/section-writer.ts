@@ -2,8 +2,11 @@
  * Agent 6: Section Writer
  *
  * Writes one resume section per call. Receives only the slice of the blueprint
- * relevant to that section. Has zero strategic discretion — executes the
- * Architect's brief precisely.
+ * relevant to that section.
+ *
+ * In strategic mode (evidence_priorities), the writer has creative freedom to
+ * decide how to construct bullets from available evidence and requirements.
+ * In legacy mode (bullets_to_write), follows prescriptive instructions.
  *
  * Uses MODEL_PRIMARY (quality writing).
  */
@@ -140,6 +143,11 @@ function sanitizeAtsUnsafeDelimiters(text: string): string {
   return text.replace(/\s\|\s/g, ', ');
 }
 
+/** Check if a blueprint slice uses strategic evidence_priorities mode */
+function hasEvidencePriorities(blueprint: Record<string, unknown>): boolean {
+  return Array.isArray(blueprint.evidence_priorities) && blueprint.evidence_priorities.length > 0;
+}
+
 // ─── System prompt ───────────────────────────────────────────────────
 
 const WRITER_SYSTEM_PROMPT = `You are an expert resume writer. You receive a precise brief for ONE section of a resume and write ONLY that section.
@@ -218,7 +226,19 @@ function buildSectionPrompt(
     default:
       if (section === 'experience' || section.startsWith('experience_role_')) {
         lines.push('Write the experience entry for this specific role.');
-        lines.push('Follow bullet instructions exactly: each bullet has a focus, evidence source, and target metric.');
+
+        // Detect strategic vs prescriptive mode from blueprint slice
+        if (hasEvidencePriorities(blueprint)) {
+          lines.push('');
+          lines.push('STRATEGIC MODE — You have creative freedom for this section.');
+          lines.push('The blueprint provides evidence_priorities: requirements to address, available evidence, and importance levels.');
+          lines.push('You decide how to construct each bullet. Address "critical" priorities first, then "important", then "supporting".');
+          lines.push('Use the bullet_count_range as your target. Do not include topics listed in do_not_include.');
+          lines.push('Each bullet should address one requirement using the available evidence. Front-load with impact.');
+        } else {
+          lines.push('Follow bullet instructions: each bullet has a focus, evidence source, and target metric.');
+        }
+
         lines.push('Keep bullets that are marked to keep. Remove bullets marked to cut.');
         lines.push('Apply any title adjustments specified in the blueprint.');
       }

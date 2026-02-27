@@ -248,6 +248,13 @@ export interface SummaryBlueprint {
   length: string;
 }
 
+export interface EvidencePriority {
+  requirement: string;
+  available_evidence: string[];
+  importance: 'critical' | 'important' | 'supporting';
+  narrative_note?: string;
+}
+
 export interface EvidenceAllocation {
   selected_accomplishments?: Array<{
     evidence_id: string;
@@ -258,15 +265,20 @@ export interface EvidenceAllocation {
   }>;
   experience_section: Record<string, {
     company: string;
-    bullets_to_write: Array<{
+    /** Strategic mode: Craftsman decides how to write bullets */
+    evidence_priorities?: EvidencePriority[];
+    bullet_count_range?: [number, number];
+    do_not_include?: string[];
+    /** Legacy prescriptive mode: bullet-by-bullet instructions */
+    bullets_to_write?: Array<{
       focus: string;
       maps_to: string;
       evidence_source: string;
       instruction: string;
       target_metric?: string;
     }>;
-    bullets_to_keep: string[];
-    bullets_to_cut: string[];
+    bullets_to_keep?: string[];
+    bullets_to_cut?: string[];
   }>;
   unallocated_requirements: Array<{
     requirement: string;

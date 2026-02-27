@@ -3,12 +3,12 @@
  *
  * The brain of the pipeline. Makes ALL strategic decisions about the resume:
  * section order, evidence allocation, keyword placement, gap reframes,
- * age protection, and tone guidance. Produces a blueprint so precise that
- * the Section Writer has zero strategic discretion.
+ * age protection, and tone guidance. Produces a strategic blueprint that tells
+ * the Craftsman WHAT to address and WHY, while giving creative freedom for HOW.
  *
  * Uses MODEL_PRIMARY (quality of blueprint determines quality of resume).
  *
- * Output is surfaced to user as a reviewable design step before writing begins.
+ * Output is surfaced to user as a reviewable/editable design step before writing begins.
  */
 
 import logger from '../lib/logger.js';
@@ -20,6 +20,7 @@ import type {
   ArchitectOutput,
   SummaryBlueprint,
   EvidenceAllocation,
+  EvidencePriority,
   SkillsBlueprint,
   ExperienceBlueprint,
   AgeProtectionAudit,
@@ -100,15 +101,16 @@ Return ONLY valid JSON matching this structure:
     "experience_section": {
       "role_0": {
         "company": "CompanyName",
-        "bullets_to_write": [
+        "evidence_priorities": [
           {
-            "focus": "What this bullet covers",
-            "maps_to": "Which JD requirement",
-            "evidence_source": "Where the evidence comes from",
-            "instruction": "Specific writing instruction",
-            "target_metric": "The metric to include if available"
+            "requirement": "Which JD requirement to address",
+            "available_evidence": ["ev_001", "ev_003"],
+            "importance": "critical",
+            "narrative_note": "Why this matters — context for the writer"
           }
         ],
+        "bullet_count_range": [4, 6],
+        "do_not_include": ["Topics redundant with summary or accomplishments"],
         "bullets_to_keep": ["Original bullets that are already strong"],
         "bullets_to_cut": ["Original bullets to remove and why"]
       }
@@ -213,14 +215,14 @@ Return ONLY valid JSON matching this structure:
 
 // ─── System prompt ───────────────────────────────────────────────────
 
-const ARCHITECT_SYSTEM_PROMPT = `You are an elite Resume Architect — a strategic decision-maker, not a writer. Your job is to produce a blueprint so precise that a Section Writer can execute each section without making ANY strategic choices.
+const ARCHITECT_SYSTEM_PROMPT = `You are an elite Resume Architect — a strategic decision-maker, not a writer. You produce a strategic blueprint that tells the writer WHAT to address and WHY, while giving them creative freedom to decide HOW.
 
 You make 7 decisions:
 1. SECTION ORDER & INCLUSION — which sections exist and in what order
-2. SUMMARY POSITIONING — what the summary communicates and how
-3. EVIDENCE ALLOCATION — which proof point goes where (no duplication!)
+2. SUMMARY POSITIONING — what the summary communicates, its tone, and which authentic phrases to echo
+3. EVIDENCE ALLOCATION — which evidence maps to which JD requirements, prioritized by importance (no duplication!)
 4. SKILLS STRATEGY — how skills are organized for ATS + human readability
-5. EXPERIENCE STRUCTURE — bullet counts, what each covers, what gets cut
+5. EXPERIENCE STRUCTURE — bullet count ranges, evidence priorities per role, what gets cut
 6. AGE PROTECTION — flag and mitigate anything that reveals candidate age
 7. KEYWORD INTEGRATION — where each JD keyword appears in the resume
 
@@ -231,7 +233,7 @@ RULES:
 - Age protection: hide graduation years 20+ years old, remove obsolete tech, never say "20+ years"
 - Show last 15 years in detail. Earlier roles get one-liner treatment (title + company, no dates)
 - Voice guidance must reference the candidate's authentic phrases from positioning interview
-- Every bullet instruction must include: focus, evidence source, and target metric
+- For each experience role, provide evidence_priorities (requirement + available evidence + importance) instead of prescriptive bullet instructions. The writer decides how to construct each bullet.
 - Maximum 2 pages. Cut aggressively from older/less relevant roles.
 - ATS-safe: no tables, no columns, no text boxes. Standard section headers only.
 ${ATS_RULEBOOK_PROMPT}`;
@@ -393,11 +395,7 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
       length: String(summary_blueprint.length ?? '3-4 sentences'),
     } as SummaryBlueprint,
 
-    evidence_allocation: deduplicateEvidenceAllocation({
-      selected_accomplishments: (evidence_allocation.selected_accomplishments as EvidenceAllocation['selected_accomplishments']) ?? [],
-      experience_section: (evidence_allocation.experience_section as EvidenceAllocation['experience_section']) ?? {},
-      unallocated_requirements: (evidence_allocation.unallocated_requirements as EvidenceAllocation['unallocated_requirements']) ?? [],
-    }),
+    evidence_allocation: deduplicateEvidenceAllocation(normalizeEvidenceAllocation(evidence_allocation)),
 
     skills_blueprint: {
       format: 'categorized',
@@ -435,10 +433,60 @@ function normalizeBlueprint(raw: Record<string, unknown>, input: ArchitectInput)
 }
 
 /**
+ * Normalize LLM evidence allocation output into typed structure.
+ * Handles both strategic mode (evidence_priorities) and legacy mode (bullets_to_write).
+ */
+function normalizeEvidenceAllocation(raw: Record<string, unknown>): EvidenceAllocation {
+  const expSection = (raw.experience_section ?? {}) as Record<string, Record<string, unknown>>;
+  const normalizedSection: EvidenceAllocation['experience_section'] = {};
+
+  for (const [roleKey, role] of Object.entries(expSection)) {
+    const entry: EvidenceAllocation['experience_section'][string] = {
+      company: String(role.company ?? ''),
+    };
+
+    // Strategic mode: evidence_priorities
+    if (Array.isArray(role.evidence_priorities)) {
+      entry.evidence_priorities = (role.evidence_priorities as Array<Record<string, unknown>>).map(ep => ({
+        requirement: String(ep.requirement ?? ''),
+        available_evidence: (ep.available_evidence as string[]) ?? [],
+        importance: (['critical', 'important', 'supporting'].includes(String(ep.importance)) ? ep.importance : 'important') as EvidencePriority['importance'],
+        narrative_note: ep.narrative_note ? String(ep.narrative_note) : undefined,
+      }));
+      if (Array.isArray(role.bullet_count_range) && role.bullet_count_range.length === 2) {
+        entry.bullet_count_range = [Number(role.bullet_count_range[0]), Number(role.bullet_count_range[1])];
+      }
+      if (Array.isArray(role.do_not_include)) {
+        entry.do_not_include = role.do_not_include as string[];
+      }
+    }
+
+    // Legacy mode: bullets_to_write
+    if (Array.isArray(role.bullets_to_write)) {
+      entry.bullets_to_write = (role.bullets_to_write as Array<Record<string, unknown>>).map(b => ({
+        focus: String(b.focus ?? ''),
+        maps_to: String(b.maps_to ?? ''),
+        evidence_source: String(b.evidence_source ?? ''),
+        instruction: String(b.instruction ?? ''),
+        target_metric: b.target_metric ? String(b.target_metric) : undefined,
+      }));
+    }
+
+    entry.bullets_to_keep = (role.bullets_to_keep as string[]) ?? [];
+    entry.bullets_to_cut = (role.bullets_to_cut as string[]) ?? [];
+    normalizedSection[roleKey] = entry;
+  }
+
+  return {
+    selected_accomplishments: (raw.selected_accomplishments as EvidenceAllocation['selected_accomplishments']) ?? [],
+    experience_section: normalizedSection,
+    unallocated_requirements: (raw.unallocated_requirements as EvidenceAllocation['unallocated_requirements']) ?? [],
+  };
+}
+
+/**
  * Enforce the invariant: an evidence item allocated to "selected_accomplishments"
- * must NOT also appear in experience bullet instructions. Remove duplicates from
- * experience bullets when they share an evidence_id or achievement text with
- * an allocated accomplishment.
+ * must NOT also appear in experience evidence priorities or bullet instructions.
  */
 function deduplicateEvidenceAllocation(allocation: EvidenceAllocation): EvidenceAllocation {
   const accomplishmentIds = new Set(
@@ -448,12 +496,24 @@ function deduplicateEvidenceAllocation(allocation: EvidenceAllocation): Evidence
 
   const deduplicatedSection: EvidenceAllocation['experience_section'] = {};
   for (const [roleKey, roleAlloc] of Object.entries(allocation.experience_section ?? {})) {
-    const role = roleAlloc as Record<string, unknown>;
-    const bullets = (role.bullets_to_write as Array<Record<string, unknown>> | undefined) ?? [];
-    const dedupedBullets = bullets.filter(
-      b => !accomplishmentIds.has(b.evidence_source as string),
-    );
-    deduplicatedSection[roleKey] = { ...role, bullets_to_write: dedupedBullets } as typeof roleAlloc;
+    const deduped = { ...roleAlloc };
+
+    // Deduplicate strategic mode
+    if (deduped.evidence_priorities) {
+      deduped.evidence_priorities = deduped.evidence_priorities.map(ep => ({
+        ...ep,
+        available_evidence: ep.available_evidence.filter(id => !accomplishmentIds.has(id)),
+      })).filter(ep => ep.available_evidence.length > 0);
+    }
+
+    // Deduplicate legacy mode
+    if (deduped.bullets_to_write) {
+      deduped.bullets_to_write = deduped.bullets_to_write.filter(
+        b => !accomplishmentIds.has(b.evidence_source),
+      );
+    }
+
+    deduplicatedSection[roleKey] = deduped;
   }
 
   return {
