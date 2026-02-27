@@ -1,23 +1,27 @@
-# Sprint 1: Framework Onboarding
-**Goal:** Establish the Scrum development framework for the existing codebase so all future work follows a disciplined process.
+# Sprint 2: Interview Phase Optimization
+**Goal:** Optimize the interview phase to reduce E2E time while preserving the Strategist's adaptive intelligence. Add budget enforcement, mini-batch presentation, and early-exit UX.
 **Started:** 2026-02-27
 
 ## Stories This Sprint
-1. [x] Create docs/ directory with all required framework files — [status: done]
-2. [x] Populate ARCHITECTURE.md with current system architecture — [status: done]
-3. [x] Populate CONVENTIONS.md with coding standards and patterns — [status: done]
-4. [x] Populate DECISIONS.md with existing ADRs — [status: done]
-5. [x] Populate BACKLOG.md with known work items — [status: done]
-6. [x] Create SPRINT_LOG.md with Sprint 0 retrospective — [status: done]
-7. [x] Seed CHANGELOG.md with recent session history — [status: done]
+1. [x] Story 3: Question Format Converter — [status: done]
+2. [x] Story 1: Question Budget Enforcement — [status: done]
+3. [x] Story 2: interview_candidate_batch Tool — [status: done]
+4. [x] Story 4: Update Strategist Prompt for Batch Workflow — [status: done]
+5. [x] Story 5: Draft Now Escape Button — [status: done]
+6. [x] Story 6: E2E + TypeScript Verification — [status: done]
+
+## Implementation Order
+Story 3 (converter) → Story 1 (budget) + Story 2 (batch tool) → Story 4 (prompt) → Story 5 (draft-now) → Story 6 (verification)
 
 ## Out of Scope (Explicitly)
-- Any code changes
-- Bug fixes
-- New features
-- Refactoring
+- Master Resume pre-fill (future sprint)
+- Changes to coordinator.ts, agent-loop.ts, or positioning-coach.ts question generation
+- Refactoring existing PositioningInterviewPanel
+- Changes to Craftsman or Producer agents
 
-## Next Sprint Candidates
-- Production hardening (MaxListeners, 409 conflicts, PDF Unicode)
-- Revision loop fix (Bug 16)
-- Usage tracking cross-contamination fix
+## Verification Results
+- `cd server && npx tsc --noEmit` — passes
+- `cd app && npx tsc --noEmit` — passes
+- Server tests: 223 passed, 2 pre-existing failures (gap-analyst)
+- App tests: 223 passed, 2 pre-existing failures (gap-analyst)
+- E2E: Not run (requires live Z.AI API + 28 min runtime)

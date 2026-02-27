@@ -234,6 +234,9 @@ function renderPanelBody(props: PanelRendererProps) {
           onComplete={(submission: QuestionnaireSubmission) => {
             onPipelineRespond?.(`questionnaire_${panelData.questionnaire_id}`, submission);
           }}
+          onDraftNow={panelData.stage === 'positioning' ? () => {
+            onPipelineRespond?.(`questionnaire_${panelData.questionnaire_id}`, { draft_now: true });
+          } : undefined}
         />
       );
     default: {

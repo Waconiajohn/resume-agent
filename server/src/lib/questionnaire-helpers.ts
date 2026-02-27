@@ -1,4 +1,4 @@
-import type { QuestionnaireQuestion, QuestionnaireOption, QuestionnaireResponse, QuestionnaireSubmission, PipelineSSEEvent } from '../agents/types.js';
+import type { QuestionnaireQuestion, QuestionnaireOption, QuestionnaireResponse, QuestionnaireSubmission, PipelineSSEEvent, PositioningQuestion } from '../agents/types.js';
 
 // Helper to build a question with defaults
 export function makeQuestion(
@@ -62,4 +62,100 @@ export function getSelectedLabels(
   return response.selected_option_ids
     .map(id => question.options!.find(o => o.id === id)?.label)
     .filter((label): label is string => label !== undefined);
+}
+
+// ─── Positioning ↔ Questionnaire Converters ──────────────────────────
+
+const IMPACT_BY_CATEGORY: Record<string, QuestionnaireQuestion['impact_tier']> = {
+  requirement_mapped: 'high',
+  scale_and_scope: 'high',
+  hidden_accomplishments: 'medium',
+  career_narrative: 'medium',
+  currency_and_adaptability: 'low',
+};
+
+/**
+ * Convert an array of Strategist-generated PositioningQuestions into
+ * QuestionnaireQuestion[] suitable for the QuestionnairePanel.
+ */
+export function positioningToQuestionnaire(
+  questions: PositioningQuestion[],
+): QuestionnaireQuestion[] {
+  return questions.map((pq) => {
+    const options: QuestionnaireOption[] = (pq.suggestions ?? []).map((s, i) => ({
+      id: `${pq.id}_opt_${i}`,
+      label: s.label,
+      description: s.description,
+      source: s.source === 'resume' ? 'resume'
+        : s.source === 'jd' ? 'jd'
+        : 'inferred',
+    }));
+
+    return {
+      id: pq.id,
+      question_text: pq.question_text,
+      context: pq.context,
+      impact_tier: IMPACT_BY_CATEGORY[pq.category ?? 'requirement_mapped'] ?? 'medium',
+      input_type: options.length > 0 ? 'single_choice' : 'single_choice',
+      options,
+      allow_custom: true,
+      allow_skip: pq.optional ?? false,
+    };
+  });
+}
+
+/**
+ * Extract interview answers from a QuestionnaireSubmission, returning
+ * records compatible with the strategist scratchpad's interview_answers format.
+ */
+export function extractInterviewAnswers(
+  submission: QuestionnaireSubmission,
+  originals: PositioningQuestion[],
+): Array<{
+  question_id: string;
+  question_text: string;
+  category: string;
+  answer: string;
+  timestamp: string;
+}> {
+  const questionMap = new Map(originals.map(q => [q.id, q]));
+
+  return submission.responses
+    .filter(r => !r.skipped)
+    .map(r => {
+      const original = questionMap.get(r.question_id);
+      if (!original) return null;
+
+      // Build answer text from selected options + custom text
+      const parts: string[] = [];
+
+      if (r.selected_option_ids.length > 0) {
+        const selectedLabels = r.selected_option_ids
+          .map(id => {
+            const suggestion = (original.suggestions ?? []).find(
+              (_, i) => `${original.id}_opt_${i}` === id,
+            );
+            return suggestion?.label;
+          })
+          .filter((l): l is string => !!l);
+        if (selectedLabels.length > 0) {
+          parts.push(selectedLabels.join('; '));
+        }
+      }
+
+      if (r.custom_text?.trim()) {
+        parts.push(r.custom_text.trim());
+      }
+
+      const answer = parts.join(' — ') || '(skipped)';
+
+      return {
+        question_id: original.id,
+        question_text: original.question_text,
+        category: original.category ?? 'requirement_mapped',
+        answer,
+        timestamp: submission.submitted_at,
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
 }

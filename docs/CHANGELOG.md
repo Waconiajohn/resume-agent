@@ -1,5 +1,52 @@
 # Changelog — Resume Agent
 
+## 2026-02-27 — Session: Interview Phase Optimization
+
+**Sprint:** 2 | **Stories:** 1-6 (all complete)
+**Summary:** Added interview budget enforcement, mini-batch presentation, and "Draft Now" escape to optimize the interview phase while preserving the Strategist's adaptive intelligence.
+
+### Changes Made
+
+#### Story 3: Question Format Converter
+- `server/src/lib/questionnaire-helpers.ts` — Added `positioningToQuestionnaire()` to convert PositioningQuestion[] to QuestionnaireQuestion[] for batch presentation
+- `server/src/lib/questionnaire-helpers.ts` — Added `extractInterviewAnswers()` to convert QuestionnaireSubmission back to scratchpad-compatible interview answer format
+
+#### Story 1: Question Budget Enforcement
+- `server/src/agents/strategist/tools.ts` — Added `INTERVIEW_BUDGET` map (fast_draft=5, balanced=7, deep_dive=12) and `getInterviewBudget()`/`getInterviewQuestionCount()` helpers
+- `server/src/agents/strategist/tools.ts` — `interview_candidate` execute: budget check at top returns `{ budget_reached: true }` with transparency event when limit hit
+
+#### Story 2: interview_candidate_batch Tool
+- `server/src/agents/strategist/tools.ts` — New `interview_candidate_batch` AgentTool: presents 2-3 questions as a QuestionnairePanel gate, extracts batch answers, persists to scratchpad/transcript identically to single-question tool, evaluates follow-up recommendations, handles `draft_now` escape signal
+- `server/src/agents/strategist/tools.ts` — Registered in `strategistTools` export array
+
+#### Story 4: Update Strategist Prompt
+- `server/src/agents/strategist/prompts.ts` — Updated step 5 (Interview) to guide toward `interview_candidate_batch` as primary tool, batch-by-category strategy, budget awareness, and `budget_reached`/`draft_now_requested` stop signals
+
+#### Story 5: Draft Now Escape Button
+- `app/src/components/panels/QuestionnairePanel.tsx` — Added optional `onDraftNow` prop and "Draft Now" button (Zap icon, amber accent) in action bar for positioning-stage questionnaires
+- `app/src/components/panels/panel-renderer.tsx` — Wired `onDraftNow` callback to send `{ draft_now: true }` gate response for positioning-stage questionnaires
+
+#### Story 6: E2E Verification
+- `e2e/helpers/pipeline-responder.ts` — Added phase timing markers (interview, blueprint_review, section_writing) with `startPhase()`/`endPhase()` helpers and completion summary
+
+### Decisions Made
+- Budget enforcement is code-level, not prompt-level — the tool returns a stop signal rather than relying on the LLM to count
+- Batch questions use existing QuestionnairePanel infrastructure (not a new component) for consistency
+- Single `interview_candidate` tool kept alongside batch tool for targeted follow-up probing
+- "Draft Now" button only shows for positioning-stage questionnaires (not gap_analysis or quality_fixes)
+
+### Known Issues
+- E2E timing improvement not yet validated (requires live Z.AI API run)
+- Strategist may still prefer single-question tool until prompt guidance takes effect across runs
+- 2 pre-existing test failures in agents-gap-analyst.test.ts remain
+
+### Next Steps
+- Run full E2E pipeline to validate timing improvement target (interview phase < 5 min)
+- Monitor Strategist behavior — confirm it adopts batch workflow with updated prompt
+- Master Resume pre-fill (future sprint, per user)
+
+---
+
 ## 2026-02-27 — Session: Framework & Dynamic Pipeline
 
 **Sprint:** 0 (retroactive) + 1 (framework onboarding)

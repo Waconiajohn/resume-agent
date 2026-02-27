@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, SkipForward } from 'lucide-react';
+import { ArrowLeft, ArrowRight, SkipForward, Zap } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { GlassTextarea } from '../GlassInput';
@@ -15,6 +15,7 @@ import { ProgressHeader } from './questionnaire/ProgressHeader';
 interface QuestionnairePanelProps {
   data: QuestionnaireData;
   onComplete: (submission: QuestionnaireSubmission) => void;
+  onDraftNow?: () => void;
 }
 
 // ─── Dependency check ────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ function buildEmptyResponse(questionId: string): QuestionnaireResponse {
   return { question_id: questionId, selected_option_ids: [], skipped: false };
 }
 
-export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps) {
+export function QuestionnairePanel({ data, onComplete, onDraftNow }: QuestionnairePanelProps) {
   const { questions, questionnaire_id, schema_version, stage, title, subtitle } = data;
   const processStep = processStepFromQuestionnaireStage(stage);
   const batchModeLabel =
@@ -408,6 +409,19 @@ export function QuestionnairePanel({ data, onComplete }: QuestionnairePanelProps
           <ArrowLeft className="h-3.5 w-3.5" />
           Back
         </GlassButton>
+
+        {/* Draft Now — positioning stage only */}
+        {stage === 'positioning' && onDraftNow && (
+          <GlassButton
+            variant="ghost"
+            onClick={onDraftNow}
+            aria-label="Skip remaining questions and start writing resume"
+            className="gap-1.5 px-3 text-amber-200/70 hover:text-amber-200/90"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Draft Now
+          </GlassButton>
+        )}
 
         <div className="flex-1" />
 

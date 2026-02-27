@@ -586,6 +586,23 @@ export async function runPipelineToCompletion(page: Page): Promise<void> {
   let lastActivityAt = Date.now();
   let lastPanel: PanelType = null;
 
+  // Phase timing markers
+  const phaseTimers = new Map<string, number>();
+  const phaseResults = new Map<string, number>();
+  function startPhase(name: string) {
+    phaseTimers.set(name, Date.now());
+  }
+  function endPhase(name: string) {
+    const phaseStart = phaseTimers.get(name);
+    if (phaseStart) {
+      const duration = Math.round((Date.now() - phaseStart) / 1000);
+      phaseResults.set(name, duration);
+      // eslint-disable-next-line no-console
+      console.log(`[pipeline-responder] Phase "${name}" completed in ${duration}s`);
+      phaseTimers.delete(name);
+    }
+  }
+
   // Track consecutive 409 errors to detect pipeline crashes
   let consecutive409Count = 0;
   let last409Body = '';
@@ -657,14 +674,46 @@ export async function runPipelineToCompletion(page: Page): Promise<void> {
         console.log(
           `[pipeline-responder] [${elapsed}s] Panel: ${lastPanel ?? 'none'} -> ${panelType ?? 'processing'}`,
         );
+
+        // Track interview phase timing
+        if ((panelType === 'positioning_interview' || panelType === 'questionnaire') &&
+            lastPanel !== 'positioning_interview' && lastPanel !== 'questionnaire') {
+          startPhase('interview');
+        }
+        if (lastPanel === 'positioning_interview' || lastPanel === 'questionnaire') {
+          if (panelType !== 'positioning_interview' && panelType !== 'questionnaire') {
+            endPhase('interview');
+          }
+        }
+        // Track blueprint phase
+        if (panelType === 'blueprint_review' && lastPanel !== 'blueprint_review') {
+          startPhase('blueprint_review');
+        }
+        if (lastPanel === 'blueprint_review' && panelType !== 'blueprint_review') {
+          endPhase('blueprint_review');
+        }
+        // Track section writing phase
+        if (panelType === 'section_review' && lastPanel !== 'section_review') {
+          if (!phaseTimers.has('section_writing')) startPhase('section_writing');
+        }
+        if (lastPanel === 'section_review' && panelType !== 'section_review') {
+          endPhase('section_writing');
+        }
+
         lastPanel = panelType;
         lastActivityAt = Date.now();
       }
 
       // Terminal state
       if (panelType === 'completion') {
+        // End any open phase timers
+        for (const name of phaseTimers.keys()) endPhase(name);
+        const totalSec = Math.round((Date.now() - start) / 1000);
         // eslint-disable-next-line no-console
-        console.log('[pipeline-responder] Pipeline complete!');
+        console.log(
+          `[pipeline-responder] Pipeline complete! Total: ${totalSec}s. ` +
+          `Phase timings: ${[...phaseResults.entries()].map(([k, v]) => `${k}=${v}s`).join(', ') || '(none)'}`,
+        );
         return;
       }
 

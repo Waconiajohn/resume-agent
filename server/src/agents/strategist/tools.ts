@@ -21,6 +21,8 @@ import type {
   EvidenceItem,
 } from '../types.js';
 import { randomUUID } from 'node:crypto';
+import { positioningToQuestionnaire, extractInterviewAnswers, buildQuestionnaireEvent } from '../../lib/questionnaire-helpers.js';
+import { evaluateFollowUp } from '../positioning-coach.js';
 
 // ─── Tool: parse_resume ───────────────────────────────────────────────
 
@@ -245,11 +247,28 @@ const buildBenchmarkTool: AgentTool = {
   },
 };
 
+// ─── Interview Budget ────────────────────────────────────────────────
+
+const INTERVIEW_BUDGET: Record<string, number> = {
+  fast_draft: 5,
+  balanced: 7,
+  deep_dive: 12,
+};
+
+function getInterviewBudget(ctx: AgentContext): number {
+  const mode = ctx.getState().user_preferences?.workflow_mode ?? 'balanced';
+  return INTERVIEW_BUDGET[mode] ?? 7;
+}
+
+function getInterviewQuestionCount(ctx: AgentContext): number {
+  return ((ctx.scratchpad.interview_answers as unknown[] | undefined) ?? []).length;
+}
+
 // ─── Tool: interview_candidate ────────────────────────────────────────
 
 const interviewCandidateTool: AgentTool = {
   name: 'interview_candidate',
-  description: 'Ask the candidate a targeted question to surface hidden experience, metrics, or context not visible on the resume. Use this to probe partial matches and critical gaps. The question is presented in the UI and the candidate\'s answer is returned. Answers are accumulated in the evidence library.',
+  description: 'Ask the candidate a targeted question to surface hidden experience, metrics, or context not visible on the resume. Use this to probe partial matches and critical gaps. The question is presented in the UI and the candidate\'s answer is returned. Answers are accumulated in the evidence library. Respects the interview question budget — returns a budget_reached signal when the limit is hit.',
   input_schema: {
     type: 'object',
     properties: {
@@ -291,6 +310,24 @@ const interviewCandidateTool: AgentTool = {
     const questionText = String(input.question_text ?? '');
     const context = String(input.context ?? '');
     const category = String(input.category ?? 'requirement_mapped');
+
+    // ── Budget enforcement ──────────────────────────────────────────
+    const budget = getInterviewBudget(ctx);
+    const asked = getInterviewQuestionCount(ctx);
+    if (asked >= budget) {
+      const mode = ctx.getState().user_preferences?.workflow_mode ?? 'balanced';
+      ctx.emit({
+        type: 'transparency',
+        message: `Interview budget reached (${asked}/${budget} questions for ${mode} mode). Moving to gap analysis.`,
+        stage: ctx.getState().current_stage,
+      });
+      return {
+        budget_reached: true,
+        questions_asked: asked,
+        budget,
+        message: `Interview budget reached (${budget} questions for ${mode} mode). You have sufficient evidence — proceed to classify_fit now.`,
+      };
+    }
 
     if (!questionText.trim()) {
       throw new Error('interview_candidate: question_text is required.');
@@ -374,6 +411,236 @@ const interviewCandidateTool: AgentTool = {
       question_number: questionNumber,
       answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
       evidence_id: evidenceItem.id,
+    };
+  },
+};
+
+// ─── Tool: interview_candidate_batch ──────────────────────────────────
+
+const interviewCandidateBatchTool: AgentTool = {
+  name: 'interview_candidate_batch',
+  description: 'Ask the candidate 2-3 related questions at once. Group questions by category (e.g., all scale_and_scope questions in one batch). More efficient than single questions — the candidate answers all at once. Use this as your primary interview tool. Falls back gracefully if the budget is reached mid-batch.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      questions: {
+        type: 'array',
+        description: 'Array of 1-4 related questions to present together.',
+        minItems: 1,
+        maxItems: 4,
+        items: {
+          type: 'object',
+          properties: {
+            question_text: {
+              type: 'string',
+              description: 'The question to ask.',
+            },
+            context: {
+              type: 'string',
+              description: 'Why you are asking — shown to the candidate.',
+            },
+            category: {
+              type: 'string',
+              enum: ['scale_and_scope', 'requirement_mapped', 'career_narrative', 'hidden_accomplishments', 'currency_and_adaptability'],
+              description: 'Question category.',
+            },
+            suggestions: {
+              type: 'array',
+              description: 'Optional suggestions to show as starting points.',
+              items: {
+                type: 'object',
+                properties: {
+                  label: { type: 'string' },
+                  description: { type: 'string' },
+                  source: { type: 'string', enum: ['resume', 'inferred', 'jd'] },
+                },
+                required: ['label', 'description', 'source'],
+              },
+            },
+          },
+          required: ['question_text', 'context', 'category'],
+        },
+      },
+    },
+    required: ['questions'],
+  },
+  model_tier: 'orchestrator',
+  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+    const rawQuestions = Array.isArray(input.questions)
+      ? (input.questions as Record<string, unknown>[])
+      : [];
+
+    if (rawQuestions.length === 0) {
+      throw new Error('interview_candidate_batch: questions array is required and must not be empty.');
+    }
+
+    // ── Budget enforcement ──────────────────────────────────────────
+    const budget = getInterviewBudget(ctx);
+    const asked = getInterviewQuestionCount(ctx);
+    const remaining = budget - asked;
+
+    if (remaining <= 0) {
+      const mode = ctx.getState().user_preferences?.workflow_mode ?? 'balanced';
+      ctx.emit({
+        type: 'transparency',
+        message: `Interview budget reached (${asked}/${budget} questions for ${mode} mode). Moving to gap analysis.`,
+        stage: ctx.getState().current_stage,
+      });
+      return {
+        budget_reached: true,
+        questions_asked: asked,
+        budget,
+        message: `Interview budget reached (${budget} questions for ${mode} mode). You have sufficient evidence — proceed to classify_fit now.`,
+      };
+    }
+
+    // Trim batch to remaining budget
+    const trimmedQuestions = rawQuestions.slice(0, remaining);
+
+    // Convert to PositioningQuestion format
+    const positioningQuestions: PositioningQuestion[] = trimmedQuestions.map((rq, i) => {
+      const rawSuggestions = Array.isArray(rq.suggestions) ? rq.suggestions as Record<string, unknown>[] : [];
+      const suggestions = rawSuggestions.map(s => ({
+        label: String(s.label ?? ''),
+        description: String(s.description ?? ''),
+        source: (s.source as 'resume' | 'inferred' | 'jd') ?? 'inferred',
+      }));
+
+      return {
+        id: randomUUID(),
+        question_number: asked + i + 1,
+        question_text: String(rq.question_text ?? ''),
+        context: String(rq.context ?? ''),
+        input_type: suggestions.length > 0 ? 'hybrid' as const : 'text' as const,
+        category: (String(rq.category ?? 'requirement_mapped')) as PositioningQuestion['category'],
+        suggestions: suggestions.length > 0 ? suggestions : undefined,
+      };
+    });
+
+    // Convert to QuestionnaireQuestion format and emit as questionnaire
+    const questionnaireQuestions = positioningToQuestionnaire(positioningQuestions);
+    const batchId = `interview_batch_${randomUUID().slice(0, 8)}`;
+
+    ctx.emit(buildQuestionnaireEvent(
+      batchId,
+      'positioning',
+      'Positioning Interview',
+      questionnaireQuestions,
+      `Batch ${Math.floor(asked / 3) + 1} — Answer these related questions to help build your positioning.`,
+    ));
+
+    // Wait for the candidate's response to the entire batch
+    const submission = await ctx.waitForUser<unknown>(`questionnaire_${batchId}`);
+
+    // Handle "draft now" escape
+    if (submission && typeof submission === 'object' && 'draft_now' in submission && (submission as Record<string, unknown>).draft_now) {
+      ctx.emit({
+        type: 'transparency',
+        message: 'Candidate requested early draft. Proceeding with available evidence.',
+        stage: ctx.getState().current_stage,
+      });
+      return {
+        draft_now_requested: true,
+        questions_asked: asked,
+        message: 'Candidate requested to skip remaining interview questions and proceed to drafting. Use the evidence collected so far — proceed to classify_fit now.',
+      };
+    }
+
+    // Extract answers from questionnaire submission
+    const typedSubmission = submission as {
+      questionnaire_id: string;
+      schema_version: number;
+      stage: string;
+      responses: Array<{
+        question_id: string;
+        selected_option_ids: string[];
+        custom_text?: string;
+        skipped: boolean;
+      }>;
+      submitted_at: string;
+    };
+
+    const answers = extractInterviewAnswers(
+      typedSubmission as import('../types.js').QuestionnaireSubmission,
+      positioningQuestions,
+    );
+
+    // Persist answers to scratchpad + pipeline state (same format as interview_candidate)
+    if (!ctx.scratchpad.interview_answers) {
+      ctx.scratchpad.interview_answers = [];
+    }
+    const scratchpadAnswers = ctx.scratchpad.interview_answers as Array<{
+      question_id: string;
+      question_text: string;
+      category: string;
+      answer: string;
+      timestamp: string;
+    }>;
+
+    const transcript = ctx.getState().interview_transcript ?? [];
+
+    if (!ctx.scratchpad.evidence_library) {
+      ctx.scratchpad.evidence_library = [];
+    }
+    const evidenceLibrary = ctx.scratchpad.evidence_library as EvidenceItem[];
+
+    const followUpRecommendations: Array<{ question_id: string; recommendation: string }> = [];
+
+    for (const ans of answers) {
+      scratchpadAnswers.push(ans);
+
+      transcript.push({
+        question_id: ans.question_id,
+        question_text: ans.question_text,
+        category: ans.category,
+        answer: ans.answer,
+      });
+
+      // Build evidence item
+      const qNum = scratchpadAnswers.length;
+      evidenceLibrary.push({
+        id: `ev_interview_${qNum}`,
+        situation: `In response to: ${ans.question_text}`,
+        action: ans.answer,
+        result: '(to be extracted from context)',
+        metrics_defensible: false,
+        user_validated: true,
+        source_question_id: ans.question_id,
+      });
+
+      // Evaluate follow-up needs
+      const originalQuestion = positioningQuestions.find(q => q.id === ans.question_id);
+      if (originalQuestion) {
+        const followUp = evaluateFollowUp(originalQuestion, ans.answer);
+        if (followUp) {
+          followUpRecommendations.push({
+            question_id: ans.question_id,
+            recommendation: followUp.question_text,
+          });
+        }
+      }
+    }
+
+    ctx.updateState({ interview_transcript: transcript });
+
+    return {
+      success: true,
+      questions_presented: positioningQuestions.length,
+      answers_received: answers.length,
+      total_questions_asked: scratchpadAnswers.length,
+      budget_remaining: budget - scratchpadAnswers.length,
+      answers: answers.map(a => ({
+        question_id: a.question_id,
+        question_text: a.question_text,
+        category: a.category,
+        answer: a.answer,
+      })),
+      follow_up_recommendations: followUpRecommendations.length > 0
+        ? followUpRecommendations
+        : undefined,
+      message: scratchpadAnswers.length >= budget
+        ? `Budget reached (${budget} questions). Proceed to classify_fit.`
+        : `${answers.length} answers collected. ${budget - scratchpadAnswers.length} questions remaining in budget.`,
     };
   },
 };
@@ -610,6 +877,7 @@ export const strategistTools: AgentTool[] = [
   researchCompanyTool,
   buildBenchmarkTool,
   interviewCandidateTool,
+  interviewCandidateBatchTool,
   classifyFitTool,
   designBlueprintTool,
   emitTransparencyTool,
