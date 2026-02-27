@@ -1655,6 +1655,23 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   const log = createSessionLogger(session_id);
 
   runningPipelines.set(session_id, Date.now());
+
+  // Heartbeat: touch updated_at every 5 minutes so the stale pipeline
+  // recovery (15 min threshold) doesn't kill long-running agent phases
+  // (e.g. the Strategist interview can take 10-15 min with Z.AI latency).
+  const HEARTBEAT_MS = 5 * 60 * 1000;
+  const heartbeatTimer = setInterval(() => {
+    supabaseAdmin
+      .from('coach_sessions')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', session_id)
+      .eq('pipeline_status', 'running')
+      .then(({ error }) => {
+        if (error) log.warn({ error: error.message }, 'Pipeline heartbeat failed');
+      });
+  }, HEARTBEAT_MS);
+  heartbeatTimer.unref();
+
   runPipeline({
     session_id,
     user_id: user.id,
@@ -1683,6 +1700,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
       .eq('id', session_id);
   }).finally(() => {
+    clearInterval(heartbeatTimer);
     runningPipelines.delete(session_id);
     cancelQueuedPanelPersist(session_id);
     void clearPendingGate(session_id);
