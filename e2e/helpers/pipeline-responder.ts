@@ -211,35 +211,46 @@ async function respondToProfileChoice(page: Page): Promise<void> {
  * Uses page.evaluate() for all interactions to bypass zero-height layout.
  */
 async function respondToPositioningQuestion(page: Page): Promise<void> {
-  // Step 1: Click first suggestion if available
-  await page.evaluate((sel) => {
+  const ANSWER_TEXT =
+    'I have extensive experience in this area. In my current role, I led a team of 14 engineers ' +
+    'to deliver a major cloud migration project, moving 60+ applications to AWS. ' +
+    'This reduced hosting costs by 35% and improved system reliability significantly. ' +
+    'I also established SRE practices and SLI/SLO frameworks that reduced P1 incidents by 42%.';
+
+  // Skip suggestion selection — selecting an inferred/jd suggestion without
+  // React-confirmed custom text leaves needsElaboration=true and canSubmit=false.
+  // Just fill the textarea directly; canSubmit = hasCustomText is simpler and reliable.
+
+  // Step 1: Fill custom textarea via native setter + React input event.
+  // The panel lives in a zero-height flex container, so Playwright's fill()
+  // can't reliably trigger React's onChange. Use the native value setter +
+  // synthetic input event which React's internal value tracking detects.
+  await page.evaluate(({ sel, text }) => {
     const panel = document.querySelector(sel);
     if (!panel) return;
-    const radio = panel.querySelector('[role="radio"]') as HTMLElement | null;
-    if (radio) radio.click();
-  }, PANEL_SEL);
+    const ta = panel.querySelector('textarea[aria-label="Custom answer"]') as HTMLTextAreaElement | null;
+    if (!ta) return;
+    // React 18/19 tracks value via the native setter on the prototype.
+    // Setting via the native setter changes the DOM value without updating
+    // React's internal tracker, so the subsequent input event triggers onChange.
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype, 'value',
+    )?.set;
+    if (nativeSetter) nativeSetter.call(ta, text);
+    else ta.value = text;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }, { sel: PANEL_SEL, text: ANSWER_TEXT });
   await page.waitForTimeout(500);
 
-  // Step 2: Fill custom textarea
-  const textarea = page.locator(`${PANEL_SEL} textarea[aria-label="Custom answer"]`).first();
-  if ((await textarea.count().catch(() => 0)) > 0) {
-    await textarea.fill(
-      'I have extensive experience in this area. In my current role, I led a team of 14 engineers ' +
-        'to deliver a major cloud migration project, moving 60+ applications to AWS. ' +
-        'This reduced hosting costs by 35% and improved system reliability significantly. ' +
-        'I also established SRE practices and SLI/SLO frameworks that reduced P1 incidents by 42%.',
-      { force: true },
-    );
-    await page.waitForTimeout(300);
-  }
-
-  // Step 3: Click Continue button (triggers API call)
+  // Step 2: Click Continue button (triggers API call)
   const clicked = await page.evaluate((sel) => {
     const panel = document.querySelector(sel);
     if (!panel) return false;
     const buttons = Array.from(panel.querySelectorAll('button'));
     const btn = buttons.find(
-      (b) => /Submit answer and continue|Continue/i.test(b.textContent?.trim() || '') && !b.disabled,
+      (b) => /Submit answer and continue|Continue/i.test(
+        (b.textContent?.trim() || '') + ' ' + (b.getAttribute('aria-label') || ''),
+      ) && !b.disabled,
     );
     if (btn) { (btn as HTMLElement).click(); return true; }
     return false;
