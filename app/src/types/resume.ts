@@ -28,6 +28,14 @@ export interface MasterResumeCertification {
   year: string;
 }
 
+export interface MasterResumeEvidenceItem {
+  text: string;
+  source: 'crafted' | 'upgraded' | 'interview';
+  category?: string;
+  source_session_id: string;
+  created_at: string;
+}
+
 export interface MasterResume {
   id: string;
   user_id: string;
@@ -41,6 +49,7 @@ export interface MasterResume {
   version: number;
   is_default?: boolean;
   source_session_id?: string | null;
+  evidence_items: MasterResumeEvidenceItem[];
   created_at: string;
   updated_at: string;
 }

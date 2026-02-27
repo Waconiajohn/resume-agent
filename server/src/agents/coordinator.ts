@@ -21,6 +21,7 @@ import { captureError } from '../lib/sentry.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { FF_BLUEPRINT_APPROVAL } from '../lib/feature-flags.js';
 import { runAtsComplianceCheck } from './ats-rules.js';
+import { mergeMasterResume } from './master-resume-merge.js';
 import { runAgentLoop } from './runtime/agent-loop.js';
 import { AgentBus } from './runtime/agent-bus.js';
 import { strategistConfig } from './strategist/agent.js';
@@ -33,6 +34,8 @@ import type {
   ArchitectOutput,
   SectionWriterOutput,
   IntakeOutput,
+  MasterResumeEvidenceItem,
+  MasterResumeData,
 } from './types.js';
 import type { AgentMessage } from './runtime/agent-protocol.js';
 import type { CreateContextParams } from './runtime/agent-context.js';
@@ -57,6 +60,8 @@ export interface PipelineConfig {
   minimum_evidence_target?: number;
   resume_priority?: 'authentic' | 'ats' | 'impact' | 'balanced';
   seniority_delta?: 'same' | 'one_up' | 'big_jump' | 'step_back';
+  master_resume_id?: string;
+  master_resume?: MasterResumeData;
   emit: PipelineEmitter;
   waitForUser: WaitForUser;
 }
@@ -153,6 +158,59 @@ function buildStrategistMessage(config: PipelineConfig): string {
   if (config.minimum_evidence_target != null)
     prefs.push(`Minimum evidence target: ${config.minimum_evidence_target}`);
 
+  // Build master resume section if available
+  const masterResumeSection: string[] = [];
+  if (config.master_resume) {
+    const mr = config.master_resume;
+    masterResumeSection.push('## MASTER RESUME — ACCUMULATED EVIDENCE FROM PRIOR SESSIONS');
+    masterResumeSection.push('This candidate has completed previous resume sessions. The following evidence has been accumulated:');
+    masterResumeSection.push('');
+
+    // Experience with all bullets (original + crafted)
+    if (mr.experience.length > 0) {
+      masterResumeSection.push('### Experience');
+      for (const role of mr.experience) {
+        masterResumeSection.push(`**${role.title}** at ${role.company} (${role.start_date} – ${role.end_date})`);
+        for (const bullet of role.bullets) {
+          masterResumeSection.push(`  - [${bullet.source}] ${bullet.text}`);
+        }
+        masterResumeSection.push('');
+      }
+    }
+
+    // Evidence items (crafted bullets, interview answers from prior sessions)
+    if (mr.evidence_items.length > 0) {
+      masterResumeSection.push('### Accumulated Evidence Items');
+      const bySource = { crafted: [] as string[], upgraded: [] as string[], interview: [] as string[] };
+      for (const item of mr.evidence_items) {
+        const list = bySource[item.source] ?? bySource.crafted;
+        list.push(`  - ${item.category ? `[${item.category}] ` : ''}${item.text}`);
+      }
+      if (bySource.crafted.length > 0) {
+        masterResumeSection.push('**Crafted bullets from prior sessions:**');
+        masterResumeSection.push(...bySource.crafted);
+      }
+      if (bySource.upgraded.length > 0) {
+        masterResumeSection.push('**Upgraded bullets from prior sessions:**');
+        masterResumeSection.push(...bySource.upgraded);
+      }
+      if (bySource.interview.length > 0) {
+        masterResumeSection.push('**Interview answers from prior sessions:**');
+        masterResumeSection.push(...bySource.interview);
+      }
+      masterResumeSection.push('');
+    }
+
+    // Skills inventory
+    if (Object.keys(mr.skills).length > 0) {
+      masterResumeSection.push('### Skills Inventory');
+      for (const [category, skills] of Object.entries(mr.skills)) {
+        masterResumeSection.push(`**${category}:** ${skills.join(', ')}`);
+      }
+      masterResumeSection.push('');
+    }
+  }
+
   return [
     '## Raw Resume',
     config.raw_resume_text.trim(),
@@ -164,6 +222,9 @@ function buildStrategistMessage(config: PipelineConfig): string {
     '',
     ...(prefs.length > 0
       ? ['## User Preferences', prefs.join('\n'), '']
+      : []),
+    ...(masterResumeSection.length > 0
+      ? [...masterResumeSection, '']
       : []),
     'Begin the intelligence phase now. Parse the resume, analyze the JD, research the company, interview the candidate, run gap analysis, and produce the architect blueprint.',
   ].join('\n');
@@ -535,6 +596,140 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
   }
 
   return resume;
+}
+
+// ─── Master resume merge & save ──────────────────────────────────────
+
+/**
+ * Extract evidence items from a completed pipeline run.
+ * Sources: crafted bullets from sections, interview transcript answers.
+ */
+function extractEvidenceItems(
+  state: PipelineState,
+  sessionId: string,
+): MasterResumeEvidenceItem[] {
+  const now = new Date().toISOString();
+  const items: MasterResumeEvidenceItem[] = [];
+
+  // Crafted bullets from written sections
+  const sections = state.sections ?? {};
+  for (const [key, section] of Object.entries(sections)) {
+    if (!key.startsWith('experience_role_') && key !== 'summary' && key !== 'selected_accomplishments') continue;
+    const lines = section.content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (/^[•\-*]\s/.test(trimmed)) {
+        const text = trimmed.replace(/^[•\-*]\s+/, '').trim();
+        if (text.length > 10) {
+          items.push({
+            text,
+            source: 'crafted',
+            category: key,
+            source_session_id: sessionId,
+            created_at: now,
+          });
+        }
+      }
+    }
+  }
+
+  // Interview transcript answers
+  const transcript = state.interview_transcript ?? [];
+  for (const entry of transcript) {
+    if (entry.answer && entry.answer.length > 10) {
+      items.push({
+        text: entry.answer,
+        source: 'interview',
+        category: entry.category,
+        source_session_id: sessionId,
+        created_at: now,
+      });
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Auto-save master resume after pipeline completion.
+ * If an existing master resume is linked to this session, merge new data into it.
+ * If no master resume exists, create one from the pipeline output.
+ * Non-critical — failure is logged but does not throw.
+ */
+async function saveMasterResume(
+  state: PipelineState,
+  config: PipelineConfig,
+  finalResume: FinalResumePayload,
+): Promise<void> {
+  const log = createSessionLogger(state.session_id);
+
+  try {
+    const evidenceItems = extractEvidenceItems(state, state.session_id);
+
+    // Load existing master resume if one was used for this session
+    let existing: MasterResumeData | null = null;
+    if (config.master_resume_id) {
+      const { data } = await supabaseAdmin
+        .from('master_resumes')
+        .select('id, summary, experience, skills, education, certifications, evidence_items, contact_info, raw_text, version')
+        .eq('id', config.master_resume_id)
+        .eq('user_id', state.user_id)
+        .single();
+
+      if (data) {
+        existing = data as unknown as MasterResumeData;
+      }
+    }
+
+    if (existing) {
+      // Merge into existing
+      const merged = mergeMasterResume(existing, finalResume, evidenceItems);
+
+      const { error } = await supabaseAdmin.rpc('create_master_resume_atomic', {
+        p_user_id: state.user_id,
+        p_raw_text: merged.raw_text,
+        p_summary: merged.summary,
+        p_experience: merged.experience,
+        p_skills: merged.skills,
+        p_education: merged.education,
+        p_certifications: merged.certifications,
+        p_contact_info: merged.contact_info ?? {},
+        p_source_session_id: state.session_id,
+        p_set_as_default: true,
+        p_evidence_items: merged.evidence_items,
+      });
+
+      if (error) {
+        log.warn({ error: error.message }, 'saveMasterResume: merge RPC failed');
+      } else {
+        log.info({ master_resume_id: config.master_resume_id, evidence_count: merged.evidence_items.length }, 'Master resume merged with new evidence');
+      }
+    } else {
+      // Create new master resume from pipeline output
+      const { error } = await supabaseAdmin.rpc('create_master_resume_atomic', {
+        p_user_id: state.user_id,
+        p_raw_text: config.raw_resume_text,
+        p_summary: finalResume.summary,
+        p_experience: finalResume.experience,
+        p_skills: finalResume.skills,
+        p_education: finalResume.education,
+        p_certifications: finalResume.certifications,
+        p_contact_info: finalResume.contact_info ?? {},
+        p_source_session_id: state.session_id,
+        p_set_as_default: true,
+        p_evidence_items: evidenceItems,
+      });
+
+      if (error) {
+        log.warn({ error: error.message }, 'saveMasterResume: create RPC failed');
+      } else {
+        log.info({ evidence_count: evidenceItems.length }, 'Master resume created from pipeline output');
+      }
+    }
+  } catch (err) {
+    // Non-critical — master resume save failure must not stop the pipeline
+    log.warn({ error: err instanceof Error ? err.message : String(err) }, 'saveMasterResume failed');
+  }
 }
 
 // ─── Database persistence ─────────────────────────────────────────────
@@ -1002,6 +1197,9 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
 
     // Persist the completed session
     await persistSession(state, finalResume, emit);
+
+    // Auto-save master resume with accumulated evidence
+    await saveMasterResume(state, config, finalResume);
 
     log.info(
       {

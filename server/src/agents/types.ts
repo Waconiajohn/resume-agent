@@ -458,6 +458,37 @@ export interface SectionSuggestion {
   };
 }
 
+// ─── Master Resume Evidence ──────────────────────────────────────────
+
+export interface MasterResumeEvidenceItem {
+  text: string;
+  source: 'crafted' | 'upgraded' | 'interview';
+  category?: string;
+  source_session_id: string;
+  created_at: string;
+}
+
+/** Structured master resume data loaded from DB for pipeline injection. */
+export interface MasterResumeData {
+  id: string;
+  summary: string;
+  experience: Array<{
+    company: string;
+    title: string;
+    start_date: string;
+    end_date: string;
+    location: string;
+    bullets: Array<{ text: string; source: string }>;
+  }>;
+  skills: Record<string, string[]>;
+  education: Array<{ institution: string; degree: string; field: string; year: string }>;
+  certifications: Array<{ name: string; issuer: string; year: string }>;
+  evidence_items: MasterResumeEvidenceItem[];
+  contact_info?: Record<string, string>;
+  raw_text: string;
+  version: number;
+}
+
 // ─── Pipeline Orchestration ──────────────────────────────────────────
 
 export type PipelineStage =

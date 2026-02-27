@@ -7,7 +7,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { sseConnections } from './sessions.js';
 import { runPipeline } from '../agents/coordinator.js';
-import type { PipelineSSEEvent, PipelineStage } from '../agents/types.js';
+import type { PipelineSSEEvent, PipelineStage, MasterResumeData } from '../agents/types.js';
 import logger, { createSessionLogger } from '../lib/logger.js';
 import { sleep } from '../lib/sleep.js';
 import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
@@ -1087,7 +1087,7 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // Verify session belongs to user
   const { data: session, error } = await supabaseAdmin
     .from('coach_sessions')
-    .select('id, user_id, status, pipeline_status, updated_at')
+    .select('id, user_id, status, pipeline_status, updated_at, master_resume_id')
     .eq('id', session_id)
     .eq('user_id', user.id)
     .single();
@@ -1672,6 +1672,29 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   }, HEARTBEAT_MS);
   heartbeatTimer.unref();
 
+  // Load master resume if the session has one linked
+  let masterResumeId: string | undefined;
+  let masterResume: MasterResumeData | undefined;
+  const sessionRecord = session as Record<string, unknown>;
+  if (typeof sessionRecord.master_resume_id === 'string' && sessionRecord.master_resume_id) {
+    masterResumeId = sessionRecord.master_resume_id;
+    try {
+      const { data: mrData } = await supabaseAdmin
+        .from('master_resumes')
+        .select('id, summary, experience, skills, education, certifications, evidence_items, contact_info, raw_text, version')
+        .eq('id', masterResumeId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (mrData) {
+        masterResume = mrData as unknown as MasterResumeData;
+        log.info({ master_resume_id: masterResumeId, version: masterResume.version }, 'Master resume loaded for pipeline');
+      }
+    } catch (err) {
+      log.warn({ error: err instanceof Error ? err.message : String(err), master_resume_id: masterResumeId }, 'Failed to load master resume — continuing without it');
+    }
+  }
+
   runPipeline({
     session_id,
     user_id: user.id,
@@ -1682,6 +1705,8 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     minimum_evidence_target,
     resume_priority,
     seniority_delta,
+    master_resume_id: masterResumeId,
+    master_resume: masterResume,
     emit,
     waitForUser,
   }).then(async (state) => {

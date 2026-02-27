@@ -1,5 +1,49 @@
 # Changelog — Resume Agent
 
+## 2026-02-27 — Session: Master Resume Persistent Evidence
+
+**Sprint:** 3 | **Stories:** 1-5 (all complete)
+**Summary:** Added persistent evidence accumulation to the Master Resume so repeat users benefit from prior pipeline sessions. The Strategist sees accumulated evidence and skips redundant interview questions.
+
+### Changes Made
+
+#### Story 1: Database Migration + Types
+- `supabase/migrations/20260227180000_add_evidence_items_to_master_resumes.sql` — Added `evidence_items JSONB DEFAULT '[]'` column to `master_resumes` table; updated `create_master_resume_atomic` RPC to accept `p_evidence_items` parameter (11th param)
+- `server/src/agents/types.ts` — Added `MasterResumeEvidenceItem` and `MasterResumeData` interfaces
+- `app/src/types/resume.ts` — Added `MasterResumeEvidenceItem` interface and `evidence_items` field to `MasterResume`
+
+#### Story 2: Auto-Save on Pipeline Completion
+- `server/src/agents/master-resume-merge.ts` — New file: pure `mergeMasterResume()` function (no external deps, fully unit-testable). Handles role matching by company+title, bullet dedup, skill union, education/cert dedup, evidence item dedup
+- `server/src/agents/coordinator.ts` — Added `extractEvidenceItems()` (extracts crafted bullets + interview answers), `saveMasterResume()` (loads existing, merges or creates new via RPC). Called after `persistSession()` in pipeline completion flow. Added `master_resume_id` and `master_resume` to `PipelineConfig`
+
+#### Story 3: Load Master Resume at Pipeline Start
+- `server/src/routes/pipeline.ts` — Added `master_resume_id` to session query; loads full master resume from DB when session has one linked; passes `master_resume_id` and `master_resume` to `runPipeline()`
+
+#### Story 4: Inject into Strategist Context
+- `server/src/agents/coordinator.ts` — `buildStrategistMessage()` now appends a "MASTER RESUME — ACCUMULATED EVIDENCE" section when `config.master_resume` exists, including experience entries with all bullets, evidence items by source, and skills inventory
+- `server/src/agents/strategist/prompts.ts` — Added "Master Resume — Accumulated Evidence" guidance section: review evidence before designing questions, skip questions where strong evidence exists, focus on genuine gaps, 0-3 questions for repeat users with rich master resumes
+
+#### Story 5: Verification
+- `server/src/__tests__/master-resume-merge.test.ts` — New test file: 8 unit tests for `mergeMasterResume()` covering bullet dedup, role matching, evidence dedup, case-insensitive skills, first-time save, education/cert dedup, contact info, and case-insensitive role matching
+
+### Decisions Made
+- Extracted `mergeMasterResume()` into its own module (`master-resume-merge.ts`) to avoid Supabase import side-effects in unit tests
+- Evidence extraction is code-only (zero LLM calls): bullets parsed from section content, interview answers from transcript
+- Merge strategy uses exact text dedup (case-insensitive) — simple and reliable without LLM
+- Auto-save runs after `persistSession()` and is non-critical (wrapped in try/catch, failure logged but doesn't block)
+
+### Known Issues
+- 2 pre-existing test failures in `agents-gap-analyst.test.ts` remain (unrelated)
+- Evidence items grow unbounded — no pruning strategy yet (backlog item)
+- Master resume viewer/editor UI not yet built (backlog)
+
+### Next Steps
+- Run full E2E pipeline with repeat user to validate reduced interview time
+- Build master resume viewer page for users to browse/manage evidence
+- Consider evidence quality scoring for smarter prioritization
+
+---
+
 ## 2026-02-27 — Session: Interview Phase Optimization
 
 **Sprint:** 2 | **Stories:** 1-6 (all complete)
