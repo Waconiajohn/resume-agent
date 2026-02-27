@@ -33,6 +33,12 @@ export interface MergedMasterResume {
   contact_info?: Record<string, string>;
 }
 
+/** Maximum evidence items stored per master resume. */
+const EVIDENCE_CAP = 200;
+
+/** Safely coerce unknown values to string (guards against null/undefined from DB). */
+const safeStr = (s: unknown): string => (typeof s === 'string' ? s : '');
+
 /**
  * Pure merge function: combine existing master resume with new pipeline output.
  * No LLM calls — pure code deduplication.
@@ -46,15 +52,19 @@ export function mergeMasterResume(
   const summary = newResume.summary || existing.summary;
 
   // ── Experience: match by company+title, merge bullets ──
-  const mergedExperience = [...existing.experience];
+  // Deep-clone existing roles to prevent caller mutation
+  const mergedExperience = existing.experience.map(role => ({
+    ...role,
+    bullets: [...role.bullets.map(b => ({ ...b }))],
+  }));
   const existingIndex = new Map<string, number>();
   for (let i = 0; i < mergedExperience.length; i++) {
-    const key = `${mergedExperience[i].company.trim().toLowerCase()}|${mergedExperience[i].title.trim().toLowerCase()}`;
+    const key = `${safeStr(mergedExperience[i].company).trim().toLowerCase()}|${safeStr(mergedExperience[i].title).trim().toLowerCase()}`;
     existingIndex.set(key, i);
   }
 
   for (const newRole of newResume.experience) {
-    const key = `${newRole.company.trim().toLowerCase()}|${newRole.title.trim().toLowerCase()}`;
+    const key = `${safeStr(newRole.company).trim().toLowerCase()}|${safeStr(newRole.title).trim().toLowerCase()}`;
     const idx = existingIndex.get(key);
 
     if (idx !== undefined) {
@@ -87,11 +97,18 @@ export function mergeMasterResume(
   }
 
   // ── Skills: union (case-insensitive dedup) ──
-  const mergedSkills: Record<string, string[]> = { ...existing.skills };
+  const mergedSkills: Record<string, string[]> = {};
+  // Deep-clone existing skill arrays to prevent caller mutation
+  for (const [cat, skills] of Object.entries(existing.skills)) {
+    if (!safeStr(cat).trim()) continue;
+    mergedSkills[cat] = [...skills];
+  }
   for (const [category, skillList] of Object.entries(newResume.skills)) {
-    const existingSkills = mergedSkills[category] ?? [];
+    if (!safeStr(category).trim()) continue;
+    const existingSkills = [...(mergedSkills[category] ?? [])];
     const lowerSet = new Set(existingSkills.map(s => s.toLowerCase()));
     for (const skill of skillList) {
+      if (!skill.trim()) continue;
       if (!lowerSet.has(skill.toLowerCase())) {
         existingSkills.push(skill);
         lowerSet.add(skill.toLowerCase());
@@ -103,10 +120,10 @@ export function mergeMasterResume(
   // ── Education: keep existing, append new entries ──
   const mergedEducation = [...existing.education];
   const eduKeys = new Set(
-    mergedEducation.map(e => `${e.institution.trim().toLowerCase()}|${e.degree.trim().toLowerCase()}`),
+    mergedEducation.map(e => `${safeStr(e.institution).trim().toLowerCase()}|${safeStr(e.degree).trim().toLowerCase()}`),
   );
   for (const edu of newResume.education) {
-    const key = `${edu.institution.trim().toLowerCase()}|${edu.degree.trim().toLowerCase()}`;
+    const key = `${safeStr(edu.institution).trim().toLowerCase()}|${safeStr(edu.degree).trim().toLowerCase()}`;
     if (!eduKeys.has(key)) {
       mergedEducation.push(edu);
       eduKeys.add(key);
@@ -116,29 +133,35 @@ export function mergeMasterResume(
   // ── Certifications: keep existing, append new entries ──
   const mergedCertifications = [...existing.certifications];
   const certKeys = new Set(
-    mergedCertifications.map(c => c.name.trim().toLowerCase()),
+    mergedCertifications.map(c => safeStr(c.name).trim().toLowerCase()),
   );
   for (const cert of newResume.certifications) {
-    if (!certKeys.has(cert.name.trim().toLowerCase())) {
+    if (!certKeys.has(safeStr(cert.name).trim().toLowerCase())) {
       mergedCertifications.push(cert);
-      certKeys.add(cert.name.trim().toLowerCase());
+      certKeys.add(safeStr(cert.name).trim().toLowerCase());
     }
   }
 
-  // ── Evidence items: append new, dedup by exact text ──
-  const mergedEvidence = [...existing.evidence_items];
+  // ── Evidence items: append new, dedup by exact text, enforce cap ──
+  const mergedEvidence = [...(Array.isArray(existing.evidence_items) ? existing.evidence_items : [])];
   const existingEvidenceTexts = new Set(
-    mergedEvidence.map(e => e.text.trim().toLowerCase()),
+    mergedEvidence.map(e => safeStr(e.text).trim().toLowerCase()),
   );
   for (const item of newEvidenceItems) {
-    if (!existingEvidenceTexts.has(item.text.trim().toLowerCase())) {
+    const text = safeStr(item.text).trim();
+    if (!text || text.length <= 10) continue;
+    if (!existingEvidenceTexts.has(text.toLowerCase())) {
       mergedEvidence.push(item);
-      existingEvidenceTexts.add(item.text.trim().toLowerCase());
+      existingEvidenceTexts.add(text.toLowerCase());
     }
   }
+  // Enforce cap — keep newest items (items at end are newest)
+  const cappedEvidence = mergedEvidence.length > EVIDENCE_CAP
+    ? mergedEvidence.slice(mergedEvidence.length - EVIDENCE_CAP)
+    : mergedEvidence;
 
-  // ── Contact info: latest wins ──
-  const contactInfo = newResume.contact_info ?? existing.contact_info;
+  // ── Contact info: merge fields (existing as base, new overwrites per-field) ──
+  const contactInfo = { ...(existing.contact_info ?? {}), ...(newResume.contact_info ?? {}) };
 
   return {
     summary,
@@ -146,7 +169,7 @@ export function mergeMasterResume(
     skills: mergedSkills,
     education: mergedEducation,
     certifications: mergedCertifications,
-    evidence_items: mergedEvidence,
+    evidence_items: cappedEvidence,
     raw_text: existing.raw_text,
     contact_info: contactInfo,
   };

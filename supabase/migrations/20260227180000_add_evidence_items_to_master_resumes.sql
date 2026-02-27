@@ -1,9 +1,15 @@
+BEGIN;
+
 -- Add evidence_items column to master_resumes for persistent evidence accumulation.
 -- Each item tracks crafted bullets, upgraded bullets, and interview answers
 -- across pipeline sessions, enabling the Strategist to skip redundant questions.
 
 ALTER TABLE master_resumes
   ADD COLUMN IF NOT EXISTS evidence_items jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- Drop the old 10-param overload to prevent "function is not unique" errors.
+-- PostgreSQL treats functions with different param counts as separate overloads.
+DROP FUNCTION IF EXISTS create_master_resume_atomic(uuid, text, text, jsonb, jsonb, jsonb, jsonb, jsonb, uuid, boolean);
 
 -- Update the atomic RPC to accept and persist evidence_items.
 CREATE OR REPLACE FUNCTION create_master_resume_atomic(
@@ -100,3 +106,5 @@ REVOKE ALL ON FUNCTION create_master_resume_atomic(
 GRANT EXECUTE ON FUNCTION create_master_resume_atomic(
   uuid, text, text, jsonb, jsonb, jsonb, jsonb, jsonb, uuid, boolean, jsonb
 ) TO authenticated, service_role;
+
+COMMIT;

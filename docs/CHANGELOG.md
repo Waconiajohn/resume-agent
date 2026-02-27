@@ -1,5 +1,66 @@
 # Changelog — Resume Agent
 
+## 2026-02-27 — Session: Sprint 3 Audit Fixes
+
+**Sprint:** 3 | **Stories:** Audit fix stories 1-12
+**Summary:** Fixed 18 issues found in post-implementation audit of master resume evidence accumulation: shallow-copy mutations, INSERT-only merge creating unbounded rows, unguarded Supabase casts, missing error handling, unbounded context injection, and edge-case gaps.
+
+### Changes Made
+
+#### Story 1: Fix Shallow Copy Mutation in mergeMasterResume [Critical]
+- `server/src/agents/master-resume-merge.ts` — Deep-clone existing roles (map + spread bullets) instead of shallow `[...array]` to prevent caller mutation. Deep-clone skill arrays before pushing.
+
+#### Story 2: Fix Supabase Error Handling in saveMasterResume [Critical]
+- `server/src/agents/coordinator.ts` — Destructure `{ data, error: loadError }` on master resume load. If error is not PGRST116 (row not found), log and return early to avoid duplicate INSERT.
+
+#### Story 3: Use UPDATE for Merge Case Instead of INSERT [Critical]
+- `server/src/agents/coordinator.ts` — Replace RPC call in merge branch with `.update()` on existing row. Also updates `raw_text` with current resume text. RPC kept only for "create new" branch.
+
+#### Story 4: Fix Migration — Drop Old RPC Overload + Transaction [Critical + Medium]
+- `supabase/migrations/20260227180000_...sql` — Wrapped in BEGIN/COMMIT. Added DROP FUNCTION for old 10-param overload before CREATE OR REPLACE of 11-param version.
+
+#### Story 5: Add Runtime Guards for DB Casts [High]
+- `server/src/routes/pipeline.ts` — Normalize `evidence_items` to `[]` after cast in master resume load.
+- `server/src/agents/coordinator.ts` — Same normalization in saveMasterResume load.
+- `server/src/agents/master-resume-merge.ts` — Added `safeStr()` helper for null-safe string coercion on all key-generation lines.
+
+#### Story 6: Add Size Caps [High + Low]
+- `server/src/agents/coordinator.ts` — `MAX_BULLETS_PER_ROLE=15`, `MAX_EVIDENCE_ITEMS_INJECTED=50` in buildStrategistMessage. Caps bullets per role and evidence items per source category.
+- `server/src/agents/master-resume-merge.ts` — `EVIDENCE_CAP=200` in mergeMasterResume. Keeps newest items when over cap.
+
+#### Story 7: Add evidence_items to POST /resumes Route [High]
+- `server/src/routes/resumes.ts` — Added `evidence_items` to `createResumeSchema` (zod array of evidence objects, max 500). Added `p_evidence_items` to RPC call.
+
+#### Story 8: Fix Evidence Extraction for Prose Content [Medium]
+- `server/src/agents/coordinator.ts` — `extractEvidenceItems` now captures summary/selected_accomplishments as single prose evidence items instead of only bullet-marked lines. Interview answers trimmed before length check.
+
+#### Story 9: Fix Merge Edge Cases — Skills + Contact Info [Medium]
+- `server/src/agents/master-resume-merge.ts` — Skip empty category names and empty skill strings. Contact info now merges fields (existing as base, new overwrites per-field) instead of winner-take-all.
+
+#### Story 10: Fix DB Query Error in pipeline.ts [Medium]
+- `server/src/routes/pipeline.ts` — Destructure `{ data: mrData, error: mrError }` and log error if present. Only set masterResume when no error.
+
+#### Story 11: Adjust Strategist Prompt Guidance [Medium]
+- `server/src/agents/strategist/prompts.ts` — Changed "0-3 questions" to "1-5 questions". Added "Always ask at least 1 question to capture JD-specific context."
+
+#### Story 12: Add Missing Test Scenarios [Tests]
+- `server/src/__tests__/master-resume-merge.test.ts` — 7 new tests: mutation safety, partial contact merge, empty skills, empty category names, whitespace evidence, evidence cap at 200, null-safe fields. Total: 15 tests passing.
+
+### Decisions Made
+- UPDATE instead of INSERT for merge case prevents unbounded row accumulation
+- Evidence cap of 200 with "keep newest" strategy balances completeness vs. storage
+- Context injection caps (15 bullets/role, 50 evidence items) prevent prompt bloat
+- `safeStr()` helper centralizes null-safe string coercion for DB data
+
+### Known Issues
+- 2 pre-existing test failures in `agents-gap-analyst.test.ts` remain (unrelated)
+
+### Next Steps
+- Run full E2E pipeline with repeat user to validate merge-in-place behavior
+- Monitor evidence accumulation growth in production
+
+---
+
 ## 2026-02-27 — Session: Master Resume Persistent Evidence
 
 **Sprint:** 3 | **Stories:** 1-5 (all complete)

@@ -22,6 +22,13 @@ const createResumeSchema = z.object({
   }).optional(),
   set_as_default: z.boolean().optional(),
   source_session_id: z.string().uuid().optional(),
+  evidence_items: z.array(z.object({
+    text: z.string(),
+    source: z.enum(['crafted', 'upgraded', 'interview']),
+    category: z.string().optional(),
+    source_session_id: z.string(),
+    created_at: z.string(),
+  })).max(500).optional(),
 });
 
 type DefaultResumeRpcResult = {
@@ -198,6 +205,7 @@ resumes.post('/', rateLimitMiddleware(20, 60_000), async (c) => {
     contact_info,
     set_as_default,
     source_session_id,
+    evidence_items,
   } = parsed.data;
 
   const { data, error } = await supabaseAdmin
@@ -212,6 +220,7 @@ resumes.post('/', rateLimitMiddleware(20, 60_000), async (c) => {
       p_contact_info: contact_info ?? {},
       p_source_session_id: source_session_id ?? null,
       p_set_as_default: Boolean(set_as_default),
+      p_evidence_items: evidence_items ?? [],
     });
 
   if (error) {

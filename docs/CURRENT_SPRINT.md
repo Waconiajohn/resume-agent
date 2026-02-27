@@ -9,8 +9,19 @@
 4. [x] Story 4: Inject Master Resume into Strategist Context — [status: done]
 5. [x] Story 5: TypeScript Compilation + Unit Tests — [status: done]
 
-## Implementation Order
-Story 1 (migration + types) → Story 2 (auto-save/merge) → Story 3 (load at start) → Story 4 (inject into Strategist) → Story 5 (verification)
+## Audit Fix Stories (post-implementation)
+6. [x] Story 1 (Audit): Fix shallow copy mutation in mergeMasterResume — [status: done]
+7. [x] Story 2 (Audit): Fix Supabase error handling in saveMasterResume — [status: done]
+8. [x] Story 3 (Audit): Use UPDATE for merge case instead of INSERT — [status: done]
+9. [x] Story 4 (Audit): Fix migration — drop old RPC overload + transaction — [status: done]
+10. [x] Story 5 (Audit): Add runtime guards for DB casts — [status: done]
+11. [x] Story 6 (Audit): Add size caps on injection + evidence storage — [status: done]
+12. [x] Story 7 (Audit): Add evidence_items to POST /resumes — [status: done]
+13. [x] Story 8 (Audit): Fix evidence extraction for prose content — [status: done]
+14. [x] Story 9 (Audit): Fix merge edge cases — skills + contact info — [status: done]
+15. [x] Story 10 (Audit): Fix DB query error in pipeline.ts — [status: done]
+16. [x] Story 11 (Audit): Adjust strategist prompt guidance — [status: done]
+17. [x] Story 12 (Audit): Add missing test scenarios — [status: done]
 
 ## Out of Scope (Explicitly)
 - Master Resume Viewer Page (dedicated UI to browse/delete evidence items)

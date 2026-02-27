@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeMasterResume } from '../agents/master-resume-merge.js';
+import { mergeMasterResume, type MergeableResumePayload } from '../agents/master-resume-merge.js';
 import type { MasterResumeData, MasterResumeEvidenceItem } from '../agents/types.js';
 
 function makeExisting(overrides?: Partial<MasterResumeData>): MasterResumeData {
@@ -31,14 +31,14 @@ function makeExisting(overrides?: Partial<MasterResumeData>): MasterResumeData {
         created_at: '2026-02-01T00:00:00Z',
       },
     ],
-    contact_info: { name: 'John Doe', email: 'john@example.com' },
+    contact_info: { name: 'John Doe', email: 'john@example.com', phone: '555-0000', linkedin: 'linkedin.com/in/johndoe' },
     raw_text: 'John Doe resume raw text...',
     version: 2,
     ...overrides,
   };
 }
 
-function makeNewResume() {
+function makeNewResume(): MergeableResumePayload & { ats_score?: number } {
   return {
     summary: 'Senior engineering executive with P&L ownership.',
     experience: [
@@ -160,7 +160,7 @@ describe('mergeMasterResume', () => {
     });
     const newResume = makeNewResume();
     const evidence: MasterResumeEvidenceItem[] = [
-      { text: 'New evidence', source: 'crafted', source_session_id: 's1', created_at: '2026-02-27T00:00:00Z' },
+      { text: 'New evidence item for testing', source: 'crafted', source_session_id: 's1', created_at: '2026-02-27T00:00:00Z' },
     ];
 
     const result = mergeMasterResume(existing, newResume, evidence);
@@ -185,13 +185,19 @@ describe('mergeMasterResume', () => {
     expect(result.certifications.map(c => c.name)).toContain('AWS Solutions Architect');
   });
 
-  it('uses latest contact info', () => {
+  it('merges contact info fields (existing as base)', () => {
     const existing = makeExisting();
     const newResume = makeNewResume();
 
     const result = mergeMasterResume(existing, newResume, []);
 
-    expect(result.contact_info).toEqual({ name: 'John Doe', email: 'john@newmail.com', phone: '555-1234' });
+    // New values should overwrite, but existing-only fields (linkedin) should be preserved
+    expect(result.contact_info).toEqual({
+      name: 'John Doe',
+      email: 'john@newmail.com',
+      phone: '555-1234',
+      linkedin: 'linkedin.com/in/johndoe',
+    });
   });
 
   it('matches roles case-insensitively', () => {
@@ -208,5 +214,117 @@ describe('mergeMasterResume', () => {
     const acmeRole = result.experience.find(r => r.company === 'Acme Corp');
     expect(acmeRole).toBeDefined();
     expect(acmeRole!.bullets).toHaveLength(3);
+  });
+
+  // ── New test scenarios (Story 12) ──
+
+  it('does not mutate the existing input (mutation safety)', () => {
+    const existing = makeExisting();
+    const originalBulletCount = existing.experience[0].bullets.length;
+    const originalSkillCount = existing.skills['Leadership'].length;
+    const newResume = makeNewResume();
+
+    mergeMasterResume(existing, newResume, []);
+
+    // Caller's existing object must remain unmodified
+    expect(existing.experience[0].bullets).toHaveLength(originalBulletCount);
+    expect(existing.skills['Leadership']).toHaveLength(originalSkillCount);
+  });
+
+  it('preserves existing contact_info fields when new has partial data', () => {
+    const existing = makeExisting();
+    const newResume = makeNewResume();
+    // New resume only has email, no phone/linkedin
+    newResume.contact_info = { email: 'new@example.com' };
+
+    const result = mergeMasterResume(existing, newResume, []);
+
+    expect(result.contact_info?.email).toBe('new@example.com');
+    expect(result.contact_info?.phone).toBe('555-0000');
+    expect(result.contact_info?.linkedin).toBe('linkedin.com/in/johndoe');
+    expect(result.contact_info?.name).toBe('John Doe');
+  });
+
+  it('handles empty skills array without crashing or polluting', () => {
+    const existing = makeExisting({ skills: { 'Technical': [] } });
+    const newResume = makeNewResume();
+    newResume.skills = { 'Technical': ['AWS'], 'Leadership': ['Agile'] };
+
+    const result = mergeMasterResume(existing, newResume, []);
+
+    expect(result.skills['Technical']).toEqual(['AWS']);
+    expect(result.skills['Leadership']).toEqual(['Agile']);
+  });
+
+  it('skips empty category names in skills', () => {
+    const existing = makeExisting({ skills: {} });
+    const newResume = makeNewResume();
+    newResume.skills = { '': ['orphan-skill'], 'Technical': ['AWS'] };
+
+    const result = mergeMasterResume(existing, newResume, []);
+
+    expect(result.skills['']).toBeUndefined();
+    expect(result.skills['Technical']).toEqual(['AWS']);
+  });
+
+  it('skips whitespace-only evidence items', () => {
+    const existing = makeExisting({ evidence_items: [] });
+    const newResume = makeNewResume();
+    const newEvidence: MasterResumeEvidenceItem[] = [
+      { text: '   ', source: 'crafted', source_session_id: 's1', created_at: '2026-02-27T00:00:00Z' },
+      { text: 'short', source: 'crafted', source_session_id: 's1', created_at: '2026-02-27T00:00:00Z' },
+      { text: 'This is a real evidence item that passes the length check', source: 'crafted', source_session_id: 's1', created_at: '2026-02-27T00:00:00Z' },
+    ];
+
+    const result = mergeMasterResume(existing, newResume, newEvidence);
+
+    // Whitespace-only and too-short items should be skipped
+    expect(result.evidence_items).toHaveLength(1);
+    expect(result.evidence_items[0].text).toContain('real evidence item');
+  });
+
+  it('enforces evidence cap at 200 items', () => {
+    const existingEvidence: MasterResumeEvidenceItem[] = Array.from({ length: 190 }, (_, i) => ({
+      text: `Existing evidence item number ${i + 1} with enough length`,
+      source: 'crafted' as const,
+      source_session_id: 'old-session',
+      created_at: '2026-01-01T00:00:00Z',
+    }));
+    const existing = makeExisting({ evidence_items: existingEvidence });
+    const newResume = makeNewResume();
+    const newEvidence: MasterResumeEvidenceItem[] = Array.from({ length: 30 }, (_, i) => ({
+      text: `Brand new evidence item number ${i + 1} with enough length`,
+      source: 'interview' as const,
+      source_session_id: 'new-session',
+      created_at: '2026-02-27T00:00:00Z',
+    }));
+
+    const result = mergeMasterResume(existing, newResume, newEvidence);
+
+    // 190 existing + 30 new = 220, capped to 200 (keeping newest = last 200)
+    expect(result.evidence_items).toHaveLength(200);
+    // Newest items (the new evidence) should all be present
+    const newTexts = result.evidence_items.filter(e => e.source_session_id === 'new-session');
+    expect(newTexts).toHaveLength(30);
+  });
+
+  it('handles null-like company/title values without crashing', () => {
+    const existing = makeExisting({
+      experience: [
+        {
+          company: null as unknown as string,
+          title: undefined as unknown as string,
+          start_date: '2020',
+          end_date: 'Present',
+          location: '',
+          bullets: [{ text: 'Some bullet', source: 'resume' }],
+        },
+      ],
+    });
+    const newResume = makeNewResume();
+
+    // Should not throw
+    const result = mergeMasterResume(existing, newResume, []);
+    expect(result.experience.length).toBeGreaterThanOrEqual(2);
   });
 });

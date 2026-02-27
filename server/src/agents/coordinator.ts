@@ -158,7 +158,9 @@ function buildStrategistMessage(config: PipelineConfig): string {
   if (config.minimum_evidence_target != null)
     prefs.push(`Minimum evidence target: ${config.minimum_evidence_target}`);
 
-  // Build master resume section if available
+  // Build master resume section if available (with size caps to bound context)
+  const MAX_BULLETS_PER_ROLE = 15;
+  const MAX_EVIDENCE_ITEMS_INJECTED = 50;
   const masterResumeSection: string[] = [];
   if (config.master_resume) {
     const mr = config.master_resume;
@@ -166,37 +168,44 @@ function buildStrategistMessage(config: PipelineConfig): string {
     masterResumeSection.push('This candidate has completed previous resume sessions. The following evidence has been accumulated:');
     masterResumeSection.push('');
 
-    // Experience with all bullets (original + crafted)
+    // Experience with capped bullets (original + crafted)
     if (mr.experience.length > 0) {
       masterResumeSection.push('### Experience');
       for (const role of mr.experience) {
         masterResumeSection.push(`**${role.title}** at ${role.company} (${role.start_date} – ${role.end_date})`);
-        for (const bullet of role.bullets) {
+        const cappedBullets = role.bullets.slice(0, MAX_BULLETS_PER_ROLE);
+        for (const bullet of cappedBullets) {
           masterResumeSection.push(`  - [${bullet.source}] ${bullet.text}`);
+        }
+        if (role.bullets.length > MAX_BULLETS_PER_ROLE) {
+          masterResumeSection.push(`  - ... and ${role.bullets.length - MAX_BULLETS_PER_ROLE} more bullets`);
         }
         masterResumeSection.push('');
       }
     }
 
     // Evidence items (crafted bullets, interview answers from prior sessions)
-    if (mr.evidence_items.length > 0) {
+    const evidenceItems = Array.isArray(mr.evidence_items) ? mr.evidence_items : [];
+    if (evidenceItems.length > 0) {
       masterResumeSection.push('### Accumulated Evidence Items');
       const bySource = { crafted: [] as string[], upgraded: [] as string[], interview: [] as string[] };
-      for (const item of mr.evidence_items) {
+      for (const item of evidenceItems) {
         const list = bySource[item.source] ?? bySource.crafted;
         list.push(`  - ${item.category ? `[${item.category}] ` : ''}${item.text}`);
       }
-      if (bySource.crafted.length > 0) {
-        masterResumeSection.push('**Crafted bullets from prior sessions:**');
-        masterResumeSection.push(...bySource.crafted);
-      }
-      if (bySource.upgraded.length > 0) {
-        masterResumeSection.push('**Upgraded bullets from prior sessions:**');
-        masterResumeSection.push(...bySource.upgraded);
-      }
-      if (bySource.interview.length > 0) {
-        masterResumeSection.push('**Interview answers from prior sessions:**');
-        masterResumeSection.push(...bySource.interview);
+      let injectedCount = 0;
+      for (const [label, sourceKey] of [['Crafted bullets from prior sessions', 'crafted'], ['Upgraded bullets from prior sessions', 'upgraded'], ['Interview answers from prior sessions', 'interview']] as const) {
+        const list = bySource[sourceKey];
+        if (list.length > 0) {
+          const remaining = MAX_EVIDENCE_ITEMS_INJECTED - injectedCount;
+          if (remaining <= 0) break;
+          masterResumeSection.push(`**${label}:**`);
+          masterResumeSection.push(...list.slice(0, remaining));
+          injectedCount += Math.min(list.length, remaining);
+          if (list.length > remaining) {
+            masterResumeSection.push(`  - ... and ${list.length - remaining} more items`);
+          }
+        }
       }
       masterResumeSection.push('');
     }
@@ -615,6 +624,17 @@ function extractEvidenceItems(
   const sections = state.sections ?? {};
   for (const [key, section] of Object.entries(sections)) {
     if (!key.startsWith('experience_role_') && key !== 'summary' && key !== 'selected_accomplishments') continue;
+
+    // Prose sections (summary, accomplishments): capture full content as single evidence item
+    if (key === 'summary' || key === 'selected_accomplishments') {
+      const text = section.content.trim();
+      if (text.length > 10) {
+        items.push({ text, source: 'crafted', category: key, source_session_id: sessionId, created_at: now });
+      }
+      continue;
+    }
+
+    // Bullet-based sections: extract individual bullets
     const lines = section.content.split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
@@ -636,9 +656,10 @@ function extractEvidenceItems(
   // Interview transcript answers
   const transcript = state.interview_transcript ?? [];
   for (const entry of transcript) {
-    if (entry.answer && entry.answer.length > 10) {
+    const answerText = entry.answer?.trim() ?? '';
+    if (answerText.length > 10) {
       items.push({
-        text: entry.answer,
+        text: answerText,
         source: 'interview',
         category: entry.category,
         source_session_id: sessionId,
@@ -669,38 +690,51 @@ async function saveMasterResume(
     // Load existing master resume if one was used for this session
     let existing: MasterResumeData | null = null;
     if (config.master_resume_id) {
-      const { data } = await supabaseAdmin
+      const { data, error: loadError } = await supabaseAdmin
         .from('master_resumes')
         .select('id, summary, experience, skills, education, certifications, evidence_items, contact_info, raw_text, version')
         .eq('id', config.master_resume_id)
         .eq('user_id', state.user_id)
         .single();
 
+      if (loadError && loadError.code !== 'PGRST116') {
+        // Real DB error (not "row not found") — log and bail to avoid duplicate INSERT
+        log.warn({ error: loadError.message, code: loadError.code, master_resume_id: config.master_resume_id }, 'saveMasterResume: failed to load existing — skipping save');
+        return;
+      }
+
       if (data) {
-        existing = data as unknown as MasterResumeData;
+        const mrData = data as unknown as MasterResumeData;
+        existing = {
+          ...mrData,
+          evidence_items: Array.isArray(mrData.evidence_items) ? mrData.evidence_items : [],
+        };
       }
     }
 
     if (existing) {
-      // Merge into existing
+      // Merge into existing and UPDATE in-place (not INSERT)
       const merged = mergeMasterResume(existing, finalResume, evidenceItems);
 
-      const { error } = await supabaseAdmin.rpc('create_master_resume_atomic', {
-        p_user_id: state.user_id,
-        p_raw_text: merged.raw_text,
-        p_summary: merged.summary,
-        p_experience: merged.experience,
-        p_skills: merged.skills,
-        p_education: merged.education,
-        p_certifications: merged.certifications,
-        p_contact_info: merged.contact_info ?? {},
-        p_source_session_id: state.session_id,
-        p_set_as_default: true,
-        p_evidence_items: merged.evidence_items,
-      });
+      const { error } = await supabaseAdmin
+        .from('master_resumes')
+        .update({
+          summary: merged.summary,
+          experience: merged.experience as unknown as Record<string, unknown>[],
+          skills: merged.skills,
+          education: merged.education as unknown as Record<string, unknown>[],
+          certifications: merged.certifications as unknown as Record<string, unknown>[],
+          contact_info: merged.contact_info ?? {},
+          evidence_items: merged.evidence_items as unknown as Record<string, unknown>[],
+          raw_text: config.raw_resume_text || merged.raw_text,
+          source_session_id: state.session_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', config.master_resume_id)
+        .eq('user_id', state.user_id);
 
       if (error) {
-        log.warn({ error: error.message }, 'saveMasterResume: merge RPC failed');
+        log.warn({ error: error.message }, 'saveMasterResume: merge UPDATE failed');
       } else {
         log.info({ master_resume_id: config.master_resume_id, evidence_count: merged.evidence_items.length }, 'Master resume merged with new evidence');
       }

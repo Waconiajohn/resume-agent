@@ -1679,15 +1679,21 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   if (typeof sessionRecord.master_resume_id === 'string' && sessionRecord.master_resume_id) {
     masterResumeId = sessionRecord.master_resume_id;
     try {
-      const { data: mrData } = await supabaseAdmin
+      const { data: mrData, error: mrError } = await supabaseAdmin
         .from('master_resumes')
         .select('id, summary, experience, skills, education, certifications, evidence_items, contact_info, raw_text, version')
         .eq('id', masterResumeId)
         .eq('user_id', user.id)
         .single();
 
-      if (mrData) {
-        masterResume = mrData as unknown as MasterResumeData;
+      if (mrError) {
+        log.warn({ error: mrError.message, code: mrError.code, master_resume_id: masterResumeId }, 'Failed to load master resume — continuing without it');
+      } else if (mrData) {
+        const raw = mrData as unknown as MasterResumeData;
+        masterResume = {
+          ...raw,
+          evidence_items: Array.isArray(raw.evidence_items) ? raw.evidence_items : [],
+        };
         log.info({ master_resume_id: masterResumeId, version: masterResume.version }, 'Master resume loaded for pipeline');
       }
     } catch (err) {
