@@ -1,5 +1,37 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session 7: Sprint 5 Completion (12/12 stories)
+**Sprint:** 5 | **Stories:** 1-12
+**Summary:** Post-audit hardening (6 bug fixes) + agent creative latitude (4 prompt/tool enhancements) + 34 new tests. Test count 556→590. TypeScript clean.
+
+### Bug Fixes (Stories 1-5)
+- `server/src/routes/pipeline.ts` — Story 1: Gate response idempotency via `responded_at` check
+- `server/src/routes/pipeline.ts` — Story 4: Heartbeat linked to `runningPipelines` session lock
+- `server/src/agents/craftsman/tools.ts` — Story 2: `filterDoNotIncludeTopics()` post-generation enforcement + export
+- `server/src/agents/coordinator.ts` — Story 3: `MAX_REVISION_ROUNDS = 3` cap with per-section tracking
+- `server/src/lib/json-repair.ts` — Story 5: Size guard moved to top of `repairJSON()` (before all processing)
+
+### Agent Creative Latitude (Stories 7-10)
+- `server/src/agents/strategist/prompts.ts` — Story 7: Coverage assessment, adaptive stopping, repeat-user question reduction
+- `server/src/agents/craftsman/prompts.ts` — Story 8: Section Ordering Authority with transparency requirement
+- `server/src/agents/producer/tools.ts` — Story 9: `request_content_revision` severity field (revision/rewrite)
+- `server/src/agents/producer/prompts.ts` — Story 9: Rewrite vs revision triage guidance
+- `server/src/agents/coordinator.ts` — Story 9: Routes rewrites as fresh `write_section` calls
+- `server/src/agents/runtime/agent-loop.ts` — Story 10: `extractDroppedMessageSummary()` for richer context compaction
+
+### Tests (Story 11)
+- `server/src/__tests__/sprint5-fixes.test.ts` — 34 new tests: idempotency (6), do_not_include (7), revision cap (4), heartbeat (4), JSON repair (6), producer validation (5+2)
+
+### Decisions Made
+- Story 6 required no code changes — all 3 LLM-backed Producer tools already follow consistent validation
+- Rewrite requests count against the same `MAX_REVISION_ROUNDS` cap as revisions (no separate budget)
+
+### Known Issues
+- E2E test expansion still deferred (repeat-user, blueprint-rejection flows)
+
+### Next Steps
+- Sprint 6 planning: E2E test expansion, potential new features from backlog
+
 ## 2026-02-28 — Session 6: Sprint 4 Completion (21/22 stories)
 **Sprint:** 4 | **Stories:** 1-9, 11-22 (all except Story 10 E2E)
 **Summary:** Completed Sprint 4 in full — 5 bug fixes, 248 new tests, 6 UX improvements, 5 platform prep stories. Test count 306→556. TypeScript clean on both server and app.

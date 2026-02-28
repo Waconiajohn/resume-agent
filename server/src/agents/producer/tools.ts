@@ -758,7 +758,7 @@ const verifyCrossSectionConsistency: ResumeAgentTool = {
 const requestContentRevision: ResumeAgentTool = {
   name: 'request_content_revision',
   description:
-    'Send a targeted revision request to the Craftsman agent for a specific content issue. The coordinator routes this message. Use this for content problems only — not formatting issues you can note directly.',
+    'Send a revision or rewrite request to the Craftsman agent for a specific content issue. The coordinator routes this message. Use this for content problems only — not formatting issues you can note directly. Set severity to "rewrite" when the section is fundamentally poor and needs a fresh start.',
   input_schema: {
     type: 'object',
     properties: {
@@ -774,6 +774,11 @@ const requestContentRevision: ResumeAgentTool = {
         type: 'string',
         description: 'Specific, actionable instruction for the Craftsman on what to change and how',
       },
+      severity: {
+        type: 'string',
+        enum: ['revision', 'rewrite'],
+        description: 'Use "revision" for targeted fixes (default). Use "rewrite" when the section is fundamentally poor and needs to be written from scratch.',
+      },
     },
     required: ['section', 'issue', 'instruction'],
   },
@@ -782,6 +787,7 @@ const requestContentRevision: ResumeAgentTool = {
     const section = safeStr(input.section);
     const issue = safeStr(input.issue);
     const instruction = safeStr(input.instruction);
+    const severity = safeStr(input.severity, 'revision') === 'rewrite' ? 'rewrite' : 'revision';
 
     // Approved sections are immutable — reject revision requests
     if (ctx.getState().approved_sections.includes(section)) {
@@ -796,19 +802,22 @@ const requestContentRevision: ResumeAgentTool = {
       to: 'craftsman',
       type: 'request',
       domain: 'resume',
-      payload: { section, issue, instruction },
+      payload: { section, issue, instruction, severity },
     });
 
     // Track revision requests in scratchpad
     const revisionRequests = (ctx.scratchpad.revision_requests as Array<Record<string, string>>) ?? [];
-    revisionRequests.push({ section, issue, instruction, requested_at: new Date().toISOString() });
+    revisionRequests.push({ section, issue, instruction, severity, requested_at: new Date().toISOString() });
     ctx.scratchpad.revision_requests = revisionRequests;
 
     return {
       acknowledged: true,
-      message: `Revision request sent to Craftsman for section "${section}": ${issue}`,
+      message: severity === 'rewrite'
+        ? `Full rewrite request sent to Craftsman for section "${section}": ${issue}`
+        : `Revision request sent to Craftsman for section "${section}": ${issue}`,
       section,
       instruction,
+      severity,
     };
   },
 };

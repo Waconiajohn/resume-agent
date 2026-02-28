@@ -225,9 +225,69 @@ export async function runAgentLoop<
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /**
+ * Extract key evidence from dropped conversation messages to build
+ * a richer compaction summary. Keeps the summary bounded (~500 tokens).
+ */
+function extractDroppedMessageSummary(dropped: ChatMessage[]): string {
+  const sections = new Set<string>();
+  const outcomes: string[] = [];
+
+  // Common section names to look for
+  const SECTION_NAMES = [
+    'summary', 'professional_summary', 'experience', 'skills',
+    'education', 'education_and_certifications', 'certifications',
+    'selected_accomplishments', 'header',
+  ];
+
+  const OUTCOME_PATTERNS = [
+    /(?:wrote|completed|approved|revised|presented)\s+(?:the\s+)?["']?(\w[\w_\s]*?)["']?\s+section/i,
+    /section[_\s]+(?:draft|revised|approved).*?["'](\w[\w_\s]*?)["']/i,
+    /self.review.*?score.*?(\d+)/i,
+  ];
+
+  for (const msg of dropped) {
+    const content = typeof msg.content === 'string' ? msg.content : '';
+    if (!content) continue;
+
+    // Detect section names mentioned
+    for (const name of SECTION_NAMES) {
+      if (content.toLowerCase().includes(name.replace(/_/g, ' ')) ||
+          content.toLowerCase().includes(name)) {
+        sections.add(name.replace(/_/g, ' '));
+      }
+    }
+
+    // Detect outcomes
+    for (const pattern of OUTCOME_PATTERNS) {
+      const match = content.match(pattern);
+      if (match) {
+        outcomes.push(match[0].slice(0, 80));
+      }
+    }
+  }
+
+  const parts: string[] = [];
+  if (sections.size > 0) {
+    parts.push(`Sections referenced: ${[...sections].join(', ')}.`);
+  }
+  if (outcomes.length > 0) {
+    // Deduplicate and limit to 5 outcomes
+    const unique = [...new Set(outcomes)].slice(0, 5);
+    parts.push(`Key outcomes: ${unique.join('; ')}.`);
+  }
+  if (parts.length === 0) {
+    parts.push('Their results are preserved in the scratchpad.');
+  }
+
+  // Bound to ~500 tokens (~2000 chars)
+  const result = parts.join(' ');
+  return result.length > 2000 ? result.slice(0, 2000) + '...' : result;
+}
+
+/**
  * Compact the conversation history to stay within context window limits.
  * Keeps the initial instruction (first message) and the most recent messages,
- * replacing the middle with a brief summary note.
+ * replacing the middle with a structured summary of what was dropped.
  */
 function compactConversationHistory(
   messages: ChatMessage[],
@@ -237,6 +297,7 @@ function compactConversationHistory(
 
   const initialMessage = messages[0]; // Initial user instruction (blueprint, evidence, etc.)
   const droppedCount = messages.length - 1 - KEEP_RECENT_MESSAGES;
+  const droppedMessages = messages.slice(1, messages.length - KEEP_RECENT_MESSAGES);
   const recentMessages = messages.slice(-KEEP_RECENT_MESSAGES);
 
   log.info(
@@ -244,10 +305,16 @@ function compactConversationHistory(
     'Compacting conversation history to prevent context overflow',
   );
 
-  // Build a summary marker so the LLM knows history was compacted
+  // Extract key evidence from dropped messages for a richer summary
+  const summaryParts = extractDroppedMessageSummary(droppedMessages);
+
   const summaryMessage: ChatMessage = {
     role: 'user',
-    content: `[System note: ${droppedCount} earlier messages (${Math.floor(droppedCount / 2)} tool rounds) were compacted to stay within context limits. Their results are preserved in the scratchpad. Continue with the remaining work based on your initial instructions and recent context.]`,
+    content: [
+      `[System note: ${droppedCount} earlier messages (${Math.floor(droppedCount / 2)} tool rounds) were compacted to stay within context limits.`,
+      summaryParts,
+      'Continue with the remaining work based on your initial instructions and recent context.]',
+    ].filter(Boolean).join('\n'),
   };
 
   // Ensure proper message alternation: if recent starts with user, we need an assistant between

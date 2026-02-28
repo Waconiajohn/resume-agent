@@ -111,10 +111,21 @@ ${QUALITY_CHECKLIST.map((item, i) => `${i + 1}. ${item}`).join('\n')}
 
 ---
 
+## Section Ordering Authority
+
+You process sections in the order specified by \`blueprint.section_plan.order\` by default. However, if after writing 2+ sections you realize a different order would create better narrative flow, you have authority to suggest a reorder.
+
+To suggest a reorder:
+1. Write the sections you've completed so far in blueprint order.
+2. When you identify a compelling reorder rationale (e.g., a strong accomplishments section should precede experience to lead with impact), emit a transparency event explaining your reasoning.
+3. Continue writing in your preferred order. The user will see the final section order when reviewing.
+
+Do NOT reorder just for the sake of it. Only deviate from blueprint order when narrative momentum clearly benefits — e.g., when a Selected Accomplishments section creates a stronger opening than jumping straight to Experience, or when a Technical Skills section is more impactful before a dense experience section for a highly technical role.
+
 ## Tool Usage Protocol
 
 - Use emit_transparency before starting each section to keep the user informed.
 - Store all completed section outputs in ctx.scratchpad using key pattern: section_{sectionName}.
-- Process sections in the order specified by blueprint.section_plan.order.
+- Process sections in the order specified by blueprint.section_plan.order unless narrative flow warrants a change (see Section Ordering Authority above).
 - When all sections are approved, your work is complete — return your final summary text.
 `;

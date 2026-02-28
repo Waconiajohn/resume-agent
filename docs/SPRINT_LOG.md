@@ -2,6 +2,48 @@
 
 ---
 
+# Sprint 5 Retrospective: Post-Audit Hardening + Agent Creative Latitude
+**Completed:** 2026-02-28
+
+## What was delivered
+
+### Track 1 — Confirmed Bug Fixes (6 stories)
+- **Story 1: Gate Response Idempotency** — Added `responded_at` check in `/pipeline/respond` handler. Duplicate gate responses now return `{ status: 'already_responded' }` instead of double-processing.
+- **Story 2: Enforce `do_not_include` at Runtime** — Added `filterDoNotIncludeTopics()` post-generation safety net in Craftsman's `write_section` tool. Lines mentioning excluded topics are stripped with a logged warning.
+- **Story 3: Cap Revision Sub-Loop Iterations** — Added `MAX_REVISION_ROUNDS = 3` with per-section tracking in coordinator. After 3 rounds, content is accepted as-is with a transparency SSE event.
+- **Story 4: Link Heartbeat to Session Lock** — Heartbeat interval now checks `runningPipelines.has(session_id)` before writing. Self-clears if pipeline is no longer tracked.
+- **Story 5: Move JSON Repair Size Guard Earlier** — Size guard (50KB) moved to the very top of `repairJSON()`, before any processing (was after 4 processing steps).
+- **Story 6: Harden Producer Tool Response Validation** — Audit confirmed all 3 LLM-backed Producer tools already follow consistent validation pattern (repairJSON → fallback → bounds clamp). No code changes needed.
+
+### Track 2 — Agent Creative Latitude (4 stories)
+- **Story 7: Strategist Interview Discretion** — Updated Strategist prompt with explicit coverage assessment, adaptive stopping, and stronger repeat-user guidance ("1-3 questions may be all that's needed").
+- **Story 8: Craftsman Section Reordering Authority** — Added "Section Ordering Authority" section to Craftsman prompt. Allows deviation from blueprint order when narrative flow clearly benefits, with transparency event requirement.
+- **Story 9: Producer Rewrite Authority** — Extended `request_content_revision` tool with `severity: 'revision' | 'rewrite'` field. Coordinator routes rewrites as fresh `write_section` calls. Rewrites count against the revision cap.
+- **Story 10: Sliding Window Context Enrichment** — Added `extractDroppedMessageSummary()` that scans dropped messages for section names and key outcomes, producing a structured summary (bounded to 2000 chars) instead of a generic note.
+
+### Track 3 — Tests (1 story)
+- **Story 11: Add Tests for New Fixes** — 34 new tests in `sprint5-fixes.test.ts` covering all 6 bug fix stories. Test count 556→590 (504 server + 86 app).
+
+## What went well
+- Efficient parallelization: 4 stories delegated to background agents while working on dependent stories in the main thread
+- All fixes were small and targeted — no story exceeded ~30 lines of new code
+- Zero regressions — all 556 existing tests passed throughout
+- TypeScript clean on both server and app at every step
+
+## What went wrong
+- Story 6 (Producer validation) turned out to be a non-issue — the audit finding was "Partial" verified and existing code was already consistent. Zero code changes needed.
+
+## What to improve next sprint
+- Future audit findings should be verified more thoroughly before becoming stories
+- Consider E2E test expansion (deferred from Sprint 4, still not done)
+
+## Technical debt identified
+- E2E test coverage for repeat-user and blueprint-rejection flows (deferred since Sprint 4)
+- SSE type mismatch (`as never` cast in pipeline.ts) still present
+- Usage tracking cross-contamination risk still exists
+
+---
+
 # Sprint 4 Retrospective: Bug Fixes, Test Coverage, UX Polish, Platform Prep
 **Completed:** 2026-02-28
 

@@ -142,6 +142,20 @@ const STRUCTURAL_PATTERNS: Array<{ re: RegExp; message: string }> = [
 
 const CLICHE_PHRASES = extractClichePhrases();
 
+/**
+ * Filter out bullets/lines that mention topics from the do_not_include list.
+ * Case-insensitive substring match on each line. Returns the content with
+ * offending lines removed.
+ */
+export function filterDoNotIncludeTopics(content: string, doNotInclude: string[]): string {
+  const lines = content.split('\n');
+  const filtered = lines.filter(line => {
+    const lower = line.toLowerCase();
+    return !doNotInclude.some(topic => lower.includes(topic.toLowerCase()));
+  });
+  return filtered.join('\n');
+}
+
 // ─── Tool: write_section ──────────────────────────────────────────────
 
 const writeSectionTool: ResumeAgentTool = {
@@ -205,7 +219,20 @@ const writeSectionTool: ResumeAgentTool = {
       signal: ctx.signal,
     };
 
-    const result: SectionWriterOutput = await runSectionWriter(writerInput);
+    let result: SectionWriterOutput = await runSectionWriter(writerInput);
+
+    // Enforce do_not_include at runtime — safety net for when the LLM ignores the prompt instruction
+    const doNotInclude = Array.isArray(blueprint_slice.do_not_include)
+      ? (blueprint_slice.do_not_include as string[]).filter(t => typeof t === 'string' && t.trim())
+      : [];
+
+    if (doNotInclude.length > 0 && result.content) {
+      const filtered = filterDoNotIncludeTopics(result.content, doNotInclude);
+      if (filtered !== result.content) {
+        logger.warn({ section, do_not_include: doNotInclude }, 'do_not_include enforcement triggered — LLM ignored exclusion instruction');
+        result = { ...result, content: filtered };
+      }
+    }
 
     // Store in scratchpad
     ctx.scratchpad[`section_${section}`] = result;

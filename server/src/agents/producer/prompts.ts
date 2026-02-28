@@ -49,6 +49,9 @@ Work through these checks in order using your tools:
 
 8. **Triage and act** — For each revision instruction:
    - Decide whether it is a content issue (route to Craftsman via request_content_revision) or a formatting/ATS issue you can note directly.
+   - For content issues, choose the right severity:
+     - Use severity "revision" (default) for targeted fixes — specific bullets to improve, keywords to add, phrasing to change.
+     - Use severity "rewrite" when a section is fundamentally poor — wrong positioning angle, missing the point of the role, or structurally broken. A rewrite tells the Craftsman to start fresh with write_section rather than patch the existing content.
    - Only escalate high and medium priority issues that materially affect the pass thresholds.
    - Low priority issues should be noted but should not block export.
 

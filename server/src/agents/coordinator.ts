@@ -915,6 +915,8 @@ async function persistSession(
  *
  * Returns a cleanup function that removes the bus subscription.
  */
+const MAX_REVISION_ROUNDS = 3;
+
 function subscribeToRevisionRequests(
   bus: AgentBus,
   state: PipelineState,
@@ -923,6 +925,9 @@ function subscribeToRevisionRequests(
   signal: AbortSignal,
   log: ReturnType<typeof createSessionLogger>,
 ): () => void {
+  // Track revision rounds per section to enforce the cap
+  const revisionCounts = new Map<string, number>();
+
   const handler = async (msg: AgentMessage): Promise<void> => {
     if (msg.type !== 'request' || msg.from !== 'producer') return;
 
@@ -934,17 +939,20 @@ function subscribeToRevisionRequests(
       issue: string;
       instruction: string;
       priority: 'high' | 'medium' | 'low';
+      severity?: 'revision' | 'rewrite';
     }>;
 
     if (Array.isArray(msg.payload.revision_instructions)) {
       instructions = msg.payload.revision_instructions as typeof instructions;
     } else if (typeof msg.payload.section === 'string' && typeof msg.payload.instruction === 'string') {
       // Single flat revision request from Producer's request_content_revision tool
+      const severity = msg.payload.severity === 'rewrite' ? 'rewrite' : 'revision';
       instructions = [{
         target_section: msg.payload.section as string,
         issue: (msg.payload.issue as string) ?? '',
         instruction: msg.payload.instruction as string,
         priority: 'high' as const,
+        severity,
       }];
     } else {
       return;
@@ -959,28 +967,69 @@ function subscribeToRevisionRequests(
       .filter(i => !state.approved_sections.includes(i.target_section));
     if (highPriority.length === 0) return;
 
-    log.info({ sections: highPriority.map(i => i.target_section) }, 'Coordinator: handling revision requests from Producer');
+    // Enforce per-section revision cap
+    const withinCap = highPriority.filter(i => {
+      const count = revisionCounts.get(i.target_section) ?? 0;
+      if (count >= MAX_REVISION_ROUNDS) {
+        log.warn({ section: i.target_section, rounds: count }, 'Coordinator: revision cap reached — accepting content as-is');
+        emit({
+          type: 'transparency',
+          stage: 'revision',
+          message: `Revision cap (${MAX_REVISION_ROUNDS} rounds) reached for "${i.target_section}" — accepting current content.`,
+        });
+        return false;
+      }
+      return true;
+    });
+
+    if (withinCap.length === 0) return;
+
+    // Increment revision counts for sections being revised
+    for (const i of withinCap) {
+      revisionCounts.set(i.target_section, (revisionCounts.get(i.target_section) ?? 0) + 1);
+    }
+
+    log.info({ sections: withinCap.map(i => i.target_section) }, 'Coordinator: handling revision requests from Producer');
 
     emit({
       type:    'revision_start',
-      instructions: highPriority,
+      instructions: withinCap,
     });
 
     emit({
       type:    'transparency',
       stage:   'revision',
-      message: `Routing ${highPriority.length} revision request(s) from quality review back to the Craftsman...`,
+      message: `Routing ${withinCap.length} revision request(s) from quality review back to the Craftsman...`,
     });
 
-    // Run a focused Craftsman sub-loop for the revision instructions
-    const revisionMessage = [
-      '## Revision Instructions from Quality Review',
-      JSON.stringify(highPriority, null, 2),
+    // Separate rewrite requests from revision requests
+    const rewrites = withinCap.filter(i => i.severity === 'rewrite');
+    const revisions = withinCap.filter(i => i.severity !== 'rewrite');
+
+    // Run a focused Craftsman sub-loop for the revision/rewrite instructions
+    const messageParts: string[] = [];
+
+    if (rewrites.length > 0) {
+      messageParts.push(
+        '## REWRITE Instructions from Quality Review',
+        'These sections need to be written from scratch using write_section (not revise_section):',
+        JSON.stringify(rewrites, null, 2),
+      );
+    }
+
+    if (revisions.length > 0) {
+      messageParts.push(
+        '## Revision Instructions from Quality Review',
+        JSON.stringify(revisions, null, 2),
+      );
+    }
+
+    messageParts.push(
       '',
       '## Current Section Content',
       JSON.stringify(
         Object.fromEntries(
-          highPriority
+          withinCap
             .map(i => i.target_section)
             .filter(s => state.sections?.[s])
             .map(s => [s, state.sections![s].content]),
@@ -992,8 +1041,11 @@ function subscribeToRevisionRequests(
       '## Blueprint',
       JSON.stringify(state.architect ?? {}, null, 2),
       '',
-      'Apply the revision instructions to the affected sections only. Preserve all other content unchanged.',
-    ].join('\n');
+      rewrites.length > 0
+        ? 'For REWRITE sections: call write_section fresh with the blueprint slice — start from scratch, do not reference the old content. For REVISION sections: apply targeted changes only, preserve everything else.'
+        : 'Apply the revision instructions to the affected sections only. Preserve all other content unchanged.',
+    );
+    const revisionMessage = messageParts.join('\n');
 
     const contextParams: CreateContextParams<PipelineState, PipelineSSEEvent> = {
       sessionId:   state.session_id,

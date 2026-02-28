@@ -7,6 +7,12 @@ import logger from './logger.js';
 export function repairJSON<T>(text: string): T | null {
   if (!text || typeof text !== 'string') return null;
 
+  // Reject oversized input immediately — before any processing
+  if (text.length > 50_000) {
+    logger.warn({ size: text.length }, 'Rejecting oversized JSON input before processing');
+    return null;
+  }
+
   // Step 1: Strip markdown fences
   let cleaned = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
@@ -51,12 +57,6 @@ export function repairJSON<T>(text: string): T | null {
     return JSON.parse(noTrailing) as T;
   } catch {
     // continue
-  }
-
-  // Skip regex-heavy steps on large inputs to avoid catastrophic backtracking
-  if (noTrailing.length > 50_000) {
-    logger.warn({ size: noTrailing.length }, 'Skipping aggressive JSON repair on large input');
-    return null;
   }
 
   // Step 5: Fix common Z.AI quirks — unescaped newlines/tabs inside strings,

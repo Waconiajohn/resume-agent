@@ -1673,6 +1673,12 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
   // (e.g. the Strategist interview can take 10-15 min with Z.AI latency).
   const HEARTBEAT_MS = 5 * 60 * 1000;
   const heartbeatTimer = setInterval(() => {
+    // Only touch updated_at if the pipeline is still tracked as running
+    if (!runningPipelines.has(session_id)) {
+      clearInterval(heartbeatTimer);
+      log.info('Pipeline heartbeat stopped — pipeline no longer in runningPipelines');
+      return;
+    }
     supabaseAdmin
       .from('coach_sessions')
       .update({ updated_at: new Date().toISOString() })
@@ -1840,6 +1846,12 @@ pipeline.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
     }
 
     const currentPayload = parsePendingGatePayload(dbState.pending_gate_data);
+
+    // Idempotency guard: if this gate was already responded to, return early
+    if (currentPayload.responded_at) {
+      return c.json({ status: 'already_responded', gate: dbState.pending_gate });
+    }
+
     const payload: PendingGatePayload = {
       ...currentPayload,
       gate: dbState.pending_gate,
