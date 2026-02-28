@@ -90,7 +90,7 @@ export function mergeMasterResume(
         start_date: newRole.start_date,
         end_date: newRole.end_date,
         location: newRole.location ?? '',
-        bullets: newRole.bullets,
+        bullets: newRole.bullets.map(b => ({ ...b })),
       });
       existingIndex.set(key, mergedExperience.length - 1);
     }
@@ -125,7 +125,7 @@ export function mergeMasterResume(
   for (const edu of newResume.education) {
     const key = `${safeStr(edu.institution).trim().toLowerCase()}|${safeStr(edu.degree).trim().toLowerCase()}`;
     if (!eduKeys.has(key)) {
-      mergedEducation.push(edu);
+      mergedEducation.push({ ...edu });
       eduKeys.add(key);
     }
   }
@@ -137,7 +137,7 @@ export function mergeMasterResume(
   );
   for (const cert of newResume.certifications) {
     if (!certKeys.has(safeStr(cert.name).trim().toLowerCase())) {
-      mergedCertifications.push(cert);
+      mergedCertifications.push({ ...cert });
       certKeys.add(safeStr(cert.name).trim().toLowerCase());
     }
   }

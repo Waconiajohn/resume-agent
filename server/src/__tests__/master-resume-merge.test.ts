@@ -327,4 +327,86 @@ describe('mergeMasterResume', () => {
     const result = mergeMasterResume(existing, newResume, []);
     expect(result.experience.length).toBeGreaterThanOrEqual(2);
   });
+
+  // ── Audit Round 2 test scenarios ──
+
+  it('does not mutate newResume input (H1 — new role bullet deep-clone)', () => {
+    const existing = makeExisting();
+    const newResume = makeNewResume();
+    const originalNewBulletCount = newResume.experience[1].bullets.length; // StartupXYZ
+
+    mergeMasterResume(existing, newResume, []);
+
+    // Caller's newResume must remain unmodified
+    expect(newResume.experience[1].bullets).toHaveLength(originalNewBulletCount);
+  });
+
+  it('deep-clones education so mutating output does not affect input (H2)', () => {
+    const existing = makeExisting();
+    const newResume = makeNewResume();
+
+    const result = mergeMasterResume(existing, newResume, []);
+
+    // Mutate the output education entry
+    const stanford = result.education.find(e => e.institution === 'Stanford');
+    expect(stanford).toBeDefined();
+    stanford!.degree = 'MUTATED';
+
+    // Input should be unaffected
+    const inputStanford = newResume.education.find(e => e.institution === 'Stanford');
+    expect(inputStanford!.degree).toBe('MBA');
+  });
+
+  it('deduplicates evidence items case-insensitively (TG3)', () => {
+    const existing = makeExisting(); // has "Managed $10M annual budget"
+    const newResume = makeNewResume();
+    const newEvidence: MasterResumeEvidenceItem[] = [
+      {
+        text: 'managed $10m annual budget', // same text, different case
+        source: 'interview',
+        category: 'scale_and_scope',
+        source_session_id: 'session-new',
+        created_at: '2026-02-28T00:00:00Z',
+      },
+    ];
+
+    const result = mergeMasterResume(existing, newResume, newEvidence);
+
+    // Should still be just 1 evidence item — case-insensitive dedup
+    expect(result.evidence_items).toHaveLength(1);
+    expect(result.evidence_items[0].text).toBe('Managed $10M annual budget');
+  });
+
+  it('merges duplicate roles within newResume.experience (TG4)', () => {
+    const existing = makeExisting({ experience: [] });
+    const newResume = makeNewResume();
+    // Add a second entry for StartupXYZ CTO with a different bullet
+    newResume.experience.push({
+      company: 'StartupXYZ',
+      title: 'CTO',
+      start_date: '2017',
+      end_date: '2020',
+      location: 'Remote',
+      bullets: [
+        { text: 'Launched SaaS product reaching $2M ARR', source: 'crafted' },
+      ],
+    });
+
+    const result = mergeMasterResume(existing, newResume, []);
+
+    // The two StartupXYZ CTO entries should merge into one role
+    const startupRoles = result.experience.filter(r => r.company === 'StartupXYZ');
+    expect(startupRoles).toHaveLength(1);
+    expect(startupRoles[0].bullets.length).toBe(2); // original + new
+  });
+
+  it('falls back to existing summary when newResume.summary is empty (TG5)', () => {
+    const existing = makeExisting({ summary: 'Existing strong summary.' });
+    const newResume = makeNewResume();
+    newResume.summary = '';
+
+    const result = mergeMasterResume(existing, newResume, []);
+
+    expect(result.summary).toBe('Existing strong summary.');
+  });
 });

@@ -23,9 +23,23 @@
 16. [x] Story 11 (Audit): Adjust strategist prompt guidance — [status: done]
 17. [x] Story 12 (Audit): Add missing test scenarios — [status: done]
 
+## Audit Round 2 Fix Stories (5 critical + 8 high)
+18. [x] Story C1: Link new master resume ID back to session — [status: done]
+19. [x] Story C2: Remove BEGIN/COMMIT from migration — [status: done]
+20. [x] Story C3: Detect zero-row UPDATE in saveMasterResume — [status: done]
+21. [x] Story C4+H7+H8+H10: Fix evidence_items validation in POST /resumes — [status: done]
+22. [x] Story C5: Add null guard on section.content in extractEvidenceItems — [status: done]
+23. [x] Story H1+H2: Deep-clone new role bullets + education/certifications — [status: done]
+24. [x] Story H4: Add earlier_career to evidence extraction filter — [status: done]
+25. [x] Story H6: Add null guards in buildStrategistMessage — [status: done]
+26. [x] Story H9: Cap individual evidence item text length — [status: done]
+27. [x] Story Tests: Add 5 new test scenarios for audit round 2 — [status: done]
+
 ## Out of Scope (Explicitly)
 - Master Resume Viewer Page (dedicated UI to browse/delete evidence items)
 - Inline editing of master resume content
 - Merge audit trail (tracking which session contributed which items)
 - Evidence quality scoring
 - Cross-session analytics
+- H5: Legacy create-master-resume.ts fixes (backlogged)
+- Medium/low issues from audit round 2 (backlogged)

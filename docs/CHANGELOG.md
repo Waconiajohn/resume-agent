@@ -1,5 +1,56 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session: Sprint 3 Audit Round 2
+
+**Sprint:** 3 | **Stories:** Audit round 2 — 5 critical + 8 high fixes
+**Summary:** Fixed 13 issues from comprehensive 5-agent audit. Most severe: new master resume IDs were never linked back to sessions (C1), breaking evidence reuse for all first-time users. Also fixed nested transactions in migration, zero-row UPDATE detection, validation gaps, null guards, shallow-copy mutations, and evidence text length caps.
+
+### Changes Made
+
+#### C1: Link New Master Resume ID Back to Session [System-breaking]
+- `server/src/agents/coordinator.ts` — Capture `{ data: newMr, error }` from RPC. After successful creation, `UPDATE coach_sessions SET master_resume_id = newMr.id`. Without this, second pipeline run never finds the master resume.
+
+#### C2: Remove BEGIN/COMMIT from Migration [Critical]
+- `supabase/migrations/20260227180000_...sql` — Removed explicit `BEGIN;` and `COMMIT;`. Supabase auto-wraps migrations in transactions; nested wrappers caused premature commit.
+
+#### C3: Detect Zero-Row UPDATE in saveMasterResume [Critical]
+- `server/src/agents/coordinator.ts` — Added `.select('id')` to UPDATE chain. If returned data is empty (row deleted between load and update), logs warning and falls through to CREATE branch as recovery.
+
+#### C4+H7+H8+H10: Fix evidence_items Validation in POST /resumes [Critical+High]
+- `server/src/routes/resumes.ts` — `text: z.string().min(10).max(2000)`, array `.max(200)` (was 500, matches EVIDENCE_CAP), `source_session_id: z.string().uuid()`, `created_at: z.string().datetime()`, `category: z.string().max(100)`.
+
+#### C5: Null Guard on section.content in extractEvidenceItems [Critical]
+- `server/src/agents/coordinator.ts` — `const rawContent = section.content ?? '';` prevents `.trim()` and `.split()` from throwing on null/undefined content.
+
+#### H1+H2: Deep-Clone New Role Bullets + Education/Certifications [High]
+- `server/src/agents/master-resume-merge.ts` — New role bullets: `newRole.bullets.map(b => ({ ...b }))`. Education: `{ ...edu }`. Certifications: `{ ...cert }`. Prevents shared references.
+
+#### H4: Add earlier_career to Evidence Extraction Filter [High]
+- `server/src/agents/coordinator.ts` — Added `key !== 'earlier_career'` to the filter condition so earlier career bullets are accumulated as evidence.
+
+#### H6: Null Guards in buildStrategistMessage [High]
+- `server/src/agents/coordinator.ts` — `Array.isArray(mr.experience)` guard before `.length`. `mr.skills && typeof mr.skills === 'object'` guard before `Object.keys()`. Prevents crashes on malformed/pre-migration DB rows.
+
+#### H9: Cap Individual Evidence Item Text Length [High]
+- `server/src/agents/coordinator.ts` — Added `MAX_EVIDENCE_TEXT_LENGTH = 1000` and `capEvidenceText()` helper (truncates at word boundary with `...`). Applied to crafted bullets, prose sections, and interview answers.
+
+#### Tests: 5 New Test Scenarios
+- `server/src/__tests__/master-resume-merge.test.ts` — newResume mutation safety (H1), education deep-clone isolation (H2), evidence dedup case-insensitivity (TG3), duplicate roles merge (TG4), empty summary fallback (TG5). Total: 20 tests passing.
+
+### Decisions Made
+- C3 recovery path: zero-row UPDATE falls through to CREATE rather than failing silently
+- Evidence text cap at 1000 chars with word-boundary truncation balances context budget vs information loss
+- Migration BEGIN/COMMIT removal is safe — all other migrations in this repo omit explicit wrappers
+
+### Known Issues
+- 2 pre-existing test failures in `agents-gap-analyst.test.ts` (unrelated to this work)
+- H5 (legacy create-master-resume.ts) backlogged per user decision
+
+### Next Steps
+- Sprint 3 retrospective and Sprint 4 planning
+
+---
+
 ## 2026-02-27 — Session: Sprint 3 Audit Fixes
 
 **Sprint:** 3 | **Stories:** Audit fix stories 1-12

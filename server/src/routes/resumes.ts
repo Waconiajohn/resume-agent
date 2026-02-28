@@ -23,12 +23,12 @@ const createResumeSchema = z.object({
   set_as_default: z.boolean().optional(),
   source_session_id: z.string().uuid().optional(),
   evidence_items: z.array(z.object({
-    text: z.string(),
+    text: z.string().min(10).max(2000),
     source: z.enum(['crafted', 'upgraded', 'interview']),
-    category: z.string().optional(),
-    source_session_id: z.string(),
-    created_at: z.string(),
-  })).max(500).optional(),
+    category: z.string().max(100).optional(),
+    source_session_id: z.string().uuid(),
+    created_at: z.string().datetime(),
+  })).max(200).optional(),
 });
 
 type DefaultResumeRpcResult = {

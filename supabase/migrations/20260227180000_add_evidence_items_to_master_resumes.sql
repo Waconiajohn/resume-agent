@@ -1,5 +1,3 @@
-BEGIN;
-
 -- Add evidence_items column to master_resumes for persistent evidence accumulation.
 -- Each item tracks crafted bullets, upgraded bullets, and interview answers
 -- across pipeline sessions, enabling the Strategist to skip redundant questions.
@@ -106,5 +104,3 @@ REVOKE ALL ON FUNCTION create_master_resume_atomic(
 GRANT EXECUTE ON FUNCTION create_master_resume_atomic(
   uuid, text, text, jsonb, jsonb, jsonb, jsonb, jsonb, uuid, boolean, jsonb
 ) TO authenticated, service_role;
-
-COMMIT;

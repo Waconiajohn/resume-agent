@@ -169,7 +169,7 @@ function buildStrategistMessage(config: PipelineConfig): string {
     masterResumeSection.push('');
 
     // Experience with capped bullets (original + crafted)
-    if (mr.experience.length > 0) {
+    if (Array.isArray(mr.experience) && mr.experience.length > 0) {
       masterResumeSection.push('### Experience');
       for (const role of mr.experience) {
         masterResumeSection.push(`**${role.title}** at ${role.company} (${role.start_date} – ${role.end_date})`);
@@ -211,7 +211,7 @@ function buildStrategistMessage(config: PipelineConfig): string {
     }
 
     // Skills inventory
-    if (Object.keys(mr.skills).length > 0) {
+    if (mr.skills && typeof mr.skills === 'object' && Object.keys(mr.skills).length > 0) {
       masterResumeSection.push('### Skills Inventory');
       for (const [category, skills] of Object.entries(mr.skills)) {
         masterResumeSection.push(`**${category}:** ${skills.join(', ')}`);
@@ -613,6 +613,15 @@ function buildFinalResumePayload(state: PipelineState, config: PipelineConfig): 
  * Extract evidence items from a completed pipeline run.
  * Sources: crafted bullets from sections, interview transcript answers.
  */
+const MAX_EVIDENCE_TEXT_LENGTH = 1000;
+
+/** Truncate text at a word boundary if it exceeds the cap. */
+function capEvidenceText(text: string): string {
+  if (text.length <= MAX_EVIDENCE_TEXT_LENGTH) return text;
+  const truncated = text.slice(0, MAX_EVIDENCE_TEXT_LENGTH).replace(/\s\S*$/, '');
+  return truncated + '...';
+}
+
 function extractEvidenceItems(
   state: PipelineState,
   sessionId: string,
@@ -623,11 +632,13 @@ function extractEvidenceItems(
   // Crafted bullets from written sections
   const sections = state.sections ?? {};
   for (const [key, section] of Object.entries(sections)) {
-    if (!key.startsWith('experience_role_') && key !== 'summary' && key !== 'selected_accomplishments') continue;
+    if (!key.startsWith('experience_role_') && key !== 'summary' && key !== 'selected_accomplishments' && key !== 'earlier_career') continue;
+
+    const rawContent = section.content ?? '';
 
     // Prose sections (summary, accomplishments): capture full content as single evidence item
     if (key === 'summary' || key === 'selected_accomplishments') {
-      const text = section.content.trim();
+      const text = capEvidenceText(rawContent.trim());
       if (text.length > 10) {
         items.push({ text, source: 'crafted', category: key, source_session_id: sessionId, created_at: now });
       }
@@ -635,11 +646,11 @@ function extractEvidenceItems(
     }
 
     // Bullet-based sections: extract individual bullets
-    const lines = section.content.split('\n');
+    const lines = rawContent.split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
       if (/^[•\-*]\s/.test(trimmed)) {
-        const text = trimmed.replace(/^[•\-*]\s+/, '').trim();
+        const text = capEvidenceText(trimmed.replace(/^[•\-*]\s+/, '').trim());
         if (text.length > 10) {
           items.push({
             text,
@@ -656,7 +667,7 @@ function extractEvidenceItems(
   // Interview transcript answers
   const transcript = state.interview_transcript ?? [];
   for (const entry of transcript) {
-    const answerText = entry.answer?.trim() ?? '';
+    const answerText = capEvidenceText(entry.answer?.trim() ?? '');
     if (answerText.length > 10) {
       items.push({
         text: answerText,
@@ -716,7 +727,7 @@ async function saveMasterResume(
       // Merge into existing and UPDATE in-place (not INSERT)
       const merged = mergeMasterResume(existing, finalResume, evidenceItems);
 
-      const { error } = await supabaseAdmin
+      const { data: updatedRows, error } = await supabaseAdmin
         .from('master_resumes')
         .update({
           summary: merged.summary,
@@ -731,16 +742,23 @@ async function saveMasterResume(
           updated_at: new Date().toISOString(),
         })
         .eq('id', config.master_resume_id)
-        .eq('user_id', state.user_id);
+        .eq('user_id', state.user_id)
+        .select('id');
 
       if (error) {
         log.warn({ error: error.message }, 'saveMasterResume: merge UPDATE failed');
+      } else if (!updatedRows || updatedRows.length === 0) {
+        // Row was deleted between load and UPDATE — fall through to CREATE
+        log.warn({ master_resume_id: config.master_resume_id }, 'saveMasterResume: UPDATE matched zero rows — row may have been deleted, falling through to CREATE');
+        existing = null;
       } else {
         log.info({ master_resume_id: config.master_resume_id, evidence_count: merged.evidence_items.length }, 'Master resume merged with new evidence');
       }
-    } else {
+    }
+
+    if (!existing) {
       // Create new master resume from pipeline output
-      const { error } = await supabaseAdmin.rpc('create_master_resume_atomic', {
+      const { data: newMr, error } = await supabaseAdmin.rpc('create_master_resume_atomic', {
         p_user_id: state.user_id,
         p_raw_text: config.raw_resume_text,
         p_summary: finalResume.summary,
@@ -757,7 +775,21 @@ async function saveMasterResume(
       if (error) {
         log.warn({ error: error.message }, 'saveMasterResume: create RPC failed');
       } else {
-        log.info({ evidence_count: evidenceItems.length }, 'Master resume created from pipeline output');
+        // Link the new master resume back to the session so subsequent runs find it
+        const newId = typeof newMr === 'object' && newMr !== null ? (newMr as Record<string, unknown>).id : undefined;
+        if (newId) {
+          const { error: linkError } = await supabaseAdmin
+            .from('coach_sessions')
+            .update({ master_resume_id: newId })
+            .eq('id', state.session_id);
+          if (linkError) {
+            log.warn({ error: linkError.message, newMasterResumeId: newId }, 'saveMasterResume: failed to link new master resume to session');
+          } else {
+            log.info({ master_resume_id: newId, evidence_count: evidenceItems.length }, 'Master resume created and linked to session');
+          }
+        } else {
+          log.info({ evidence_count: evidenceItems.length }, 'Master resume created from pipeline output (no ID returned)');
+        }
       }
     }
   } catch (err) {
