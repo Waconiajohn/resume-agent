@@ -92,12 +92,17 @@ export function getResponseQueue(payload: PendingGatePayload): BufferedResponseI
     : [];
 
   // Backward compatibility: fold old single buffered fields into the queue.
+  // Delete legacy fields immediately after migration so repeated calls to
+  // getResponseQueue() on the same payload object do not re-add the entry.
   if (payload.buffered_gate && 'buffered_response' in payload) {
     queue.push({
       gate: payload.buffered_gate,
       response: payload.buffered_response,
       responded_at: payload.buffered_at ?? new Date().toISOString(),
     });
+    delete (payload as Record<string, unknown>).buffered_gate;
+    delete (payload as Record<string, unknown>).buffered_response;
+    delete (payload as Record<string, unknown>).buffered_at;
   }
 
   return normalizeQueue(queue);

@@ -195,8 +195,8 @@ function renderExperience(resume: FinalResume): PdfLine[] {
 
   lines.push({ text: 'PROFESSIONAL EXPERIENCE', style: 'heading' });
   for (const exp of resume.experience) {
-    const roleLine = `${exp.title}, ${exp.company}`;
-    const dateLine = `${exp.start_date} - ${exp.end_date}${exp.location ? `, ${exp.location}` : ''}`;
+    const roleLine = `${exp.title || ''}, ${exp.company || ''}`.replace(/^,\s*/, '');
+    const dateLine = `${exp.start_date || ''} - ${exp.end_date || 'Present'}${exp.location ? `, ${exp.location}` : ''}`;
     lines.push({ text: roleLine, style: 'body' });
     lines.push({ text: dateLine, style: 'body' });
     for (const bullet of exp.bullets ?? []) {

@@ -266,7 +266,7 @@ const sectionRenderers: Record<string, SectionRenderer> = {
       const parsedParas = [sectionHeading('Professional Experience')];
       for (const key of roleSectionKeys) {
         const roleText = resume._raw_sections?.[key];
-        if (!roleText) continue;
+        if (typeof roleText !== 'string' || !roleText.trim()) continue;
         parsedParas.push(...parseExperienceRoleParagraphs(roleText));
       }
       const earlierCareer = resume._raw_sections?.earlier_career;

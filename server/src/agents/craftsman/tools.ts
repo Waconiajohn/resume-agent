@@ -188,9 +188,8 @@ const writeSectionTool: AgentTool = {
     const crossSectionContext: Record<string, string> = {};
     for (const [key, val] of Object.entries(ctx.scratchpad)) {
       if (key.startsWith('section_')) {
-        const sectionVal = val as { content?: string } | undefined;
-        if (sectionVal?.content) {
-          crossSectionContext[key.replace('section_', '')] = sectionVal.content.slice(0, 300);
+        if (val && typeof (val as Record<string, unknown>).content === 'string') {
+          crossSectionContext[key.replace('section_', '')] = ((val as Record<string, unknown>).content as string).slice(0, 300);
         }
       }
     }
@@ -305,11 +304,11 @@ Rules:
       issues: string[];
     }>(response.text);
 
-    if (!parsed) {
+    if (!parsed || typeof parsed.score !== 'number' || !Array.isArray(parsed.issues)) {
       return {
         passed: false,
         score: 0,
-        issues: ['Could not parse quality review response — revision recommended'],
+        issues: ['Quality review response was malformed — revision recommended'],
       };
     }
 

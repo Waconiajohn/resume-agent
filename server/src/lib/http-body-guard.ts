@@ -85,7 +85,7 @@ export async function parseJsonBodyWithLimit(c: Context, maxBytes: number): Prom
   if (upfront) return { ok: false, response: upfront };
 
   const contentType = c.req.header('content-type')?.toLowerCase() ?? '';
-  if (contentType && !contentType.includes('application/json')) {
+  if (!contentType || !contentType.includes('application/json')) {
     return {
       ok: false,
       response: c.json({ error: 'Unsupported content type. Use application/json.' }, 415),

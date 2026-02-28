@@ -72,6 +72,28 @@
 59. [x] useAgent.ts: Abort controller cleanup on SSE error path — [status: done]
 60. [x] sessions.ts: Validate restored messages before access — [status: done]
 
+## Audit Round 5 — Deep Production Hardening (20 fixes)
+61. [x] strategist: Clone interview_transcript before mutation — [status: done]
+62. [x] strategist: Guard split() on non-string interview answers — [status: done]
+63. [x] strategist: Bounds-check experience array access — [status: done]
+64. [x] craftsman: Validate self_review LLM response structure — [status: done]
+65. [x] producer: Null-guard blueprint.age_protection — [status: done]
+66. [x] producer: Bounds-check template score array — [status: done]
+67. [x] strategist: Type-guard interview answer count — [status: done]
+68. [x] craftsman: Type-check cross-section context content — [status: done]
+69. [x] strategist: Validate interview category enum — [status: done]
+70. [x] sessions.ts: Fix SSE connection registration race — [status: done]
+71. [x] pending-gate-queue.ts: Delete legacy fields after migration — [status: done]
+72. [x] auth.ts: Fix token cache expiry boundary for near-expiry JWTs — [status: done]
+73. [x] http-body-guard.ts: Require explicit Content-Type for JSON — [status: done]
+74. [x] useAgent.ts: Clear staleCheckInterval on sessionId change — [status: done]
+75. [x] export-docx.ts: Type-guard raw_sections access — [status: done]
+76. [x] export-pdf.ts: Null-safe experience field rendering — [status: done]
+77. [x] DB: Add session_locks RLS deny policy — [status: done]
+78. [x] DB: Add session existence check to next_artifact_version — [status: done]
+79. [x] DB: Add FK indexes on workflow tables — [status: done]
+80. [x] DB: Clean orphaned master_resume_history rows — [status: done]
+
 ## Out of Scope (Explicitly)
 - Master Resume Viewer Page (dedicated UI to browse/delete evidence items)
 - Inline editing of master resume content

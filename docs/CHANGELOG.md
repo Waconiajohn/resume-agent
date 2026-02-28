@@ -1,5 +1,42 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session: Sprint 3 Audit Round 5 — Deep Production Hardening
+
+**Sprint:** 3 | **Stories:** 20 fixes from 4-agent deep audit (68 findings reviewed, 4 false positives)
+**Summary:** Fixed 2 critical shared-reference mutations in Strategist interview transcript, hardened all 3 agent tool files against malformed LLM responses and unsafe type casts, fixed SSE connection registration race, token cache expiry boundary bug, Content-Type validation gap, and added 4 DB hardening fixes (RLS policy, existence checks, FK indexes, orphan cleanup).
+
+### Changes Made
+
+#### Agent Tools — Critical/High Fixes
+- `server/src/agents/strategist/tools.ts` — Clone interview_transcript array before mutation (both single and batch tools). Guard split() on non-string answers in classify_fit. Bounds-check experience[0] array access. Type-guard interview answer count. Validate interview category against enum whitelist.
+- `server/src/agents/craftsman/tools.ts` — Validate self_review parsed response has required fields (score as number, issues as array). Type-check cross-section context content before slice.
+- `server/src/agents/producer/tools.ts` — Null-guard blueprint.age_protection before accessing .flags. Bounds-check template scores array before [0] access.
+
+#### Infrastructure Fixes
+- `server/src/routes/sessions.ts` — Move SSE addSSEConnection after successful initial writeSSE to prevent dead emitter registration on connection failure.
+- `server/src/lib/pending-gate-queue.ts` — Delete legacy buffered_gate/buffered_response fields after migrating to queue, preventing unbounded re-migration.
+- `server/src/middleware/auth.ts` — Early return for already-expired tokens before Math.max floor; prevents caching expired JWTs for 1 second.
+- `server/src/lib/http-body-guard.ts` — Require explicit application/json Content-Type; reject missing Content-Type with 415.
+
+#### Frontend Fixes
+- `app/src/hooks/useAgent.ts` — Clear staleCheckIntervalRef in sessionId change effect to prevent orphaned intervals.
+- `app/src/lib/export-docx.ts` — Type-guard raw_sections access with typeof string check.
+- `app/src/lib/export-pdf.ts` — Null-safe fallbacks for experience title, company, start_date, end_date.
+
+#### Database Migration
+- `supabase/migrations/20260228140000_audit_round5_db_hardening.sql` — Session locks deny-all RLS policy. next_artifact_version session existence check. FK indexes on 3 workflow tables. Orphaned master_resume_history cleanup.
+
+### Decisions Made
+- SSRF DNS rebinding (pipeline.ts) confirmed false positive — assertPublicHost already re-validates on each redirect iteration
+- Panel renderer resetKey already includes panelType — false positive
+- toolCleanupTimersRef already tracks timers and checks mountedRef — false positive
+- WorkbenchSuggestions advance callback already has suggestions in deps — false positive
+
+### Known Issues
+- 2 pre-existing test failures in agents-gap-analyst.test.ts (unrelated)
+
+---
+
 ## 2026-02-28 — Session: Sprint 3 Audit Round 4 — Medium/Low Production Hardening
 
 **Sprint:** 3 | **Stories:** 6 fixes from follow-up audit (25 findings reviewed, 19 false positives)

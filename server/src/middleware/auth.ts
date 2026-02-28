@@ -100,12 +100,14 @@ export function cacheUser(token: string, user: AuthUser): void {
   const tokenExpMs = decodeJwtExpiryMs(token);
   let expiresAt = now + TOKEN_CACHE_TTL_MS;
   if (tokenExpMs != null) {
+    if (tokenExpMs <= now) {
+      // Token already expired — do not cache.
+      return;
+    }
     // Never cache beyond token expiry (with a 1s skew cushion).
-    expiresAt = Math.min(expiresAt, tokenExpMs - 1_000);
-  }
-  if (expiresAt <= now) {
-    // Token is already expired (or within skew) — do not cache it.
-    return;
+    // Math.max(1000, ...) floors the TTL so a near-expiry token never
+    // produces a zero or negative cache duration.
+    expiresAt = now + Math.max(1_000, Math.min(TOKEN_CACHE_TTL_MS, tokenExpMs - now - 1_000));
   }
   tokenCache.set(token, { user, expiresAt });
 }

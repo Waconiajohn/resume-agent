@@ -414,13 +414,15 @@ sessions.get('/:id/sse', async (c) => {
       });
     };
 
-    addSSEConnection(sessionId, user.id, emitter);
-
     try {
       await stream.writeSSE({
         event: 'connected',
         data: JSON.stringify({ session_id: sessionId }),
       });
+
+      // Register AFTER the initial write succeeds so a dead emitter is never
+      // left in the connection map if the first write fails.
+      addSSEConnection(sessionId, user.id, emitter);
 
       // Replay historical messages and session state on reconnect
       // Lightweight validation before casting

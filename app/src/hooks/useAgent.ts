@@ -454,6 +454,12 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     stalePipelineNoticeRef.current = false;
     sectionContextRef.current = null;
     dismissedSuggestionIdsRef.current = new Set();
+    // Clear stale-check interval from previous session so it doesn't fire
+    // against a new sessionId's state after the SSE effect re-mounts.
+    if (staleCheckIntervalRef.current) {
+      clearInterval(staleCheckIntervalRef.current);
+      staleCheckIntervalRef.current = null;
+    }
   }, [sessionId]);
 
   // Connect to SSE with fetch-based streaming

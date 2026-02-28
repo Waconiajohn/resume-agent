@@ -186,6 +186,9 @@ const selectTemplate: AgentTool = {
 
     // Sort descending by score; ties broken by array order (preserves intent)
     templateScores.sort((a, b) => b.score - a.score);
+    if (templateScores.length === 0) {
+      throw new Error('No resume templates available for scoring');
+    }
     const selected = templateScores[0].template;
 
     // Store in pipeline state so coordinator can pass to export
@@ -506,7 +509,7 @@ const checkBlueprintCompliance: AgentTool = {
 
     // 4. Age protection check
     const ageProtection = (blueprint.age_protection ?? {}) as Record<string, unknown>;
-    const ageFlags = (ageProtection.flags ?? []) as Array<Record<string, unknown>>;
+    const ageFlags = Array.isArray(ageProtection.flags) ? ageProtection.flags as Array<Record<string, unknown>> : [];
     if (ageFlags.length > 0) {
       checksTotal++;
       const allContent = Object.values(sections).join(' ').toLowerCase();

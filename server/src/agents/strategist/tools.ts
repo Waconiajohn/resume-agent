@@ -261,7 +261,8 @@ function getInterviewBudget(ctx: AgentContext): number {
 }
 
 function getInterviewQuestionCount(ctx: AgentContext): number {
-  return ((ctx.scratchpad.interview_answers as unknown[] | undefined) ?? []).length;
+  const answers = ctx.scratchpad.interview_answers;
+  return Array.isArray(answers) ? answers.length : 0;
 }
 
 // ─── Tool: interview_candidate ────────────────────────────────────────
@@ -309,7 +310,10 @@ const interviewCandidateTool: AgentTool = {
   execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
     const questionText = String(input.question_text ?? '');
     const context = String(input.context ?? '');
-    const category = String(input.category ?? 'requirement_mapped');
+    const validCategories = ['scale_and_scope', 'requirement_mapped', 'career_narrative', 'hidden_accomplishments', 'currency_and_adaptability'] as const;
+    type ValidCategory = typeof validCategories[number];
+    const rawCategory = String(input.category ?? 'requirement_mapped');
+    const category: ValidCategory = validCategories.includes(rawCategory as ValidCategory) ? rawCategory as ValidCategory : 'requirement_mapped';
 
     // ── Budget enforcement ──────────────────────────────────────────
     const budget = getInterviewBudget(ctx);
@@ -382,7 +386,7 @@ const interviewCandidateTool: AgentTool = {
     (ctx.scratchpad.interview_answers as typeof answerRecord[]).push(answerRecord);
 
     // Persist raw Q&A to pipeline state so the Craftsman can hear the candidate's voice
-    const transcript = ctx.getState().interview_transcript ?? [];
+    const transcript = [...(ctx.getState().interview_transcript ?? [])];
     transcript.push({
       question_id: question.id,
       question_text: questionText,
@@ -579,7 +583,7 @@ const interviewCandidateBatchTool: AgentTool = {
       timestamp: string;
     }>;
 
-    const transcript = ctx.getState().interview_transcript ?? [];
+    const transcript = [...(ctx.getState().interview_transcript ?? [])];
 
     if (!ctx.scratchpad.evidence_library) {
       ctx.scratchpad.evidence_library = [];
@@ -686,9 +690,11 @@ const classifyFitTool: AgentTool = {
 
     const evidenceLibrary = (ctx.scratchpad.evidence_library as EvidenceItem[] | undefined) ?? [];
 
+    const firstRole = Array.isArray(parsedResume.experience) ? parsedResume.experience[0] : undefined;
+    const roleTitle = firstRole?.title ?? 'Executive';
     const positioningSummary = typeof input.positioning_summary === 'string' && input.positioning_summary.trim()
       ? input.positioning_summary
-      : `${parsedResume.contact.name} — ${parsedResume.experience[0]?.title ?? 'Executive'} with ${parsedResume.career_span_years} years of experience`;
+      : `${parsedResume.contact.name} — ${roleTitle} with ${parsedResume.career_span_years} years of experience`;
 
     // Synthesize a PositioningProfile from what we have
     const positioning: PositioningProfile = {
@@ -707,7 +713,7 @@ const classifyFitTool: AgentTool = {
       unconscious_competence: interviewAnswers.find(a => a.category === 'hidden_accomplishments')?.answer ?? '',
       domain_insight: interviewAnswers.find(a => a.category === 'currency_and_adaptability')?.answer ?? '',
       authentic_phrases: interviewAnswers
-        .flatMap(a => a.answer.split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 200))
+        .flatMap(a => { const text = typeof a.answer === 'string' ? a.answer : ''; return text.split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 20 && s.length < 200); })
         .slice(0, 10),
       gaps_detected: [],
     };
