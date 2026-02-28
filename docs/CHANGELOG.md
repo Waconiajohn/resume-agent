@@ -1,5 +1,18 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session: Sprint 3 Final Fix — Gate Response Replay Prevention
+
+**Sprint:** 3 | **Stories:** 1 critical fix from final gap analysis
+**Summary:** Fixed gate response consumption that silently continued on DB update failure, causing potential response replay and state corruption on pipeline restart.
+
+### Changes Made
+- `server/src/routes/pipeline.ts` — Changed gate response DB update failure from `logger.warn` + continue to `throw Error`. If the DB can't persist that a queued response was consumed, the pipeline now fails loudly instead of silently continuing with stale DB state that could replay the response on restart.
+
+### Decisions Made
+- Final gap analysis verified all other critical paths are clean: master resume merge, state mutations, heartbeat cleanup, abort signal handling, LLM streaming, evidence extraction, session locks, revision handler cleanup
+
+---
+
 ## 2026-02-28 — Session: Sprint 3 Audit Round 6 — Final Medium/Low Sweep
 
 **Sprint:** 3 | **Stories:** 5 fixes (4 false positives skipped)

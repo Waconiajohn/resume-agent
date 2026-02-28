@@ -819,7 +819,7 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
       .update({ pending_gate_data: nextPayload })
       .eq('id', sessionId);
     if (error) {
-      logger.warn({ session_id: sessionId, gate, error: error.message }, 'Failed to consume queued gate response');
+      throw new Error(`Failed to persist gate response consumption for session ${sessionId}: ${error.message}`);
     }
     return match.response as T;
   }

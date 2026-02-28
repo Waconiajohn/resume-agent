@@ -98,6 +98,7 @@
 83. [x] sessions.ts: Atomic session delete with pipeline guard — [status: done]
 84. [x] llm-provider.ts: Increase MaxListeners threshold to 50 — [status: done]
 85. [x] BlueprintReviewPanel: Reset edits on new blueprint data — [status: done]
+86. [x] pipeline.ts: Throw on gate response persistence failure (prevent replay) — [status: done]
 
 ## Out of Scope (Explicitly)
 - Master Resume Viewer Page (dedicated UI to browse/delete evidence items)
