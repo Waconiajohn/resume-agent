@@ -1149,6 +1149,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     session_id,
     user_id,
     current_stage: 'intake',
+    approved_sections: [],
     revision_count: 0,
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
   };

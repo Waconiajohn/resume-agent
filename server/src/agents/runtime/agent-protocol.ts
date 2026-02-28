@@ -3,9 +3,11 @@
  *
  * Defines agent identity, tool interface, inter-agent messaging,
  * and agent configuration. Designed for the 33-agent platform.
+ *
+ * This module is intentionally domain-agnostic. It contains no imports
+ * from product-specific code. State and event types are generic parameters
+ * so any product can bind its own concrete types at the product layer.
  */
-
-import type { PipelineSSEEvent, PipelineState } from '../types.js';
 
 // ─── Agent Identity ──────────────────────────────────────────────────
 
@@ -16,6 +18,14 @@ export interface AgentIdentity {
   domain: string;
 }
 
+// ─── Base types for generic parameters ───────────────────────────────
+
+/** Minimal shape for any SSE event emitted by an agent */
+export type BaseEvent = { type: string };
+
+/** Minimal shape for shared pipeline/session state */
+export type BaseState = object;
+
 // ─── Tool Interface ──────────────────────────────────────────────────
 
 /** JSON Schema for tool input — uses Record<string,unknown> for LLM provider compatibility */
@@ -24,14 +34,20 @@ export type ToolInputSchema = Record<string, unknown>;
 /**
  * A tool available to an agent. The LLM sees `name`, `description`,
  * and `input_schema`. When it calls the tool, `execute` runs.
+ *
+ * TState — the shared state type this tool reads/writes (default: BaseState)
+ * TEvent — the SSE event union this tool can emit (default: BaseEvent)
  */
-export interface AgentTool {
+export interface AgentTool<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+> {
   name: string;
   description: string;
   input_schema: ToolInputSchema;
   /** Which model tier to use for this tool's LLM calls (if any) */
   model_tier?: 'primary' | 'mid' | 'orchestrator' | 'light';
-  execute: (input: Record<string, unknown>, ctx: AgentContext) => Promise<unknown>;
+  execute: (input: Record<string, unknown>, ctx: AgentContext<TState, TEvent>) => Promise<unknown>;
 }
 
 // ─── Inter-Agent Messages ────────────────────────────────────────────
@@ -48,11 +64,18 @@ export interface AgentMessage {
 
 // ─── Agent Configuration ─────────────────────────────────────────────
 
-export interface AgentConfig {
+/**
+ * TState — the shared state type tools in this agent read/write
+ * TEvent — the SSE event union tools in this agent can emit
+ */
+export interface AgentConfig<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+> {
   identity: AgentIdentity;
   /** System prompt template — may include {{placeholders}} */
   system_prompt: string;
-  tools: AgentTool[];
+  tools: AgentTool<TState, TEvent>[];
   /** LLM model to use for the agent's main loop */
   model: string;
   /** Max LLM round-trips per invocation */
@@ -65,21 +88,28 @@ export interface AgentConfig {
 
 // ─── Agent Context (passed to tools) ─────────────────────────────────
 
-export interface AgentContext {
+/**
+ * TState — the shared state type this context exposes (default: BaseState)
+ * TEvent — the SSE event union this context can emit (default: BaseEvent)
+ */
+export interface AgentContext<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+> {
   readonly sessionId: string;
   readonly userId: string;
 
   /** Emit an SSE event to the frontend */
-  emit: (event: PipelineSSEEvent) => void;
+  emit: (event: TEvent) => void;
 
   /** Pause for user input at a gate */
   waitForUser: <T>(gate: string) => Promise<T>;
 
   /** Read from the shared pipeline state */
-  getState: () => PipelineState;
+  getState: () => TState;
 
   /** Update the shared pipeline state */
-  updateState: (patch: Partial<PipelineState>) => void;
+  updateState: (patch: Partial<TState>) => void;
 
   /** Agent-local scratchpad — accumulates results across rounds */
   scratchpad: Record<string, unknown>;
@@ -113,7 +143,10 @@ export interface ToolDef {
 }
 
 /** Extract the ToolDef subset from an AgentTool (for LLM API calls) */
-export function toToolDef(tool: AgentTool): ToolDef {
+export function toToolDef<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+>(tool: AgentTool<TState, TEvent>): ToolDef {
   return {
     name: tool.name,
     description: tool.description,

@@ -3,17 +3,22 @@
  *
  * Wraps pipeline state, SSE emission, user interaction, and the message bus
  * into a single context object that tools receive.
+ *
+ * This module is intentionally domain-agnostic. TState and TEvent are generic
+ * parameters so any product can bind its own concrete types at the product layer.
  */
 
-import type { PipelineSSEEvent, PipelineState } from '../types.js';
-import type { AgentContext, AgentIdentity, AgentMessage } from './agent-protocol.js';
+import type { AgentContext, AgentIdentity, AgentMessage, BaseState, BaseEvent } from './agent-protocol.js';
 import type { AgentBus } from './agent-bus.js';
 
-export interface CreateContextParams {
+export interface CreateContextParams<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+> {
   sessionId: string;
   userId: string;
-  state: PipelineState;
-  emit: (event: PipelineSSEEvent) => void;
+  state: TState;
+  emit: (event: TEvent) => void;
   waitForUser: <T>(gate: string) => Promise<T>;
   signal: AbortSignal;
   bus: AgentBus;
@@ -32,14 +37,17 @@ export interface ContextInternals {
  * Returns both the context (passed to tools) and internals
  * (read by the coordinator after the agent completes).
  */
-export function createAgentContext(
-  params: CreateContextParams,
-): { ctx: AgentContext; internals: ContextInternals } {
+export function createAgentContext<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+>(
+  params: CreateContextParams<TState, TEvent>,
+): { ctx: AgentContext<TState, TEvent>; internals: ContextInternals } {
   const { sessionId, userId, state, emit, waitForUser, signal, bus, identity } = params;
   const scratchpad: Record<string, unknown> = {};
   const internals: ContextInternals = { messagesOut: [] };
 
-  const ctx: AgentContext = {
+  const ctx: AgentContext<TState, TEvent> = {
     sessionId,
     userId,
     emit,
@@ -51,7 +59,7 @@ export function createAgentContext(
       return state;
     },
 
-    updateState(patch: Partial<PipelineState>) {
+    updateState(patch: Partial<TState>) {
       Object.assign(state, patch);
     },
 

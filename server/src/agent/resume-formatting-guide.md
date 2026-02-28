@@ -261,7 +261,7 @@ ATS systems look for these specific keywords. While modern NLP-powered ATS can r
 
 ---
 
-## VII. THE 5 EXECUTIVE RESUME TEMPLATES
+## VII. THE 8 EXECUTIVE RESUME TEMPLATES
 
 ### Template Selection Matrix
 
@@ -272,6 +272,9 @@ ATS systems look for these specific keywords. While modern NLP-powered ATS can r
 | C-Suite or seeking board positions | **3: Executive Strategic Hybrid** |
 | CTO, CIO, VP Engineering, VP Product, R&D | **4: Specialized/Technical** |
 | Turnaround, transformation, restructuring, change mgmt | **5: Transformation/Change Leader** |
+| Non-profit, foundation, social impact, NGO, philanthropy | **6: Non-Profit Mission-Driven** |
+| General Counsel, CCO, regulatory affairs, compliance, legal | **7: Legal & Regulatory Executive** |
+| CMO, VP Marketing, Chief Digital Officer, VP Product, brand | **8: Creative & Digital Executive** |
 | **Default when uncertain** | **1: Classic Achievement-Focused** |
 
 ### Template 1: Classic Achievement-Focused
@@ -417,6 +420,119 @@ ATS systems look for these specific keywords. While modern NLP-powered ATS can r
 - Bold, action-oriented aesthetic
 - Section headings: 13-14pt Bold ALL CAPS with accent color
 - Strong before/after formatting: "Increased from X to Y" or "Reduced X by Y%"
+
+### Template 6: Non-Profit Mission-Driven
+
+**Best for:** Executive Directors, VP of Programs, Chief Development Officers, foundation leaders, social impact executives, NGO and philanthropy roles
+
+| Property | Value |
+|----------|-------|
+| Layout | Single column |
+| Length | 2 pages |
+| Font | Garamond |
+| Body size | 11pt |
+| Heading size | 12-14pt |
+| Name size | 20-22pt |
+| Color | Black + teal #1A6B6B for section headings |
+| Margins | 1.0 inch all sides |
+
+**Section Order:**
+1. Header (Name & Contact)
+2. Professional Summary (mission-alignment language — lead with the cause, follow with scope)
+3. Areas of Impact (10-14 competencies framed around impact domains: e.g., "Community Development", "Grant Management", "Stakeholder Engagement")
+4. Selected Accomplishments (4-6 bullets; metrics: lives served, funds raised, programs launched, partnerships formed)
+5. Professional Experience (emphasize mission outcomes alongside operational scale)
+6. Education & Certifications
+7. Board & Advisory Roles (if applicable — prominent for non-profit sector)
+8. Professional Affiliations (sector associations: AFP, AAMFT, etc.)
+
+**Design Elements:**
+- Understated, clean aesthetic — gravitas without flash
+- Garamond conveys institutional credibility without corporate stiffness
+- Impact metrics formatted as: "Served 12,000+ families annually" or "Raised $47M over 5 years"
+- Board & Advisory Roles section treated with same weight as Experience
+
+**Writing Guidance:**
+- Lead with the mission, not the organization name
+- Use sector language: "beneficiaries", "stakeholders", "programmatic outcomes", "theory of change"
+- Avoid corporate buzzwords (synergy, leverage, scalability) — use mission-driven equivalents
+- Quantify both financial stewardship (budget managed) and human impact (people served, outcomes achieved)
+
+### Template 7: Legal & Regulatory Executive
+
+**Best for:** General Counsel, Chief Legal Officer, Chief Compliance Officer, VP Regulatory Affairs, Senior Partners transitioning to in-house, regulatory executives
+
+| Property | Value |
+|----------|-------|
+| Layout | Single column |
+| Length | 2-3 pages |
+| Font | Times New Roman |
+| Body size | 11pt |
+| Heading size | 12-14pt |
+| Name size | 20-22pt |
+| Color | Black + dark navy #0D2B55 for section headings |
+| Margins | 1.0 inch all sides |
+
+**Section Order:**
+1. Header (Name & Contact)
+2. Professional Summary (jurisdictions, regulatory domains, leadership scope)
+3. Core Practice Areas (10-14 competencies: specific regulatory frameworks, legal disciplines, and risk domains)
+4. Selected Accomplishments (4-6 bullets: legal wins, regulatory clearances, risk reduction metrics, settlements avoided, policy outcomes)
+5. Professional Experience (balance legal outcomes with business impact — avoid legalese in descriptions)
+6. Bar Admissions & Jurisdictions (dedicated section: list each state/jurisdiction bar admission and year)
+7. Education (JD at top, undergraduate below; include law review, moot court, honors if within last 20 years)
+8. Certifications & Licenses (CIPP, CISA, CFE, or other relevant compliance/regulatory credentials)
+9. Professional Affiliations (ABA sections, industry associations, regulatory bodies)
+
+**Design Elements:**
+- Conservative, formal layout — reflects legal profession's institutional norms
+- Times New Roman signals tradition and credibility appropriate to the bar
+- Bar Admissions section must be clearly visible — a key credential for in-house roles
+- Avoid decorative elements — substance over style
+
+**Writing Guidance:**
+- Lead bullets with outcomes, not activities: "Resolved $120M antitrust exposure" not "Managed antitrust litigation"
+- Name specific regulatory frameworks: GDPR, CCPA, HIPAA, SOX, FCPA, SEC Rule 10b-5
+- Quantify risk mitigation: "$500M in regulatory fines avoided", "Zero material weaknesses over 7 years"
+- For GC roles, emphasize business partnership alongside legal expertise
+- Never use legalese in bullets — write for business audiences, not legal colleagues
+
+### Template 8: Creative & Digital Executive
+
+**Best for:** CMO, VP of Marketing, Chief Digital Officer, VP of Product, Chief Brand Officer, VP of Growth, digital transformation leaders in consumer-facing industries
+
+| Property | Value |
+|----------|-------|
+| Layout | Single column |
+| Length | 2 pages ideal (2-3 acceptable for 20+ year careers) |
+| Font | Calibri |
+| Body size | 10-11pt |
+| Heading size | 12-14pt |
+| Name size | 22-24pt |
+| Color | Black + slate blue #3A5A8C for section headings |
+| Margins | 1.0 inch all sides |
+
+**Section Order:**
+1. Header (Name & Contact)
+2. Professional Summary (brand voice, digital scope, growth orientation)
+3. Core Competencies (15-18 skills across 3 categories: Brand & Creative, Digital & Growth, Leadership & Strategy)
+4. Selected Accomplishments (5-7 bullets; emphasis on brand metrics, campaign ROI, user acquisition, revenue attribution, digital transformation milestones)
+5. Professional Experience (balance creative vision with business outcomes — always attach metrics)
+6. Education & Certifications (include relevant digital credentials: Google Analytics, HubSpot, Salesforce, etc.)
+7. Professional Affiliations (AMA, MMA, industry boards, advisory roles)
+
+**Design Elements:**
+- Modern, clean aesthetic — slightly bolder heading weight than Classic templates
+- Calibri keeps the resume ATS-safe while feeling contemporary
+- Competencies organized into 3 thematic categories (not a flat list) to signal strategic breadth
+- Metrics should be prominent and specific: "3.2M app downloads", "$180M media budget", "42% CAC reduction"
+
+**Writing Guidance:**
+- Lead with brand and business outcomes — never lead with creative awards alone
+- Quantify digital impact: DAU/MAU growth, conversion rate improvements, ROAS, LTV/CAC ratios
+- Include platform fluency where genuinely relevant: Salesforce, Adobe Experience Cloud, Google/Meta Ads ecosystem
+- Balance creative leadership ("redefined brand identity") with financial accountability ("within $2M budget")
+- For CDO roles, emphasize technology stack decisions alongside transformation outcomes
 
 ---
 

@@ -5,6 +5,8 @@
  * No shared state between agents — all data passes through these interfaces.
  */
 
+import type { AgentContext, AgentTool, AgentConfig } from './runtime/agent-protocol.js';
+
 // ─── Agent 1: Intake ─────────────────────────────────────────────────
 
 export interface IntakeInput {
@@ -547,6 +549,7 @@ export interface PipelineState {
     note?: string | null;
   };
   workflow_preferences_version?: number;
+  approved_sections: string[];
   revision_count: number;
   token_usage: {
     input_tokens: number;
@@ -607,7 +610,12 @@ export type PipelineSSEEvent =
       }>;
       suggestions?: SectionSuggestion[];
     }
-  | { type: 'quality_scores'; scores: QualityScores }
+  | { type: 'quality_scores'; scores: QualityScores; details?: {
+      narrative_coherence?: number;
+      humanize_issues?: string[];
+      coherence_issues?: string[];
+      ats_findings?: Array<{ issue: string; priority: string }>;
+    } }
   | { type: 'revision_start'; instructions: RevisionInstruction[] }
   | {
       type: 'pipeline_complete';
@@ -751,3 +759,18 @@ export type PipelineSSEEvent =
       questions: QuestionnaireQuestion[];
       current_index: number;
     };
+
+// ─── Product-Layer Agent Type Aliases ────────────────────────────────
+//
+// These bind the generic runtime types (AgentContext, AgentTool, AgentConfig)
+// to the resume product's concrete state and event types. All resume agent
+// tools and configurations use these aliases instead of the raw generics.
+
+/** AgentContext bound to the resume pipeline's state and SSE event types */
+export type ResumeAgentContext = AgentContext<PipelineState, PipelineSSEEvent>;
+
+/** AgentTool bound to the resume pipeline's state and SSE event types */
+export type ResumeAgentTool = AgentTool<PipelineState, PipelineSSEEvent>;
+
+/** AgentConfig bound to the resume pipeline's state and SSE event types */
+export type ResumeAgentConfig = AgentConfig<PipelineState, PipelineSSEEvent>;

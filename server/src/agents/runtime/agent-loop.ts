@@ -15,12 +15,13 @@ import { llm } from '../../lib/llm.js';
 import { withRetry } from '../../lib/retry.js';
 import { createCombinedAbortSignal } from '../../lib/llm-provider.js';
 import type { ChatMessage, ContentBlock } from '../../lib/llm-provider.js';
-import type { PipelineStage } from '../types.js';
 import type {
   AgentConfig,
   AgentContext,
   AgentResult,
   AgentTool,
+  BaseState,
+  BaseEvent,
 } from './agent-protocol.js';
 import { toToolDef } from './agent-protocol.js';
 import { createAgentContext, type CreateContextParams } from './agent-context.js';
@@ -32,11 +33,19 @@ const DEFAULT_MAX_ROUNDS = 10;
 const DEFAULT_ROUND_TIMEOUT_MS = 120_000;   // 2 min per round
 const DEFAULT_OVERALL_TIMEOUT_MS = 600_000; // 10 min total
 
+// Sliding window to prevent context overflow on long sessions (Bug 17).
+// When message count exceeds MAX, keep the initial instruction + last KEEP_RECENT messages.
+const MAX_HISTORY_MESSAGES = 30;
+const KEEP_RECENT_MESSAGES = 20;
+
 // ─── Public API ──────────────────────────────────────────────────────
 
-export interface RunAgentParams {
-  config: AgentConfig;
-  contextParams: CreateContextParams;
+export interface RunAgentParams<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+> {
+  config: AgentConfig<TState, TEvent>;
+  contextParams: CreateContextParams<TState, TEvent>;
   /** Initial user message to start the agent */
   initialMessage: string;
   /** Pre-existing conversation to continue from */
@@ -49,7 +58,10 @@ export interface RunAgentParams {
  * The agent calls tools autonomously until it decides it's done
  * (returns text without tool calls) or hits max_rounds.
  */
-export async function runAgentLoop(params: RunAgentParams): Promise<AgentResult> {
+export async function runAgentLoop<
+  TState extends BaseState = BaseState,
+  TEvent extends BaseEvent = BaseEvent,
+>(params: RunAgentParams<TState, TEvent>): Promise<AgentResult> {
   const { config, contextParams, initialMessage, priorMessages } = params;
   const { ctx, internals } = createAgentContext(contextParams);
   const log = logger.child({ agent: config.identity.name, session: ctx.sessionId });
@@ -59,7 +71,7 @@ export async function runAgentLoop(params: RunAgentParams): Promise<AgentResult>
   const overallTimeoutMs = config.overall_timeout_ms || DEFAULT_OVERALL_TIMEOUT_MS;
 
   // Build tool map for quick lookup
-  const toolMap = new Map<string, AgentTool>();
+  const toolMap = new Map<string, AgentTool<TState, TEvent>>();
   for (const tool of config.tools) {
     toolMap.set(tool.name, tool);
   }
@@ -92,12 +104,13 @@ export async function runAgentLoop(params: RunAgentParams): Promise<AgentResult>
 
       log.info({ round, messageCount: messages.length }, 'Agent round start');
 
-      // Emit transparency event
+      // Emit transparency event. The loop emits a generic transparency marker;
+      // cast is safe because BaseEvent allows any extra string fields.
       ctx.emit({
         type: 'transparency',
-        stage: ctx.getState().current_stage as PipelineStage,
+        stage: (ctx.getState() as Record<string, unknown>)['current_stage'] as string,
         message: `${config.identity.name}: round ${round + 1}/${maxRounds}`,
-      });
+      } as unknown as Parameters<typeof ctx.emit>[0]);
 
       // Call LLM with retry
       const response = await withRetry(
@@ -167,7 +180,7 @@ export async function runAgentLoop(params: RunAgentParams): Promise<AgentResult>
         log.info({ tool: tc.name, round }, 'Executing tool');
 
         try {
-          const result = await executeToolWithTimeout(tool, tc.input, ctx, roundTimeoutMs);
+          const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, ctx, roundTimeoutMs);
           const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
           resultBlocks.push({
             type: 'tool_result',
@@ -187,6 +200,11 @@ export async function runAgentLoop(params: RunAgentParams): Promise<AgentResult>
 
       // Append tool results as user message
       messages.push({ role: 'user', content: resultBlocks });
+
+      // Compact conversation history to prevent context overflow on long sessions
+      if (messages.length > MAX_HISTORY_MESSAGES) {
+        compactConversationHistory(messages, log);
+      }
     }
 
     if (round >= maxRounds) {
@@ -206,10 +224,55 @@ export async function runAgentLoop(params: RunAgentParams): Promise<AgentResult>
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-async function executeToolWithTimeout(
-  tool: AgentTool,
+/**
+ * Compact the conversation history to stay within context window limits.
+ * Keeps the initial instruction (first message) and the most recent messages,
+ * replacing the middle with a brief summary note.
+ */
+function compactConversationHistory(
+  messages: ChatMessage[],
+  log: Pick<ReturnType<typeof logger.child>, 'info'>,
+): void {
+  if (messages.length <= MAX_HISTORY_MESSAGES) return;
+
+  const initialMessage = messages[0]; // Initial user instruction (blueprint, evidence, etc.)
+  const droppedCount = messages.length - 1 - KEEP_RECENT_MESSAGES;
+  const recentMessages = messages.slice(-KEEP_RECENT_MESSAGES);
+
+  log.info(
+    { before: messages.length, dropped: droppedCount, kept: KEEP_RECENT_MESSAGES + 2 },
+    'Compacting conversation history to prevent context overflow',
+  );
+
+  // Build a summary marker so the LLM knows history was compacted
+  const summaryMessage: ChatMessage = {
+    role: 'user',
+    content: `[System note: ${droppedCount} earlier messages (${Math.floor(droppedCount / 2)} tool rounds) were compacted to stay within context limits. Their results are preserved in the scratchpad. Continue with the remaining work based on your initial instructions and recent context.]`,
+  };
+
+  // Ensure proper message alternation: if recent starts with user, we need an assistant between
+  const needsBridge = recentMessages[0]?.role === 'user';
+  const bridgeMessage: ChatMessage = {
+    role: 'assistant',
+    content: 'Understood. Continuing with the remaining work.',
+  };
+
+  // Mutate in place — splice out the middle and replace
+  messages.length = 0;
+  messages.push(initialMessage, summaryMessage);
+  if (needsBridge) {
+    messages.push(bridgeMessage);
+  }
+  messages.push(...recentMessages);
+}
+
+async function executeToolWithTimeout<
+  TState extends BaseState,
+  TEvent extends BaseEvent,
+>(
+  tool: AgentTool<TState, TEvent>,
   input: Record<string, unknown>,
-  ctx: AgentContext,
+  ctx: AgentContext<TState, TEvent>,
   timeoutMs: number,
 ): Promise<unknown> {
   // Tools that wait for user interaction should not be time-limited by the
@@ -226,7 +289,7 @@ async function executeToolWithTimeout(
   const { signal, cleanup } = createCombinedAbortSignal(ctx.signal, timeoutMs);
   try {
     // Create a child context with the tool's timeout signal
-    const toolCtx: AgentContext = { ...ctx, signal };
+    const toolCtx: AgentContext<TState, TEvent> = { ...ctx, signal };
     return await tool.execute(input, toolCtx);
   } finally {
     cleanup();

@@ -14,5 +14,7 @@ export {
   type AgentResult,
   type ToolDef,
   type ToolInputSchema,
+  type BaseEvent,
+  type BaseState,
   toToolDef,
 } from './agent-protocol.js';

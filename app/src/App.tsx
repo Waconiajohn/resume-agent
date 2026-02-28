@@ -249,10 +249,14 @@ export default function App() {
   const handlePipelineRespond = useCallback(
     async (gate: string, response: unknown) => {
       if (!currentSession) return;
+      if (!isPipelineGateActive) return; // Prevent 409 when no gate is pending
+      setIsPipelineGateActive(false); // Optimistic disable prevents double-click
       const ok = await respondToGate(currentSession.id, gate, response);
-      setIsPipelineGateActive(!ok);
+      if (!ok) {
+        setIsPipelineGateActive(true); // Re-enable on failure so user can retry
+      }
     },
-    [currentSession, respondToGate, setIsPipelineGateActive],
+    [currentSession, isPipelineGateActive, respondToGate, setIsPipelineGateActive],
   );
 
   const handleRestartPipelineFromCache = useCallback(

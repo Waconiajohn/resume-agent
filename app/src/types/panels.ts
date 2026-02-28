@@ -145,9 +145,16 @@ export interface QualityDashboardData {
   ats_score?: number;
   keyword_coverage?: number;
   authenticity_score?: number;
+  evidence_integrity?: number;
+  blueprint_compliance?: number;
+  narrative_coherence?: number;
   risk_flags?: RiskFlag[];
   age_bias_risks?: string[];
   overall_assessment?: string;
+  // Detailed findings from quality checks
+  ats_findings?: Array<{ issue: string; priority: string }>;
+  humanize_issues?: string[];
+  coherence_issues?: string[];
 }
 
 // --- Completion ---

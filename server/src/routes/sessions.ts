@@ -16,7 +16,8 @@ import type { PipelineSSEEvent } from '../agents/types.js';
 
 const sessions = new Hono();
 
-type AnySSEEvent = SSEEvent | PipelineSSEEvent;
+export type AnySSEEvent = SSEEvent | PipelineSSEEvent;
+export type SSEEmitterFn = (event: AnySSEEvent) => void;
 
 const sseConnections = new Map<string, Array<(event: AnySSEEvent) => void>>();
 const sseEmitterOwners = new WeakMap<(event: AnySSEEvent) => void, string>();

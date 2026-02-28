@@ -20,6 +20,7 @@
     "clsx": "^2.1.1",
     "docx": "^9.5.3",
     "file-saver": "^2.0.5",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.474.0",
     "mammoth": "^1.8.0",
     "pdfjs-dist": "^4.10.38",

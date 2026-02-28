@@ -1204,18 +1204,25 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                   const scores = data.scores as QualityScores;
                   setQualityScores(scores);
                   qualityScoresRef.current = scores;
-                  // Show quality dashboard with 6-dimension scores
+                  // Show quality dashboard with all quality dimensions + detailed findings
+                  const details = (data.details ?? {}) as Record<string, unknown>;
                   setPanelType('quality_dashboard');
                   setPanelData({
                     type: 'quality_dashboard',
                     ats_score: scores.ats_score,
                     authenticity_score: scores.authenticity,
+                    evidence_integrity: scores.evidence_integrity,
+                    blueprint_compliance: scores.blueprint_compliance,
+                    narrative_coherence: typeof details.narrative_coherence === 'number' ? details.narrative_coherence : undefined,
                     hiring_manager: {
                       pass: scores.hiring_manager_impact >= 4,
                       checklist_total: scores.hiring_manager_impact,
                       checklist_max: 5,
                     },
                     keyword_coverage: scores.requirement_coverage,
+                    ats_findings: Array.isArray(details.ats_findings) ? details.ats_findings as Array<{ issue: string; priority: string }> : undefined,
+                    humanize_issues: Array.isArray(details.humanize_issues) ? details.humanize_issues as string[] : undefined,
+                    coherence_issues: Array.isArray(details.coherence_issues) ? details.coherence_issues as string[] : undefined,
                   } as PanelData);
                   break;
                 }

@@ -270,7 +270,7 @@ export function SectionWorkbench({
   return (
     <div
       ref={rootRef}
-      className="relative flex h-full flex-col"
+      className="relative flex h-full min-h-0 flex-col"
       data-panel-root
     >
       {/* Progress dots — sticky */}
@@ -283,8 +283,8 @@ export function SectionWorkbench({
       )}
 
       {/* Scrollable body */}
-      <div data-panel-scroll className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-5 py-6 space-y-6">
+      <div data-panel-scroll className="flex-1 min-h-0 overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-3 py-4 space-y-4 sm:px-5 sm:py-6 sm:space-y-6">
           <ProcessStepGuideCard
             step="section_writing"
             tone="review"
@@ -582,11 +582,16 @@ export function SectionWorkbench({
             hasLocalEdits={hasLocalEdits}
           />
 
-          {/* Refining indicator */}
+          {/* Refining loading overlay */}
           {isRefining && (
-            <div className="flex items-center gap-2 justify-center">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff] animate-pulse" />
-              <p className="text-xs text-[#98b3ff]/70">Refining section…</p>
+            <div className="relative rounded-xl border border-[#98b3ff]/20 bg-[#98b3ff]/[0.04] p-3">
+              <div className="flex items-center gap-2 justify-center">
+                <div className="h-2 w-2 rounded-full bg-[#98b3ff] animate-pulse" />
+                <p className="text-xs text-[#98b3ff]/80 font-medium">Refining section…</p>
+              </div>
+              <div className="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="h-full w-1/3 rounded-full bg-[#98b3ff]/40 animate-[shimmer_1.5s_ease-in-out_infinite]" />
+              </div>
             </div>
           )}
 
@@ -666,7 +671,7 @@ export function SectionWorkbench({
       )}
 
       {/* Sticky bottom CTA bar */}
-      <div className="border-t border-white/[0.12] bg-black/30 backdrop-blur-sm px-5 py-3">
+      <div className="border-t border-white/[0.12] bg-black/30 backdrop-blur-sm px-3 py-3 sm:px-5">
         <div className="mx-auto max-w-3xl">
           {hasLocalEdits ? (
             <div className="flex items-center gap-2">
@@ -694,7 +699,7 @@ export function SectionWorkbench({
               )}
               <GlassButton
                 variant="primary"
-                className="flex-1"
+                className="flex-1 min-h-[44px]"
                 onClick={handleSaveEdits}
               >
                 <Check className="mr-1.5 h-3.5 w-3.5" />
@@ -706,7 +711,7 @@ export function SectionWorkbench({
                   setLocalContent(content);
                   setHasLocalEdits(false);
                 }}
-                className="px-3"
+                className="px-3 min-h-[44px]"
               >
                 Discard
               </GlassButton>
@@ -737,12 +742,12 @@ export function SectionWorkbench({
               )}
               <GlassButton
                 variant="primary"
-                className={cn('flex-1', isRefining && 'opacity-50 pointer-events-none')}
+                className={cn('flex-1 min-h-[44px]', isRefining && 'opacity-50 pointer-events-none')}
                 onClick={handleApproveWithAnimation}
                 disabled={isRefining}
               >
                 <Check className="mr-1.5 h-3.5 w-3.5" />
-                Looks Good — Next Section
+                <span className="hidden xs:inline">Looks Good — </span>Next Section
               </GlassButton>
               <GlassButton
                 variant="ghost"
@@ -751,7 +756,7 @@ export function SectionWorkbench({
                   handleAction(instruction);
                 }}
                 disabled={isRefining}
-                className="flex-shrink-0 gap-1.5 px-3"
+                className="flex-shrink-0 gap-1.5 px-3 min-h-[44px]"
                 aria-label="Request a quick automatic refinement for this section"
               >
                 <Pencil className="h-3.5 w-3.5" />

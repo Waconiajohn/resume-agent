@@ -20,8 +20,9 @@ import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
 import { runSectionWriter, runSectionRevision } from '../section-writer.js';
 import { QUALITY_CHECKLIST, RESUME_ANTI_PATTERNS } from '../knowledge/rules.js';
-import type { AgentTool, AgentContext } from '../runtime/agent-protocol.js';
 import type {
+  ResumeAgentTool,
+  ResumeAgentContext,
   SectionWriterInput,
   SectionWriterOutput,
   ArchitectOutput,
@@ -143,7 +144,7 @@ const CLICHE_PHRASES = extractClichePhrases();
 
 // ─── Tool: write_section ──────────────────────────────────────────────
 
-const writeSectionTool: AgentTool = {
+const writeSectionTool: ResumeAgentTool = {
   name: 'write_section',
   description:
     'Write a single resume section from the blueprint slice and evidence sources. ' +
@@ -179,7 +180,7 @@ const writeSectionTool: AgentTool = {
     required: ['section', 'blueprint_slice', 'evidence_sources', 'global_rules'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = input.section as string;
     const blueprint_slice = input.blueprint_slice as Record<string, unknown>;
     const evidence_sources = input.evidence_sources as Record<string, unknown>;
@@ -228,7 +229,7 @@ const writeSectionTool: AgentTool = {
 
 // ─── Tool: self_review_section ────────────────────────────────────────
 
-const selfReviewSectionTool: AgentTool = {
+const selfReviewSectionTool: ResumeAgentTool = {
   name: 'self_review_section',
   description:
     'Evaluate a section against the 10-point quality checklist using LLM analysis. ' +
@@ -250,7 +251,7 @@ const selfReviewSectionTool: AgentTool = {
     required: ['section', 'content'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = input.section as string;
     const content = input.content as string;
 
@@ -327,7 +328,7 @@ Rules:
 
 // ─── Tool: revise_section ─────────────────────────────────────────────
 
-const reviseSectionTool: AgentTool = {
+const reviseSectionTool: ResumeAgentTool = {
   name: 'revise_section',
   description:
     'Revise a section to fix identified issues. Wraps runSectionRevision(). ' +
@@ -354,7 +355,7 @@ const reviseSectionTool: AgentTool = {
     required: ['section', 'content', 'issues'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = input.section as string;
     const content = input.content as string;
     const issues = input.issues as string[];
@@ -403,7 +404,7 @@ const reviseSectionTool: AgentTool = {
 
 // ─── Tool: check_keyword_coverage ─────────────────────────────────────
 
-const checkKeywordCoverageTool: AgentTool = {
+const checkKeywordCoverageTool: ResumeAgentTool = {
   name: 'check_keyword_coverage',
   description:
     'Check which target keywords appear in the section content using case-insensitive string matching. ' +
@@ -429,7 +430,7 @@ const checkKeywordCoverageTool: AgentTool = {
     required: ['section', 'content', 'target_keywords'],
   },
 
-  async execute(input: Record<string, unknown>, _ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, _ctx: ResumeAgentContext): Promise<unknown> {
     const content = (input.content as string).toLowerCase();
     const targetKeywords = (input.target_keywords as string[]) ?? [];
 
@@ -455,7 +456,7 @@ const checkKeywordCoverageTool: AgentTool = {
 
 // ─── Tool: check_anti_patterns ────────────────────────────────────────
 
-const checkAntiPatternsTool: AgentTool = {
+const checkAntiPatternsTool: ResumeAgentTool = {
   name: 'check_anti_patterns',
   description:
     'Check section content against the resume anti-patterns list using regex and string matching. ' +
@@ -476,7 +477,7 @@ const checkAntiPatternsTool: AgentTool = {
     required: ['section', 'content'],
   },
 
-  async execute(input: Record<string, unknown>, _ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, _ctx: ResumeAgentContext): Promise<unknown> {
     const content = input.content as string;
     const found_patterns: string[] = [];
 
@@ -510,7 +511,7 @@ const checkAntiPatternsTool: AgentTool = {
 
 // ─── Tool: check_evidence_integrity ──────────────────────────────────
 
-const checkEvidenceIntegrityTool: AgentTool = {
+const checkEvidenceIntegrityTool: ResumeAgentTool = {
   name: 'check_evidence_integrity',
   description:
     'Cross-reference claims made in the section content against the evidence library. ' +
@@ -537,7 +538,7 @@ const checkEvidenceIntegrityTool: AgentTool = {
     required: ['section', 'content', 'evidence_library'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = input.section as string;
     const content = input.content as string;
     const evidenceLibrary = (input.evidence_library as EvidenceItem[]) ?? [];
@@ -614,7 +615,7 @@ Rules:
 
 // ─── Tool: present_to_user ────────────────────────────────────────────
 
-const presentToUserTool: AgentTool = {
+const presentToUserTool: ResumeAgentTool = {
   name: 'present_to_user',
   description:
     'Present the polished section to the user for review. ' +
@@ -641,7 +642,7 @@ const presentToUserTool: AgentTool = {
     required: ['section', 'content'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = input.section as string;
     const content = input.content as string;
     const review_token = (input.review_token as string | undefined) ?? randomUUID();
@@ -667,10 +668,12 @@ const presentToUserTool: AgentTool = {
     >(`section_review_${section}`);
 
     // If the user directly edited the content, update the scratchpad
-    if (
-      typeof userResponse === 'object' &&
-      userResponse.edited_content
-    ) {
+    const isApproved =
+      userResponse === true ||
+      (typeof userResponse === 'object' && userResponse.approved === true) ||
+      (typeof userResponse === 'object' && !!userResponse.edited_content);
+
+    if (typeof userResponse === 'object' && userResponse.edited_content) {
       const stored = ctx.scratchpad[`section_${section}`] as SectionWriterOutput | undefined;
       if (stored) {
         ctx.scratchpad[`section_${section}`] = {
@@ -678,9 +681,15 @@ const presentToUserTool: AgentTool = {
           content: userResponse.edited_content,
         };
       }
+    }
+
+    if (isApproved) {
       ctx.emit({ type: 'section_approved', section });
-    } else if (userResponse === true || (typeof userResponse === 'object' && userResponse.approved === true)) {
-      ctx.emit({ type: 'section_approved', section });
+      // Track approved sections so revisions don't re-propose them
+      const currentState = ctx.getState();
+      if (!currentState.approved_sections.includes(section)) {
+        ctx.updateState({ approved_sections: [...currentState.approved_sections, section] });
+      }
     }
 
     return userResponse;
@@ -689,7 +698,7 @@ const presentToUserTool: AgentTool = {
 
 // ─── Tool: emit_transparency ──────────────────────────────────────────
 
-const emitTransparencyTool: AgentTool = {
+const emitTransparencyTool: ResumeAgentTool = {
   name: 'emit_transparency',
   description:
     'Emit a transparency SSE event to inform the user what the Craftsman is currently doing. ' +
@@ -705,7 +714,7 @@ const emitTransparencyTool: AgentTool = {
     required: ['message'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const message = input.message as string;
     const state = ctx.getState();
 
@@ -721,7 +730,7 @@ const emitTransparencyTool: AgentTool = {
 
 // ─── Exports ──────────────────────────────────────────────────────────
 
-export const craftsmanTools: AgentTool[] = [
+export const craftsmanTools: ResumeAgentTool[] = [
   writeSectionTool,
   selfReviewSectionTool,
   reviseSectionTool,

@@ -37,12 +37,13 @@ import {
   getSessionRouteStats,
   resetSessionRouteStateForTests,
   sessionRouteTestUtils,
+  type SSEEmitterFn,
 } from '../routes/sessions.js';
 
-function makeEmitter() {
-  return (() => {
+function makeEmitter(): SSEEmitterFn {
+  return () => {
     // no-op
-  }) as unknown as (event: unknown) => void;
+  };
 }
 
 describe('sessions route runtime guards', () => {
@@ -54,8 +55,8 @@ describe('sessions route runtime guards', () => {
     const liveEmitter = makeEmitter();
     const unknownEmitter = makeEmitter();
 
-    sessionRouteTestUtils.addSSEConnection('session-1', 'user-1', liveEmitter as never);
-    sessionRouteTestUtils.removeSSEConnection('session-1', 'user-1', unknownEmitter as never);
+    sessionRouteTestUtils.addSSEConnection('session-1', 'user-1', liveEmitter);
+    sessionRouteTestUtils.removeSSEConnection('session-1', 'user-1', unknownEmitter);
 
     const stats = getSessionRouteStats();
     expect(stats.active_sse_sessions).toBe(1);
@@ -66,9 +67,9 @@ describe('sessions route runtime guards', () => {
   it('does not underflow SSE counters when removing the same emitter twice', () => {
     const emitter = makeEmitter();
 
-    sessionRouteTestUtils.addSSEConnection('session-2', 'user-2', emitter as never);
-    sessionRouteTestUtils.removeSSEConnection('session-2', 'user-2', emitter as never);
-    sessionRouteTestUtils.removeSSEConnection('session-2', 'user-2', emitter as never);
+    sessionRouteTestUtils.addSSEConnection('session-2', 'user-2', emitter);
+    sessionRouteTestUtils.removeSSEConnection('session-2', 'user-2', emitter);
+    sessionRouteTestUtils.removeSSEConnection('session-2', 'user-2', emitter);
 
     const stats = getSessionRouteStats();
     expect(stats.active_sse_sessions).toBe(0);

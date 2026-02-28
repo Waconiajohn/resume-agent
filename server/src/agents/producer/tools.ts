@@ -20,8 +20,9 @@ import logger from '../../lib/logger.js';
 import { runQualityReviewer } from '../quality-reviewer.js';
 import { runAtsComplianceCheck } from '../ats-rules.js';
 import { EXECUTIVE_TEMPLATES } from '../knowledge/formatting-guide.js';
-import type { AgentTool, AgentContext } from '../runtime/agent-protocol.js';
 import type {
+  ResumeAgentTool,
+  ResumeAgentContext,
   QualityReviewerInput,
   ArchitectOutput,
   JDAnalysis,
@@ -55,7 +56,7 @@ function safeStringArray(val: unknown): string[] {
 
 // ─── Tool: select_template ────────────────────────────────────────────
 
-const selectTemplate: AgentTool = {
+const selectTemplate: ResumeAgentTool = {
   name: 'select_template',
   description:
     'Select the best executive resume template based on role title, industry, and candidate career span. Returns the selected template with its specs.',
@@ -78,7 +79,7 @@ const selectTemplate: AgentTool = {
     required: ['role_title', 'industry', 'candidate_career_span'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const role = safeStr(input.role_title).toLowerCase();
     const industry = safeStr(input.industry).toLowerCase();
     const careerSpan = safeNum(input.candidate_career_span, 15);
@@ -182,6 +183,62 @@ const selectTemplate: AgentTool = {
           score += 5;
         }
 
+        if (
+          (role.includes('executive director') ||
+            role.includes('chief executive') ||
+            role.includes('program director') ||
+            role.includes('development director') ||
+            role.includes('impact') ||
+            industry.includes('non-profit') ||
+            industry.includes('nonprofit') ||
+            industry.includes('foundation') ||
+            industry.includes('social impact') ||
+            industry.includes('ngo') ||
+            industry.includes('philanthropy') ||
+            industry.includes('mission')) &&
+          t.id === 'nonprofit-mission'
+        ) {
+          score += 5;
+        }
+
+        if (
+          (role.includes('general counsel') ||
+            role.includes('chief legal') ||
+            role.includes('chief compliance') ||
+            role.includes('compliance officer') ||
+            role.includes('regulatory') ||
+            role.includes('litigation') ||
+            role.includes('attorney') ||
+            role.includes('counsel') ||
+            industry.includes('legal') ||
+            industry.includes('regulatory') ||
+            industry.includes('compliance') ||
+            industry.includes('law')) &&
+          t.id === 'legal-regulatory'
+        ) {
+          score += 5;
+        }
+
+        if (
+          (role.includes('chief marketing') ||
+            role.includes('cmo') ||
+            role.includes('vp marketing') ||
+            role.includes('chief digital') ||
+            role.includes('vp product') ||
+            role.includes('vp of product') ||
+            role.includes('brand') ||
+            role.includes('growth') ||
+            industry.includes('marketing') ||
+            industry.includes('advertising') ||
+            industry.includes('media') ||
+            industry.includes('digital') ||
+            industry.includes('consumer') ||
+            industry.includes('ecommerce')) &&
+          t.id === 'creative-digital'
+        ) {
+          score += 5;
+        }
+
         return { template: t, score };
       });
 
@@ -228,7 +285,7 @@ const selectTemplate: AgentTool = {
 
 // ─── Tool: adversarial_review ─────────────────────────────────────────
 
-const adversarialReview: AgentTool = {
+const adversarialReview: ResumeAgentTool = {
   name: 'adversarial_review',
   description:
     'Run the full 6-dimension quality review from a skeptical hiring manager perspective. Wraps runQualityReviewer(). Returns QualityReviewerOutput with scores, decision, and revision instructions.',
@@ -267,7 +324,7 @@ const adversarialReview: AgentTool = {
     required: ['assembled_resume', 'blueprint', 'jd_analysis', 'evidence_library'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const rawAssembled = input.assembled_resume as Record<string, unknown>;
     const rawBlueprint = input.blueprint as Record<string, unknown>;
     const rawJd = input.jd_analysis as Record<string, unknown>;
@@ -305,7 +362,7 @@ const adversarialReview: AgentTool = {
 
 // ─── Tool: ats_compliance_check ───────────────────────────────────────
 
-const atsComplianceCheck: AgentTool = {
+const atsComplianceCheck: ResumeAgentTool = {
   name: 'ats_compliance_check',
   description:
     'Run the rule-based ATS compliance scanner on the full resume text. No LLM needed — checks for forbidden patterns (tables, pipes, icons) and required headings. Returns array of AtsFinding.',
@@ -342,7 +399,7 @@ const atsComplianceCheck: AgentTool = {
 
 // ─── Tool: humanize_check ─────────────────────────────────────────────
 
-const humanizeCheck: AgentTool = {
+const humanizeCheck: ResumeAgentTool = {
   name: 'humanize_check',
   description:
     'Scan resume content for AI-generated patterns, clichés, and robotically uniform structure. Uses MODEL_LIGHT. Returns { score: number (0-100), issues: string[] }. Scores below 70 require revision.',
@@ -358,7 +415,7 @@ const humanizeCheck: AgentTool = {
     required: ['content'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const content = safeStr(input.content);
 
     const response = await llm.chat({
@@ -409,7 +466,7 @@ Return ONLY valid JSON: { "score": 82, "issues": ["List of specific issues found
 
 // ─── Tool: check_blueprint_compliance ────────────────────────────────
 
-const checkBlueprintCompliance: AgentTool = {
+const checkBlueprintCompliance: ResumeAgentTool = {
   name: 'check_blueprint_compliance',
   description:
     'Verify the written sections follow the architect blueprint. Checks section order, required elements, keyword placements, and age-protection flags. Returns { compliance_pct: number, deviations: string[] }.',
@@ -558,7 +615,7 @@ const checkBlueprintCompliance: AgentTool = {
 
 // ─── Tool: verify_cross_section_consistency ───────────────────────────
 
-const verifyCrossSectionConsistency: AgentTool = {
+const verifyCrossSectionConsistency: ResumeAgentTool = {
   name: 'verify_cross_section_consistency',
   description:
     'Check date formats, verb tense consistency, contact info presence, and formatting consistency across all resume sections. Returns { consistent: boolean, issues: string[] }.',
@@ -698,7 +755,7 @@ const verifyCrossSectionConsistency: AgentTool = {
 
 // ─── Tool: request_content_revision ──────────────────────────────────
 
-const requestContentRevision: AgentTool = {
+const requestContentRevision: ResumeAgentTool = {
   name: 'request_content_revision',
   description:
     'Send a targeted revision request to the Craftsman agent for a specific content issue. The coordinator routes this message. Use this for content problems only — not formatting issues you can note directly.',
@@ -721,10 +778,19 @@ const requestContentRevision: AgentTool = {
     required: ['section', 'issue', 'instruction'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = safeStr(input.section);
     const issue = safeStr(input.issue);
     const instruction = safeStr(input.instruction);
+
+    // Approved sections are immutable — reject revision requests
+    if (ctx.getState().approved_sections.includes(section)) {
+      return {
+        acknowledged: false,
+        message: `Section "${section}" was approved by the user and cannot be revised. Note the issue for the final quality report instead.`,
+        section,
+      };
+    }
 
     ctx.sendMessage({
       to: 'craftsman',
@@ -749,7 +815,7 @@ const requestContentRevision: AgentTool = {
 
 // ─── Tool: emit_transparency ──────────────────────────────────────────
 
-const emitTransparency: AgentTool = {
+const emitTransparency: ResumeAgentTool = {
   name: 'emit_transparency',
   description:
     'Emit a transparency SSE event so the user can see what the Producer is currently doing.',
@@ -764,7 +830,7 @@ const emitTransparency: AgentTool = {
     required: ['message'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const message = safeStr(input.message);
     const state = ctx.getState();
 
@@ -780,7 +846,7 @@ const emitTransparency: AgentTool = {
 
 // ─── Tool: check_narrative_coherence ──────────────────────────────────
 
-const checkNarrativeCoherence: AgentTool = {
+const checkNarrativeCoherence: ResumeAgentTool = {
   name: 'check_narrative_coherence',
   description:
     'Evaluate all resume sections together as a cohesive narrative. Checks if summary → experience → accomplishments tell one story, identifies achievement duplication across sections, verifies positioning angle is threaded throughout, and assesses tonal consistency. Uses MODEL_MID. Returns { coherence_score: number (0-100), issues: string[] }.',
@@ -800,7 +866,7 @@ const checkNarrativeCoherence: AgentTool = {
     required: ['sections', 'positioning_angle'],
   },
 
-  async execute(input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> {
+  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const sections = (input.sections ?? {}) as Record<string, string>;
     const positioningAngle = safeStr(input.positioning_angle);
 
@@ -853,7 +919,7 @@ Return ONLY valid JSON: { "coherence_score": 82, "issues": ["specific issues fou
 
 // ─── Exports ─────────────────────────────────────────────────────────
 
-export const producerTools: AgentTool[] = [
+export const producerTools: ResumeAgentTool[] = [
   selectTemplate,
   adversarialReview,
   atsComplianceCheck,

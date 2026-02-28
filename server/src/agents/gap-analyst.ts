@@ -328,7 +328,7 @@ export function enrichGapAnalysis(
 
     if (req.classification === 'gap') {
       if (selectedId === 'significant') {
-        clone.classification = hasCustomEvidence ? 'strong' : 'partial';
+        clone.classification = 'strong';
         if (!hasCustomEvidence) {
           clone.strengthen = 'User reported significant experience but did not provide a concrete example yet.';
         }

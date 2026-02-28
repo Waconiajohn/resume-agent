@@ -10,8 +10,9 @@ import { runIntakeAgent } from '../intake.js';
 import { runResearchAgent } from '../research.js';
 import { runGapAnalyst } from '../gap-analyst.js';
 import { runArchitect } from '../architect.js';
-import type { AgentTool, AgentContext } from '../runtime/agent-protocol.js';
 import type {
+  ResumeAgentTool,
+  ResumeAgentContext,
   IntakeInput,
   ResearchInput,
   GapAnalystInput,
@@ -26,7 +27,7 @@ import { evaluateFollowUp } from '../positioning-coach.js';
 
 // ─── Tool: parse_resume ───────────────────────────────────────────────
 
-const parseResumeTool: AgentTool = {
+const parseResumeTool: ResumeAgentTool = {
   name: 'parse_resume',
   description: 'Parse the candidate\'s raw resume text into structured data (contact info, experience entries, skills, education, certifications). Call this first before any other tool. Reads raw_resume_text from pipeline state.',
   input_schema: {
@@ -40,7 +41,7 @@ const parseResumeTool: AgentTool = {
     required: [],
   },
   model_tier: 'light',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const state = ctx.getState();
 
     // Prefer explicit input, fall back to pipeline state
@@ -72,7 +73,7 @@ const parseResumeTool: AgentTool = {
 
 // ─── Tool: analyze_jd ────────────────────────────────────────────────
 
-const analyzeJdTool: AgentTool = {
+const analyzeJdTool: ResumeAgentTool = {
   name: 'analyze_jd',
   description: 'Analyze the job description to extract must-haves, nice-to-haves, implicit requirements, seniority level, and language keywords. Reads job_description and company_name from pipeline state.',
   input_schema: {
@@ -90,7 +91,7 @@ const analyzeJdTool: AgentTool = {
     required: [],
   },
   model_tier: 'light',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const state = ctx.getState();
     const intake = (ctx.scratchpad.intake ?? state.intake) as IntakeInput | undefined;
 
@@ -146,7 +147,7 @@ const analyzeJdTool: AgentTool = {
 
 // ─── Tool: research_company ───────────────────────────────────────────
 
-const researchCompanyTool: AgentTool = {
+const researchCompanyTool: ResumeAgentTool = {
   name: 'research_company',
   description: 'Research the target company: industry, size, culture signals, values, and communication style. If analyze_jd was already called, this returns cached results. Otherwise calls the research agent.',
   input_schema: {
@@ -164,7 +165,7 @@ const researchCompanyTool: AgentTool = {
     required: [],
   },
   model_tier: 'light',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const state = ctx.getState();
 
     // If research was already done by analyze_jd, return company_research from cache
@@ -220,7 +221,7 @@ const researchCompanyTool: AgentTool = {
 
 // ─── Tool: build_benchmark ────────────────────────────────────────────
 
-const buildBenchmarkTool: AgentTool = {
+const buildBenchmarkTool: ResumeAgentTool = {
   name: 'build_benchmark',
   description: 'Synthesize the ideal benchmark candidate profile from JD analysis and company research. Returns ideal_profile description, language_keywords to use, and section_expectations. Requires analyze_jd to have been called first.',
   input_schema: {
@@ -229,7 +230,7 @@ const buildBenchmarkTool: AgentTool = {
     required: [],
   },
   model_tier: 'mid',
-  execute: async (_input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (_input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const state = ctx.getState();
     const cachedResearch = (ctx.scratchpad.research ?? state.research) as typeof state.research | undefined;
 
@@ -255,19 +256,19 @@ const INTERVIEW_BUDGET: Record<string, number> = {
   deep_dive: 12,
 };
 
-function getInterviewBudget(ctx: AgentContext): number {
+function getInterviewBudget(ctx: ResumeAgentContext): number {
   const mode = ctx.getState().user_preferences?.workflow_mode ?? 'balanced';
   return INTERVIEW_BUDGET[mode] ?? 7;
 }
 
-function getInterviewQuestionCount(ctx: AgentContext): number {
+function getInterviewQuestionCount(ctx: ResumeAgentContext): number {
   const answers = ctx.scratchpad.interview_answers;
   return Array.isArray(answers) ? answers.length : 0;
 }
 
 // ─── Tool: interview_candidate ────────────────────────────────────────
 
-const interviewCandidateTool: AgentTool = {
+const interviewCandidateTool: ResumeAgentTool = {
   name: 'interview_candidate',
   description: 'Ask the candidate a targeted question to surface hidden experience, metrics, or context not visible on the resume. Use this to probe partial matches and critical gaps. The question is presented in the UI and the candidate\'s answer is returned. Answers are accumulated in the evidence library. Respects the interview question budget — returns a budget_reached signal when the limit is hit.',
   input_schema: {
@@ -307,7 +308,7 @@ const interviewCandidateTool: AgentTool = {
     required: ['question_text', 'context', 'category'],
   },
   model_tier: 'orchestrator',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const questionText = String(input.question_text ?? '');
     const context = String(input.context ?? '');
     const validCategories = ['scale_and_scope', 'requirement_mapped', 'career_narrative', 'hidden_accomplishments', 'currency_and_adaptability'] as const;
@@ -423,7 +424,7 @@ const interviewCandidateTool: AgentTool = {
 
 // ─── Tool: interview_candidate_batch ──────────────────────────────────
 
-const interviewCandidateBatchTool: AgentTool = {
+const interviewCandidateBatchTool: ResumeAgentTool = {
   name: 'interview_candidate_batch',
   description: 'Ask the candidate 2-3 related questions at once. Group questions by category (e.g., all scale_and_scope questions in one batch). More efficient than single questions — the candidate answers all at once. Use this as your primary interview tool. Falls back gracefully if the budget is reached mid-batch.',
   input_schema: {
@@ -471,7 +472,7 @@ const interviewCandidateBatchTool: AgentTool = {
     required: ['questions'],
   },
   model_tier: 'orchestrator',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const rawQuestions = Array.isArray(input.questions)
       ? (input.questions as Record<string, unknown>[])
       : [];
@@ -653,7 +654,7 @@ const interviewCandidateBatchTool: AgentTool = {
 
 // ─── Tool: classify_fit ───────────────────────────────────────────────
 
-const classifyFitTool: AgentTool = {
+const classifyFitTool: ResumeAgentTool = {
   name: 'classify_fit',
   description: 'Run gap analysis — classify how the candidate\'s evidence maps to each JD requirement as strong/partial/gap. Requires parse_resume, analyze_jd, and at least a minimal positioning profile built from interview answers. Call this after completing the candidate interview.',
   input_schema: {
@@ -667,7 +668,7 @@ const classifyFitTool: AgentTool = {
     required: [],
   },
   model_tier: 'mid',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const state = ctx.getState();
 
     const parsedResume = (ctx.scratchpad.intake ?? state.intake) as NonNullable<typeof state.intake> | undefined;
@@ -750,7 +751,7 @@ const classifyFitTool: AgentTool = {
 
 // ─── Tool: design_blueprint ───────────────────────────────────────────
 
-const designBlueprintTool: AgentTool = {
+const designBlueprintTool: ResumeAgentTool = {
   name: 'design_blueprint',
   description: 'Design the complete resume blueprint — section order, evidence allocation, keyword placement, age protection, and per-bullet writing instructions. This is the final Strategist output. Call this after classify_fit has completed. The blueprint will be handed off to the Craftsman for execution.',
   input_schema: {
@@ -777,7 +778,7 @@ const designBlueprintTool: AgentTool = {
     required: [],
   },
   model_tier: 'primary',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const state = ctx.getState();
 
     const parsedResume = (ctx.scratchpad.intake ?? state.intake) as NonNullable<typeof state.intake> | undefined;
@@ -845,7 +846,7 @@ const designBlueprintTool: AgentTool = {
 
 // ─── Tool: emit_transparency ──────────────────────────────────────────
 
-const emitTransparencyTool: AgentTool = {
+const emitTransparencyTool: ResumeAgentTool = {
   name: 'emit_transparency',
   description: 'Send a transparency message to the frontend so the user knows what the Strategist is doing. Use this at the start of each major phase and when waiting for long-running operations.',
   input_schema: {
@@ -859,7 +860,7 @@ const emitTransparencyTool: AgentTool = {
     required: ['message'],
   },
   model_tier: 'orchestrator',
-  execute: async (input: Record<string, unknown>, ctx: AgentContext): Promise<unknown> => {
+  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
     const message = String(input.message ?? '');
     if (!message.trim()) {
       return { success: false, reason: 'message is empty' };
@@ -879,7 +880,7 @@ const emitTransparencyTool: AgentTool = {
 
 // ─── Exports ──────────────────────────────────────────────────────────
 
-export const strategistTools: AgentTool[] = [
+export const strategistTools: ResumeAgentTool[] = [
   parseResumeTool,
   analyzeJdTool,
   researchCompanyTool,

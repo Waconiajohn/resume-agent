@@ -21,3 +21,14 @@ export function isQuestionnaireEnabled(stage: QuestionnaireStage): boolean {
 export const GUIDED_SUGGESTIONS_ENABLED = envBool('FF_GUIDED_SUGGESTIONS', true);
 
 export const FF_BLUEPRINT_APPROVAL = envBool('FF_BLUEPRINT_APPROVAL', true);
+
+/**
+ * FF_REDIS_BUS — Replace the in-memory AgentBus with a Redis Streams implementation.
+ *
+ * Requires REDIS_URL to be set. Default: false (in-memory bus is used).
+ * See ADR-007 in docs/DECISIONS.md for full context.
+ *
+ * DO NOT enable in production until agent loops are made resumable
+ * and horizontal scaling is actually required.
+ */
+export const FF_REDIS_BUS = envBool('FF_REDIS_BUS', false);

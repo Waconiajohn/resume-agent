@@ -61,7 +61,7 @@ export const LINE_SPACING = {
   between_sections_pt: { min: 12, max: 24 },
 } as const;
 
-/** The 5 executive resume templates */
+/** The 8 executive resume templates */
 export const EXECUTIVE_TEMPLATES = [
   {
     id: 'executive-classic',
@@ -97,6 +97,27 @@ export const EXECUTIVE_TEMPLATES = [
     best_for: 'Turnaround specialists, change management, digital transformation',
     font: 'Calibri',
     accent: 'Burgundy (#800020)',
+  },
+  {
+    id: 'nonprofit-mission',
+    name: 'Non-Profit Mission-Driven',
+    best_for: 'Non-profit, foundation, social impact, mission-driven, philanthropy, NGO',
+    font: 'Garamond',
+    accent: 'Teal (#1A6B6B)',
+  },
+  {
+    id: 'legal-regulatory',
+    name: 'Legal & Regulatory Executive',
+    best_for: 'General counsel, chief compliance officer, regulatory affairs, litigation, legal',
+    font: 'Times New Roman',
+    accent: 'Dark Navy (#0D2B55)',
+  },
+  {
+    id: 'creative-digital',
+    name: 'Creative & Digital Executive',
+    best_for: 'Chief marketing officer, VP marketing, chief digital officer, VP product, brand, campaign, user growth',
+    font: 'Calibri',
+    accent: 'Slate Blue (#3A5A8C)',
   },
 ] as const;
 
@@ -156,6 +177,9 @@ Clarifications: Board positions belong in Experience. Speaking engagements combi
 | C-Suite or seeking board positions | 3: Executive Strategic Hybrid |
 | CTO, CIO, VP Engineering, VP Product, R&D | 4: Specialized/Technical |
 | Turnaround, transformation, restructuring, change mgmt | 5: Transformation/Change Leader |
+| Non-profit, foundation, social impact, NGO, philanthropy | 6: Non-Profit Mission-Driven |
+| General counsel, CCO, regulatory affairs, compliance, legal | 7: Legal & Regulatory Executive |
+| CMO, VP Marketing, Chief Digital Officer, VP Product, brand | 8: Creative & Digital Executive |
 | Default when uncertain | 1: Classic Achievement-Focused |
 
 ### Template 1: Classic Achievement-Focused
@@ -177,6 +201,18 @@ Section order: Header → Summary → Competencies → Accomplishments → Exper
 ### Template 5: Transformation/Change Leader
 Best for: Turnaround, restructuring, M&A, change management. Font: Calibri/Arial.
 Section order: Header → Summary → Competencies → Transformation Highlights (before/after metrics mandatory) → Experience → Education & Certs → Affiliations → Awards
+
+### Template 6: Non-Profit Mission-Driven
+Best for: Non-profit executives, foundation leaders, social impact, NGO, philanthropy. Font: Garamond.
+Section order: Header → Summary (mission-alignment language) → Areas of Impact → Selected Accomplishments (impact metrics: lives served, funds raised, programs launched) → Experience → Education & Certs → Board & Advisory Roles → Professional Affiliations
+
+### Template 7: Legal & Regulatory Executive
+Best for: General Counsel, Chief Compliance Officer, regulatory affairs, litigation leadership. Font: Times New Roman.
+Section order: Header → Summary → Core Practice Areas → Selected Accomplishments (legal wins, regulatory clearances, risk reduction) → Experience → Bar Admissions & Jurisdictions → Education (JD prominent) → Certifications → Professional Affiliations
+
+### Template 8: Creative & Digital Executive
+Best for: CMO, VP Marketing, Chief Digital Officer, VP Product. Font: Calibri.
+Section order: Header → Summary → Core Competencies → Selected Accomplishments (brand metrics, campaign ROI, user growth) → Experience → Education & Certs → Professional Affiliations
 
 ## Section Formatting Specs
 

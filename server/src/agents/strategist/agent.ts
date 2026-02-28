@@ -8,12 +8,14 @@
  * Handed off to the Craftsman when design_blueprint completes successfully.
  */
 
-import type { AgentConfig } from '../runtime/agent-protocol.js';
+import { agentRegistry } from '../runtime/agent-registry.js';
 import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
+import type { ResumeAgentConfig } from '../types.js';
+import type { AgentConfig } from '../runtime/agent-protocol.js';
 import { STRATEGIST_SYSTEM_PROMPT } from './prompts.js';
 import { strategistTools } from './tools.js';
 
-export const strategistConfig: AgentConfig = {
+export const strategistConfig: ResumeAgentConfig = {
   identity: {
     name: 'strategist',
     domain: 'resume',
@@ -56,3 +58,8 @@ export const strategistConfig: AgentConfig = {
    */
   overall_timeout_ms: 900_000,
 };
+
+// Type erasure cast is required because AgentConfig is generic and the registry
+// stores the base form. The registry is used only for side-effect registration
+// and identity lookup; the full typed config is used directly by the coordinator.
+agentRegistry.register(strategistConfig as unknown as AgentConfig);

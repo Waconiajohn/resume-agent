@@ -24,6 +24,8 @@ import { runAtsComplianceCheck } from './ats-rules.js';
 import { mergeMasterResume } from './master-resume-merge.js';
 import { runAgentLoop } from './runtime/agent-loop.js';
 import { AgentBus } from './runtime/agent-bus.js';
+import { agentRegistry } from './runtime/agent-registry.js';
+// Import agent modules to trigger self-registration with agentRegistry
 import { strategistConfig } from './strategist/agent.js';
 import { craftsmanConfig } from './craftsman/agent.js';
 import { producerConfig } from './producer/agent.js';
@@ -951,7 +953,10 @@ function subscribeToRevisionRequests(
     if (instructions.length === 0) return;
 
     // Process all instructions (flat format is always treated as high priority)
-    const highPriority = instructions.filter(i => i.priority === 'high' || i.priority === undefined);
+    // Skip sections the user already approved — approved sections are immutable to automated revisions
+    const highPriority = instructions
+      .filter(i => i.priority === 'high' || i.priority === undefined)
+      .filter(i => !state.approved_sections.includes(i.target_section));
     if (highPriority.length === 0) return;
 
     log.info({ sections: highPriority.map(i => i.target_section) }, 'Coordinator: handling revision requests from Producer');
@@ -990,7 +995,7 @@ function subscribeToRevisionRequests(
       'Apply the revision instructions to the affected sections only. Preserve all other content unchanged.',
     ].join('\n');
 
-    const contextParams: CreateContextParams = {
+    const contextParams: CreateContextParams<PipelineState, PipelineSSEEvent> = {
       sessionId:   state.session_id,
       userId:      state.user_id,
       state,
@@ -1047,6 +1052,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     session_id,
     user_id,
     current_stage: 'intake',
+    approved_sections: [],
     revision_count: 0,
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
     user_preferences: {
@@ -1081,7 +1087,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     state.current_stage = 'intake';
     timer.start('intake');
 
-    const strategistContextParams: CreateContextParams = {
+    const strategistContextParams: CreateContextParams<PipelineState, PipelineSSEEvent> = {
       sessionId:   session_id,
       userId:      user_id,
       state,
@@ -1165,7 +1171,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     state.current_stage = 'section_writing';
     timer.start('section_writing');
 
-    const craftsmanContextParams: CreateContextParams = {
+    const craftsmanContextParams: CreateContextParams<PipelineState, PipelineSSEEvent> = {
       sessionId:   session_id,
       userId:      user_id,
       state,
@@ -1240,7 +1246,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       bus, state, emit, waitForUser, pipelineAbort.signal, log,
     );
 
-    const producerContextParams: CreateContextParams = {
+    const producerContextParams: CreateContextParams<PipelineState, PipelineSSEEvent> = {
       sessionId:   session_id,
       userId:      user_id,
       state,
@@ -1273,6 +1279,26 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       },
       'Coordinator: Producer complete',
     );
+
+    // Re-emit quality_scores with detailed findings from Producer scratchpad
+    // so the frontend can show all 7 quality dimensions with collapsible details
+    if (state.quality_review?.scores) {
+      const scratchpad = producerResult.scratchpad;
+      emit({
+        type: 'quality_scores',
+        scores: state.quality_review.scores,
+        details: {
+          narrative_coherence: typeof scratchpad.narrative_coherence_score === 'number'
+            ? scratchpad.narrative_coherence_score : undefined,
+          humanize_issues: Array.isArray(scratchpad.humanize_issues)
+            ? scratchpad.humanize_issues : undefined,
+          coherence_issues: Array.isArray(scratchpad.narrative_coherence_issues)
+            ? scratchpad.narrative_coherence_issues : undefined,
+          ats_findings: Array.isArray(scratchpad.ats_findings)
+            ? scratchpad.ats_findings : undefined,
+        },
+      });
+    }
 
     emit({
       type:        'stage_complete',

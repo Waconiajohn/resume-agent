@@ -14,11 +14,13 @@
  */
 
 import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
+import type { ResumeAgentConfig } from '../types.js';
+import { agentRegistry } from '../runtime/agent-registry.js';
 import type { AgentConfig } from '../runtime/agent-protocol.js';
 import { CRAFTSMAN_SYSTEM_PROMPT } from './prompts.js';
 import { craftsmanTools } from './tools.js';
 
-export const craftsmanConfig: AgentConfig = {
+export const craftsmanConfig: ResumeAgentConfig = {
   identity: {
     name: 'craftsman',
     domain: 'resume',
@@ -53,3 +55,8 @@ export const craftsmanConfig: AgentConfig = {
   /** 15 minutes total — covers writing all sections with revision cycles */
   overall_timeout_ms: 900_000,
 };
+
+// Type erasure cast is required because AgentConfig is generic and the registry
+// stores the base form. The registry is used only for side-effect registration
+// and identity lookup; the full typed config is used directly by the coordinator.
+agentRegistry.register(craftsmanConfig as unknown as AgentConfig);

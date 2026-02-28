@@ -20,9 +20,11 @@
 import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
 import { PRODUCER_SYSTEM_PROMPT } from './prompts.js';
 import { producerTools } from './tools.js';
+import type { ResumeAgentConfig } from '../types.js';
+import { agentRegistry } from '../runtime/agent-registry.js';
 import type { AgentConfig } from '../runtime/agent-protocol.js';
 
-export const producerConfig: AgentConfig = {
+export const producerConfig: ResumeAgentConfig = {
   identity: {
     name: 'producer',
     domain: 'resume',
@@ -34,3 +36,8 @@ export const producerConfig: AgentConfig = {
   round_timeout_ms: 120_000,   // 2 min per round
   overall_timeout_ms: 600_000, // 10 min total
 };
+
+// Type erasure cast is required because AgentConfig is generic and the registry
+// stores the base form. The registry is used only for side-effect registration
+// and identity lookup; the full typed config is used directly by the coordinator.
+agentRegistry.register(producerConfig as unknown as AgentConfig);
