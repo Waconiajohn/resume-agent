@@ -17,6 +17,7 @@
 import { randomUUID } from 'node:crypto';
 import { llm, MODEL_MID, MODEL_LIGHT } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
+import logger from '../../lib/logger.js';
 import { runSectionWriter, runSectionRevision } from '../section-writer.js';
 import { QUALITY_CHECKLIST, RESUME_ANTI_PATTERNS } from '../knowledge/rules.js';
 import type { AgentTool, AgentContext } from '../runtime/agent-protocol.js';
@@ -597,6 +598,7 @@ Rules:
     }>(response.text);
 
     if (!parsed) {
+      logger.warn({ session_id: ctx.sessionId, section }, 'check_evidence_integrity: repairJSON returned null — falling back to empty result');
       return {
         claims_verified: 0,
         claims_flagged: ['Evidence integrity check could not be parsed — manual review recommended'],

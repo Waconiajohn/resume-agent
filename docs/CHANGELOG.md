@@ -1,5 +1,25 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session: Sprint 3 Audit Round 6 — Final Medium/Low Sweep
+
+**Sprint:** 3 | **Stories:** 5 fixes (4 false positives skipped)
+**Summary:** Added observability logging for LLM parse failures in Producer and Craftsman. Made session deletion atomic with pipeline-running guard. Raised MaxListeners threshold. Reset blueprint edits on new data.
+
+### Changes Made
+- `server/src/agents/producer/tools.ts` — Log narrative coherence repairJSON failures with session_id context
+- `server/src/agents/craftsman/tools.ts` — Log evidence integrity repairJSON failures with session_id + section context
+- `server/src/routes/sessions.ts` — Atomic session delete: single DELETE ... WHERE pipeline_status != 'running' with RETURNING check, returns 409 on race
+- `server/src/lib/llm-provider.ts` — MaxListeners threshold increased from 20 to 50
+- `app/src/components/panels/BlueprintReviewPanel.tsx` — Reset editedAngle/editedOrder/editedSections on positioning_angle change
+
+### Decisions Made
+- Stale pipeline recovery (pipeline.ts) already uses updated_at + heartbeat — no additional check needed
+- Rate limit eviction already implements LRU via Map delete+re-insert pattern
+- respondToGate ref access is correct React pattern — refs don't need to be in deps
+- SectionWorkbench keyboard handler cleanup is correct — React 18 handles unmounted setState
+
+---
+
 ## 2026-02-28 — Session: Sprint 3 Audit Round 5 — Deep Production Hardening
 
 **Sprint:** 3 | **Stories:** 20 fixes from 4-agent deep audit (68 findings reviewed, 4 false positives)

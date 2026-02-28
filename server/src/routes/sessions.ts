@@ -625,15 +625,22 @@ sessions.delete('/:id', async (c) => {
     return c.json({ error: 'Cannot delete a session while its pipeline is running' }, 409);
   }
 
-  const { error } = await supabaseAdmin
+  const { data: deleted, error } = await supabaseAdmin
     .from('coach_sessions')
     .delete()
     .eq('id', sessionId)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .neq('pipeline_status', 'running')
+    .select('id');
 
   if (error) {
     logger.error({ sessionId, error: error.message }, 'Failed to delete session');
     return c.json({ error: 'Failed to delete session' }, 500);
+  }
+
+  // If no row was deleted, the pipeline started running between our check and delete.
+  if (!deleted || deleted.length === 0) {
+    return c.json({ error: 'Cannot delete a session while its pipeline is running' }, 409);
   }
 
   // Best-effort in-memory cleanup — use removeSSEConnection for each emitter

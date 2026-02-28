@@ -115,7 +115,7 @@ export function createCombinedAbortSignal(
 ): { signal: AbortSignal; cleanup: () => void } {
   const timeoutController = new AbortController();
   const combinedController = new AbortController();
-  setMaxListeners(20, combinedController.signal);
+  setMaxListeners(50, combinedController.signal);
   const timeout = setTimeout(() => {
     timeoutController.abort(new Error(`Timed out after ${timeoutMs}ms`));
   }, timeoutMs);

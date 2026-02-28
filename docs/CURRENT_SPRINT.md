@@ -93,6 +93,11 @@
 78. [x] DB: Add session existence check to next_artifact_version — [status: done]
 79. [x] DB: Add FK indexes on workflow tables — [status: done]
 80. [x] DB: Clean orphaned master_resume_history rows — [status: done]
+81. [x] producer: Log narrative coherence parse failures — [status: done]
+82. [x] craftsman: Log evidence integrity parse failures — [status: done]
+83. [x] sessions.ts: Atomic session delete with pipeline guard — [status: done]
+84. [x] llm-provider.ts: Increase MaxListeners threshold to 50 — [status: done]
+85. [x] BlueprintReviewPanel: Reset edits on new blueprint data — [status: done]
 
 ## Out of Scope (Explicitly)
 - Master Resume Viewer Page (dedicated UI to browse/delete evidence items)

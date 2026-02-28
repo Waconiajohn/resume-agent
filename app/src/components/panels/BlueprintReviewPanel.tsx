@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ShieldCheck, AlertTriangle, ClipboardList, CheckCircle2, ArrowRight, ChevronUp, ChevronDown, Pencil, RotateCcw } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
@@ -135,6 +135,14 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
   const [editingAngle, setEditingAngle] = useState(false);
   const [editedAngle, setEditedAngle] = useState<string | null>(null);
   const [editedOrder, setEditedOrder] = useState<string[] | null>(null);
+
+  // Reset edits when new blueprint data arrives from the server.
+  // Use positioning_angle as the stable identity key for the blueprint.
+  useEffect(() => {
+    setEditedAngle(null);
+    setEditedOrder(null);
+    setEditingAngle(false);
+  }, [positioning_angle]);
 
   const currentAngle = editedAngle ?? positioning_angle;
   const currentOrder = editedOrder ?? section_plan?.order ?? [];

@@ -16,6 +16,7 @@
 
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
+import logger from '../../lib/logger.js';
 import { runQualityReviewer } from '../quality-reviewer.js';
 import { runAtsComplianceCheck } from '../ats-rules.js';
 import { EXECUTIVE_TEMPLATES } from '../knowledge/formatting-guide.js';
@@ -836,6 +837,7 @@ Return ONLY valid JSON: { "coherence_score": 82, "issues": ["specific issues fou
 
     const parsed = repairJSON<Record<string, unknown>>(response.text);
     if (!parsed) {
+      logger.warn({ session_id: ctx.sessionId }, 'check_narrative_coherence: repairJSON returned null — falling back to default score');
       return { coherence_score: 75, issues: ['Narrative coherence check could not parse response — manual review recommended'] };
     }
 
