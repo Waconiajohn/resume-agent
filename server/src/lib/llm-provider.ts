@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { setMaxListeners } from 'node:events';
 import { getAnthropicClient } from './anthropic.js';
 import logger from './logger.js';
+import { flushUsageToDb, clearUsageWatermark } from './usage-persistence.js';
 
 // ─── Shared interfaces ───────────────────────────────────────────────
 
@@ -73,10 +74,44 @@ export interface UsageAccumulator {
 const sessionUsageAccumulators = new Map<string, UsageAccumulator>();
 const usageContext = new AsyncLocalStorage<string>();
 
+/** Maps sessionId -> { userId, intervalId } for periodic flush management. */
+const sessionFlushIntervals = new Map<string, { userId: string; intervalId: ReturnType<typeof setInterval> }>();
+
+const USAGE_FLUSH_INTERVAL_MS = 60_000;
+
 /** Register a session for usage tracking. Returns the accumulator to read later. */
-export function startUsageTracking(sessionId: string): UsageAccumulator {
+export function startUsageTracking(sessionId: string, userId?: string): UsageAccumulator {
   const acc: UsageAccumulator = { input_tokens: 0, output_tokens: 0 };
   sessionUsageAccumulators.set(sessionId, acc);
+
+  if (userId) {
+    // Cancel any existing interval for this session (e.g. on restart).
+    const existing = sessionFlushIntervals.get(sessionId);
+    if (existing) {
+      clearInterval(existing.intervalId);
+      sessionFlushIntervals.delete(sessionId);
+    }
+
+    const intervalId = setInterval(() => {
+      const current = sessionUsageAccumulators.get(sessionId);
+      if (!current) {
+        // Accumulator was removed — stop the interval.
+        clearInterval(intervalId);
+        sessionFlushIntervals.delete(sessionId);
+        return;
+      }
+      flushUsageToDb(sessionId, userId, { ...current }).catch((err: unknown) => {
+        logger.warn(
+          { session_id: sessionId, error: err instanceof Error ? err.message : String(err) },
+          'startUsageTracking: periodic flush error',
+        );
+      });
+    }, USAGE_FLUSH_INTERVAL_MS);
+    intervalId.unref?.();
+
+    sessionFlushIntervals.set(sessionId, { userId, intervalId });
+  }
+
   return acc;
 }
 
@@ -85,8 +120,30 @@ export function setUsageTrackingContext(sessionId: string): void {
   usageContext.enterWith(sessionId);
 }
 
-/** Stop tracking and remove the accumulator. */
+/** Stop tracking, clear interval, do final flush, and remove the accumulator. */
 export function stopUsageTracking(sessionId: string): void {
+  // Clear the periodic flush interval first.
+  const flushEntry = sessionFlushIntervals.get(sessionId);
+  if (flushEntry) {
+    clearInterval(flushEntry.intervalId);
+    sessionFlushIntervals.delete(sessionId);
+
+    // Final flush — best effort, non-blocking.
+    const current = sessionUsageAccumulators.get(sessionId);
+    if (current && (current.input_tokens > 0 || current.output_tokens > 0)) {
+      flushUsageToDb(sessionId, flushEntry.userId, { ...current }).catch((err: unknown) => {
+        logger.warn(
+          { session_id: sessionId, error: err instanceof Error ? err.message : String(err) },
+          'stopUsageTracking: final flush error',
+        );
+      }).finally(() => {
+        clearUsageWatermark(sessionId);
+      });
+    } else {
+      clearUsageWatermark(sessionId);
+    }
+  }
+
   sessionUsageAccumulators.delete(sessionId);
 }
 

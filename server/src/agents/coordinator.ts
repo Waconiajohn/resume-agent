@@ -1096,7 +1096,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
   const log = createSessionLogger(session_id);
 
   // ── Usage tracking ──────────────────────────────────────────────
-  const usageAcc = startUsageTracking(session_id);
+  const usageAcc = startUsageTracking(session_id, user_id);
   setUsageTrackingContext(session_id);
 
   // ── Initial pipeline state ──────────────────────────────────────

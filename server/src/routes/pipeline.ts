@@ -5,6 +5,7 @@ import { isIP } from 'node:net';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
+import { subscriptionGuard } from '../middleware/subscription-guard.js';
 import { sseConnections } from './sessions.js';
 import { runPipeline } from '../agents/coordinator.js';
 import type { PipelineSSEEvent, PipelineStage, MasterResumeData } from '../agents/types.js';
@@ -630,6 +631,13 @@ if (MAX_IN_PROCESS_PIPELINES < MAX_RUNNING_PIPELINES_GLOBAL) {
 const STALE_RECOVERY_COOLDOWN_MS = parsePositiveInt(process.env.STALE_RECOVERY_COOLDOWN_MS, 60_000);
 const STALE_RECOVERY_BATCH_SIZE = parsePositiveInt(process.env.STALE_RECOVERY_BATCH_SIZE, 200);
 
+// DB-backed global pipeline limit — cross-instance guard using session_locks table.
+// Counts lock rows created within the last IN_PROCESS_PIPELINE_TTL_MS window.
+const MAX_GLOBAL_PIPELINES = (() => {
+  const parsed = parseInt(process.env.MAX_GLOBAL_PIPELINES ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+})();
+
 // Track running pipelines to prevent double-start (in-process guard, complements DB check)
 const runningPipelines = new Map<string, number>();
 
@@ -1065,7 +1073,7 @@ async function resolveJobDescriptionInput(input: string): Promise<string> {
 
 // POST /pipeline/start
 // Body: { session_id, raw_resume_text, job_description, company_name }
-pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
+pipeline.post('/start', rateLimitMiddleware(5, 60_000), subscriptionGuard, async (c) => {
   const parsedBody = await parseJsonBodyWithLimit(c, MAX_PIPELINE_START_BODY_BYTES);
   if (!parsedBody.ok) return parsedBody.response;
 
@@ -1185,6 +1193,29 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
       error: 'Service is at pipeline capacity. Please retry shortly.',
       code: 'GLOBAL_PIPELINE_CAPACITY',
     }, 503);
+  }
+
+  // Global pipeline capacity check (cross-instance via DB session_locks table).
+  // This is a lightweight count query on session_locks rows that were created
+  // within the active pipeline TTL window — a cheaper cross-instance guard.
+  try {
+    const { count, error: countError } = await supabaseAdmin
+      .from('session_locks')
+      .select('*', { count: 'exact', head: true })
+      .gt('locked_at', new Date(Date.now() - IN_PROCESS_PIPELINE_TTL_MS).toISOString());
+
+    if (!countError && typeof count === 'number' && count >= MAX_GLOBAL_PIPELINES) {
+      return c.json({
+        error: 'Server is at capacity. Please try again in a few minutes.',
+        code: 'CAPACITY_LIMIT',
+      }, 503);
+    }
+  } catch (err) {
+    // Fail open — do not block pipelines if the DB capacity check itself fails.
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      'Global pipeline limit check failed — allowing pipeline',
+    );
   }
 
   // Atomically claim this session's pipeline slot (cross-instance safe).

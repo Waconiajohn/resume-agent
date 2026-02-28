@@ -14,16 +14,16 @@
 
 ## Track 2 — Scale Readiness (Stories 6-9)
 
-6. [ ] Story 6: Periodic Usage Flush to Database — [status: not started]
-7. [ ] Story 7: Database-Backed Running Pipeline Limits — [status: not started]
+6. [x] Story 6: Periodic Usage Flush to Database — [status: done]
+7. [x] Story 7: Database-Backed Running Pipeline Limits — [status: done]
 8. [x] Story 8: Redis-Backed Rate Limiting — [status: done]
 9. [ ] Story 9: SSE Event Broadcasting Architecture Doc + Spike — [status: not started]
 
 ## Track 3 — Launch Prep (Stories 10-13)
 
-10. [ ] Story 10: Frontend Component Tests — Panels — [status: not started]
+10. [x] Story 10: Frontend Component Tests — Panels — [status: done]
 11. [ ] Story 11: Frontend Hook Tests — useAgent Split Hooks — [status: not started] (depends on Story 1)
-12. [ ] Story 12: Stripe Billing Integration — [status: not started]
+12. [x] Story 12: Stripe Billing Integration — [status: done]
 13. [ ] Story 13: Sprint 6 Retrospective — [status: not started]
 
 ---

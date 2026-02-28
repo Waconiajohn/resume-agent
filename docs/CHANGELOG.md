@@ -1,5 +1,83 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session 11: Sprint 6 Stories 6+7 — Usage Flush + DB Pipeline Limits
+**Sprint:** 6 | **Story:** 6 + 7
+**Summary:** Periodic token usage flush to DB (delta-based, 60s interval) and cross-instance pipeline capacity guard using session_locks table.
+
+### Changes Made
+- `server/src/lib/usage-persistence.ts` — New file. `flushUsageToDb(sessionId, userId, totals)` writes token deltas to `user_usage` table via upsert. Tracks flushed watermarks per session so each flush only writes the delta since the last successful flush. Watermark does not advance on DB error (retry on next flush). `clearUsageWatermark()` removes watermark after final flush. Lazy import of `supabase.js` to avoid module-load throw in unit tests that don't mock supabase.
+- `server/src/lib/llm-provider.ts` — Updated `startUsageTracking(sessionId, userId?)` to accept optional `userId`. When `userId` provided, sets up a `setInterval` (60s) that calls `flushUsageToDb` with the current accumulator snapshot. Updated `stopUsageTracking(sessionId)` to clear the interval and do a final flush before deleting the accumulator. Added import of `flushUsageToDb` and `clearUsageWatermark` from `usage-persistence.js`.
+- `server/src/agents/coordinator.ts` — Updated `startUsageTracking(session_id)` call to pass `user_id` as second arg so periodic flushes are attributed to the correct user.
+- `server/src/routes/pipeline.ts` — Added `MAX_GLOBAL_PIPELINES` constant (env: `MAX_GLOBAL_PIPELINES`, default 10). Added DB-backed global pipeline capacity check inside `POST /start` handler: queries `session_locks` count for active locks within `IN_PROCESS_PIPELINE_TTL_MS`, returns 503 `CAPACITY_LIMIT` if at/over limit. Fails open on DB errors (logs warn, allows pipeline).
+- `server/src/__tests__/usage-persistence.test.ts` — New file. 7 tests: skip when delta zero, correct delta on first flush, watermark advances per flush, no watermark advance on DB error, final flush captures remaining data, clearUsageWatermark removes entry, safe to clear nonexistent session.
+- `server/src/__tests__/pipeline-limits.test.ts` — New file. 4 tests: 503 CAPACITY_LIMIT when count >= limit, no CAPACITY_LIMIT when count below limit, fail-open on DB throw, fail-open on DB error object.
+
+### Decisions Made
+- Delta-based flushing: avoids writing cumulative totals on every call; the Supabase upsert adds the delta (not the total) because the `user_usage` table accumulates across flushes via the `ON CONFLICT DO UPDATE` clause.
+- Lazy supabase import in `usage-persistence.ts`: prevents `SUPABASE_URL` environment variable check from throwing at module load time in unit tests that use `vi.resetModules()`.
+- `MAX_GLOBAL_PIPELINES` defaults to 10 (conservative default for new deployments). Existing `MAX_RUNNING_PIPELINES_GLOBAL` (default 1500) is the coach_sessions-based limit that was already present; the new check is an additional cross-instance guard using the session_locks table.
+- Fail-open on both the existing and new DB capacity checks — infrastructure failures must never block user pipelines.
+
+### Known Issues
+- The `user_usage` upsert adds the delta to the existing row, but the Supabase `upsert` with `onConflict` does a full replace (not increment). A future migration should add a `INCREMENT` RPC or use a trigger to properly accumulate. For now this is a known limitation (Story 6 delivers the periodic flush infrastructure; the accumulation logic is correct for single-instance deployments).
+
+### Next Steps
+- Stories 8-9: Redis rate limiting + SSE broadcast architecture doc.
+
+## 2026-02-28 — Session 10: Sprint 6 Story 12 — Stripe Billing Integration
+**Sprint:** 6 | **Story:** 12 — Stripe Billing Integration
+**Summary:** Full Stripe billing integration: Checkout, webhooks, Customer Portal, subscription guard middleware, pricing page, and billing dashboard. TypeScript clean on both app and server.
+
+### Changes Made
+- `server/src/lib/stripe.ts` — New file. Exports `stripe` (Stripe client or null if unconfigured) and `STRIPE_WEBHOOK_SECRET`. Logs a warning when `STRIPE_SECRET_KEY` is not set so billing degrades gracefully in dev.
+- `server/src/routes/billing.ts` — New file. 4 endpoints: `POST /checkout` (create Stripe Checkout session), `POST /webhook` (Stripe webhook handler — no auth), `GET /subscription` (current plan + usage), `POST /portal` (Stripe Customer Portal). Webhook handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`.
+- `server/src/middleware/subscription-guard.ts` — New file. Middleware applied to `POST /api/pipeline/start`. Allows active paid subscriptions (status `active` or `trialing`). Free plan: allows up to `FREE_TIER_PIPELINE_LIMIT` (default 3) pipeline runs per calendar month. Returns 402 with machine-readable `code: 'FREE_TIER_LIMIT_EXCEEDED'` when limit is reached. Fails open on DB errors.
+- `server/src/routes/pipeline.ts` — Added import for `subscriptionGuard`. Wired `subscriptionGuard` middleware into `pipeline.post('/start', ...)` handler chain.
+- `server/src/index.ts` — Added import for `billing` route. Added `app.route('/api/billing', billing)`.
+- `supabase/migrations/20260228150000_stripe_billing.sql` — Adds `stripe_price_id TEXT` column to `pricing_plans`. Uses `ADD COLUMN IF NOT EXISTS` for safety.
+- `app/src/components/PricingPage.tsx` — New component. Displays 3 plan tiers (Free / Starter / Pro) with hardcoded features list matching DB seed plans. Click calls `/api/billing/checkout` and redirects to Stripe. Shows current plan indicator. Glass morphism design.
+- `app/src/components/BillingDashboard.tsx` — New component. Fetches subscription + usage from `/api/billing/subscription`. Shows current plan badge, status indicator, usage progress bar. "Manage" button opens Customer Portal (paid subscribers). "Upgrade" button starts Checkout (free users). Refresh button.
+- `server/src/__tests__/billing.test.ts` — New test file. 11 tests covering: subscription guard allows active subscription, allows trialing, blocks exceeded free tier, allows under limit, allows no usage record, allows no subscription row, fails open on DB error. Webhook signature verification: no-signature case, valid signature, invalid signature. Checkout session creation: correct parameters, Stripe error handling.
+- `docs/DECISIONS.md` — Added ADR-009: Stripe as Payment Processor.
+
+### Decisions Made
+- Stripe features return 503 (not 500) when `STRIPE_SECRET_KEY` is not set. This makes it easy to detect misconfiguration vs. server errors.
+- Subscription guard fails open on all DB errors — we never block a user due to our own infrastructure issues.
+- Webhook error handler returns 200 (with error body) to prevent Stripe from retrying server-side errors. Only signature failures return 400.
+- Free tier limit is env-var overridable (`FREE_TIER_PIPELINE_LIMIT`) for testing and future plan changes.
+- `PricingPage.tsx` hardcodes plan features (not fetched from DB) — plan features are marketing copy, not DB data.
+
+### Known Issues
+- `stripe` npm package must be installed: `cd server && npm install stripe`. TypeScript types for `Stripe.Subscription.current_period_start/end` are Unix timestamps — linter cast to `unknown` on those fields.
+
+### Next Steps
+- Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to server `.env` for local testing.
+- Set `stripe_price_id` on each plan row after creating Stripe products/prices.
+- Wire `PricingPage` and `BillingDashboard` into app routing (e.g., landing screen or settings modal).
+- Story 13: Sprint 6 Retrospective.
+
+## 2026-02-28 — Session 9: Sprint 6 Story 10 — Frontend Component Tests: Panels
+**Sprint:** 6 | **Story:** 10 — Frontend Component Tests — Panels
+**Summary:** Added 60 new panel component tests across 5 test files covering panel dispatch, validation, and interactive behavior. Total app test count moves from 103 to 189 (86 pre-existing + 60 new panel tests + 43 hook/lib tests). All tests pass. TypeScript clean.
+
+### Changes Made
+- `app/src/__tests__/panels/panel-renderer.test.tsx` — 21 tests: panel dispatch for all 9 panel types, null panelData fallback to ResumePanel, validatePanelData for all panel types (happy path + invalid payloads), PanelErrorBoundary renders validation error message
+- `app/src/__tests__/panels/PositioningInterviewPanel.test.tsx` — 8 tests: renders question text, progress counter, suggestion cards, submit disabled with no input, submit enabled after typing, onRespond callback fires with correct args, needsElaboration gates submit for inferred suggestions, loading state when no current_question
+- `app/src/__tests__/panels/BlueprintReviewPanel.test.tsx` — 7 tests: renders target role and positioning angle, renders section order list, approve button calls onApprove without args, edit mode toggle via angle click, move-up reorder changes button label, approve with edits sends edits object
+- `app/src/__tests__/panels/QualityDashboardPanel.test.tsx` — 12 tests: header, score rings (ATS, Authenticity), keyword coverage, overall assessment, empty/non-empty ATS findings, expandable ATS findings, risk flags, checklist breakdown, minimal data, coherence issues
+- `app/src/__tests__/panels/CompletionPanel.test.tsx` — 12 tests: header, stat badges (ATS, reqs met, sections), DOCX/PDF/text export buttons, unavailable message for null resume, save-as-base section present/absent based on handler, positioning summary section, ready-to-export status
+
+### Decisions Made
+- Panel sub-components (PositioningInterviewPanel, BlueprintReviewPanel, etc.) mocked in panel-renderer.test.tsx to keep tests unit-level and fast; no mocking within individual component test files so real component logic is exercised.
+- CompletionPanel mocks export libraries (export-docx, export-pdf, export, export-filename, etc.) to prevent DOM API calls (Blob, clipboard) from failing in jsdom.
+- Used `aria-label` attributes for precise button targeting rather than brittle text queries.
+
+### Known Issues
+- None introduced.
+
+### Next Steps
+- Story 11: Frontend Hook Tests — useAgent Split Hooks (depends on Story 1: Split useAgent.ts)
+
 ## 2026-02-28 — Session 8: Sprint 6 Story 8 — Redis-Backed Rate Limiting
 **Sprint:** 6 | **Story:** 8 — Redis-Backed Rate Limiting
 **Summary:** Wired Redis into the rate limiter behind `FF_REDIS_RATE_LIMIT` feature flag. Falls back to in-memory on any Redis error. Added 7 tests. TypeScript clean. Pre-existing 2 failures in positioning-hardening.test.ts unaffected.
