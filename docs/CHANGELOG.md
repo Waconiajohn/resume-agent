@@ -1,5 +1,24 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session 8: Sprint 6 Story 8 — Redis-Backed Rate Limiting
+**Sprint:** 6 | **Story:** 8 — Redis-Backed Rate Limiting
+**Summary:** Wired Redis into the rate limiter behind `FF_REDIS_RATE_LIMIT` feature flag. Falls back to in-memory on any Redis error. Added 7 tests. TypeScript clean. Pre-existing 2 failures in positioning-hardening.test.ts unaffected.
+
+### Changes Made
+- `server/src/middleware/rate-limit.ts` — Added imports for `getRedisClient` and `FF_REDIS_RATE_LIMIT`. Added `checkRedisRateLimit()` function (fixed-window INCR+EXPIRE pattern). Modified `rateLimitMiddleware` to try Redis first and fall back to in-memory when Redis returns null.
+- `server/src/__tests__/redis-rate-limit.test.ts` — 7 new tests: Redis INCR allows within limit, Redis INCR denies over limit (429), fallback when `getRedisClient` returns null, fallback when INCR throws, feature flag disabled bypasses Redis, EXPIRE TTL set correctly, EXPIRE skipped when counter already > 1.
+
+### Decisions Made
+- `X-RateLimit-Reset` on the Redis path reports `ceil(windowMs/1000)` (the window length) rather than remaining-seconds-in-current-window, because Redis keys are indexed by window slot and we do not store per-window start time in the middleware.
+- EXPIRE is only applied when `count === 1` to avoid resetting the TTL on every request within the same window.
+- In-memory `deniedDecisions`/`deniedByScope` stats are updated even when the Redis path is active, keeping `getRateLimitStats()` accurate for both backends.
+
+### Known Issues
+- None introduced. 2 pre-existing failures in `positioning-hardening.test.ts` (require Supabase env vars) remain.
+
+### Next Steps
+- Stories 6, 7, 9 remain for Sprint 6 Track 2 (usage flush, DB pipeline limits, SSE broadcast doc)
+
 ## 2026-02-28 — Session 7: Sprint 5 Completion (12/12 stories)
 **Sprint:** 5 | **Stories:** 1-12
 **Summary:** Post-audit hardening (6 bug fixes) + agent creative latitude (4 prompt/tool enhancements) + 34 new tests. Test count 556→590. TypeScript clean.
