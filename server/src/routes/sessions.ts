@@ -430,6 +430,10 @@ sessions.get('/:id/sse', async (c) => {
       const typedSession = session as CoachSession;
       const chatMessages: Array<{ role: string; content: string }> = [];
       for (const msg of typedSession.messages ?? []) {
+        if (!msg || typeof msg !== 'object' || typeof (msg as unknown as Record<string, unknown>).role !== 'string') {
+          logger.warn({ sessionId }, 'SSE restore: skipping malformed message');
+          continue;
+        }
         if (msg.role === 'user') {
           if (typeof msg.content === 'string') {
             chatMessages.push({ role: 'user', content: truncateRestoreText(msg.content) });

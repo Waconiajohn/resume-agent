@@ -64,6 +64,14 @@
 53. [x] export-filename.ts: Sanitize invisible/bidi control characters — [status: done]
 54. [x] Tests: Add agent-bus, retry-abort, json-repair-guard tests (17 tests) — [status: done]
 
+## Audit Round 4 — Medium/Low Production Hardening (6 fixes)
+55. [x] pipeline.ts: Add .catch() to best-effort async functions — [status: done]
+56. [x] pipeline.ts: Cap panel debounce queue at 50 — [status: done]
+57. [x] http-body-guard.ts: Ensure reader.releaseLock() in finally — [status: done]
+58. [x] pipeline.ts: Log sanitizeBlueprintSlice failures — [status: done]
+59. [x] useAgent.ts: Abort controller cleanup on SSE error path — [status: done]
+60. [x] sessions.ts: Validate restored messages before access — [status: done]
+
 ## Out of Scope (Explicitly)
 - Master Resume Viewer Page (dedicated UI to browse/delete evidence items)
 - Inline editing of master resume content

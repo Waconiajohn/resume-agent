@@ -493,6 +493,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           if (!response.ok) {
             console.error('[useAgent] SSE fetch failed:', response.status, response.statusText);
             setError(`Connection failed (${response.status})`);
+            controller.abort();
             handleDisconnect();
             return;
           }
@@ -500,6 +501,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
           if (!response.body) {
             console.error('[useAgent] SSE response has no body');
             setError('Connection failed (no response body)');
+            controller.abort();
             handleDisconnect();
             return;
           }

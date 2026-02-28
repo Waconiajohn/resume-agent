@@ -86,7 +86,8 @@ function sanitizeBlueprintSlice(slice: Record<string, unknown>): Record<string, 
       max_bytes: MAX_SECTION_CONTEXT_BLUEPRINT_BYTES,
       keys: Object.keys(slice).slice(0, 25),
     };
-  } catch {
+  } catch (err) {
+    logger.warn({ keys: Object.keys(slice), err }, 'blueprint_slice serialization failed');
     return {
       truncated: true,
       reason: 'blueprint_slice_serialization_failed',
@@ -280,7 +281,7 @@ async function clearPendingGate(sessionId: string, keepQueueFromPayload?: Pendin
 }
 
 const PANEL_PERSIST_DEBOUNCE_MS = 250;
-const MAX_QUEUED_PANEL_PERSISTS = parsePositiveInt(process.env.MAX_QUEUED_PANEL_PERSISTS, 5000);
+const MAX_QUEUED_PANEL_PERSISTS = parsePositiveInt(process.env.MAX_QUEUED_PANEL_PERSISTS, 50);
 const queuedPanelPersists = new Map<string, {
   panelType: string;
   panelData: unknown;
@@ -376,7 +377,9 @@ function persistWorkflowArtifactBestEffort(
   payload: unknown,
   createdBy = 'pipeline',
 ) {
-  void persistWorkflowArtifact(sessionId, nodeKey, artifactType, payload, createdBy);
+  persistWorkflowArtifact(sessionId, nodeKey, artifactType, payload, createdBy).catch((err: unknown) => {
+    logger.warn({ session_id: sessionId, node_key: nodeKey, artifact_type: artifactType, err }, 'persistWorkflowArtifact failed');
+  });
 }
 
 function upsertWorkflowNodeStatusBestEffort(
@@ -385,11 +388,13 @@ function upsertWorkflowNodeStatusBestEffort(
   status: WorkflowNodeStatus,
   meta?: Record<string, unknown>,
 ) {
-  void upsertWorkflowNodeStatus(sessionId, nodeKey, status, meta);
+  upsertWorkflowNodeStatus(sessionId, nodeKey, status, meta).catch((err: unknown) => {
+    logger.warn({ session_id: sessionId, node_key: nodeKey, status, err }, 'upsertWorkflowNodeStatus failed');
+  });
 }
 
 function resetWorkflowNodesForNewRunBestEffort(sessionId: string) {
-  void (async () => {
+  (async () => {
     const now = new Date().toISOString();
     const rows = WORKFLOW_NODE_KEYS.map((nodeKey) => ({
       session_id: sessionId,
@@ -405,7 +410,9 @@ function resetWorkflowNodesForNewRunBestEffort(sessionId: string) {
     if (error) {
       logger.warn({ session_id: sessionId, error: error.message }, 'Failed to reset workflow nodes for new run');
     }
-  })();
+  })().catch((err: unknown) => {
+    logger.warn({ session_id: sessionId, err }, 'resetWorkflowNodesForNewRunBestEffort failed');
+  });
 }
 
 function inferQuestionResponseStatus(response: unknown): 'answered' | 'skipped' | 'deferred' {
@@ -549,14 +556,11 @@ function cancelQueuedPanelPersist(sessionId: string) {
 
 function queuePanelPersist(sessionId: string, panelType: string, panelData: unknown) {
   if (!queuedPanelPersists.has(sessionId) && queuedPanelPersists.size >= MAX_QUEUED_PANEL_PERSISTS) {
-    const oldestSession = queuedPanelPersists.keys().next().value;
-    if (oldestSession) {
-      cancelQueuedPanelPersist(oldestSession);
-      logger.warn(
-        { evicted_session: oldestSession, queue_size: queuedPanelPersists.size },
-        'Evicted queued panel persist entry due to capacity',
-      );
-    }
+    logger.warn(
+      { queue_size: queuedPanelPersists.size, max: MAX_QUEUED_PANEL_PERSISTS, session_id: sessionId },
+      'queuedPanelPersists at capacity; skipping new persist',
+    );
+    return;
   }
   cancelQueuedPanelPersist(sessionId);
   const timeout = setTimeout(() => {

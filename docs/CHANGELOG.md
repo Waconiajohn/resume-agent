@@ -1,5 +1,42 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session: Sprint 3 Audit Round 4 — Medium/Low Production Hardening
+
+**Sprint:** 3 | **Stories:** 6 fixes from follow-up audit (25 findings reviewed, 19 false positives)
+**Summary:** Hardened error handling on fire-and-forget DB operations, capped panel debounce queue, guaranteed stream reader cleanup, added logging for blueprint serialization failures, fixed abort controller leak on SSE error paths, and validated restored messages from DB.
+
+### Changes Made
+
+#### Best-Effort Async Error Handling [Medium]
+- `server/src/routes/pipeline.ts` — `persistWorkflowArtifactBestEffort`, `upsertWorkflowNodeStatusBestEffort`, `resetWorkflowNodesForNewRunBestEffort` now chain `.catch()` with `logger.warn()` instead of bare `void`.
+
+#### Panel Debounce Queue Cap [Medium]
+- `server/src/routes/pipeline.ts` — `MAX_QUEUED_PANEL_PERSISTS` reduced from 5000 to 50. New entries for unknown sessions are rejected with a warning when queue is full.
+
+#### Stream Reader Cleanup [Medium]
+- `server/src/lib/http-body-guard.ts` — `parseJsonBodyWithLimit` reader logic wrapped in try/finally to guarantee `reader.releaseLock()` on all exit paths.
+
+#### Blueprint Slice Error Logging [Low]
+- `server/src/routes/pipeline.ts` — `sanitizeBlueprintSlice()` catch block now logs slice keys and error before returning fallback.
+
+#### SSE Abort Controller Cleanup [Medium]
+- `app/src/hooks/useAgent.ts` — Added `controller.abort()` before `handleDisconnect()` in both early-return error branches (bad status code, missing body).
+
+#### Session Message Validation [Medium]
+- `server/src/routes/sessions.ts` — Restored messages from DB are validated for required `role` field before access. Malformed messages logged and skipped.
+
+### Decisions Made
+- 19 of 25 audit findings were false positives (already guarded by existing code)
+- Panel queue cap at 50 is generous — typical sessions create ~15 panel persists
+
+### Known Issues
+- 2 pre-existing test failures in `agents-gap-analyst.test.ts` (unrelated)
+
+### Next Steps
+- Sprint 3 retrospective and Sprint 4 planning
+
+---
+
 ## 2026-02-28 — Session: Sprint 3 Audit Round 3 — Comprehensive Production Hardening
 
 **Sprint:** 3 | **Stories:** 23 fixes from 8-agent comprehensive audit

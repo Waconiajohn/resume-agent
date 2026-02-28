@@ -34,6 +34,7 @@ async function readUtf8BodyWithLimit(c: Context, maxBytes: number): Promise<Body
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
+  let readResult: BodyReadResult | null = null;
 
   try {
     while (true) {
@@ -48,16 +49,21 @@ async function readUtf8BodyWithLimit(c: Context, maxBytes: number): Promise<Body
         } catch {
           // best effort
         }
-        return {
+        readResult = {
           ok: false,
           response: c.json({ error: `Request too large (max ${maxBytes} bytes)` }, 413),
         };
+        break;
       }
       chunks.push(value);
     }
   } catch {
-    return { ok: false, response: c.json({ error: 'Failed to read request body' }, 400) };
+    readResult = { ok: false, response: c.json({ error: 'Failed to read request body' }, 400) };
+  } finally {
+    reader.releaseLock();
   }
+
+  if (readResult) return readResult;
 
   const merged = new Uint8Array(totalBytes);
   let offset = 0;
