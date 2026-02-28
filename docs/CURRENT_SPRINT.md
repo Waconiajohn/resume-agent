@@ -35,6 +35,35 @@
 26. [x] Story H9: Cap individual evidence item text length — [status: done]
 27. [x] Story Tests: Add 5 new test scenarios for audit round 2 — [status: done]
 
+## Audit Round 3 — Comprehensive Production Hardening (23 fixes)
+28. [x] AT-06: Transfer Craftsman scratchpad sections to state.sections — [status: done]
+29. [x] AT-10: Fix Producer→Coordinator revision payload mismatch — [status: done]
+30. [x] CO-01: Fix revision subscription leak on Producer failure — [status: done]
+31. [x] persistSession: Add zero-row UPDATE detection + error handling — [status: done]
+32. [x] savePositioningProfile: Add DB error logging — [status: done]
+33. [x] Craftsman self_review: Fix false-pass on parse failure — [status: done]
+34. [x] Craftsman check_anti_patterns: Fix stateful /g regex — [status: done]
+35. [x] Producer cross-section consistency: Fix stateful /g regexes — [status: done]
+36. [x] Strategist: Validate suggestions input robustly — [status: done]
+37. [x] agent-loop.ts: Skip per-tool timeout for interactive tools — [status: done]
+38. [x] agent-bus.ts: Cap messageLog at 500 entries — [status: done]
+39. [x] retry.ts: Never retry AbortErrors — [status: done]
+40. [x] json-repair.ts: Guard against catastrophic backtracking — [status: done]
+41. [x] http-body-guard.ts: Return 400 on invalid JSON — [status: done]
+42. [x] session-lock.ts: Reduce renewal interval to 30s — [status: done]
+43. [x] llm.ts: Complete TOOL_MODEL_MAP for all agent tools — [status: done]
+44. [x] DB: Create claim_pipeline_slot RPC migration — [status: done]
+45. [x] pipeline.ts: Fix gate queue double-splice — [status: done]
+46. [x] pipeline.ts: Sanitize error leakage via SSE — [status: done]
+47. [x] questionnaire-helpers.ts: Fix dead ternary (free_text) — [status: done]
+48. [x] export-docx.ts: Apply template font as document default — [status: done]
+49. [x] export-docx.ts: Fix education field handling consistency — [status: done]
+50. [x] useAgent.ts: Fix isProcessing false during streaming — [status: done]
+51. [x] DB: Fix next_artifact_version service-role auth.uid() bypass — [status: done]
+52. [x] llm-provider.ts: Fix interrupted stream usage loss — [status: done]
+53. [x] export-filename.ts: Sanitize invisible/bidi control characters — [status: done]
+54. [x] Tests: Add agent-bus, retry-abort, json-repair-guard tests (17 tests) — [status: done]
+
 ## Out of Scope (Explicitly)
 - Master Resume Viewer Page (dedicated UI to browse/delete evidence items)
 - Inline editing of master resume content
@@ -42,4 +71,4 @@
 - Evidence quality scoring
 - Cross-session analytics
 - H5: Legacy create-master-resume.ts fixes (backlogged)
-- Medium/low issues from audit round 2 (backlogged)
+- Medium/low issues from earlier audits (backlogged)

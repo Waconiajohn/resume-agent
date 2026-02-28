@@ -317,11 +317,13 @@ const sectionRenderers: Record<string, SectionRenderer> = {
     if (!Array.isArray(resume.education) || resume.education.length === 0) return [];
     const paras = [sectionHeading('Education')];
     for (const edu of resume.education) {
-      // Build line conditionally to avoid "in ," artifact when field/year are empty
-      let line = edu.degree;
-      if (edu.field) line += ` in ${edu.field}`;
-      line += `, ${edu.institution}`;
-      if (edu.year) line += ` (${edu.year})`;
+      // Build line conditionally — mirrors PDF export logic to avoid "in ," or
+      // ", undefined" artifacts when field, institution, or year are empty.
+      let line = (edu.degree ?? '').trim();
+      if (edu.field?.trim()) line += ` in ${edu.field.trim()}`;
+      if (edu.institution?.trim()) line += `${line ? ', ' : ''}${edu.institution.trim()}`;
+      if (edu.year?.trim()) line += ` (${edu.year.trim()})`;
+      if (!line) continue;
       paras.push(
         new Paragraph({
           style: 'BodyText',
@@ -656,8 +658,17 @@ async function _exportDocxInner(resume: FinalResume): Promise<{ success: boolean
     description: resume.contact_info?.name
       ? `Resume for ${resume.contact_info.name}`
       : 'Tailored executive resume',
-    // Reusable paragraph styles (Section X-B)
+    // Reusable paragraph styles (Section X-B) + document-level default run font.
+    // Setting the font at document defaults ensures every TextRun — including those
+    // that rely on paragraph style inheritance — actually uses the template font.
+    // Without this, Word applies its own built-in default (Calibri Body or Times New
+    // Roman) for runs that don't explicitly set a font, overriding the style intent.
     styles: {
+      default: {
+        document: {
+          run: { font: FONT },
+        },
+      },
       paragraphStyles: [...paragraphStyles],
     },
     sections: [

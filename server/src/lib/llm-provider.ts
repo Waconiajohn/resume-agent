@@ -231,6 +231,7 @@ export class AnthropicProvider implements LLMProvider {
     const textListener = (text: string) => { fullText += text; };
     s.on('text', textListener);
 
+    let partialUsage: { input_tokens: number; output_tokens: number } | null = null;
     try {
       const response = await s.finalMessage();
 
@@ -256,9 +257,27 @@ export class AnthropicProvider implements LLMProvider {
         input_tokens: response.usage?.input_tokens ?? 0,
         output_tokens: response.usage?.output_tokens ?? 0,
       };
+      partialUsage = usage;
       recordUsage(usage, params.session_id);
 
       yield { type: 'done', usage };
+    } catch (err) {
+      // Record any partial usage that was accumulated before the interruption.
+      // finalMessage() may throw on abort before usage is available, so we only
+      // record if we have non-zero counts from the stream metadata.
+      if (partialUsage == null) {
+        const streamUsage = (s as unknown as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
+        if (streamUsage && (streamUsage.input_tokens ?? 0) > 0) {
+          recordUsage(
+            {
+              input_tokens: streamUsage.input_tokens ?? 0,
+              output_tokens: streamUsage.output_tokens ?? 0,
+            },
+            params.session_id,
+          );
+        }
+      }
+      throw err;
     } finally {
       combinedSignal.removeEventListener('abort', abortHandler);
       cleanupCombinedSignal();
@@ -323,6 +342,10 @@ export class ZAIProvider implements LLMProvider {
       300_000,
     );
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    // Hoisted so the finally block can record partial usage on interruption.
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let usageRecorded = false;
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -348,8 +371,6 @@ export class ZAIProvider implements LLMProvider {
       reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let inputTokens = 0;
-      let outputTokens = 0;
 
       // Accumulate tool calls across chunks (streamed incrementally)
       const pendingToolCalls = new Map<number, { id: string; name: string; arguments: string }>();
@@ -385,6 +406,7 @@ export class ZAIProvider implements LLMProvider {
             yield* flushToolCalls();
             const finalUsage = { input_tokens: inputTokens, output_tokens: outputTokens };
             recordUsage(finalUsage, params.session_id);
+            usageRecorded = true;
             yield { type: 'done', usage: finalUsage };
             return;
           }
@@ -443,8 +465,15 @@ export class ZAIProvider implements LLMProvider {
       // If we get here without [DONE], still emit done
       const finalUsage = { input_tokens: inputTokens, output_tokens: outputTokens };
       recordUsage(finalUsage, params.session_id);
+      usageRecorded = true;
       yield { type: 'done', usage: finalUsage };
     } finally {
+      // Record partial usage on interruption (e.g. AbortError mid-stream).
+      // Only fires when an exception escapes the try block — usageRecorded guards
+      // against double-counting when the stream completed normally.
+      if (!usageRecorded && (inputTokens > 0 || outputTokens > 0)) {
+        recordUsage({ input_tokens: inputTokens, output_tokens: outputTokens }, params.session_id);
+      }
       cleanupCombinedSignal();
       reader?.releaseLock();
     }

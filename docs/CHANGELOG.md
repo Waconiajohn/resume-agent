@@ -1,5 +1,94 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session: Sprint 3 Audit Round 3 — Comprehensive Production Hardening
+
+**Sprint:** 3 | **Stories:** 23 fixes from 8-agent comprehensive audit
+**Summary:** Comprehensive production hardening across the entire codebase. Most critical: Craftsman sections were stored in scratchpad but never transferred to state.sections (AT-06), meaning all crafted content was discarded and the final resume fell back to raw intake data. Also fixed Producer→Craftsman revision requests being silently dropped (AT-10), created the missing claim_pipeline_slot DB migration, and hardened 20+ infrastructure/frontend/routing issues.
+
+### Changes Made
+
+#### AT-06: Transfer Craftsman Scratchpad to state.sections [System-breaking]
+- `server/src/agents/coordinator.ts` — After Craftsman loop completes, iterate scratchpad entries starting with `section_`, transfer those with a `content` property to `state.sections`. Without this, the Producer, final resume payload, and ATS checks all saw empty sections.
+
+#### AT-10: Fix Producer→Coordinator Revision Payload Mismatch [Critical]
+- `server/src/agents/coordinator.ts` — Revision handler now accepts both array format (`payload.revision_instructions`) and flat format (`payload.section + payload.instruction`). Previously, all Producer revision requests were silently dropped because the field names didn't match.
+
+#### CO-01: Fix Revision Subscription Leak [High]
+- `server/src/agents/coordinator.ts` — Moved `cleanupRevisionSubscription()` into a `finally` block around the Producer phase. Previously leaked the bus handler if the Producer threw.
+
+#### persistSession Error Handling [High]
+- `server/src/agents/coordinator.ts` — UPDATE now chains `.select('id')` and checks returned rows. Warns on zero-row update (session deleted between pipeline start and save).
+
+#### savePositioningProfile Error Handling [High]
+- `server/src/agents/coordinator.ts` — Both update and insert calls now capture and log DB errors instead of silently swallowing them.
+
+#### Craftsman self_review False-Pass [High]
+- `server/src/agents/craftsman/tools.ts` — When repairJSON returns null, now returns `passed: false, score: 0` instead of `passed: true, score: 6`. Prevents skipping revision on parse failure.
+
+#### Stateful Regex Fixes [Medium]
+- `server/src/agents/craftsman/tools.ts` — Removed `/g` flag from vertical bar regex in STRUCTURAL_PATTERNS. `.test()` with `/g` advances lastIndex, causing false negatives on subsequent calls.
+- `server/src/agents/producer/tools.ts` — Removed `/g` flags from all 4 date pattern regexes in `verify_cross_section_consistency`.
+
+#### Strategist Suggestions Validation [Medium]
+- `server/src/agents/strategist/tools.ts` — Added `.filter()` before `.map()` to skip suggestions with missing/empty labels. Prevents blank buttons in the UI from Z.AI type coercion issues.
+
+#### Agent Runtime Fixes [High/Medium]
+- `server/src/agents/runtime/agent-loop.ts` — Interactive tools (interview, present_to_user, questionnaire) now bypass per-tool timeout, using only the overall pipeline timeout. Prevents 2-min timeout aborting user interaction.
+- `server/src/agents/runtime/agent-bus.ts` — messageLog capped at 500 entries (trims to 250 on overflow) to prevent unbounded memory growth.
+
+#### Infrastructure Hardening [Critical/High/Medium]
+- `server/src/lib/retry.ts` — Never retry AbortErrors (intentional cancellation). Previously matched "timeout" in error message and retried.
+- `server/src/lib/json-repair.ts` — Size guard: skip regex-heavy repair steps on inputs >50KB to prevent catastrophic backtracking.
+- `server/src/lib/http-body-guard.ts` — Return 400 on invalid JSON instead of silently coercing to `{}`.
+- `server/src/lib/session-lock.ts` — Renewal interval reduced from 60s to 30s (with 2-min expiry, gives 90s buffer vs 60s).
+- `server/src/lib/llm.ts` — Completed TOOL_MODEL_MAP with 9 missing entries (write_section, revise_section, design_blueprint, adversarial_review → PRIMARY; self_review_section, check_narrative_coherence → MID; humanize_check, check_evidence_integrity → LIGHT).
+
+#### Database Migration [Critical]
+- `supabase/migrations/20260228120000_add_claim_pipeline_slot_rpc.sql` — Created missing `claim_pipeline_slot` RPC. Atomically claims a session for pipeline execution using UPDATE WHERE pipeline_status != 'running'. SECURITY DEFINER, service_role only.
+
+#### Pipeline Route Fixes [High/Medium]
+- `server/src/routes/pipeline.ts` — Fixed gate queue double-splice (redundant `.filter()` after `.splice()` dropped valid buffered responses). Sanitized error leakage via SSE (pipeline_error events now show generic message; detail stays in server logs).
+- `server/src/lib/questionnaire-helpers.ts` — Fixed dead ternary `'single_choice' : 'single_choice'` → `'single_choice' : 'free_text'`. Added `free_text` to type union in types.ts and session.ts.
+
+#### Frontend Fixes [High/Medium]
+- `app/src/lib/export-docx.ts` — Applied template font as document-level default via `styles.default.document.run`. Fixed education field rendering to match PDF export (null-safe, consistent field ordering).
+- `app/src/hooks/useAgent.ts` — Removed `setIsProcessing(false)` from `text_delta` handler. isProcessing now stays true until a terminal event.
+
+#### DB: Fix next_artifact_version Service-Role Bypass [High]
+- `supabase/migrations/20260228130000_fix_next_artifact_version_service_role.sql` — `auth.uid()` returns NULL for service-role callers, so the ownership guard always blocked `supabaseAdmin` calls. Fix: skip ownership check when `auth.uid() IS NULL` (service-role is trusted); enforce for authenticated users only.
+
+#### LLM Provider: Fix Interrupted Stream Usage Loss [Medium]
+- `server/src/lib/llm-provider.ts` — Both ZAI and Anthropic streaming paths now record partial token usage in `finally`/`catch` blocks when streams are interrupted by abort or network errors. Previously, usage was only recorded on successful completion.
+
+#### Download Filename Sanitization [Medium]
+- `app/src/lib/export-filename.ts` — Added defense-in-depth sanitization of invisible/bidirectional control characters (C0, DEL, zero-width, bidi embedding/isolate, BOM) via NFKC normalization and regex strip in `sanitizeFilenameSegment()`.
+
+#### New Test Suites [Tests]
+- `server/src/__tests__/agent-bus.test.ts` — 8 tests covering message routing, messageLog cap, and event handler cleanup
+- `server/src/__tests__/retry-abort.test.ts` — 3 tests verifying AbortError is never retried
+- `server/src/__tests__/json-repair-guard.test.ts` — 6 tests covering size guard bypass and normal repair behavior
+
+#### Test Update
+- `server/src/__tests__/http-body-guard.test.ts` — Updated test to expect 400 on invalid JSON (was 200 with empty object).
+
+### Decisions Made
+- AT-06: Scratchpad→state transfer happens after Craftsman loop, preserving any sections already in state
+- AT-10: Coordinator accepts both payload formats for backward compatibility
+- claim_pipeline_slot: GRANT to service_role only (not authenticated) — backend-only operation
+- json-repair: 50KB threshold for skipping aggressive regex (balances repair attempts vs DoS risk)
+- http-body-guard: 400 is correct per HTTP spec; downstream validation no longer sees phantom empty objects
+
+### Known Issues
+- 2 pre-existing test failures in `agents-gap-analyst.test.ts` (unrelated)
+- H5: Legacy create-master-resume.ts still backlogged
+- Remaining medium/low findings from audit to be addressed in subsequent sessions
+
+### Next Steps
+- Address remaining medium/low audit findings
+- Sprint 3 retrospective and Sprint 4 planning
+
+---
+
 ## 2026-02-28 — Session: Sprint 3 Audit Round 2
 
 **Sprint:** 3 | **Stories:** Audit round 2 — 5 critical + 8 high fixes

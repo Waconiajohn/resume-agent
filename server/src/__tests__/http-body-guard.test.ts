@@ -72,7 +72,7 @@ describe('parseJsonBodyWithLimit', () => {
     expect(res.status).toBe(413);
   });
 
-  it('returns {} for invalid JSON to preserve existing validation flow', async () => {
+  it('returns 400 for invalid JSON', async () => {
     const app = new Hono();
     app.post('/parse', async (c) => {
       const parsed = await parseJsonBodyWithLimit(c, 200);
@@ -86,9 +86,9 @@ describe('parseJsonBodyWithLimit', () => {
       headers: { 'Content-Type': 'application/json' },
     });
 
-    expect(res.status).toBe(200);
-    const body = await res.json() as { data: unknown };
-    expect(body.data).toEqual({});
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toBe('Invalid JSON in request body');
   });
 
   it('rejects non-JSON content types with 415', async () => {

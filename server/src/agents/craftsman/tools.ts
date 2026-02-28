@@ -133,7 +133,7 @@ const STRUCTURAL_PATTERNS: Array<{ re: RegExp; message: string }> = [
     message: '"References available upon request" — outdated convention, remove',
   },
   {
-    re: /\s\|\s/g,
+    re: /\s\|\s/,
     message: 'Vertical bar separator (" | ") — ATS parse risk, replace with comma or newline',
   },
 ];
@@ -306,11 +306,10 @@ Rules:
     }>(response.text);
 
     if (!parsed) {
-      // Fallback: assume passed with moderate score if LLM response can't be parsed
       return {
-        passed: true,
-        score: 6,
-        issues: ['Could not parse quality review — manual inspection recommended'],
+        passed: false,
+        score: 0,
+        issues: ['Could not parse quality review response — revision recommended'],
       };
     }
 

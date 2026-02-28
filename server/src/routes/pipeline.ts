@@ -803,9 +803,12 @@ async function waitForGateResponse<T>(sessionId: string, gate: string): Promise<
   }
   if (initialIdx >= 0) {
     const [match] = initialQueue.splice(initialIdx, 1);
+    // initialQueue has already been mutated by splice — do not filter again by gate name,
+    // as that would also drop other buffered responses for the same gate name that should
+    // remain in the queue for subsequent waitForGateResponse calls.
     const nextPayload = withResponseQueue(
       initialPayload,
-      initialQueue.filter((item) => item.gate !== gate),
+      initialQueue,
     );
     const { error } = await supabaseAdmin
       .from('coach_sessions')
@@ -1642,8 +1645,13 @@ pipeline.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     }
     const emitters = sseConnections.get(session_id);
     if (emitters) {
+      // Sanitize pipeline_error before sending to clients — internal error details
+      // (stack traces, DB messages, file paths) must not leak via SSE.
+      const clientEvent: PipelineSSEEvent = event.type === 'pipeline_error'
+        ? { ...event, error: 'An internal error occurred. Please try again.' }
+        : event;
       for (const emitter of emitters) {
-        try { emitter(event); } catch { /* closed */ }
+        try { emitter(clientEvent); } catch { /* closed */ }
       }
     }
   };

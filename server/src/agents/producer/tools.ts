@@ -578,10 +578,10 @@ const verifyCrossSectionConsistency: AgentTool = {
     // 1. Date format consistency check
     // Look for mixed date formats: "Jan 2020" vs "January 2020" vs "01/2020" vs "2020-01"
     const datePatterns = {
-      abbreviated: /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\b/g,
-      full_month: /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/g,
-      numeric_slash: /\b\d{1,2}\/\d{4}\b/g,
-      iso_partial: /\b\d{4}-\d{2}\b/g,
+      abbreviated: /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\b/,
+      full_month: /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/,
+      numeric_slash: /\b\d{1,2}\/\d{4}\b/,
+      iso_partial: /\b\d{4}-\d{2}\b/,
     };
 
     const foundFormats: string[] = [];

@@ -157,7 +157,7 @@ export async function withSessionLock<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   await waitForLock(sessionId);
-  const renewInterval = setInterval(() => renewLock(sessionId), 60_000);
+  const renewInterval = setInterval(() => renewLock(sessionId), 30_000);
 
   try {
     return await fn();

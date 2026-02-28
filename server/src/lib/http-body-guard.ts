@@ -94,7 +94,6 @@ export async function parseJsonBodyWithLimit(c: Context, maxBytes: number): Prom
   try {
     return { ok: true, data: JSON.parse(raw) };
   } catch {
-    // Keep existing route semantics: invalid JSON flows into schema/manual validation.
-    return { ok: true, data: {} };
+    return { ok: false, response: c.json({ error: 'Invalid JSON in request body' }, 400) };
   }
 }

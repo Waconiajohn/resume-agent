@@ -34,6 +34,10 @@ export class AgentBus {
     };
 
     this.messageLog.push(msg);
+    // Cap message log to prevent unbounded growth
+    if (this.messageLog.length > 500) {
+      this.messageLog = this.messageLog.slice(-250);
+    }
 
     const handler = this.handlers.get(msg.to);
     if (handler) {

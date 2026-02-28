@@ -53,6 +53,12 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
+  // Skip regex-heavy steps on large inputs to avoid catastrophic backtracking
+  if (noTrailing.length > 50_000) {
+    logger.warn({ size: noTrailing.length }, 'Skipping aggressive JSON repair on large input');
+    return null;
+  }
+
   // Step 5: Fix common Z.AI quirks — unescaped newlines/tabs inside strings,
   // single quotes, unquoted keys
   let aggressive = noTrailing

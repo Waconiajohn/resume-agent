@@ -33,17 +33,25 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
 // Only entries used by the current pipeline agents are kept here.
 
 const TOOL_MODEL_MAP: Record<string, string> = {
-  // Quality writing → MODEL_PRIMARY (glm-4.7)
+  // ── PRIMARY (glm-4.7, $0.60/$2.20) — Quality writing ──
   generate_section: MODEL_PRIMARY,
+  write_section: MODEL_PRIMARY,
+  revise_section: MODEL_PRIMARY,
+  design_blueprint: MODEL_PRIMARY,
+  adversarial_review: MODEL_PRIMARY,
 
-  // Mid-tier analysis → MODEL_MID (glm-4.5-air)
+  // ── MID (glm-4.5-air, $0.20/$1.10) — Analysis ──
   classify_fit: MODEL_MID,
   build_benchmark: MODEL_MID,
+  self_review_section: MODEL_MID,
+  check_narrative_coherence: MODEL_MID,
 
-  // Lightweight extraction → MODEL_LIGHT (glm-4.7-flash, FREE)
+  // ── LIGHT (glm-4.7-flash, FREE) — Extraction ──
   analyze_jd: MODEL_LIGHT,
   research_company: MODEL_LIGHT,
   research_industry: MODEL_LIGHT,
+  humanize_check: MODEL_LIGHT,
+  check_evidence_integrity: MODEL_LIGHT,
 };
 
 /**

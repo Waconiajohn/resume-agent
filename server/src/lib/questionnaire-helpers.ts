@@ -96,7 +96,7 @@ export function positioningToQuestionnaire(
       question_text: pq.question_text,
       context: pq.context,
       impact_tier: IMPACT_BY_CATEGORY[pq.category ?? 'requirement_mapped'] ?? 'medium',
-      input_type: options.length > 0 ? 'single_choice' : 'single_choice',
+      input_type: options.length > 0 ? 'single_choice' : 'free_text',
       options,
       allow_custom: true,
       allow_skip: pq.optional ?? false,

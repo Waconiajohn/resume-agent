@@ -212,6 +212,17 @@ async function executeToolWithTimeout(
   ctx: AgentContext,
   timeoutMs: number,
 ): Promise<unknown> {
+  // Tools that wait for user interaction should not be time-limited by the
+  // per-round timeout — the user may take minutes to respond. These tools are
+  // still bounded by the overall pipeline timeout via ctx.signal.
+  const isInteractive = tool.name.includes('interview') ||
+                        tool.name.includes('present_to_user') ||
+                        tool.name.includes('questionnaire');
+
+  if (isInteractive) {
+    return await tool.execute(input, ctx);
+  }
+
   const { signal, cleanup } = createCombinedAbortSignal(ctx.signal, timeoutMs);
   try {
     // Create a child context with the tool's timeout signal

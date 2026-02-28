@@ -347,7 +347,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
               onChange={handleRatingChange}
             />
           ) : (
-            /* single_choice or multi_choice */
+            /* single_choice, multi_choice, or free_text (options block hidden when no options) */
             currentQuestion.options && currentQuestion.options.length > 0 && (
               <div
                 className="space-y-2"

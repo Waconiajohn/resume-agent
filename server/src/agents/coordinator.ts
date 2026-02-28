@@ -820,7 +820,7 @@ async function savePositioningProfile(
     if (existing?.id) {
       const existingRecord = existing as unknown as Record<string, unknown>;
       const currentVersion = typeof existingRecord.version === 'number' ? existingRecord.version : 0;
-      await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from('user_positioning_profiles')
         .update({
           positioning_data: state.positioning,
@@ -828,10 +828,14 @@ async function savePositioningProfile(
           version: currentVersion + 1,
         })
         .eq('id', existing.id);
-      state.positioning_profile_id = existing.id;
-      log.info({ profile_id: existing.id }, 'Positioning profile updated');
+      if (updateError) {
+        log.warn({ error: updateError.message, profile_id: existing.id }, 'savePositioningProfile: update failed');
+      } else {
+        state.positioning_profile_id = existing.id;
+        log.info({ profile_id: existing.id }, 'Positioning profile updated');
+      }
     } else {
-      const { data: inserted } = await supabaseAdmin
+      const { data: inserted, error: insertError } = await supabaseAdmin
         .from('user_positioning_profiles')
         .insert({
           user_id:          state.user_id,
@@ -840,7 +844,9 @@ async function savePositioningProfile(
         })
         .select('id')
         .single();
-      if (inserted?.id) {
+      if (insertError) {
+        log.warn({ error: insertError.message }, 'savePositioningProfile: insert failed');
+      } else if (inserted?.id) {
         state.positioning_profile_id = inserted.id;
         log.info({ profile_id: inserted.id }, 'Positioning profile created');
       }
@@ -862,7 +868,7 @@ async function persistSession(
 ): Promise<void> {
   const log = createSessionLogger(state.session_id);
   try {
-    await supabaseAdmin
+    const { data: updatedRows, error } = await supabaseAdmin
       .from('coach_sessions')
       .update({
         status:               'completed',
@@ -874,7 +880,16 @@ async function persistSession(
         last_panel_data:      finalResume ? { resume: finalResume } : undefined,
       })
       .eq('id',      state.session_id)
-      .eq('user_id', state.user_id);
+      .eq('user_id', state.user_id)
+      .select('id');
+
+    if (error) {
+      throw error;
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      log.warn({ session_id: state.session_id }, 'persistSession: UPDATE matched zero rows — session may have been deleted');
+    }
   } catch (err) {
     log.warn({ error: err instanceof Error ? err.message : String(err) }, 'persistSession failed');
     emit({
@@ -909,16 +924,34 @@ function subscribeToRevisionRequests(
   const handler = async (msg: AgentMessage): Promise<void> => {
     if (msg.type !== 'request' || msg.from !== 'producer') return;
 
-    const instructions = msg.payload.revision_instructions as Array<{
+    // Support both formats:
+    // 1. Array format: payload.revision_instructions = [{ target_section, issue, instruction, priority }]
+    // 2. Flat format (from Producer tool): payload = { section, issue, instruction }
+    let instructions: Array<{
       target_section: string;
       issue: string;
       instruction: string;
       priority: 'high' | 'medium' | 'low';
-    }> | undefined;
+    }>;
 
-    if (!instructions || instructions.length === 0) return;
+    if (Array.isArray(msg.payload.revision_instructions)) {
+      instructions = msg.payload.revision_instructions as typeof instructions;
+    } else if (typeof msg.payload.section === 'string' && typeof msg.payload.instruction === 'string') {
+      // Single flat revision request from Producer's request_content_revision tool
+      instructions = [{
+        target_section: msg.payload.section as string,
+        issue: (msg.payload.issue as string) ?? '',
+        instruction: msg.payload.instruction as string,
+        priority: 'high' as const,
+      }];
+    } else {
+      return;
+    }
 
-    const highPriority = instructions.filter(i => i.priority === 'high');
+    if (instructions.length === 0) return;
+
+    // Process all instructions (flat format is always treated as high priority)
+    const highPriority = instructions.filter(i => i.priority === 'high' || i.priority === undefined);
     if (highPriority.length === 0) return;
 
     log.info({ sections: highPriority.map(i => i.target_section) }, 'Coordinator: handling revision requests from Producer');
@@ -1149,6 +1182,19 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       initialMessage: buildCraftsmanMessage(state),
     });
 
+    // Transfer Craftsman sections from scratchpad to state.sections
+    const craftsmanSections: Record<string, SectionWriterOutput> = {};
+    for (const [key, val] of Object.entries(craftsmanResult.scratchpad)) {
+      if (key.startsWith('section_') && val && typeof val === 'object' && 'content' in (val as Record<string, unknown>)) {
+        const sectionName = key.replace('section_', '');
+        craftsmanSections[sectionName] = val as SectionWriterOutput;
+      }
+    }
+    if (Object.keys(craftsmanSections).length > 0) {
+      state.sections = { ...(state.sections ?? {}), ...craftsmanSections };
+      log.info({ count: Object.keys(craftsmanSections).length, keys: Object.keys(craftsmanSections) }, 'Coordinator: transferred Craftsman sections to state');
+    }
+
     timer.end('section_writing');
 
     log.info(
@@ -1205,13 +1251,18 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
       identity:    producerConfig.identity,
     };
 
-    const producerResult = await runAgentLoop({
-      config:         producerConfig,
-      contextParams:  producerContextParams,
-      initialMessage: buildProducerMessage(state),
-    });
+    let producerResult: Awaited<ReturnType<typeof runAgentLoop>>;
+    try {
+      producerResult = await runAgentLoop({
+        config:         producerConfig,
+        contextParams:  producerContextParams,
+        initialMessage: buildProducerMessage(state),
+      });
+    } finally {
+      // Always unsubscribe revision listener even if the Producer throws
+      cleanupRevisionSubscription();
+    }
 
-    cleanupRevisionSubscription();
     timer.end('quality_review');
 
     log.info(

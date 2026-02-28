@@ -401,7 +401,7 @@ export interface QuestionnaireQuestion {
   payoff_hint?: string;
   topic_keys?: string[];
   benchmark_edit_version?: number | null;
-  input_type: 'single_choice' | 'multi_choice' | 'rating';
+  input_type: 'single_choice' | 'multi_choice' | 'rating' | 'free_text';
   options?: QuestionnaireOption[];
   allow_custom: boolean;
   allow_skip: boolean;

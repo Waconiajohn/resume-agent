@@ -114,6 +114,11 @@ export async function withRetry<T>(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
 
+      // Never retry intentional aborts — the user or system cancelled deliberately
+      if (lastError.name === 'AbortError' || (err instanceof DOMException && err.name === 'AbortError')) {
+        throw lastError;
+      }
+
       if (attempt >= maxAttempts || !isTransient(lastError, err)) {
         throw lastError;
       }

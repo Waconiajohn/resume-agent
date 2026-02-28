@@ -609,7 +609,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
                 case 'text_delta': {
                   const data = safeParse(msg.data);
                   if (!data) break;
-                  setIsProcessing(false);
+                  // Do NOT set isProcessing false here — receiving text_delta means
+                  // the stream is actively delivering content. isProcessing stays true
+                  // until text_complete or a gate event clears it.
                   // Accumulate deltas in buffer, flush via rAF
                   deltaBufferRef.current += data.content;
                   if (rafIdRef.current === null) {

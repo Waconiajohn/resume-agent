@@ -339,11 +339,13 @@ const interviewCandidateTool: AgentTool = {
 
     // Build suggestions array
     const rawSuggestions = Array.isArray(input.suggestions) ? input.suggestions as Record<string, unknown>[] : [];
-    const suggestions = rawSuggestions.map(s => ({
-      label: String(s.label ?? ''),
-      description: String(s.description ?? ''),
-      source: (s.source as 'resume' | 'inferred' | 'jd') ?? 'inferred',
-    }));
+    const suggestions = rawSuggestions
+      .filter(s => typeof s.label === 'string' && s.label.trim())
+      .map(s => ({
+        label: String(s.label ?? ''),
+        description: String(s.description ?? ''),
+        source: (s.source as 'resume' | 'inferred' | 'jd') ?? 'inferred',
+      }));
 
     const question: PositioningQuestion = {
       id: randomUUID(),

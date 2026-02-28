@@ -1,7 +1,24 @@
 import type { ContactInfo } from '@/types/resume';
 
+// Invisible and bidirectional control characters that must be stripped from
+// filename segments before further processing.  The download layer (download.ts)
+// applies NFKC normalization and a second pass, so this is defense-in-depth.
+// Ranges covered:
+//   U+0000-U+001F  C0 control characters
+//   U+007F         DEL
+//   U+200B-U+200F  zero-width chars and directional marks
+//   U+202A-U+202E  bidirectional embedding / override controls
+//   U+2066-U+2069  bidirectional isolate controls
+//   U+FEFF         BOM / zero-width no-break space
+const FILENAME_INVISIBLE_RE = /[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
+
 function sanitizeFilenameSegment(s: string): string {
-  return s.replace(/[^\p{L}\p{N}]/gu, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  return s
+    .normalize('NFKC')
+    .replace(FILENAME_INVISIBLE_RE, '')
+    .replace(/[^\p{L}\p{N}]/gu, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
 }
 
 function clampSegment(s: string, maxLen = 40): string {
