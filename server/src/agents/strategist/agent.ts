@@ -61,8 +61,11 @@ export const strategistConfig: ResumeAgentConfig = {
   /** emit_transparency has no side-effects on other tools — safe to run in parallel */
   parallel_safe_tools: ['emit_transparency'],
 
-  /** Strategist loop is coordination logic; rarely exceeds 500 output tokens */
-  loop_max_tokens: 4096,
+  /**
+   * Strategist loop is coordination logic, but tool_call inputs can be large
+   * (evidence summaries, positioning data). Keep generous to avoid truncation.
+   */
+  loop_max_tokens: 8192,
 };
 
 // Type erasure cast is required because AgentConfig is generic and the registry
