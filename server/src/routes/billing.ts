@@ -4,6 +4,7 @@ import { stripe, STRIPE_WEBHOOK_SECRET } from '../lib/stripe.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import logger from '../lib/logger.js';
+import { resolveReferralCode, trackReferralEvent } from '../lib/affiliates.js';
 
 const billing = new Hono();
 
@@ -75,6 +76,17 @@ billing.post('/checkout', authMiddleware, async (c) => {
     }
   }
 
+  // Optional referral code — silently ignored if invalid
+  const rawReferralCode = (body as Record<string, unknown>).referral_code;
+  const referralCodeInput = typeof rawReferralCode === 'string' ? rawReferralCode.trim() : null;
+  let resolvedAffiliateId: string | null = null;
+  if (referralCodeInput) {
+    const affiliate = await resolveReferralCode(referralCodeInput);
+    if (affiliate) {
+      resolvedAffiliateId = affiliate.id;
+    }
+  }
+
   const origin = c.req.header('origin') ?? 'http://localhost:5173';
 
   try {
@@ -83,11 +95,13 @@ billing.post('/checkout', authMiddleware, async (c) => {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+      allow_promotion_codes: true,
       success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?checkout=cancelled`,
       metadata: {
         user_id: user.id,
         plan_id: planId.trim(),
+        ...(resolvedAffiliateId ? { affiliate_id: resolvedAffiliateId } : {}),
       },
     });
 
@@ -96,6 +110,55 @@ billing.post('/checkout', authMiddleware, async (c) => {
     const message = err instanceof Error ? err.message : String(err);
     logger.error({ err, userId: user.id, planId }, `Failed to create checkout session: ${message}`);
     return c.json({ error: 'Failed to create checkout session' }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/billing/validate-promo?code=XXXXX — Validate a promotion code
+// Auth required.
+// ---------------------------------------------------------------------------
+billing.get('/validate-promo', authMiddleware, async (c) => {
+  if (!stripe) {
+    return c.json({ error: 'Billing is not configured' }, 503);
+  }
+
+  const code = c.req.query('code');
+  if (!code?.trim()) {
+    return c.json({ error: 'code query parameter is required' }, 400);
+  }
+
+  try {
+    const promotionCodes = await stripe.promotionCodes.list({
+      code: code.trim(),
+      active: true,
+      limit: 1,
+      expand: ['data.promotion.coupon'],
+    });
+
+    if (promotionCodes.data.length === 0) {
+      return c.json({ valid: false, message: 'Invalid or expired promo code' });
+    }
+
+    const promo = promotionCodes.data[0];
+    // promotion.coupon may be a string ID or an expanded Coupon object
+    const couponRaw = promo.promotion.coupon;
+    const coupon = typeof couponRaw === 'object' && couponRaw !== null ? couponRaw as Stripe.Coupon : null;
+
+    return c.json({
+      valid: true,
+      code: promo.code,
+      discount: {
+        percent_off: coupon?.percent_off ?? null,
+        amount_off: coupon?.amount_off ?? null,
+        duration: coupon?.duration ?? null,
+        duration_in_months: coupon?.duration_in_months ?? null,
+        name: coupon?.name ?? null,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ err, code: code.trim() }, `Failed to validate promo code: ${message}`);
+    return c.json({ error: 'Failed to validate promo code' }, 500);
   }
 });
 
@@ -280,6 +343,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
+  // Extract promotion code / discount info from the first applied discount (if any)
+  const firstDiscount = session.discounts?.[0] ?? null;
+  let promoCodeStr: string | null = null;
+  let couponIdStr: string | null = null;
+  if (firstDiscount) {
+    couponIdStr = typeof firstDiscount.coupon === 'string'
+      ? firstDiscount.coupon
+      : (firstDiscount.coupon?.id ?? null);
+    if (firstDiscount.promotion_code) {
+      promoCodeStr = typeof firstDiscount.promotion_code === 'string'
+        ? firstDiscount.promotion_code
+        : ((firstDiscount.promotion_code as Stripe.PromotionCode).code ?? null);
+    }
+  }
+
   const { error } = await supabaseAdmin
     .from('user_subscriptions')
     .upsert(
@@ -291,6 +369,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
         status: 'active',
         current_period_start: new Date().toISOString(),
         current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        promotion_code: promoCodeStr,
+        coupon_id: couponIdStr,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id' },
@@ -302,6 +382,20 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   }
 
   logger.info({ userId, planId, stripeSubscriptionId }, 'Subscription activated after checkout');
+
+  // Track referral event if checkout was attributed to an affiliate
+  const affiliateId = session.metadata?.affiliate_id;
+  if (affiliateId) {
+    const amountTotal = session.amount_total;
+    const revenueAmount = amountTotal != null ? amountTotal / 100 : undefined;
+    await trackReferralEvent({
+      affiliateId,
+      eventType: 'subscription',
+      referredUserId: userId,
+      subscriptionId: stripeSubscriptionId,
+      revenueAmount,
+    });
+  }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {

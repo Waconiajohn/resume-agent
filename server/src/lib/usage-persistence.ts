@@ -9,7 +9,9 @@
  * - Uses delta flushing: tracks the "last flushed" watermarks per session so
  *   each flush only writes the tokens accumulated since the prior flush.
  * - The `user_usage` table has a UNIQUE(user_id, period_start) constraint.
- *   We upsert with ON CONFLICT DO UPDATE to accumulate across flushes.
+ *   We call the `increment_user_usage` RPC which uses INSERT ... ON CONFLICT
+ *   DO UPDATE SET col = col + EXCLUDED.col for atomic server-side accumulation.
+ *   (Client-side upsert replaced deltas instead of accumulating them.)
  * - Flush is fail-open: a DB error is logged but never rethrows, so the
  *   pipeline is never interrupted by a billing write failure.
  */
@@ -76,28 +78,20 @@ export async function flushUsageToDb(
 
   try {
     const supabaseAdmin = await getSupabaseAdmin();
-    const { error } = await supabaseAdmin
-      .from('user_usage')
-      .upsert(
-        {
-          user_id: userId,
-          period_start,
-          period_end,
-          total_input_tokens: deltaInput,
-          total_output_tokens: deltaOutput,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'user_id,period_start',
-          // ignoreDuplicates must be false so that the UPDATE branch fires.
-          ignoreDuplicates: false,
-        },
-      );
+    const { error } = await supabaseAdmin.rpc('increment_user_usage', {
+      p_user_id: userId,
+      p_period_start: period_start,
+      p_period_end: period_end,
+      p_input_tokens: deltaInput,
+      p_output_tokens: deltaOutput,
+      p_sessions: 0,
+      p_cost: 0,
+    });
 
     if (error) {
       logger.warn(
         { session_id: sessionId, user_id: userId, error: error.message },
-        'usage-persistence: upsert failed',
+        'usage-persistence: rpc increment_user_usage failed',
       );
       // Do not advance watermark — retry on next flush cycle.
       return;

@@ -1,46 +1,58 @@
-# Sprint 6: Product Polish, Scale Readiness & Launch Prep
-**Goal:** Ship production-quality frontend (split god files, add component/hook tests), harden backend (Zod validation, usage persistence, DB pipeline limits, Redis rate limiting), document scaling strategy, clean up legacy code, fix deployment config, and integrate Stripe billing.
+# Sprint 7: Commerce Platform — Billing, Discounts, Entitlements & Affiliates
+**Goal:** Wire existing billing UI into app routing, fix usage persistence bug, add Stripe promotion codes, build feature entitlements model, implement affiliate marketing system, and decommission legacy agent code.
 **Started:** 2026-02-28
 **Completed:** 2026-02-28
 
 ---
 
-## Track 1 — Product Optimization (Stories 1-5)
+## Track A — Wire Billing UI & Fix Bugs (Stories 1-2)
 
-1. [x] Story 1: Split `useAgent.ts` into Focused Hooks — [status: done]
-2. [x] Story 2: Split `CoachScreen.tsx` into Sub-Components — [status: done]
-3. [x] Story 3: Add Zod Schemas for LLM Output Validation — [status: done]
-4. [x] Story 4: Legacy Code Cleanup — [status: done]
-5. [x] Story 5: Fix Deployment Configuration — [status: done]
+1. [x] Story 1: Wire PricingPage + BillingDashboard into App Routing — [status: done]
+2. [x] Story 2: Fix Usage Persistence Upsert Bug — [status: done]
 
-## Track 2 — Scale Readiness (Stories 6-9)
+## Track B — Discount & Promo Codes (Stories 3-4)
 
-6. [x] Story 6: Periodic Usage Flush to Database — [status: done]
-7. [x] Story 7: Database-Backed Running Pipeline Limits — [status: done]
-8. [x] Story 8: Redis-Backed Rate Limiting — [status: done]
-9. [x] Story 9: SSE Event Broadcasting Architecture Doc + Spike — [status: done]
+3. [x] Story 3: Stripe Promotion Codes Integration — [status: done]
+4. [x] Story 4: Promo Code Admin & Webhook Handling — [status: done]
 
-## Track 3 — Launch Prep (Stories 10-13)
+## Track C — Feature Entitlements (Stories 5-7)
 
-10. [x] Story 10: Frontend Component Tests — Panels — [status: done]
-11. [x] Story 11: Frontend Hook Tests — useAgent Split Hooks — [status: done]
-12. [x] Story 12: Stripe Billing Integration — [status: done]
-13. [x] Story 13: Sprint 6 Retrospective — [status: done]
+5. [x] Story 5: Plan Features & Entitlements Model — [status: done]
+6. [x] Story 6: User Feature Overrides — [status: done]
+7. [x] Story 7: Wire Entitlements into Pipeline & Exports — [status: done]
+
+## Track D — Affiliate Marketing (Stories 8-10)
+
+8. [x] Story 8: Affiliate Data Model & Referral Tracking — [status: done]
+9. [x] Story 9: Affiliate Referral Landing & Signup Flow — [status: done]
+10. [x] Story 10: Affiliate Dashboard — [status: done]
+
+## Track E — Legacy Cleanup (Stories 11-12)
+
+11. [x] Story 11: Decommission Legacy `agent/` Directory — [status: done]
+12. [x] Story 12: Clean Up Deprecated Chat Route — [status: done]
+
+## Track F — Tests & Documentation (Stories 13-15)
+
+13. [x] Story 13: Billing & Entitlements Tests — [status: done]
+14. [x] Story 14: Commerce Documentation — [status: done]
+15. [x] Story 15: Sprint 7 Retrospective — [status: done]
 
 ---
 
 ## Execution Order
 
-**Phase 1 — Frontend refactoring (parallel):** Stories 1, 2
-**Phase 2 — Backend hardening (parallel):** Stories 3, 4, 5
-**Phase 3 — Scaling (parallel):** Stories 6, 7, 8, 9
-**Phase 4 — Frontend tests (sequential, depends on Story 1):** Stories 10, then 11
-**Phase 5 — Billing:** Story 12
-**Phase 6 — Docs:** Story 13
+**Phase 1 — Wire existing UI + fix bug (parallel):** Stories 1, 2
+**Phase 2 — Discount codes (sequential):** Story 3, then Story 4
+**Phase 3 — Entitlements (sequential):** Story 5, then 6, then 7
+**Phase 4 — Affiliate system (sequential):** Story 8, then 9, then 10
+**Phase 5 — Legacy cleanup (sequential):** Story 11, then 12
+**Phase 6 — Tests + docs (parallel):** Stories 13, 14, then 15
 
 ## Out of Scope (Explicitly)
-- E2E test expansion (deferred from Sprint 4)
-- Master Resume Viewer Page
-- Redis bus implementation (beyond rate limiting)
+- Stripe Connect for affiliate payouts (manual payouts for MVP)
+- Multi-currency pricing
+- Usage-based billing (per-token charging)
+- Admin dashboard UI (API-only for admin operations)
+- E2E test expansion
 - New pipeline stages or agent additions
-- Chat route migration off legacy agent/

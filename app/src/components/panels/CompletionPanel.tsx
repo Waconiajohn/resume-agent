@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileText, CheckCircle, Loader2, FileDown, Save } from 'lucide-react';
+import { Download, FileText, CheckCircle, Loader2, FileDown, Save, Lock } from 'lucide-react';
 import { buildPositioningSummaryText } from '@/lib/export-positioning-summary';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
@@ -8,6 +8,8 @@ import { resumeToText, downloadAsText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { validateResumeForExport } from '@/lib/export-validation';
 import { buildExportDiagnosticsReport, recordExportDiagnostic } from '@/lib/export-diagnostics';
+import { supabase } from '@/lib/supabase';
+import { API_BASE } from '@/lib/api';
 import type { FinalResume } from '@/types/resume';
 import type { CompletionData } from '@/types/panels';
 
@@ -52,6 +54,8 @@ export function CompletionPanel({
   const [exportInfo, setExportInfo] = useState<string | null>(null);
   const [savingMode, setSavingMode] = useState<'default' | 'alternate' | null>(null);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // Set to true when server returns 402 for DOCX export (plan does not include it)
+  const [docxBlocked, setDocxBlocked] = useState(false);
   const validationIssues = validateResumeForExport(resume);
   const blockingIssue = validationIssues.find((i) => i.severity === 'error');
   const hasWarnings = validationIssues.some((i) => i.severity === 'warning') || Boolean(data.export_validation && !data.export_validation.passed);
@@ -63,6 +67,26 @@ export function CompletionPanel({
     setExportInfo(null);
     recordExportDiagnostic(resume, 'docx', 'attempt');
     try {
+      // Verify DOCX export is allowed on the user's plan before generating client-side
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token ?? '';
+      const checkRes = await fetch(`${API_BASE}/resumes/export-docx`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (checkRes.status === 402) {
+        const message = 'Word (.docx) export requires a paid plan. Please upgrade to download in Word format.';
+        recordExportDiagnostic(resume, 'docx', 'failure', message);
+        setExportError(message);
+        setDocxBlocked(true);
+        return;
+      }
+      if (!checkRes.ok) {
+        // Non-402 errors: log and proceed (fail open so auth issues don't block export)
+        const message = 'Could not verify export permissions. Proceeding with export.';
+        setExportInfo(message);
+      }
+
       const { exportDocx } = await import('@/lib/export-docx');
       const result = await exportDocx(resume);
       if (!result.success) {
@@ -260,13 +284,20 @@ export function CompletionPanel({
           </div>
           {resume ? (
             <div className="space-y-2">
-              <GlassButton variant="primary" className="w-full" onClick={handleResumeDocx} disabled={exportingResume || !!blockingIssue}>
+              <GlassButton variant="primary" className="w-full" onClick={() => void handleResumeDocx()} disabled={exportingResume || !!blockingIssue}>
                 {exportingResume ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : docxBlocked ? (
+                  <Lock className="mr-2 h-4 w-4" />
                 ) : (
                   <Download className="mr-2 h-4 w-4" />
                 )}
                 Download Word (.docx)
+                {docxBlocked && (
+                  <span className="ml-2 rounded-full border border-amber-300/30 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-100/80">
+                    Upgrade
+                  </span>
+                )}
               </GlassButton>
               <GlassButton variant="ghost" className="w-full" onClick={() => void handleResumePdf()} disabled={exportingResume || !!blockingIssue}>
                 <FileDown className="mr-2 h-4 w-4" />

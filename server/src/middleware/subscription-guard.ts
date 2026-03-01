@@ -1,25 +1,21 @@
 import type { Context, Next } from 'hono';
+import { getUserEntitlements } from '../lib/entitlements.js';
 import { supabaseAdmin } from '../lib/supabase.js';
-import { parsePositiveInt } from '../lib/http-body-guard.js';
 import logger from '../lib/logger.js';
-
-/**
- * Number of pipeline runs allowed on the Free plan per calendar month.
- * Override with FREE_TIER_PIPELINE_LIMIT env var.
- */
-const FREE_TIER_LIMIT = parsePositiveInt(process.env.FREE_TIER_PIPELINE_LIMIT, 3);
 
 /**
  * subscriptionGuard — Middleware applied to POST /api/pipeline/start.
  *
- * Checks if the authenticated user has an active paid subscription or has not
- * exceeded their free-tier pipeline limit for the current calendar month.
+ * Checks if the authenticated user has not exceeded their plan's session limit
+ * for the current calendar month. Uses the entitlements system so that the limit
+ * is derived from the user's active plan (free / starter / pro) plus any
+ * user_feature_overrides.
  *
  * Decision table:
- *   Active paid subscription (status = 'active' or 'trialing') → allow
- *   Free plan, sessions_count < FREE_TIER_LIMIT this month         → allow
- *   Free plan, sessions_count >= FREE_TIER_LIMIT this month        → 402
- *   No subscription row found                                       → treat as free, check usage
+ *   sessions_per_month limit = -1           → unlimited, always allow
+ *   sessions_count < limit this month       → allow
+ *   sessions_count >= limit this month      → 402
+ *   DB error (subscription or usage lookup) → fail open, allow
  */
 export async function subscriptionGuard(c: Context, next: Next): Promise<Response | void> {
   const user = c.get('user');
@@ -28,31 +24,16 @@ export async function subscriptionGuard(c: Context, next: Next): Promise<Respons
   }
 
   try {
-    // 1. Check subscription status
-    const { data: subscription, error: subError } = await supabaseAdmin
-      .from('user_subscriptions')
-      .select('plan_id, status')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const entitlements = await getUserEntitlements(user.id);
+    const sessionLimit = entitlements.features.sessions_per_month?.limit ?? 3;
 
-    if (subError) {
-      logger.error({ err: subError, userId: user.id }, 'subscriptionGuard: failed to fetch subscription');
-      // Fail open — do not block user if we can't check their subscription
+    // -1 means unlimited sessions
+    if (sessionLimit === -1) {
       await next();
       return;
     }
 
-    const isPaidActive =
-      subscription !== null &&
-      subscription.plan_id !== 'free' &&
-      (subscription.status === 'active' || subscription.status === 'trialing');
-
-    if (isPaidActive) {
-      await next();
-      return;
-    }
-
-    // 2. Free plan — check current-month usage
+    // Check current-month usage
     const now = new Date();
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
@@ -76,18 +57,19 @@ export async function subscriptionGuard(c: Context, next: Next): Promise<Respons
 
     const sessionsThisMonth = usage?.sessions_count ?? 0;
 
-    if (sessionsThisMonth >= FREE_TIER_LIMIT) {
+    if (sessionsThisMonth >= sessionLimit) {
       logger.info(
-        { userId: user.id, sessionsThisMonth, limit: FREE_TIER_LIMIT },
-        'subscriptionGuard: free tier limit exceeded',
+        { userId: user.id, sessionsThisMonth, limit: sessionLimit, plan: entitlements.plan_id },
+        'subscriptionGuard: session limit exceeded',
       );
       return c.json(
         {
-          error: 'Free tier limit reached',
-          code: 'FREE_TIER_LIMIT_EXCEEDED',
+          error: 'Session limit reached',
+          code: 'SESSION_LIMIT_EXCEEDED',
           sessions_used: sessionsThisMonth,
-          sessions_limit: FREE_TIER_LIMIT,
-          message: `You have used ${sessionsThisMonth} of ${FREE_TIER_LIMIT} free pipeline runs this month. Upgrade to continue.`,
+          sessions_limit: sessionLimit,
+          plan_id: entitlements.plan_id,
+          message: `You have used ${sessionsThisMonth} of ${sessionLimit} pipeline runs this month. Upgrade to continue.`,
         },
         402,
       );

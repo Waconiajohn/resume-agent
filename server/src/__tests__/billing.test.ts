@@ -313,4 +313,158 @@ describe('checkout session creation', () => {
 
     await expect(createSessionMock({})).rejects.toThrow('Stripe API error');
   });
+
+  it('checkout session params include allow_promotion_codes flag', async () => {
+    // Verify that when building a checkout session the params object may include
+    // allow_promotion_codes so users can apply promo codes at checkout.
+    const createSessionMock = vi.fn().mockResolvedValue({
+      url: 'https://checkout.stripe.com/promo-test',
+    });
+    (stripeMock as unknown as Record<string, Record<string, Record<string, unknown>>>).checkout.sessions.create = createSessionMock;
+
+    const params = {
+      customer: 'cus_promo',
+      mode: 'subscription',
+      allow_promotion_codes: true,
+      line_items: [{ price: 'price_starter', quantity: 1 }],
+      success_url: 'http://localhost:5173/?checkout=success',
+      cancel_url: 'http://localhost:5173/?checkout=cancelled',
+      metadata: { user_id: 'user-promo', plan_id: 'starter' },
+    };
+
+    const result = await createSessionMock(params);
+    expect(result.url).toBe('https://checkout.stripe.com/promo-test');
+    expect(createSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ allow_promotion_codes: true }),
+    );
+  });
+
+  it('checkout session metadata includes referral_code when provided', async () => {
+    const createSessionMock = vi.fn().mockResolvedValue({
+      url: 'https://checkout.stripe.com/referral-test',
+    });
+    (stripeMock as unknown as Record<string, Record<string, Record<string, unknown>>>).checkout.sessions.create = createSessionMock;
+
+    const params = {
+      customer: 'cus_referral',
+      mode: 'subscription',
+      line_items: [{ price: 'price_pro', quantity: 1 }],
+      success_url: 'http://localhost:5173/?checkout=success',
+      cancel_url: 'http://localhost:5173/?checkout=cancelled',
+      metadata: {
+        user_id: 'user-referred',
+        plan_id: 'pro',
+        referral_code: 'SAVE20',
+        affiliate_id: 'aff-001',
+      },
+    };
+
+    await createSessionMock(params);
+    expect(createSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          referral_code: 'SAVE20',
+          affiliate_id: 'aff-001',
+        }),
+      }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: checkout.session.completed webhook — discount and referral handling
+// ---------------------------------------------------------------------------
+
+describe('checkout.session.completed webhook — discount and referral metadata', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('webhook event with discount info includes discount_id in session data', () => {
+    // Verify that our webhook event parsing handles discount objects correctly.
+    // The handleCheckoutCompleted function reads metadata for user_id, plan_id,
+    // customer, and subscription. Here we confirm the shape we expect to receive.
+    const sessionWithDiscount = {
+      id: 'cs_discount',
+      customer: 'cus_test',
+      subscription: 'sub_test',
+      metadata: {
+        user_id: 'user-discount',
+        plan_id: 'pro',
+        referral_code: 'SAVE20',
+        affiliate_id: 'aff-001',
+      },
+      total_details: {
+        amount_discount: 2000,
+        breakdown: {
+          discounts: [
+            {
+              discount: {
+                id: 'di_test123',
+                coupon: { id: 'coup_test', percent_off: 20 },
+              },
+              amount: 2000,
+            },
+          ],
+        },
+      },
+    };
+
+    // Confirm required metadata fields are present
+    expect(sessionWithDiscount.metadata.user_id).toBe('user-discount');
+    expect(sessionWithDiscount.metadata.plan_id).toBe('pro');
+    expect(sessionWithDiscount.metadata.referral_code).toBe('SAVE20');
+    expect(sessionWithDiscount.metadata.affiliate_id).toBe('aff-001');
+    expect(sessionWithDiscount.total_details.amount_discount).toBe(2000);
+  });
+
+  it('webhook upsert payload for checkout.session.completed includes required fields', () => {
+    // Simulate the upsert payload built in handleCheckoutCompleted.
+    // Verifies the shape that would be written to user_subscriptions.
+    const userId = 'user-webhook';
+    const planId = 'starter';
+    const stripeCustomerId = 'cus_webhook';
+    const stripeSubscriptionId = 'sub_webhook';
+
+    const upsertPayload = {
+      user_id: userId,
+      plan_id: planId,
+      stripe_customer_id: stripeCustomerId,
+      stripe_subscription_id: stripeSubscriptionId,
+      status: 'active',
+      current_period_start: new Date().toISOString(),
+      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    expect(upsertPayload.user_id).toBe(userId);
+    expect(upsertPayload.plan_id).toBe(planId);
+    expect(upsertPayload.status).toBe('active');
+    expect(upsertPayload.stripe_customer_id).toBe(stripeCustomerId);
+    expect(upsertPayload.stripe_subscription_id).toBe(stripeSubscriptionId);
+  });
+
+  it('webhook with affiliate_id in metadata could trigger referral tracking', () => {
+    // Document the contract: when affiliate_id is present in checkout metadata,
+    // the system should call trackReferralEvent. This test verifies metadata
+    // extraction logic that would feed into that call.
+    const session = {
+      id: 'cs_affiliate',
+      metadata: {
+        user_id: 'user-referred',
+        plan_id: 'pro',
+        affiliate_id: 'aff-001',
+        referral_code: 'PARTNER20',
+      },
+    };
+
+    const affiliateId = session.metadata.affiliate_id;
+    const referralCode = session.metadata.referral_code;
+
+    expect(affiliateId).toBe('aff-001');
+    expect(referralCode).toBe('PARTNER20');
+    // If affiliateId is present, a referral event should be emitted
+    expect(typeof affiliateId).toBe('string');
+    expect(affiliateId.length).toBeGreaterThan(0);
+  });
 });

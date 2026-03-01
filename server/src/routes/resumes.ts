@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
+import { requireFeature } from '../middleware/feature-guard.js';
 import logger from '../lib/logger.js';
 import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 
@@ -234,6 +235,13 @@ resumes.post('/', rateLimitMiddleware(20, 60_000), async (c) => {
   }
 
   return c.json({ resume: data as CreateResumeRpcResult }, 201);
+});
+
+// POST /resumes/export-docx — Gate check for DOCX export (feature-guarded)
+// The actual DOCX generation happens client-side; this endpoint validates
+// that the user's plan includes DOCX export before the browser generates the file.
+resumes.post('/export-docx', requireFeature('export_docx'), async (c) => {
+  return c.json({ allowed: true });
 });
 
 export { resumes };

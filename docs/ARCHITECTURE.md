@@ -10,7 +10,7 @@
 | Primary LLM | Z.AI GLM models (OpenAI-compatible) | 4-tier model routing |
 | Fallback LLM | Anthropic Claude (optional) | Selectable via `LLM_PROVIDER` env var |
 | E2E Testing | Playwright | Full pipeline tests (~28 min with Z.AI latency) |
-| Unit Testing | Vitest | Server (53 tests) + App (19 tests) |
+| Unit Testing | Vitest | Server (577 tests) + App (281 tests) |
 
 ## Monorepo Layout
 
@@ -28,7 +28,6 @@ server/                       # Backend (Hono + Node.js)
     producer/                 # Agent 3: Quality assurance + document production
     coordinator.ts            # Thin orchestrator (~850 lines) — sequences agents, manages gates
     types.ts                  # PipelineState, PipelineSSEEvent, agent I/O interfaces
-  src/agent/                  # Legacy monolithic loop (used by chat route, being phased out)
   src/routes/                 # pipeline.ts, sessions.ts, resumes.ts
   src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts
 supabase/
@@ -165,25 +164,54 @@ Supabase Auth (email/password) with `AuthContext` provider. React Router v7 with
 
 TailwindCSS utility classes. Glass morphism design system: `GlassCard`, `GlassButton`, `GlassInput`. `cn()` helper for conditional class merging.
 
-## Legacy Code
+## Route → Agent System Mapping
 
-Two legacy code paths remain in the codebase, retained for backward compatibility with the chat-based coaching route:
-
-### `server/src/agent/` — Legacy Monolithic Chat Loop
-- **Used by:** `routes/sessions.ts` (chat-based coaching)
-- **Key files:** `loop.ts` (agent loop), `context.ts` (session context), `system-prompt.ts`, `tools/` (tool implementations), `tool-executor.ts`
-- **Status:** Deprecated. Marked with `@deprecated` JSDoc. No new features should be added.
-- **Replacement:** `agents/runtime/agent-loop.ts` (generic agent loop) + agent-specific tools in `agents/strategist/`, `agents/craftsman/`, `agents/producer/`
-- **Migration plan:** When `routes/sessions.ts` is migrated to the coordinator-based pipeline, this entire directory can be deleted.
-
-### `server/src/agents/pipeline.ts` — Legacy Monolithic Pipeline
-- **Used by:** Nothing (no active imports). Was replaced by `agents/coordinator.ts` in Sprint 3.
-- **Status:** Deprecated. Marked with `@deprecated` JSDoc. Safe to delete but kept for reference.
-- **Size:** ~4100 lines (the original 7-agent pipeline before the 3-agent refactor)
-- **Migration plan:** Delete when confident all coordinator patterns are stable. No route depends on this file.
-
-### Route → Agent System Mapping
 | Route | Agent System | Status |
 |-------|-------------|--------|
 | `routes/pipeline.ts` | `agents/coordinator.ts` → 3-agent pipeline | **Active** |
-| `routes/sessions.ts` | `agent/loop.ts` → monolithic chat loop | **Legacy** |
+| `routes/sessions.ts` | Grounded status replies only (chat loop decommissioned) | **Active** |
+
+## Commerce
+
+### Billing Flow
+
+Stripe Checkout (hosted page) drives new subscription creation. The user selects a plan on `PricingPage.tsx`, clicks "Subscribe", and the frontend calls `POST /api/billing/checkout` which creates a Stripe Checkout Session and returns a redirect URL. The user completes payment on Stripe's hosted page and is redirected back to the app.
+
+Stripe sends webhook events to `POST /api/billing/webhook`. The webhook handler processes four lifecycle events: `checkout.session.completed` (creates/updates `user_subscriptions` row), `customer.subscription.updated` (updates plan and status), `customer.subscription.deleted` (marks subscription inactive), and `invoice.payment_failed` (flags subscription as past due).
+
+Promotion codes are applied via Stripe's native mechanism. Checkout sessions are created with `allow_promotion_codes: true`. Users enter codes at checkout on Stripe's hosted page. No custom coupon table is maintained — Stripe is the source of truth. Webhook discount metadata is extracted and stored in `user_subscriptions` for analytics.
+
+Customer self-service (plan changes, cancellation) is handled by Stripe Customer Portal. The frontend calls `POST /api/billing/portal` which returns a portal URL. No cancel/upgrade UI is built in the app.
+
+### Entitlements Model
+
+Feature access is controlled by two database tables:
+
+- **`plan_features`** — maps `plan_id → feature_key → feature_value (JSONB)`. Each plan row defines what's included (e.g., `{ "enabled": true }`, `{ "limit": 50 }`).
+- **`user_feature_overrides`** — maps `user_id → feature_key → override_value (JSONB)`. Individual grants that override plan defaults (a la carte purchases, manual grants, support adjustments).
+
+`getUserEntitlements(userId)` in `server/src/lib/entitlements.ts` merges both sources: plan defaults first, then override wins. Returns a flat feature map. Fail-open on DB errors — returns free-tier defaults.
+
+Feature guards are enforced via `requireFeature()` middleware factory in `server/src/middleware/feature-guard.ts`. New features require seed data in `plan_features`. The `subscription-guard.ts` middleware uses `getUserEntitlements()` to enforce session limits.
+
+### Affiliate System
+
+The affiliate system lives in `server/src/lib/affiliates.ts` with routes in `server/src/routes/affiliates.ts`.
+
+- **`affiliates`** table — stores affiliate profile: `user_id`, `referral_code` (unique), `commission_rate`, `status`.
+- **`referral_events`** table — tracks the funnel: clicks, signups, and subscriptions tied to a referral code.
+
+Referral flow: when a visitor lands on `/?ref=CODE`, the frontend captures the code in `localStorage`. On checkout, the referral code is read from storage and passed to `POST /api/billing/checkout` as a query parameter, which attaches it to the Stripe Checkout Session metadata. The webhook handler reads the metadata on `checkout.session.completed` and records a subscription event in `referral_events`.
+
+Commission is calculated as `affiliate.commission_rate * subscription_revenue`. Payouts are manual for MVP — the affiliate dashboard shows stats and events but no automated payout is wired. Stripe Connect for automated payouts is planned as a future story.
+
+### Discount Code Strategy
+
+All discount codes use Stripe Promotion Codes (not custom coupon tables). Promotion codes are created via the Stripe admin API or dashboard and map to Stripe Coupon objects. Validation and redemption are handled server-side by Stripe.
+
+Code categories in use:
+- **Financial planning client codes** — 100% off, limited redemptions.
+- **Friends and family codes** — 50% off, limited redemptions.
+- **General promo codes** — variable discount, typically time-limited.
+
+`allow_promotion_codes: true` is set on all Checkout Sessions, exposing the promo code input field on Stripe's hosted page. Admin endpoints in `server/src/routes/admin.ts` allow creating and listing promo codes via the Stripe API. The `ADMIN_API_KEY` env var protects these endpoints.

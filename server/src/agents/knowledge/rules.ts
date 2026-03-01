@@ -17,7 +17,7 @@ export {
   RESUME_ANTI_PATTERNS,
   AGE_AWARENESS_RULES,
   SECTION_ORDER_KEYS,
-} from '../../agent/resume-guide.js';
+} from './resume-guide.js';
 
 // Re-export ATS rules from the agents directory
 export { ATS_RULEBOOK_SNIPPET, runAtsComplianceCheck } from '../ats-rules.js';

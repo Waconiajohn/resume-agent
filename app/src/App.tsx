@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSession } from '@/hooks/useSession';
 import { useAgent } from '@/hooks/useAgent';
@@ -9,9 +9,12 @@ import { CoachScreen } from '@/components/CoachScreen';
 import { PipelineIntakeForm } from '@/components/PipelineIntakeForm';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SalesPage } from '@/components/SalesPage';
+import { PricingPage } from '@/components/PricingPage';
+import { BillingDashboard } from '@/components/BillingDashboard';
+import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { resumeToText } from '@/lib/export';
 
-type View = 'landing' | 'intake' | 'coach';
+type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate';
 
 export default function App() {
   const { user, session, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
@@ -72,7 +75,50 @@ export default function App() {
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   const [view, setView] = useState<View>('landing');
+  const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [intakeLoading, setIntakeLoading] = useState(false);
+
+  // Detect URL-based views on mount
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/pricing') setView('pricing');
+    else if (path === '/billing') setView('billing');
+    else if (path === '/affiliate') setView('affiliate');
+  }, []);
+
+  // Detect referral code from URL query parameter and persist to localStorage
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode && refCode.trim()) {
+      localStorage.setItem('referral_code', refCode.trim().toUpperCase());
+    }
+  }, []);
+
+  // Handle checkout query params returned from Stripe
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'success') {
+      setCheckoutStatus('success');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (params.get('checkout') === 'cancelled') {
+      setCheckoutStatus('cancelled');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/pricing') setView('pricing');
+      else if (path === '/billing') setView('billing');
+      else if (path === '/affiliate') setView('affiliate');
+      else setView('landing');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
   const hasLiveWorkspaceState = Boolean(
@@ -270,6 +316,24 @@ export default function App() {
     setView('landing');
   }, [signOut, setCurrentSession]);
 
+  const navigateTo = useCallback((viewName: string) => {
+    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate'];
+    const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
+    setView(newView);
+    const paths: Record<View, string> = {
+      landing: '/app',
+      intake: '/app',
+      coach: '/app',
+      pricing: '/pricing',
+      billing: '/billing',
+      affiliate: '/affiliate',
+    };
+    const newPath = paths[newView];
+    if (newPath && window.location.pathname !== newPath) {
+      window.history.pushState({}, '', newPath);
+    }
+  }, []);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface">
@@ -300,7 +364,25 @@ export default function App() {
           pipelineStage={view === 'coach' ? (pipelineStage ?? currentPhase) : null}
           isProcessing={view === 'coach' ? isProcessing : false}
           sessionComplete={view === 'coach' ? (sessionComplete ?? false) : false}
+          onNavigate={navigateTo}
         />
+
+        {checkoutStatus === 'success' && (
+          <div className="mx-auto max-w-6xl px-4 pt-3">
+            <div className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 flex items-center justify-between">
+              <span>Subscription activated! You now have access to all plan features.</span>
+              <button onClick={() => setCheckoutStatus(null)} className="text-emerald-300 hover:text-emerald-100 text-xs ml-4">Dismiss</button>
+            </div>
+          </div>
+        )}
+        {checkoutStatus === 'cancelled' && (
+          <div className="mx-auto max-w-6xl px-4 pt-3">
+            <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200 flex items-center justify-between">
+              <span>Checkout cancelled. You can try again anytime from the pricing page.</span>
+              <button onClick={() => setCheckoutStatus(null)} className="text-amber-300 hover:text-amber-100 text-xs ml-4">Dismiss</button>
+            </div>
+          </div>
+        )}
 
       {view === 'landing' && (
         <LandingScreen
@@ -372,6 +454,24 @@ export default function App() {
           liveWorkflowReplan={workflowReplan}
           pipelineActivity={pipelineActivity}
           onReconnectStream={reconnectStreamNow}
+        />
+      )}
+
+      {view === 'pricing' && (
+        <PricingPage
+          accessToken={accessToken}
+          onUpgradeSuccess={() => setCheckoutStatus('success')}
+        />
+      )}
+
+      {view === 'billing' && user && (
+        <BillingDashboard accessToken={accessToken} />
+      )}
+
+      {view === 'affiliate' && (
+        <AffiliateDashboard
+          accessToken={accessToken}
+          onNavigate={(v) => setView(v as View)}
         />
       )}
       </div>

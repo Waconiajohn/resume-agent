@@ -1,5 +1,36 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Sprint 7 Complete
+**Sprint:** 7 | **Stories:** 1-15 (Commerce Platform)
+**Summary:** Full commerce platform — billing UI, discount codes, entitlements, affiliates, legacy cleanup, 47 new tests.
+
+### Changes Made
+- `app/src/App.tsx` — Extended View type with pricing/billing/affiliate, URL detection, checkout params, referral code capture
+- `app/src/components/Header.tsx` — Added Pricing, Billing, Affiliate nav links
+- `app/src/components/PricingPage.tsx` — Promo code input, referral badge, referral code in checkout
+- `app/src/components/panels/CompletionPanel.tsx` — DOCX export entitlement check with upgrade prompt
+- `app/src/components/AffiliateDashboard.tsx` — New affiliate dashboard component
+- `server/src/routes/billing.ts` — allow_promotion_codes, validate-promo endpoint, referral tracking in webhook
+- `server/src/routes/admin.ts` — Admin endpoints for promo codes and feature overrides
+- `server/src/routes/affiliates.ts` — Affiliate profile and events API
+- `server/src/lib/entitlements.ts` — getUserEntitlements, hasFeature, getFeatureLimit
+- `server/src/lib/affiliates.ts` — Referral code resolution, event tracking, commission calculation
+- `server/src/lib/stripe-promos.ts` — Stripe promotion code helpers
+- `server/src/lib/usage-persistence.ts` — Changed from .upsert() to .rpc('increment_user_usage')
+- `server/src/middleware/feature-guard.ts` — requireFeature() middleware factory
+- `server/src/middleware/subscription-guard.ts` — Refactored to use getUserEntitlements()
+- `server/src/routes/resumes.ts` — DOCX export gated behind requireFeature('export_docx')
+- `server/src/routes/sessions.ts` — Removed all legacy agent imports, cleaned up SSE types
+- `server/src/agent/` — DELETED entirely (~4,543 lines)
+- `server/src/agents/pipeline.ts` — DELETED (~4,110 lines)
+- 5 new migrations: usage upsert RPC, promo tracking columns, plan_features, user_feature_overrides, affiliate system
+- 47 new tests across 4 new test files + 2 extended test files
+
+### Decisions Made
+- ADR-010: Stripe Promotion Codes (vs custom coupon tables)
+- ADR-011: Feature Entitlements Model (plan_features + user_feature_overrides)
+- ADR-012: Affiliate Commission Structure (in-app tracking, manual payouts)
+
 ## 2026-02-28 — Session 12: Sprint 6 Completion (13/13 stories)
 **Sprint:** 6 | **Story:** 13 — Sprint 6 Retrospective + Consolidation
 **Summary:** Fixed all TypeScript errors and test regressions across agent-written code. Installed stripe package, fixed billing.ts Stripe type issues (billing_cycle_anchor computation), fixed billing.test.ts casts, added requestAnimationFrame polyfill for hook tests. Final counts: 577 server tests, 281 app tests (858 total), both TypeScript clean.

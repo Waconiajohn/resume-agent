@@ -2,6 +2,42 @@
 
 ---
 
+# Sprint 7 Retrospective — Commerce Platform
+**Completed:** 2026-02-28
+
+## What was delivered
+- Stories 1-2: Wired PricingPage + BillingDashboard into App routing with URL detection and checkout flow. Fixed usage persistence upsert bug (RPC atomic increment).
+- Stories 3-4: Stripe promotion codes integration with validation endpoint. Promo code admin endpoints. Webhook discount extraction.
+- Stories 5-7: Plan features entitlements model with plan_features + user_feature_overrides tables. getUserEntitlements() merges plan + override features. Feature guard middleware. Wired into subscription guard and DOCX export.
+- Stories 8-10: Full affiliate system — data model, referral tracking, commission calculation, referral landing flow (?ref=CODE), affiliate dashboard with stats/events.
+- Stories 11-12: Decommissioned legacy agent/ directory (~4,543 lines) and deprecated pipeline.ts (~4,110 lines). Cleaned up orphaned chat route code.
+- Story 13: 47 new tests (entitlements, affiliates, feature-guard, stripe-promos, billing extensions, usage-persistence). Total: 908 tests (627 server + 281 app).
+- Stories 14-15: Commerce documentation and retrospective.
+
+## What went well
+- Parallel worktree execution cut wall-clock time significantly (Phase 1+5 parallel, Phase 2+3 parallel, Phase 4+6 parallel)
+- Stripe SDK v20 type adaptations handled cleanly despite breaking changes
+- Legacy code removal was clean — no test references to deleted code
+- Feature entitlements model is extensible and fail-open
+
+## What went wrong
+- Test agent wrote tests against fictional interfaces (wrote source stubs instead of reading actual implementations). Required manual fixes to align test assertions with real code.
+- Worktree merge conflicts on admin.ts (two agents created the same file with different auth strategies). Required manual merge.
+- 8,653 lines of legacy code deletion was straightforward but required careful import chain verification.
+
+## What to improve next sprint
+- Provide test agents with explicit interface definitions or have them read source files first
+- Consider a single auth strategy for admin routes upfront when multiple stories touch the same route
+- E2E coverage for billing/checkout flow (currently manual only)
+
+## Technical debt identified
+- Stripe Connect for automated affiliate payouts (manual for now)
+- Admin dashboard UI (API-only for admin operations)
+- E2E test coverage for billing flow
+- Multi-currency pricing support
+
+---
+
 # Sprint 6 Retrospective: Product Polish, Scale Readiness & Launch Prep
 **Completed:** 2026-02-28
 

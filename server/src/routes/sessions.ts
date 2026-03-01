@@ -3,21 +3,31 @@ import { streamSSE } from 'hono/streaming';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware, getCachedUser, cacheUser } from '../middleware/auth.js';
 import type { AuthUser } from '../middleware/auth.js';
-import { SessionContext } from '../agent/context.js';
-import type { CoachSession } from '../agent/context.js';
-import { runAgentLoop } from '../agent/loop.js';
-import type { SSEEvent } from '../agent/loop.js';
-import { withSessionLock } from '../lib/session-lock.js';
-import { saveSessionCheckpoint } from '../lib/save-session-checkpoint.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
-import logger, { createSessionLogger } from '../lib/logger.js';
+import logger from '../lib/logger.js';
 import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import type { PipelineSSEEvent } from '../agents/types.js';
 
 const sessions = new Hono();
 
-export type AnySSEEvent = SSEEvent | PipelineSSEEvent;
+export type AnySSEEvent = PipelineSSEEvent;
 export type SSEEmitterFn = (event: AnySSEEvent) => void;
+
+/**
+ * Minimal session shape needed by the SSE restore endpoint.
+ * Only the fields accessed in the session_restore event are typed here.
+ */
+interface SessionRestoreShape {
+  id: string;
+  user_id: string;
+  current_phase: string;
+  messages?: Array<{ role: string; content: string | Array<{ type: string; text?: string }> }>;
+  pending_tool_call_id?: string | null;
+  pending_phase_transition?: string | null;
+  last_panel_type?: string | null;
+  last_panel_data?: Record<string, unknown> | null;
+  pipeline_status?: string | null;
+}
 
 const sseConnections = new Map<string, Array<(event: AnySSEEvent) => void>>();
 const sseEmitterOwners = new WeakMap<(event: AnySSEEvent) => void, string>();
@@ -430,7 +440,7 @@ sessions.get('/:id/sse', async (c) => {
       if (!session.id || !session.user_id || !session.current_phase) {
         logger.error({ sessionId }, 'SSE: Invalid session data');
       }
-      const typedSession = session as CoachSession;
+      const typedSession = session as SessionRestoreShape;
       const chatMessages: Array<{ role: string; content: string }> = [];
       for (const msg of typedSession.messages ?? []) {
         if (!msg || typeof msg !== 'object' || typeof (msg as unknown as Record<string, unknown>).role !== 'string') {
@@ -785,15 +795,6 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
       return c.json({ error: 'Session not found' }, 404);
     }
 
-    // Lightweight validation before casting
-    if (!sessionData.id || !sessionData.user_id || !sessionData.current_phase) {
-      return c.json({ error: 'Invalid session data' }, 500);
-    }
-    const session = sessionData as CoachSession;
-    const ctx = new SessionContext(session);
-
-    await ctx.loadMasterResume(supabaseAdmin);
-
     const emit = (event: AnySSEEvent) => {
       const emitters = sseConnections.get(sessionId);
       if (emitters) {
@@ -809,64 +810,14 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
     };
 
     const sessionRow = sessionData as Record<string, unknown>;
-    const pipelineStatus = typeof sessionRow.pipeline_status === 'string' ? sessionRow.pipeline_status : null;
-    const pendingGate = typeof sessionRow.pending_gate === 'string' ? sessionRow.pending_gate : null;
-    const pipelineStage = typeof sessionRow.pipeline_stage === 'string' ? sessionRow.pipeline_stage : null;
 
-    // Production safety guard: when the v2 pipeline is active (or waiting on a pipeline gate),
-    // keep the right-column chat grounded to verified session state instead of invoking the
-    // legacy freeform agent loop, which can contradict pipeline progress/panels.
-    if (pipelineStatus === 'running' || pendingGate || (pipelineStage && pipelineStatus !== 'complete')) {
-      const groundedReply = buildGroundedPipelineChatReply(sessionRow);
-      emit({ type: 'text_complete', content: groundedReply });
-      releaseProcessingSession(sessionId);
-      handedOff = true;
-      return c.json({ status: 'grounded_status' });
-    }
-
-    if (ctx.pendingToolCallId) {
-      const lastResponse = ctx.interviewResponses[ctx.interviewResponses.length - 1];
-      if (lastResponse && lastResponse.answer === '[awaiting response]') {
-        lastResponse.answer = content;
-      }
-    }
-
-    const log = createSessionLogger(sessionId);
-
-    withSessionLock(sessionId, async () => {
-      try {
-        await runAgentLoop(ctx, content, emit);
-      } catch (error) {
-        log.error({ error: error instanceof Error ? error.message : error }, 'Agent loop error');
-        emit({
-          type: 'error',
-          message: 'Something went wrong processing your message. Please try again.',
-          recoverable: true,
-        });
-      } finally {
-        const result = await saveSessionCheckpoint(ctx);
-        if (!result.success) {
-          log.error({ error: result.error }, 'Failed to save session checkpoint');
-          emit({
-            type: 'error',
-            message: 'Failed to save your progress. Your message was processed but changes may not persist. Please retry.',
-            recoverable: true,
-          });
-        }
-      }
-    }).catch((error) => {
-      log.error({ error: error instanceof Error ? error.message : error }, 'Session lock error');
-      emit({
-        type: 'error',
-        message: 'Failed to process message — please try again.',
-        recoverable: true,
-      });
-    }).finally(() => {
-      releaseProcessingSession(sessionId);
-    });
-
+    // Legacy chat loop has been decommissioned. All interaction happens through the pipeline.
+    // Return a grounded status response based on current session state.
+    const groundedReply = buildGroundedPipelineChatReply(sessionRow);
+    emit({ type: 'system_message', content: groundedReply });
+    releaseProcessingSession(sessionId);
     handedOff = true;
-    return c.json({ status: 'processing' });
+    return c.json({ status: 'grounded_status' });
   } finally {
     if (!handedOff) {
       releaseProcessingSession(sessionId);

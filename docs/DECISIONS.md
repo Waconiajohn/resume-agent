@@ -170,3 +170,27 @@ Sticky sessions solve 95% of the scaling problem with zero code changes. Railway
 - Frontend components: `PricingPage.tsx` (plan selection), `BillingDashboard.tsx` (current plan + usage).
 - Free tier: 3 pipeline runs/month by default (override via `FREE_TIER_PIPELINE_LIMIT` env var).
 - Stripe features are disabled (503 responses) when `STRIPE_SECRET_KEY` is not set, allowing dev environments without Stripe credentials.
+
+## ADR-010: Stripe Promotion Codes for Discounts
+**Date:** 2026-02-28
+**Status:** accepted
+**Context:** The product needed discount infrastructure for financial planning clients (100% off), friends and family (50% off), and general promotional campaigns. Options included building custom coupon tables in the application database or using Stripe's native Promotion Codes feature.
+**Decision:** Use Stripe Promotion Codes mapped to Stripe Coupons. All discount validation, redemption tracking, and usage limits are handled server-side by Stripe. Checkout sessions are created with `allow_promotion_codes: true`. Admin endpoints in `server/src/routes/admin.ts` allow creating promotion codes via the Stripe API. Applied promo metadata is extracted from webhook events and stored in `user_subscriptions` for analytics.
+**Reasoning:** Stripe Promotion Codes eliminate the need to build custom coupon tables, validation logic, usage counting, and expiry logic. There are no race conditions (Stripe handles atomic usage increment). The checkout UX is automatic — Stripe's hosted page shows the promo code input field with no frontend code. Analytics are built into the Stripe dashboard. Custom tables would duplicate battle-tested logic that Stripe already provides.
+**Consequences:** Promo codes are not stored in the application database — Stripe is the source of truth. Admin creates codes via API or Stripe dashboard. `user_subscriptions` stores the applied promo code identifier for analytics queries. Requires `STRIPE_SECRET_KEY` to be set in production.
+
+## ADR-011: Feature Entitlements Model
+**Date:** 2026-02-28
+**Status:** accepted
+**Context:** Feature access was controlled by env var feature flags — an all-or-nothing mechanism with no per-plan or per-user granularity. The product needed free vs. paid plan differentiation (e.g., free gets 3 sessions, starter gets DOCX export, pro gets unlimited sessions) plus the ability to grant individual features outside of a plan (a la carte purchases, support grants).
+**Decision:** Introduce two database tables: `plan_features` (plan_id, feature_key, feature_value JSONB) and `user_feature_overrides` (user_id, feature_key, override_value JSONB). `getUserEntitlements(userId)` in `server/src/lib/entitlements.ts` merges plan defaults with overrides. Feature guards are enforced via `requireFeature()` middleware factory.
+**Reasoning:** JSONB feature values are flexible — a feature can be boolean (`{ "enabled": true }`) or quantity-based (`{ "limit": 50 }`), and both are handled by the same schema. The override table enables a la carte grants without modifying plan definitions. Fail-open design (DB error returns free-tier defaults) prevents entitlement failures from blocking users. The middleware approach keeps route handlers clean.
+**Consequences:** New features require seed data in `plan_features` before they can be gated. Entitlement logic is centralized in `entitlements.ts` — all feature checks go through `getUserEntitlements()`. The `subscription-guard.ts` middleware was refactored to use `getUserEntitlements()` instead of direct DB queries.
+
+## ADR-012: Affiliate Commission Structure
+**Date:** 2026-02-28
+**Status:** accepted
+**Context:** The product needed an affiliate marketing system to support referral-based growth. Options included using a third-party affiliate platform (e.g., Impact, ShareASale) or building in-app tracking.
+**Decision:** Build in-app affiliate tracking using two database tables: `affiliates` (affiliate profile with referral_code and commission_rate) and `referral_events` (click/signup/subscription events per referral code). Referral codes are captured via `?ref=CODE` query parameter, persisted in `localStorage`, and attached to Stripe Checkout Session metadata. The webhook records conversion events on successful subscription. Commission is calculated as `commission_rate * subscription_revenue`. Payouts are manual for MVP.
+**Reasoning:** An in-app system avoids the monthly cost of an external affiliate platform ($50-500/month). The referral code flow through Stripe metadata ensures attribution is tied to actual payment events, not just signups. Configurable per-affiliate commission rates allow flexibility without changing the schema. Manual payouts are acceptable for MVP scale (low affiliate count).
+**Consequences:** No automated payouts — affiliate dashboard shows stats and events, but commission disbursement is a manual admin operation. Future upgrade path is Stripe Connect for automated payouts. The affiliate dashboard is a separate component (`AffiliateDashboard.tsx`) accessible to affiliates once their account is set up.

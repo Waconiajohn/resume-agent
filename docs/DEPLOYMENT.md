@@ -138,6 +138,51 @@ Test credentials: `jjschrup@yahoo.com` / `Scout123`
 - `GET /ready` — Readiness probe (same as health)
 - `GET /metrics` — Request metrics, rate limit stats, pipeline stats
 
+## Stripe Setup
+
+The billing system uses Stripe for payment processing, subscription management, and promotion codes.
+
+### Required Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `STRIPE_SECRET_KEY` | Stripe API secret key (starts with `sk_live_` or `sk_test_`) |
+| `STRIPE_WEBHOOK_SECRET` | Webhook endpoint signing secret (starts with `whsec_`) |
+| `STRIPE_PUBLISHABLE_KEY` | Frontend publishable key (starts with `pk_live_` or `pk_test_`). Not currently used server-side — documented for future frontend integration. |
+| `ADMIN_API_KEY` | Bearer token protecting admin-only endpoints (promo code creation, feature override management). Generate a strong random string for production. |
+
+Stripe features are **disabled** (503 responses) when `STRIPE_SECRET_KEY` is not set. This allows development environments to run without Stripe credentials.
+
+### Webhook Configuration
+
+Register a webhook endpoint in the Stripe Dashboard:
+
+```
+POST https://<domain>/api/billing/webhook
+```
+
+Events to enable:
+- `checkout.session.completed`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.payment_failed`
+
+Copy the signing secret (`whsec_...`) from the Stripe Dashboard and set it as `STRIPE_WEBHOOK_SECRET`.
+
+### Plan Setup
+
+After deploying, seed the `pricing_plans` table with `stripe_price_id` values matching your Stripe product prices. This wires plan selection on the frontend to the correct Stripe Checkout price.
+
+### Promotion Code Administration
+
+Use the admin API to create promotion codes:
+
+```
+POST /api/admin/promo-codes
+Authorization: Bearer <ADMIN_API_KEY>
+{ "code": "FRIEND50", "percent_off": 50, "max_redemptions": 100 }
+```
+
 ## SSE Considerations
 
 The pipeline uses Server-Sent Events (SSE) for real-time updates. Key considerations:

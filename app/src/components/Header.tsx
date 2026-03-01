@@ -8,9 +8,10 @@ interface HeaderProps {
   pipelineStage?: string | null;
   isProcessing?: boolean;
   sessionComplete?: boolean;
+  onNavigate?: (view: string) => void;
 }
 
-export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionComplete }: HeaderProps) {
+export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionComplete, onNavigate }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.1] bg-[linear-gradient(180deg,rgba(15,20,30,0.78),rgba(11,16,24,0.68))] backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
@@ -18,6 +19,31 @@ export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionC
           <Sparkles className="h-4 w-4 text-[#aac2ff]" />
           <span className="text-sm font-semibold tracking-[0.01em] text-white/90">Resume Agent</span>
         </div>
+
+        <nav className="flex items-center gap-1">
+          <button
+            onClick={() => onNavigate?.('pricing')}
+            className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+          >
+            Pricing
+          </button>
+          {email && (
+            <button
+              onClick={() => onNavigate?.('billing')}
+              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+            >
+              Billing
+            </button>
+          )}
+          {email && (
+            <button
+              onClick={() => onNavigate?.('affiliate')}
+              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+            >
+              Affiliate
+            </button>
+          )}
+        </nav>
 
         {email && (
           <div className="flex items-center gap-3">
