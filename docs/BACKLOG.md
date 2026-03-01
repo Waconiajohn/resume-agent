@@ -13,28 +13,6 @@
 - **Estimated complexity:** Medium
 - **Dependencies:** None
 
-### Story: Fix 409 Conflict Errors on Frontend Responses (Bug 18)
-- **As a** user
-- **I want to** not see errors when responding to pipeline prompts
-- **So that** the interaction feels reliable
-- **Acceptance Criteria:**
-  - [ ] Frontend prevents sending messages while agent is still processing
-  - [ ] Pending gate queue properly serializes concurrent gate responses
-  - [ ] No 409 errors during normal pipeline interaction
-- **Estimated complexity:** Medium
-- **Dependencies:** None
-
-### Story: Fix PDF Unicode Character Rendering
-- **As a** user
-- **I want to** export PDFs without `?` characters replacing special characters
-- **So that** my resume looks professional in downloaded format
-- **Acceptance Criteria:**
-  - [ ] Identify all Unicode characters that render as `?` in PDF export
-  - [ ] Apply font fallback or character substitution
-  - [ ] Verify with sample resumes containing em-dashes, bullets, smart quotes
-- **Estimated complexity:** Medium
-- **Dependencies:** None
-
 ### Story: Fix SSE Type Mismatch Between Old and New Connections
 - **As a** developer
 - **I want to** resolve the `as never` cast in pipeline.ts SSE handling
@@ -43,6 +21,17 @@
   - [ ] Unify SSE connection types or separate old/new cleanly
   - [ ] Remove `as never` cast
   - [ ] TypeScript compiles without workarounds
+- **Estimated complexity:** Small
+- **Dependencies:** None
+
+### Story: Fix Usage Tracking Cross-Contamination
+- **As a** system operator
+- **I want to** accurate per-session usage tracking
+- **So that** billing and analytics are correct
+- **Acceptance Criteria:**
+  - [ ] `recordUsage()` only updates the calling session's accumulator
+  - [ ] No cross-session contamination in concurrent pipeline runs
+  - [ ] Unit test verifies isolation
 - **Estimated complexity:** Small
 - **Dependencies:** None
 
@@ -61,64 +50,9 @@
 - **Estimated complexity:** Small
 - **Dependencies:** None
 
-### Story: Quality Review Transparency
-- **As a** user
-- **I want to** see what the Producer's quality checks found
-- **So that** I understand why changes were suggested
-- **Acceptance Criteria:**
-  - [ ] Quality dashboard shows specific findings from each check
-  - [ ] ATS compliance results visible per-system
-  - [ ] Narrative coherence score and rationale shown
-- **Estimated complexity:** Medium
-- **Dependencies:** None
-
-### Story: Section Workbench Polish
-- **As a** user
-- **I want to** a more intuitive section editing experience
-- **So that** reviewing and editing sections feels effortless
-- **Acceptance Criteria:**
-  - [ ] Smooth undo/redo with visual feedback
-  - [ ] Clear indication of pending vs. applied changes
-  - [ ] Responsive layout at all viewport sizes
-- **Estimated complexity:** Medium
-- **Dependencies:** None
-
 ---
 
 ## Epic: Quality & Reliability
-
-### Story: Fix Revision Loop After User Approval (Bug 16)
-- **As a** user
-- **I want to** approve a section and move on
-- **So that** the agent doesn't re-propose edits I've already approved
-- **Acceptance Criteria:**
-  - [ ] Once a section is approved, the Craftsman does not revisit it
-  - [ ] Approval state is persisted and checked before any revision attempt
-  - [ ] E2E test verifies no post-approval revision proposals
-- **Estimated complexity:** Medium
-- **Dependencies:** None
-
-### Story: Fix Context Forgetfulness on Long Sessions (Bug 17)
-- **As a** user
-- **I want to** the agent to remember all completed sections during a long run
-- **So that** later sections don't contradict earlier ones
-- **Acceptance Criteria:**
-  - [ ] Identify where context is lost (context window overflow vs. state management)
-  - [ ] Implement context summarization or scratchpad persistence
-  - [ ] Verify with 8+ section pipeline run
-- **Estimated complexity:** Large
-- **Dependencies:** None
-
-### Story: Fix Usage Tracking Cross-Contamination
-- **As a** system operator
-- **I want to** accurate per-session usage tracking
-- **So that** billing and analytics are correct
-- **Acceptance Criteria:**
-  - [ ] `recordUsage()` only updates the calling session's accumulator
-  - [ ] No cross-session contamination in concurrent pipeline runs
-  - [ ] Unit test verifies isolation
-- **Estimated complexity:** Small
-- **Dependencies:** None
 
 ### Story: Prevent ATS Auto-Revisions After User Approval
 - **As a** user
@@ -130,6 +64,23 @@
   - [ ] Any post-approval change surfaces to the user for re-approval
 - **Estimated complexity:** Medium
 - **Dependencies:** None
+
+---
+
+## Epic: Legacy Code Migration
+
+### Story: Decommission Legacy `agent/` Directory
+- **As a** developer
+- **I want to** migrate `routes/sessions.ts` to use the coordinator-based pipeline
+- **So that** the legacy `agent/` directory can be deleted, reducing codebase by ~2000 lines
+- **Acceptance Criteria:**
+  - [ ] `routes/sessions.ts` uses `agents/coordinator.ts` instead of `agent/loop.ts`
+  - [ ] Chat-based coaching works identically after migration
+  - [ ] `server/src/agent/` directory deleted
+  - [ ] `server/src/agents/pipeline.ts` deleted (no active imports)
+  - [ ] No dead code references remain
+- **Estimated complexity:** Large
+- **Dependencies:** All current sprint work complete
 
 ---
 
@@ -145,14 +96,3 @@
   - [ ] Shared runtime infrastructure documented and tested
 - **Estimated complexity:** Large
 - **Dependencies:** All production hardening stories
-
-### Story: Additional Executive Resume Templates
-- **As a** user
-- **I want to** choose from more than 5 resume templates
-- **So that** I can find a style that matches my industry
-- **Acceptance Criteria:**
-  - [ ] At least 3 new templates added to resume-formatting-guide
-  - [ ] Producer's `select_template` tool supports new templates
-  - [ ] Templates pass ATS compliance checks
-- **Estimated complexity:** Medium
-- **Dependencies:** None

@@ -10,6 +10,8 @@ import { runIntakeAgent } from '../intake.js';
 import { runResearchAgent } from '../research.js';
 import { runGapAnalyst } from '../gap-analyst.js';
 import { runArchitect } from '../architect.js';
+import { BenchmarkCandidateSchema, ClassifyFitOutputSchema, DesignBlueprintOutputSchema } from '../schemas/strategist-schemas.js';
+import logger from '../../lib/logger.js';
 import type {
   ResumeAgentTool,
   ResumeAgentContext,
@@ -239,11 +241,17 @@ const buildBenchmarkTool: ResumeAgentTool = {
     }
 
     // Benchmark is already computed as part of runResearchAgent — return it from cache
+    const benchmarkRaw = cachedResearch.benchmark_candidate;
+    const benchmarkValidation = BenchmarkCandidateSchema.safeParse(benchmarkRaw);
+    if (!benchmarkValidation.success) {
+      logger.warn({ errors: benchmarkValidation.error }, 'Schema validation failed for build_benchmark, using raw data');
+    }
+
     return {
       success: true,
-      ideal_profile: cachedResearch.benchmark_candidate.ideal_profile,
-      language_keywords: cachedResearch.benchmark_candidate.language_keywords,
-      section_expectations: cachedResearch.benchmark_candidate.section_expectations,
+      ideal_profile: benchmarkRaw.ideal_profile,
+      language_keywords: benchmarkRaw.language_keywords,
+      section_expectations: benchmarkRaw.section_expectations,
     };
   },
 };
@@ -732,6 +740,12 @@ const classifyFitTool: ResumeAgentTool = {
 
     const result = await runGapAnalyst(gapInput);
 
+    // Validate gap analyst output shape
+    const gapValidation = ClassifyFitOutputSchema.safeParse(result);
+    if (!gapValidation.success) {
+      logger.warn({ errors: gapValidation.error }, 'Schema validation failed for classify_fit, using raw data');
+    }
+
     ctx.updateState({ gap_analysis: result });
     ctx.scratchpad.gap_analysis = result;
 
@@ -818,6 +832,12 @@ const designBlueprintTool: ResumeAgentTool = {
     };
 
     const blueprint = await runArchitect(architectInput);
+
+    // Validate blueprint output shape
+    const blueprintValidation = DesignBlueprintOutputSchema.safeParse(blueprint);
+    if (!blueprintValidation.success) {
+      logger.warn({ errors: blueprintValidation.error }, 'Schema validation failed for design_blueprint, using raw data');
+    }
 
     ctx.updateState({ architect: blueprint });
     ctx.scratchpad.blueprint = blueprint;

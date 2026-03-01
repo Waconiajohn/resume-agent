@@ -164,3 +164,26 @@ Supabase Auth (email/password) with `AuthContext` provider. React Router v7 with
 ## Styling
 
 TailwindCSS utility classes. Glass morphism design system: `GlassCard`, `GlassButton`, `GlassInput`. `cn()` helper for conditional class merging.
+
+## Legacy Code
+
+Two legacy code paths remain in the codebase, retained for backward compatibility with the chat-based coaching route:
+
+### `server/src/agent/` — Legacy Monolithic Chat Loop
+- **Used by:** `routes/sessions.ts` (chat-based coaching)
+- **Key files:** `loop.ts` (agent loop), `context.ts` (session context), `system-prompt.ts`, `tools/` (tool implementations), `tool-executor.ts`
+- **Status:** Deprecated. Marked with `@deprecated` JSDoc. No new features should be added.
+- **Replacement:** `agents/runtime/agent-loop.ts` (generic agent loop) + agent-specific tools in `agents/strategist/`, `agents/craftsman/`, `agents/producer/`
+- **Migration plan:** When `routes/sessions.ts` is migrated to the coordinator-based pipeline, this entire directory can be deleted.
+
+### `server/src/agents/pipeline.ts` — Legacy Monolithic Pipeline
+- **Used by:** Nothing (no active imports). Was replaced by `agents/coordinator.ts` in Sprint 3.
+- **Status:** Deprecated. Marked with `@deprecated` JSDoc. Safe to delete but kept for reference.
+- **Size:** ~4100 lines (the original 7-agent pipeline before the 3-agent refactor)
+- **Migration plan:** Delete when confident all coordinator patterns are stable. No route depends on this file.
+
+### Route → Agent System Mapping
+| Route | Agent System | Status |
+|-------|-------------|--------|
+| `routes/pipeline.ts` | `agents/coordinator.ts` → 3-agent pipeline | **Active** |
+| `routes/sessions.ts` | `agent/loop.ts` → monolithic chat loop | **Legacy** |

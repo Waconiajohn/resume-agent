@@ -20,6 +20,11 @@ import logger from '../../lib/logger.js';
 import { runQualityReviewer } from '../quality-reviewer.js';
 import { runAtsComplianceCheck } from '../ats-rules.js';
 import { EXECUTIVE_TEMPLATES } from '../knowledge/formatting-guide.js';
+import {
+  AdversarialReviewOutputSchema,
+  HumanizeCheckOutputSchema,
+  NarrativeCoherenceOutputSchema,
+} from '../schemas/producer-schemas.js';
 import type {
   ResumeAgentTool,
   ResumeAgentContext,
@@ -345,6 +350,12 @@ const adversarialReview: ResumeAgentTool = {
 
     const result = await runQualityReviewer(reviewerInput);
 
+    // Validate the quality reviewer output shape
+    const validation = AdversarialReviewOutputSchema.safeParse(result);
+    if (!validation.success) {
+      logger.warn({ errors: validation.error, session_id: ctx.sessionId }, 'Schema validation failed for adversarial_review, using raw data');
+    }
+
     // Emit quality scores SSE event immediately so the frontend gets them
     ctx.emit({
       type: 'quality_scores',
@@ -449,13 +460,21 @@ Return ONLY valid JSON: { "score": 82, "issues": ["List of specific issues found
       ],
     });
 
-    const parsed = repairJSON<Record<string, unknown>>(response.text);
-    if (!parsed) {
+    const rawParsed = repairJSON<Record<string, unknown>>(response.text);
+    if (!rawParsed) {
       return { score: 75, issues: ['Humanize check could not parse response — manual review recommended'] };
     }
 
-    const score = Math.max(0, Math.min(100, safeNum(parsed.score, 75)));
-    const issues = safeStringArray(parsed.issues);
+    const validation = HumanizeCheckOutputSchema.safeParse(rawParsed);
+    const validated = validation.success
+      ? validation.data
+      : (() => {
+          logger.warn({ errors: validation.error, session_id: ctx.sessionId }, 'Schema validation failed for humanize_check, using raw data');
+          return rawParsed;
+        })();
+
+    const score = Math.max(0, Math.min(100, safeNum(validated.score, 75)));
+    const issues = safeStringArray(validated.issues);
 
     ctx.scratchpad.humanize_score = score;
     ctx.scratchpad.humanize_issues = issues;
@@ -910,14 +929,22 @@ Return ONLY valid JSON: { "coherence_score": 82, "issues": ["specific issues fou
       }],
     });
 
-    const parsed = repairJSON<Record<string, unknown>>(response.text);
-    if (!parsed) {
+    const rawParsed = repairJSON<Record<string, unknown>>(response.text);
+    if (!rawParsed) {
       logger.warn({ session_id: ctx.sessionId }, 'check_narrative_coherence: repairJSON returned null — falling back to default score');
       return { coherence_score: 75, issues: ['Narrative coherence check could not parse response — manual review recommended'] };
     }
 
-    const coherenceScore = Math.max(0, Math.min(100, safeNum(parsed.coherence_score, 75)));
-    const issues = safeStringArray(parsed.issues);
+    const validation = NarrativeCoherenceOutputSchema.safeParse(rawParsed);
+    const validated = validation.success
+      ? validation.data
+      : (() => {
+          logger.warn({ errors: validation.error, session_id: ctx.sessionId }, 'Schema validation failed for check_narrative_coherence, using raw data');
+          return rawParsed;
+        })();
+
+    const coherenceScore = Math.max(0, Math.min(100, safeNum(validated.coherence_score, 75)));
+    const issues = safeStringArray(validated.issues);
 
     ctx.scratchpad.narrative_coherence_score = coherenceScore;
     ctx.scratchpad.narrative_coherence_issues = issues;

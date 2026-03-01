@@ -1,3 +1,11 @@
+/**
+ * @deprecated Legacy monolithic agent loop used only by `routes/sessions.ts`
+ * (the chat-based coaching route). The pipeline route (`routes/pipeline.ts`)
+ * uses the 3-agent coordinator (`agents/coordinator.ts`) instead.
+ *
+ * Do not add new features here. Schedule removal once the chat route is
+ * migrated to the coordinator-based pipeline.
+ */
 import { llm, getDefaultModel, getMaxTokens } from '../lib/llm.js';
 import type { StreamEvent, ChatMessage } from '../lib/llm-provider.js';
 import { buildSystemPrompt, getPromptFingerprint } from './system-prompt.js';

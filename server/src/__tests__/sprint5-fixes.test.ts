@@ -355,7 +355,7 @@ describe('Story 3 — Revision cap (MAX_REVISION_ROUNDS = 3)', () => {
             target_section: string;
             issue: string;
             instruction: string;
-            priority: string;
+            priority: 'high' | 'medium' | 'low';
           }>)
         : [];
 

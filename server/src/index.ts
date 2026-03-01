@@ -8,6 +8,7 @@ import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
 import { pipeline, getPipelineRouteStats, flushAllQueuedPanelPersists } from './routes/pipeline.js';
 import { workflow } from './routes/workflow.js';
+import { billing } from './routes/billing.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -239,6 +240,7 @@ app.route('/api/sessions', sessions);
 app.route('/api/resumes', resumes);
 app.route('/api/pipeline', pipeline);
 app.route('/api/workflow', workflow);
+app.route('/api/billing', billing);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

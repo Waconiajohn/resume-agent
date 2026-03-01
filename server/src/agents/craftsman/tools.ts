@@ -20,6 +20,7 @@ import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
 import { runSectionWriter, runSectionRevision } from '../section-writer.js';
 import { QUALITY_CHECKLIST, RESUME_ANTI_PATTERNS } from '../knowledge/rules.js';
+import { SelfReviewOutputSchema, EvidenceIntegrityOutputSchema } from '../schemas/craftsman-schemas.js';
 import type {
   ResumeAgentTool,
   ResumeAgentContext,
@@ -326,14 +327,9 @@ Rules:
       session_id: ctx.sessionId,
     });
 
-    const parsed = repairJSON<{
-      evaluations: Array<{ criterion: string; result: string; note: string }>;
-      score: number;
-      passed: boolean;
-      issues: string[];
-    }>(response.text);
+    const rawParsed = repairJSON<Record<string, unknown>>(response.text);
 
-    if (!parsed || typeof parsed.score !== 'number' || !Array.isArray(parsed.issues)) {
+    if (!rawParsed) {
       return {
         passed: false,
         score: 0,
@@ -341,14 +337,23 @@ Rules:
       };
     }
 
+    const validation = SelfReviewOutputSchema.safeParse(rawParsed);
+    const validated = validation.success
+      ? validation.data
+      : (() => {
+          logger.warn({ errors: validation.error, session_id: ctx.sessionId, section }, 'Schema validation failed for self_review_section, using raw data');
+          return rawParsed;
+        })();
+
     // Coerce score to number in case LLM returns a string
-    const score = typeof parsed.score === 'number' ? parsed.score : Number(parsed.score) || 6;
-    const passed = score >= 7 && Array.isArray(parsed.issues) && parsed.issues.length <= 2;
+    const score = typeof validated.score === 'number' ? validated.score : Number(validated.score) || 6;
+    const issues = Array.isArray(validated.issues) ? (validated.issues as string[]) : [];
+    const passed = score >= 7 && issues.length <= 2;
 
     return {
       passed,
       score,
-      issues: Array.isArray(parsed.issues) ? parsed.issues : [],
+      issues,
     };
   },
 };
@@ -620,12 +625,9 @@ Rules:
       session_id: ctx.sessionId,
     });
 
-    const parsed = repairJSON<{
-      claims_verified: number;
-      claims_flagged: string[];
-    }>(response.text);
+    const rawParsed = repairJSON<Record<string, unknown>>(response.text);
 
-    if (!parsed) {
+    if (!rawParsed) {
       logger.warn({ session_id: ctx.sessionId, section }, 'check_evidence_integrity: repairJSON returned null — falling back to empty result');
       return {
         claims_verified: 0,
@@ -633,9 +635,17 @@ Rules:
       };
     }
 
+    const validation = EvidenceIntegrityOutputSchema.safeParse(rawParsed);
+    const validated = validation.success
+      ? validation.data
+      : (() => {
+          logger.warn({ errors: validation.error, session_id: ctx.sessionId, section }, 'Schema validation failed for check_evidence_integrity, using raw data');
+          return rawParsed;
+        })();
+
     return {
-      claims_verified: typeof parsed.claims_verified === 'number' ? parsed.claims_verified : 0,
-      claims_flagged: Array.isArray(parsed.claims_flagged) ? parsed.claims_flagged : [],
+      claims_verified: typeof validated.claims_verified === 'number' ? validated.claims_verified : 0,
+      claims_flagged: Array.isArray(validated.claims_flagged) ? (validated.claims_flagged as string[]) : [],
     };
   },
 };

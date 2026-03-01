@@ -1,11 +1,16 @@
 /**
- * Pipeline Orchestrator
+ * @deprecated This monolithic pipeline orchestrator has been replaced by
+ * the 3-agent coordinator (`agents/coordinator.ts`) as of Sprint 3.
+ * It is NOT imported by any active route. Kept only for reference during
+ * migration of the legacy chat route (`routes/sessions.ts`).
  *
+ * Do not add new features here. Schedule removal once `routes/sessions.ts`
+ * is migrated to the coordinator-based pipeline.
+ *
+ * Original description:
  * Replaces the monolithic agent loop (loop.ts) with a linear pipeline of
  * 7 specialized agents. Manages data flow between agents, SSE events,
  * user interaction gates, and the revision loop.
- *
- * The orchestrator itself uses no LLM calls — it's pure coordination logic.
  */
 
 import { setMaxListeners } from 'node:events';

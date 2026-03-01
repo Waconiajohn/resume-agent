@@ -128,3 +128,45 @@ The core argument for Redis is durability and horizontal scalability. Both conce
 - The Redis prototype is an executable reference for future platform scaling work.
 - The `FF_REDIS_BUS` feature flag and `REDIS_URL` env var are documented but inert.
 - When horizontal scaling is needed, the interface contract (subscribe/unsubscribe/send/getLog/reset) must be preserved so the coordinator requires no changes.
+
+## ADR-008: SSE Broadcasting Strategy for Horizontal Scaling
+**Date:** 2026-02-28
+**Status:** accepted (design document — implementation deferred)
+
+**Context:**
+SSE connections are stored in an in-memory `Map<string, Array<emitter>>` (`sseConnections` in `routes/sessions.ts`). This Map is imported by `pipeline.ts` and `workflow.ts` for event broadcasting. This is the #1 blocker for horizontal scaling: if Instance A runs the pipeline and Instance B holds the SSE client connection, events never reach the user.
+
+The `sseConnections` Map is accessed in 3 routes: `sessions.ts` (SSE endpoint), `pipeline.ts` (pipeline events), and `workflow.ts` (workflow events). All 3 import the same Map.
+
+**Options Evaluated:**
+
+1. **Sticky Sessions on Load Balancer** — Route all requests for a session to the same instance. Simplest. Railway supports session affinity via cookies.
+2. **Redis Pub/Sub for SSE Fan-Out** — Pipeline publishes events to a Redis channel; all instances subscribe and forward to their local SSE clients. True horizontal scaling.
+3. **Supabase Realtime** — Use Supabase's built-in Realtime channels for event delivery. Eliminates custom infrastructure but adds vendor dependency for core feature.
+
+**Decision:**
+Phase 1: Sticky sessions (when horizontal scaling is needed). Phase 2: Redis Pub/Sub (when sticky sessions become insufficient).
+
+**Reasoning:**
+Sticky sessions solve 95% of the scaling problem with zero code changes. Railway supports it natively. The only edge case is instance restarts mid-pipeline — the user must reconnect. Redis Pub/Sub is the right long-term solution but requires Redis infrastructure (shared with rate limiting per ADR-008/Story 8). Supabase Realtime adds latency and makes the core pipeline dependent on Supabase's real-time infrastructure.
+
+**Consequences:**
+- Detailed design document in `docs/SSE_SCALING.md`
+- No code changes in this ADR — design only
+- Sticky sessions can be enabled with Railway configuration changes only
+- Redis Pub/Sub implementation planned as a separate story when Redis is in production
+
+## ADR-009: Stripe as Payment Processor
+**Date:** 2026-02-28
+**Status:** accepted
+**Context:** The product needs a payment system. `pricing_plans` and `user_subscriptions` tables already exist in Supabase (migration 011). No payment processing was wired up. The platform needs a hosted checkout experience, subscription lifecycle management, and a customer self-service portal with minimal frontend complexity.
+**Decision:** Use Stripe for all payment processing. Stripe Checkout (hosted page) for new subscriptions, Stripe Customer Portal for self-service management, and Stripe webhooks for subscription lifecycle events (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`).
+**Reasoning:** Stripe is the industry standard for SaaS subscription billing. The hosted Checkout page eliminates PCI scope from the frontend. The Customer Portal eliminates the need to build upgrade/downgrade/cancel UIs. Webhook-driven updates keep the `user_subscriptions` table authoritative without polling. The `stripe` npm package (v17+) is mature and well-typed.
+**Consequences:**
+- New env vars required: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+- `pricing_plans` table gains a `stripe_price_id TEXT` column (migration `20260228150000_stripe_billing.sql`).
+- New route file: `server/src/routes/billing.ts` (4 endpoints: `/checkout`, `/webhook`, `/subscription`, `/portal`).
+- New middleware: `server/src/middleware/subscription-guard.ts` — blocks pipeline start when free tier limit exceeded.
+- Frontend components: `PricingPage.tsx` (plan selection), `BillingDashboard.tsx` (current plan + usage).
+- Free tier: 3 pipeline runs/month by default (override via `FREE_TIER_PIPELINE_LIMIT` env var).
+- Stripe features are disabled (503 responses) when `STRIPE_SECRET_KEY` is not set, allowing dev environments without Stripe credentials.

@@ -1,5 +1,80 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Session 12: Sprint 6 Completion (13/13 stories)
+**Sprint:** 6 | **Story:** 13 — Sprint 6 Retrospective + Consolidation
+**Summary:** Fixed all TypeScript errors and test regressions across agent-written code. Installed stripe package, fixed billing.ts Stripe type issues (billing_cycle_anchor computation), fixed billing.test.ts casts, added requestAnimationFrame polyfill for hook tests. Final counts: 577 server tests, 281 app tests (858 total), both TypeScript clean.
+
+### Changes Made
+- `server/src/routes/billing.ts` — Fixed Stripe `current_period_start`/`current_period_end` type errors by computing period from `billing_cycle_anchor` timestamp (typed in Stripe SDK)
+- `server/src/__tests__/billing.test.ts` — Fixed 11 `Record<string, unknown>` → `PostgrestQueryBuilder` cast errors by adding intermediate `as unknown` casts
+- `app/src/__tests__/hooks/useSSEEventHandlers.test.ts` — Added `requestAnimationFrame`/`cancelAnimationFrame` polyfill in `beforeAll` for Node test environment; simplified rAF spy test to use polyfill
+- `server/package.json` — Added `stripe` and `ioredis` as production dependencies
+- `docs/CURRENT_SPRINT.md` — All 13 stories marked done
+- `docs/SPRINT_LOG.md` — Sprint 6 Retrospective appended
+- `docs/CHANGELOG.md` — Consolidated all Sprint 6 entries
+
+### Decisions Made
+- Stripe billing period derived from `billing_cycle_anchor` (a typed Stripe field) instead of `current_period_start`/`current_period_end` (deprecated in Stripe SDK v20 types)
+
+### Next Steps
+- Run full E2E pipeline test to verify no behavioral regressions from frontend refactoring
+- Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to server `.env` for production billing
+- Wire PricingPage and BillingDashboard into app routing
+
+## 2026-02-28 — Session 11.5: Sprint 6 Stories 1-5, 9, 11 — Frontend Refactoring + Backend Hardening + Hook Tests
+**Sprint:** 6 | **Stories:** 1, 2, 3, 4, 5, 9, 11
+**Summary:** Split two god files (useAgent.ts 1920→423 lines, CoachScreen.tsx 2016→864 lines), added Zod LLM output validation, deprecated legacy code, documented deployment and SSE scaling strategy, added 135 frontend hook tests.
+
+### Changes Made — Story 1: Split useAgent.ts
+- `app/src/hooks/useAgent.ts` — Reduced from 1920 to 423 lines. Now a thin orchestrator composing 5 focused hooks.
+- `app/src/hooks/usePipelineStateManager.ts` — New (389 lines). All 25+ useState and 20+ useRef hooks, state initialization and reset.
+- `app/src/hooks/useSSEConnection.ts` — New (212 lines). SSE fetch connection, disconnect, reconnect with exponential backoff.
+- `app/src/hooks/useSSEDataValidation.ts` — New (280 lines). safeParse(), asStringArray(), asGapClassification(), SUGGESTION_LIMITS, VALID_INTENTS, sanitizeSectionContextPayload().
+- `app/src/hooks/useSSEEventHandlers.ts` — New (1437 lines). Named handler functions for all SSE event types, createSSEEventRouter().
+- `app/src/hooks/useStaleDetection.ts` — New (66 lines). 120s stall detection + 12s fallback status poll.
+
+### Changes Made — Story 2: Split CoachScreen.tsx
+- `app/src/components/CoachScreen.tsx` — Reduced from 2016 to 864 lines. Layout + navigation orchestration only.
+- `app/src/components/BenchmarkInspectorCard.tsx` — New (399 lines). Assumption editing, version history, confidence display.
+- `app/src/components/CoachScreenBanners.tsx` — New (431 lines). 7 banner components: ErrorBanner, WorkflowErrorBanner, PipelineActivityBanner, RuntimeRecoveryBanner, WorkflowActionBanner, WorkflowReplanBanner, WorkflowPreferencesCard.
+- `app/src/components/QuestionsNodeSummary.tsx` — New (264 lines). Question metrics, reuse savings, rationale.
+- `app/src/components/SectionsNodeSummary.tsx` — New (95 lines). Bundle review progress.
+- `app/src/lib/coach-screen-utils.tsx` — New (243 lines). Snapshot storage, formatters, node status mapping, placeholder renderer.
+
+### Changes Made — Story 3: Add Zod Schemas
+- `server/src/agents/schemas/strategist-schemas.ts` — New (176 lines). Zod schemas for build_benchmark, classify_fit, design_blueprint outputs.
+- `server/src/agents/schemas/craftsman-schemas.ts` — New (65 lines). Schemas for self_review_section, keyword coverage, anti-patterns, evidence integrity.
+- `server/src/agents/schemas/producer-schemas.ts` — New (89 lines). Schemas for adversarial_review, ats_compliance, humanize_check, narrative_coherence.
+- `server/src/agents/strategist/tools.ts` — Added .safeParse() after repairJSON in build_benchmark, classify_fit, design_blueprint.
+- `server/src/agents/craftsman/tools.ts` — Added .safeParse() for self_review_section, check_evidence_integrity. Score coercion: `Number(validated.score) || 6`.
+- `server/src/agents/producer/tools.ts` — Added .safeParse() for adversarial_review, ats_compliance, humanize_check, narrative_coherence.
+- `server/src/__tests__/zod-schemas.test.ts` — New (594 lines). Schema validation edge case tests.
+
+### Changes Made — Story 4: Legacy Code Cleanup
+- `server/src/agents/pipeline.ts` — Added @deprecated JSDoc banner (replaced by coordinator.ts)
+- `server/src/agent/loop.ts` — Added @deprecated JSDoc banner (legacy chat route only)
+- `docs/ARCHITECTURE.md` — Added Legacy Code section with route-to-module mapping table
+- `docs/BACKLOG.md` — Removed 11 completed stories, added "Decommission legacy agent/" story
+
+### Changes Made — Story 5: Fix Deployment Configuration
+- `app/.env.example` — Added VITE_API_URL documentation
+- `docs/DEPLOYMENT.md` — New. Full deployment architecture (Vercel frontend, Railway backend, Supabase DB, env vars, CORS config)
+
+### Changes Made — Story 9: SSE Broadcasting Architecture Doc
+- `docs/DECISIONS.md` — Added ADR-008: SSE Broadcasting Strategy
+- `docs/SSE_SCALING.md` — New. 3-phase scaling strategy with architecture diagrams and migration path
+
+### Changes Made — Story 11: Frontend Hook Tests
+- `app/src/__tests__/hooks/useSSEDataValidation.test.ts` — New (373 lines). 43 tests: safeParse, asStringArray, asGapClassification, asPriorityTier, asReplanStaleNodes, SUGGESTION_LIMITS, VALID_INTENTS, sanitizeSectionContextPayload.
+- `app/src/__tests__/hooks/useSSEEventHandlers.test.ts` — New (1043 lines). 80 tests: all handler functions with mock PipelineStateManager + createSSEEventRouter.
+- `app/src/__tests__/hooks/useStaleDetection.test.ts` — New (12 tests). Stall detection threshold, guard conditions, interval wiring.
+
+### Decisions Made
+- coach-screen-utils.tsx (not .ts) because it contains JSX for renderNodeContentPlaceholder
+- Zod schemas use .passthrough() to avoid breaking on extra LLM response fields
+- Schema validation fails gracefully: logs warning + falls back to raw data (never crashes pipeline)
+- vercel.json hardcoded URL kept as-is — Vercel doesn't support env vars in rewrite rules. Frontend already supports VITE_API_URL via api.ts.
+
 ## 2026-02-28 — Session 11: Sprint 6 Stories 6+7 — Usage Flush + DB Pipeline Limits
 **Sprint:** 6 | **Story:** 6 + 7
 **Summary:** Periodic token usage flush to DB (delta-based, 60s interval) and cross-instance pipeline capacity guard using session_locks table.

@@ -322,10 +322,10 @@ describe('self_review_section', () => {
       ctx,
     ) as Record<string, unknown>;
 
-    // The tool's guard sees score is not a number and returns the malformed fallback
+    // After Zod + coercion: string '9' is coerced to number 9 — valid high score
     expect(typeof result.score).toBe('number');
-    expect(result.passed).toBe(false);
-    expect((result.issues as string[]).length).toBeGreaterThan(0);
+    expect(result.score).toBe(9);
+    expect(result.passed).toBe(true);
   });
 
   it('forces passed=false when issues array has more than 2 entries even with high score', async () => {

@@ -32,3 +32,15 @@ export const FF_BLUEPRINT_APPROVAL = envBool('FF_BLUEPRINT_APPROVAL', true);
  * and horizontal scaling is actually required.
  */
 export const FF_REDIS_BUS = envBool('FF_REDIS_BUS', false);
+
+/**
+ * FF_REDIS_RATE_LIMIT — Use Redis-backed rate limiting instead of in-memory.
+ *
+ * Requires REDIS_URL to be set. Default: false (in-memory rate limiter is used).
+ * See ADR-009 in docs/DECISIONS.md for full context.
+ *
+ * When enabled, rate limit counts are stored in Redis with INCR + EXPIRE so that
+ * multiple server instances share a single counter per identifier + time window.
+ * Falls back to in-memory automatically if Redis is unavailable or errors.
+ */
+export const FF_REDIS_RATE_LIMIT = envBool('FF_REDIS_RATE_LIMIT', false);
