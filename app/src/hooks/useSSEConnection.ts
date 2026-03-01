@@ -33,7 +33,8 @@ export function useSSEConnection(
       state.setStreamingText((prev) => prev + buffered);
     }
     state.rafIdRef.current = null;
-  }, [state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Abort the current connection (used by complete handler and reconnect)
   const abortCurrentConnection = useCallback(() => {
@@ -42,7 +43,8 @@ export function useSSEConnection(
       state.abortControllerRef.current = null;
     }
     state.setConnected(false);
-  }, [state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reconnect with exponential backoff
   const handleDisconnect = useCallback(() => {
@@ -83,7 +85,8 @@ export function useSSEConnection(
           'Use Reconnect or Refresh State to confirm the pipeline status',
       });
     }
-  }, [state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Main connect function (assigned to connectSSERef for use in handleDisconnect)
   const connectSSE = useCallback(() => {
@@ -175,7 +178,8 @@ export function useSSEConnection(
         console.error('[useAgent] SSE fetch error:', err);
         handleDisconnect();
       });
-  }, [sessionId, state, handleSSEEvent, handleDisconnect]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, handleSSEEvent, handleDisconnect]);
 
   // Manual reconnect (clears backoff state and reconnects immediately)
   const reconnectStreamNow = useCallback(() => {
@@ -200,7 +204,8 @@ export function useSSEConnection(
       state.abortControllerRef.current = null;
     }
     state.connectSSERef.current?.();
-  }, [state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     connectSSE,

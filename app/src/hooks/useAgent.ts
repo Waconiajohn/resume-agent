@@ -33,12 +33,14 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // Keep accessTokenRef in sync
   useEffect(() => {
     state.accessTokenRef.current = accessToken;
-  }, [accessToken, state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   // Keep isProcessingRef in sync
   useEffect(() => {
     state.isProcessingRef.current = state.isProcessing;
-  }, [state.isProcessing, state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isProcessing]);
 
   // ── markPipelineProgress (stable callback) ────────────────────────────────
   const markPipelineProgress = useCallback<MarkPipelineProgressFn>(
@@ -69,9 +71,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
             : prev.expected_next_action,
       }));
     },
-    // state is a stable object — all setters are memoized inside usePipelineStateManager
+    // All accessed properties (refs, setters) are individually stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state],
+    [],
   );
 
   // ── SSE connection ────────────────────────────────────────────────────────
@@ -103,7 +105,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       flushDeltaBuffer,
       abortCurrentConnection,
     );
-  }, [state, markPipelineProgress, flushDeltaBuffer, abortCurrentConnection]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markPipelineProgress, flushDeltaBuffer, abortCurrentConnection]);
 
   // ── Session reset effect ──────────────────────────────────────────────────
   useEffect(() => {
@@ -341,7 +344,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       state.setPhaseGate(null);
       state.setIsProcessing(true);
     },
-    [state],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const dismissSuggestion = useCallback(
@@ -360,7 +364,8 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         };
       }
     },
-    [state],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   // ── Derived pipelineActivity ──────────────────────────────────────────────
