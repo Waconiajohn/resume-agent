@@ -362,7 +362,9 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
     }
 
     if (clickResult === 'submitted') {
-      // Submit triggers an API call. Wait for the panel to actually advance.
+      // Submit triggers an API call. Wait for the panel to actually advance
+      // OR for a new questionnaire to appear (pipeline may send multiple).
+      const preSubmitKey = await getPanelKey(page);
       // eslint-disable-next-line no-console
       console.log(
         '[pipeline-responder] Questionnaire submitted, waiting for pipeline to advance...',
@@ -382,6 +384,17 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
           );
           return;
         }
+        // Check if a NEW questionnaire appeared (different content)
+        const currentKey = await getPanelKey(page);
+        if (currentKey !== preSubmitKey) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[pipeline-responder] Questionnaire: new questionnaire detected, re-entering response loop`,
+          );
+          // Don't return — break out to continue the outer for-loop
+          // so the next iteration answers the new questionnaire
+          break;
+        }
         const waitSec = Math.round((Date.now() - advanceStart) / 1000);
         if (waitSec > 0 && waitSec % 30 < QUESTIONNAIRE_POLL_MS / 1000 + 1) {
           // eslint-disable-next-line no-console
@@ -389,6 +402,13 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
             `[pipeline-responder] Questionnaire: waiting for advance... (${waitSec}s)`,
           );
         }
+      }
+
+      // If we broke out for a new questionnaire, continue the for-loop
+      const postPanel = await detectCurrentPanel(page);
+      if (postPanel === 'questionnaire') {
+        const postKey = await getPanelKey(page);
+        if (postKey !== preSubmitKey) continue; // New questionnaire, answer it
       }
 
       // eslint-disable-next-line no-console

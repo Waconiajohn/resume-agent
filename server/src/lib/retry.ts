@@ -114,8 +114,21 @@ export async function withRetry<T>(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
 
-      // Never retry intentional aborts — the user or system cancelled deliberately
-      if (lastError.name === 'AbortError' || (err instanceof DOMException && err.name === 'AbortError')) {
+      // Never retry intentional aborts — the user or system cancelled deliberately.
+      // However, if an outer signal was provided and is still active, an AbortError
+      // likely came from an internal timeout (e.g., the LLM provider's per-call
+      // timeout) and IS retryable.
+      const isAbort = lastError.name === 'AbortError' || (err instanceof DOMException && err.name === 'AbortError');
+      if (isAbort) {
+        // If outer signal exists and is still alive, this is an internal timeout — retry
+        if (options?.signal && !options.signal.aborted) {
+          if (attempt >= maxAttempts) throw lastError;
+          options?.onRetry?.(attempt, lastError);
+          const delay = baseDelay * Math.pow(2, attempt - 1) * (0.5 + Math.random());
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        // No outer signal, or outer signal aborted — treat as intentional abort
         throw lastError;
       }
 

@@ -132,18 +132,18 @@ test.describe('Full Pipeline E2E', () => {
       });
     });
 
-    // Step 7: Download DOCX resume
-    await test.step('Download DOCX resume', async () => {
+    // Step 7: Download resume (PDF — free tier; DOCX requires paid plan)
+    await test.step('Download PDF resume', async () => {
       const downloadPromise = page.waitForEvent('download', {
         timeout: 30_000,
       });
       await page
-        .getByRole('button', { name: /Download Word/i })
+        .getByRole('button', { name: /Download PDF/i })
         .click();
       const download = await downloadPromise;
 
-      expect(download.suggestedFilename()).toMatch(/\.docx$/);
-      await download.saveAs('test-results/downloaded-resume.docx');
+      expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+      await download.saveAs('test-results/downloaded-resume.pdf');
 
       const filePath = await download.path();
       expect(filePath).toBeTruthy();
