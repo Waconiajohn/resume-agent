@@ -21,11 +21,20 @@
 - `server/src/__tests__/agent-loop-parallel.test.ts` — New: 10 tests for parallel tool execution
 - `server/src/__tests__/adaptive-max-tokens.test.ts` — New: 17 tests for adaptive max_tokens
 
-### Bug Fixes (from earlier in session)
+### Bug Fixes
 - `app/src/hooks/useAgent.ts` — Fixed infinite React render loop (removed `state` object from 6 dependency arrays)
 - `app/src/hooks/useSSEConnection.ts` — Fixed infinite React render loop (removed `state` object from 5 dependency arrays)
 - `server/src/routes/admin.ts` — Added `POST /api/admin/reset-rate-limits` endpoint for E2E test cleanup
 - `e2e/helpers/cleanup.ts` — Added SSE rate-limit reset call in `cleanupBeforeTest()`
+- `server/src/lib/retry.ts` — Fixed retry logic: internal LLM timeout AbortErrors now retried when outer signal is alive; added `'timed out'` to transient patterns to catch Z.AI timeout messages
+- `e2e/helpers/pipeline-responder.ts` — Fixed questionnaire responder: detects new questionnaires during advance-wait loop instead of blocking 5 min
+- `e2e/tests/full-pipeline.spec.ts` — Changed download from DOCX (requires paid plan) to PDF (free tier)
+- `server/src/agents/strategist/agent.ts` — Increased `loop_max_tokens` from 4096 to 8192 (classify_fit/design_blueprint need larger token budget)
+
+### E2E Verification
+- Full pipeline E2E test **passing** (2/2 tests, 17.5 min)
+- Pipeline wall-clock: **16.7 min** (down from ~28 min baseline = **40% reduction**)
+- Phase timings: interview 218s, blueprint 74s, section writing 484s
 
 ### Decisions Made
 - ADR-014: Parallel tool execution via `parallel_safe_tools` config (per-agent opt-in, Promise.allSettled for resilience)
