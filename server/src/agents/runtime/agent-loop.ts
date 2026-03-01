@@ -120,7 +120,7 @@ export async function runAgentLoop<
           messages,
           tools: toolDefs.length > 0 ? toolDefs : undefined,
           tool_choice: toolDefs.length > 0 ? { type: 'auto' } : undefined,
-          max_tokens: 8192,
+          max_tokens: config.loop_max_tokens ?? 4096,
           signal: overallSignal,
           session_id: ctx.sessionId,
         }),
@@ -163,13 +163,20 @@ export async function runAgentLoop<
       }
       messages.push({ role: 'assistant', content: assistantBlocks });
 
-      // Execute tool calls
-      const resultBlocks: ContentBlock[] = [];
-      for (const tc of response.tool_calls) {
+      // Execute tool calls — parallel-safe tools run concurrently, others sequentially first
+      const parallelSafeSet = new Set(config.parallel_safe_tools ?? []);
+      const sequentialCalls = response.tool_calls.filter(tc => !parallelSafeSet.has(tc.name));
+      const parallelCalls = response.tool_calls.filter(tc => parallelSafeSet.has(tc.name));
+
+      // Map tool_use_id → result block for ordered reassembly
+      const resultMap = new Map<string, ContentBlock>();
+
+      // 1. Execute sequential tools first (order matters)
+      for (const tc of sequentialCalls) {
         const tool = toolMap.get(tc.name);
         if (!tool) {
           log.warn({ toolName: tc.name }, 'Unknown tool called');
-          resultBlocks.push({
+          resultMap.set(tc.id, {
             type: 'tool_result',
             tool_use_id: tc.id,
             content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }),
@@ -177,12 +184,12 @@ export async function runAgentLoop<
           continue;
         }
 
-        log.info({ tool: tc.name, round }, 'Executing tool');
+        log.info({ tool: tc.name, round }, 'Executing tool (sequential)');
 
         try {
           const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, ctx, roundTimeoutMs);
           const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-          resultBlocks.push({
+          resultMap.set(tc.id, {
             type: 'tool_result',
             tool_use_id: tc.id,
             content: resultStr,
@@ -190,13 +197,60 @@ export async function runAgentLoop<
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           log.error({ tool: tc.name, error: errorMsg }, 'Tool execution error');
-          resultBlocks.push({
+          resultMap.set(tc.id, {
             type: 'tool_result',
             tool_use_id: tc.id,
             content: JSON.stringify({ error: errorMsg }),
           });
         }
       }
+
+      // 2. Execute parallel-safe tools concurrently
+      if (parallelCalls.length > 0) {
+        log.info(
+          { tools: parallelCalls.map(tc => tc.name), round },
+          `Executing ${parallelCalls.length} tools in parallel`,
+        );
+
+        const settled = await Promise.allSettled(
+          parallelCalls.map(async (tc) => {
+            const tool = toolMap.get(tc.name);
+            if (!tool) {
+              log.warn({ toolName: tc.name }, 'Unknown tool called');
+              return { id: tc.id, content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }) };
+            }
+            log.info({ tool: tc.name, round }, 'Executing tool (parallel)');
+            const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, ctx, roundTimeoutMs);
+            const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+            return { id: tc.id, content: resultStr };
+          }),
+        );
+
+        for (let i = 0; i < parallelCalls.length; i++) {
+          const tc = parallelCalls[i];
+          const outcome = settled[i];
+          if (outcome.status === 'fulfilled') {
+            resultMap.set(tc.id, {
+              type: 'tool_result',
+              tool_use_id: outcome.value.id,
+              content: outcome.value.content,
+            });
+          } else {
+            const errorMsg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
+            log.error({ tool: tc.name, error: errorMsg }, 'Parallel tool execution error');
+            resultMap.set(tc.id, {
+              type: 'tool_result',
+              tool_use_id: tc.id,
+              content: JSON.stringify({ error: errorMsg }),
+            });
+          }
+        }
+      }
+
+      // 3. Reassemble results in original tool_calls order
+      const resultBlocks: ContentBlock[] = response.tool_calls.map(
+        tc => resultMap.get(tc.id)!,
+      );
 
       // Append tool results as user message
       messages.push({ role: 'user', content: resultBlocks });

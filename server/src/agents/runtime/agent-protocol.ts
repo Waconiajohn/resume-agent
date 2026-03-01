@@ -84,6 +84,18 @@ export interface AgentConfig<
   round_timeout_ms: number;
   /** Timeout for entire agent invocation (ms) */
   overall_timeout_ms: number;
+  /**
+   * Tools that are safe to execute in parallel within a single round.
+   * When the LLM calls multiple tools in one round, tools listed here
+   * run concurrently via Promise.allSettled(). Unlisted tools run sequentially first.
+   */
+  parallel_safe_tools?: string[];
+  /**
+   * Max tokens for the agent's main loop LLM calls.
+   * Orchestrator calls rarely need the full 8192 — lower values reduce latency.
+   * Default: 4096.
+   */
+  loop_max_tokens?: number;
 }
 
 // ─── Agent Context (passed to tools) ─────────────────────────────────

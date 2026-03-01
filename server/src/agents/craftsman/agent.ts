@@ -54,6 +54,15 @@ export const craftsmanConfig: ResumeAgentConfig = {
 
   /** 15 minutes total — covers writing all sections with revision cycles */
   overall_timeout_ms: 900_000,
+
+  /**
+   * Tools safe to run concurrently. check_keyword_coverage and check_anti_patterns
+   * are pure string-matching (no LLM, no state mutation). emit_transparency is fire-and-forget.
+   */
+  parallel_safe_tools: ['check_keyword_coverage', 'check_anti_patterns', 'emit_transparency'],
+
+  /** Craftsman loop is coordination; individual tools handle their own token limits */
+  loop_max_tokens: 2048,
 };
 
 // Type erasure cast is required because AgentConfig is generic and the registry

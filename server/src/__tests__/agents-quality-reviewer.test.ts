@@ -434,13 +434,13 @@ describe('runQualityReviewer', () => {
     }
   });
 
-  it('uses MODEL_PRIMARY for quality review', async () => {
+  it('uses MODEL_MID for quality review', async () => {
     mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput()));
 
     await runQualityReviewer(makeReviewerInput());
 
     expect(mockChat).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'mock-primary' }),
+      expect.objectContaining({ model: 'mock-mid' }),
     );
   });
 

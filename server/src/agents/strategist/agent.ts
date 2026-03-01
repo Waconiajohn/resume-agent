@@ -57,6 +57,12 @@ export const strategistConfig: ResumeAgentConfig = {
    * 15 min is generous but necessary for slow Z.AI days.
    */
   overall_timeout_ms: 900_000,
+
+  /** emit_transparency has no side-effects on other tools — safe to run in parallel */
+  parallel_safe_tools: ['emit_transparency'],
+
+  /** Strategist loop is coordination logic; rarely exceeds 500 output tokens */
+  loop_max_tokens: 4096,
 };
 
 // Type erasure cast is required because AgentConfig is generic and the registry

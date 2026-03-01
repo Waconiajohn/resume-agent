@@ -44,3 +44,12 @@ export const FF_REDIS_BUS = envBool('FF_REDIS_BUS', false);
  * Falls back to in-memory automatically if Redis is unavailable or errors.
  */
 export const FF_REDIS_RATE_LIMIT = envBool('FF_REDIS_RATE_LIMIT', false);
+
+/**
+ * FF_SELF_REVIEW_LIGHT — Route self_review_section to MODEL_LIGHT instead of MODEL_MID.
+ *
+ * Self-review is a structured checklist evaluation, not creative writing.
+ * MODEL_LIGHT may handle it adequately at zero cost. Default: false (use MODEL_MID).
+ * Enable for A/B testing to measure quality impact.
+ */
+export const FF_SELF_REVIEW_LIGHT = envBool('FF_SELF_REVIEW_LIGHT', false);

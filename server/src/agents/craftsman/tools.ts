@@ -16,6 +16,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { llm, MODEL_MID, MODEL_LIGHT } from '../../lib/llm.js';
+import { FF_SELF_REVIEW_LIGHT } from '../../lib/feature-flags.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
 import { runSectionWriter, runSectionRevision } from '../section-writer.js';
@@ -319,7 +320,7 @@ Rules:
 - Be strict — a section with vague impact, missing metrics, or passive voice FAILS those criteria`;
 
     const response = await llm.chat({
-      model: MODEL_MID,
+      model: FF_SELF_REVIEW_LIGHT ? MODEL_LIGHT : MODEL_MID,
       system: 'You are a rigorous resume quality reviewer. Return only valid JSON.',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 2048,

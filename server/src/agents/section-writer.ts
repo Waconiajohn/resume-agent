@@ -31,11 +31,18 @@ export async function runSectionWriter(input: SectionWriterInput): Promise<Secti
     ? MODEL_MID
     : MODEL_PRIMARY;
 
+  // Adaptive max_tokens: simpler sections need fewer tokens
+  const maxTokens = ['skills', 'education_and_certifications', 'header', 'certifications', 'education'].includes(section)
+    ? 2048
+    : section === 'summary' || section === 'professional_summary'
+      ? 3072
+      : 4096;
+
   const prompt = buildSectionPrompt(section, blueprint_slice, evidence_sources, global_rules, input.cross_section_context);
 
   const response = await llm.chat({
     model,
-    max_tokens: 4096,
+    max_tokens: maxTokens,
     system: WRITER_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
     signal: input.signal,

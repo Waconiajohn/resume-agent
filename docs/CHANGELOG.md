@@ -1,5 +1,48 @@
 # Changelog — Resume Agent
 
+## 2026-03-01 — Sprint 9 Complete
+**Sprint:** 9 | **Stories:** 1-7 (AI API Latency Reduction)
+**Summary:** Reduce pipeline wall-clock time by 15-40% through parallel tool execution, model tier downgrades, adaptive max_tokens, and prompt-level tool batching instructions. 27 new tests (690 server total, 327 app total = 1017).
+
+### Changes Made
+- `server/src/agents/runtime/agent-protocol.ts` — Added `parallel_safe_tools?: string[]` and `loop_max_tokens?: number` to `AgentConfig`
+- `server/src/agents/runtime/agent-loop.ts` — Replaced sequential tool execution with partition-based parallel execution (Promise.allSettled for parallel-safe tools, sequential for others, results reassembled in original order). Changed default max_tokens from 8192 to `config.loop_max_tokens ?? 4096`.
+- `server/src/agents/strategist/agent.ts` — Configured `parallel_safe_tools: ['emit_transparency']`, `loop_max_tokens: 4096`
+- `server/src/agents/craftsman/agent.ts` — Configured `parallel_safe_tools: ['check_keyword_coverage', 'check_anti_patterns', 'emit_transparency']`, `loop_max_tokens: 2048`
+- `server/src/agents/producer/agent.ts` — Configured `parallel_safe_tools` for all 7 independent quality checks, `loop_max_tokens: 2048`
+- `server/src/lib/llm.ts` — Downgraded `adversarial_review` from MODEL_PRIMARY to MODEL_MID (evaluation task, not creative writing)
+- `server/src/agents/quality-reviewer.ts` — Changed model from MODEL_PRIMARY to MODEL_MID, reduced max_tokens from 6144 to 3072
+- `server/src/agents/strategist/prompts.ts` — Rewrote workflow steps to batch compatible tools in same LLM rounds (parse+emit, benchmark+research together)
+- `server/src/agents/producer/prompts.ts` — Rewrote workflow to batch independent checks into 2 parallel rounds (structural checks + content quality checks)
+- `server/src/lib/feature-flags.ts` — Added `FF_SELF_REVIEW_LIGHT` flag (default false) for A/B testing self_review on MODEL_LIGHT
+- `server/src/agents/craftsman/tools.ts` — Conditional model routing: `FF_SELF_REVIEW_LIGHT ? MODEL_LIGHT : MODEL_MID` for self_review_section
+- `server/src/agents/section-writer.ts` — Adaptive max_tokens per section type (skills/education: 2048, summary: 3072, experience: 4096)
+- `server/src/__tests__/agents-quality-reviewer.test.ts` — Updated test expectation for MODEL_MID
+- `server/src/__tests__/agent-loop-parallel.test.ts` — New: 10 tests for parallel tool execution
+- `server/src/__tests__/adaptive-max-tokens.test.ts` — New: 17 tests for adaptive max_tokens
+
+### Bug Fixes (from earlier in session)
+- `app/src/hooks/useAgent.ts` — Fixed infinite React render loop (removed `state` object from 6 dependency arrays)
+- `app/src/hooks/useSSEConnection.ts` — Fixed infinite React render loop (removed `state` object from 5 dependency arrays)
+- `server/src/routes/admin.ts` — Added `POST /api/admin/reset-rate-limits` endpoint for E2E test cleanup
+- `e2e/helpers/cleanup.ts` — Added SSE rate-limit reset call in `cleanupBeforeTest()`
+
+### Decisions Made
+- ADR-014: Parallel tool execution via `parallel_safe_tools` config (per-agent opt-in, Promise.allSettled for resilience)
+- ADR-015: Downgrade adversarial_review from MODEL_PRIMARY to MODEL_MID (evaluation not creative writing)
+
+### Estimated Impact
+| Change | Time Saved |
+|--------|-----------|
+| Parallel tool execution | 3-8 min |
+| adversarial_review downgrade | 0.5-2 min |
+| Strategist prompt batching | 1-3 min |
+| Adaptive max_tokens | 1-3 min |
+| self_review LIGHT flag (when enabled) | 1-3 min |
+| **Total** | **6-19 min (15-40%)** |
+
+---
+
 ## 2026-02-28 — Sprint 8 Complete
 **Sprint:** 8 | **Stories:** 1-14 (User Dashboard & Resume Management)
 **Summary:** Full user dashboard with session history gallery, master resume viewer/editor, evidence library, and resume comparison. 4 new backend API endpoints, 13 new frontend components, 82 new tests (990 total).

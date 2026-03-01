@@ -38,7 +38,7 @@ const TOOL_MODEL_MAP: Record<string, string> = {
   write_section: MODEL_PRIMARY,
   revise_section: MODEL_PRIMARY,
   design_blueprint: MODEL_PRIMARY,
-  adversarial_review: MODEL_PRIMARY,
+  adversarial_review: MODEL_MID,
 
   // ── MID (glm-4.5-air, $0.20/$1.10) — Analysis ──
   classify_fit: MODEL_MID,

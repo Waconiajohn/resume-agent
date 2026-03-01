@@ -202,3 +202,19 @@ Sticky sessions solve 95% of the scaling problem with zero code changes. Railway
 **Decision:** Prop-drill from App.tsx → DashboardScreen → tab components. All API functions are destructured from `useSession()` in App.tsx and passed as props. Tab components receive only the data and callbacks they need.
 **Reasoning:** Prop-drilling is the simplest approach for a 2-level component tree. A Context provider adds indirection without meaningful benefit at this nesting depth. Having tab components call useSession directly would create multiple hook instances with duplicated state. The prop-drill approach keeps state centralized in App.tsx (single source of truth) and makes data flow explicit and testable.
 **Consequences:** DashboardScreen has a large props interface (~15 props). If the dashboard grows significantly deeper (3+ levels), a DashboardContext may become worthwhile. Tab components are pure — they receive data and callbacks, making them easy to test with mock props.
+
+## ADR-014: Parallel Tool Execution via `parallel_safe_tools` Config
+**Date:** 2026-03-01
+**Status:** accepted
+**Context:** Each agent's tool calls execute sequentially in `agent-loop.ts` (line 168 for-loop). When the LLM calls multiple independent tools in a single round (e.g., Producer calling 3 quality checks), they wait for each other despite having no data dependencies. Z.AI API latency (1-5 min per call) makes this the largest single source of pipeline delay.
+**Decision:** Add `parallel_safe_tools?: string[]` to `AgentConfig`. During tool execution, partition the round's tool calls into sequential (not in the list) and parallel (in the list). Run sequential tools first in order, then run parallel tools concurrently via `Promise.allSettled()`. Reassemble results in the original `tool_calls` order.
+**Reasoning:** `Promise.allSettled()` was chosen over `Promise.all()` because one failing tool should not abort its siblings — each tool result (success or error) is reported independently to the LLM. Per-agent opt-in via config is safer than global parallelism — only tools explicitly declared safe are parallelized. The Producer benefits most (7 independent checks), the Craftsman benefits moderately (keyword + anti-pattern checks), and the Strategist benefits minimally (only emit_transparency).
+**Consequences:** Tool execution order within a round is no longer strictly sequential for parallel-safe tools. Tools must not have hidden state dependencies to be declared parallel-safe. The `present_to_user` and `interview_candidate` tools are never parallel-safe (they wait for user input). Estimated saving: 3-8 minutes per pipeline run.
+
+## ADR-015: Downgrade adversarial_review from MODEL_PRIMARY to MODEL_MID
+**Date:** 2026-03-01
+**Status:** accepted
+**Context:** `adversarial_review` was routed to MODEL_PRIMARY (glm-4.7, $0.60/$2.20 per M tokens) — the most expensive tier. However, adversarial review is an analytical evaluation task (structured JSON scoring across 6 dimensions), not creative writing. Other evaluation tools like `classify_fit`, `self_review_section`, and `check_narrative_coherence` already use MODEL_MID successfully.
+**Decision:** Route `adversarial_review` to MODEL_MID (glm-4.5-air, $0.20/$1.10 per M tokens). Reduce max_tokens from 6144 to 3072 in the quality reviewer.
+**Reasoning:** Evaluation tasks produce structured JSON with scores and issue lists — they don't require the creative capacity of MODEL_PRIMARY. MODEL_MID handles all other evaluation tools well. The 3x cost reduction compounds across every pipeline run. The max_tokens reduction reflects that quality review responses rarely exceed 2000 tokens.
+**Consequences:** Slight risk of lower-quality issue detection in edge cases. Monitor quality scores across pipeline runs to verify no regression. Can revert by changing one line in `llm.ts` if quality degrades.
