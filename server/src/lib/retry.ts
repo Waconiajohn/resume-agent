@@ -18,6 +18,7 @@ const TRANSIENT_PATTERNS = [
   'overloaded',
   'temporarily unavailable',
   'aborted due to timeout',
+  'timed out',
   'timeout',
   'socket hang up',
   'fetch failed',
