@@ -14,6 +14,14 @@ export interface CoachSession {
   current_phase: CoachPhase;
   master_resume_id: string | null;
   job_application_id: string | null;
+  pipeline_status?: string | null;
+  pipeline_stage?: string | null;
+  input_tokens_used?: number;
+  output_tokens_used?: number;
+  estimated_cost_usd?: number;
+  last_panel_type?: string | null;
+  company_name?: string | null;
+  job_title?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -21,6 +21,14 @@ export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionC
         </div>
 
         <nav className="flex items-center gap-1">
+          {email && (
+            <button
+              onClick={() => onNavigate?.('dashboard')}
+              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+            >
+              Dashboard
+            </button>
+          )}
           <button
             onClick={() => onNavigate?.('pricing')}
             className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"

@@ -115,12 +115,17 @@ export function useSession(accessToken: string | null) {
     return message;
   }, []);
 
-  const listSessions = useCallback(async () => {
+  const listSessions = useCallback(async (filters?: { limit?: number; status?: string }) => {
     if (!accessTokenRef.current) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithOneRetry(`${API_BASE}/sessions`, { headers: headers() });
+      const params = new URLSearchParams();
+      if (filters?.limit) params.set('limit', String(filters.limit));
+      if (filters?.status) params.set('status', filters.status);
+      const qs = params.toString();
+      const url = `${API_BASE}/sessions${qs ? `?${qs}` : ''}`;
+      const res = await fetchWithOneRetry(url, { headers: headers() });
       if (!res.ok) {
         const message = await buildErrorMessage(res, `Failed to load sessions (${res.status})`);
         setError(message);
@@ -553,6 +558,75 @@ export function useSession(accessToken: string | null) {
     };
   }, [startPipeline]);
 
+  const getSessionResume = useCallback(async (sessionId: string): Promise<FinalResume | null> => {
+    if (!accessTokenRef.current) return null;
+    setError(null);
+    try {
+      const res = await fetchWithOneRetry(
+        `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/resume`,
+        { headers: headers() },
+      );
+      if (!res.ok) {
+        if (res.status === 404) return null;
+        const message = await buildErrorMessage(res, `Failed to load session resume (${res.status})`);
+        setError(message);
+        return null;
+      }
+      const data = await res.json();
+      return (data.resume as FinalResume | null) ?? null;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error loading session resume');
+      return null;
+    }
+  }, [headers, buildErrorMessage, fetchWithOneRetry]);
+
+  const updateMasterResume = useCallback(async (
+    resumeId: string,
+    changes: Record<string, unknown>,
+  ): Promise<MasterResume | null> => {
+    if (!accessTokenRef.current) return null;
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/resumes/${encodeURIComponent(resumeId)}`, {
+        method: 'PUT',
+        headers: headers(),
+        body: JSON.stringify(changes),
+      });
+      if (!res.ok) {
+        const message = await buildErrorMessage(res, `Failed to update resume (${res.status})`);
+        setError(message);
+        return null;
+      }
+      const data = await res.json();
+      return (data.resume as MasterResume | null) ?? null;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error updating resume');
+      return null;
+    }
+  }, [headers, buildErrorMessage]);
+
+  const getResumeHistory = useCallback(async (resumeId: string) => {
+    if (!accessTokenRef.current) return [];
+    setError(null);
+    try {
+      const res = await fetchWithOneRetry(
+        `${API_BASE}/resumes/${encodeURIComponent(resumeId)}/history`,
+        { headers: headers() },
+      );
+      if (!res.ok) {
+        if (res.status === 404) return [];
+        const message = await buildErrorMessage(res, `Failed to load resume history (${res.status})`);
+        setError(message);
+        return [];
+      }
+      const data = await res.json();
+      return (data.history ?? []) as Array<{ id: string; master_resume_id: string; changes_summary: string; changes_detail: Record<string, unknown>; created_at: string }>;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error loading resume history');
+      return [];
+    }
+  }, [headers, buildErrorMessage, fetchWithOneRetry]);
+
   const respondToGate = useCallback(async (
     sessionId: string,
     gate: string,
@@ -611,5 +685,8 @@ export function useSession(accessToken: string | null) {
     startPipeline,
     restartPipelineWithCachedInputs,
     respondToGate,
+    getSessionResume,
+    updateMasterResume,
+    getResumeHistory,
   };
 }

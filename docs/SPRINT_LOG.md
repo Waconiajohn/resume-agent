@@ -2,6 +2,39 @@
 
 ---
 
+# Sprint 8 Retrospective — User Dashboard & Resume Management
+**Completed:** 2026-02-28
+
+## What was delivered
+- Stories 1-4: Backend APIs — enriched session list with pipeline metadata/JSONB extraction, session resume retrieval, master resume partial edit with version history, resume history retrieval. 4 new endpoints with Zod validation and ownership checks.
+- Stories 5-6: Dashboard shell — 3-tab layout (Sessions/Master Resume/Evidence Library) with DashboardTabs component. Wired into App routing with URL detection and Header nav button.
+- Stories 7-8: Session history gallery — rich session cards with status badges/cost/time-ago, status filter, resume viewer modal with text export, compare mode for selecting 2 sessions.
+- Stories 9-10: Master resume viewer/editor — full resume display with expandable experience, skills categories, inline editing (EditableField), version history, save/cancel.
+- Story 11: Evidence library — evidence browser with source filter (crafted/upgraded/interview), text search, per-item delete.
+- Story 12: Side-by-side resume comparison — dual-column modal with section-level diff highlighting.
+- Story 13: 82 new tests (36 server + 46 app). Total: 990 tests (663 server + 327 app).
+- Story 14: Documentation, ADR-013, retrospective.
+
+## What went well
+- Parallel worktree execution (backend + frontend agents) worked correctly — both agents' changes landed on the working tree
+- Clean merge: backend types/hooks + frontend components had zero conflicts after removing temporary inline implementations
+- TypeScript clean throughout — both agents verified tsc --noEmit independently
+- All 908 existing tests continued passing after merge
+
+## What went wrong
+- Worktree branches were cleaned up on agent shutdown, causing brief confusion about where changes landed (they were on the working tree, not on branches)
+- Frontend agent created temporary inline API implementations in App.tsx that needed manual cleanup after merge
+
+## What to improve next sprint
+- When using worktree agents, verify changes are on the working tree immediately after agent completes
+- Consider having agents commit to named branches for easier merge tracking
+
+## Technical debt identified
+- DashboardScreen has 15+ props — may benefit from DashboardContext if dashboard grows deeper
+- Resume comparison uses simple string equality — could use a proper diff algorithm for richer highlighting
+
+---
+
 # Sprint 7 Retrospective — Commerce Platform
 **Completed:** 2026-02-28
 

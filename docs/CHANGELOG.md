@@ -1,5 +1,41 @@
 # Changelog — Resume Agent
 
+## 2026-02-28 — Sprint 8 Complete
+**Sprint:** 8 | **Stories:** 1-14 (User Dashboard & Resume Management)
+**Summary:** Full user dashboard with session history gallery, master resume viewer/editor, evidence library, and resume comparison. 4 new backend API endpoints, 13 new frontend components, 82 new tests (990 total).
+
+### Changes Made
+- `server/src/routes/sessions.ts` — Enriched GET /sessions with pipeline metadata, ?limit/status filters, company_name/job_title extraction from JSONB. New GET /sessions/:id/resume endpoint.
+- `server/src/routes/resumes.ts` — New PUT /resumes/:id with partial update, version history, Zod validation. New GET /resumes/:id/history endpoint.
+- `app/src/types/session.ts` — CoachSession interface extended with 7 optional pipeline metadata fields
+- `app/src/hooks/useSession.ts` — Added listSessions filters, getSessionResume, updateMasterResume, getResumeHistory
+- `app/src/App.tsx` — Added 'dashboard' view, URL routing, DashboardScreen rendering with full prop wiring
+- `app/src/components/Header.tsx` — Added Dashboard nav button (auth-gated)
+- `app/src/components/LandingScreen.tsx` — Added View Dashboard link
+- `app/src/components/dashboard/DashboardScreen.tsx` — New 3-tab shell (sessions/master_resume/evidence_library)
+- `app/src/components/dashboard/DashboardTabs.tsx` — Reusable tab bar with glass morphism styling
+- `app/src/components/dashboard/DashboardSessionCard.tsx` — Rich session card with status badges, cost, time ago
+- `app/src/components/dashboard/SessionHistoryTab.tsx` — Session gallery with status filter, compare mode
+- `app/src/components/dashboard/SessionResumeModal.tsx` — Modal resume viewer with text export
+- `app/src/components/dashboard/MasterResumeTab.tsx` — Full resume viewer + inline editor with version history
+- `app/src/components/dashboard/ExperienceCard.tsx` — Expandable experience with per-bullet editing
+- `app/src/components/dashboard/SkillsCategoryCard.tsx` — Skills category with add/remove
+- `app/src/components/dashboard/EditableField.tsx` — Click-to-edit inline text field
+- `app/src/components/dashboard/EvidenceLibraryTab.tsx` — Evidence browser with source filter + search
+- `app/src/components/dashboard/EvidenceItemCard.tsx` — Evidence card with colored source badges
+- `app/src/components/dashboard/ResumeComparisonModal.tsx` — Side-by-side resume comparison
+- `app/src/components/dashboard/ComparisonSectionBlock.tsx` — Section diff block with change highlighting
+
+### Decisions Made
+- ADR-013: Dashboard Architecture — prop-drilling from App.tsx through DashboardScreen to tab components; temporary inline API helpers replaced by useSession hook functions after merge
+
+### Known Issues
+- None identified
+
+### Next Steps
+- E2E test expansion for dashboard flows
+- AI-powered evidence curation suggestions (backlogged)
+
 ## 2026-02-28 — Sprint 7 Complete
 **Sprint:** 7 | **Stories:** 1-15 (Commerce Platform)
 **Summary:** Full commerce platform — billing UI, discount codes, entitlements, affiliates, legacy cleanup, 47 new tests.

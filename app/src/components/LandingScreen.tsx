@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Plus, Star, Trash2, AlertTriangle } from 'lucide-react';
+import { Sparkles, Plus, Star, Trash2, LayoutDashboard } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { GlassButton } from './GlassButton';
 import { SessionCard } from './SessionCard';
@@ -19,6 +19,7 @@ interface LandingScreenProps {
   onLoadResumes: () => void;
   onSetDefaultResume: (resumeId: string) => Promise<boolean>;
   onDeleteResume: (resumeId: string) => Promise<boolean>;
+  onNavigateToDashboard?: () => void;
 }
 
 type LandingToast = {
@@ -47,6 +48,7 @@ export function LandingScreen({
   onLoadResumes,
   onSetDefaultResume,
   onDeleteResume,
+  onNavigateToDashboard,
 }: LandingScreenProps) {
   const [busyResumeId, setBusyResumeId] = useState<string | null>(null);
   const [busySessionId, setBusySessionId] = useState<string | null>(null);
@@ -181,10 +183,20 @@ export function LandingScreen({
           </div>
         )}
 
-        <GlassButton onClick={onNewSession} className="mb-12 px-8 py-3 text-base">
+        <GlassButton onClick={onNewSession} className="mb-4 px-8 py-3 text-base">
           <Plus className="h-5 w-5" />
           Start New Session
         </GlassButton>
+
+        {onNavigateToDashboard && (
+          <button
+            onClick={onNavigateToDashboard}
+            className="mb-12 flex items-center gap-2 text-xs text-white/50 transition-colors hover:text-white/80"
+          >
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            View Dashboard
+          </button>
+        )}
 
         <div className="mb-10 w-full">
           <h2 className="mb-4 text-left text-sm font-medium text-white/60">Base Resumes</h2>

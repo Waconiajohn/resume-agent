@@ -10,13 +10,14 @@
 | Primary LLM | Z.AI GLM models (OpenAI-compatible) | 4-tier model routing |
 | Fallback LLM | Anthropic Claude (optional) | Selectable via `LLM_PROVIDER` env var |
 | E2E Testing | Playwright | Full pipeline tests (~28 min with Z.AI latency) |
-| Unit Testing | Vitest | Server (577 tests) + App (281 tests) |
+| Unit Testing | Vitest | Server (663 tests) + App (327 tests) |
 
 ## Monorepo Layout
 
 ```
 app/                          # Frontend (Vite + React 19)
   src/components/panels/      # 11 right-panel components (panel-renderer.tsx dispatches)
+  src/components/dashboard/   # 13 dashboard components (DashboardScreen dispatches tabs)
   src/hooks/                  # useAgent.ts (SSE), usePipeline.ts, useSession.ts, useAuth.ts
   src/types/                  # panels.ts (PanelData union), session.ts, resume.ts
 server/                       # Backend (Hono + Node.js)
@@ -155,6 +156,18 @@ Supabase (PostgreSQL) with RLS on all tables. Admin client uses service key (byp
 - `PanelData` is a discriminated union in `app/src/types/panels.ts`.
 - `PanelErrorBoundary` wraps each panel for graceful error handling.
 - Section review renders `SectionWorkbench` (full-screen workbench with 25-deep undo/redo, review tokens, action locking).
+
+## User Dashboard
+
+`/dashboard` route renders `DashboardScreen.tsx` with 3 tabs dispatched by `DashboardTabs.tsx`:
+
+| Tab | Component | Features |
+|-----|-----------|----------|
+| Sessions | `SessionHistoryTab` | Session gallery with status filter, rich cards (`DashboardSessionCard`), resume viewer modal (`SessionResumeModal`), compare mode (`ResumeComparisonModal`) |
+| Master Resume | `MasterResumeTab` | Full resume viewer + inline editor, expandable experience (`ExperienceCard`), skill categories (`SkillsCategoryCard`), inline field editing (`EditableField`), version history |
+| Evidence Library | `EvidenceLibraryTab` | Evidence browser with source filter (crafted/upgraded/interview), text search, per-item delete (`EvidenceItemCard`) |
+
+Props flow: `App.tsx` → `DashboardScreen` → tab components. API calls via `useSession` hook functions (`getSessionResume`, `updateMasterResume`, `getResumeHistory`).
 
 ## Auth
 

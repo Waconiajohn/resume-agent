@@ -593,6 +593,34 @@ sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
   return c.json({ session: data });
 });
 
+// GET /sessions/:id/resume — Get the final resume from a completed session
+sessions.get('/:id/resume', async (c) => {
+  const user = c.get('user');
+  const sessionId = c.req.param('id');
+  if (!isValidUuid(sessionId)) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('last_panel_data')
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (error || !data) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const panelData = data.last_panel_data as Record<string, unknown> | null;
+  const resume = panelData?.resume ?? null;
+  if (!resume) {
+    return c.json({ error: 'No resume data available for this session' }, 404);
+  }
+
+  return c.json({ resume });
+});
+
 // GET /sessions/:id — Get session state
 sessions.get('/:id', async (c) => {
   const user = c.get('user');
@@ -829,19 +857,48 @@ sessions.post('/:id/messages', rateLimitMiddleware(20, 60_000), async (c) => {
 sessions.get('/', async (c) => {
   const user = c.get('user');
 
-  const { data, error } = await supabaseAdmin
+  const limit = Math.min(Math.max(parseInt(c.req.query('limit') ?? '50', 10) || 50, 1), 100);
+  const statusFilter = c.req.query('status') ?? '';
+
+  let query = supabaseAdmin
     .from('coach_sessions')
-    .select('id, status, current_phase, created_at, updated_at')
+    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, created_at, updated_at')
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
-    .limit(10);
+    .limit(limit);
+
+  if (statusFilter) {
+    query = query.eq('pipeline_status', statusFilter);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     logger.error({ error: error.message }, 'Failed to load sessions');
     return c.json({ error: 'Failed to load sessions' }, 500);
   }
 
-  return c.json({ sessions: data });
+  const enriched = (data ?? []).map((row: Record<string, unknown>) => {
+    const panelData = row.last_panel_data as Record<string, unknown> | null;
+    const resume = panelData?.resume as Record<string, unknown> | null;
+    return {
+      id: row.id,
+      status: row.status,
+      current_phase: row.current_phase,
+      pipeline_status: row.pipeline_status ?? null,
+      pipeline_stage: row.pipeline_stage ?? null,
+      input_tokens_used: row.input_tokens_used ?? 0,
+      output_tokens_used: row.output_tokens_used ?? 0,
+      estimated_cost_usd: row.estimated_cost_usd ?? 0,
+      last_panel_type: row.last_panel_type ?? null,
+      company_name: (resume?.company_name as string) ?? (panelData?.company_name as string) ?? null,
+      job_title: (resume?.job_title as string) ?? (panelData?.job_title as string) ?? null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+  });
+
+  return c.json({ sessions: enriched });
 });
 
 export function getSessionRouteStats() {
