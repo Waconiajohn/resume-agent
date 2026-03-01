@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type Stripe from 'stripe';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { createPromoCode, listPromoCodes } from '../lib/stripe-promos.js';
+import { resetSessionRouteStateForTests } from './sessions.js';
 import logger from '../lib/logger.js';
 
 /**
@@ -229,6 +230,16 @@ admin.get('/feature-overrides', async (c) => {
   }
 
   return c.json({ user_id: userId, overrides: data ?? [] });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/reset-rate-limits — Reset in-memory SSE rate limit state
+// Used by E2E tests to avoid stale rate-limit buckets across test runs.
+// ---------------------------------------------------------------------------
+admin.post('/reset-rate-limits', (c) => {
+  resetSessionRouteStateForTests();
+  logger.info('Admin reset SSE rate-limit state');
+  return c.json({ status: 'reset' });
 });
 
 export { admin };

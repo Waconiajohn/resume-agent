@@ -72,6 +72,16 @@ export async function cleanupBeforeTest(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log(`[cleanup] stuck pipelines cleared: HTTP ${pipelineRes.status}`);
 
+  // 3. Reset in-memory SSE rate-limit state on the server
+  // eslint-disable-next-line no-console
+  console.log('[cleanup] Resetting SSE rate-limit state...');
+  const rlRes = await fetch('http://localhost:3001/api/admin/reset-rate-limits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  // eslint-disable-next-line no-console
+  console.log(`[cleanup] rate-limit reset: HTTP ${rlRes.status}`);
+
   // eslint-disable-next-line no-console
   console.log('[cleanup] Pre-test cleanup complete.');
 }
