@@ -33,7 +33,10 @@ import type {
   JDAnalysis,
   EvidenceItem,
   QualityScores,
+  PipelineState,
+  PipelineSSEEvent,
 } from '../types.js';
+import { createEmitTransparency } from '../runtime/shared-tools.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -843,34 +846,7 @@ const requestContentRevision: ResumeAgentTool = {
 
 // ─── Tool: emit_transparency ──────────────────────────────────────────
 
-const emitTransparency: ResumeAgentTool = {
-  name: 'emit_transparency',
-  description:
-    'Emit a transparency SSE event so the user can see what the Producer is currently doing.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      message: {
-        type: 'string',
-        description: 'Human-readable description of the current action or progress update',
-      },
-    },
-    required: ['message'],
-  },
-
-  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
-    const message = safeStr(input.message);
-    const state = ctx.getState();
-
-    ctx.emit({
-      type: 'transparency',
-      stage: state.current_stage,
-      message: `Producer: ${message}`,
-    });
-
-    return { emitted: true, message };
-  },
-};
+const emitTransparency = createEmitTransparency<PipelineState, PipelineSSEEvent>({ prefix: 'Producer: ' });
 
 // ─── Tool: check_narrative_coherence ──────────────────────────────────
 

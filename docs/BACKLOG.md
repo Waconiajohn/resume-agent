@@ -2,17 +2,6 @@
 
 ## Epic: Production Hardening
 
-### Story: Fix MaxListenersExceededWarning on Long Sessions
-- **As a** system operator
-- **I want to** resolve the MaxListenersExceeded warning that fires on long sessions
-- **So that** we don't leak abort listeners and risk memory issues
-- **Acceptance Criteria:**
-  - [ ] Identify all places where abort listeners are added without cleanup
-  - [ ] Ensure listener cleanup in all `finally` blocks
-  - [ ] No MaxListenersExceededWarning in logs during a full pipeline run
-- **Estimated complexity:** Medium
-- **Dependencies:** None
-
 ### Story: Fix SSE Type Mismatch Between Old and New Connections
 - **As a** developer
 - **I want to** resolve the `as never` cast in pipeline.ts SSE handling

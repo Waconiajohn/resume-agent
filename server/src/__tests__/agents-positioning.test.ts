@@ -369,7 +369,7 @@ describe('generateQuestions', () => {
     expect(currencyQ?.optional).toBe(true);
   });
 
-  it('normalizes suggestions to max 4 items', async () => {
+  it('normalizes suggestions to max 5 items and filters labels shorter than 15 chars', async () => {
     const output = [{
       id: 'q1',
       question_text: 'Test question',
@@ -377,11 +377,12 @@ describe('generateQuestions', () => {
       category: 'scale_and_scope',
       requirement_map: [],
       suggestions: [
-        { label: 'Option 1', description: 'Desc', source: 'resume' },
-        { label: 'Option 2', description: 'Desc', source: 'inferred' },
-        { label: 'Option 3', description: 'Desc', source: 'jd' },
-        { label: 'Option 4', description: 'Desc', source: 'resume' },
-        { label: 'Option 5', description: 'Desc', source: 'inferred' },
+        { label: 'Managed a team of 8-12 direct reports', description: 'Desc', source: 'resume' },
+        { label: 'Led a department of 25+ people', description: 'Desc', source: 'inferred' },
+        { label: 'Oversaw a 100+ person organization', description: 'Desc', source: 'jd' },
+        { label: 'Directed cross-functional teams of 15', description: 'Desc', source: 'resume' },
+        { label: 'Coordinated a global team across 3 regions', description: 'Desc', source: 'inferred' },
+        { label: 'Extra option beyond the cap', description: 'Desc', source: 'inferred' },
       ],
       encouraging_text: 'Good.',
       optional: false,
@@ -390,7 +391,7 @@ describe('generateQuestions', () => {
 
     const questions = await generateQuestions(makeIntakeOutput(), makeResearchOutput());
     const q1 = questions.find(q => q.id === 'q1');
-    expect(q1?.suggestions?.length).toBeLessThanOrEqual(4);
+    expect(q1?.suggestions?.length).toBeLessThanOrEqual(5);
   });
 });
 

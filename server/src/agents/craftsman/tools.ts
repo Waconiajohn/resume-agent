@@ -29,8 +29,10 @@ import type {
   SectionWriterOutput,
   ArchitectOutput,
   EvidenceItem,
-  PipelineStage,
+  PipelineState,
+  PipelineSSEEvent,
 } from '../types.js';
+import { createEmitTransparency } from '../runtime/shared-tools.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -736,35 +738,7 @@ const presentToUserTool: ResumeAgentTool = {
 
 // ─── Tool: emit_transparency ──────────────────────────────────────────
 
-const emitTransparencyTool: ResumeAgentTool = {
-  name: 'emit_transparency',
-  description:
-    'Emit a transparency SSE event to inform the user what the Craftsman is currently doing. ' +
-    'Call this before starting each section and before any long-running operation.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      message: {
-        type: 'string',
-        description: 'Human-readable status message (e.g. "Writing summary section...", "Self-reviewing skills section...")',
-      },
-    },
-    required: ['message'],
-  },
-
-  async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
-    const message = input.message as string;
-    const state = ctx.getState();
-
-    ctx.emit({
-      type: 'transparency',
-      message,
-      stage: state.current_stage as PipelineStage,
-    });
-
-    return { emitted: true, message };
-  },
-};
+const emitTransparencyTool = createEmitTransparency<PipelineState, PipelineSSEEvent>();
 
 // ─── Exports ──────────────────────────────────────────────────────────
 

@@ -372,107 +372,7 @@ describe('build_benchmark', () => {
   });
 });
 
-// ─── interview_candidate ──────────────────────────────────────────────
-
-describe('interview_candidate', () => {
-  const tool = getTool('interview_candidate');
-
-  it('emits positioning_question event and returns answer', async () => {
-    const ctx = makeCtx();
-    ctx.waitForUser = vi.fn().mockResolvedValue('I led a team of 45 engineers across 6 product teams.');
-
-    const result = await tool.execute(
-      {
-        question_text: 'Describe your team leadership experience',
-        context: 'Role requires managing large engineering organizations',
-        category: 'scale_and_scope',
-      },
-      ctx,
-    ) as Record<string, unknown>;
-
-    expect(ctx.emit).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'positioning_question' }),
-    );
-    expect(result.success).toBe(true);
-    expect(result.answer).toContain('45 engineers');
-    expect(ctx.scratchpad.interview_answers).toHaveLength(1);
-  });
-
-  it('accumulates answers in scratchpad across multiple calls', async () => {
-    const ctx = makeCtx();
-    ctx.waitForUser = vi.fn()
-      .mockResolvedValueOnce('First answer')
-      .mockResolvedValueOnce('Second answer');
-
-    await tool.execute(
-      { question_text: 'Q1', context: 'C1', category: 'scale_and_scope' },
-      ctx,
-    );
-    await tool.execute(
-      { question_text: 'Q2', context: 'C2', category: 'career_narrative' },
-      ctx,
-    );
-
-    expect((ctx.scratchpad.interview_answers as unknown[]).length).toBe(2);
-  });
-
-  it('returns budget_reached signal when interview budget is exhausted', async () => {
-    const ctx = makeCtx({ user_preferences: { workflow_mode: 'fast_draft' } });
-    // fast_draft budget is 5 — pre-fill scratchpad with 5 answers
-    ctx.scratchpad.interview_answers = new Array(5).fill({
-      question_id: 'q',
-      question_text: 'Q',
-      category: 'scale_and_scope',
-      answer: 'A',
-      timestamp: new Date().toISOString(),
-    });
-
-    const result = await tool.execute(
-      { question_text: 'One more Q', context: 'context', category: 'scale_and_scope' },
-      ctx,
-    ) as Record<string, unknown>;
-
-    expect(result.budget_reached).toBe(true);
-    expect(result.questions_asked).toBe(5);
-  });
-
-  it('throws when question_text is empty after budget check passes', async () => {
-    const ctx = makeCtx();
-
-    await expect(
-      tool.execute({ question_text: '', context: 'ctx', category: 'scale_and_scope' }, ctx),
-    ).rejects.toThrow('question_text is required');
-  });
-
-  it('persists Q&A to interview_transcript on pipeline state', async () => {
-    const ctx = makeCtx();
-    ctx.waitForUser = vi.fn().mockResolvedValue('My answer about leading teams');
-
-    await tool.execute(
-      { question_text: 'Tell me about leadership', context: 'ctx', category: 'career_narrative' },
-      ctx,
-    );
-
-    const transcript = ctx.getState().interview_transcript;
-    expect(transcript).toHaveLength(1);
-    expect(transcript![0].answer).toContain('leading teams');
-  });
-
-  it('handles invalid category by falling back to requirement_mapped', async () => {
-    const ctx = makeCtx();
-    ctx.waitForUser = vi.fn().mockResolvedValue('Answer');
-
-    const result = await tool.execute(
-      { question_text: 'Q', context: 'C', category: 'not_a_real_category' },
-      ctx,
-    ) as Record<string, unknown>;
-
-    expect(result.success).toBe(true);
-    // Should not throw — bad category is coerced to 'requirement_mapped'
-    const answers = ctx.scratchpad.interview_answers as Array<{ category: string }>;
-    expect(answers[0].category).toBe('requirement_mapped');
-  });
-});
+// ─── interview_candidate removed (Sprint 10 Story 3: batch-only mode) ─
 
 // ─── classify_fit ─────────────────────────────────────────────────────
 
@@ -583,7 +483,7 @@ describe('emit_transparency (strategist)', () => {
 
     const result = await tool.execute({ message: 'Analyzing job description...' }, ctx) as Record<string, unknown>;
 
-    expect(result.success).toBe(true);
+    expect(result.emitted).toBe(true);
     expect(ctx.emit).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'transparency',
@@ -607,7 +507,7 @@ describe('emit_transparency (strategist)', () => {
 
     const result = await tool.execute({ message: 42 }, ctx) as Record<string, unknown>;
 
-    expect(result.success).toBe(true);
+    expect(result.emitted).toBe(true);
     expect(result.message).toBe('42');
   });
 });

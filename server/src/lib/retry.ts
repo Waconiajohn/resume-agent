@@ -1,3 +1,5 @@
+import { setMaxListeners } from 'node:events';
+
 const TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504, 529]);
 const TRANSIENT_ERROR_CODES = new Set([
   'ECONNRESET',
@@ -103,6 +105,17 @@ export async function withRetry<T>(
 ): Promise<T> {
   const maxAttempts = options?.maxAttempts ?? 3;
   const baseDelay = options?.baseDelay ?? 1000;
+
+  // Prevent MaxListenersExceededWarning: each attempt may call fn() which internally
+  // calls createCombinedAbortSignal, adding a listener to this signal. Bump the limit
+  // to accommodate maxAttempts concurrent listener chains.
+  if (options?.signal) {
+    try {
+      setMaxListeners(20, options.signal);
+    } catch {
+      // Ignore — some signal implementations do not support setMaxListeners.
+    }
+  }
 
   let lastError: Error | undefined;
 

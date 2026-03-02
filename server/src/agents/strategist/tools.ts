@@ -22,10 +22,13 @@ import type {
   PositioningProfile,
   PositioningQuestion,
   EvidenceItem,
+  PipelineState,
+  PipelineSSEEvent,
 } from '../types.js';
 import { randomUUID } from 'node:crypto';
 import { positioningToQuestionnaire, extractInterviewAnswers, buildQuestionnaireEvent } from '../../lib/questionnaire-helpers.js';
 import { evaluateFollowUp } from '../positioning-coach.js';
+import { createEmitTransparency } from '../runtime/shared-tools.js';
 
 // ─── Tool: parse_resume ───────────────────────────────────────────────
 
@@ -866,37 +869,7 @@ const designBlueprintTool: ResumeAgentTool = {
 
 // ─── Tool: emit_transparency ──────────────────────────────────────────
 
-const emitTransparencyTool: ResumeAgentTool = {
-  name: 'emit_transparency',
-  description: 'Send a transparency message to the frontend so the user knows what the Strategist is doing. Use this at the start of each major phase and when waiting for long-running operations.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      message: {
-        type: 'string',
-        description: 'A brief, plain-language description of what the Strategist is currently doing. Example: "Analyzing job description requirements..." or "Interviewing you about your P&L leadership experience..."',
-      },
-    },
-    required: ['message'],
-  },
-  model_tier: 'orchestrator',
-  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
-    const message = String(input.message ?? '');
-    if (!message.trim()) {
-      return { success: false, reason: 'message is empty' };
-    }
-
-    const state = ctx.getState();
-
-    ctx.emit({
-      type: 'transparency',
-      message,
-      stage: state.current_stage,
-    });
-
-    return { success: true, message };
-  },
-};
+const emitTransparencyTool = createEmitTransparency<PipelineState, PipelineSSEEvent>();
 
 // ─── Exports ──────────────────────────────────────────────────────────
 
@@ -905,7 +878,6 @@ export const strategistTools: ResumeAgentTool[] = [
   analyzeJdTool,
   researchCompanyTool,
   buildBenchmarkTool,
-  interviewCandidateTool,
   interviewCandidateBatchTool,
   classifyFitTool,
   designBlueprintTool,

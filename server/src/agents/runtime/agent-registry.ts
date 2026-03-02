@@ -6,10 +6,11 @@
  * so the coordinator can instantiate agents without hard-coded imports.
  */
 
-import type { AgentConfig } from './agent-protocol.js';
+import type { AgentConfig, BaseState, BaseEvent } from './agent-protocol.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyAgentConfig = AgentConfig<any, any>;
+// Internal widened type used by the registry store.
+// Callers register via registerAgent() which handles this widening safely.
+type AnyAgentConfig = AgentConfig<BaseState, BaseEvent>;
 
 class AgentRegistry {
   private readonly agents = new Map<string, AnyAgentConfig>();
@@ -64,5 +65,28 @@ class AgentRegistry {
 
 /** Singleton registry shared across the application. */
 export const agentRegistry = new AgentRegistry();
+
+/**
+ * Type-safe helper for registering an agent config.
+ *
+ * Accepts a fully-typed `AgentConfig<TState, TEvent>` and widens it to the
+ * registry's internal `AnyAgentConfig` type without requiring callers to use
+ * `as unknown as AgentConfig` casts.
+ *
+ * Usage (in each agent.ts):
+ * ```ts
+ * import { registerAgent } from '../runtime/agent-registry.js';
+ * registerAgent(myConfig);
+ * ```
+ */
+export function registerAgent<
+  TState extends BaseState,
+  TEvent extends BaseEvent,
+>(config: AgentConfig<TState, TEvent>): void {
+  // Type widening: AgentConfig<TState, TEvent> → AgentConfig<BaseState, BaseEvent>.
+  // Function parameters are contravariant so a direct cast is rejected by TS.
+  // The double cast is confined to this one helper so callers never need it.
+  agentRegistry.register(config as unknown as AnyAgentConfig);
+}
 
 export type { AgentRegistry };

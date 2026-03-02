@@ -203,10 +203,10 @@ async function respondToProfileChoice(page: Page): Promise<void> {
 }
 
 /**
- * Respond to a positioning interview question.
- * Strategy: If suggestions are shown, click the first one.
- * Always type a substantive custom answer, then click Continue.
- * Each answer triggers an API call, so we add a generous delay.
+ * Respond to a positioning interview question (legacy single-question path).
+ * With Sprint 10's batch-only mode, interviews now go through the questionnaire
+ * path (interview_candidate_batch → QuestionnairePanel). This handler is retained
+ * for backward compatibility but should rarely fire in normal pipeline runs.
  *
  * Uses page.evaluate() for all interactions to bypass zero-height layout.
  */

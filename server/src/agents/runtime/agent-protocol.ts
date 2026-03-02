@@ -96,6 +96,17 @@ export interface AgentConfig<
    * Default: 4096.
    */
   loop_max_tokens?: number;
+  /**
+   * Optional lifecycle hook called once before the agent's first LLM round.
+   * Use for pre-flight validation, state initialization, or warm-up logging.
+   */
+  onInit?: (ctx: AgentContext<TState, TEvent>) => Promise<void>;
+  /**
+   * Optional lifecycle hook called after the agent loop completes (success or error).
+   * Use for cleanup, final state persistence, or shutdown logging.
+   * Guaranteed to run even if the loop throws.
+   */
+  onShutdown?: (ctx: AgentContext<TState, TEvent>) => Promise<void>;
 }
 
 // ─── Agent Context (passed to tools) ─────────────────────────────────

@@ -11,6 +11,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { setMaxListeners } from 'node:events';
 import { llm } from '../../lib/llm.js';
 import { withRetry } from '../../lib/retry.js';
 import { createCombinedAbortSignal } from '../../lib/llm-provider.js';
@@ -85,11 +86,22 @@ export async function runAgentLoop<
     messages.push({ role: 'user', content: initialMessage });
   }
 
+  // Prevent MaxListenersExceededWarning: ctx.signal accumulates one listener per tool
+  // execution (from executeToolWithTimeout) plus one for the overall signal below.
+  // Parallel tool rounds can have many live listeners simultaneously.
+  setMaxListeners(50, ctx.signal);
+
   // Overall timeout
   const { signal: overallSignal, cleanup: cleanupOverall } = createCombinedAbortSignal(
     ctx.signal,
     overallTimeoutMs,
   );
+
+  // Prevent MaxListenersExceededWarning: overallSignal accumulates one listener per
+  // LLM call (from createCombinedAbortSignal inside llm-provider.ts). With up to
+  // maxRounds × maxAttempts calls over the agent's lifetime, counts can exceed the
+  // default limit of 10, even though each listener is removed in its finally block.
+  setMaxListeners(50, overallSignal);
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;

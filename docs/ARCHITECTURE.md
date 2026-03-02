@@ -56,9 +56,11 @@ User → Coordinator → Strategist → [Blueprint Gate] → Craftsman → Produ
 Thin orchestration layer (~850 lines). Sequences agents, manages user interaction (SSE events, gates), and routes inter-agent messages. Makes zero content decisions.
 
 ### Resume Strategist (`agents/strategist/`)
-Owns understanding, intelligence, and positioning. Interviews the candidate like a world-class executive recruiter, researches the market, identifies competitive advantages, and designs the resume strategy. Runs as an agentic loop — the LLM decides which tools to call and when to iterate.
+Owns understanding, intelligence, and positioning. Researches the market, identifies competitive advantages, and designs the resume strategy. Runs as an agentic loop — the LLM decides which tools to call and when to iterate.
 
-**Tools:** `parse_resume`, `analyze_jd`, `research_company`, `build_benchmark`, `interview_candidate`, `classify_fit`, `design_blueprint`, `emit_transparency`
+Candidate interviewing uses **batch-only mode** (see ADR-016): all questions are delivered at once as a structured `QuestionnairePanel` rather than one at a time. The `interview_candidate` single-question tool has been removed.
+
+**Tools:** `parse_resume`, `analyze_jd`, `research_company`, `build_benchmark`, `classify_fit`, `design_blueprint`, `emit_transparency`
 
 ### Resume Craftsman (`agents/craftsman/`)
 Owns content creation. Writes each section following detailed rules in resume-guide.ts. Self-reviews every section before presenting to the user. Iterates based on feedback.
@@ -77,8 +79,37 @@ Agents communicate through `AgentBus` (`runtime/agent-bus.ts`) using standard `A
 
 - **agent-loop.ts** — Core agentic loop: multi-round LLM + tool calling with retries, timeouts. The LLM decides which tools to call and when to stop.
 - **agent-bus.ts** — In-memory inter-agent message routing.
-- **agent-protocol.ts** — Standard types: `AgentTool`, `AgentContext`, `AgentConfig`, `AgentMessage`.
+- **agent-protocol.ts** — Standard types: `AgentTool`, `AgentContext`, `AgentConfig`, `AgentMessage`. `AgentConfig` includes optional `onInit` and `onShutdown` lifecycle hooks.
 - **agent-context.ts** — Creates runtime context (pipeline state, SSE, gates) for tools.
+- **agent-registry.ts** — Agent self-registration on module load via `registerAgent<TState, TEvent>()` helper. Confines internal type widening to a single documented cast.
+- **shared-tools.ts** — Domain-agnostic tool factories shared across agents. Currently exports `createEmitTransparency<TState, TEvent>(config?)` which accepts an optional `prefix` string and returns a fully-typed `AgentTool`.
+
+### Shared Tool Factory Pattern
+
+Tools that are functionally identical across agents are defined once as factory functions in `shared-tools.ts` and instantiated per agent:
+
+```typescript
+// In strategist/tools.ts
+import { createEmitTransparency } from '../runtime/shared-tools.js';
+const emitTransparencyTool = createEmitTransparency<PipelineState, PipelineSSEEvent>();
+
+// In producer/tools.ts
+const emitTransparencyTool = createEmitTransparency<PipelineState, PipelineSSEEvent>({ prefix: 'Producer: ' });
+```
+
+Factories return `{ success: false }` on empty messages (never emit empty SSE events). Return `{ emitted: true, message }` on success. Adding a new shared tool follows the same factory pattern — domain-specific config via an optional config parameter.
+
+### Agent Registration
+
+Agents self-register using the typed helper to avoid `as unknown as AgentConfig` casts at call sites:
+
+```typescript
+// In strategist/agent.ts
+import { registerAgent } from '../runtime/agent-registry.js';
+registerAgent(strategistConfig); // fully typed, no cast
+```
+
+The registry stores agents as `AgentConfig<BaseState, BaseEvent>` internally. The widening cast is confined to the `registerAgent()` function in `agent-registry.ts` (one documented location).
 
 ## LLM Model Routing
 

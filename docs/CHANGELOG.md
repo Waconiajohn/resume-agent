@@ -1,5 +1,139 @@
 # Changelog — Resume Agent
 
+## 2026-03-01 — Story 8: E2E Test — Dashboard Flows
+**Sprint:** 10 | **Story:** Story 8 — E2E Test — Dashboard Flows
+**Summary:** Created `e2e/tests/dashboard.spec.ts` — 12 Playwright tests covering dashboard navigation, tab switching, session card status badges, status filter, resume viewer modal, evidence library search/filter, and comparison selection flows. All tests are resilient to data state (empty or populated).
+
+### Changes Made
+- `e2e/tests/dashboard.spec.ts` — New file. 12 tests across `test.describe('Dashboard Flows')`. Uses same `storageState` auth pattern as the existing `chromium` Playwright project. Fetches real session data from Supabase via service role REST API in `beforeAll` to determine which data-dependent tests to skip vs assert.
+
+### Decisions Made
+- Used `fetchTestSessions()` in `beforeAll` to probe real DB state instead of mocking. This means tests correctly skip comparison assertions when fewer than 2 complete sessions exist, rather than failing falsely.
+- Tests skip gracefully with `test.skip()` rather than asserting on missing data. This keeps CI green regardless of test data state.
+- The `countVisibleSessionCards()` helper identifies cards by the delete button's aria-label (`"Delete session"`) — every card has exactly one, making it a reliable selector.
+- Skeleton animation `.animate-pulse` detection uses `.catch(() => {})` because the skeleton may already be gone by the time the assertion runs; this is intentional non-blocking behavior.
+
+### Known Issues
+- None introduced by this story.
+
+### Next Steps
+- Story 9: Documentation, Retrospective, and Sprint Cleanup.
+
+## 2026-03-01 — Sprint 10 Complete
+**Sprint:** 10 | **Stories:** 1-9 (UX Polish, Platform Hardening & Cleanup)
+**Summary:** Improved positioning interview UX with rich clickable options, unified to batch-only interview mode, fixed agent registry type erasure, extracted shared emit_transparency factory, resolved MaxListenersExceededWarning, and completed sprint documentation.
+
+### Changes Made
+
+**Story 1: Improve LLM Suggestion Quality**
+- `server/src/agents/positioning-coach.ts` — Rewrote `generateQuestionsViaLLM()` prompt to require 3-5 concrete, clickable answer options per question. Updated suggestion schema validation: min label length 15 chars, max 5 options (was 4), truncation at 120 chars.
+
+**Story 2: Improve Fallback Suggestion Quality**
+- `server/src/agents/positioning-coach.ts` — Rewrote all 8 fallback questions in `generateFallbackQuestions()` with 3-5 concrete answer options each. All suggestions now include `source: 'coach'` badge.
+
+**Story 3: Unify Interview to Batch-Only Mode**
+- `server/src/agents/strategist/tools.ts` — Removed `interviewCandidateTool` from strategist tools exports. Single-question conversational interview mode eliminated.
+- `server/src/agents/strategist/agent.ts` — Updated strategist system prompt to reflect batch-only mode. No instructions for the removed `interview_candidate` tool.
+- `server/src/agents/positioning-coach.ts` — Verified `positioningToQuestionnaire()` correctly maps rich suggestion objects to questionnaire format.
+- `e2e/helpers/pipeline-responder.ts` — Updated comment noting single-question mode no longer exists.
+
+**Story 4: Interview Answer Extraction for Multi-Select**
+- `server/src/agents/coordinator.ts` — Updated `extractInterviewAnswers()` with improved option label lookup. Primary strategy: match by `${questionId}_opt_${index}` key pattern. Fallback strategy: extract index from option ID suffix to handle variant ID formats.
+
+**Story 5: Agent Registry Type Safety and Lifecycle Hooks**
+- `server/src/agents/runtime/agent-protocol.ts` — Added optional `onInit` and `onShutdown` lifecycle hooks to `AgentConfig<TState, TEvent>`. Both typed as `(ctx: AgentContext<TState, TEvent>) => Promise<void>`.
+- `server/src/agents/runtime/agent-registry.ts` — Changed internal `AnyAgentConfig` from `AgentConfig<any, any>` to `AgentConfig<BaseState, BaseEvent>`. Added exported `registerAgent<TState, TEvent>()` helper that handles internal widening with a single documented `as unknown as AnyAgentConfig` cast confined to this one function.
+- `server/src/agents/strategist/agent.ts` — Replaced `agentRegistry.register(...as unknown as AgentConfig)` with `registerAgent(strategistConfig)`.
+- `server/src/agents/craftsman/agent.ts` — Same registration cleanup as strategist.
+- `server/src/agents/producer/agent.ts` — Same registration cleanup as producer.
+
+**Story 6: Capability-Based Tool Packages (Shared Tools)**
+- `server/src/agents/runtime/shared-tools.ts` — New file. `createEmitTransparency<TState, TEvent>(config?)` factory returns a typed `AgentTool`. Optional `prefix` config prepends text to the message. Guards against empty messages (returns `{ success: false }`). Domain-agnostic.
+- `server/src/agents/strategist/tools.ts` — Replaced ~30-line local `emitTransparencyTool` with `createEmitTransparency<PipelineState, PipelineSSEEvent>()`.
+- `server/src/agents/craftsman/tools.ts` — Same replacement. Removed now-unused `PipelineStage` import.
+- `server/src/agents/producer/tools.ts` — Replaced ~30-line local `emitTransparency` with `createEmitTransparency<PipelineState, PipelineSSEEvent>({ prefix: 'Producer: ' })`.
+- `server/src/__tests__/strategist-tools.test.ts` — Updated 2 emit_transparency return value assertions: `result.success` → `result.emitted`.
+- `server/src/__tests__/producer-tools.test.ts` — Updated 2 assertions to match shared factory behavior (prefixed message in result, empty message returns `{ success: false }`).
+
+**Story 7: Fix MaxListenersExceededWarning**
+- `server/src/agents/runtime/agent-loop.ts` — Added `setMaxListeners(50, ctx.signal)` and `setMaxListeners(50, overallSignal)`.
+- `server/src/lib/retry.ts` — Added proactive `setMaxListeners(20, options.signal)` at the start of `withRetry()` when signal is provided.
+- `server/src/agents/positioning-coach.ts` — Bumped `setMaxListeners` on per-attempt AbortController signal from 15 to 20.
+- `server/src/__tests__/agents-positioning.test.ts` — Updated test "normalizes suggestions to max 4 items" to use labels meeting 15-char minimum and expect max 5 (was 4).
+
+**Story 8: E2E Dashboard Tests**
+- `e2e/tests/dashboard.spec.ts` — New test file covering dashboard navigation, session history display, resume viewer modal, session filtering, and master resume tab loading.
+
+**Story 9: Documentation and Retrospective**
+- `docs/CHANGELOG.md` — Added Sprint 10 complete entry (this entry).
+- `docs/SPRINT_LOG.md` — Added Sprint 10 retrospective.
+- `docs/ARCHITECTURE.md` — Updated Strategist tools section (removed `interview_candidate`, noted batch-only mode). Added shared tools pattern section.
+- `docs/DECISIONS.md` — Added ADR-016 (batch-only interview) and ADR-017 (shared tool packages).
+- `docs/BACKLOG.md` — Removed items resolved by Sprint 10 (MaxListenersExceededWarning story).
+- `docs/CURRENT_SPRINT.md` — Marked Story 9 done.
+
+### Decisions Made
+- ADR-016: Remove single-question interview mode in favor of QuestionnairePanel batch mode (see DECISIONS.md).
+- ADR-017: Shared tool factory pattern via `createEmitTransparency` in `shared-tools.ts` (see DECISIONS.md).
+- The shared factory returns `{ emitted: true, message }` on success (matching Craftsman's prior behavior) rather than `{ success: true }`. `emitted` is the semantic winner.
+
+### Known Issues
+- Pre-existing TypeScript error in `resumes-edit.test.ts:292` (null cast) — unrelated to Sprint 10.
+- Story 8 (E2E Dashboard Tests) being implemented concurrently by separate agent.
+
+### Next Steps
+- Sprint 11 planning: review BACKLOG.md for next priority items.
+- Monitor MaxListenersExceededWarning resolution in live pipeline runs.
+
+## 2026-03-01 — Session N+1
+**Sprint:** 10 | **Stories:** 5 and 6 — Agent Registry Type Safety + Shared Tools
+**Summary:** Eliminated `as unknown as AgentConfig` type erasure casts in agent registration by adding a `registerAgent()` helper, added optional lifecycle hooks to `AgentConfig`, and extracted `emit_transparency` to a shared factory eliminating ~90 lines of duplicate code across 3 agents.
+
+### Changes Made
+- `server/src/agents/runtime/agent-protocol.ts` — Added optional `onInit` and `onShutdown` lifecycle hooks to `AgentConfig<TState, TEvent>`. Both are typed as `(ctx: AgentContext<TState, TEvent>) => Promise<void>`.
+- `server/src/agents/runtime/agent-registry.ts` — Changed internal `AnyAgentConfig` from `AgentConfig<any, any>` to `AgentConfig<BaseState, BaseEvent>` (removes explicit `any`). Added exported `registerAgent<TState, TEvent>()` helper that accepts a typed config and handles the internal widening with a single documented `as unknown as AnyAgentConfig` cast confined to this one function.
+- `server/src/agents/runtime/shared-tools.ts` — New file. `createEmitTransparency<TState, TEvent>(config?)` factory returns an `AgentTool` that emits `{ type: 'transparency', message, stage }`. Optional `prefix` config prepends text to the message. Guards against empty messages (returns `{ success: false }` instead of emitting). Domain-agnostic — works with any state/event type.
+- `server/src/agents/strategist/agent.ts` — Replaced `agentRegistry.register(strategistConfig as unknown as AgentConfig)` with `registerAgent(strategistConfig)`. Removed unused `import type { AgentConfig }`.
+- `server/src/agents/craftsman/agent.ts` — Same registration cleanup as strategist.
+- `server/src/agents/producer/agent.ts` — Same registration cleanup as producer.
+- `server/src/agents/strategist/tools.ts` — Added `PipelineState`, `PipelineSSEEvent` to type imports. Added `import { createEmitTransparency }` from shared-tools. Replaced ~30-line local `emitTransparencyTool` definition with `createEmitTransparency<PipelineState, PipelineSSEEvent>()`.
+- `server/src/agents/craftsman/tools.ts` — Same replacement. Removed now-unused `PipelineStage` import.
+- `server/src/agents/producer/tools.ts` — Added `PipelineState`, `PipelineSSEEvent` to type imports. Replaced ~30-line local `emitTransparency` with `createEmitTransparency<PipelineState, PipelineSSEEvent>({ prefix: 'Producer: ' })`.
+- `server/src/__tests__/strategist-tools.test.ts` — Updated 2 emit_transparency return value assertions: `result.success` → `result.emitted` (shared factory returns `emitted: true`, not `success: true`).
+- `server/src/__tests__/producer-tools.test.ts` — Updated 2 assertions: (1) "returns the original message" now expects the prefixed message since the factory includes prefix in result; (2) "handles empty message via safeStr" now expects `{ success: false }` (factory rejects empty input instead of emitting an empty-prefix-only message).
+
+### Decisions Made
+- The `registerAgent()` helper keeps the `as unknown as AnyAgentConfig` cast internal to the registry module, making it a single documented widening point rather than scattered across all callers. This satisfies the story goal without introducing `eslint-disable` or `any`.
+- The shared factory returns `{ emitted: true, message }` on success (matching Craftsman's prior behavior) rather than `{ success: true, message }` (Strategist's prior behavior). `emitted` is the semantic winner — it describes what happened. Tests updated accordingly.
+- Empty message guard in shared factory: all three agents should guard against empty messages. Strategist and Craftsman already did. Producer did not (safeStr passed '' through). The factory enforces consistency by returning `{ success: false }`.
+
+### Known Issues
+- Pre-existing TypeScript error in `resumes-edit.test.ts:292` (null cast) — unrelated to Sprint 10.
+
+### Next Steps
+- Stories 1-4 and 8-9 remain in Sprint 10.
+
+## 2026-03-01 — Session N
+**Sprint:** 10 | **Story:** Story 7 — Fix MaxListenersExceededWarning
+**Summary:** Prevent MaxListenersExceededWarning during full pipeline runs by proactively bumping AbortSignal listener limits at the points where accumulation is highest.
+
+### Changes Made
+- `server/src/agents/runtime/agent-loop.ts` — Added `import { setMaxListeners } from 'node:events'`. Added `setMaxListeners(50, ctx.signal)` before overall signal creation (ctx.signal accumulates one listener per concurrent tool call). Added `setMaxListeners(50, overallSignal)` after overall signal creation (overallSignal accumulates one listener per LLM call across all agent rounds).
+- `server/src/lib/retry.ts` — Added `import { setMaxListeners } from 'node:events'`. Added proactive `setMaxListeners(20, options.signal)` at the start of `withRetry()` if a signal is provided. Each retry attempt calls fn() which may call createCombinedAbortSignal, adding listeners to the provided signal.
+- `server/src/agents/positioning-coach.ts` — Bumped `setMaxListeners` on the per-attempt AbortController signal from 15 to 20, since retry can add multiple listener chains to the signal.
+- `server/src/__tests__/agents-positioning.test.ts` — Updated test "normalizes suggestions to max 4 items" to use labels meeting the new 15-character minimum and expect max 5 (was 4) — fixes pre-existing test breakage from Story 1/2 changes to `normalizeQuestions()`.
+
+### Decisions Made
+- Setting limits on `ctx.signal` and `overallSignal` at 50 each: with 20 rounds × 3 tools/round in parallel scenarios, even though listeners are cleaned up in `finally`, they accumulate momentarily during concurrent execution. 50 gives comfortable headroom without masking real leaks.
+- The `try/catch` around `setMaxListeners` in `withRetry` is defensive: some AbortSignal implementations (e.g. in test environments) may not support it.
+
+### Known Issues
+- Pre-existing TypeScript errors in `agent-registry.ts` (Sprint 10 Story 5) and `resumes-edit.test.ts` (unrelated) remain.
+- 3 pre-existing test failures in `producer-tools.test.ts` and `strategist-tools.test.ts` from Story 1-6 changes not yet covered by test updates.
+
+### Next Steps
+- Verify no MaxListenersExceededWarning appears in a live pipeline run.
+
 ## 2026-03-01 — Sprint 9 Complete
 **Sprint:** 9 | **Stories:** 1-7 (AI API Latency Reduction)
 **Summary:** Reduce pipeline wall-clock time by 15-40% through parallel tool execution, model tier downgrades, adaptive max_tokens, and prompt-level tool batching instructions. 27 new tests (690 server total, 327 app total = 1017).

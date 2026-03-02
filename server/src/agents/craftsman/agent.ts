@@ -15,8 +15,7 @@
 
 import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
 import type { ResumeAgentConfig } from '../types.js';
-import { agentRegistry } from '../runtime/agent-registry.js';
-import type { AgentConfig } from '../runtime/agent-protocol.js';
+import { registerAgent } from '../runtime/agent-registry.js';
 import { CRAFTSMAN_SYSTEM_PROMPT } from './prompts.js';
 import { craftsmanTools } from './tools.js';
 
@@ -65,7 +64,4 @@ export const craftsmanConfig: ResumeAgentConfig = {
   loop_max_tokens: 2048,
 };
 
-// Type erasure cast is required because AgentConfig is generic and the registry
-// stores the base form. The registry is used only for side-effect registration
-// and identity lookup; the full typed config is used directly by the coordinator.
-agentRegistry.register(craftsmanConfig as unknown as AgentConfig);
+registerAgent(craftsmanConfig);

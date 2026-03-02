@@ -2,6 +2,44 @@
 
 ---
 
+# Sprint 10 Retrospective — UX Polish, Platform Hardening & Cleanup
+**Completed:** 2026-03-01
+
+## What was delivered
+- **Story 1 (LLM Suggestion Quality):** Rewrote `generateQuestionsViaLLM()` prompt to produce 3-5 concrete, clickable answer options per question. Tightened schema validation (15-char min label, max 5 options, 120-char truncation). Clickable options now have meaningful specificity instead of vague one-liners.
+- **Story 2 (Fallback Suggestion Quality):** Rewrote all 8 fallback questions in `generateFallbackQuestions()` with 3-5 concrete, coach-badged answer options each. Fallback experience now matches the LLM-generated experience in richness.
+- **Story 3 (Batch-Only Interview Mode):** Removed `interviewCandidateTool` from Strategist exports. Single-question conversational interview mode eliminated entirely. All interviews now go through `QuestionnairePanel` batch mode. Strategist prompt updated accordingly.
+- **Story 4 (Multi-Select Answer Extraction):** Fixed `extractInterviewAnswers()` in coordinator.ts. Primary lookup by `${questionId}_opt_${index}` pattern; fallback extracts index from option ID suffix. Handles variant ID formats produced by different suggestion sources.
+- **Story 5 (Agent Registry Type Safety):** Added `registerAgent<TState, TEvent>()` helper. Lifecycle hooks (`onInit`/`onShutdown`) added to `AgentConfig`. All 3 agents use `registerAgent()` — zero `as unknown as AgentConfig` casts in caller code.
+- **Story 6 (Shared Tools Package):** Created `agents/runtime/shared-tools.ts` with `createEmitTransparency()` factory. Removed ~90 lines of duplicate `emit_transparency` implementations across 3 agent tool files. Factory enforces consistent empty-message guard.
+- **Story 7 (MaxListenersExceededWarning):** Set `setMaxListeners(50)` on `ctx.signal` and `overallSignal` in agent-loop.ts. Set `setMaxListeners(20)` on signals in retry.ts and positioning-coach.ts. Warning eliminated on full pipeline runs.
+- **Story 8 (E2E Dashboard Tests):** New `e2e/tests/dashboard.spec.ts` covering navigation, session history display, resume viewer modal, and master resume tab.
+- **Story 9 (Documentation & Retrospective):** CHANGELOG, SPRINT_LOG, ARCHITECTURE, DECISIONS, and BACKLOG updated.
+
+**Test totals:** 684 server + 327 app = 1011 passing tests (pre-Story 8 E2E). TypeScript clean.
+
+## What went well
+- All 7 code stories were small and focused — none required more than ~100 lines of new code. Each had a clear, verifiable acceptance criterion.
+- The shared tools extraction was a clean refactor: a factory function with config, three call sites replaced, ~90 lines eliminated, and test assertions updated to match the unified behavior.
+- The `registerAgent()` helper elegantly confined the `as unknown as AnyAgentConfig` cast to a single documented widening point inside the registry module, with no downstream callers carrying the cast.
+- Batch-only interview unification resolved a long-standing dual-mode complexity. The Strategist's tool surface is smaller and its prompt is cleaner.
+- The MaxListeners fix required reading the actual listener accumulation pattern (tool parallelism + retry + positioning coach) and applying targeted setMaxListeners at the three accumulation points — no global hacks.
+
+## What went wrong
+- Story 3 (Batch-Only) required careful verification that `positioningToQuestionnaire()` maps rich suggestion objects correctly — the interface contract between the positioning coach and the coordinator questionnaire system was underdocumented. No bugs found, but the audit took extra time.
+- Stories 1 and 2 are improvement stories without a hard quality metric. "Better suggestions" is subjective and can only be validated through live pipeline runs, not unit tests.
+
+## What to improve next sprint
+- Add a concrete quality metric for interview suggestion validation (e.g., assert that each fallback question has 3+ suggestions with labels of 15+ chars in a unit test — enforces the schema contract explicitly).
+- When removing a tool from an agent, also search for test stubs or mock factories referencing the tool name to avoid stale test infrastructure.
+
+## Technical debt identified
+- E2E tests (all Playwright tests) still take 28+ min due to Z.AI latency — no improvement path yet. Nightly-only run is the current mitigation.
+- `interview_transcript` field in `PipelineState` is now populated exclusively through the questionnaire path. The field name still references "interview" — could be renamed to `questionnaire_responses` in a future cleanup sprint.
+- Lifecycle hooks (`onInit`/`onShutdown`) added to `AgentConfig` in Story 5 are defined but not called anywhere in `agent-loop.ts` yet. They are a design placeholder for future use.
+
+---
+
 # Sprint 8 Retrospective — User Dashboard & Resume Management
 **Completed:** 2026-02-28
 

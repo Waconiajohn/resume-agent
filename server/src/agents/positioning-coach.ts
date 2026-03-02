@@ -164,7 +164,7 @@ export async function generateQuestions(
         // Each attempt gets its own AbortController so the in-flight fetch is
         // cancelled before a retry starts — prevents duplicate concurrent calls.
         const controller = new AbortController();
-        setMaxListeners(15, controller.signal);
+        setMaxListeners(20, controller.signal);
         const timer = setTimeout(() => controller.abort(), 120_000);
         return generateQuestionsViaLLM(resume, research, gaps, preferences, controller.signal)
           .finally(() => clearTimeout(timer));
@@ -219,7 +219,7 @@ PRINCIPLES:
 2. For requirements with partial evidence (gap_type: "no_metrics"), ask for the specific metric or quantifiable proof
 3. Frame as coaching, not interrogation: "Tell me about..." not "Do you have..."
 4. For executives, assume scope exists — ask them to quantify it
-5. Pre-populate suggestions from resume data where possible — include source field "resume", "inferred", or "jd"
+5. Pre-populate concrete answer options the candidate can click to select
 
 CATEGORIES (distribute questions across these):
 - scale_and_scope (2-3 questions): Surface operating scope executives take for granted — team size, budget, P&L, geography
@@ -233,13 +233,31 @@ PACE MODE:
 - balanced: ask a focused but complete set of questions
 - deep_dive: ask a thorough set of questions
 
+SUGGESTION QUALITY — CRITICAL:
+Each question MUST have 3-5 "suggestions" — these are CLICKABLE ANSWER OPTIONS the candidate can select instead of typing. They must be:
+- **Complete sentences**: Each option is a full, self-contained answer (20-120 characters). NOT topic keywords or vague hints.
+- **Distinct scenarios**: Options should cover different plausible realities (different scales, contexts, or approaches).
+- **Grounded in evidence**: Use resume data (source: "resume"), JD implications (source: "jd"), or reasonable inferences (source: "inferred").
+- **Ready to use as-is**: If the candidate clicks an option without typing anything else, that option alone must be a useful answer.
+
+GOOD suggestions for "How large was your team?":
+  - "Managed a team of 8-12 direct reports across 2 offices" (source: "inferred")
+  - "Led a department of 25-50 people with 4 team leads" (source: "inferred")
+  - "Oversaw 100+ person org spanning 3 countries" (source: "inferred")
+  - "Led a cross-functional team of 15 with dotted-line reports" (source: "resume")
+
+BAD suggestions (DO NOT generate these):
+  - "Team management" (too vague — this is a topic, not an answer)
+  - "Large team" (not specific enough)
+  - "Yes, I managed teams" (not useful as a standalone answer)
+
 Generate ${targetQuestionCount} questions based on the selected mode. Each question must have:
 - id: unique string (e.g., "scope_1", "req_pnl", "career_1", "hidden_1", "currency_1")
 - question_text: the coaching question
 - context: 1-2 sentences of context shown to the user
 - category: one of the category names above
 - requirement_map: array of JD requirements this question addresses (can be empty)
-- suggestions: 2-4 pre-populated answer options, each with label, description, and source ("resume", "inferred", or "jd")
+- suggestions: 3-5 concrete clickable answer options, each with label (complete answer sentence, 20-120 chars), description (additional context), and source ("resume", "inferred", or "jd")
 - encouraging_text: brief positive message shown AFTER they answer (e.g., "Great — that's exactly the kind of proof hiring managers look for.")
 - optional: true only for currency_and_adaptability questions
 
@@ -337,11 +355,11 @@ function normalizeQuestions(raw: unknown[], resume: IntakeOutput): PositioningQu
 
     const suggestions = (q.suggestions ?? [])
       .filter((s): s is { label: string; description: string; source?: string } =>
-        typeof s?.label === 'string' && s.label.length > 0
+        typeof s?.label === 'string' && s.label.length >= 15
       )
-      .slice(0, 4)
+      .slice(0, 5)
       .map(s => ({
-        label: s.label.length > 100 ? s.label.slice(0, 97) + '...' : s.label,
+        label: s.label.length > 120 ? s.label.slice(0, 117) + '...' : s.label,
         description: s.description ?? '',
         source: (['resume', 'inferred', 'jd'].includes(s.source ?? '') ? s.source : 'inferred') as 'resume' | 'inferred' | 'jd',
       }));
@@ -461,6 +479,21 @@ function generateFallbackQuestions(
 
   // Scale & Scope (2)
   const recentRole = resume.experience[0];
+  const teamSuggestions: PositioningQuestion['suggestions'] = [
+    { label: 'Managed a team of 5-10 direct reports', description: 'Single team, hands-on leadership', source: 'inferred' as const },
+    { label: 'Led a department of 25-50 people with team leads', description: 'Multi-team management with middle managers', source: 'inferred' as const },
+    { label: 'Oversaw 100+ person organization across regions', description: 'Large-scale org leadership spanning geographies', source: 'inferred' as const },
+    { label: 'Led cross-functional teams of 15-20 with dotted-line reports', description: 'Matrix management across departments', source: 'inferred' as const },
+  ];
+  // If resume has inferred scope, prepend it as a resume-sourced option
+  if (recentRole?.inferred_scope?.team_size) {
+    teamSuggestions.unshift({
+      label: `Team of ${recentRole.inferred_scope.team_size}${recentRole.inferred_scope.budget ? `, $${recentRole.inferred_scope.budget} budget` : ''}`,
+      description: `Based on your role as ${recentRole.title}`,
+      source: 'resume' as const,
+    });
+    if (teamSuggestions.length > 5) teamSuggestions.length = 5;
+  }
   questions.push({
     id: 'scope_team',
     question_number: num++,
@@ -470,14 +503,26 @@ function generateFallbackQuestions(
       : 'Help us understand the scope of your most recent leadership role.',
     input_type: 'hybrid',
     category: 'scale_and_scope',
-    suggestions: recentRole?.inferred_scope?.team_size ? [{
-      label: `Team of ${recentRole.inferred_scope.team_size}`,
-      description: 'Based on your resume',
-      source: 'resume' as const,
-    }] : undefined,
+    suggestions: teamSuggestions,
     encouraging_text: 'Scope like this immediately signals seniority to hiring managers.',
   });
 
+  const impactSuggestions: PositioningQuestion['suggestions'] = extractMetricBullets(resume).map(b => ({
+    label: b.text.length > 120 ? b.text.slice(0, 117) + '...' : b.text,
+    description: `From your role as ${b.role}`,
+    source: 'resume' as const,
+  }));
+  // Pad with inferred options if resume doesn't have enough metric bullets
+  const inferredImpactOptions: NonNullable<PositioningQuestion['suggestions']> = [
+    { label: 'Generated $1M+ in new revenue or pipeline', description: 'Direct revenue contribution or sales impact', source: 'inferred' as const },
+    { label: 'Reduced costs by 15-30% through process optimization', description: 'Operational efficiency or cost-cutting initiative', source: 'inferred' as const },
+    { label: 'Improved team productivity by 20%+ with new systems', description: 'Efficiency gains through tools, processes, or automation', source: 'inferred' as const },
+    { label: 'Grew the business unit from startup to $5M+ revenue', description: 'Built or scaled a new business line or product', source: 'inferred' as const },
+  ];
+  for (const opt of inferredImpactOptions) {
+    if (impactSuggestions.length >= 5) break;
+    impactSuggestions.push(opt);
+  }
   questions.push({
     id: 'scope_impact',
     question_number: num++,
@@ -485,11 +530,7 @@ function generateFallbackQuestions(
     context: 'Think about your biggest wins in terms of numbers.',
     input_type: 'hybrid',
     category: 'scale_and_scope',
-    suggestions: extractMetricBullets(resume).map(b => ({
-      label: b.text.length > 80 ? b.text.slice(0, 77) + '...' : b.text,
-      description: `From your role as ${b.role}`,
-      source: 'resume' as const,
-    })),
+    suggestions: impactSuggestions,
     encouraging_text: 'Great — concrete numbers are the single most impactful thing on a resume.',
   });
 
@@ -498,6 +539,27 @@ function generateFallbackQuestions(
     const gaps = identifyRequirementGaps(resume, research);
     const needsProbing = gaps.filter(g => g.gap_type !== 'strong').slice(0, 4);
     for (const gap of needsProbing) {
+      const gapSuggestions: NonNullable<PositioningQuestion['suggestions']> = [];
+      if (gap.partial_evidence) {
+        gapSuggestions.push({
+          label: gap.partial_evidence.length > 120 ? gap.partial_evidence.slice(0, 117) + '...' : gap.partial_evidence,
+          description: 'From your resume — can you add metrics?',
+          source: 'resume' as const,
+        });
+      }
+      if (gap.gap_type === 'no_metrics') {
+        gapSuggestions.push(
+          { label: `Delivered measurable results in ${gap.requirement}`, description: 'With specific metrics you can quantify', source: 'inferred' as const },
+          { label: `Led initiatives related to ${gap.requirement}`, description: 'Owned the strategy or execution', source: 'inferred' as const },
+          { label: `Supported ${gap.requirement} as part of a broader role`, description: 'Contributing role with indirect impact', source: 'inferred' as const },
+        );
+      } else {
+        gapSuggestions.push(
+          { label: `Yes, I have direct experience with ${gap.requirement}`, description: 'Hands-on, primary responsibility', source: 'jd' as const },
+          { label: `I have transferable experience from a related area`, description: 'Adjacent skills that apply to this requirement', source: 'inferred' as const },
+          { label: `I developed this skill recently through a project`, description: 'Newer capability with a concrete example', source: 'inferred' as const },
+        );
+      }
       questions.push({
         id: `req_${num}`,
         question_number: num++,
@@ -510,15 +572,7 @@ function generateFallbackQuestions(
         input_type: 'hybrid',
         category: 'requirement_mapped',
         requirement_map: [gap.requirement],
-        suggestions: gap.partial_evidence ? [{
-          label: gap.partial_evidence,
-          description: 'From your resume — can you add metrics?',
-          source: 'resume' as const,
-        }] : [{
-          label: `Yes, I have relevant experience`,
-          description: 'Tell us about it',
-          source: 'jd' as const,
-        }],
+        suggestions: gapSuggestions.slice(0, 5),
         encouraging_text: 'This directly addresses what the hiring manager is looking for.',
       });
     }
@@ -534,9 +588,10 @@ function generateFallbackQuestions(
     input_type: 'hybrid',
     category: 'career_narrative',
     suggestions: [
-      { label: 'Builder — I create things from scratch', description: 'Teams, products, functions', source: 'inferred' as const },
-      { label: 'Scaler — I grow what\'s working', description: 'Revenue, teams, operations', source: 'inferred' as const },
-      { label: 'Fixer — I turn things around', description: 'Underperformance, chaos, transitions', source: 'inferred' as const },
+      { label: 'I build things from scratch — teams, products, functions', description: 'Builder archetype: creating something new from zero', source: 'inferred' as const },
+      { label: 'I scale what\'s working — revenue, teams, operations', description: 'Scaler archetype: growing existing success', source: 'inferred' as const },
+      { label: 'I fix what\'s broken — turnarounds, restructures, transformations', description: 'Fixer archetype: turning underperformance around', source: 'inferred' as const },
+      { label: 'I connect people and strategy to drive alignment', description: 'Connector archetype: bridging teams and stakeholders', source: 'inferred' as const },
     ],
     encouraging_text: 'This narrative thread will be the backbone of your resume positioning.',
   });
@@ -550,7 +605,10 @@ function generateFallbackQuestions(
     input_type: 'hybrid',
     category: 'hidden_accomplishments',
     suggestions: [
-      { label: 'Something else entirely', description: 'An achievement that doesn\'t fit typical categories', source: 'inferred' as const },
+      { label: 'A major cost savings or revenue win I never quantified', description: 'Impact you achieved but didn\'t document with numbers', source: 'inferred' as const },
+      { label: 'A team or culture transformation that\'s hard to measure', description: 'People-focused impact that doesn\'t fit bullet format', source: 'inferred' as const },
+      { label: 'A crisis I navigated that saved the business', description: 'High-stakes problem-solving under pressure', source: 'inferred' as const },
+      { label: 'A process or system I built that others still use today', description: 'Lasting operational impact beyond your tenure', source: 'inferred' as const },
     ],
     encouraging_text: 'Hidden wins like these often become the most compelling resume content.',
   });
@@ -565,6 +623,12 @@ function generateFallbackQuestions(
       input_type: 'hybrid',
       category: 'currency_and_adaptability',
       optional: true,
+      suggestions: [
+        { label: 'Adopted AI/ML tools to improve team productivity', description: 'Applied AI, automation, or data-driven tools', source: 'inferred' as const },
+        { label: 'Implemented agile/lean methodology in my organization', description: 'Modern project management or operational approach', source: 'inferred' as const },
+        { label: 'Led a digital transformation or cloud migration initiative', description: 'Modernized systems or infrastructure', source: 'inferred' as const },
+        { label: 'Earned a recent certification or completed executive education', description: 'Formal upskilling in the last 2-3 years', source: 'inferred' as const },
+      ],
       encouraging_text: 'This signals adaptability — crucial for experienced executives.',
     });
   }

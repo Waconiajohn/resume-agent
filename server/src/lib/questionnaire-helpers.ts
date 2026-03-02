@@ -126,16 +126,26 @@ export function extractInterviewAnswers(
       const original = questionMap.get(r.question_id);
       if (!original) return null;
 
-      // Build answer text from selected options + custom text
+      // Build answer text from selected options + custom text.
+      // Users may click a pre-made option, type custom text, or do both.
       const parts: string[] = [];
 
       if (r.selected_option_ids.length > 0) {
+        const suggestions = original.suggestions ?? [];
         const selectedLabels = r.selected_option_ids
           .map(id => {
-            const suggestion = (original.suggestions ?? []).find(
+            // Primary lookup: match by the `${questionId}_opt_${index}` pattern
+            const byIndex = suggestions.find(
               (_, i) => `${original.id}_opt_${i}` === id,
             );
-            return suggestion?.label;
+            if (byIndex) return byIndex.label;
+            // Fallback: extract index from option ID suffix (handles reordered options)
+            const indexMatch = id.match(/_opt_(\d+)$/);
+            if (indexMatch) {
+              const idx = parseInt(indexMatch[1], 10);
+              if (idx >= 0 && idx < suggestions.length) return suggestions[idx].label;
+            }
+            return undefined;
           })
           .filter((l): l is string => !!l);
         if (selectedLabels.length > 0) {
@@ -147,6 +157,9 @@ export function extractInterviewAnswers(
         parts.push(r.custom_text.trim());
       }
 
+      // Join selected option labels and custom text with separator.
+      // If only an option was selected, the label IS the answer.
+      // If both, format as "Selected answer — Additional detail from user".
       const answer = parts.join(' — ') || '(skipped)';
 
       return {

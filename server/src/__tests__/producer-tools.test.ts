@@ -784,7 +784,7 @@ describe('emit_transparency (producer)', () => {
     );
   });
 
-  it('returns the original message (without prefix) in result', async () => {
+  it('returns the prefixed message in result', async () => {
     const ctx = makeCtx();
 
     const result = await tool.execute(
@@ -792,15 +792,15 @@ describe('emit_transparency (producer)', () => {
       ctx,
     ) as Record<string, unknown>;
 
-    expect(result.message).toBe('Checking ATS compliance...');
+    expect(result.message).toBe('Producer: Checking ATS compliance...');
   });
 
-  it('handles empty message gracefully via safeStr', async () => {
+  it('handles empty message gracefully — returns success:false without emitting', async () => {
     const ctx = makeCtx();
 
     const result = await tool.execute({ message: null }, ctx) as Record<string, unknown>;
 
-    expect(result.emitted).toBe(true);
-    // safeStr(null) returns '' — transparency still emitted, just empty
+    expect(result.success).toBe(false);
+    expect(ctx.emit).not.toHaveBeenCalled();
   });
 });
