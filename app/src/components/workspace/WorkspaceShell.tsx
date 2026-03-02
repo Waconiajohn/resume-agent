@@ -96,8 +96,6 @@ export function WorkspaceShell({
   footerRail,
   activeGate,
 }: WorkspaceShellProps) {
-  const selected = nodes.find((node) => node.key === selectedNode);
-
   return (
     <div className="flex h-[calc(100vh-3.5rem)] min-h-0 flex-col">
       <div className="border-b border-white/[0.08] bg-white/[0.02] px-3 py-2 backdrop-blur-xl">
@@ -124,16 +122,8 @@ export function WorkspaceShell({
           </GlassButton>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-white/88">{title}</div>
-            {subtitle && <div className="truncate text-[11px] text-white/52">{subtitle}</div>}
+            {subtitle && <div className="truncate text-xs text-white/52">{subtitle}</div>}
           </div>
-          {selected && (
-            <div className="ml-auto hidden items-center gap-2 md:flex">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-white/45">Viewing</span>
-              <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-xs text-white/80">
-                {selected.label}
-              </span>
-            </div>
-          )}
         </div>
 
         {activeGate?.active && (
@@ -198,24 +188,16 @@ export function WorkspaceShell({
                       )}
                     >
                       <div className="flex items-start gap-2">
-                        <span className={cn('mt-1 h-1.5 w-1.5 shrink-0 rounded-full', styles.dot)} />
+                        <span className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', styles.dot)} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="truncate text-sm font-medium text-white/88">{node.label}</span>
                             {node.status === 'locked' && <Lock className="h-3 w-3 text-white/35" />}
                           </div>
-                          <div className="mt-0.5 line-clamp-2 text-[11px] text-white/48">{node.description}</div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className={cn('rounded-full border px-1.5 py-0.5 text-[10px]', styles.pill)}>
-                              {styles.label}
-                            </span>
-                            {node.hasSnapshot && (
-                              <span className="text-[10px] text-white/48">Saved view</span>
-                            )}
-                            {node.detailLabel && (
-                              <span className="text-[10px] text-white/60">{node.detailLabel}</span>
-                            )}
-                          </div>
+                          <div className="mt-0.5 line-clamp-2 text-xs text-white/48">{node.description}</div>
+                          {node.detailLabel && (
+                            <div className="mt-1 text-[11px] text-white/55">{node.detailLabel}</div>
+                          )}
                         </div>
                       </div>
                     </button>

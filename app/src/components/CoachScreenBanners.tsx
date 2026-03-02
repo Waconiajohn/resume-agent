@@ -128,12 +128,12 @@ export function RuntimeRecoveryBanner({
             : 'The live connection is disconnected while processing is still expected.'}
         </span>
         {pipelineActivityStageElapsed && (
-          <span className="rounded-full border border-rose-200/14 bg-rose-200/[0.04] px-2 py-0.5 text-[10px] text-rose-100/75">
+          <span className="rounded-full border border-rose-200/14 bg-rose-200/[0.04] px-2 py-0.5 text-[11px] text-rose-100/75">
             Stage elapsed {pipelineActivityStageElapsed}
           </span>
         )}
         {pipelineActivityLastProgress && (
-          <span className="rounded-full border border-rose-200/14 bg-rose-200/[0.04] px-2 py-0.5 text-[10px] text-rose-100/75">
+          <span className="rounded-full border border-rose-200/14 bg-rose-200/[0.04] px-2 py-0.5 text-[11px] text-rose-100/75">
             Last progress {pipelineActivityLastProgress}
           </span>
         )}
@@ -305,13 +305,13 @@ export function WorkflowPreferencesCard({
       <GlassCard className="px-3 py-2.5">
         <details className="group">
           <summary className="cursor-pointer list-none flex flex-wrap items-center gap-2 select-none">
-            <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+            <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
               Run Settings
             </span>
-            <span className="ml-auto text-[10px] text-white/40 transition-transform group-open:rotate-90 inline-block">&#9654;</span>
+            <span className="ml-auto text-[11px] text-white/40 transition-transform group-open:rotate-90 inline-block">&#9654;</span>
           </summary>
           <div className="mt-2">
-            <p className="mb-2 text-[11px] text-white/55">
+            <p className="mb-2 text-xs text-white/55">
               Changes apply at the next safe checkpoint
             </p>
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">

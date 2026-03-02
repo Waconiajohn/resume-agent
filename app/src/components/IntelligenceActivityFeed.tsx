@@ -68,7 +68,7 @@ export function IntelligenceActivityFeed({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[120px] overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.03]"
+      className="max-h-[140px] overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.03]"
       aria-label="Pipeline activity log"
     >
       {total === 0 ? (

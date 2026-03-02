@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, ArrowRight, CheckCircle, ChevronDown } from 'lucide-react';
+import { Send, Loader2, ArrowRight, CheckCircle, ChevronDown, RefreshCw } from 'lucide-react';
 import { GlassTextarea } from './GlassInput';
 import { GlassButton } from './GlassButton';
 import { ChatMessage } from './ChatMessage';
@@ -107,18 +107,26 @@ export function ChatPanel({
               : runtimeState === 'error'
                 ? 'Error'
                 : (connected ? (pipelinePhaseActive ? 'Connected (idle)' : 'Connected') : 'Reconnecting');
-  const statusToneClass =
-    runtimeState === 'stalled_suspected'
-      ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/90'
+  const statusDotColor =
+    runtimeState === 'stalled_suspected' || runtimeState === 'error'
+      ? 'bg-rose-400'
       : runtimeState === 'processing'
-        ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+        ? 'bg-sky-400'
         : runtimeState === 'waiting_for_input'
-          ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
+          ? 'bg-amber-400'
           : runtimeState === 'complete'
-            ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/90'
-            : runtimeState === 'error'
-              ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/90'
-              : (connected ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/90' : 'border-white/[0.1] bg-white/[0.03] text-white/70');
+            ? 'bg-emerald-400'
+            : (connected ? 'bg-emerald-400' : 'bg-white/40');
+  const statusTextColor =
+    runtimeState === 'stalled_suspected' || runtimeState === 'error'
+      ? 'text-rose-100/90'
+      : runtimeState === 'processing'
+        ? 'text-sky-100/90'
+        : runtimeState === 'waiting_for_input'
+          ? 'text-amber-100/90'
+          : runtimeState === 'complete'
+            ? 'text-emerald-100/90'
+            : (connected ? 'text-emerald-100/90' : 'text-white/70');
   const lastActivityText = (() => {
     if (!lastBackendActivityAt) return null;
     const ms = Date.now() - new Date(lastBackendActivityAt).getTime();
@@ -172,47 +180,35 @@ export function ChatPanel({
       </span>
       {/* Phase indicator bar */}
       <div className="flex items-center gap-2 border-b border-white/[0.1] px-4 py-2">
-        <span className="text-[10px] uppercase tracking-wider text-white/50">Phase</span>
-        <span className="rounded-full border border-white/[0.12] bg-white/[0.05] px-2.5 py-0.5 text-xs font-medium text-white/78">
+        <span className="text-sm font-medium text-white/85">
           {PHASE_LABELS[currentPhase] ?? currentPhase}
         </span>
-        {pipelinePhaseActive && (
-          <span
-            className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2 py-0.5 text-[10px] text-white/55"
-            title="During an active resume pipeline run, this chat is grounded to verified workflow state and safe next-step guidance."
-          >
-            Grounded workflow help
-          </span>
-        )}
         <div className="ml-auto flex items-center gap-2">
-          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${statusToneClass}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${statusDotColor}`} title={lastActivityText ? `Last update ${lastActivityText}` : undefined} />
+          <span className={`text-xs ${statusTextColor}`}>
             {statusLabel}
           </span>
-          {lastActivityText && (
-            <span className="text-[10px] text-white/50">
-              Last update {lastActivityText}
-            </span>
-          )}
           {(stalledSuspected || !connected) && onReconnectStream && (
             <GlassButton
               type="button"
               variant="ghost"
               onClick={onReconnectStream}
-              className="h-auto px-2 py-1 text-[10px] uppercase tracking-[0.12em]"
+              className="h-auto px-2 py-1 text-[11px] uppercase tracking-[0.12em]"
             >
               Reconnect
             </GlassButton>
           )}
           {onRefreshWorkflowState && (
-            <GlassButton
+            <button
               type="button"
-              variant="ghost"
               onClick={() => { void onRefreshWorkflowState(); }}
-              loading={isRefreshingWorkflowState}
-              className="h-auto px-2 py-1 text-[10px] uppercase tracking-[0.12em]"
+              disabled={isRefreshingWorkflowState}
+              className="rounded p-1 text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-40"
+              aria-label="Refresh workflow state"
+              title="Refresh workflow state"
             >
-              Refresh State
-            </GlassButton>
+              <RefreshCw className={cn('h-3.5 w-3.5', isRefreshingWorkflowState && 'animate-spin')} />
+            </button>
           )}
           {isBusy && (
             <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />
@@ -381,7 +377,7 @@ export function ChatPanel({
           </GlassButton>
         </div>
         {isGateLocked && (
-          <p className="mt-1.5 text-center text-[10px] text-white/40">Respond using the panel to continue</p>
+          <p className="mt-1.5 text-center text-[11px] text-white/40">Respond using the panel to continue</p>
         )}
       </div>
     </div>

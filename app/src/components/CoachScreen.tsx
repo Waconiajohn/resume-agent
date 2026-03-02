@@ -468,167 +468,69 @@ export function CoachScreen({
       <div className="min-h-0 flex-1 p-3 md:p-4">
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-2 flex items-center gap-2 px-1">
-            <span className="text-sm font-medium text-white/85">{displayProcessStep.title}</span>
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/75">
-              Step {displayProcessStep.number} of 7 · {displayProcessStep.title}
+            <span className="text-sm font-medium text-white/85">
+              Step {displayProcessStep.number} · {displayProcessStep.title}
             </span>
             {!isViewingLiveNode && (
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2 py-0.5 text-[10px] text-white/58">
-                Previous version
-              </span>
+              <span className="text-xs italic text-white/45">previous version</span>
             )}
           </div>
 
           {draftReadiness && (
             <div className="mb-2 px-1">
               <GlassCard className={`px-3 py-2.5 ${draftReadiness.ready ? 'border-emerald-300/25 bg-emerald-400/[0.05]' : ''}`}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                    draftReadiness.ready
-                      ? 'border-emerald-300/30 bg-emerald-400/[0.10] text-emerald-100/90'
-                      : 'border-white/[0.1] bg-white/[0.03] text-white/70'
-                  }`}>
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${draftReadiness.ready ? 'bg-emerald-400' : 'bg-white/40'}`} />
+                  <span className="text-xs font-medium text-white/85">
                     {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
                   </span>
-                  <span className="text-[11px] text-white/70">
-                    Evidence: {draftReadiness.evidence_count}
-                  </span>
-                  <span className="text-[11px] text-white/60">•</span>
-                  <span className="text-[11px] text-white/70">
-                    Coverage {Math.round(draftReadiness.coverage_score)}% / {Math.round(draftReadiness.coverage_threshold)}%
-                  </span>
-                  <span className="text-[11px] text-white/60">•</span>
-                  <span className="text-[11px] text-white/65">
-                    {draftReadiness.workflow_mode.replace('_', ' ')}
-                  </span>
                 </div>
+                <p className="mt-1.5 text-xs text-white/65">
+                  {draftReadiness.evidence_count} evidence items · {Math.round(draftReadiness.coverage_score)}% / {Math.round(draftReadiness.coverage_threshold)}% coverage · {draftReadiness.workflow_mode.replace('_', ' ')}
+                  {typeof draftReadiness.remaining_coverage_needed === 'number' && draftReadiness.remaining_coverage_needed > 0 && (
+                    <> · <span className="text-sky-200/80">need +{draftReadiness.remaining_coverage_needed}%</span></>
+                  )}
+                  {typeof draftReadiness.suggested_question_count === 'number' && draftReadiness.suggested_question_count > 0 && (
+                    <> · ~{draftReadiness.suggested_question_count} question{draftReadiness.suggested_question_count === 1 ? '' : 's'} likely</>
+                  )}
+                </p>
                 {draftReadiness.note && (
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-white/55">
+                  <p className="mt-1 text-xs leading-relaxed text-white/50">
                     {draftReadiness.note}
                   </p>
                 )}
                 {draftPathDecision && (displayPhase === 'gap_analysis' || displayPhase === 'architect' || displayPhase === 'architect_review' || displayPhase === 'section_writing' || displayPhase === 'section_review' || displayPhase === 'quality_review' || displayPhase === 'revision' || displayPhase === 'complete') && (
-                  <div className={`mt-2 rounded-lg border px-2.5 py-2 ${
-                    draftPathDecision.proceeding_reason === 'momentum_mode'
-                      ? 'border-amber-300/18 bg-amber-400/[0.04]'
-                      : 'border-emerald-300/18 bg-emerald-400/[0.04]'
+                  <p className={`mt-2 text-xs leading-relaxed ${
+                    draftPathDecision.proceeding_reason === 'momentum_mode' ? 'text-amber-100/75' : 'text-emerald-100/75'
                   }`}>
-                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                      <span className={`rounded-full border px-1.5 py-0.5 ${
-                        draftPathDecision.proceeding_reason === 'momentum_mode'
-                          ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
-                          : 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/85'
-                      }`}>
-                        {draftPathDecision.proceeding_reason === 'momentum_mode'
-                          ? 'Proceeding with open items'
-                          : 'Proceeding: readiness met'}
-                      </span>
-                      <span className="text-white/50">
-                        {draftPathDecision.workflow_mode.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-white/72">
-                      {draftPathDecision.message}
-                    </p>
-                    {(draftPathDecision.top_remaining || (draftPathDecision.blocking_reasons?.length ?? 0) > 0) && (
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {draftPathDecision.blocking_reasons?.includes('coverage_threshold')
-                          && typeof draftPathDecision.remaining_coverage_needed === 'number'
-                          && draftPathDecision.remaining_coverage_needed > 0 && (
-                            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.06] px-2 py-0.5 text-[10px] text-sky-100/85">
-                              +{draftPathDecision.remaining_coverage_needed}% coverage still open
-                            </span>
-                          )}
-                        {draftPathDecision.top_remaining && (
-                          <GlassButton
-                            type="button"
-                            variant="ghost"
-                            className="h-6 px-2.5 text-[10px]"
-                            onClick={() => goToNode('questions')}
-                          >
-                            Review: {draftPathDecision.top_remaining.requirement.length > 42
-                              ? `${draftPathDecision.top_remaining.requirement.slice(0, 42)}...`
-                              : draftPathDecision.top_remaining.requirement}
-                          </GlassButton>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {(
-                  typeof draftReadiness.remaining_evidence_needed === 'number'
-                  || typeof draftReadiness.remaining_coverage_needed === 'number'
-                  || typeof draftReadiness.suggested_question_count === 'number'
-                ) && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {typeof draftReadiness.remaining_coverage_needed === 'number' && draftReadiness.remaining_coverage_needed > 0 && (
-                      <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.06] px-2 py-0.5 text-[10px] text-sky-100/85">
-                        Need +{draftReadiness.remaining_coverage_needed}% coverage
-                      </span>
-                    )}
-                    {typeof draftReadiness.suggested_question_count === 'number' && draftReadiness.suggested_question_count > 0 && (
-                      <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/70">
-                        ~{draftReadiness.suggested_question_count} targeted question{draftReadiness.suggested_question_count === 1 ? '' : 's'} likely
-                      </span>
-                    )}
-                    {!draftReadiness.ready && Array.isArray(draftReadiness.high_impact_remaining) && draftReadiness.high_impact_remaining.length > 0 && (
-                      <GlassButton
-                        type="button"
-                        variant="ghost"
-                        className="h-6 px-2.5 text-[10px]"
-                        onClick={() => goToNode('questions')}
-                      >
-                        Open Questions
-                      </GlassButton>
-                    )}
-                  </div>
+                    {draftPathDecision.proceeding_reason === 'momentum_mode' ? 'Proceeding with open items' : 'Readiness met'} — {draftPathDecision.message}
+                    {draftPathDecision.blocking_reasons?.includes('coverage_threshold')
+                      && typeof draftPathDecision.remaining_coverage_needed === 'number'
+                      && draftPathDecision.remaining_coverage_needed > 0 && (
+                        <> · <span className="text-sky-200/80">+{draftPathDecision.remaining_coverage_needed}% coverage still open</span></>
+                      )}
+                  </p>
                 )}
                 {draftReadiness.gap_breakdown && draftReadiness.gap_breakdown.total > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-white/55">
-                    <span>Requirements</span>
-                    <span className="rounded-full border border-emerald-300/18 bg-emerald-400/[0.05] px-2 py-0.5 text-emerald-100/80">
-                      Strong {draftReadiness.gap_breakdown.strong}
-                    </span>
-                    <span className="rounded-full border border-amber-300/18 bg-amber-400/[0.05] px-2 py-0.5 text-amber-100/80">
-                      Partial {draftReadiness.gap_breakdown.partial}
-                    </span>
-                    <span className="rounded-full border border-rose-300/18 bg-rose-400/[0.05] px-2 py-0.5 text-rose-100/80">
-                      Gaps {draftReadiness.gap_breakdown.gap}
-                    </span>
-                  </div>
+                  <p className="mt-1.5 text-xs text-white/55">
+                    Requirements: <span className="text-emerald-200/75">{draftReadiness.gap_breakdown.strong} strong</span> · <span className="text-amber-200/75">{draftReadiness.gap_breakdown.partial} partial</span> · <span className="text-rose-200/75">{draftReadiness.gap_breakdown.gap} gaps</span>
+                  </p>
                 )}
                 {draftReadiness.evidence_quality && draftReadiness.evidence_count > 0 && (
-                  <div className="mt-2 grid gap-1 sm:grid-cols-3">
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Validated</div>
-                      <div className="mt-0.5 text-[11px] text-white/78">
-                        {draftReadiness.evidence_quality.user_validated_count}/{draftReadiness.evidence_count}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Metrics</div>
-                      <div className="mt-0.5 text-[11px] text-white/78">
-                        {draftReadiness.evidence_quality.metrics_defensible_count}/{draftReadiness.evidence_count}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Mapped To JD</div>
-                      <div className="mt-0.5 text-[11px] text-white/78">
-                        {draftReadiness.evidence_quality.mapped_requirement_evidence_count}/{draftReadiness.evidence_count}
-                      </div>
-                    </div>
-                  </div>
+                  <p className="mt-1 text-xs text-white/50">
+                    Validated {draftReadiness.evidence_quality.user_validated_count}/{draftReadiness.evidence_count} · Metrics {draftReadiness.evidence_quality.metrics_defensible_count}/{draftReadiness.evidence_count} · Mapped {draftReadiness.evidence_quality.mapped_requirement_evidence_count}/{draftReadiness.evidence_count}
+                  </p>
                 )}
                 {Array.isArray(draftReadiness.high_impact_remaining) && draftReadiness.high_impact_remaining.length > 0 && (
                   <div className="mt-2">
-                    <div className="text-[10px] uppercase tracking-[0.08em] text-white/40">
-                      Highest-Impact Remaining Coverage
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-white/40">
+                      Highest-Impact Remaining
                     </div>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <ul className="mt-1 space-y-1">
                       {draftReadiness.high_impact_remaining.slice(0, 4).map((item, index) => (
-                        <div
+                        <li
                           key={`${item.requirement}-${index}`}
-                          className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[10px] leading-relaxed text-white/75 transition-colors hover:border-white/[0.12] hover:bg-white/[0.03] cursor-pointer"
+                          className="flex items-start gap-2 text-xs text-white/70 cursor-pointer transition-colors hover:text-white/85"
                           role="button"
                           tabIndex={0}
                           onClick={() => goToNode('questions')}
@@ -639,31 +541,26 @@ export function CoachScreen({
                             }
                           }}
                         >
-                          <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                            <span className={`rounded-full border px-1.5 py-0.5 ${
-                              item.priority === 'must_have'
-                                ? 'border-rose-300/25 bg-rose-400/[0.08] text-rose-100/85'
-                                : item.priority === 'implicit'
-                                  ? 'border-amber-300/25 bg-amber-400/[0.08] text-amber-100/85'
-                                  : 'border-white/[0.1] bg-white/[0.03] text-white/60'
-                            }`}>
-                              {formatReadinessPriorityLabel(item.priority)}
-                            </span>
-                            <span className={`${
-                              item.classification === 'gap' ? 'text-rose-100/80' : 'text-amber-100/80'
-                            }`}>
+                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                            item.priority === 'must_have'
+                              ? 'bg-rose-400'
+                              : item.priority === 'implicit'
+                                ? 'bg-amber-400'
+                                : 'bg-white/40'
+                          }`} />
+                          <span className="min-w-0">
+                            <span className={item.classification === 'gap' ? 'text-rose-200/75' : 'text-amber-200/75'}>
                               {item.classification === 'gap' ? 'Gap' : 'Partial'}
                             </span>
+                            {' · '}
+                            <span className="truncate" title={item.requirement}>{item.requirement}</span>
                             {item.evidence_count > 0 && (
-                              <span className="text-white/45">evidence {item.evidence_count}</span>
+                              <span className="text-white/40"> · {item.evidence_count} evidence</span>
                             )}
-                          </div>
-                          <div className="mt-1 max-w-[24rem] truncate" title={item.requirement}>
-                            {item.requirement}
-                          </div>
-                        </div>
+                          </span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </GlassCard>
