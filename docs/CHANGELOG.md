@@ -1,5 +1,24 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 13
+**Sprint:** 17 | **Story:** Multi-Select + Editable Suggestion Cards
+**Summary:** Positioning interview suggestions now support multi-select (checkboxes) and inline editing.
+
+### Changes Made
+- `app/src/components/panels/PositioningInterviewPanel.tsx` — SuggestionCard: radio→checkbox indicator, added `editedText`/`onEditText` props, inline textarea on selection. QuestionBody: single-select state→`Set<number>` + `Map<number,string>`, multi-select toggle logic, inline edit handler, elaboration rule updated (editing inline satisfies requirement), submit composes all selections joined by `\n\n`. Removed arrow-key roving tabindex handler and `role="radiogroup"`.
+- `app/src/__tests__/panels/PositioningInterviewPanel.test.tsx` — 8 new tests covering multi-select, deselect, composed submit, inline textarea appearance, pre-fill, edited text in submit, elaboration satisfaction via edit, and mixed-source elaboration gating. Updated existing test #7 for new elaboration hint wording.
+
+### Decisions Made
+- Inline textarea pre-fills with `{label}: {description}` — users can edit in-place without retyping
+- `needsElaboration` satisfied by either inline edit OR custom text below (either confirms authenticity)
+- `selectedSuggestion` param becomes comma-separated labels for multi-select
+
+### Known Issues
+- None
+
+### Next Steps
+- Sprint 17 documentation and retrospective
+
 ## 2026-03-02 — Session 12
 **Sprint:** 16 | **Stories:** 3, 7, 8
 **Summary:** Sprint 16 Phase C — Built Intelligence Activity Feed replacing the single-message banner, removed duplicate backend activity displays from ChatPanel and WorkflowStatsRail, and made the stats rail metric display stage-aware.

@@ -17,10 +17,12 @@ interface SuggestionCardProps {
   description: string;
   source: 'resume' | 'inferred' | 'jd';
   isSelected: boolean;
+  editedText?: string;
+  onEditText?: (text: string) => void;
   onClick: () => void;
 }
 
-function SuggestionCard({ label, description, source, isSelected, onClick }: SuggestionCardProps) {
+function SuggestionCard({ label, description, source, isSelected, editedText, onEditText, onClick }: SuggestionCardProps) {
   const sourceBadge = {
     resume: {
       label: 'From Resume',
@@ -38,7 +40,7 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
 
   return (
     <GlassCard
-      role="radio"
+      role="checkbox"
       aria-checked={isSelected}
       tabIndex={0}
       className={cn(
@@ -56,18 +58,20 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
       }}
     >
       <div className="flex items-start gap-3">
-        {/* Radio indicator */}
+        {/* Checkbox indicator */}
         <div
           className={cn(
-            'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition-all duration-200 flex items-center justify-center',
+            'mt-0.5 h-4 w-4 shrink-0 rounded border-2 transition-all duration-200 flex items-center justify-center',
             isSelected
-              ? 'border-white/70 bg-white/70'
+              ? 'border-[#9eb8ff]/80 bg-[#9eb8ff]/30'
               : 'border-white/30 bg-transparent',
           )}
           aria-hidden="true"
         >
           {isSelected && (
-            <div className="h-1.5 w-1.5 rounded-full bg-white" />
+            <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none">
+              <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           )}
         </div>
 
@@ -94,6 +98,26 @@ function SuggestionCard({ label, description, source, isSelected, onClick }: Sug
           </div>
           {description && (
             <p className="mt-1 text-xs text-white/60 leading-relaxed">{description}</p>
+          )}
+
+          {/* Inline edit textarea — shown when selected */}
+          {isSelected && onEditText && (
+            <textarea
+              value={editedText ?? ''}
+              onChange={(e) => onEditText(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              rows={2}
+              aria-label={`Edit suggestion: ${label}`}
+              className={cn(
+                'mt-2 w-full resize-none rounded-lg border bg-white/[0.06] px-3 py-2',
+                'text-xs text-white/85 placeholder:text-white/35',
+                'backdrop-blur-xl transition-all duration-200',
+                'focus:outline-none focus:ring-2 focus:ring-blue-400/40',
+                'border-white/[0.15] focus:border-white/25',
+              )}
+              placeholder="Edit this suggestion or leave as-is..."
+            />
           )}
         </div>
 
@@ -197,55 +221,105 @@ interface QuestionBodyProps {
 }
 
 function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps) {
-  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number | null>(null);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [editedTexts, setEditedTexts] = useState<Map<number, string>>(new Map());
   const [customText, setCustomText] = useState('');
 
   const suggestions = question.suggestions ?? [];
-  const selectedSuggestion = selectedSuggestionIndex !== null ? suggestions[selectedSuggestionIndex] : null;
+
+  function getDefaultText(index: number): string {
+    const s = suggestions[index];
+    return `${s.label}: ${s.description}`;
+  }
+
+  function getSuggestionText(index: number): string {
+    return editedTexts.get(index) ?? getDefaultText(index);
+  }
+
+  function isEdited(index: number): boolean {
+    const edited = editedTexts.get(index);
+    return edited !== undefined && edited !== getDefaultText(index);
+  }
 
   // Determine whether the submit button should be enabled
-  const hasSelection = selectedSuggestionIndex !== null;
+  const hasSelection = selectedIndices.size > 0;
   const hasCustomText = customText.trim().length > 0;
-  // Inferred/JD suggestions require custom text to ensure truth-bound answers
-  const needsElaboration = hasSelection && !hasCustomText && selectedSuggestion?.source !== 'resume';
+
+  // Inferred/JD suggestions need either an inline edit or custom text below to confirm
+  const needsElaboration = hasSelection && Array.from(selectedIndices).some(i => {
+    const s = suggestions[i];
+    if (s.source === 'resume') return false;
+    return !isEdited(i) && !hasCustomText;
+  });
+
   const canSubmit = needsElaboration ? false : (hasSelection || hasCustomText);
 
   function handleSuggestionClick(index: number) {
-    setSelectedSuggestionIndex(prev => (prev === index ? null : index));
+    setSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+        // Clean up edited text on deselect
+        setEditedTexts(prev2 => {
+          const next2 = new Map(prev2);
+          next2.delete(index);
+          return next2;
+        });
+      } else {
+        next.add(index);
+        // Pre-fill edited text with default
+        setEditedTexts(prev2 => {
+          if (prev2.has(index)) return prev2;
+          const next2 = new Map(prev2);
+          next2.set(index, getDefaultText(index));
+          return next2;
+        });
+      }
+      return next;
+    });
+  }
+
+  function handleSuggestionEdit(index: number, text: string) {
+    setEditedTexts(prev => {
+      const next = new Map(prev);
+      next.set(index, text);
+      return next;
+    });
   }
 
   function handleSubmit() {
     if (!canSubmit) return;
 
-    let answer: string;
-    let suggestionLabel: string | undefined;
+    const parts: string[] = [];
+    const labels: string[] = [];
 
-    if (hasCustomText && selectedSuggestion) {
-      // Both selected + typed: typed text is the answer, suggestion is context
-      answer = customText.trim();
-      suggestionLabel = selectedSuggestion.label;
-    } else if (selectedSuggestion && !hasCustomText) {
-      // Only suggestion selected — tag inferred/jd suggestions so downstream
-      // agents know this wasn't user-authored detail
-      if (selectedSuggestion.source === 'resume') {
-        answer = `${selectedSuggestion.label}: ${selectedSuggestion.description}`;
+    // Compose selected suggestions
+    const sortedIndices = Array.from(selectedIndices).sort((a, b) => a - b);
+    for (const i of sortedIndices) {
+      const s = suggestions[i];
+      labels.push(s.label);
+      if (isEdited(i)) {
+        parts.push(getSuggestionText(i));
+      } else if (s.source === 'resume') {
+        parts.push(`${s.label}: ${s.description}`);
       } else {
-        answer = `[Selected suggestion] ${selectedSuggestion.label}: ${selectedSuggestion.description}`;
+        parts.push(`[Selected suggestion] ${s.label}: ${s.description}`);
       }
-      suggestionLabel = selectedSuggestion.label;
-    } else {
-      // Only custom text
-      answer = customText.trim();
-      suggestionLabel = undefined;
     }
+
+    // Append custom text if present
+    if (hasCustomText) {
+      parts.push(customText.trim());
+    }
+
+    const answer = parts.join('\n\n');
+    const suggestionLabel = labels.length > 0 ? labels.join(', ') : undefined;
 
     onSubmit(answer, suggestionLabel);
   }
 
-  const textareaPlaceholder = selectedSuggestion
-    ? selectedSuggestion.source === 'resume'
-      ? `Selected: "${selectedSuggestion.label}" — add more detail (optional)...`
-      : `Selected: "${selectedSuggestion.label}" — add a specific example to strengthen this (recommended)...`
+  const textareaPlaceholder = hasSelection
+    ? 'Add more context or a custom answer (optional)...'
     : 'Or type your own answer...';
 
   return (
@@ -266,29 +340,13 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
               Action Required
             </span>
             <span className="text-[11px] text-white/55">
-              Click one suggestion (or type your own answer below).
+              Select one or more suggestions. Click to edit any selection.
             </span>
           </div>
           <div
             className="space-y-2"
-            role="radiogroup"
+            role="group"
             aria-label="Answer suggestions"
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-              e.preventDefault();
-              const radios = Array.from(
-                (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'),
-              );
-              if (radios.length === 0) return;
-              const currentIndex = radios.findIndex((el) => el === document.activeElement);
-              let nextIndex: number;
-              if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-                nextIndex = currentIndex < radios.length - 1 ? currentIndex + 1 : 0;
-              } else {
-                nextIndex = currentIndex > 0 ? currentIndex - 1 : radios.length - 1;
-              }
-              radios[nextIndex].focus();
-            }}
           >
           {suggestions.map((s, i) => (
             <SuggestionCard
@@ -296,7 +354,9 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
               label={s.label}
               description={s.description}
               source={s.source}
-              isSelected={selectedSuggestionIndex === i}
+              isSelected={selectedIndices.has(i)}
+              editedText={editedTexts.get(i)}
+              onEditText={(text) => handleSuggestionEdit(i, text)}
               onClick={() => handleSuggestionClick(i)}
             />
           ))}
@@ -311,7 +371,9 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
             Your Answer
           </span>
           <span className="text-[11px] text-white/48">
-            Typing here is optional unless the selected suggestion needs a specific example.
+            {hasSelection
+              ? 'Add extra context or leave blank to submit selected suggestions.'
+              : 'Type your own answer, or select suggestions above.'}
           </span>
         </div>
         <textarea
@@ -325,7 +387,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
             'text-sm text-white/85 placeholder:text-white/35',
             'backdrop-blur-xl transition-all duration-200',
             'focus:outline-none focus:ring-2 focus:ring-blue-400/40',
-            selectedSuggestion
+            hasSelection
               ? 'border-white/[0.2] focus:border-white/[0.26]'
               : 'border-white/[0.12] focus:border-white/25',
           )}
@@ -335,7 +397,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       {/* Elaboration hint for inferred/JD suggestions */}
       {needsElaboration && (
         <p className="text-xs text-amber-300/70">
-          Please add a specific example above to confirm this applies to your experience.
+          Please edit the selected suggestion or add a specific example below to confirm this applies to your experience.
         </p>
       )}
 
