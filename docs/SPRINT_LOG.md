@@ -2,6 +2,47 @@
 
 ---
 
+# Sprint 11 Retrospective — Bug Squash, Production Polish & Platform Foundation
+**Completed:** 2026-03-01
+
+## What was delivered
+- **Story 1 (Bug 16 — Revision Counts):** Persisted `revision_counts` in PipelineState instead of local Map. Revision cap now survives handler re-creation. 8 new tests.
+- **Story 2 (Bug 17 — Sliding Window):** Cross-section context builder limits to last 5 sections with 600-char excerpts (was unbounded at 300). Logs warning when sections are dropped. 8 new tests.
+- **Story 3 (Bug 18 — Gate Lock):** Added `useRef` lock to `handlePipelineRespond` preventing double-click 409s. Lock resets on new gate activation. 8 new tests.
+- **Story 4 (PDF Unicode):** Added NFKD normalization fallback to `sanitizePdfText` for non-WinAnsi characters. WinAnsi characters (smart quotes, dashes, ellipsis) pass through unchanged. 19 new tests.
+- **Story 5 (Center Column Scroll):** Wrapped banner container with `flex-shrink-0 max-h-[40vh] overflow-y-auto` to prevent banners from pushing content off-screen.
+- **Story 6 (Usage Tracking):** Removed `size === 1` guard on `recordUsage` warning. Now always logs when usage is dropped, includes `activeAccumulatorCount`. 6 new tests.
+- **Story 7 (Platform — Bus Routing):** Agent bus supports namespaced `domain:agentName` routing, `sendBroadcast()`, and `listSubscribers()`. Backward compatible with name-only subscriptions. 14 new tests. ADR-018.
+- **Story 8 (Platform — Discovery):** Registry gains `findByCapability()`, `listDomains()`, `describe()`. All 3 resume agents register capabilities. 10 new tests.
+- **Story 9 (Platform — Lifecycle Hooks):** `onInit` called before first LLM round, `onShutdown` in `finally` block. Both error-safe. 6 new tests.
+- **Story 10 (Cleanup):** Removed 4 resolved backlog items. Deleted stale `server/dist/`. Updated platform expansion story.
+- **Story 11 (Documentation):** CHANGELOG, SPRINT_LOG, ARCHITECTURE.md (bus/registry/loop), DECISIONS.md (ADR-018).
+
+## Test count
+- Server: 736 tests (up from 663, +73 new)
+- App: 354 tests (up from 327, +27 new)
+- Total: 1,090 tests (up from 990, +100 new)
+
+## What went well
+- Parallel agent execution worked perfectly — 6 stories implemented concurrently in Phase 1
+- All 4 bugs had clear root causes identified in the plan, making fixes surgical
+- Platform foundation stories built cleanly on existing generic type infrastructure
+- Backward compatibility maintained throughout — existing pipeline unaffected
+
+## What went wrong
+- The lifecycle hooks test initially had incorrect `CreateContextParams` fields (used `getState` instead of `state`, missing `bus`/`identity`). Required a quick fix after the first TypeScript check.
+
+## What to improve next sprint
+- Consider adding integration tests for lifecycle hooks with real agent configs
+- Cross-product bus routing should be tested with an actual second product domain
+
+## Technical debt identified
+- 2 pre-existing failures in `agents-gap-analyst.test.ts` remain
+- `setMaxListeners(50)` calls are threshold bumps, not root cause fixes
+- Legacy `agent/` directory still exists (deferred to future sprint)
+
+---
+
 # Sprint 10 Retrospective — UX Polish, Platform Hardening & Cleanup
 **Completed:** 2026-03-01
 

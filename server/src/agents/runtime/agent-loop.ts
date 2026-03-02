@@ -107,6 +107,18 @@ export async function runAgentLoop<
   let totalOutputTokens = 0;
   let round = 0;
 
+  // Call onInit lifecycle hook before the first LLM round
+  if (config.onInit) {
+    try {
+      await config.onInit(ctx);
+      log.info('Agent onInit hook completed');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error({ err }, `Agent onInit hook failed: ${message}`);
+      // Init errors are logged but don't abort the agent
+    }
+  }
+
   try {
     for (round = 0; round < maxRounds; round++) {
       if (overallSignal.aborted) {
@@ -277,6 +289,17 @@ export async function runAgentLoop<
       log.warn({ maxRounds }, 'Agent hit max rounds');
     }
   } finally {
+    // Call onShutdown lifecycle hook — guaranteed to run even if loop throws
+    if (config.onShutdown) {
+      try {
+        await config.onShutdown(ctx);
+        log.info('Agent onShutdown hook completed');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.error({ err }, `Agent onShutdown hook failed: ${message}`);
+        // Shutdown errors are logged but don't mask loop errors
+      }
+    }
     cleanupOverall();
   }
 

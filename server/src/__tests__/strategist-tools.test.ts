@@ -53,6 +53,7 @@ function makePipelineState(overrides?: Partial<PipelineState>): PipelineState {
     current_stage: 'intake',
     approved_sections: [],
     revision_count: 0,
+    revision_counts: {},
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
     ...overrides,
   };

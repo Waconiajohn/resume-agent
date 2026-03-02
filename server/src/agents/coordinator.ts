@@ -925,8 +925,8 @@ function subscribeToRevisionRequests(
   signal: AbortSignal,
   log: ReturnType<typeof createSessionLogger>,
 ): () => void {
-  // Track revision rounds per section to enforce the cap
-  const revisionCounts = new Map<string, number>();
+  // Ensure revision_counts is initialized on state (handles sessions restored from DB)
+  if (!state.revision_counts) state.revision_counts = {};
 
   const handler = async (msg: AgentMessage): Promise<void> => {
     if (msg.type !== 'request' || msg.from !== 'producer') return;
@@ -969,7 +969,7 @@ function subscribeToRevisionRequests(
 
     // Enforce per-section revision cap
     const withinCap = highPriority.filter(i => {
-      const count = revisionCounts.get(i.target_section) ?? 0;
+      const count = state.revision_counts[i.target_section] ?? 0;
       if (count >= MAX_REVISION_ROUNDS) {
         log.warn({ section: i.target_section, rounds: count }, 'Coordinator: revision cap reached — accepting content as-is');
         emit({
@@ -986,7 +986,7 @@ function subscribeToRevisionRequests(
 
     // Increment revision counts for sections being revised
     for (const i of withinCap) {
-      revisionCounts.set(i.target_section, (revisionCounts.get(i.target_section) ?? 0) + 1);
+      state.revision_counts[i.target_section] = (state.revision_counts[i.target_section] ?? 0) + 1;
     }
 
     log.info({ sections: withinCap.map(i => i.target_section) }, 'Coordinator: handling revision requests from Producer');
@@ -1106,6 +1106,7 @@ export async function runPipeline(config: PipelineConfig): Promise<PipelineState
     current_stage: 'intake',
     approved_sections: [],
     revision_count: 0,
+    revision_counts: {},
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
     user_preferences: {
       resume_priority:          config.resume_priority ?? 'balanced',

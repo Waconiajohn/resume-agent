@@ -30,6 +30,7 @@ export const producerConfig: ResumeAgentConfig = {
   },
   system_prompt: PRODUCER_SYSTEM_PROMPT,
   tools: producerTools,
+  capabilities: ['quality_review', 'document_production', 'ats_compliance', 'template_selection'],
   model: MODEL_ORCHESTRATOR,
   max_rounds: 8,
   round_timeout_ms: 120_000,   // 2 min per round

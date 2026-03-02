@@ -24,6 +24,8 @@ export const strategistConfig: ResumeAgentConfig = {
 
   tools: strategistTools,
 
+  capabilities: ['research', 'positioning', 'interview', 'gap_analysis', 'blueprint_design'],
+
   /**
    * Model for the Strategist's main LLM loop (tool selection + reasoning).
    * Individual tools override this with their own model_tier when they make

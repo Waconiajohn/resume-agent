@@ -388,91 +388,93 @@ export function CoachScreen({
 
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
-      <ErrorBanner
-        error={error}
-        errorDismissed={errorDismissed}
-        onDismiss={() => setErrorDismissed(true)}
-      />
-      <WorkflowErrorBanner
-        error={workflowSession.error}
-        loadingSummary={workflowSession.loadingSummary}
-        loadingNode={workflowSession.loadingNode}
-        onRefresh={async () => {
-          await workflowSession.refreshSummary();
-          await workflowSession.refreshNode(selectedNode);
-        }}
-      />
-      <PipelineActivityBanner
-        isViewingLiveNode={isViewingLiveNode}
-        effectivePipelineActivity={effectivePipelineActivity}
-        isProcessing={isProcessing}
-        isPipelineGateActive={Boolean(isPipelineGateActive)}
-        pipelineActivityStageElapsed={pipelineActivityStageElapsed}
-        pipelineActivityLastStageDuration={pipelineActivityLastStageDuration}
-        pipelineActivityLastProgress={pipelineActivityLastProgress}
-        pipelineActivityLastHeartbeat={pipelineActivityLastHeartbeat}
-        pipelineFirstProgressDuration={pipelineFirstProgressDuration}
-        pipelineFirstActionReadyDuration={pipelineFirstActionReadyDuration}
-      />
-      <RuntimeRecoveryBanner
-        stalledSuspected={Boolean(stalledSuspected)}
-        connected={connected}
-        isProcessing={isProcessing}
-        pipelineActivityStageElapsed={pipelineActivityStageElapsed}
-        pipelineActivityLastProgress={pipelineActivityLastProgress}
-        onReconnectStream={onReconnectStream}
-        loadingSummary={workflowSession.loadingSummary}
-        loadingNode={workflowSession.loadingNode}
-        selectedNode={selectedNode}
-        activeNode={activeNode}
-        onRefreshState={async () => {
-          await workflowSession.refreshSummary();
-          await workflowSession.refreshNode(selectedNode);
-          await workflowSession.refreshNode(activeNode);
-        }}
-      />
-      <WorkflowActionBanner
-        actionMessage={workflowSession.actionMessage}
-        actionError={workflowSession.actionError}
-        actionRequiresRestart={workflowSession.actionRequiresRestart}
-        sessionId={sessionId}
-        isRestartingPipeline={isRestartingPipeline}
-        isRestartPipelinePending={workflowSession.isRestartPipelinePending}
-        isProcessing={isProcessing}
-        onRestart={async () => {
-          setIsRestartingPipeline(true);
-          try {
-            const usedWorkflowAction = await workflowSession.restartPipeline();
-            if (!usedWorkflowAction.success && onRestartPipelineFromLastInputs && sessionId) {
-              await onRestartPipelineFromLastInputs(sessionId);
+      <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto">
+        <ErrorBanner
+          error={error}
+          errorDismissed={errorDismissed}
+          onDismiss={() => setErrorDismissed(true)}
+        />
+        <WorkflowErrorBanner
+          error={workflowSession.error}
+          loadingSummary={workflowSession.loadingSummary}
+          loadingNode={workflowSession.loadingNode}
+          onRefresh={async () => {
+            await workflowSession.refreshSummary();
+            await workflowSession.refreshNode(selectedNode);
+          }}
+        />
+        <PipelineActivityBanner
+          isViewingLiveNode={isViewingLiveNode}
+          effectivePipelineActivity={effectivePipelineActivity}
+          isProcessing={isProcessing}
+          isPipelineGateActive={Boolean(isPipelineGateActive)}
+          pipelineActivityStageElapsed={pipelineActivityStageElapsed}
+          pipelineActivityLastStageDuration={pipelineActivityLastStageDuration}
+          pipelineActivityLastProgress={pipelineActivityLastProgress}
+          pipelineActivityLastHeartbeat={pipelineActivityLastHeartbeat}
+          pipelineFirstProgressDuration={pipelineFirstProgressDuration}
+          pipelineFirstActionReadyDuration={pipelineFirstActionReadyDuration}
+        />
+        <RuntimeRecoveryBanner
+          stalledSuspected={Boolean(stalledSuspected)}
+          connected={connected}
+          isProcessing={isProcessing}
+          pipelineActivityStageElapsed={pipelineActivityStageElapsed}
+          pipelineActivityLastProgress={pipelineActivityLastProgress}
+          onReconnectStream={onReconnectStream}
+          loadingSummary={workflowSession.loadingSummary}
+          loadingNode={workflowSession.loadingNode}
+          selectedNode={selectedNode}
+          activeNode={activeNode}
+          onRefreshState={async () => {
+            await workflowSession.refreshSummary();
+            await workflowSession.refreshNode(selectedNode);
+            await workflowSession.refreshNode(activeNode);
+          }}
+        />
+        <WorkflowActionBanner
+          actionMessage={workflowSession.actionMessage}
+          actionError={workflowSession.actionError}
+          actionRequiresRestart={workflowSession.actionRequiresRestart}
+          sessionId={sessionId}
+          isRestartingPipeline={isRestartingPipeline}
+          isRestartPipelinePending={workflowSession.isRestartPipelinePending}
+          isProcessing={isProcessing}
+          onRestart={async () => {
+            setIsRestartingPipeline(true);
+            try {
+              const usedWorkflowAction = await workflowSession.restartPipeline();
+              if (!usedWorkflowAction.success && onRestartPipelineFromLastInputs && sessionId) {
+                await onRestartPipelineFromLastInputs(sessionId);
+              }
+            } finally {
+              setIsRestartingPipeline(false);
             }
-          } finally {
-            setIsRestartingPipeline(false);
-          }
-        }}
-        onDismiss={workflowSession.clearActionMessage}
-      />
-      <WorkflowReplanBanner
-        summaryReplan={workflowSession.summary?.replan
-          ? {
-              ...workflowSession.summary.replan,
-              rebuild_from_stage: workflowSession.summary.replan.rebuild_from_stage ?? undefined,
-            }
-          : null}
-        summaryReplanStatus={workflowSession.summary?.replan_status ?? null}
-        liveWorkflowReplan={liveWorkflowReplan ?? null}
-      />
-      {positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
-        <div className="px-3 pt-3">
-          <PositioningProfileChoice
-            updatedAt={positioningProfileFound.updated_at}
-            onChoice={(choice) => {
-              onPipelineRespond('positioning_profile_choice', choice);
-              setProfileChoiceMade(true);
-            }}
-          />
-        </div>
-      )}
+          }}
+          onDismiss={workflowSession.clearActionMessage}
+        />
+        <WorkflowReplanBanner
+          summaryReplan={workflowSession.summary?.replan
+            ? {
+                ...workflowSession.summary.replan,
+                rebuild_from_stage: workflowSession.summary.replan.rebuild_from_stage ?? undefined,
+              }
+            : null}
+          summaryReplanStatus={workflowSession.summary?.replan_status ?? null}
+          liveWorkflowReplan={liveWorkflowReplan ?? null}
+        />
+        {positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
+          <div className="px-3 pt-3">
+            <PositioningProfileChoice
+              updatedAt={positioningProfileFound.updated_at}
+              onChoice={(choice) => {
+                onPipelineRespond('positioning_profile_choice', choice);
+                setProfileChoiceMade(true);
+              }}
+            />
+          </div>
+        )}
+      </div>
       <div className="min-h-0 flex-1 p-3 md:p-4">
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-2 flex items-center gap-2 px-1">

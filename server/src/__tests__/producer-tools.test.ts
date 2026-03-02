@@ -45,6 +45,7 @@ function makePipelineState(overrides?: Partial<PipelineState>): PipelineState {
     current_stage: 'quality_review',
     approved_sections: [],
     revision_count: 0,
+    revision_counts: {},
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
     ...overrides,
   };

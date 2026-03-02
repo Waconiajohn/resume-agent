@@ -73,15 +73,20 @@ Owns document production and quality assurance. Selects from 5 executive templat
 **Tools:** `select_template`, `adversarial_review`, `ats_compliance_check`, `humanize_check`, `check_blueprint_compliance`, `verify_cross_section_consistency`, `check_narrative_coherence`, `request_content_revision`, `emit_transparency`
 
 ### Inter-Agent Communication
-Agents communicate through `AgentBus` (`runtime/agent-bus.ts`) using standard `AgentMessage` format. The Strategist passes strategy to the Craftsman. The Craftsman passes content to the Producer. The Producer can request revisions from the Craftsman via the bus.
+Agents communicate through `AgentBus` (`runtime/agent-bus.ts`) using standard `AgentMessage` format with namespaced routing. The bus supports:
+- **Namespaced routing**: Subscribers register as `domain:agentName` (e.g., `resume:craftsman`). Messages resolve via `domain:to` first, falling back to name-only for backward compatibility.
+- **Broadcast**: `sendBroadcast(domain, msg)` delivers to all agents in a domain (skips sender).
+- **Discovery**: `listSubscribers(domain?)` returns subscribed agent keys.
+
+The Strategist passes strategy to the Craftsman. The Craftsman passes content to the Producer. The Producer can request revisions from the Craftsman via the bus.
 
 ## Agent Runtime (`agents/runtime/`)
 
-- **agent-loop.ts** — Core agentic loop: multi-round LLM + tool calling with retries, timeouts. The LLM decides which tools to call and when to stop.
-- **agent-bus.ts** — In-memory inter-agent message routing.
-- **agent-protocol.ts** — Standard types: `AgentTool`, `AgentContext`, `AgentConfig`, `AgentMessage`. `AgentConfig` includes optional `onInit` and `onShutdown` lifecycle hooks.
+- **agent-loop.ts** — Core agentic loop: multi-round LLM + tool calling with retries, timeouts. The LLM decides which tools to call and when to stop. Calls `config.onInit()` before the first LLM round and `config.onShutdown()` in a `finally` block (guaranteed even on error). Hook failures are logged but don't abort the agent or mask loop errors.
+- **agent-bus.ts** — In-memory inter-agent message routing with cross-product namespace support. Resolves handlers via `domain:name` first, then name-only fallback.
+- **agent-protocol.ts** — Standard types: `AgentTool`, `AgentContext`, `AgentConfig`, `AgentMessage`. `AgentConfig` includes optional `capabilities`, `onInit`, and `onShutdown` fields.
 - **agent-context.ts** — Creates runtime context (pipeline state, SSE, gates) for tools.
-- **agent-registry.ts** — Agent self-registration on module load via `registerAgent<TState, TEvent>()` helper. Confines internal type widening to a single documented cast.
+- **agent-registry.ts** — Agent self-registration on module load via `registerAgent<TState, TEvent>()` helper. Supports capability-based discovery (`findByCapability`), domain listing (`listDomains`), and agent description (`describe`).
 - **shared-tools.ts** — Domain-agnostic tool factories shared across agents. Currently exports `createEmitTransparency<TState, TEvent>(config?)` which accepts an optional `prefix` string and returns a fully-typed `AgentTool`.
 
 ### Shared Tool Factory Pattern

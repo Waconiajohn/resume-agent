@@ -97,6 +97,12 @@ export interface AgentConfig<
    */
   loop_max_tokens?: number;
   /**
+   * Optional list of capabilities this agent provides.
+   * Used for capability-based discovery in the registry.
+   * Examples: 'research', 'content_creation', 'quality_review'
+   */
+  capabilities?: string[];
+  /**
    * Optional lifecycle hook called once before the agent's first LLM round.
    * Use for pre-flight validation, state initialization, or warm-up logging.
    */

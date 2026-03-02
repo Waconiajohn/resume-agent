@@ -1,61 +1,5 @@
 # Backlog — Resume Agent
 
-## Epic: Production Hardening
-
-### Story: Fix SSE Type Mismatch Between Old and New Connections
-- **As a** developer
-- **I want to** resolve the `as never` cast in pipeline.ts SSE handling
-- **So that** the type system catches real bugs
-- **Acceptance Criteria:**
-  - [ ] Unify SSE connection types or separate old/new cleanly
-  - [ ] Remove `as never` cast
-  - [ ] TypeScript compiles without workarounds
-- **Estimated complexity:** Small
-- **Dependencies:** None
-
-### Story: Fix Usage Tracking Cross-Contamination
-- **As a** system operator
-- **I want to** accurate per-session usage tracking
-- **So that** billing and analytics are correct
-- **Acceptance Criteria:**
-  - [ ] `recordUsage()` only updates the calling session's accumulator
-  - [ ] No cross-session contamination in concurrent pipeline runs
-  - [ ] Unit test verifies isolation
-- **Estimated complexity:** Small
-- **Dependencies:** None
-
----
-
-## Epic: User Experience Polish
-
-### Story: Fix Center Column Scroll Behavior
-- **As a** user
-- **I want to** scroll the main content area without interference
-- **So that** I can review long conversations comfortably
-- **Acceptance Criteria:**
-  - [ ] Center column scrolls independently of side panels
-  - [ ] No content hidden behind fixed headers/footers
-  - [ ] Smooth scroll behavior on all panel transitions
-- **Estimated complexity:** Small
-- **Dependencies:** None
-
----
-
-## Epic: Quality & Reliability
-
-### Story: Prevent ATS Auto-Revisions After User Approval
-- **As a** user
-- **I want to** my approved content to remain unchanged
-- **So that** ATS compliance checks don't silently modify my approved text
-- **Acceptance Criteria:**
-  - [ ] ATS revisions require explicit user consent
-  - [ ] Approved sections are marked immutable to automated changes
-  - [ ] Any post-approval change surfaces to the user for re-approval
-- **Estimated complexity:** Medium
-- **Dependencies:** None
-
----
-
 ## Epic: Legacy Code Migration
 
 ### Story: Decommission Legacy `agent/` Directory
@@ -75,13 +19,43 @@
 
 ## Epic: Platform Expansion
 
-### Story: 33-Agent Platform Foundation
+### Story: 33-Agent Platform — Phase 2
 - **As a** product owner
-- **I want to** extend the agent runtime to support the full 33-agent platform
-- **So that** we can launch additional agent-powered products
+- **I want to** complete the platform runtime for multi-product agent deployment
+- **So that** we can launch additional agent-powered products beyond resume
 - **Acceptance Criteria:**
-  - [ ] Agent bus supports cross-product routing
-  - [ ] Agent registry for dynamic agent discovery
-  - [ ] Shared runtime infrastructure documented and tested
+  - [x] Agent bus supports cross-product routing (Sprint 11, Story 7)
+  - [x] Agent registry supports capability-based discovery (Sprint 11, Story 8)
+  - [x] Lifecycle hooks wired in agent loop (Sprint 11, Story 9)
+  - [x] Resume agents register capabilities (Sprint 11, Story 8)
+  - [ ] Redis/NATS bus adapter for distributed deployment
+  - [ ] Agent hot-reload without server restart
+  - [ ] Cross-product authentication and authorization
+  - [ ] Platform admin dashboard for agent monitoring
 - **Estimated complexity:** Large
-- **Dependencies:** All production hardening stories
+- **Dependencies:** Sprint 11 platform stories (complete)
+
+---
+
+## Epic: Technical Debt
+
+### Story: Fix Remaining Pre-Existing Test Failures
+- **As a** developer
+- **I want to** fix the 2 pre-existing failures in `agents-gap-analyst.test.ts`
+- **So that** the test suite is 100% clean
+- **Acceptance Criteria:**
+  - [ ] Both failing tests pass
+  - [ ] No regressions in other tests
+- **Estimated complexity:** Small
+- **Dependencies:** None
+
+### Story: Resolve MaxListenersExceededWarning Root Cause
+- **As a** developer
+- **I want to** eliminate the need for `setMaxListeners(50)` calls
+- **So that** listener management is clean rather than threshold-bumped
+- **Acceptance Criteria:**
+  - [ ] Identify all listener accumulation patterns
+  - [ ] Refactor to properly manage listener lifecycle
+  - [ ] Remove `setMaxListeners` calls
+- **Estimated complexity:** Medium
+- **Dependencies:** None

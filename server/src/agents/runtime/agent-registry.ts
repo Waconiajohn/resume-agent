@@ -57,6 +57,46 @@ class AgentRegistry {
     return this.agents.size;
   }
 
+  /**
+   * Find all agents that provide a given capability.
+   * Optionally filter by domain.
+   */
+  findByCapability(capability: string, domain?: string): AnyAgentConfig[] {
+    const results: AnyAgentConfig[] = [];
+    for (const config of this.agents.values()) {
+      if (domain && config.identity.domain !== domain) continue;
+      if (config.capabilities?.includes(capability)) {
+        results.push(config);
+      }
+    }
+    return results;
+  }
+
+  /** List all unique domains across registered agents. */
+  listDomains(): string[] {
+    const domains = new Set<string>();
+    for (const config of this.agents.values()) {
+      domains.add(config.identity.domain);
+    }
+    return [...domains];
+  }
+
+  /**
+   * Get a descriptive summary of an agent by domain and name.
+   * Returns identity, capabilities, tool names, and model info.
+   */
+  describe(domain: string, name: string): AgentDescription | undefined {
+    const config = this.agents.get(`${domain}:${name}`);
+    if (!config) return undefined;
+    return {
+      identity: config.identity,
+      capabilities: config.capabilities ?? [],
+      tools: config.tools.map(t => t.name),
+      model: config.model,
+      max_rounds: config.max_rounds,
+    };
+  }
+
   /** Clear all registrations (useful for testing). */
   clear(): void {
     this.agents.clear();
@@ -87,6 +127,15 @@ export function registerAgent<
   // Function parameters are contravariant so a direct cast is rejected by TS.
   // The double cast is confined to this one helper so callers never need it.
   agentRegistry.register(config as unknown as AnyAgentConfig);
+}
+
+/** Summary returned by `registry.describe()` */
+export interface AgentDescription {
+  identity: { name: string; domain: string };
+  capabilities: string[];
+  tools: string[];
+  model: string;
+  max_rounds: number;
 }
 
 export type { AgentRegistry };

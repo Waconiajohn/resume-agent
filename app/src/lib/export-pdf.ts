@@ -35,11 +35,39 @@ const STYLE_MAP: Record<Exclude<PdfStyle, 'blank'>, PdfStyleConfig> = {
 };
 
 /**
+ * WinAnsi characters above U+00FF that jsPDF's standard fonts support natively.
+ * These must not be fed through the NFKD fallback, which would decompose or
+ * strip them.
+ *
+ * Windows-1252 code page mappings that live above Latin-1:
+ *   0x80 → U+20AC (Euro sign)
+ *   0x82 → U+201A  0x83 → U+0192  0x84 → U+201E  0x85 → U+2026 (ellipsis)
+ *   0x86 → U+2020  0x87 → U+2021  0x88 → U+02C6  0x89 → U+2030
+ *   0x8A → U+0160  0x8B → U+2039  0x8C → U+0152
+ *   0x8E → U+017D
+ *   0x91 → U+2018  0x92 → U+2019  0x93 → U+201C  0x94 → U+201D (smart quotes)
+ *   0x95 → U+2022 (bullet)
+ *   0x96 → U+2013 (en-dash)  0x97 → U+2014 (em-dash)
+ *   0x98 → U+02DC  0x99 → U+2122  0x9A → U+0161  0x9B → U+203A
+ *   0x9C → U+0153  0x9E → U+017E  0x9F → U+0178
+ */
+const WINANSI_ABOVE_FF = new Set([
+  '\u20AC', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',
+  '\u02C6', '\u2030', '\u0160', '\u2039', '\u0152', '\u017D',
+  '\u2018', '\u2019', '\u201C', '\u201D', '\u2022', '\u2013', '\u2014',
+  '\u02DC', '\u2122', '\u0161', '\u203A', '\u0153', '\u017E', '\u0178',
+]);
+
+/**
  * Sanitize text for PDF rendering. jsPDF handles WinAnsi encoding for standard
  * fonts, so em-dashes, smart quotes, bullets, and Latin-1 accented characters
  * are preserved. Only truly unsupported characters are converted or stripped.
+ *
+ * WinAnsi-supported characters that pass through unchanged:
+ *   U+2018/U+2019 (smart single quotes), U+201C/U+201D (smart double quotes),
+ *   U+2013 (en-dash), U+2014 (em-dash), U+2026 (ellipsis)
  */
-function sanitizePdfText(input: string): string {
+export function sanitizePdfText(input: string): string {
   return input
     .replace(/\s+/g, ' ')
     .replace(/\s\|\s/g, ', ')
@@ -52,6 +80,14 @@ function sanitizePdfText(input: string): string {
     .replace(/\u02BC/g, '\u2019')
     // Non-breaking space → regular space
     .replace(/\u00A0/g, ' ')
+    // NFKD normalize remaining non-WinAnsi, non-Latin-1 characters.
+    // Characters in WINANSI_ABOVE_FF are kept; everything else is decomposed
+    // via NFKD and any residual non-Latin-1 codepoints are stripped.
+    .replace(/[^\x00-\xFF]/g, (ch) => {
+      if (WINANSI_ABOVE_FF.has(ch)) return ch;
+      const normalized = ch.normalize('NFKD').replace(/[^\x00-\xFF]/g, '');
+      return normalized || '';
+    })
     // Strip control characters and invisible Unicode
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\u200B-\u200F\u2028\u2029\uFEFF]/g, '')
     .trim();

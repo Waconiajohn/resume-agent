@@ -72,6 +72,7 @@ function makeCtx(): ResumeAgentContext {
     current_stage: 'section_writing',
     approved_sections: [],
     revision_count: 0,
+    revision_counts: {},
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
   };
 

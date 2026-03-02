@@ -551,6 +551,7 @@ export interface PipelineState {
   workflow_preferences_version?: number;
   approved_sections: string[];
   revision_count: number;
+  revision_counts: Record<string, number>;
   token_usage: {
     input_tokens: number;
     output_tokens: number;

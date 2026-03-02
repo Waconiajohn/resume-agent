@@ -1,5 +1,152 @@
 # Changelog — Resume Agent
 
+## 2026-03-01 — Sprint 11, Story 1: Persist Revision Counts in PipelineState
+**Sprint:** 11 | **Story:** Story 1 — Fix Bug 16 — Persist Revision Counts in PipelineState
+**Summary:** Moved the per-section revision counter from a closure-local Map inside `subscribeToRevisionRequests` to the `PipelineState` object, so the cap survives handler re-creation and cannot be bypassed.
+
+### Changes Made
+- `server/src/agents/types.ts` — Added `revision_counts: Record<string, number>` field to the `PipelineState` interface (adjacent to the existing `revision_count` field).
+- `server/src/agents/coordinator.ts` — Two changes: (1) Added `revision_counts: {}` to the initial pipeline state object in `runPipeline`. (2) In `subscribeToRevisionRequests`, removed the local `const revisionCounts = new Map<string, number>()` and replaced all reads (`revisionCounts.get(...)`) and writes (`revisionCounts.set(...)`) with direct access to `state.revision_counts[...]`. Added a defensive initialization guard `if (!state.revision_counts) state.revision_counts = {}` at the top of the function to handle sessions restored from the database before this field existed.
+- `server/src/__tests__/sprint11-revision-counts.test.ts` — New file. 8 unit tests covering: initial state is `{}`, increment after each revision, increment across multiple rounds, cap enforced at `MAX_REVISION_ROUNDS` via state, transparency event emitted on cap, new handler instance reads cap from state (re-creation cannot bypass), independent counters per section, and initialization of absent field (DB-restored session).
+- `server/src/__tests__/craftsman-checks.test.ts` — Added `revision_counts: {}` to the inline `minimalState` object to satisfy the now-required field.
+- `server/src/__tests__/craftsman-tools.test.ts` — Added `revision_counts: {}` to `makePipelineState` helper.
+- `server/src/__tests__/producer-tools.test.ts` — Added `revision_counts: {}` to `makePipelineState` helper.
+- `server/src/__tests__/revision-loop.test.ts` — Added `revision_counts: {}` to `makePipelineState` helper.
+- `server/src/__tests__/sprint5-fixes.test.ts` — Added `revision_counts: {}` to `makePipelineState` helper.
+- `server/src/__tests__/strategist-tools.test.ts` — Added `revision_counts: {}` to `makePipelineState` helper.
+
+### Decisions Made
+- Made `revision_counts` a required field (not optional) on `PipelineState` so TypeScript enforces initialization at all state creation sites. The defensive guard in `subscribeToRevisionRequests` handles the DB-restore case for older sessions that predate this field.
+- Root cause of Bug 16: `const revisionCounts = new Map()` was re-created every time `subscribeToRevisionRequests` was called, so any code path that re-called it (e.g., after a reconnect or coordinator restart within a session) would reset all counters to zero, allowing infinite revision loops.
+
+### Known Issues
+- None introduced by this story.
+
+### Next Steps
+- Story 2 already complete. Continue with Story 3: Fix Bug 18 — Request-Level Lock for Gate Responses.
+
+## 2026-03-01 — Sprint 11, Story 2: Sliding Window for Cross-Section Context
+**Sprint:** 11 | **Story:** Story 2 — Fix Bug 17 — Sliding Window for Cross-Section Context
+**Summary:** Changed the cross-section context builder in `write_section` to keep only the last 5 completed sections (sliding window) and increased the excerpt length from 300 to 600 chars, preventing unbounded context growth on long sessions.
+
+### Changes Made
+- `server/src/agents/craftsman/tools.ts` — Replaced the unbounded loop in the cross-section context builder with a sliding window. Collects all `section_*` scratchpad entries, logs a warning with `dropped_count` when more than 5 exist, then takes only the last 5 via `.slice(-5)`. Excerpt length increased from 300 to 600 chars. Two named constants `MAX_CROSS_SECTION_ENTRIES = 5` and `CROSS_SECTION_EXCERPT_LENGTH = 600` document the limits inline.
+- `server/src/__tests__/sprint11-cross-section-window.test.ts` — New file. 8 unit tests covering: all 5 sections pass through when at or below the limit, only last 5 kept when 8 sections exist, only last 5 kept when exactly 6 exist, excerpts truncated to 600 chars, excerpts under 600 chars pass through unchanged, warning logged with correct `dropped_count`, no warning when at or below the limit, and `cross_section_context` is `undefined` (not `{}`) when no prior sections exist.
+- `server/src/__tests__/craftsman-tools.test.ts` — Updated one pre-existing test that was asserting the old 300-char truncation limit; updated to assert 600 chars and adjusted the test content length from 600 to 900 chars so truncation actually occurs.
+
+### Decisions Made
+- Used `allSectionEntries.slice(-MAX_CROSS_SECTION_ENTRIES)` to keep the last N entries. "Last" here means the most recently inserted keys in the scratchpad object, which corresponds to the most recently written sections.
+- Constants defined inside the `execute` function body rather than at module scope to keep them co-located with the logic they govern and avoid polluting the module namespace.
+
+### Known Issues
+- None introduced by this story.
+
+### Next Steps
+- Story 3: Fix Bug 18 — Request-Level Lock for Gate Responses.
+
+## 2026-03-01 — Sprint 11, Story 3: Fix Bug 18 — Request-Level Lock for Gate Responses
+**Sprint:** 11 | **Story:** Story 3 — Fix Bug 18 — Request-Level Lock for Gate Responses
+**Summary:** Added a `useRef`-based in-flight lock to `handlePipelineRespond` in `App.tsx` to prevent double-click 409 race conditions that slipped through the React state-based optimistic disable.
+
+### Changes Made
+- `app/src/App.tsx` — Added `useRef` to React imports. Added `isRespondingRef = useRef(false)` near top of component. Added `useEffect` that resets `isRespondingRef.current = false` whenever `isPipelineGateActive` becomes `true` (new gate arrives). Modified `handlePipelineRespond` to check the ref before proceeding, set it to `true` before the fetch, and reset it to `false` in a `finally` block.
+- `app/src/__tests__/sprint11-gate-lock.test.ts` — New file. 8 unit tests covering: early return on null session, early return when gate inactive, success path ref reset, failure path gate re-enable, concurrent call dropping, finally-block cleanup on throw, new-gate ref reset (useEffect logic), and sequential multi-gate flow.
+
+### Decisions Made
+- Root cause: React `setState` is asynchronous — `setIsPipelineGateActive(false)` does not take effect before a second synchronous click re-enters the callback. A `useRef` is synchronously readable and writable within the same event loop tick, making it the correct primitive for this guard.
+- The `useEffect` reset is needed so that when the pipeline advances and sends a new `pipeline_gate` SSE event (flipping `isPipelineGateActive` back to `true`), `isRespondingRef.current` is also cleared — otherwise the next gate response would be silently dropped.
+- Tests use extracted pure logic (same pattern as `WorkbenchSuggestions.test.ts`) since the node test environment cannot render App.tsx.
+
+### Known Issues
+- None introduced by this story.
+
+### Next Steps
+- Story 4: Fix PDF Unicode — Expand sanitizePdfText Mappings.
+
+## 2026-03-01 — Sprint 11, Story 6: Improve Usage Tracking Clarity
+**Sprint:** 11 | **Story:** Story 6 — Improve Usage Tracking Clarity
+**Summary:** Removed the `size === 1` conditional guard in `recordUsage()` so that dropped usage always triggers a `warn` log, and exported the function for direct unit testing.
+
+### Changes Made
+- `server/src/lib/llm-provider.ts` — Removed `if (sessionUsageAccumulators.size === 1)` guard from `recordUsage()`. Warning now fires unconditionally whenever no accumulator is found. Added `activeAccumulatorCount: sessionUsageAccumulators.size` to the log payload. Changed function from `function` to `export function` to support direct unit testing.
+- `server/src/__tests__/sprint11-usage-tracking.test.ts` — New file. 6 tests covering: warning fires with zero accumulators, warning fires with multiple accumulators (the case the old guard suppressed), warning fires with undefined sessionId, no accumulator is modified when usage is dropped, tokens accumulate correctly when a valid accumulator exists, and multiple calls accumulate correctly.
+
+### Decisions Made
+- Exported `recordUsage` as a named export rather than testing through the full `chat()` integration path. Direct export keeps tests fast (no HTTP mocking) and precise — each test case is a one-liner call to `recordUsage`.
+- Used `vi.hoisted()` for the logger mock to ensure it is installed before module imports, consistent with the pattern in `usage-persistence.test.ts`.
+
+### Known Issues
+- None introduced by this story.
+
+### Next Steps
+- Story 7: Platform — Agent Bus Cross-Product Routing.
+
+## 2026-03-01 — Sprint 11, Story 4: Fix PDF Unicode — Expand sanitizePdfText Mappings
+**Sprint:** 11 | **Story:** Story 4 — Fix PDF Unicode — Expand sanitizePdfText Mappings
+**Summary:** Added NFKD fallback normalization to `sanitizePdfText` so non-WinAnsi characters like ligatures decompose gracefully, while all seven WinAnsi-supported special characters (smart quotes, dashes, ellipsis) are explicitly preserved unchanged.
+
+### Changes Made
+- `app/src/lib/export-pdf.ts` — Added `export` keyword to `sanitizePdfText` to make it directly testable. Added `WINANSI_ABOVE_FF` set enumerating all Windows-1252 codepoints above U+00FF so they are exempt from the NFKD fallback. Added NFKD normalization step: characters not in `WINANSI_ABOVE_FF` and not in the Latin-1 range are decomposed via `String.prototype.normalize('NFKD')`; any residual non-Latin-1 codepoints are stripped. Updated JSDoc comment to document the pass-through characters.
+- `app/src/__tests__/sprint11-pdf-unicode.test.ts` — New file. 19 unit tests covering: all 7 WinAnsi special characters pass through unchanged, NFKD fallback decomposes fi/fl/ffi ligatures, emoji and non-decomposable characters are stripped cleanly, and all pre-existing sanitization behaviour (whitespace, bullets, control chars, accented Latin) continues to work correctly.
+
+### Decisions Made
+- The NFKD bypass set (`WINANSI_ABOVE_FF`) is defined as a module-level `Set<string>` constant so the membership check is O(1) per character. Listing all 27 Windows-1252 non-Latin-1 entries makes the intent explicit and avoids a range-based approach that could silently include unintended codepoints.
+- `sanitizePdfText` is exported with `export function` (not a default export) to match the existing naming convention in the file while enabling direct unit testing without routing through the full `exportPdf` path.
+
+### Known Issues
+- None introduced by this story.
+
+### Next Steps
+- Story 5: Fix Center Column Scroll.
+
+## 2026-03-01 — Sprint 11 Complete
+**Sprint:** 11 | **Stories:** 1-11 (Bug Squash, Production Polish & Platform Foundation)
+**Summary:** Fixed 4 known bugs (revision loops, context overflow, gate 409s, PDF Unicode), polished center column scroll and usage logging, laid platform foundation (bus routing, capability discovery, lifecycle hooks), cleaned up backlog, and updated all documentation.
+
+### Changes Made
+
+**Story 5: Fix Center Column Scroll**
+- `app/src/components/CoachScreen.tsx` — Wrapped all banner components in `<div className="flex-shrink-0 max-h-[40vh] overflow-y-auto">`. Banners now cap at 40% viewport and scroll internally, ensuring the content area remains visible.
+
+**Story 7: Platform — Agent Bus Cross-Product Routing**
+- `server/src/agents/runtime/agent-bus.ts` — Rewrote with namespace support. `subscribe()` accepts `domain:agentName` or `name` keys. `send()` resolves via `domain:to` first, falls back to name-only. Added `sendBroadcast(domain, msg)` and `listSubscribers(domain?)`. All existing resume pipeline calls work unchanged via backward-compatible fallback. 14 new tests in `sprint11-agent-bus.test.ts`.
+
+**Story 8: Platform — Dynamic Agent Discovery**
+- `server/src/agents/runtime/agent-protocol.ts` — Added optional `capabilities?: string[]` to `AgentConfig`.
+- `server/src/agents/runtime/agent-registry.ts` — Added `findByCapability(cap, domain?)`, `listDomains()`, `describe(domain, name)`. Added `AgentDescription` interface.
+- `server/src/agents/strategist/agent.ts` — Registered capabilities: research, positioning, interview, gap_analysis, blueprint_design.
+- `server/src/agents/craftsman/agent.ts` — Registered capabilities: content_creation, self_review, section_writing, revision.
+- `server/src/agents/producer/agent.ts` — Registered capabilities: quality_review, document_production, ats_compliance, template_selection.
+- 10 new tests in `sprint11-agent-discovery.test.ts`.
+
+**Story 9: Platform — Wire Lifecycle Hooks in Agent Loop**
+- `server/src/agents/runtime/agent-loop.ts` — Added `config.onInit?.(ctx)` call before first LLM round (errors logged, don't abort). Added `config.onShutdown?.(ctx)` in `finally` block (errors logged, don't mask loop errors). 6 new tests in `sprint11-lifecycle-hooks.test.ts`.
+
+**Story 10: Clean Up Backlog and Stale Artifacts**
+- `docs/BACKLOG.md` — Removed 4 resolved items (SSE mismatch, usage contamination, center scroll, ATS revisions). Updated platform expansion story to reflect Sprint 11 progress.
+- Deleted stale `server/dist/` directory.
+
+**Story 11: Documentation and Retrospective**
+- `docs/CHANGELOG.md` — Sprint 11 complete entry.
+- `docs/SPRINT_LOG.md` — Sprint 11 retrospective.
+- `docs/ARCHITECTURE.md` — Updated agent runtime section (bus routing, registry discovery, lifecycle hooks).
+- `docs/DECISIONS.md` — Added ADR-018 (cross-product agent bus routing).
+- `docs/CURRENT_SPRINT.md` — All stories marked done.
+
+### Decisions Made
+- ADR-018: Namespaced bus routing with backward-compatible name-only fallback (see DECISIONS.md).
+- Lifecycle hook errors are logged but never abort or mask — fail-safe design.
+- `revision_counts` made a required field on PipelineState (not optional) to enforce initialization.
+
+### Test Totals
+- Server: 736 tests (+73 new)
+- App: 354 tests (+27 new)
+- Total: 1,090 tests (+100 new)
+
+### Known Issues
+- None introduced by Sprint 11.
+- 2 pre-existing failures in `agents-gap-analyst.test.ts` remain.
+
 ## 2026-03-01 — Story 8: E2E Test — Dashboard Flows
 **Sprint:** 10 | **Story:** Story 8 — E2E Test — Dashboard Flows
 **Summary:** Created `e2e/tests/dashboard.spec.ts` — 12 Playwright tests covering dashboard navigation, tab switching, session card status badges, status filter, resume viewer modal, evidence library search/filter, and comparison selection flows. All tests are resilient to data state (empty or populated).

@@ -148,7 +148,7 @@ export function stopUsageTracking(sessionId: string): void {
 }
 
 /** Called internally after every chat() call to accumulate usage. */
-function recordUsage(usage: { input_tokens: number; output_tokens: number }, sessionId?: string): void {
+export function recordUsage(usage: { input_tokens: number; output_tokens: number }, sessionId?: string): void {
   // Prefer explicit session_id param, then fall back to AsyncLocalStorage context.
   const sid = sessionId ?? usageContext.getStore();
   if (sid) {
@@ -161,9 +161,10 @@ function recordUsage(usage: { input_tokens: number; output_tokens: number }, ses
   }
 
   // Drop usage rather than silently misattribute it to an unrelated session.
-  if (sessionUsageAccumulators.size === 1) {
-    logger.warn({ sessionId, usage }, 'recordUsage: no accumulator found for session, dropping usage to avoid misattribution');
-  }
+  logger.warn(
+    { sessionId, usage, activeAccumulatorCount: sessionUsageAccumulators.size },
+    'recordUsage: no accumulator found for session, dropping usage to avoid misattribution',
+  );
 }
 
 export function createCombinedAbortSignal(

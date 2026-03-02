@@ -41,6 +41,7 @@ function makePipelineState(overrides?: Partial<PipelineState>): PipelineState {
     current_stage: 'section_writing',
     approved_sections: [],
     revision_count: 0,
+    revision_counts: {},
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
     ...overrides,
   };
@@ -196,9 +197,9 @@ describe('write_section', () => {
     expect(callArg.cross_section_context).toBeUndefined();
   });
 
-  it('truncates cross_section_context entries to 300 characters', async () => {
+  it('truncates cross_section_context entries to 600 characters', async () => {
     const ctx = makeCtx();
-    const longContent = 'A'.repeat(600);
+    const longContent = 'A'.repeat(900);
     ctx.scratchpad['section_summary'] = { section: 'summary', content: longContent, keywords_used: [], requirements_addressed: [], evidence_ids_used: [] };
 
     vi.mocked(runSectionWriter).mockResolvedValueOnce(makeSectionWriterOutput('skills'));
@@ -211,7 +212,7 @@ describe('write_section', () => {
     const callArg = vi.mocked(runSectionWriter).mock.calls[0][0];
     const ctxSummary = callArg.cross_section_context?.summary;
     expect(ctxSummary).toBeDefined();
-    expect(ctxSummary!.length).toBe(300);
+    expect(ctxSummary!.length).toBe(600);
   });
 });
 

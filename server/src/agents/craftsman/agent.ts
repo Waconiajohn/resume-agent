@@ -29,6 +29,8 @@ export const craftsmanConfig: ResumeAgentConfig = {
 
   tools: craftsmanTools,
 
+  capabilities: ['content_creation', 'self_review', 'section_writing', 'revision'],
+
   /**
    * Main loop uses MODEL_ORCHESTRATOR — coordination logic between tools.
    * Each tool routes to the appropriate cost tier internally:

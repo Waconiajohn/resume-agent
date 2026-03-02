@@ -204,14 +204,34 @@ const writeSectionTool: ResumeAgentTool = {
     const evidence_sources = input.evidence_sources as Record<string, unknown>;
     const global_rules = input.global_rules as ArchitectOutput['global_rules'];
 
-    // Build cross-section context from previously completed sections
-    const crossSectionContext: Record<string, string> = {};
+    // Build cross-section context from previously completed sections (sliding window)
+    const MAX_CROSS_SECTION_ENTRIES = 5;
+    const CROSS_SECTION_EXCERPT_LENGTH = 600;
+
+    const allSectionEntries: Array<[string, string]> = [];
     for (const [key, val] of Object.entries(ctx.scratchpad)) {
       if (key.startsWith('section_')) {
         if (val && typeof (val as Record<string, unknown>).content === 'string') {
-          crossSectionContext[key.replace('section_', '')] = ((val as Record<string, unknown>).content as string).slice(0, 300);
+          allSectionEntries.push([
+            key.replace('section_', ''),
+            (val as Record<string, unknown>).content as string,
+          ]);
         }
       }
+    }
+
+    if (allSectionEntries.length > MAX_CROSS_SECTION_ENTRIES) {
+      const droppedCount = allSectionEntries.length - MAX_CROSS_SECTION_ENTRIES;
+      logger.warn(
+        { section, total_sections: allSectionEntries.length, dropped_count: droppedCount },
+        'write_section: cross-section context exceeds window — dropping oldest entries',
+      );
+    }
+
+    const windowedEntries = allSectionEntries.slice(-MAX_CROSS_SECTION_ENTRIES);
+    const crossSectionContext: Record<string, string> = {};
+    for (const [name, content] of windowedEntries) {
+      crossSectionContext[name] = content.slice(0, CROSS_SECTION_EXCERPT_LENGTH);
     }
 
     const writerInput: SectionWriterInput = {

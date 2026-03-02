@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSession } from '@/hooks/useSession';
 import { useAgent } from '@/hooks/useAgent';
@@ -78,6 +78,10 @@ export default function App() {
     reconnectStreamNow,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
+  // Request-level lock: prevents concurrent gate responses even when React state
+  // updates haven't flushed yet (fixes Bug 18 — double-click 409s).
+  const isRespondingRef = useRef(false);
+
   const [view, setView] = useState<View>('landing');
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [intakeLoading, setIntakeLoading] = useState(false);
@@ -112,6 +116,13 @@ export default function App() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  // When a new gate becomes active, reset the in-flight lock so the user can respond.
+  useEffect(() => {
+    if (isPipelineGateActive) {
+      isRespondingRef.current = false;
+    }
+  }, [isPipelineGateActive]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -303,10 +314,16 @@ export default function App() {
     async (gate: string, response: unknown) => {
       if (!currentSession) return;
       if (!isPipelineGateActive) return; // Prevent 409 when no gate is pending
+      if (isRespondingRef.current) return; // Ref-level lock: blocks concurrent calls before state flush
+      isRespondingRef.current = true;
       setIsPipelineGateActive(false); // Optimistic disable prevents double-click
-      const ok = await respondToGate(currentSession.id, gate, response);
-      if (!ok) {
-        setIsPipelineGateActive(true); // Re-enable on failure so user can retry
+      try {
+        const ok = await respondToGate(currentSession.id, gate, response);
+        if (!ok) {
+          setIsPipelineGateActive(true); // Re-enable on failure so user can retry
+        }
+      } finally {
+        isRespondingRef.current = false;
       }
     },
     [currentSession, isPipelineGateActive, respondToGate, setIsPipelineGateActive],
