@@ -114,8 +114,8 @@ test.describe('Full Pipeline E2E', () => {
         page.getByPlaceholder(/Type a message/i),
       ).toBeVisible({ timeout: 30_000 });
 
-      // Wait for the workspace to show pipeline progress (visible even if panel root has zero height)
-      await expect(page.getByText('Your Resume Progress')).toBeVisible({
+      // Wait for the workspace to show pipeline progress breadcrumb (visible even if panel root has zero height)
+      await expect(page.getByText(/Step \d+ of 7 ·/)).toBeVisible({
         timeout: 5 * 60_000, // 5 min for first LLM response + workspace
       });
     });
