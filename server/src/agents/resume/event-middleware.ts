@@ -15,11 +15,14 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { parsePositiveInt } from '../../lib/http-body-guard.js';
 import {
-  WORKFLOW_NODE_KEYS,
   type WorkflowNodeKey,
-  type WorkflowNodeStatus,
   workflowNodeFromStage,
 } from '../../lib/workflow-nodes.js';
+import {
+  persistWorkflowArtifactBestEffort,
+  upsertWorkflowNodeStatusBestEffort,
+  resetWorkflowNodesForNewRunBestEffort,
+} from '../../lib/workflow-persistence.js';
 import type { PipelineSSEEvent } from '../types.js';
 
 // ─── Configurable constants ───────────────────────────────────────────
@@ -272,105 +275,8 @@ export function workflowNodeFromPanelType(panelType: string): WorkflowNodeKey | 
   }
 }
 
-// ─── Workflow persistence helpers ─────────────────────────────────────
-
-async function upsertWorkflowNodeStatus(
-  sessionId: string,
-  nodeKey: WorkflowNodeKey,
-  status: WorkflowNodeStatus,
-  meta?: Record<string, unknown>,
-  activeVersion?: number | null,
-) {
-  const payload: Record<string, unknown> = {
-    session_id: sessionId,
-    node_key: nodeKey,
-    status,
-    updated_at: new Date().toISOString(),
-  };
-  if (typeof activeVersion === 'number') payload.active_version = activeVersion;
-  if (meta) payload.meta = meta;
-
-  const { error } = await supabaseAdmin
-    .from('session_workflow_nodes')
-    .upsert(payload, { onConflict: 'session_id,node_key' });
-  if (error) {
-    logger.warn({ session_id: sessionId, node_key: nodeKey, status, error: error.message }, 'Failed to upsert workflow node status');
-  }
-}
-
-async function persistWorkflowArtifact(
-  sessionId: string,
-  nodeKey: WorkflowNodeKey,
-  artifactType: string,
-  payload: unknown,
-  createdBy = 'pipeline',
-) {
-  const { data, error } = await supabaseAdmin.rpc('next_artifact_version', {
-    p_session_id: sessionId,
-    p_node_key: nodeKey,
-    p_artifact_type: artifactType,
-    p_payload: payload,
-    p_created_by: createdBy,
-  });
-  if (error) {
-    logger.warn(
-      { session_id: sessionId, node_key: nodeKey, artifact_type: artifactType, error: error.message },
-      'Failed to persist workflow artifact',
-    );
-    return;
-  }
-  const version = typeof data === 'number' ? data : 1;
-  await upsertWorkflowNodeStatus(sessionId, nodeKey, 'complete', undefined, version);
-}
-
-function persistWorkflowArtifactBestEffort(
-  sessionId: string,
-  nodeKey: WorkflowNodeKey,
-  artifactType: string,
-  payload: unknown,
-  createdBy = 'pipeline',
-) {
-  persistWorkflowArtifact(sessionId, nodeKey, artifactType, payload, createdBy).catch((err: unknown) => {
-    logger.warn({ session_id: sessionId, node_key: nodeKey, artifact_type: artifactType, err }, 'persistWorkflowArtifact failed');
-  });
-}
-
-function upsertWorkflowNodeStatusBestEffort(
-  sessionId: string,
-  nodeKey: WorkflowNodeKey,
-  status: WorkflowNodeStatus,
-  meta?: Record<string, unknown>,
-) {
-  upsertWorkflowNodeStatus(sessionId, nodeKey, status, meta).catch((err: unknown) => {
-    logger.warn({ session_id: sessionId, node_key: nodeKey, status, err }, 'upsertWorkflowNodeStatus failed');
-  });
-}
-
-/**
- * Resets all workflow nodes to their initial state for a new pipeline run.
- * Called from route hooks (not from event middleware).
- */
-export function resetWorkflowNodesForNewRunBestEffort(sessionId: string) {
-  (async () => {
-    const now = new Date().toISOString();
-    const rows = WORKFLOW_NODE_KEYS.map((nodeKey) => ({
-      session_id: sessionId,
-      node_key: nodeKey,
-      status: nodeKey === 'overview' ? 'in_progress' : 'locked',
-      active_version: null,
-      updated_at: now,
-      meta: null,
-    }));
-    const { error } = await supabaseAdmin
-      .from('session_workflow_nodes')
-      .upsert(rows, { onConflict: 'session_id,node_key' });
-    if (error) {
-      logger.warn({ session_id: sessionId, error: error.message }, 'Failed to reset workflow nodes for new run');
-    }
-  })().catch((err: unknown) => {
-    logger.warn({ session_id: sessionId, err }, 'resetWorkflowNodesForNewRunBestEffort failed');
-  });
-}
+// Workflow persistence helpers — imported from shared module, re-exported for tests
+export { resetWorkflowNodesForNewRunBestEffort } from '../../lib/workflow-persistence.js';
 
 // ─── Question response persistence ───────────────────────────────────
 

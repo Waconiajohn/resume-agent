@@ -63,6 +63,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
       session_id: sessionId,
       user_id: userId,
       current_stage: 'analysis',
+      platform_context: input.platform_context as CoverLetterState['platform_context'],
       // Input data will be parsed by the analyst agent's tools
       resume_data: undefined,
       jd_analysis: undefined,
@@ -70,7 +71,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'analyst') {
-        return [
+        const parts = [
           'Analyze the following resume and job description to create a cover letter plan.',
           '',
           '## Resume',
@@ -80,9 +81,31 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           String(input.job_description ?? ''),
           '',
           `Company: ${String(input.company_name ?? 'Unknown')}`,
-          '',
-          'Call parse_inputs first, then match_requirements, then plan_letter.',
-        ].join('\n');
+        ];
+
+        if (state.platform_context?.positioning_strategy) {
+          parts.push(
+            '',
+            '## Prior Positioning Strategy (from Resume Strategist)',
+            'The user has previously completed a resume positioning session. Use this strategy to inform your analysis:',
+            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
+          );
+        }
+
+        if (
+          state.platform_context?.evidence_items &&
+          state.platform_context.evidence_items.length > 0
+        ) {
+          parts.push(
+            '',
+            '## Prior Evidence Items',
+            'The following evidence items were captured during the resume process. Leverage relevant items:',
+            JSON.stringify(state.platform_context.evidence_items, null, 2),
+          );
+        }
+
+        parts.push('', 'Call parse_inputs first, then match_requirements, then plan_letter.');
+        return parts.join('\n');
       }
 
       if (agentName === 'writer') {

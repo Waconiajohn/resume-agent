@@ -84,6 +84,7 @@ export default function App() {
   const isRespondingRef = useRef(false);
 
   const [view, setView] = useState<View>('landing');
+  const [toolSlug, setToolSlug] = useState<string | undefined>(undefined);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [intakeLoading, setIntakeLoading] = useState(false);
 
@@ -95,7 +96,8 @@ export default function App() {
     else if (path === '/billing') setView('billing');
     else if (path === '/affiliate') setView('affiliate');
     else if (path === '/dashboard') setView('dashboard');
-    else if (path === '/tools') setView('tools');
+    else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
+    else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
   }, []);
 
   // Detect referral code from URL query parameter and persist to localStorage
@@ -134,7 +136,8 @@ export default function App() {
       else if (path === '/billing') setView('billing');
       else if (path === '/affiliate') setView('affiliate');
       else if (path === '/dashboard') setView('dashboard');
-      else if (path === '/tools') setView('tools');
+      else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
+      else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
       else setView('landing');
     };
     window.addEventListener('popstate', handlePopState);
@@ -344,6 +347,23 @@ export default function App() {
   }, [signOut, setCurrentSession]);
 
   const navigateTo = useCallback((viewName: string) => {
+    // Handle /tools/:slug
+    if (viewName.startsWith('/tools/')) {
+      setView('tools');
+      setToolSlug(viewName.split('/tools/')[1]);
+      if (window.location.pathname !== viewName) {
+        window.history.pushState({}, '', viewName);
+      }
+      return;
+    }
+    if (viewName === '/tools' || viewName === 'tools') {
+      setView('tools');
+      setToolSlug(undefined);
+      if (window.location.pathname !== '/tools') {
+        window.history.pushState({}, '', '/tools');
+      }
+      return;
+    }
     const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools'];
     const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
     setView(newView);
@@ -507,8 +527,11 @@ export default function App() {
 
       {view === 'tools' && (
         <ToolsScreen
+          slug={toolSlug}
           onNavigate={(route) => {
-            if (route === '/') navigateTo('landing');
+            if (route === '/tools') navigateTo('tools');
+            else if (route.startsWith('/tools/')) navigateTo(route);
+            else if (route === '/app' || route === '/') navigateTo('landing');
             else navigateTo('landing');
           }}
         />

@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { setMaxListeners } from 'node:events';
 import { getAnthropicClient } from './anthropic.js';
 import logger from './logger.js';
 import { flushUsageToDb, clearUsageWatermark } from './usage-persistence.js';
@@ -173,7 +172,6 @@ export function createCombinedAbortSignal(
 ): { signal: AbortSignal; cleanup: () => void } {
   const timeoutController = new AbortController();
   const combinedController = new AbortController();
-  setMaxListeners(50, combinedController.signal);
   const timeout = setTimeout(() => {
     timeoutController.abort(new Error(`Timed out after ${timeoutMs}ms`));
   }, timeoutMs);

@@ -11,7 +11,6 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { setMaxListeners } from 'node:events';
 import { llm } from '../../lib/llm.js';
 import { withRetry } from '../../lib/retry.js';
 import { createCombinedAbortSignal } from '../../lib/llm-provider.js';
@@ -86,22 +85,11 @@ export async function runAgentLoop<
     messages.push({ role: 'user', content: initialMessage });
   }
 
-  // Prevent MaxListenersExceededWarning: ctx.signal accumulates one listener per tool
-  // execution (from executeToolWithTimeout) plus one for the overall signal below.
-  // Parallel tool rounds can have many live listeners simultaneously.
-  setMaxListeners(50, ctx.signal);
-
-  // Overall timeout
+  // Overall timeout — one combined signal for the agent's entire lifetime.
   const { signal: overallSignal, cleanup: cleanupOverall } = createCombinedAbortSignal(
     ctx.signal,
     overallTimeoutMs,
   );
-
-  // Prevent MaxListenersExceededWarning: overallSignal accumulates one listener per
-  // LLM call (from createCombinedAbortSignal inside llm-provider.ts). With up to
-  // maxRounds × maxAttempts calls over the agent's lifetime, counts can exceed the
-  // default limit of 10, even though each listener is removed in its finally block.
-  setMaxListeners(50, overallSignal);
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -128,169 +116,191 @@ export async function runAgentLoop<
 
       log.info({ round, messageCount: messages.length }, 'Agent round start');
 
-      // Emit transparency event via a type-safe cast. The loop emits a generic
-      // transparency marker that works with any product's event union.
-      // Products must include `{ type: 'transparency'; stage: string; message: string }`
-      // in their event union for this to surface to the frontend.
-      try {
-        const state = ctx.getState() as Record<string, unknown>;
-        const stage = typeof state['current_stage'] === 'string' ? state['current_stage'] : 'unknown';
-        ctx.emit({
-          type: 'transparency',
-          stage,
-          message: `${config.identity.name}: round ${round + 1}/${maxRounds}`,
-        } as unknown as TEvent);
-      } catch {
-        // Transparency emit is non-critical — swallow errors
-      }
-
-      // Call LLM with retry
-      const response = await withRetry(
-        () => llm.chat({
-          model: config.model,
-          system: config.system_prompt,
-          messages,
-          tools: toolDefs.length > 0 ? toolDefs : undefined,
-          tool_choice: toolDefs.length > 0 ? { type: 'auto' } : undefined,
-          max_tokens: config.loop_max_tokens ?? 4096,
-          signal: overallSignal,
-          session_id: ctx.sessionId,
-        }),
-        {
-          maxAttempts: 3,
-          baseDelay: 2000,
-          signal: overallSignal,
-          onRetry: (attempt, err) => {
-            log.warn({ attempt, error: err.message }, 'Agent LLM call retry');
-          },
-        },
+      // Per-round scoped signal: each round's LLM call and tools derive from this
+      // rather than from overallSignal directly. This bounds listener accumulation
+      // to a constant per round — roundCleanup() removes all listeners after the
+      // round completes (or exits early), regardless of how many rounds have run.
+      const { signal: roundSignal, cleanup: roundCleanup } = createCombinedAbortSignal(
+        overallSignal,
+        roundTimeoutMs,
       );
 
-      totalInputTokens += response.usage.input_tokens;
-      totalOutputTokens += response.usage.output_tokens;
+      // Round-scoped context so tool execution uses the per-round timeout signal.
+      const roundCtx: AgentContext<TState, TEvent> = { ...ctx, signal: roundSignal };
 
-      // No tool calls — agent is done
-      if (response.tool_calls.length === 0) {
-        log.info({ round, text: response.text.slice(0, 200) }, 'Agent completed (no tool calls)');
+      // Track whether to break after this round's finally block runs.
+      let shouldBreak = false;
 
-        // Store final text in scratchpad
-        if (response.text) {
-          ctx.scratchpad._final_text = response.text;
-        }
-        break;
-      }
-
-      // Build assistant message with tool calls
-      const assistantBlocks: ContentBlock[] = [];
-      if (response.text) {
-        assistantBlocks.push({ type: 'text', text: response.text });
-      }
-      for (const tc of response.tool_calls) {
-        assistantBlocks.push({
-          type: 'tool_use',
-          id: tc.id,
-          name: tc.name,
-          input: tc.input,
-        });
-      }
-      messages.push({ role: 'assistant', content: assistantBlocks });
-
-      // Execute tool calls — parallel-safe tools run concurrently, others sequentially first
-      const parallelSafeSet = new Set(config.parallel_safe_tools ?? []);
-      const sequentialCalls = response.tool_calls.filter(tc => !parallelSafeSet.has(tc.name));
-      const parallelCalls = response.tool_calls.filter(tc => parallelSafeSet.has(tc.name));
-
-      // Map tool_use_id → result block for ordered reassembly
-      const resultMap = new Map<string, ContentBlock>();
-
-      // 1. Execute sequential tools first (order matters)
-      for (const tc of sequentialCalls) {
-        const tool = toolMap.get(tc.name);
-        if (!tool) {
-          log.warn({ toolName: tc.name }, 'Unknown tool called');
-          resultMap.set(tc.id, {
-            type: 'tool_result',
-            tool_use_id: tc.id,
-            content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }),
-          });
-          continue;
-        }
-
-        log.info({ tool: tc.name, round }, 'Executing tool (sequential)');
-
+      try {
+        // Emit transparency event via a type-safe cast. The loop emits a generic
+        // transparency marker that works with any product's event union.
+        // Products must include `{ type: 'transparency'; stage: string; message: string }`
+        // in their event union for this to surface to the frontend.
         try {
-          const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, ctx, roundTimeoutMs);
-          const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-          resultMap.set(tc.id, {
-            type: 'tool_result',
-            tool_use_id: tc.id,
-            content: resultStr,
-          });
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          log.error({ tool: tc.name, error: errorMsg }, 'Tool execution error');
-          resultMap.set(tc.id, {
-            type: 'tool_result',
-            tool_use_id: tc.id,
-            content: JSON.stringify({ error: errorMsg }),
-          });
+          const state = ctx.getState() as Record<string, unknown>;
+          const stage = typeof state['current_stage'] === 'string' ? state['current_stage'] : 'unknown';
+          ctx.emit({
+            type: 'transparency',
+            stage,
+            message: `${config.identity.name}: round ${round + 1}/${maxRounds}`,
+          } as unknown as TEvent);
+        } catch {
+          // Transparency emit is non-critical — swallow errors
         }
-      }
 
-      // 2. Execute parallel-safe tools concurrently
-      if (parallelCalls.length > 0) {
-        log.info(
-          { tools: parallelCalls.map(tc => tc.name), round },
-          `Executing ${parallelCalls.length} tools in parallel`,
+        // Call LLM with retry, using the per-round signal
+        const response = await withRetry(
+          () => llm.chat({
+            model: config.model,
+            system: config.system_prompt,
+            messages,
+            tools: toolDefs.length > 0 ? toolDefs : undefined,
+            tool_choice: toolDefs.length > 0 ? { type: 'auto' } : undefined,
+            max_tokens: config.loop_max_tokens ?? 4096,
+            signal: roundSignal,
+            session_id: ctx.sessionId,
+          }),
+          {
+            maxAttempts: 3,
+            baseDelay: 2000,
+            signal: roundSignal,
+            onRetry: (attempt, err) => {
+              log.warn({ attempt, error: err.message }, 'Agent LLM call retry');
+            },
+          },
         );
 
-        const settled = await Promise.allSettled(
-          parallelCalls.map(async (tc) => {
+        totalInputTokens += response.usage.input_tokens;
+        totalOutputTokens += response.usage.output_tokens;
+
+        // No tool calls — agent is done this round
+        if (response.tool_calls.length === 0) {
+          log.info({ round, text: response.text.slice(0, 200) }, 'Agent completed (no tool calls)');
+
+          // Store final text in scratchpad
+          if (response.text) {
+            ctx.scratchpad._final_text = response.text;
+          }
+          shouldBreak = true;
+        } else {
+          // Build assistant message with tool calls
+          const assistantBlocks: ContentBlock[] = [];
+          if (response.text) {
+            assistantBlocks.push({ type: 'text', text: response.text });
+          }
+          for (const tc of response.tool_calls) {
+            assistantBlocks.push({
+              type: 'tool_use',
+              id: tc.id,
+              name: tc.name,
+              input: tc.input,
+            });
+          }
+          messages.push({ role: 'assistant', content: assistantBlocks });
+
+          // Execute tool calls — parallel-safe tools run concurrently, others sequentially first
+          const parallelSafeSet = new Set(config.parallel_safe_tools ?? []);
+          const sequentialCalls = response.tool_calls.filter(tc => !parallelSafeSet.has(tc.name));
+          const parallelCalls = response.tool_calls.filter(tc => parallelSafeSet.has(tc.name));
+
+          // Map tool_use_id → result block for ordered reassembly
+          const resultMap = new Map<string, ContentBlock>();
+
+          // 1. Execute sequential tools first (order matters)
+          for (const tc of sequentialCalls) {
             const tool = toolMap.get(tc.name);
             if (!tool) {
               log.warn({ toolName: tc.name }, 'Unknown tool called');
-              return { id: tc.id, content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }) };
+              resultMap.set(tc.id, {
+                type: 'tool_result',
+                tool_use_id: tc.id,
+                content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }),
+              });
+              continue;
             }
-            log.info({ tool: tc.name, round }, 'Executing tool (parallel)');
-            const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, ctx, roundTimeoutMs);
-            const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-            return { id: tc.id, content: resultStr };
-          }),
-        );
 
-        for (let i = 0; i < parallelCalls.length; i++) {
-          const tc = parallelCalls[i];
-          const outcome = settled[i];
-          if (outcome.status === 'fulfilled') {
-            resultMap.set(tc.id, {
-              type: 'tool_result',
-              tool_use_id: outcome.value.id,
-              content: outcome.value.content,
-            });
-          } else {
-            const errorMsg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
-            log.error({ tool: tc.name, error: errorMsg }, 'Parallel tool execution error');
-            resultMap.set(tc.id, {
-              type: 'tool_result',
-              tool_use_id: tc.id,
-              content: JSON.stringify({ error: errorMsg }),
-            });
+            log.info({ tool: tc.name, round }, 'Executing tool (sequential)');
+
+            try {
+              const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, roundCtx, roundTimeoutMs);
+              const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+              resultMap.set(tc.id, {
+                type: 'tool_result',
+                tool_use_id: tc.id,
+                content: resultStr,
+              });
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : String(err);
+              log.error({ tool: tc.name, error: errorMsg }, 'Tool execution error');
+              resultMap.set(tc.id, {
+                type: 'tool_result',
+                tool_use_id: tc.id,
+                content: JSON.stringify({ error: errorMsg }),
+              });
+            }
+          }
+
+          // 2. Execute parallel-safe tools concurrently
+          if (parallelCalls.length > 0) {
+            log.info(
+              { tools: parallelCalls.map(tc => tc.name), round },
+              `Executing ${parallelCalls.length} tools in parallel`,
+            );
+
+            const settled = await Promise.allSettled(
+              parallelCalls.map(async (tc) => {
+                const tool = toolMap.get(tc.name);
+                if (!tool) {
+                  log.warn({ toolName: tc.name }, 'Unknown tool called');
+                  return { id: tc.id, content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }) };
+                }
+                log.info({ tool: tc.name, round }, 'Executing tool (parallel)');
+                const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, roundCtx, roundTimeoutMs);
+                const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+                return { id: tc.id, content: resultStr };
+              }),
+            );
+
+            for (let i = 0; i < parallelCalls.length; i++) {
+              const tc = parallelCalls[i];
+              const outcome = settled[i];
+              if (outcome.status === 'fulfilled') {
+                resultMap.set(tc.id, {
+                  type: 'tool_result',
+                  tool_use_id: outcome.value.id,
+                  content: outcome.value.content,
+                });
+              } else {
+                const errorMsg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
+                log.error({ tool: tc.name, error: errorMsg }, 'Parallel tool execution error');
+                resultMap.set(tc.id, {
+                  type: 'tool_result',
+                  tool_use_id: tc.id,
+                  content: JSON.stringify({ error: errorMsg }),
+                });
+              }
+            }
+          }
+
+          // 3. Reassemble results in original tool_calls order
+          const resultBlocks: ContentBlock[] = response.tool_calls.map(
+            tc => resultMap.get(tc.id)!,
+          );
+
+          // Append tool results as user message
+          messages.push({ role: 'user', content: resultBlocks });
+
+          // Compact conversation history to prevent context overflow on long sessions
+          if (messages.length > MAX_HISTORY_MESSAGES) {
+            compactConversationHistory(messages, log);
           }
         }
+      } finally {
+        // Always release per-round listeners, regardless of normal/error/abort exit.
+        roundCleanup();
       }
 
-      // 3. Reassemble results in original tool_calls order
-      const resultBlocks: ContentBlock[] = response.tool_calls.map(
-        tc => resultMap.get(tc.id)!,
-      );
-
-      // Append tool results as user message
-      messages.push({ role: 'user', content: resultBlocks });
-
-      // Compact conversation history to prevent context overflow on long sessions
-      if (messages.length > MAX_HISTORY_MESSAGES) {
-        compactConversationHistory(messages, log);
-      }
+      if (shouldBreak) break;
     }
 
     if (round >= maxRounds) {

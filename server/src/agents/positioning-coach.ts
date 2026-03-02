@@ -14,7 +14,6 @@
  * manages the back-and-forth.
  */
 
-import { setMaxListeners } from 'node:events';
 import { repairJSON } from '../lib/json-repair.js';
 import { withRetry } from '../lib/retry.js';
 import logger from '../lib/logger.js';
@@ -164,7 +163,6 @@ export async function generateQuestions(
         // Each attempt gets its own AbortController so the in-flight fetch is
         // cancelled before a retry starts — prevents duplicate concurrent calls.
         const controller = new AbortController();
-        setMaxListeners(20, controller.signal);
         const timer = setTimeout(() => controller.abort(), 120_000);
         return generateQuestionsViaLLM(resume, research, gaps, preferences, controller.signal)
           .finally(() => clearTimeout(timer));

@@ -1,5 +1,109 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 9
+**Sprint:** 15 | **Stories:** All 8 stories
+**Summary:** Sprint 15 — Tech debt sweep (TypeScript fix, workflow persistence dedup, MaxListeners root cause) and platform expansion (product landing pages, cross-product context). 8/8 stories delivered. Test count: 377 app + 891 server = 1,268 total.
+
+### Changes Made
+
+**Story 1 — Fix `resumes-edit.test.ts` TypeScript Error**
+- `server/src/__tests__/resumes-edit.test.ts` — Changed `as Record<string, unknown>` to `as unknown as Record<string, unknown>` at line 292 to fix null-to-Record cast.
+
+**Story 2 — Deduplicate Workflow Persistence Helpers**
+- `server/src/lib/workflow-persistence.ts` — New shared module (~105 lines). Exports `persistWorkflowArtifactBestEffort`, `upsertWorkflowNodeStatusBestEffort`, `resetWorkflowNodesForNewRunBestEffort`.
+- `server/src/agents/resume/event-middleware.ts` — Deleted 98 lines of duplicate helpers (lines 277-373). Now imports from shared module.
+- `server/src/agents/resume/route-hooks.ts` — Deleted 102 lines of duplicate helpers (lines 401-502). Now imports from shared module.
+
+**Story 3 — Resolve MaxListenersExceededWarning Root Cause**
+- `server/src/agents/runtime/agent-loop.ts` — Per-round scoped AbortControllers with `roundSignal`/`roundCleanup()`. Both `setMaxListeners` calls removed.
+- `server/src/agents/runtime/product-coordinator.ts` — `setMaxListeners(20)` removed. 3 agents max, well under default limit.
+- `server/src/agents/positioning-coach.ts` — `setMaxListeners(20)` removed. Per-attempt controller, never accumulates.
+- `server/src/lib/retry.ts` — `setMaxListeners(20)` block removed. Max 3 sequential attempts.
+- `server/src/lib/llm-provider.ts` — `setMaxListeners(50)` removed. Combined signal has at most 2 listeners.
+
+**Story 4 — Clean Stale Backlog and Documentation**
+- `docs/BACKLOG.md` — "Decommission Legacy agent/ Directory" marked COMPLETE (Sprint 7). "Fix Remaining Pre-Existing Test Failures" marked COMPLETE. Stories 1-3 marked COMPLETE.
+- `memory/MEMORY.md` — Removed stale "2 pre-existing test failures in agents-gap-analyst.test.ts" references.
+
+**Story 5 — Extend ProductDefinition with Landing Page Data**
+- `app/src/types/platform.ts` — `ProductDefinition` extended with `longDescription`, `features: ProductFeature[]`, `ctaLabel`. All 4 products populated with content.
+
+**Story 6 — Build Product Landing Page Component**
+- `app/src/components/platform/ProductLandingPage.tsx` — New component (~65 lines). Glass morphism design, features grid, CTA, back link.
+- `app/src/components/platform/ToolsScreen.tsx` — Added `slug` prop for routing between catalog grid and landing page.
+- `app/src/components/platform/ProductCatalogGrid.tsx` — Active cards now navigate to `/tools/:slug` instead of direct route.
+- `app/src/App.tsx` — Added `toolSlug` state, `/tools/:slug` URL parsing, updated `navigateTo` for slug routing.
+- `app/src/__tests__/platform/ProductLandingPage.test.tsx` — New test file (8 tests).
+- `app/src/__tests__/platform/ProductCatalogGrid.test.tsx` — Updated 2 assertions for new slug-based navigation.
+
+**Story 7 — Cross-Product Context Consumption in Cover Letter**
+- `server/src/agents/cover-letter/types.ts` — Added `platform_context` field to `CoverLetterState`.
+- `server/src/agents/cover-letter/product.ts` — `buildAgentMessage` includes positioning strategy + evidence when available. `createInitialState` passes through platform context.
+- `server/src/routes/cover-letter.ts` — Added `transformInput` hook to load positioning strategy + evidence from `user_platform_context` via `getUserContext()`.
+- `server/src/__tests__/cover-letter-context.test.ts` — New test file (13 tests).
+
+**Story 8 — Sprint 15 Documentation**
+- `docs/CHANGELOG.md` — This entry.
+- `docs/SPRINT_LOG.md` — Sprint 15 retrospective.
+- `docs/ARCHITECTURE.md` — Updated test counts, platform components, lib modules.
+- `docs/BACKLOG.md` — Updated completions, new follow-up stories.
+- `docs/CURRENT_SPRINT.md` — All stories marked done.
+
+### Decisions Made
+- Per-round AbortController scoping in agent-loop.ts eliminates listener accumulation without artificial limit bumps.
+- Workflow persistence extracted to `lib/workflow-persistence.ts` as single source of truth. Event middleware and route hooks import + re-export for backward compatibility.
+- Product catalog cards route through landing pages (`/tools/:slug`) rather than directly to product routes, giving users a features overview before starting.
+- Cover letter context consumption is best-effort: missing context is gracefully handled so first-time users aren't blocked.
+
+### Known Issues
+- None new. All pre-existing tech debt items in this sprint resolved.
+
+### Next Steps
+- Cover letter frontend UI (intake form, SSE stream, draft display, export)
+- Waitlist backend for coming-soon products
+
+---
+
+## 2026-03-02 — Session 8
+**Sprint:** 15 | **Story:** Story 3 — Resolve MaxListenersExceededWarning Root Cause
+**Summary:** Removed all 6 `setMaxListeners` calls from production code by properly scoping AbortControllers with per-round cleanup in the agent loop.
+
+### Changes Made
+- `server/src/agents/runtime/agent-loop.ts` — Removed `import { setMaxListeners }` and both `setMaxListeners` calls (on `ctx.signal` and `overallSignal`). Introduced per-round `createCombinedAbortSignal` inside the for loop, scoping each round's LLM call and tool execution to a `roundSignal`. Per-round `roundCtx` passes `roundSignal` to tool execution. `roundCleanup()` called in a `finally` block guaranteeing cleanup on normal exit, `shouldBreak` exit, exception, and abort.
+- `server/src/agents/runtime/product-coordinator.ts` — Removed `import { setMaxListeners }` and `setMaxListeners(20, pipelineAbort.signal)`. The signal gets at most 1 listener (from the external signal forward), well under the Node.js default limit.
+- `server/src/agents/positioning-coach.ts` — Removed `import { setMaxListeners }` and `setMaxListeners(20, controller.signal)`. Each attempt creates its own fresh controller (max 2 per `withRetry` call), so listeners never accumulate.
+- `server/src/lib/retry.ts` — Removed `import { setMaxListeners }` and the entire `setMaxListeners(20, options.signal)` block. With per-attempt cleanup in `withRetry`, listeners are bounded by `maxAttempts` (typically 3).
+- `server/src/lib/llm-provider.ts` — Removed `import { setMaxListeners }` and `setMaxListeners(50, combinedController.signal)` from `createCombinedAbortSignal`. The `combinedController.signal` receives at most 2 listeners (one from caller forwarding, one from timeout), well under the default limit of 10.
+
+### Decisions Made
+- Per-round signal scoping in `agent-loop.ts` is the correct fix because it limits listener lifetime to a single round rather than the agent's entire session. The `finally` block guarantees cleanup regardless of exit path (normal completion, agent done, exception thrown by LLM or tool).
+- The `shouldBreak` flag pattern avoids `break` inside a `try/finally` which would skip the `finally` — instead, the flag is checked after the `finally` block.
+- All other `setMaxListeners` removals are safe because the listener counts on those signals are provably bounded below the Node.js default of 10.
+
+### Next Steps
+- Story 4: Clean Stale Backlog and Documentation
+
+## 2026-03-02 — Session 7
+**Sprint:** 15 | **Story:** Story 7 — Cross-Product Context Consumption in Cover Letter
+**Summary:** Cover letter analyst now bootstraps from positioning strategy and evidence items stored by the resume product in `user_platform_context`. Missing context is handled gracefully.
+
+### Changes Made
+- `server/src/agents/cover-letter/types.ts` — Added optional `platform_context` field to `CoverLetterState` with typed `positioning_strategy` and `evidence_items` sub-fields.
+- `server/src/agents/cover-letter/product.ts` — `createInitialState` now passes through `input.platform_context` into state. `buildAgentMessage` for the analyst builds message from parts array and conditionally appends "Prior Positioning Strategy" and "Prior Evidence Items" sections when context is present.
+- `server/src/routes/cover-letter.ts` — Added `transformInput` hook that loads `positioning_strategy` and `evidence_item` rows from `user_platform_context` for the session's user. On failure, logs a warning and continues without context (best-effort).
+- `server/src/__tests__/cover-letter-context.test.ts` — New. 13 tests covering state type acceptance, createInitialState passthrough, buildAgentMessage context inclusion/omission, empty evidence array handling.
+
+### Decisions Made
+- `userId` is read from `session.user_id` (the DB row) in `transformInput`, because `transformInput`'s signature is `(input, session)` — not `(input, c)`. The Hono context is only available in `onBeforeStart`.
+- Platform context load uses `Promise.all` for parallel fetching of strategy and evidence rows.
+- Only the most recent strategy row (`strategyRows[0]`) is used; all evidence rows are included.
+
+### Known Issues
+- None introduced by this story.
+
+### Next Steps
+- Story 8: Sprint 15 Documentation and Backlog Update.
+
 ## 2026-03-02 — Session 6
 **Sprint:** 14 | **Stories:** All 9 stories
 **Summary:** Sprint 14 — UX declutter, progressive disclosure, and platform expansion foundation. 9/9 stories delivered. Test count: 369 app + 878 server = 1,247 total.

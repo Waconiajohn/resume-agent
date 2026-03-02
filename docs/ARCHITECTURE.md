@@ -10,7 +10,7 @@
 | Primary LLM | Z.AI GLM models (OpenAI-compatible) | 4-tier model routing |
 | Fallback LLM | Anthropic Claude (optional) | Selectable via `LLM_PROVIDER` env var |
 | E2E Testing | Playwright | Full pipeline tests (~28 min with Z.AI latency) |
-| Unit Testing | Vitest | Server (878 tests) + App (369 tests) |
+| Unit Testing | Vitest | Server (891 tests) + App (377 tests) |
 
 ## Monorepo Layout
 
@@ -20,7 +20,7 @@ app/                          # Frontend (Vite + React 19)
   src/components/dashboard/   # 13 dashboard components (DashboardScreen dispatches tabs)
   src/hooks/                  # useAgent.ts (SSE), usePipeline.ts, useSession.ts, useAuth.ts
   src/types/                  # panels.ts (PanelData union), session.ts, resume.ts, platform.ts
-  src/components/platform/    # ProductCatalogGrid.tsx (multi-product catalog)
+  src/components/platform/    # ProductCatalogGrid.tsx, ProductLandingPage.tsx, ToolsScreen.tsx
 server/                       # Backend (Hono + Node.js)
   src/agents/
     runtime/                  # Agent loop, bus, protocol, context (shared infrastructure)
@@ -46,7 +46,7 @@ server/                       # Backend (Hono + Node.js)
                               #   product-route-factory.ts — createProductRoutes() factory
                               #   resume-pipeline.ts — resume routes via createProductRoutes() + hooks
                               #   cover-letter.ts — /api/cover-letter/* routes (FF_COVER_LETTER)
-  src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts, platform-context.ts
+  src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts, platform-context.ts, workflow-persistence.ts
 supabase/
   migrations/                 # Numbered SQL migration files (001-012, then timestamped)
 e2e/

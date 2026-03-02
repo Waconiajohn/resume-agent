@@ -10,25 +10,15 @@ The Product Definition Layer is complete. `ProductConfig`, `runProductPipeline()
 ### ~~Follow-up: Remove Deprecated `TOOL_MODEL_MAP`~~ COMPLETE (Sprint 13, Story 1)
 `TOOL_MODEL_MAP` deleted. All 26 tools have `model_tier` set. `resolveToolModel()` simplified.
 
-### Follow-up: Rename `interview_transcript` to `questionnaire_responses` COMPLETE (Sprint 13, Story 2)
+### ~~Follow-up: Rename `interview_transcript` to `questionnaire_responses`~~ COMPLETE (Sprint 13, Story 2)
 Field renamed across all references. No functional change.
 
 ---
 
 ## Epic: Legacy Code Migration
 
-### Story: Decommission Legacy `agent/` Directory
-- **As a** developer
-- **I want to** migrate `routes/sessions.ts` to use the coordinator-based pipeline
-- **So that** the legacy `agent/` directory can be deleted, reducing codebase by ~2000 lines
-- **Acceptance Criteria:**
-  - [ ] `routes/sessions.ts` uses `agents/coordinator.ts` instead of `agent/loop.ts`
-  - [ ] Chat-based coaching works identically after migration
-  - [ ] `server/src/agent/` directory deleted
-  - [ ] `server/src/agents/pipeline.ts` deleted (no active imports)
-  - [ ] No dead code references remain
-- **Estimated complexity:** Large
-- **Dependencies:** All current sprint work complete
+### ~~Story: Decommission Legacy `agent/` Directory~~ COMPLETE (Sprint 7)
+Legacy `agent/` directory deleted (8,653 lines removed). Chat route migrated to coordinator-based pipeline.
 
 ---
 
@@ -47,6 +37,8 @@ Field renamed across all references. No functional change.
   - [x] Cover letter POC validates multi-product abstraction (Sprint 12, Stories 6-7)
   - [x] Platform product catalog UI at `/tools` (Sprint 14, Story 7)
   - [x] Shared user context data model for cross-product access (Sprint 14, Story 8)
+  - [x] Product landing pages at `/tools/:slug` (Sprint 15, Story 6)
+  - [x] Cross-product context consumption — cover letter bootstraps from resume context (Sprint 15, Story 7)
   - [ ] Redis/NATS bus adapter for distributed deployment
   - [ ] Agent hot-reload without server restart
   - [ ] Cross-product authentication and authorization
@@ -55,71 +47,53 @@ Field renamed across all references. No functional change.
 - **Estimated complexity:** Large
 - **Dependencies:** Sprint 12 (complete)
 
-### Story: Consumer Dashboard — Product Landing Pages
-- **As a** user
-- **I want to** see a product-specific landing page when I click an active product in the catalog
-- **So that** I understand what the product does before starting a session
-- **Acceptance Criteria:**
-  - [ ] Each active product has a landing page component
-  - [ ] Landing page shows product description, key features, and "Start Session" CTA
-  - [ ] Coming-soon products show a waitlist/notification signup
-- **Estimated complexity:** Medium
-- **Dependencies:** Sprint 14, Story 7 (complete)
+### ~~Story: Consumer Dashboard — Product Landing Pages~~ COMPLETE (Sprint 15, Story 6)
+Product landing page component at `/tools/:slug` with features grid, CTA, back navigation. Catalog grid routes through landing pages.
 
-### Story: Cross-Product Context Consumption
-- **As a** future product (cover letter, interview prep)
-- **I want to** bootstrap from the user's existing positioning strategy and evidence
-- **So that** the user doesn't have to re-enter information across products
-- **Acceptance Criteria:**
-  - [ ] Cover letter product reads positioning strategy from user_platform_context on start
-  - [ ] Evidence items are available to interview prep product
-  - [ ] Missing context gracefully handled (first-time user has no prior context)
-- **Estimated complexity:** Medium
-- **Dependencies:** Sprint 14, Story 8 (complete)
+### ~~Story: Cross-Product Context Consumption~~ COMPLETE (Sprint 15, Story 7)
+Cover letter product reads positioning strategy + evidence from `user_platform_context` on start. Missing context gracefully handled.
 
 ---
 
 ## Epic: Technical Debt
 
-### Story: Fix Remaining Pre-Existing Test Failures
-- **As a** developer
-- **I want to** fix the 2 pre-existing failures in `agents-gap-analyst.test.ts`
-- **So that** the test suite is 100% clean
-- **Acceptance Criteria:**
-  - [ ] Both failing tests pass
-  - [ ] No regressions in other tests
-- **Estimated complexity:** Small
-- **Dependencies:** None
+### ~~Story: Fix Remaining Pre-Existing Test Failures~~ COMPLETE
+All 29 tests in `agents-gap-analyst.test.ts` now pass. The 2 pre-existing failures were resolved.
 
-### Story: Resolve MaxListenersExceededWarning Root Cause
-- **As a** developer
-- **I want to** eliminate the need for `setMaxListeners(50)` calls
-- **So that** listener management is clean rather than threshold-bumped
-- **Acceptance Criteria:**
-  - [ ] Identify all listener accumulation patterns
-  - [ ] Refactor to properly manage listener lifecycle
-  - [ ] Remove `setMaxListeners` calls
-- **Estimated complexity:** Medium
-- **Dependencies:** None
+### ~~Story: Resolve MaxListenersExceededWarning Root Cause~~ COMPLETE (Sprint 15, Story 3)
+All 6 `setMaxListeners` calls removed. `agent-loop.ts` uses per-round scoped AbortControllers with proper cleanup.
 
 ### ~~Story: Rename `interview_transcript` to `questionnaire_responses`~~ COMPLETE (Sprint 13, Story 2)
 
-### Story: Deduplicate Workflow Persistence Helpers
-- **As a** developer
-- **I want to** consolidate the duplicate `persistWorkflowArtifactBestEffort`, `upsertWorkflowNodeStatusBestEffort`, and `resetWorkflowNodesForNewRunBestEffort` functions
-- **So that** there is a single source of truth for workflow DB operations
-- **Acceptance Criteria:**
-  - [ ] Shared helpers moved to a common module (e.g., `lib/workflow-persistence.ts`)
-  - [ ] Both `event-middleware.ts` and `route-hooks.ts` import from the shared module
-  - [ ] No functional change, all tests pass
-- **Estimated complexity:** Small
-- **Dependencies:** None
+### ~~Story: Deduplicate Workflow Persistence Helpers~~ COMPLETE (Sprint 15, Story 2)
+Shared `lib/workflow-persistence.ts` created. Both `event-middleware.ts` and `route-hooks.ts` import from shared module.
 
-### Story: Fix `resumes-edit.test.ts` TypeScript Error
-- **As a** developer
-- **I want to** fix the pre-existing `tsc --noEmit` error at line 292 (null-to-Record cast)
-- **So that** server TypeScript is fully clean
+### ~~Story: Fix `resumes-edit.test.ts` TypeScript Error~~ COMPLETE (Sprint 15, Story 1)
+Fixed null-to-Record cast at line 292. `tsc --noEmit` clean.
+
+---
+
+## Epic: Cover Letter Product (Future)
+
+### Story: Cover Letter Frontend UI
+- **As a** user
+- **I want to** access the cover letter tool through a proper frontend interface
+- **So that** I can generate cover letters alongside my resume sessions
 - **Acceptance Criteria:**
-  - [ ] `cd server && npx tsc --noEmit` produces zero errors
-- **Estimated complexity:** Small
+  - [ ] Cover letter intake form (resume text, JD, company name)
+  - [ ] SSE stream connection to cover letter pipeline
+  - [ ] Letter draft display with quality score
+  - [ ] Export to DOCX/PDF
+- **Estimated complexity:** Large
+- **Dependencies:** Sprint 15 (complete — backend + context consumption ready)
+
+### Story: Full Waitlist Backend
+- **As a** product owner
+- **I want to** collect emails from users interested in coming-soon products
+- **So that** I can notify them when products launch
+- **Acceptance Criteria:**
+  - [ ] Email collection endpoint
+  - [ ] Waitlist table in Supabase
+  - [ ] Notification system on product launch
+- **Estimated complexity:** Medium
 - **Dependencies:** None

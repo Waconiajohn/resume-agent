@@ -12,7 +12,6 @@
  * Domain-agnostic — all product-specific logic lives in ProductConfig.
  */
 
-import { setMaxListeners } from 'node:events';
 import {
   startUsageTracking,
   stopUsageTracking,
@@ -147,7 +146,6 @@ export async function runProductPipeline<
     // Forward external abort to pipeline abort
     params.signal.addEventListener('abort', () => pipelineAbort.abort(), { once: true });
   }
-  setMaxListeners(20, pipelineAbort.signal);
 
   // ── Stage timing ────────────────────────────────────────────────
   const timer = makeStageTimer();

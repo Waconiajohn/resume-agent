@@ -14,6 +14,12 @@ export interface CoverLetterState extends BaseState {
   user_id: string;
   current_stage: string;
 
+  /** Cross-product context from resume strategist (positioning + evidence) */
+  platform_context?: {
+    positioning_strategy?: Record<string, unknown>;
+    evidence_items?: Record<string, unknown>[];
+  };
+
   /** Parsed resume key points */
   resume_data?: {
     name: string;

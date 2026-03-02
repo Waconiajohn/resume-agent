@@ -2,6 +2,38 @@
 
 ---
 
+# Sprint 15 Retrospective — Tech Debt Sweep & Product Landing Pages
+**Completed:** 2026-03-02
+
+## What was delivered
+- Story 1: Fixed `resumes-edit.test.ts` TypeScript error (null-to-Record cast)
+- Story 2: Deduplicated workflow persistence helpers into `lib/workflow-persistence.ts` (~200 lines removed)
+- Story 3: Resolved MaxListenersExceededWarning root cause — all 6 `setMaxListeners` calls removed, per-round AbortController scoping in agent-loop.ts
+- Story 4: Cleaned stale backlog entries (legacy agent dir, gap analyst failures) and MEMORY.md
+- Story 5: Extended `ProductDefinition` with `longDescription`, `features`, `ctaLabel` for all 4 products
+- Story 6: Built product landing page component at `/tools/:slug` with features grid, CTA, and routing
+- Story 7: Cover letter product now bootstraps from resume positioning strategy + evidence via `user_platform_context`
+- Story 8: Full documentation update
+
+## What went well
+- Phase A tech debt (Stories 1, 2, 4) completed rapidly — straightforward fixes with clear scope
+- Story 3 (MaxListeners) solved cleanly with per-round AbortController scoping — no artificial limit bumps needed
+- Stories 5-6 (landing pages) delivered with glass morphism design and slug-based routing
+- Story 7 (cross-product context) validated the platform context abstraction from Sprint 14
+- 21 new tests (8 landing page + 13 cover letter context) with zero regressions
+
+## What went wrong
+- ProductCatalogGrid test assertions needed updating after slug-based navigation change (Story 6 changed card click behavior)
+- Nothing significant — clean sprint
+
+## What to improve next sprint
+- Consider adding E2E test coverage for the `/tools/:slug` routing
+
+## Technical debt identified
+- None remaining from backlog — all tech debt stories cleared
+
+---
+
 # Sprint 14 Retrospective — UX Declutter, Progressive Disclosure & Platform Expansion Foundation
 **Completed:** 2026-03-02
 

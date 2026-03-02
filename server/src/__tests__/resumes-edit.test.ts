@@ -289,7 +289,7 @@ describe('PUT /api/resumes/:id — partial update', () => {
     });
 
     expect(capturedUpdatePayload).not.toBeNull();
-    const payload = capturedUpdatePayload as Record<string, unknown>;
+    const payload = capturedUpdatePayload as unknown as Record<string, unknown>;
     expect(payload.raw_text).toBeDefined();
     expect(typeof payload.raw_text).toBe('string');
     expect(payload.raw_text as string).toContain('New professional summary');

@@ -4,12 +4,19 @@
  * Mounted at /api/cover-letter/*. Feature-flagged via FF_COVER_LETTER.
  * Demonstrates the platform abstraction by running a 2-agent pipeline
  * (Analyst → Writer) through the same infrastructure as the resume product.
+ *
+ * Cross-product context: If the user has previously completed a resume
+ * positioning session, the positioning strategy and evidence items from
+ * `user_platform_context` are loaded and injected into the analyst's
+ * prompt automatically. Missing context is not an error.
  */
 
 import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createCoverLetterProductConfig } from '../agents/cover-letter/product.js';
 import { FF_COVER_LETTER } from '../lib/feature-flags.js';
+import { getUserContext } from '../lib/platform-context.js';
+import logger from '../lib/logger.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../agents/cover-letter/types.js';
 
 const startSchema = z.object({
@@ -23,4 +30,40 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
   startSchema,
   buildProductConfig: (input) => createCoverLetterProductConfig(),
   isEnabled: () => FF_COVER_LETTER,
+
+  transformInput: async (input, session) => {
+    const userId = session.user_id as string | undefined;
+    if (!userId) return input;
+
+    try {
+      const [strategyRows, evidenceRows] = await Promise.all([
+        getUserContext(userId, 'positioning_strategy'),
+        getUserContext(userId, 'evidence_item'),
+      ]);
+
+      const platformContext: Record<string, unknown> = {};
+
+      if (strategyRows.length > 0) {
+        platformContext.positioning_strategy = strategyRows[0].content;
+      }
+
+      if (evidenceRows.length > 0) {
+        platformContext.evidence_items = evidenceRows.map((r) => r.content);
+      }
+
+      if (Object.keys(platformContext).length > 0) {
+        return { ...input, platform_context: platformContext };
+      }
+    } catch (err) {
+      logger.warn(
+        {
+          error: err instanceof Error ? err.message : String(err),
+          userId,
+        },
+        'Cover letter: failed to load platform context (continuing without it)',
+      );
+    }
+
+    return input;
+  },
 });
