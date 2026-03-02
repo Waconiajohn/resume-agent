@@ -10,7 +10,7 @@
 | Primary LLM | Z.AI GLM models (OpenAI-compatible) | 4-tier model routing |
 | Fallback LLM | Anthropic Claude (optional) | Selectable via `LLM_PROVIDER` env var |
 | E2E Testing | Playwright | Full pipeline tests (~28 min with Z.AI latency) |
-| Unit Testing | Vitest | Server (864 tests) + App (354 tests) |
+| Unit Testing | Vitest | Server (878 tests) + App (369 tests) |
 
 ## Monorepo Layout
 
@@ -19,7 +19,8 @@ app/                          # Frontend (Vite + React 19)
   src/components/panels/      # 11 right-panel components (panel-renderer.tsx dispatches)
   src/components/dashboard/   # 13 dashboard components (DashboardScreen dispatches tabs)
   src/hooks/                  # useAgent.ts (SSE), usePipeline.ts, useSession.ts, useAuth.ts
-  src/types/                  # panels.ts (PanelData union), session.ts, resume.ts
+  src/types/                  # panels.ts (PanelData union), session.ts, resume.ts, platform.ts
+  src/components/platform/    # ProductCatalogGrid.tsx (multi-product catalog)
 server/                       # Backend (Hono + Node.js)
   src/agents/
     runtime/                  # Agent loop, bus, protocol, context (shared infrastructure)
@@ -45,7 +46,7 @@ server/                       # Backend (Hono + Node.js)
                               #   product-route-factory.ts — createProductRoutes() factory
                               #   resume-pipeline.ts — resume routes via createProductRoutes() + hooks
                               #   cover-letter.ts — /api/cover-letter/* routes (FF_COVER_LETTER)
-  src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts
+  src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts, platform-context.ts
 supabase/
   migrations/                 # Numbered SQL migration files (001-012, then timestamped)
 e2e/
@@ -191,7 +192,7 @@ Feature flags control optional gates: `FF_INTAKE_QUIZ`, `FF_RESEARCH_VALIDATION`
 
 Supabase (PostgreSQL) with RLS on all tables. Admin client uses service key (bypasses RLS).
 
-**Key tables:** `master_resumes`, `job_applications`, `coach_sessions`, `messages`, `resumes`, `resume_sections`, `user_positioning_profiles`, `user_usage`, `pricing_plans`, `subscriptions`, `waitlist_emails`
+**Key tables:** `master_resumes`, `job_applications`, `coach_sessions`, `messages`, `resumes`, `resume_sections`, `user_positioning_profiles`, `user_usage`, `pricing_plans`, `subscriptions`, `waitlist_emails`, `user_platform_context`
 
 - `moddatetime` extension + trigger on `coach_sessions` keeps `updated_at` fresh.
 - Migrations in `supabase/migrations/` — numbered sequentially.
@@ -228,6 +229,24 @@ Supabase (PostgreSQL) with RLS on all tables. Admin client uses service key (byp
 
 Props flow: `App.tsx` → `DashboardScreen` → tab components. API calls via `useSession` hook functions (`getSessionResume`, `updateMasterResume`, `getResumeHistory`).
 
+## Platform Catalog
+
+The `/tools` route renders a `ProductCatalogGrid` — a responsive grid of GlassCards showing all available agent-powered products. The catalog is a static frontend constant (`PRODUCT_CATALOG` in `app/src/types/platform.ts`), not a database table.
+
+Each product has: id, slug, name, shortDescription, icon, status (`active` | `coming_soon` | `beta`), route, and category. Active products are clickable and navigate to their route. Coming-soon products are grayed with a badge. The Header includes a "Tools" navigation item.
+
+Current catalog: Resume Strategist (active), Cover Letter Writer (coming soon), Interview Prep Coach (coming soon), LinkedIn Optimizer (coming soon).
+
+## Shared Platform Context
+
+`server/src/lib/platform-context.ts` provides cross-product access to user intelligence (positioning strategies, evidence items, career narratives, target roles).
+
+**Table:** `user_platform_context` — id (uuid), user_id (FK), context_type (text), content (jsonb), source_product (text), source_session_id (uuid nullable), version (int), created_at, updated_at. RLS: users read/write own rows only. Index on (user_id, context_type).
+
+**Functions:** `getUserContext(userId, contextType)`, `upsertUserContext(userId, contextType, content, sourceProduct, sourceSessionId?)`, `listUserContextByType(userId, types?)`. All use admin Supabase client with try/catch error handling.
+
+The resume pipeline persists positioning strategy and evidence items on completion via `persistPlatformContext()` in `agents/resume/product.ts` (best-effort, try/catch — never blocks pipeline completion).
+
 ## Auth
 
 Supabase Auth (email/password) with `AuthContext` provider. React Router v7 with auth guard.
@@ -235,6 +254,13 @@ Supabase Auth (email/password) with `AuthContext` provider. React Router v7 with
 ## Styling
 
 TailwindCSS utility classes. Glass morphism design system: `GlassCard`, `GlassButton`, `GlassInput`. `cn()` helper for conditional class merging.
+
+### Progressive Disclosure Pattern
+
+Advanced settings and developer telemetry are hidden behind native HTML `<details>`/`<summary>` elements styled with Tailwind. This pattern:
+- Requires no React state management (auto-collapses on remount)
+- Works with glass morphism aesthetic via `group` + `group-open:rotate-90` arrow animation
+- Used in: PipelineIntakeForm ("Advanced Options"), CoachScreenBanners ("Run Settings"), ChatPanel/WorkflowStatsRail/PipelineActivityBanner ("Details")
 
 ## Product Route Factory
 

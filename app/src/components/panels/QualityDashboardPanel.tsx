@@ -14,6 +14,7 @@ import { GlassCard } from '../GlassCard';
 import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { ScoreRing } from '@/components/shared/ScoreRing';
 import { cleanText } from '@/lib/clean-text';
+import { cn } from '@/lib/utils';
 import type { QualityDashboardData } from '@/types/panels';
 
 interface QualityDashboardPanelProps {
@@ -24,6 +25,12 @@ function scoreColor(score: number): string {
   if (score >= 70) return 'text-[#b5dec2]';
   if (score >= 50) return 'text-[#dfc797]';
   return 'text-[#e0abab]';
+}
+
+function secondaryScoreColor(score: number): string {
+  if (score >= 80) return 'text-green-400';
+  if (score >= 60) return 'text-yellow-400';
+  return 'text-red-400';
 }
 
 interface CollapsibleSectionProps {
@@ -90,7 +97,6 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
   const humanizeIssuesCount = Array.isArray(humanize_issues) ? humanize_issues.length : 0;
   const coherenceIssuesCount = Array.isArray(coherence_issues) ? coherence_issues.length : 0;
 
-  // Separate primary rings (always-present checks) from secondary rings (optional checks)
   const primaryRings = [
     hiring_manager != null
       ? {
@@ -113,34 +119,17 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
       : null,
   ].filter(Boolean) as Array<{ score: number; max: number; label: string; color: string }>;
 
-  const secondaryRings = [
+  const secondaryMetrics = [
     evidence_integrity != null
-      ? {
-          score: evidence_integrity,
-          max: 100,
-          label: 'Evidence',
-          color: scoreColor(evidence_integrity),
-        }
+      ? { label: 'Evidence Integrity', score: evidence_integrity }
       : null,
     blueprint_compliance != null
-      ? {
-          score: blueprint_compliance,
-          max: 100,
-          label: 'Blueprint',
-          color: scoreColor(blueprint_compliance),
-        }
+      ? { label: 'Blueprint Compliance', score: blueprint_compliance }
       : null,
     narrative_coherence != null
-      ? {
-          score: narrative_coherence,
-          max: 100,
-          label: 'Coherence',
-          color: scoreColor(narrative_coherence),
-        }
+      ? { label: 'Narrative Coherence', score: narrative_coherence }
       : null,
-  ].filter(Boolean) as Array<{ score: number; max: number; label: string; color: string }>;
-
-  const allRings = [...primaryRings, ...secondaryRings];
+  ].filter(Boolean) as Array<{ label: string; score: number }>;
 
   return (
     <div data-panel-root className="flex h-full flex-col">
@@ -152,52 +141,46 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         <ProcessStepGuideCard
           step="quality_review"
           tone="review"
-          userDoesOverride="Use this as the final quality gate. Review any high-risk flags before exporting."
-          nextOverride="If quality looks good, export and optionally save this as a reusable base resume."
+          userDoesOverride={hasActionableRisks ? 'Review high-risk flags before exporting.' : 'Use this as the final quality gate. Scores look good — ready to export.'}
+          nextOverride={hasActionableRisks ? 'Review risk sections, then export.' : 'Export and optionally save as a reusable base resume.'}
         />
 
-        <GlassCard className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
-              What To Do In This Panel
-            </span>
-            <span className="text-[11px] text-white/62">
-              Check the final scores, then review any high-risk flags before exporting.
-            </span>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
-              Info only: scores and assessment summaries
-            </span>
-            <span className={`rounded-full border px-2 py-0.5 ${
-              hasActionableRisks
-                ? 'border-amber-300/18 bg-amber-400/[0.06] text-amber-100/85'
-                : 'border-emerald-300/18 bg-emerald-400/[0.06] text-emerald-100/85'
-            }`}>
-              {hasActionableRisks
-                ? 'Action required: review risk sections before export'
-                : 'Next step: move to export'}
-            </span>
-          </div>
-        </GlassCard>
-
-        {/* Score rings — flex-wrap so 3+3 or any count flows naturally */}
-        {allRings.length > 0 && (
+        {/* Primary score rings — 3 rings: Hiring Mgr, ATS, Authenticity */}
+        {(primaryRings.length > 0 || secondaryMetrics.length > 0 || keyword_coverage != null) && (
           <GlassCard className="p-4">
-            <div className="flex flex-wrap items-center justify-around gap-y-4">
-              {allRings.map((ring) => (
-                <ScoreRing
-                  key={ring.label}
-                  score={ring.score}
-                  max={ring.max}
-                  label={ring.label}
-                  color={ring.color}
-                />
-              ))}
-            </div>
+            {primaryRings.length > 0 && (
+              <div className="flex items-center justify-around gap-y-4">
+                {primaryRings.map((ring) => (
+                  <ScoreRing
+                    key={ring.label}
+                    score={ring.score}
+                    max={ring.max}
+                    label={ring.label}
+                    color={ring.color}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Secondary metrics as text rows */}
+            {secondaryMetrics.length > 0 && (
+              <div className={cn('space-y-2', primaryRings.length > 0 && 'mt-4 border-t border-white/[0.08] pt-4')}>
+                {secondaryMetrics.map((metric) => (
+                  <div key={metric.label} className="flex items-center justify-between text-xs">
+                    <span className="text-white/60">{metric.label}</span>
+                    <span className={cn('font-medium', secondaryScoreColor(metric.score))}>
+                      {metric.score}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {keyword_coverage != null && (
-              <div className="mt-3 flex items-center justify-between text-xs border-t border-white/[0.08] pt-3">
+              <div className={cn(
+                'flex items-center justify-between text-xs border-t border-white/[0.08] pt-3',
+                (primaryRings.length > 0 || secondaryMetrics.length > 0) ? 'mt-3' : '',
+              )}>
                 <span className="text-white/60">Keyword Coverage</span>
                 <span className="text-white/85">{keyword_coverage}%</span>
               </div>

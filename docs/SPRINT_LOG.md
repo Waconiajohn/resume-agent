@@ -2,6 +2,51 @@
 
 ---
 
+# Sprint 14 Retrospective — UX Declutter, Progressive Disclosure & Platform Expansion Foundation
+**Completed:** 2026-03-02
+
+## What was delivered
+- **Story 1 (Progress Dots → Text Bar):** WorkbenchProgressDots rewritten — dots replaced with "Section N of M: Section Name" text + 3px linear progress bar (green/blue/gray).
+- **Story 2 (Simplify Score Rings):** QualityDashboardPanel reduced from 6 rings to 3 primary (Hiring Manager, ATS, Authenticity) + 3 color-coded text rows.
+- **Story 3 (Remove Duplicate Cards):** "What To Do In This Panel" GlassCards removed from 4 panels. Unique text consolidated into ProcessStepGuideCard via `userDoesOverride`.
+- **Story 4 (Progressive Disclosure):** Advanced intake fields and workspace settings hidden behind `<details>` disclosure toggles, collapsed by default.
+- **Story 5 (Hide Dev Telemetry):** Developer metrics in ChatPanel, WorkflowStatsRail, and PipelineActivityBanner hidden behind "Details" toggles.
+- **Story 6 (Simplify Breadcrumb):** "Your Resume Progress" section reduced to single-line step title + status pill. ~55px vertical space saved.
+- **Story 7 (Platform Catalog):** ProductCatalogGrid at `/tools` with 4 products (1 active, 3 coming-soon). "Tools" nav item in header. 8 new tests.
+- **Story 8 (Shared Context):** `user_platform_context` table, `platform-context.ts` module (3 functions), resume pipeline integration (best-effort persist on completion). 12 new tests. ADR-023.
+- **Story 9 (Documentation):** CHANGELOG, SPRINT_LOG, ARCHITECTURE, BACKLOG, CURRENT_SPRINT updated.
+
+## Test count
+- App: 369 tests (up from 354, +15 new)
+- Server: 878 tests (up from 864, +14 new)
+- Total: 1,247 tests (up from 1,218, +29 new)
+- New test files: `ProductCatalogGrid.test.tsx`, `platform-context.test.ts`
+- Updated test files: `QualityDashboardPanel.test.tsx`
+
+## What went well
+- 7 of 9 stories ran in parallel via team agents — entire sprint completed in a single session
+- The `<details>`/`<summary>` pattern for progressive disclosure was simple and effective — no state management, auto-collapses on remount, works with glass morphism styling
+- Platform expansion stories (7, 8) were completely independent of UX stories (1-6) — zero conflicts
+- Story dependency management (Story 2 → Story 3 on QualityDashboardPanel) worked cleanly
+- All 1,247 tests pass, TypeScript clean (only pre-existing issues)
+
+## What went wrong
+- Stories 4 and 5 both modified CoachScreenBanners.tsx — required awareness of each other's changes. No actual conflict, but a potential risk area
+- Story 3 checked BlueprintReviewPanel and PositioningInterviewPanel for duplicate cards — neither had them, so the audit was conservative (good) but added scope
+
+## What to improve next sprint
+- When multiple stories touch the same file, consider merging into a single story or sequencing them explicitly
+- Run a full integration test (visual) after all parallel UX changes land to catch layout interactions
+
+## Technical debt identified
+- Pre-existing: `resumes-edit.test.ts` line 292 TypeScript error
+- Pre-existing: 2 failures in `agents-gap-analyst.test.ts`
+- Duplicate workflow persistence helpers (Sprint 13 debt, still outstanding)
+- Legacy `agent/` directory still exists
+- Platform catalog is static — will need DB migration when product count exceeds ~15
+
+---
+
 # Sprint 13 Retrospective — Pipeline Migration & Platform Cleanup
 **Completed:** 2026-03-02
 

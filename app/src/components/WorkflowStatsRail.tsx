@@ -177,16 +177,26 @@ export function WorkflowStatsRail({
               Stage: {phaseLabel(pipelineActivity.stage)}
             </div>
           )}
-          {lastStageDurationText && (
-            <div className="mt-1 text-[10px] text-white/45">
-              Last stage: {lastStageDurationText}
-            </div>
-          )}
-          {(firstProgressText || firstActionText) && (
-            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-white/42">
-              {firstProgressText && <span>First progress: {firstProgressText}</span>}
-              {firstActionText && <span>First action: {firstActionText}</span>}
-            </div>
+          {(lastStageDurationText || firstProgressText || firstActionText) && (
+            <details className="group mt-1">
+              <summary className="cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-1 list-none">
+                <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
+                Details
+              </summary>
+              <div className="mt-1.5 space-y-1">
+                {lastStageDurationText && (
+                  <div className="text-[10px] text-white/45">
+                    Last stage: {lastStageDurationText}
+                  </div>
+                )}
+                {(firstProgressText || firstActionText) && (
+                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-white/42">
+                    {firstProgressText && <span>First progress: {firstProgressText}</span>}
+                    {firstActionText && <span>First action: {firstActionText}</span>}
+                  </div>
+                )}
+              </div>
+            </details>
           )}
         </div>
       )}

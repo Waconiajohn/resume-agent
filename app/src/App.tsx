@@ -13,9 +13,10 @@ import { PricingPage } from '@/components/PricingPage';
 import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
+import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { resumeToText } from '@/lib/export';
 
-type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard';
+type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools';
 
 export default function App() {
   const { user, session, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
@@ -94,6 +95,7 @@ export default function App() {
     else if (path === '/billing') setView('billing');
     else if (path === '/affiliate') setView('affiliate');
     else if (path === '/dashboard') setView('dashboard');
+    else if (path === '/tools') setView('tools');
   }, []);
 
   // Detect referral code from URL query parameter and persist to localStorage
@@ -132,6 +134,7 @@ export default function App() {
       else if (path === '/billing') setView('billing');
       else if (path === '/affiliate') setView('affiliate');
       else if (path === '/dashboard') setView('dashboard');
+      else if (path === '/tools') setView('tools');
       else setView('landing');
     };
     window.addEventListener('popstate', handlePopState);
@@ -341,7 +344,7 @@ export default function App() {
   }, [signOut, setCurrentSession]);
 
   const navigateTo = useCallback((viewName: string) => {
-    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard'];
+    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools'];
     const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
     setView(newView);
     const paths: Record<View, string> = {
@@ -352,6 +355,7 @@ export default function App() {
       billing: '/billing',
       affiliate: '/affiliate',
       dashboard: '/dashboard',
+      tools: '/tools',
     };
     const newPath = paths[newView];
     if (newPath && window.location.pathname !== newPath) {
@@ -498,6 +502,15 @@ export default function App() {
         <AffiliateDashboard
           accessToken={accessToken}
           onNavigate={(v) => setView(v as View)}
+        />
+      )}
+
+      {view === 'tools' && (
+        <ToolsScreen
+          onNavigate={(route) => {
+            if (route === '/') navigateTo('landing');
+            else navigateTo('landing');
+          }}
         />
       )}
 

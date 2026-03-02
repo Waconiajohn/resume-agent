@@ -78,33 +78,12 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         <ProcessStepGuideCard
           step="research"
           tone="review"
-          userDoesOverride="Review the JD requirements and benchmark assumptions. Edit benchmark assumptions if they are off before the draft strategy is built."
+          userDoesOverride={
+            data.loading_state === 'complete'
+              ? 'Confirm benchmark assumptions before continuing. Edit any that are off.'
+              : 'Review the JD requirements and benchmark assumptions as they arrive. Research is still running.'
+          }
         />
-
-        <GlassCard className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
-              What To Do In This Panel
-            </span>
-            <span className="text-[11px] text-white/62">
-              Review the JD requirements and benchmark assumptions. If assumptions are off, fix them before the blueprint is built.
-            </span>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
-              Info only: company research, JD requirements, benchmark profile
-            </span>
-            <span className={`rounded-full border px-2 py-0.5 ${
-              data.loading_state === 'complete'
-                ? 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/85'
-                : 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/85'
-            }`}>
-              {data.loading_state === 'complete'
-                ? 'Action: confirm benchmark assumptions before continuing'
-                : 'Research is still running; you can review what is ready'}
-            </span>
-          </div>
-        </GlassCard>
 
         {(data.status_note || data.next_expected || data.loading_state) && (
           <GlassCard className="p-4">

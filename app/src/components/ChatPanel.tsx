@@ -303,17 +303,23 @@ export function ChatPanel({
                 ?? (isPipelineGateActive ? 'Waiting for your input in the workspace.' : 'Waiting for backend updates.')}
             </span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/48">
-            {pipelineActivity?.stage && (
-              <span>Stage: {PHASE_LABELS[pipelineActivity.stage] ?? pipelineActivity.stage}</span>
-            )}
-            {stageElapsedText && <span>Stage elapsed: {stageElapsedText}</span>}
-            {lastStageDurationText && <span>Last stage: {lastStageDurationText}</span>}
-            {firstProgressText && <span>First progress: {firstProgressText}</span>}
-            {firstActionReadyText && <span>First action: {firstActionReadyText}</span>}
-            {lastProgressText && <span>Progress: {lastProgressText}</span>}
-            {heartbeatText && <span>Heartbeat: {heartbeatText}</span>}
-          </div>
+          <details className="group mt-1">
+            <summary className="cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-1 list-none">
+              <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
+              Details
+            </summary>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/48">
+              {pipelineActivity?.stage && (
+                <span>Stage: {PHASE_LABELS[pipelineActivity.stage] ?? pipelineActivity.stage}</span>
+              )}
+              {stageElapsedText && <span>Stage elapsed: {stageElapsedText}</span>}
+              {lastStageDurationText && <span>Last stage: {lastStageDurationText}</span>}
+              {firstProgressText && <span>First progress: {firstProgressText}</span>}
+              {firstActionReadyText && <span>First action: {firstActionReadyText}</span>}
+              {lastProgressText && <span>Progress: {lastProgressText}</span>}
+              {heartbeatText && <span>Heartbeat: {heartbeatText}</span>}
+            </div>
+          </details>
           {pipelineActivity?.expected_next_action && (
             <div className="mt-1 text-[10px] text-white/52">
               Next: {pipelineActivity.expected_next_action}

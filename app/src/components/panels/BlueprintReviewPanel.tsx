@@ -192,36 +192,13 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         <ProcessStepGuideCard
           step="architect"
           tone="review"
-          userDoesOverride="Review the positioning angle and section order. Edit if needed, then approve to start writing."
+          userDoesOverride={
+            onApprove
+              ? 'Review the positioning angle and section order. Edit if needed, then approve to start writing.'
+              : 'Review the positioning strategy. This run will continue automatically without a manual approval step.'
+          }
           nextOverride="Section drafts will be written and reviewed next."
         />
-
-        <GlassCard className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
-              What To Do In This Panel
-            </span>
-            <span className="text-[11px] text-white/62">
-              Review and optionally edit the strategy before section writing begins.
-            </span>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-            {onApprove ? (
-              <>
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
-                  Editable: positioning angle, section order
-                </span>
-                <span className="rounded-full border border-emerald-300/18 bg-emerald-400/[0.06] px-2 py-0.5 text-emerald-100/85">
-                  Action required: review and approve to continue
-                </span>
-              </>
-            ) : (
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
-                This run will continue automatically in this mode
-              </span>
-            )}
-          </div>
-        </GlassCard>
 
         {/* Target Role & Positioning Angle */}
         <GlassCard className="p-4">

@@ -10,6 +10,7 @@
 
 import { createSessionLogger } from '../../lib/logger.js';
 import { FF_BLUEPRINT_APPROVAL } from '../../lib/feature-flags.js';
+import { upsertUserContext } from '../../lib/platform-context.js';
 import { runAtsComplianceCheck } from '../ats-rules.js';
 import { mergeMasterResume } from '../master-resume-merge.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
@@ -760,6 +761,57 @@ async function saveMasterResume(
   }
 }
 
+// ─── Platform context persistence ────────────────────────────────────
+
+async function savePlatformContext(
+  state: PipelineState,
+  finalResume: FinalResumePayload,
+): Promise<void> {
+  const log = createSessionLogger(state.session_id);
+
+  // Persist positioning strategy
+  if (state.positioning) {
+    try {
+      await upsertUserContext(
+        state.user_id,
+        'positioning_strategy',
+        state.positioning as unknown as Record<string, unknown>,
+        'resume',
+        state.session_id,
+      );
+      log.info({ session_id: state.session_id }, 'Platform context: positioning_strategy saved');
+    } catch (err) {
+      log.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'savePlatformContext: positioning_strategy save failed',
+      );
+    }
+  }
+
+  // Persist evidence items extracted from this session
+  const evidenceItems = extractEvidenceItems(state, state.session_id);
+  if (evidenceItems.length > 0) {
+    try {
+      await upsertUserContext(
+        state.user_id,
+        'evidence_item',
+        { items: evidenceItems, session_id: state.session_id } as Record<string, unknown>,
+        'resume',
+        state.session_id,
+      );
+      log.info(
+        { session_id: state.session_id, count: evidenceItems.length },
+        'Platform context: evidence_items saved',
+      );
+    } catch (err) {
+      log.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'savePlatformContext: evidence_item save failed',
+      );
+    }
+  }
+}
+
 // ─── Revision handler (InterAgentHandler) ────────────────────────────
 
 const MAX_REVISION_ROUNDS = 3;
@@ -1063,6 +1115,16 @@ export function createResumeProductConfig(input: Record<string, unknown>): Produ
       const finalResume = result as FinalResumePayload;
       await persistSession(state, finalResume, config.emit);
       await saveMasterResume(state, input, finalResume);
+      // Best-effort: persist context for cross-product access (never blocks completion)
+      try {
+        await savePlatformContext(state, finalResume);
+      } catch (err) {
+        const log = createSessionLogger(state.session_id);
+        log.warn(
+          { error: err instanceof Error ? err.message : String(err) },
+          'persistResult: savePlatformContext failed (non-blocking)',
+        );
+      }
     },
 
     interAgentHandlers: [createRevisionHandler()],

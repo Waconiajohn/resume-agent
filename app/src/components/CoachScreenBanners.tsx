@@ -105,16 +105,22 @@ export function PipelineActivityBanner({
             ?? (isPipelineGateActive ? 'Waiting for your input in the current step.' : 'Processing your resume workflow.')}
         </span>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/55">
-        <span>State: {effectivePipelineActivity.processing_state.replace(/_/g, ' ')}</span>
-        {effectivePipelineActivity.stage && <span>Stage: {PHASE_LABELS[effectivePipelineActivity.stage] ?? effectivePipelineActivity.stage}</span>}
-        {pipelineActivityStageElapsed && <span>Stage elapsed: {pipelineActivityStageElapsed}</span>}
-        {pipelineActivityLastStageDuration && <span>Last stage: {pipelineActivityLastStageDuration}</span>}
-        {pipelineActivityLastProgress && <span>Last progress: {pipelineActivityLastProgress}</span>}
-        {pipelineActivityLastHeartbeat && <span>Heartbeat: {pipelineActivityLastHeartbeat}</span>}
-        {pipelineFirstProgressDuration && <span>First progress: {pipelineFirstProgressDuration}</span>}
-        {pipelineFirstActionReadyDuration && <span>First action: {pipelineFirstActionReadyDuration}</span>}
-      </div>
+      <details className="group mt-2">
+        <summary className="cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-1 list-none">
+          <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
+          Details
+        </summary>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/55">
+          <span>State: {effectivePipelineActivity.processing_state.replace(/_/g, ' ')}</span>
+          {effectivePipelineActivity.stage && <span>Stage: {PHASE_LABELS[effectivePipelineActivity.stage] ?? effectivePipelineActivity.stage}</span>}
+          {pipelineActivityStageElapsed && <span>Stage elapsed: {pipelineActivityStageElapsed}</span>}
+          {pipelineActivityLastStageDuration && <span>Last stage: {pipelineActivityLastStageDuration}</span>}
+          {pipelineActivityLastProgress && <span>Last progress: {pipelineActivityLastProgress}</span>}
+          {pipelineActivityLastHeartbeat && <span>Heartbeat: {pipelineActivityLastHeartbeat}</span>}
+          {pipelineFirstProgressDuration && <span>First progress: {pipelineFirstProgressDuration}</span>}
+          {pipelineFirstActionReadyDuration && <span>First action: {pipelineFirstActionReadyDuration}</span>}
+        </div>
+      </details>
       {effectivePipelineActivity.expected_next_action && (
         <div className="mt-1 text-[11px] text-white/62">
           Next: {effectivePipelineActivity.expected_next_action}
@@ -337,94 +343,99 @@ export function WorkflowPreferencesCard({
   return (
     <div className="mb-2 px-1">
       <GlassCard className="px-3 py-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
-            Run Settings
-          </span>
-          <span className="text-[11px] text-white/55">
-            Changes apply at the next safe checkpoint
-          </span>
-        </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-          <div className="flex flex-wrap gap-1.5">
-            {([
-              ['fast_draft', 'Fast Draft'],
-              ['balanced', 'Balanced'],
-              ['deep_dive', 'Deep Dive'],
-            ] as const).map(([modeKey, label]) => (
-              <GlassButton
-                key={modeKey}
-                variant={activeWorkflowMode === modeKey ? 'primary' : 'ghost'}
-                className="h-8 px-3 text-[11px]"
-                disabled={isUpdatingWorkflowPreferences}
-                onClick={async () => {
-                  if (activeWorkflowMode === modeKey) return;
-                  await onChangeMode(modeKey);
-                }}
-              >
-                {label}
-              </GlassButton>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="text-[11px] text-white/60 whitespace-nowrap"
-              title="Positioning hint for evidence depth. Draft readiness uses coverage."
-            >
-              Evidence hint
+        <details className="group">
+          <summary className="cursor-pointer list-none flex flex-wrap items-center gap-2 select-none">
+            <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+              Run Settings
             </span>
-            <GlassInput
-              type="number"
-              min={3}
-              max={20}
-              value={evidenceTargetDraft}
-              onChange={(e) => {
-                const next = Number.parseInt(e.target.value || '', 10);
-                if (Number.isFinite(next)) {
-                  onChangeEvidenceTargetDraft(Math.min(20, Math.max(3, next)));
-                } else {
-                  onChangeEvidenceTargetDraft(3);
-                }
-              }}
-              className="h-8 w-20 rounded-lg px-2.5 py-1 text-xs"
-            />
-            <GlassButton
-              variant="ghost"
-              className="h-8 px-3 text-[11px]"
-              loading={isUpdatingWorkflowPreferences}
-              disabled={isUpdatingWorkflowPreferences || evidenceTargetDraft === activeMinimumEvidenceTarget}
-              onClick={onApplyEvidenceTarget}
-            >
-              Apply
-            </GlassButton>
+            <span className="ml-auto text-[10px] text-white/40 transition-transform group-open:rotate-90 inline-block">&#9654;</span>
+          </summary>
+          <div className="mt-2">
+            <p className="mb-2 text-[11px] text-white/55">
+              Changes apply at the next safe checkpoint
+            </p>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <div className="flex flex-wrap gap-1.5">
+                {([
+                  ['fast_draft', 'Fast Draft'],
+                  ['balanced', 'Balanced'],
+                  ['deep_dive', 'Deep Dive'],
+                ] as const).map(([modeKey, label]) => (
+                  <GlassButton
+                    key={modeKey}
+                    variant={activeWorkflowMode === modeKey ? 'primary' : 'ghost'}
+                    className="h-8 px-3 text-[11px]"
+                    disabled={isUpdatingWorkflowPreferences}
+                    onClick={async () => {
+                      if (activeWorkflowMode === modeKey) return;
+                      await onChangeMode(modeKey);
+                    }}
+                  >
+                    {label}
+                  </GlassButton>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-[11px] text-white/60 whitespace-nowrap"
+                  title="Positioning hint for evidence depth. Draft readiness uses coverage."
+                >
+                  Evidence hint
+                </span>
+                <GlassInput
+                  type="number"
+                  min={3}
+                  max={20}
+                  value={evidenceTargetDraft}
+                  onChange={(e) => {
+                    const next = Number.parseInt(e.target.value || '', 10);
+                    if (Number.isFinite(next)) {
+                      onChangeEvidenceTargetDraft(Math.min(20, Math.max(3, next)));
+                    } else {
+                      onChangeEvidenceTargetDraft(3);
+                    }
+                  }}
+                  className="h-8 w-20 rounded-lg px-2.5 py-1 text-xs"
+                />
+                <GlassButton
+                  variant="ghost"
+                  className="h-8 px-3 text-[11px]"
+                  loading={isUpdatingWorkflowPreferences}
+                  disabled={isUpdatingWorkflowPreferences || evidenceTargetDraft === activeMinimumEvidenceTarget}
+                  onClick={onApplyEvidenceTarget}
+                >
+                  Apply
+                </GlassButton>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {[5, 8, 12].map((target) => (
+                <GlassButton
+                  key={target}
+                  variant={activeMinimumEvidenceTarget === target ? 'primary' : 'ghost'}
+                  className="h-7 px-2.5 text-[10px]"
+                  disabled={isUpdatingWorkflowPreferences}
+                  onClick={async () => {
+                    onChangeEvidenceTargetDraft(target);
+                    if (activeMinimumEvidenceTarget !== target) {
+                      await onApplyEvidenceTarget();
+                    }
+                  }}
+                >
+                  {target}
+                </GlassButton>
+              ))}
+              {workflowPreferencesSource && (
+                <span className="ml-1 text-[10px] text-white/40">
+                  Source: {workflowPreferencesSource === 'workflow_preferences' ? 'updated in workspace' : workflowPreferencesSource.replace(/_/g, ' ')}
+                </span>
+              )}
+              <span className="text-[10px] text-white/35">
+                Readiness uses coverage.
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {[5, 8, 12].map((target) => (
-            <GlassButton
-              key={target}
-              variant={activeMinimumEvidenceTarget === target ? 'primary' : 'ghost'}
-              className="h-7 px-2.5 text-[10px]"
-              disabled={isUpdatingWorkflowPreferences}
-              onClick={async () => {
-                onChangeEvidenceTargetDraft(target);
-                if (activeMinimumEvidenceTarget !== target) {
-                  await onApplyEvidenceTarget();
-                }
-              }}
-            >
-              {target}
-            </GlassButton>
-          ))}
-          {workflowPreferencesSource && (
-            <span className="ml-1 text-[10px] text-white/40">
-              Source: {workflowPreferencesSource === 'workflow_preferences' ? 'updated in workspace' : workflowPreferencesSource.replace(/_/g, ' ')}
-            </span>
-          )}
-          <span className="text-[10px] text-white/35">
-            Readiness uses coverage.
-          </span>
-        </div>
+        </details>
       </GlassCard>
     </div>
   );

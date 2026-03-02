@@ -49,7 +49,7 @@ describe('QualityDashboardPanel', () => {
     expect(screen.getByText('Quality Dashboard')).toBeInTheDocument();
   });
 
-  // 2. Renders quality score rings
+  // 2. Renders primary score rings
   it('renders ATS score ring', () => {
     render(<QualityDashboardPanel data={makeData()} />);
     expect(screen.getByRole('img', { name: /ATS/i })).toBeInTheDocument();
@@ -60,9 +60,57 @@ describe('QualityDashboardPanel', () => {
     expect(screen.getByRole('img', { name: /Authenticity/i })).toBeInTheDocument();
   });
 
+  it('renders Hiring Manager score ring', () => {
+    render(<QualityDashboardPanel data={makeData()} />);
+    expect(screen.getByRole('img', { name: /Hiring Mgr/i })).toBeInTheDocument();
+  });
+
   it('renders keyword coverage percentage', () => {
     render(<QualityDashboardPanel data={makeData({ keyword_coverage: 82 })} />);
     expect(screen.getByText('82%')).toBeInTheDocument();
+  });
+
+  // 2b. Secondary metrics render as text rows
+  it('renders Evidence Integrity as a text metric row', () => {
+    render(<QualityDashboardPanel data={makeData({ evidence_integrity: 85 })} />);
+    expect(screen.getByText('Evidence Integrity')).toBeInTheDocument();
+    expect(screen.getByText('85%')).toBeInTheDocument();
+  });
+
+  it('renders Blueprint Compliance as a text metric row', () => {
+    render(<QualityDashboardPanel data={makeData({ blueprint_compliance: 88 })} />);
+    expect(screen.getByText('Blueprint Compliance')).toBeInTheDocument();
+    expect(screen.getByText('88%')).toBeInTheDocument();
+  });
+
+  it('renders Narrative Coherence as a text metric row', () => {
+    render(<QualityDashboardPanel data={makeData({ narrative_coherence: 74 })} />);
+    expect(screen.getByText('Narrative Coherence')).toBeInTheDocument();
+    expect(screen.getByText('74%')).toBeInTheDocument();
+  });
+
+  it('does not render Evidence Integrity ring (only text row)', () => {
+    render(<QualityDashboardPanel data={makeData({ evidence_integrity: 85 })} />);
+    expect(screen.queryByRole('img', { name: /Evidence/i })).not.toBeInTheDocument();
+  });
+
+  // 2c. Secondary metric color coding
+  it('applies green color for secondary metric score >= 80', () => {
+    render(<QualityDashboardPanel data={makeData({ evidence_integrity: 85 })} />);
+    const scoreEl = screen.getByText('85%');
+    expect(scoreEl.className).toContain('text-green-400');
+  });
+
+  it('applies yellow color for secondary metric score 60-79', () => {
+    render(<QualityDashboardPanel data={makeData({ narrative_coherence: 74 })} />);
+    const scoreEl = screen.getByText('74%');
+    expect(scoreEl.className).toContain('text-yellow-400');
+  });
+
+  it('applies red color for secondary metric score < 60', () => {
+    render(<QualityDashboardPanel data={makeData({ blueprint_compliance: 55 })} />);
+    const scoreEl = screen.getByText('55%');
+    expect(scoreEl.className).toContain('text-red-400');
   });
 
   // 3. Renders overall assessment text

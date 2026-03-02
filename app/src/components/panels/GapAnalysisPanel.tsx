@@ -144,32 +144,8 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
           step="gap_analysis"
           tone="review"
           userDoesOverride="Use this as a reality check. Strong means covered well, Partial means usable but thin, Gap means we still need stronger evidence or a strategy."
+          nextOverride={hasOpenItems ? 'Fill evidence gaps in the next questions' : 'Move to blueprint and section writing'}
         />
-
-        <GlassCard className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
-              What To Do In This Panel
-            </span>
-            <span className="text-[11px] text-white/62">
-              Review the classifications below. If anything looks wrong or incomplete, answer the follow-up questions when they appear.
-            </span>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-white/55">
-              Info only: this panel is a gap map summary
-            </span>
-            <span className={`rounded-full border px-2 py-0.5 ${
-              hasOpenItems
-                ? 'border-amber-300/18 bg-amber-400/[0.06] text-amber-100/85'
-                : 'border-emerald-300/18 bg-emerald-400/[0.06] text-emerald-100/85'
-            }`}>
-              {hasOpenItems
-                ? 'Action later: fill evidence gaps in the next questions'
-                : 'Next step: move to blueprint and section writing'}
-            </span>
-          </div>
-        </GlassCard>
 
         {/* Progress bar */}
         <GlassCard className="p-4">

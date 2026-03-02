@@ -478,31 +478,15 @@ export function CoachScreen({
       <div className="min-h-0 flex-1 p-3 md:p-4">
         <div className="flex h-full min-h-0 flex-col">
           <div className="mb-2 flex items-center gap-2 px-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
-              Your Resume Progress
-            </span>
+            <span className="text-sm font-medium text-white/85">{displayProcessStep.title}</span>
             <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/75">
-              Step {displayProcessStep.number} of 7
-            </span>
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/70">
-              {PHASE_LABELS[displayPhase] ?? displayPhase}
+              Step {displayProcessStep.number} of 7 · {PHASE_LABELS[displayPhase] ?? displayPhase}
             </span>
             {!isViewingLiveNode && (
               <span className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2 py-0.5 text-[10px] text-white/58">
                 Previous version
               </span>
             )}
-          </div>
-          <div className="mb-2 px-1">
-            <GlassCard className="px-3 py-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-white/86">{displayProcessStep.title}</span>
-                <span className="text-[10px] text-white/45">•</span>
-                <span className="text-[11px] text-white/58">
-                  {displayProcessStep.summary}
-                </span>
-              </div>
-            </GlassCard>
           </div>
 
           {draftReadiness && (

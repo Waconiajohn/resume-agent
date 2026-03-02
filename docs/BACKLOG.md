@@ -45,12 +45,37 @@ Field renamed across all references. No functional change.
   - [x] ProductConfig + runProductPipeline generic coordinator (Sprint 12, Stories 1-3)
   - [x] Product route factory (Sprint 12, Story 5)
   - [x] Cover letter POC validates multi-product abstraction (Sprint 12, Stories 6-7)
+  - [x] Platform product catalog UI at `/tools` (Sprint 14, Story 7)
+  - [x] Shared user context data model for cross-product access (Sprint 14, Story 8)
   - [ ] Redis/NATS bus adapter for distributed deployment
   - [ ] Agent hot-reload without server restart
   - [ ] Cross-product authentication and authorization
   - [ ] Platform admin dashboard for agent monitoring
+  - [ ] Migrate product catalog from static constant to DB-driven (when >15 products)
 - **Estimated complexity:** Large
 - **Dependencies:** Sprint 12 (complete)
+
+### Story: Consumer Dashboard — Product Landing Pages
+- **As a** user
+- **I want to** see a product-specific landing page when I click an active product in the catalog
+- **So that** I understand what the product does before starting a session
+- **Acceptance Criteria:**
+  - [ ] Each active product has a landing page component
+  - [ ] Landing page shows product description, key features, and "Start Session" CTA
+  - [ ] Coming-soon products show a waitlist/notification signup
+- **Estimated complexity:** Medium
+- **Dependencies:** Sprint 14, Story 7 (complete)
+
+### Story: Cross-Product Context Consumption
+- **As a** future product (cover letter, interview prep)
+- **I want to** bootstrap from the user's existing positioning strategy and evidence
+- **So that** the user doesn't have to re-enter information across products
+- **Acceptance Criteria:**
+  - [ ] Cover letter product reads positioning strategy from user_platform_context on start
+  - [ ] Evidence items are available to interview prep product
+  - [ ] Missing context gracefully handled (first-time user has no prior context)
+- **Estimated complexity:** Medium
+- **Dependencies:** Sprint 14, Story 8 (complete)
 
 ---
 

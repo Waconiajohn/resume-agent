@@ -1,5 +1,75 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 6
+**Sprint:** 14 | **Stories:** All 9 stories
+**Summary:** Sprint 14 — UX declutter, progressive disclosure, and platform expansion foundation. 9/9 stories delivered. Test count: 369 app + 878 server = 1,247 total.
+
+### Changes Made
+
+**Story 1 — Replace WorkbenchProgressDots with Text Progress Bar**
+- `app/src/components/panels/workbench/WorkbenchProgressDots.tsx` — Rewritten: dots replaced with "Section N of M: Section Name" text + 3px linear progress bar. Green (approved), pulsing blue (current), gray (remaining). ~45 lines, same props interface.
+
+**Story 2 — Simplify QualityDashboardPanel Score Rings**
+- `app/src/components/panels/QualityDashboardPanel.tsx` — 3 primary rings retained (Hiring Manager, ATS, Authenticity). 3 secondary metrics (Evidence Integrity, Blueprint Compliance, Narrative Coherence) converted to color-coded text rows.
+- `app/src/__tests__/panels/QualityDashboardPanel.test.tsx` — Updated selectors for new text metric structure.
+
+**Story 3 — Remove Duplicate "What To Do" Cards**
+- `app/src/components/panels/OnboardingSummaryPanel.tsx` — Removed duplicate "What To Do In This Panel" GlassCard. Unique text moved to ProcessStepGuideCard via `userDoesOverride`.
+- `app/src/components/panels/GapAnalysisPanel.tsx` — Same removal and consolidation.
+- `app/src/components/panels/QualityDashboardPanel.tsx` — Same removal and consolidation.
+- `app/src/components/panels/ResearchDashboardPanel.tsx` — Same removal and consolidation.
+- `app/src/components/panels/BlueprintReviewPanel.tsx` — Checked, no duplicate found.
+- `app/src/components/panels/PositioningInterviewPanel.tsx` — Checked, no duplicate found.
+
+**Story 4 — Progressive Disclosure for Intake Form and Workspace Settings**
+- `app/src/components/PipelineIntakeForm.tsx` — 4 advanced fields (workflow mode, evidence target, resume priority, seniority delta) wrapped in `<details>` "Advanced Options" disclosure, collapsed by default.
+- `app/src/components/CoachScreenBanners.tsx` — WorkflowPreferencesCard wrapped in `<details>` "Run Settings" disclosure, collapsed by default.
+
+**Story 5 — Hide Developer Telemetry**
+- `app/src/components/ChatPanel.tsx` — Developer metrics (stageElapsedText, lastStageDurationText, firstProgressText, heartbeatText) wrapped in `<details>` "Details" toggle, collapsed by default.
+- `app/src/components/WorkflowStatsRail.tsx` — Backend metrics wrapped in `<details>` "Details" toggle.
+- `app/src/components/CoachScreenBanners.tsx` — PipelineActivityBanner metrics wrapped in `<details>` "Details" toggle.
+
+**Story 6 — Simplify Resume Progress Breadcrumb Row**
+- `app/src/components/CoachScreen.tsx` — "Your Resume Progress" label + GlassCard wrapper removed. Replaced with single line: step title + "Step N of 7 · Phase" pill. ~55px vertical space reduction.
+
+**Story 7 — Platform Navigation Shell & Product Catalog**
+- `app/src/types/platform.ts` — New. ProductDefinition, ProductCategory, ProductStatus types + PRODUCT_CATALOG constant (4 products: resume active, 3 coming-soon).
+- `app/src/components/platform/ProductCatalogGrid.tsx` — New. Responsive grid of GlassCards. Active products clickable, coming-soon grayed with badge.
+- `app/src/__tests__/platform/ProductCatalogGrid.test.tsx` — New. 8 tests covering rendering, click behavior, badge display.
+- `app/src/App.tsx` — Added `/tools` route rendering ProductCatalogGrid.
+- `app/src/components/Header.tsx` — Added "Tools" navigation item.
+
+**Story 8 — Shared User Context Data Model**
+- `supabase/migrations/20260302120000_user_platform_context.sql` — New. Creates `user_platform_context` table with RLS, indexes, moddatetime trigger.
+- `server/src/lib/platform-context.ts` — New. getUserContext(), upsertUserContext(), listUserContextByType() using admin Supabase client.
+- `server/src/__tests__/platform-context.test.ts` — New. 12 tests covering all CRUD operations and error handling.
+- `server/src/agents/resume/product.ts` — Added persistPlatformContext() called from finalizeResult (best-effort try/catch).
+- `docs/DECISIONS.md` — ADR-023: Shared Platform Context — Cross-Product User Intelligence Store.
+
+**Story 9 — Documentation**
+- `docs/CHANGELOG.md` — This entry.
+- `docs/SPRINT_LOG.md` — Sprint 14 retrospective.
+- `docs/ARCHITECTURE.md` — Platform catalog, shared context, UX changes.
+- `docs/BACKLOG.md` — Updated with completed items and new follow-ups.
+- `docs/CURRENT_SPRINT.md` — All stories marked done.
+
+### Decisions Made
+- ADR-023: Shared Platform Context — single `user_platform_context` table with JSONB content, admin client access, best-effort persistence.
+- UX: `<details>`/`<summary>` HTML elements for progressive disclosure (no state management, auto-collapses on remount).
+- Static product catalog (frontend constant, not DB-driven) — sufficient for <10 products.
+- 3 primary score rings retained (not 0) — provides visual payoff at quality review stage.
+
+### Known Issues
+- Pre-existing: `resumes-edit.test.ts` line 292 TypeScript error (null-to-Record cast)
+- Pre-existing: 2 failures in `agents-gap-analyst.test.ts`
+- Duplicate workflow persistence helpers in event-middleware.ts and route-hooks.ts (Sprint 13 tech debt)
+
+### Next Steps
+- Sprint 15 planning: Consumer dashboard, product-specific landing pages, cross-product context consumption
+
+---
+
 ## 2026-03-02 — Session 5
 **Sprint:** 13 | **Story:** Story 7 — Documentation & Backlog Update
 **Summary:** Sprint 13 documentation: ADR-022, ARCHITECTURE.md, CHANGELOG.md, SPRINT_LOG.md, BACKLOG.md, CURRENT_SPRINT.md.
