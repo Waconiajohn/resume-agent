@@ -1,5 +1,30 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 14
+**Sprint:** 17 | **Story:** Visual Overhaul — Professional UI Cleanup
+**Summary:** Replaced pill/badge clutter with typography-driven hierarchy across 7 coaching screen components. Net -195 lines.
+
+### Changes Made
+- `app/src/components/shared/ProcessStepGuideCard.tsx` — Removed "STEP X OF 7" pill and tone pill. Added colored left border per tone (`border-l-2`). Flattened sub-cards (removed inner bordered containers). Bumped sub-headers 10px→11px, body 11px→12px, next 11px→12px. Removed unused `toneBadgeClass` and `toneLabel` functions.
+- `app/src/components/workspace/WorkspaceShell.tsx` — Removed status pill row from sidebar nodes (dot already communicates status). Removed "Saved view" text label. Enlarged status dot h-1.5→h-2. Bumped node description 11px→12px. Removed "Viewing" pill + label from breadcrumb header. Bumped subtitle 11px→12px. Removed unused `selected` variable.
+- `app/src/components/ChatPanel.tsx` — Removed "Phase" text label and "Grounded workflow help" pill. Phase value rendered as plain `text-sm font-medium` text. Moved "Last update Xs ago" into title tooltip on status dot. Replaced "REFRESH STATE" text button with compact RefreshCw icon-only button. Converted status from bordered pill to 6px colored dot + plain text-xs text. Added `RefreshCw` import.
+- `app/src/components/CoachScreen.tsx` — Merged redundant title + step pill into single "Step N · Title" line. Replaced "Previous version" pill with italic muted text. Replaced readiness pill with colored dot + font-medium text. Collapsed evidence/coverage/mode into single text-xs paragraph. Removed nested bordered draft-path-decision container (now inline paragraph). Removed 3-column Validated/Metrics/Mapped grid (now inline text). Replaced gap breakdown pills with colored inline spans. Simplified high-impact items from clickable cards with priority pills to flat list with colored dots.
+- `app/src/components/WorkflowStatsRail.tsx` — Merged Session + Metrics into single GlassCard. Removed "Session" and "Metrics" section headers. Removed MetricRow component and bordered wrappers (simple flex justify-between rows). Removed all icon imports (Activity, Gauge, Hash, ShieldCheck, ListChecks). Strategist stages show only phase + status with no placeholder.
+- `app/src/components/CoachScreenBanners.tsx` — Bumped RuntimeRecoveryBanner elapsed/progress pills 10px→11px. Bumped WorkflowPreferencesCard "Run Settings" pill 10px→11px. Bumped description 11px→12px.
+- `app/src/components/IntelligenceActivityFeed.tsx` — Increased max-height 120px→140px.
+
+### Decisions Made
+- Colored dots (6-8px) replace status pills everywhere — smaller visual footprint, same information
+- Typography hierarchy (font size, weight, opacity) replaces bordered badge containers
+- Minimum font size raised from 10px to 11px project-wide for readability
+- Left border color on ProcessStepGuideCard encodes tone without adding a pill element
+
+### Known Issues
+- None
+
+### Next Steps
+- Sprint 17 documentation and retrospective
+
 ## 2026-03-02 — Session 13
 **Sprint:** 17 | **Story:** Multi-Select + Editable Suggestion Cards
 **Summary:** Positioning interview suggestions now support multi-select (checkboxes) and inline editing.
