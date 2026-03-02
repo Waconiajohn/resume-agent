@@ -242,9 +242,6 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {overall_assessment && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-                Info only
-              </span>
               <ScanSearch className="h-3.5 w-3.5 text-[#afc4ff]" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Assessment

@@ -77,6 +77,7 @@ export default function App() {
     dismissSuggestion,
     approvedSections,
     reconnectStreamNow,
+    activityMessages,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   // Request-level lock: prevents concurrent gate responses even when React state
@@ -504,6 +505,7 @@ export default function App() {
           liveWorkflowReplan={workflowReplan}
           pipelineActivity={pipelineActivity}
           onReconnectStream={reconnectStreamNow}
+          activityMessages={activityMessages}
         />
       )}
 

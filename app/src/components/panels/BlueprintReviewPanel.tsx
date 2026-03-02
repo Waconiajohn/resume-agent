@@ -203,14 +203,16 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {/* Target Role & Positioning Angle */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className={cn(
-              'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
-              angleWasEdited
-                ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
-                : 'border-white/[0.08] bg-white/[0.02] text-white/48',
-            )}>
-              {angleWasEdited ? 'Edited' : onApprove ? 'Editable' : 'Info only'}
-            </span>
+            {(angleWasEdited || onApprove) && (
+              <span className={cn(
+                'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
+                angleWasEdited
+                  ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
+                  : 'border-white/[0.08] bg-white/[0.02] text-white/48',
+              )}>
+                {angleWasEdited ? 'Edited' : 'Editable'}
+              </span>
+            )}
             <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
               Target
             </span>
@@ -283,14 +285,16 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {currentOrder.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className={cn(
-                'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
-                orderWasEdited
-                  ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
-                  : 'border-white/[0.08] bg-white/[0.02] text-white/48',
-              )}>
-                {orderWasEdited ? 'Edited' : onApprove ? 'Reorderable' : 'Info only'}
-              </span>
+              {(orderWasEdited || onApprove) && (
+                <span className={cn(
+                  'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
+                  orderWasEdited
+                    ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
+                    : 'border-white/[0.08] bg-white/[0.02] text-white/48',
+                )}>
+                  {orderWasEdited ? 'Edited' : 'Reorderable'}
+                </span>
+              )}
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                 Section Layout
               </span>
@@ -324,9 +328,6 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {hasAgeFlags ? (
           <GlassCard className="p-4 border-white/[0.14]">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-                Info only
-              </span>
               <AlertTriangle className="h-3.5 w-3.5 text-white/62" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
                 Age Protection
@@ -354,9 +355,6 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         ) : (
           <GlassCard className="p-3 border-white/[0.14]">
             <div className="flex items-center gap-2">
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-                Info only
-              </span>
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#a8d7b8]" />
               <span className="text-xs font-medium text-white/76">No age signals detected</span>
             </div>

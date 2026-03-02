@@ -129,6 +129,11 @@ function makeMockState(
     setDraftReadiness: vi.fn(),
     workflowReplan: null,
     setWorkflowReplan: vi.fn(),
+
+    // Activity feed
+    activityMessages: [],
+    setActivityMessages: vi.fn(),
+
     qualityScoresRef: { current: null },
     accessTokenRef: { current: null },
     abortControllerRef: { current: null },

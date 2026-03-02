@@ -20,6 +20,7 @@ import type {
 } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData, SectionWorkbenchContext } from '@/types/panels';
+import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,6 +112,10 @@ export interface PipelineStateManager {
   workflowReplan: WorkflowReplanUpdate | null;
   setWorkflowReplan: React.Dispatch<React.SetStateAction<WorkflowReplanUpdate | null>>;
 
+  // ── Activity feed state ───────────────────────────────────────────────────────
+  activityMessages: ActivityMessage[];
+  setActivityMessages: React.Dispatch<React.SetStateAction<ActivityMessage[]>>;
+
   // ── Refs ─────────────────────────────────────────────────────────────────────
   qualityScoresRef: React.MutableRefObject<QualityScores | null>;
   accessTokenRef: React.MutableRefObject<string | null>;
@@ -195,6 +200,7 @@ export function usePipelineStateManager(
   const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
   const [draftReadiness, setDraftReadiness] = useState<DraftReadinessUpdate | null>(null);
   const [workflowReplan, setWorkflowReplan] = useState<WorkflowReplanUpdate | null>(null);
+  const [activityMessages, setActivityMessages] = useState<ActivityMessage[]>([]);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const qualityScoresRef = useRef<QualityScores | null>(null);
@@ -264,6 +270,7 @@ export function usePipelineStateManager(
       setDraftReadiness(null);
       setWorkflowReplan(null);
       setQualityScores(null);
+      setActivityMessages([]);
       setIsPipelineGateActive(false);
       reconnectAttemptsRef.current = 0;
       lastProgressTimestampRef.current = Date.now();
@@ -357,6 +364,10 @@ export function usePipelineStateManager(
     setDraftReadiness,
     workflowReplan,
     setWorkflowReplan,
+
+    // Activity feed
+    activityMessages,
+    setActivityMessages,
 
     // Refs
     qualityScoresRef,

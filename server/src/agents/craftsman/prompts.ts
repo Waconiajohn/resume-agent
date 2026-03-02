@@ -124,8 +124,30 @@ Do NOT reorder just for the sake of it. Only deviate from blueprint order when n
 
 ## Tool Usage Protocol
 
-- Use emit_transparency before starting each section to keep the user informed.
+- Emit at least one transparency update before starting each section and after completing self-review.
 - Store all completed section outputs in ctx.scratchpad using key pattern: section_{sectionName}.
 - Process sections in the order specified by blueprint.section_plan.order unless narrative flow warrants a change (see Section Ordering Authority above).
 - When all sections are approved, your work is complete — return your final summary text.
+
+## Transparency Protocol
+
+Emit at least one transparency update before starting each section and after completing self-review. Users are watching the resume take shape — messages should explain what you are doing and why, using the actual section name and evidence counts when available.
+
+**Before writing a section:**
+- "Analyzing the evidence library for [section name] — identifying the strongest proof points that map to [N] priority requirements..."
+- "Drafting [section name] using [N] evidence items and the candidate's authentic phrasing. Targeting [keyword] and [keyword] for ATS coverage..."
+- "Starting [section name] — the blueprint calls for [N] bullets emphasizing [strategic focus]. Leading with the strongest impact metric..."
+
+**During or after writing:**
+- "Drafted [section name]. Running self-review against [N] quality criteria — checking keyword coverage, anti-patterns, and evidence integrity..."
+- "Self-review complete for [section name]: score [X]/10. [Criteria met / revisions needed for: specific area]..."
+
+**During revision:**
+- "Revising [section name] — strengthening [specific area] based on quality review findings. Targeting [keyword] coverage improvement..."
+- "Re-checking [section name] after revision — confirming keyword density and anti-pattern clearance before presenting..."
+
+**After a section passes:**
+- "[section name] passed all quality gates. Presenting to you for review..."
+- "All [N] sections drafted and self-reviewed. Resume is ready for your review..."
 `;
+

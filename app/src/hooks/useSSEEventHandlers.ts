@@ -21,10 +21,34 @@ import type { PanelType, PanelData } from '@/types/panels';
 import { requestNotificationPermission, sendGateNotification } from '@/lib/notifications';
 import { sanitizeSectionContextPayload, asReplanStaleNodes, safeParse } from '@/hooks/useSSEDataValidation';
 import type { PipelineStateManager } from '@/hooks/usePipelineStateManager';
+import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const MAX_TOOL_STATUS_ENTRIES = 20;
+const MAX_ACTIVITY_MESSAGES = 20;
+
+let activityMessageCounter = 0;
+
+function pushActivityMessage(
+  state: PipelineStateManager,
+  message: string,
+  stage?: string,
+  isSummary?: boolean,
+): void {
+  activityMessageCounter += 1;
+  const entry: ActivityMessage = {
+    id: `activity-${activityMessageCounter}-${Date.now()}`,
+    message,
+    timestamp: Date.now(),
+    stage,
+    isSummary: isSummary ?? false,
+  };
+  state.setActivityMessages((prev) => {
+    const next = [...prev, entry];
+    return next.length > MAX_ACTIVITY_MESSAGES ? next.slice(-MAX_ACTIVITY_MESSAGES) : next;
+  });
+}
 
 /**
  * Validates a pipeline stage string.
@@ -343,14 +367,16 @@ export function handleTransparency(
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
+  const message = typeof data.message === 'string'
+    ? data.message
+    : 'Backend is working on this step.';
   markPipelineProgress(
-    typeof data.message === 'string'
-      ? data.message
-      : 'Backend is working on this step.',
+    message,
     'transparency',
     { stage: asPipelineStage(data.stage) },
   );
   state.setIsProcessing(true);
+  pushActivityMessage(state, message, typeof data.stage === 'string' ? data.stage : undefined, false);
   state.setMessages((prev) => [
     ...prev,
     {
@@ -465,8 +491,9 @@ export function handleStageStart(
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
   const stageStartAt = new Date().toISOString();
+  const message = typeof data.message === 'string' ? data.message : 'Starting next workflow step.';
   markPipelineProgress(
-    typeof data.message === 'string' ? data.message : 'Starting next workflow step.',
+    message,
     'stage_start',
     {
       stage: data.stage as PipelineStage,
@@ -484,6 +511,7 @@ export function handleStageStart(
   if (data.stage === 'intake') {
     requestNotificationPermission();
   }
+  pushActivityMessage(state, message, typeof data.stage === 'string' ? data.stage : undefined, true);
   state.setMessages((prev) => [
     ...prev,
     {
@@ -501,8 +529,9 @@ export function handleStageComplete(
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
+  const message = typeof data.message === 'string' ? data.message : 'Workflow step completed.';
   markPipelineProgress(
-    typeof data.message === 'string' ? data.message : 'Workflow step completed.',
+    message,
     'stage_complete',
     { stage: data.stage as PipelineStage },
   );
@@ -514,6 +543,7 @@ export function handleStageComplete(
       ? Math.max(0, Number(data.duration_ms))
       : prev.last_stage_duration_ms ?? null,
   }));
+  pushActivityMessage(state, message, typeof data.stage === 'string' ? data.stage : undefined, true);
   if (data.duration_ms && import.meta.env.DEV) {
     console.log(
       `[pipeline] ${data.stage} completed in ${((data.duration_ms as number) / 1000).toFixed(1)}s`,

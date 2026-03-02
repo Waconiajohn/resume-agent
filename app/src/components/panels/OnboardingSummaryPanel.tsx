@@ -124,10 +124,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
 
         {/* Stat cards */}
         <div>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-              Info only
-            </span>
+          <div className="mb-2">
             <span className="text-[11px] text-white/55">Parsed snapshot metrics from the uploaded resume</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

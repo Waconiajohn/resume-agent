@@ -3,6 +3,8 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassInput } from '@/components/GlassInput';
 import { PHASE_LABELS } from '@/constants/phases';
+import { IntelligenceActivityFeed } from '@/components/IntelligenceActivityFeed';
+import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 import type { PipelineActivitySnapshot, WorkflowReplanUpdate } from '@/types/session';
 import type { WorkflowNodeKey } from '@/types/workflow';
 
@@ -62,73 +64,31 @@ export function WorkflowErrorBanner({ error, loadingSummary, loadingNode, onRefr
 
 // ---- PipelineActivityBanner ----
 
-interface PipelineActivityBannerProps {
+export interface PipelineActivityBannerProps {
   isViewingLiveNode: boolean;
-  effectivePipelineActivity: PipelineActivitySnapshot | null;
+  messages: ActivityMessage[];
   isProcessing: boolean;
-  isPipelineGateActive: boolean;
-  pipelineActivityStageElapsed: string | null;
-  pipelineActivityLastStageDuration: string | null;
-  pipelineActivityLastProgress: string | null;
-  pipelineActivityLastHeartbeat: string | null;
-  pipelineFirstProgressDuration: string | null;
-  pipelineFirstActionReadyDuration: string | null;
 }
 
 export function PipelineActivityBanner({
   isViewingLiveNode,
-  effectivePipelineActivity,
+  messages,
   isProcessing,
-  isPipelineGateActive,
-  pipelineActivityStageElapsed,
-  pipelineActivityLastStageDuration,
-  pipelineActivityLastProgress,
-  pipelineActivityLastHeartbeat,
-  pipelineFirstProgressDuration,
-  pipelineFirstActionReadyDuration,
 }: PipelineActivityBannerProps) {
-  if (!isViewingLiveNode || !effectivePipelineActivity) return null;
-  const shouldShow = isProcessing
-    || isPipelineGateActive
-    || effectivePipelineActivity.processing_state === 'reconnecting'
-    || effectivePipelineActivity.processing_state === 'stalled_suspected';
-  if (!shouldShow) return null;
+  if (!isViewingLiveNode) return null;
 
   return (
-    <div className="mx-3 mt-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-xs text-white/84">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="rounded-full border border-white/[0.1] bg-white/[0.025] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">
-          Backend Activity
-        </span>
-        <span className="text-white/88">
-          {effectivePipelineActivity.current_activity_message
-            ?? (isPipelineGateActive ? 'Waiting for your input in the current step.' : 'Processing your resume workflow.')}
-        </span>
-      </div>
-      <details className="group mt-2">
-        <summary className="cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-1 list-none">
-          <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
-          Details
-        </summary>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/55">
-          <span>State: {effectivePipelineActivity.processing_state.replace(/_/g, ' ')}</span>
-          {effectivePipelineActivity.stage && <span>Stage: {PHASE_LABELS[effectivePipelineActivity.stage] ?? effectivePipelineActivity.stage}</span>}
-          {pipelineActivityStageElapsed && <span>Stage elapsed: {pipelineActivityStageElapsed}</span>}
-          {pipelineActivityLastStageDuration && <span>Last stage: {pipelineActivityLastStageDuration}</span>}
-          {pipelineActivityLastProgress && <span>Last progress: {pipelineActivityLastProgress}</span>}
-          {pipelineActivityLastHeartbeat && <span>Heartbeat: {pipelineActivityLastHeartbeat}</span>}
-          {pipelineFirstProgressDuration && <span>First progress: {pipelineFirstProgressDuration}</span>}
-          {pipelineFirstActionReadyDuration && <span>First action: {pipelineFirstActionReadyDuration}</span>}
-        </div>
-      </details>
-      {effectivePipelineActivity.expected_next_action && (
-        <div className="mt-1 text-[11px] text-white/62">
-          Next: {effectivePipelineActivity.expected_next_action}
-        </div>
-      )}
+    <div className="mx-3 mt-3">
+      <IntelligenceActivityFeed
+        messages={messages}
+        isProcessing={isProcessing}
+      />
     </div>
   );
 }
+
+// Re-export ActivityMessage type for consumers
+export type { ActivityMessage };
 
 // ---- RuntimeRecoveryBanner ----
 

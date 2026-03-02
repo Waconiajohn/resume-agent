@@ -455,9 +455,6 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
               {/* JD requirement map badges */}
               {Array.isArray(current_question.requirement_map) && current_question.requirement_map.length > 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Helps address">
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] text-white/45 self-center">
-                    Info only
-                  </span>
                   <span className="text-[10px] text-white/40 self-center">Helps address:</span>
                   {current_question.requirement_map.map((req) => (
                     <span
@@ -480,9 +477,6 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             {current_question.context && (
               <GlassCard className="px-3.5 py-2.5">
                 <div className="mb-1.5 flex items-center gap-2">
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45">
-                    Info only
-                  </span>
                   <span className="text-[11px] text-white/50">Context / guidance</span>
                 </div>
                 <p className="text-xs text-white/55 leading-relaxed">

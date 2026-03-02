@@ -140,6 +140,10 @@ function makeMockState(overrides?: Partial<PipelineStateManager>): PipelineState
     workflowReplan: null,
     setWorkflowReplan: vi.fn(),
 
+    // Activity feed
+    activityMessages: [],
+    setActivityMessages: vi.fn(),
+
     // Refs
     qualityScoresRef: { current: null },
     accessTokenRef: { current: null },

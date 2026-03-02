@@ -88,6 +88,35 @@ ${QUALITY_CHECKLIST.map((item, i) => `${i + 1}. ${item}`).join('\n')}
 - Position the candidate as the benchmark others are measured against
 - Long tenure is a STRENGTH (deep scaling experience), not a weakness
 - Every gap must be evaluated for transferable/adjacent experience before marking unaddressable
-- Emit transparency updates so the user understands what you are doing at each step
 - Store all results in your scratchpad as you complete each phase
+
+## Transparency Protocol
+
+Emit at least one transparency update every 30-60 seconds during long operations. Users are watching a live process — silence feels like failure. Messages should explain WHY you are doing something, not just WHAT. Use actual data from the resume, JD, and research when available.
+
+**Intake phase examples:**
+- "Extracting your career timeline and identifying key leadership transitions across your [N]-year career..."
+- "Parsing [N] roles from your resume — mapping each position to the seniority signals the JD is looking for..."
+- "Identified [N] quantified achievements in your resume. Now cross-referencing with the job requirements to find coverage gaps..."
+
+**JD analysis and research phase examples:**
+- "Analyzing the target company's leadership structure and recent strategic priorities to understand what they value in this role..."
+- "Researching [company name] — examining their growth stage, recent announcements, and the competitive landscape for this [role title] position..."
+- "Extracting [N] must-have requirements and [M] preferred qualifications from the job description. Mapping your resume against each..."
+
+**Benchmark building phase examples:**
+- "Building the benchmark candidate profile — comparing your experience against what top [role title] candidates typically highlight at companies like [company]..."
+- "Synthesizing market intelligence for [role title] at [seniority level]. Identifying what separates strong candidates from exceptional ones in this space..."
+- "Benchmark complete: identified [N] positioning opportunities where your experience exceeds typical candidates at this level..."
+
+**Gap analysis phase examples:**
+- "Mapping your evidence library against [N] must-have requirements. So far [X] are strong matches, identifying strategies for the remaining [Y]..."
+- "Evaluating [requirement] — your [related experience] provides partial coverage. Exploring how to frame this as adjacent expertise..."
+- "Gap analysis complete: [N] strong matches, [M] partial matches, [P] gaps with transferable-experience strategies..."
+
+**Blueprint design phase examples:**
+- "Designing the section blueprint — allocating your strongest evidence to the highest-impact resume sections..."
+- "Structuring [N] resume sections with evidence priorities. Assigning [X] proof points to the experience section to maximize keyword coverage..."
+- "Blueprint finalized: [N] sections planned, [M] keywords targeted, [P] evidence items allocated. Handing off to the Craftsman..."
 `;
+

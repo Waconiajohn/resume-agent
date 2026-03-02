@@ -1,5 +1,80 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 12
+**Sprint:** 16 | **Stories:** 3, 7, 8
+**Summary:** Sprint 16 Phase C — Built Intelligence Activity Feed replacing the single-message banner, removed duplicate backend activity displays from ChatPanel and WorkflowStatsRail, and made the stats rail metric display stage-aware.
+
+### Changes Made
+- `app/src/components/IntelligenceActivityFeed.tsx` — New component. Scrollable feed showing last 10 activity messages with graduated opacity (newest brightest), auto-scroll to bottom, stage summary messages get left-border emphasis, Initializing placeholder when processing.
+- `app/src/hooks/usePipelineStateManager.ts` — Added `activityMessages: ActivityMessage[]` and `setActivityMessages` to state, interface, and resetState. Added import for `ActivityMessage` type.
+- `app/src/hooks/useSSEEventHandlers.ts` — Added `ActivityMessage` import. Added `pushActivityMessage()` helper that caps the feed at 20 entries. Modified `handleTransparency` to push feed entries (isSummary: false). Modified `handleStageStart` and `handleStageComplete` to push feed entries (isSummary: true).
+- `app/src/components/CoachScreenBanners.tsx` — Replaced `PipelineActivityBanner` implementation: new props are `{ isViewingLiveNode, messages: ActivityMessage[], isProcessing }`. Now renders `IntelligenceActivityFeed` instead of a single-message div. Re-exports `ActivityMessage` type.
+- `app/src/components/CoachScreen.tsx` — Updated `PipelineActivityBanner` call to new props. Added `activityMessages` prop to `CoachScreenProps`. Removed unused `pipelineActivityLastHeartbeat`, `pipelineActivityLastStageDuration`, `pipelineFirstProgressDuration`, `pipelineFirstActionReadyDuration` variables and `formatMsDurationShort` import.
+- `app/src/hooks/useAgent.ts` — Added `activityMessages: state.activityMessages` to return value.
+- `app/src/App.tsx` — Destructured `activityMessages` from `useAgent`, passed to `CoachScreen`.
+- `app/src/components/ChatPanel.tsx` — Removed entire "Backend activity" block (lines ~295-334). Removed all associated computed variables (`stageElapsedText`, `lastProgressText`, `heartbeatText`, `lastStageDurationText`, `firstProgressText`, `firstActionReadyText`) and the `clockNow` state + its setInterval effect. Kept phase indicator bar and all other functionality.
+- `app/src/components/WorkflowStatsRail.tsx` — Removed backend activity section from Session card (lines ~169-202). Removed `lastStageDurationText`, `firstProgressText`, `firstActionText` computed variables. Added `getVisibleMetrics(currentPhase)` function that returns which metric categories are visible by pipeline stage group. Metrics card now uses `visibleMetrics` flags to conditionally render only stage-appropriate metrics.
+- `app/src/__tests__/IntelligenceActivityFeed.test.tsx` — New test file: 9 tests covering empty state (processing/idle), message rendering, most-recent highlight styling, summary emphasis styling, max 10 message limit, graduated opacity, banner null return, banner render.
+- `app/src/__tests__/hooks/useSSEEventHandlers.test.ts` — Added `activityMessages: []` and `setActivityMessages: vi.fn()` to mock state factory.
+- `app/src/__tests__/hooks/useStaleDetection.test.ts` — Same mock state fix.
+
+### Decisions Made
+- `activityMessageCounter` is module-level in `useSSEEventHandlers.ts` to generate unique IDs without requiring hook state or a ref parameter. This is safe because IDs only need to be unique per session, and the counter never resets within a browser session.
+- `getVisibleMetrics` uses a plain Set lookup (not a complex condition chain) for readability. Stage groups mirror the three-agent architecture: Strategist, Craftsman, Producer.
+- `runtimeMetrics` prop kept on `ChatPanel` and `WorkflowStatsRail` as optional (not removed) to avoid breaking callers; TypeScript does not flag unused optional destructured props.
+
+### Known Issues
+- None introduced by this session.
+
+### Next Steps
+- Story 9: Sprint 16 documentation and backlog update.
+
+## 2026-03-02 — Session 11
+**Sprint:** 16 | **Stories:** 4, 5, 6
+**Summary:** Sprint 16 Phase B — Frontend declutter: stripped all "Info only" badges from 8 panel files, simplified Research Dashboard assumption display, and replaced the 3-card gap count grid with an inline summary + collapsible details section.
+
+### Changes Made
+- `app/src/components/panels/OnboardingSummaryPanel.tsx` — Removed "Info only" badge span from stat cards header div; kept descriptive label text.
+- `app/src/components/panels/ResearchDashboardPanel.tsx` — Removed "Info only" badge spans from Company, JD Requirements, and Benchmark Profile card headers (3 badges). Simplified assumption entries to show only label + current value (removed confidence badge, "Originally inferred" line, "why" explanation, and user-edited provenance badge). Removed now-unused `confidenceBadgeClass` function and `inferredAssumptions`, `assumptionProvenance`, `confidenceByAssumption`, `whyInferred` variables.
+- `app/src/components/panels/GapAnalysisPanel.tsx` — Removed "Info only:" prefix from explanation note (kept descriptive text). Removed "Info only" badge span from requirement list header (kept label). Replaced 3-card grid (Strong/Partial/Gap counts) with inline colored text summary inside the progress bar card. Wrapped requirement-by-requirement list in `<details>`/`<summary>` element labeled "Requirement Details" (collapsed by default).
+- `app/src/components/panels/QualityDashboardPanel.tsx` — Removed "Info only" badge from the Overall Assessment card header.
+- `app/src/components/panels/BlueprintReviewPanel.tsx` — Replaced `'Info only'` ternary fallback with conditional rendering (badge only shows when there is an action: Edited or Editable) for positioning angle card. Same pattern for section order card (Edited or Reorderable). Removed "Info only" badge from Age Protection (hasAgeFlags) card. Removed "Info only" badge from "No age signals detected" card.
+- `app/src/components/panels/PositioningInterviewPanel.tsx` — Removed "Info only" badge span from JD requirement map badges row. Removed "Info only" badge span from context helper card.
+- `app/src/components/panels/QuestionnairePanel.tsx` — Removed "Info only" badge span from context card header.
+- `app/src/components/panels/SectionWorkbench.tsx` — Removed "Info only:" prefix from the auto-approved section note text (kept rest of the sentence).
+
+### Decisions Made
+- BlueprintReviewPanel badge logic: rather than showing "Info only" as a static fallback when `onApprove` is falsy, the badge is conditionally rendered only when it communicates an actionable state (Editable/Reorderable or Edited). This removes noise without losing the meaningful state indicators.
+- GapAnalysisPanel inline summary uses the existing accent colors from the design system (`#b5dec2` green for strong, `#dfc797` amber for partial, `#dfa9a9` red for gaps) matching the classification config already defined in the file.
+- `<details>`/`<summary>` pattern (no React state, auto-collapses on remount) consistent with Sprint 14 pattern used in Advanced Options and Run Settings.
+
+### Known Issues
+- None (the `activityMessages` type issue noted during parallel development was resolved when Story 3 completed).
+
+### Next Steps
+- Stories 7, 8: Remove duplicate activity displays, add contextual stats rail.
+
+## 2026-03-02 — Session 10
+**Sprint:** 16 | **Stories:** 1, 2
+**Summary:** Sprint 16 Phase A — Enriched transparency messaging in all three agent prompts and added stage completion summary persistence to the event middleware.
+
+### Changes Made
+- `server/src/agents/strategist/prompts.ts` — Replaced single transparency line with a full `## Transparency Protocol` section (~30 lines). Added 5-phase example messages (intake, JD/research, benchmark, gap analysis, blueprint) with data interpolation markers and pacing guidance (emit every 30-60 seconds).
+- `server/src/agents/craftsman/prompts.ts` — Replaced single transparency line in Tool Usage Protocol and added a full `## Transparency Protocol` section (~25 lines). Added 4-category examples (before writing, during/after writing, during revision, after passing) with section name and evidence count markers.
+- `server/src/agents/producer/prompts.ts` — Replaced single transparency line in Key Principles and added a full `## Transparency Protocol` section (~25 lines). Added 4-category examples (template selection, structural checks, content quality checks, after all checks) with score markers.
+- `server/src/agents/resume/event-middleware.ts` — Added `buildStageSummaryMessage()` helper function that returns human-readable summary strings for 6 pipeline stages (intake, research, gap_analysis, architect, section_writing, quality_review). Extended the `stage_complete` handler in `onEvent` to call `persistWorkflowArtifactBestEffort` with the summary message as a `stage_summary_{stage}` artifact.
+
+### Decisions Made
+- Stage summary artifact key pattern: `stage_summary_{stage}` stored under the stage's workflow node using `persistWorkflowArtifactBestEffort`. This keeps summaries alongside the node data they describe.
+- Switch cases for `positioning`, `architect_review`, `section_review`, `revision`, and `complete` explicitly return `null` to satisfy TypeScript exhaustiveness; `default` also returns `null` as a safety fallback.
+- Transparency examples use bracket markers like `[N]`, `[section name]`, `[company]` to guide LLM interpolation without hardcoding specific values.
+
+### Known Issues
+- None.
+
+### Next Steps
+- Stories 3-8 (frontend work): Intelligence Activity Feed, badge cleanup, panel simplification.
+
 ## 2026-03-02 — Session 9
 **Sprint:** 15 | **Stories:** All 8 stories
 **Summary:** Sprint 15 — Tech debt sweep (TypeScript fix, workflow persistence dedup, MaxListeners root cause) and platform expansion (product landing pages, cross-product context). 8/8 stories delivered. Test count: 377 app + 891 server = 1,268 total.

@@ -424,5 +424,6 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     dismissSuggestion,
     approvedSections: state.approvedSections,
     reconnectStreamNow,
+    activityMessages: state.activityMessages,
   };
 }

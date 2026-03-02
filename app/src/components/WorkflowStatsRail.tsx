@@ -50,6 +50,76 @@ function metricSnapshot(panelData: PanelData | null, resume: FinalResume | null)
   return { ats, keywordCoverage, authenticity, requirements };
 }
 
+// ─── Stage-aware metric visibility ───────────────────────────────────────────
+
+/**
+ * Determines which metrics are visible based on the current pipeline phase.
+ *
+ * - Strategist stages (intake → architect_review): Phase + Status only.
+ *   No metrics yet — they don't exist at this point.
+ * - Craftsman stages (section_writing, section_review): Phase + Status +
+ *   Requirements count (if available).
+ * - Producer stages (quality_review, revision): All metrics.
+ * - complete: All metrics.
+ * - onboarding or unknown: No metrics (show placeholder).
+ */
+interface VisibleMetrics {
+  showAts: boolean;
+  showKeywordCoverage: boolean;
+  showAuthenticity: boolean;
+  showRequirements: boolean;
+}
+
+function getVisibleMetrics(currentPhase: string): VisibleMetrics {
+  const STRATEGIST_STAGES = new Set([
+    'intake',
+    'positioning',
+    'research',
+    'gap_analysis',
+    'architect',
+    'architect_review',
+  ]);
+  const CRAFTSMAN_STAGES = new Set(['section_writing', 'section_review']);
+  const PRODUCER_STAGES = new Set(['quality_review', 'revision']);
+
+  if (STRATEGIST_STAGES.has(currentPhase)) {
+    return {
+      showAts: false,
+      showKeywordCoverage: false,
+      showAuthenticity: false,
+      showRequirements: false,
+    };
+  }
+
+  if (CRAFTSMAN_STAGES.has(currentPhase)) {
+    return {
+      showAts: false,
+      showKeywordCoverage: false,
+      showAuthenticity: false,
+      showRequirements: true,
+    };
+  }
+
+  if (PRODUCER_STAGES.has(currentPhase) || currentPhase === 'complete') {
+    return {
+      showAts: true,
+      showKeywordCoverage: true,
+      showAuthenticity: true,
+      showRequirements: true,
+    };
+  }
+
+  // onboarding, unknown: no metrics yet
+  return {
+    showAts: false,
+    showKeywordCoverage: false,
+    showAuthenticity: false,
+    showRequirements: false,
+  };
+}
+
+// ─── MetricRow component ──────────────────────────────────────────────────────
+
 function MetricRow({
   label,
   value,
@@ -84,39 +154,7 @@ export function WorkflowStatsRail({
   compact = false,
 }: WorkflowStatsRailProps) {
   const { ats, keywordCoverage, authenticity, requirements } = metricSnapshot(panelData, resume);
-  const lastStageDurationText = (() => {
-    const ms = pipelineActivity?.last_stage_duration_ms;
-    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    if (minutes <= 0) return `${seconds}s`;
-    if (minutes < 60) return `${minutes}m ${seconds}s`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m`;
-  })();
-  const firstProgressText = (() => {
-    const ms = runtimeMetrics?.first_progress_delay_ms;
-    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    if (minutes <= 0) return `${seconds}s`;
-    if (minutes < 60) return `${minutes}m ${seconds}s`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m`;
-  })();
-  const firstActionText = (() => {
-    const ms = runtimeMetrics?.first_action_ready_delay_ms;
-    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    if (minutes <= 0) return `${seconds}s`;
-    if (minutes < 60) return `${minutes}m ${seconds}s`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m`;
-  })();
+  const visibleMetrics = getVisibleMetrics(currentPhase);
   const runtimeState = pipelineActivity?.processing_state ?? (
     error
       ? 'error'
@@ -166,67 +204,43 @@ export function WorkflowStatsRail({
           {status}
         </span>
       </div>
-      {(pipelineActivity?.current_activity_message || pipelineActivity?.stage) && (
-        <div className="mt-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-3 py-2">
-          <div className="text-[10px] uppercase tracking-[0.12em] text-white/42">Backend</div>
-          <div className="mt-1 text-xs text-white/72">
-            {pipelineActivity.current_activity_message ?? 'Waiting for backend updates.'}
-          </div>
-          {pipelineActivity.stage && (
-            <div className="mt-1 text-[10px] text-white/45">
-              Stage: {phaseLabel(pipelineActivity.stage)}
-            </div>
-          )}
-          {(lastStageDurationText || firstProgressText || firstActionText) && (
-            <details className="group mt-1">
-              <summary className="cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-1 list-none">
-                <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
-                Details
-              </summary>
-              <div className="mt-1.5 space-y-1">
-                {lastStageDurationText && (
-                  <div className="text-[10px] text-white/45">
-                    Last stage: {lastStageDurationText}
-                  </div>
-                )}
-                {(firstProgressText || firstActionText) && (
-                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-white/42">
-                    {firstProgressText && <span>First progress: {firstProgressText}</span>}
-                    {firstActionText && <span>First action: {firstActionText}</span>}
-                  </div>
-                )}
-              </div>
-            </details>
-          )}
-        </div>
-      )}
     </GlassCard>
   );
+
+  // Determine which metrics actually have values AND are permitted by stage
+  const hasAts = visibleMetrics.showAts && ats != null;
+  const hasKeywordCoverage = visibleMetrics.showKeywordCoverage && keywordCoverage != null;
+  const hasAuthenticity = visibleMetrics.showAuthenticity && authenticity != null;
+  const hasRequirements = visibleMetrics.showRequirements && Boolean(requirements);
+  const hasAnyMetrics = hasAts || hasKeywordCoverage || hasAuthenticity || hasRequirements;
+  const noMetricsYet = !hasAnyMetrics && !Object.values(visibleMetrics).some(Boolean);
 
   const metricsCard = (
     <GlassCard className="p-3">
       <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
         Metrics
       </div>
-      {ats != null && <MetricRow label="ATS Score" value={`${ats}%`} icon={Gauge} />}
-      {keywordCoverage != null && (
+      {hasAts && <MetricRow label="ATS Score" value={`${ats}%`} icon={Gauge} />}
+      {hasKeywordCoverage && (
         <div className="mt-2">
           <MetricRow label="Keyword Coverage" value={`${keywordCoverage}%`} icon={Hash} />
         </div>
       )}
-      {authenticity != null && (
+      {hasAuthenticity && (
         <div className="mt-2">
           <MetricRow label="Authenticity" value={`${authenticity}%`} icon={ShieldCheck} />
         </div>
       )}
-      {requirements && (
+      {hasRequirements && requirements && (
         <div className="mt-2">
           <MetricRow label="Requirements" value={requirements} icon={ListChecks} />
         </div>
       )}
-      {ats == null && keywordCoverage == null && authenticity == null && !requirements && (
+      {(!hasAnyMetrics) && (
         <div className="rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2 text-xs text-white/56">
-          Metrics appear as the pipeline advances.
+          {noMetricsYet
+            ? 'Metrics appear as the pipeline advances.'
+            : 'No metrics available for this stage yet.'}
         </div>
       )}
     </GlassCard>

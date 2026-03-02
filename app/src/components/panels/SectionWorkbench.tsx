@@ -317,7 +317,7 @@ export function SectionWorkbench({
                 {reviewRequiredSections.includes(section) ? (
                   <span className="text-[11px] text-emerald-200/85">Action required: this section is in the review set.</span>
                 ) : (
-                  <span className="text-[11px] text-white/45">Info only: this section is editable even if auto-approved by mode.</span>
+                  <span className="text-[11px] text-white/45">This section is editable even if auto-approved by mode.</span>
                 )}
               </div>
               {reviewRequiredSections.length > 0 && (

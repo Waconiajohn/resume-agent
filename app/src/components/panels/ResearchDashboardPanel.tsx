@@ -38,13 +38,6 @@ function renderAssumptionValue(value: unknown): string {
   return 'Not inferred';
 }
 
-function confidenceBadgeClass(score: number | undefined) {
-  if (typeof score !== 'number') return 'border-white/[0.1] bg-white/[0.03] text-white/60';
-  if (score >= 0.85) return 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/85';
-  if (score >= 0.65) return 'border-sky-300/20 bg-sky-400/[0.06] text-sky-100/85';
-  return 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/85';
-}
-
 export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
   const company = data.company ?? {};
   const jd_requirements = data.jd_requirements ?? {};
@@ -53,15 +46,9 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
   const sectionExpectations = benchmark.section_expectations ?? {};
   const sectionExpectationEntries = Object.entries(sectionExpectations).filter(([, value]) => typeof value === 'string' && value.trim());
   const benchmarkAssumptions = benchmark.assumptions && typeof benchmark.assumptions === 'object' ? benchmark.assumptions : {};
-  const inferredAssumptions = benchmark.inferred_assumptions && typeof benchmark.inferred_assumptions === 'object'
-    ? benchmark.inferred_assumptions
-    : {};
-  const assumptionProvenance = benchmark.assumption_provenance ?? {};
   const assumptionEntries = Object.entries(benchmarkAssumptions)
     .filter(([_, value]) => value != null && renderAssumptionValue(value) !== 'Not inferred')
     .slice(0, 8);
-  const confidenceByAssumption = benchmark.confidence_by_assumption ?? {};
-  const whyInferred = benchmark.why_inferred ?? {};
   const researchStatusTone = data.loading_state === 'running'
     ? 'border-sky-300/20 bg-sky-400/[0.06] text-sky-100/90'
     : data.loading_state === 'background_running'
@@ -110,9 +97,6 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* Company Card */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-              Info only
-            </span>
             <Building2 className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
               Company
@@ -147,9 +131,6 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* JD Requirements */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-              Info only
-            </span>
             <Target className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
               JD Requirements
@@ -202,9 +183,6 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
         {/* Benchmark Profile */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-              Info only
-            </span>
             <UserCheck className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
               Benchmark Profile
@@ -224,45 +202,17 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           {assumptionEntries.length > 0 && (
             <div className="mb-3">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50 mb-1.5 block">
-                Benchmark Assumptions (Review These First)
+                Benchmark Assumptions
               </span>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {assumptionEntries.map(([key, value]) => {
-                  const confidence = typeof confidenceByAssumption[key] === 'number' ? confidenceByAssumption[key] : undefined;
-                  const why = typeof whyInferred[key] === 'string' ? whyInferred[key] : '';
-                  const provenance = assumptionProvenance[key];
-                  const isUserEdited = provenance?.source === 'user_edited';
-                  const inferredValue = inferredAssumptions[key];
-                  const inferredText = renderAssumptionValue(inferredValue);
                   const currentText = renderAssumptionValue(value);
                   return (
-                    <div key={key} className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-[0.12em] text-white/45">
-                          {formatAssumptionLabel(key)}
-                        </span>
-                        <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
-                          isUserEdited
-                            ? 'border-violet-300/20 bg-violet-400/[0.08] text-violet-100/85'
-                            : 'border-white/[0.1] bg-white/[0.03] text-white/60'
-                        }`}>
-                          {isUserEdited ? 'User edited' : 'Inferred'}
-                        </span>
-                        <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${confidenceBadgeClass(confidence)}`}>
-                          {typeof confidence === 'number' ? `Confidence ${Math.round(confidence * 100)}%` : 'Confidence n/a'}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-xs text-white/86">{cleanText(currentText)}</div>
-                      {isUserEdited && inferredText !== 'Not inferred' && inferredText !== currentText && (
-                        <div className="mt-1 text-[10px] text-white/45">
-                          Originally inferred: {cleanText(inferredText)}
-                        </div>
-                      )}
-                      {why && (
-                        <div className="mt-1 text-[10px] leading-relaxed text-white/50">
-                          {cleanText(why)}
-                        </div>
-                      )}
+                    <div key={key} className="flex items-start justify-between gap-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-white/45 shrink-0">
+                        {formatAssumptionLabel(key)}
+                      </span>
+                      <span className="text-xs text-white/85 text-right">{cleanText(currentText)}</span>
                     </div>
                   );
                 })}

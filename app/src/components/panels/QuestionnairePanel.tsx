@@ -323,9 +323,6 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {currentQuestion.context && (
             <GlassCard className="px-3.5 py-2.5">
               <div className="mb-1.5 flex items-center gap-2">
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45">
-                  Info only
-                </span>
                 <span className="text-[11px] text-white/50">Context / guidance</span>
               </div>
               <p className="text-xs text-white/55 leading-relaxed">{currentQuestion.context}</p>

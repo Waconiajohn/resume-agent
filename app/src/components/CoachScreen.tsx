@@ -20,6 +20,7 @@ import {
   WorkflowReplanBanner,
   WorkflowPreferencesCard,
 } from '@/components/CoachScreenBanners';
+import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
 import { PROCESS_STEP_CONTRACTS, processStepFromPhase, processStepFromWorkflowNode } from '@/constants/process-contract';
@@ -52,7 +53,6 @@ import {
   formatReadinessPriorityLabel,
   formatRelativeShort,
   formatDurationShort,
-  formatMsDurationShort,
   getSectionsBundleNavDetail,
   getSectionsBundleNavDetailFromSummary,
   buildReplanNodeDetailMap,
@@ -92,6 +92,7 @@ interface CoachScreenProps {
   liveWorkflowReplan?: WorkflowReplanUpdate | null;
   pipelineActivity?: PipelineActivitySnapshot | null;
   onReconnectStream?: () => void;
+  activityMessages?: ActivityMessage[];
 }
 
 export function CoachScreen({
@@ -124,6 +125,7 @@ export function CoachScreen({
   liveWorkflowReplan = null,
   pipelineActivity = null,
   onReconnectStream,
+  activityMessages = [],
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
@@ -356,10 +358,6 @@ export function CoachScreen({
 
   const pipelineActivityStageElapsed = formatDurationShort(effectivePipelineActivity?.stage_started_at, runtimeClockMs);
   const pipelineActivityLastProgress = formatRelativeShort(effectivePipelineActivity?.last_progress_at, runtimeClockMs);
-  const pipelineActivityLastHeartbeat = formatRelativeShort(effectivePipelineActivity?.last_heartbeat_at, runtimeClockMs);
-  const pipelineActivityLastStageDuration = formatMsDurationShort(effectivePipelineActivity?.last_stage_duration_ms);
-  const pipelineFirstProgressDuration = formatMsDurationShort(runtimeMetricsSummary?.first_progress_delay_ms);
-  const pipelineFirstActionReadyDuration = formatMsDurationShort(runtimeMetricsSummary?.first_action_ready_delay_ms);
 
   const draftReadiness = liveDraftReadiness ?? workflowSession.summary?.draft_readiness ?? null;
   const draftPathDecision = workflowSession.summary?.draft_path_decision ?? null;
@@ -404,15 +402,8 @@ export function CoachScreen({
         />
         <PipelineActivityBanner
           isViewingLiveNode={isViewingLiveNode}
-          effectivePipelineActivity={effectivePipelineActivity}
+          messages={activityMessages}
           isProcessing={isProcessing}
-          isPipelineGateActive={Boolean(isPipelineGateActive)}
-          pipelineActivityStageElapsed={pipelineActivityStageElapsed}
-          pipelineActivityLastStageDuration={pipelineActivityLastStageDuration}
-          pipelineActivityLastProgress={pipelineActivityLastProgress}
-          pipelineActivityLastHeartbeat={pipelineActivityLastHeartbeat}
-          pipelineFirstProgressDuration={pipelineFirstProgressDuration}
-          pipelineFirstActionReadyDuration={pipelineFirstActionReadyDuration}
         />
         <RuntimeRecoveryBanner
           stalledSuspected={Boolean(stalledSuspected)}

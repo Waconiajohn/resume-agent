@@ -278,6 +278,57 @@ export function workflowNodeFromPanelType(panelType: string): WorkflowNodeKey | 
 // Workflow persistence helpers — imported from shared module, re-exported for tests
 export { resetWorkflowNodesForNewRunBestEffort } from '../../lib/workflow-persistence.js';
 
+// ─── Stage completion summary helper ─────────────────────────────────
+
+/**
+ * Builds a human-readable summary message for a stage_complete event.
+ * Returns null for stages that do not warrant a summary (e.g., internal
+ * substages that users do not need to see).
+ *
+ * Where possible, data from the event payload is used. For most stages the
+ * event only carries a `stage` and `message` field, so summaries are
+ * descriptive rather than data-interpolated.
+ */
+function buildStageSummaryMessage(
+  event: Extract<PipelineSSEEvent, { type: 'stage_complete' }>,
+): string | null {
+  const stage = event.stage;
+
+  switch (stage) {
+    case 'intake':
+      return 'Parsed your resume: extracted career history, key achievements, and leadership transitions. Now analyzing the job description...';
+
+    case 'research':
+      return 'Completed market analysis: built benchmark profile and identified competitive positioning opportunities.';
+
+    case 'gap_analysis':
+      return event.message
+        ? `Gap analysis complete: ${event.message}`
+        : 'Gap analysis complete: requirements evaluated, strong matches identified, and positioning strategies defined for gaps.';
+
+    case 'architect':
+      return 'Blueprint designed: sections planned with evidence allocated to highest-impact positions.';
+
+    case 'section_writing':
+      return event.message
+        ? `Section drafted and passed quality self-review. ${event.message}`
+        : 'Section drafted and passed quality self-review.';
+
+    case 'quality_review':
+      return 'Quality review complete: all dimensions evaluated, ATS compatibility verified, and authenticity confirmed.';
+
+    case 'positioning':
+    case 'architect_review':
+    case 'section_review':
+    case 'revision':
+    case 'complete':
+      return null;
+
+    default:
+      return null;
+  }
+}
+
 // ─── Question response persistence ───────────────────────────────────
 
 function inferQuestionResponseStatus(response: unknown): 'answered' | 'skipped' | 'deferred' {
@@ -892,6 +943,21 @@ export function createResumeEventMiddleware(
       upsertWorkflowNodeStatusBestEffort(sessionId, workflowNodeFromStage(event.stage), 'complete', {
         stage: event.stage,
       });
+      const stageSummaryMessage = buildStageSummaryMessage(event);
+      if (stageSummaryMessage) {
+        persistWorkflowArtifactBestEffort(
+          sessionId,
+          workflowNodeFromStage(event.stage),
+          `stage_summary_${event.stage}`,
+          {
+            stage: event.stage,
+            message: stageSummaryMessage,
+            emitted_at: new Date().toISOString(),
+            source: 'stage_complete',
+          },
+          'system',
+        );
+      }
     }
 
     if (event.type === 'pipeline_error') {

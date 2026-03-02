@@ -57,6 +57,28 @@ Cover letter product reads positioning strategy + evidence from `user_platform_c
 
 ## Epic: Technical Debt
 
+### Story: Clean Orphaned Props from ChatPanel and WorkflowStatsRail
+- **As a** developer
+- **I want to** remove `runtimeMetrics`, `pipelineActivity`, and other props that lost their consumers during Sprint 16 declutter
+- **So that** component interfaces reflect their actual usage
+- **Acceptance Criteria:**
+  - [ ] Audit ChatPanel and WorkflowStatsRail for props no longer consumed
+  - [ ] Remove unused props and update all callers
+  - [ ] TypeScript clean, all tests pass
+- **Estimated complexity:** Small
+- **Dependencies:** Sprint 16 (complete)
+
+### Story: IntelligenceActivityFeed Message Deduplication
+- **As a** user
+- **I want to** not see the same transparency message repeated in the activity feed
+- **So that** the feed shows a useful history rather than duplicated updates
+- **Acceptance Criteria:**
+  - [ ] Adjacent duplicate messages are collapsed (show once with a count)
+  - [ ] Near-duplicates (same message within 5s) are deduplicated
+  - [ ] Tests cover dedup logic
+- **Estimated complexity:** Small
+- **Dependencies:** Sprint 16 Story 3 (complete)
+
 ### ~~Story: Fix Remaining Pre-Existing Test Failures~~ COMPLETE
 All 29 tests in `agents-gap-analyst.test.ts` now pass. The 2 pre-existing failures were resolved.
 

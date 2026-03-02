@@ -2,6 +2,41 @@
 
 ---
 
+# Sprint 16 Retrospective — UX Transparency & Visual Declutter
+**Completed:** 2026-03-02
+
+## What was delivered
+- Story 1: Enriched transparency messaging in all 3 agent prompts — each now has a dedicated `## Transparency Protocol` section with 8-10 phase-specific example messages, pacing guidance, and data interpolation markers
+- Story 2: Added stage completion summaries — `event-middleware.ts` now persists human-readable summary messages at 6 major stage transitions
+- Story 3: Built `IntelligenceActivityFeed` component — scrollable feed showing last 10 transparency messages with graduated opacity and auto-scroll, replacing the single-line `PipelineActivityBanner`
+- Story 4: Stripped all 15 "Info only" badge instances across 8 panel files
+- Story 5: Simplified Research Dashboard — assumption entries reduced to label + value (removed confidence badges, provenance metadata, why-inferred explanations)
+- Story 6: Simplified Draft Readiness — replaced 3-card grid with inline colored text summary, wrapped requirement list in collapsible `<details>` element
+- Story 7: Removed duplicate activity displays from ChatPanel (backend activity section) and WorkflowStatsRail (activity message block)
+- Story 8: Made stats rail stage-contextual — metrics only appear when relevant to current pipeline stage
+- Story 9: Full documentation update
+
+## What went well
+- Three-agent parallel execution worked cleanly: backend (Stories 1-2), frontend declutter (Stories 4-6), and frontend transparency (Stories 3, 7-8) ran simultaneously with no merge conflicts
+- TypeScript remained clean throughout all 3 parallel workstreams
+- Test count increased from 377 to 386 app tests (+9 new IntelligenceActivityFeed tests) with zero regressions
+- Server tests remained at 891 with zero regressions
+- Progressive disclosure pattern (`<details>`/`<summary>`) from Sprint 14 reused consistently in Stories 5 and 6
+
+## What went wrong
+- The frontend declutter agent noted a "pre-existing TypeScript error" in its changelog entry that was actually just Story 3 not yet completed (parallel execution timing). Required minor cleanup.
+- Nothing significant — clean sprint
+
+## What to improve next sprint
+- Consider adding visual regression testing (screenshots) for panel declutter changes
+- The IntelligenceActivityFeed could benefit from message deduplication if agents emit repetitive transparency messages
+
+## Technical debt identified
+- `runtimeMetrics` and `pipelineActivity` props remain on ChatPanel/WorkflowStatsRail as optional even after removing their consumers — cleanup candidate for future sprint
+- ChatPanel still has several unused state variables (`clockNow` interval removed but some derived values may be orphaned) — verify with full prop audit
+
+---
+
 # Sprint 15 Retrospective — Tech Debt Sweep & Product Landing Pages
 **Completed:** 2026-03-02
 

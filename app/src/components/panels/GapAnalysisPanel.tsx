@@ -161,29 +161,14 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
               style={{ width: `${progressPct}%` }}
             />
           </div>
+          <p className="mt-2 text-[11px] text-white/60">
+            <span className="text-[#b5dec2] font-medium">{strong_count} strong</span>
+            {', '}
+            <span className="text-[#dfc797] font-medium">{partial_count} partial</span>
+            {', '}
+            <span className="text-[#dfa9a9] font-medium">{gap_count} gaps</span>
+          </p>
         </GlassCard>
-
-        {/* Count badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <GlassCard className="opacity-0 animate-card-stagger p-3 text-center" style={{ animationDelay: '0ms' }}>
-            <span className="text-lg font-semibold text-[#b5dec2]">{strong_count}</span>
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
-              Strong
-            </span>
-          </GlassCard>
-          <GlassCard className="opacity-0 animate-card-stagger p-3 text-center" style={{ animationDelay: '75ms' }}>
-            <span className="text-lg font-semibold text-[#dfc797]">{partial_count}</span>
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
-              Partial
-            </span>
-          </GlassCard>
-          <GlassCard className="opacity-0 animate-card-stagger p-3 text-center" style={{ animationDelay: '150ms' }}>
-            <span className="text-lg font-semibold text-[#dfa9a9]">{gap_count}</span>
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/60">
-              Gap
-            </span>
-          </GlassCard>
-        </div>
 
         {/* Legend */}
         <div className="flex items-center gap-4 px-1">
@@ -199,25 +184,20 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         </div>
 
         <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-white/58">
-          Info only: this map updates as the system collects more evidence. If something is misclassified, fix it by answering the follow-up questions (not by editing this list directly).
+          This map updates as the system collects more evidence. If something is misclassified, fix it by answering the follow-up questions (not by editing this list directly).
         </div>
 
-        {/* Requirement list */}
-        <div>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/48">
-              Info only
-            </span>
-            <span className="text-[11px] text-white/56">
-              Requirement-by-requirement evidence and strategy summary
-            </span>
+        {/* Requirement list — collapsible */}
+        <details className="group">
+          <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+            <span>Requirement Details</span>
+          </summary>
+          <div className="mt-2 space-y-2">
+            {requirements.map((req, i) => (
+              <RequirementRow key={`req-${req.requirement.slice(0, 40)}-${i}`} item={req} />
+            ))}
           </div>
-          <div className="space-y-2">
-          {requirements.map((req, i) => (
-            <RequirementRow key={`req-${req.requirement.slice(0, 40)}-${i}`} item={req} />
-          ))}
-          </div>
-        </div>
+        </details>
       </div>
     </div>
   );

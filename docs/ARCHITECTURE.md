@@ -10,7 +10,7 @@
 | Primary LLM | Z.AI GLM models (OpenAI-compatible) | 4-tier model routing |
 | Fallback LLM | Anthropic Claude (optional) | Selectable via `LLM_PROVIDER` env var |
 | E2E Testing | Playwright | Full pipeline tests (~28 min with Z.AI latency) |
-| Unit Testing | Vitest | Server (891 tests) + App (377 tests) |
+| Unit Testing | Vitest | Server (891 tests) + App (386 tests) |
 
 ## Monorepo Layout
 
