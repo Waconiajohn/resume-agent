@@ -68,6 +68,7 @@ const selectTemplate: ResumeAgentTool = {
   name: 'select_template',
   description:
     'Select the best executive resume template based on role title, industry, and candidate career span. Returns the selected template with its specs.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {
@@ -297,6 +298,7 @@ const adversarialReview: ResumeAgentTool = {
   name: 'adversarial_review',
   description:
     'Run the full 6-dimension quality review from a skeptical hiring manager perspective. Wraps runQualityReviewer(). Returns QualityReviewerOutput with scores, decision, and revision instructions.',
+  model_tier: 'mid',
   input_schema: {
     type: 'object',
     properties: {
@@ -380,6 +382,7 @@ const atsComplianceCheck: ResumeAgentTool = {
   name: 'ats_compliance_check',
   description:
     'Run the rule-based ATS compliance scanner on the full resume text. No LLM needed — checks for forbidden patterns (tables, pipes, icons) and required headings. Returns array of AtsFinding.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {
@@ -492,6 +495,7 @@ const checkBlueprintCompliance: ResumeAgentTool = {
   name: 'check_blueprint_compliance',
   description:
     'Verify the written sections follow the architect blueprint. Checks section order, required elements, keyword placements, and age-protection flags. Returns { compliance_pct: number, deviations: string[] }.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {
@@ -641,6 +645,7 @@ const verifyCrossSectionConsistency: ResumeAgentTool = {
   name: 'verify_cross_section_consistency',
   description:
     'Check date formats, verb tense consistency, contact info presence, and formatting consistency across all resume sections. Returns { consistent: boolean, issues: string[] }.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {
@@ -781,6 +786,7 @@ const requestContentRevision: ResumeAgentTool = {
   name: 'request_content_revision',
   description:
     'Send a revision or rewrite request to the Craftsman agent for a specific content issue. The coordinator routes this message. Use this for content problems only — not formatting issues you can note directly. Set severity to "rewrite" when the section is fundamentally poor and needs a fresh start.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {

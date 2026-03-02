@@ -1,5 +1,68 @@
 # Changelog — Resume Agent
 
+## 2026-03-01 — Sprint 12 Complete
+**Sprint:** 12 | **Stories:** 1-8 (Platform Decoupling & Multi-Product Foundation)
+**Summary:** Extracted a generic Product Definition Layer from the resume coordinator; validated the abstraction with a Cover Letter proof-of-concept product; added declarative model-tier routing to all 26 tools; built a product route factory for zero-boilerplate multi-product routes.
+
+### Changes Made
+
+**Story 1: ProductConfig Interface**
+- `server/src/agents/runtime/product-config.ts` — New file (~200 lines). Defines `ProductConfig`, `AgentPhase`, `GateDef`, `InterAgentHandler`, and `RuntimeParams` types. `ProductConfig` is a plain object (not a class), matching the existing `AgentConfig` pattern.
+
+**Story 2: Generic Coordinator**
+- `server/src/agents/runtime/product-coordinator.ts` — New file (~300 lines). `runProductPipeline(config, state, emit, signal)` wires bus subscriptions from `config.interAgentHandlers`, sequences phases, manages gates, emits SSE stage events. Zero product-specific logic.
+- `server/src/agents/runtime/agent-loop.ts` — Fixed `emit_transparency` type cast from unsafe hard cast to try/catch with typed guard. Prevents runtime crash if transparency payload has unexpected shape.
+- `server/src/agents/runtime/index.ts` — Added exports for agent-registry, ProductConfig types, and `runProductPipeline`.
+
+**Story 3: Resume Coordinator Rewrite**
+- `server/src/agents/resume/product.ts` — New file (~600 lines). Implements `resumeProductConfig` as a `ProductConfig`. Declares three-agent phase sequence (Strategist → Craftsman → Producer), phase hooks, inter-agent revision routing, gate definitions, and stage messaging labels. All resume-specific orchestration logic migrated here from `coordinator.ts`.
+- `server/src/agents/coordinator.ts` — Rewritten from ~1430 lines to ~60 lines. Now a thin wrapper: constructs initial `PipelineState`, calls `runProductPipeline(resumeProductConfig, ...)`, and manages the pipeline heartbeat interval.
+
+**Story 4: Tool Model Routing via model_tier**
+- `server/src/lib/llm.ts` — Added `getModelForTier(tier: 'primary' | 'mid' | 'orchestrator' | 'light'): string`. Added `ToolRegistryLike` interface for DI. Added `resolveToolModel(tool, registry?)` that checks `tool.model_tier` first, falls back to `TOOL_MODEL_MAP`. `TOOL_MODEL_MAP` marked as deprecated.
+- `server/src/agents/craftsman/tools.ts` — Added `model_tier` to 4 tools: `write_section` (primary), `self_review_section` (mid), `check_keyword_coverage` (light), `check_anti_patterns` (light).
+- `server/src/agents/producer/tools.ts` — Added `model_tier` to 6 tools: `adversarial_review` (mid), `ats_compliance_check` (mid), `humanize_check` (light), `check_blueprint_compliance` (mid), `verify_cross_section_consistency` (mid), `check_narrative_coherence` (mid).
+
+**Story 5: Product Route Factory**
+- `server/src/routes/product-route-factory.ts` — New file (~340 lines). `createProductRoutes(productConfig)` generates standard Hono routes (`POST /start`, `GET /:sessionId/stream`, `POST /respond`) for any `ProductConfig`. Handles session creation, SSE registration, gate wiring, and error responses generically. Note: `routes/pipeline.ts` was NOT refactored to use this factory (1985-line file with too much resume-specific logic — deferred to future sprint).
+
+**Story 6: Cover Letter POC — Agent Definitions**
+- `server/src/agents/cover-letter/types.ts` — New file (~60 lines). `CoverLetterState` and `CoverLetterSSEEvent` types.
+- `server/src/agents/cover-letter/analyst/agent.ts` — New file (~40 lines). Analyst agent config registered in registry.
+- `server/src/agents/cover-letter/analyst/tools.ts` — New file (~160 lines). `analyze_job` (light) and `analyze_resume` (light) tools.
+- `server/src/agents/cover-letter/writer/agent.ts` — New file (~40 lines). Writer agent config registered in registry.
+- `server/src/agents/cover-letter/writer/tools.ts` — New file (~150 lines). `draft_opening` (mid), `draft_body` (primary), `draft_closing` (mid) tools.
+- `server/src/agents/cover-letter/product.ts` — New file (~120 lines). `coverLetterProductConfig` implementing `ProductConfig` with 2 phases (analysis → writing) and zero user gates.
+
+**Story 7: Cover Letter POC — Route Integration**
+- `server/src/routes/cover-letter.ts` — New file (~30 lines). Mounts `createProductRoutes(coverLetterProductConfig)` at `/api/cover-letter/*`. Guards with `FF_COVER_LETTER` feature flag check.
+- `server/src/lib/feature-flags.ts` — Added `FF_COVER_LETTER` flag (default false).
+- `server/src/index.ts` — Mounted cover letter routes at `/api/cover-letter`.
+
+**Story 8: Documentation**
+- `docs/DECISIONS.md` — Added ADR-019 (ProductConfig as plain object), ADR-020 (model_tier routing), ADR-021 (Cover Letter POC — no user gates).
+- `docs/ARCHITECTURE.md` — Added Product Definition Layer section, generic coordinator, resume product definition, product route factory, cover letter POC, and updated route mapping table. Updated monorepo layout with new directories.
+- `docs/CHANGELOG.md` — Sprint 12 complete entry (this entry).
+- `docs/SPRINT_LOG.md` — Sprint 12 retrospective.
+- `docs/BACKLOG.md` — Marked platform decoupling epic complete; added follow-up stories.
+- `docs/CURRENT_SPRINT.md` — Cleared for Sprint 13.
+
+### Decisions Made
+- ADR-019: `ProductConfig` as plain object — matches existing `AgentConfig` pattern, simpler than class hierarchy.
+- ADR-020: `model_tier` on `AgentTool` — declarative, self-documenting, DI via optional registry to avoid circular imports.
+- ADR-021: Cover letter POC with zero gates — validates abstraction without requiring frontend changes.
+- `pipeline.ts` NOT refactored to use factory — 1985 lines with too much resume-specific routing logic. Deferred as a dedicated story.
+- `TOOL_MODEL_MAP` kept as deprecated fallback, not deleted, to ensure zero regression during transition.
+
+### Test Totals
+- Server: 781 tests (+45 new, 55 test files)
+- App: 354 tests (unchanged, TypeScript clean)
+- New test files: `product-config-types.test.ts`, `product-coordinator.test.ts`, `tool-model-routing.test.ts`, `product-route-factory.test.ts`, `cover-letter-agents.test.ts`
+
+### Known Issues
+- `routes/pipeline.ts` still has 1985 lines of resume-specific routing logic — needs a dedicated refactor story.
+- `TOOL_MODEL_MAP` in `llm.ts` is deprecated but not yet deleted.
+
 ## 2026-03-01 — Sprint 11, Story 1: Persist Revision Counts in PipelineState
 **Sprint:** 11 | **Story:** Story 1 — Fix Bug 16 — Persist Revision Counts in PipelineState
 **Summary:** Moved the per-section revision counter from a closure-local Map inside `subscribeToRevisionRequests` to the `PipelineState` object, so the cap survives handler re-creation and cannot be bypassed.

@@ -23,13 +23,25 @@ app/                          # Frontend (Vite + React 19)
 server/                       # Backend (Hono + Node.js)
   src/agents/
     runtime/                  # Agent loop, bus, protocol, context (shared infrastructure)
+                              #   product-config.ts — ProductConfig, AgentPhase, GateDef, InterAgentHandler, RuntimeParams
+                              #   product-coordinator.ts — runProductPipeline() generic coordinator
+                              #   shared-tools.ts — createEmitTransparency() factory
+                              #   agent-registry.ts — capability-based discovery
     knowledge/                # Rules (resume-guide), formatting-guide (structured extracts)
+    resume/                   # Resume product definition
+                              #   product.ts — resumeProductConfig (ProductConfig impl)
     strategist/               # Agent 1: Understanding + intelligence + positioning
     craftsman/                # Agent 2: Content creation + self-review
     producer/                 # Agent 3: Quality assurance + document production
-    coordinator.ts            # Thin orchestrator (~850 lines) — sequences agents, manages gates
+    cover-letter/             # Cover letter POC (2 agents, 5 tools, FF_COVER_LETTER)
+                              #   analyst/ — JD + resume parsing agent
+                              #   writer/ — letter drafting agent
+                              #   product.ts — coverLetterProductConfig
+    coordinator.ts            # Thin wrapper (~60 lines) — calls runProductPipeline(resumeProductConfig)
     types.ts                  # PipelineState, PipelineSSEEvent, agent I/O interfaces
   src/routes/                 # pipeline.ts, sessions.ts, resumes.ts
+                              #   product-route-factory.ts — createProductRoutes() factory
+                              #   cover-letter.ts — /api/cover-letter/* routes (FF_COVER_LETTER)
   src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts
 supabase/
   migrations/                 # Numbered SQL migration files (001-012, then timestamped)
@@ -52,8 +64,14 @@ User → Coordinator → Strategist → [Blueprint Gate] → Craftsman → Produ
               +--- SSE events to frontend ---+
 ```
 
-### Coordinator (`agents/coordinator.ts`)
-Thin orchestration layer (~850 lines). Sequences agents, manages user interaction (SSE events, gates), and routes inter-agent messages. Makes zero content decisions.
+### Generic Coordinator (`agents/runtime/product-coordinator.ts`)
+`runProductPipeline(config, state, emit, signal)` — the domain-agnostic orchestration engine. Accepts a `ProductConfig` and drives the multi-phase agent sequence: sets up inter-agent bus subscriptions, emits stage SSE events, manages gates via `waitForUser()`, and advances phases. Makes zero content decisions and contains zero product-specific logic.
+
+### Resume Coordinator (`agents/coordinator.ts`)
+Thin wrapper (~60 lines, rewritten from ~1430 lines in Sprint 12). Constructs initial `PipelineState`, calls `runProductPipeline(resumeProductConfig, ...)`, and handles the pipeline heartbeat. All resume-specific logic now lives in `agents/resume/product.ts`.
+
+### Resume Product Definition (`agents/resume/product.ts`)
+Implements `ProductConfig` for the resume pipeline. Declares: the three-agent phase sequence (Strategist → Craftsman → Producer), phase start/end hooks, inter-agent message handlers (Producer-to-Craftsman revision routing), gate definitions, stage messaging labels, and runtime params.
 
 ### Resume Strategist (`agents/strategist/`)
 Owns understanding, intelligence, and positioning. Researches the market, identifies competitive advantages, and designs the resume strategy. Runs as an agentic loop — the LLM decides which tools to call and when to iterate.
@@ -84,10 +102,12 @@ The Strategist passes strategy to the Craftsman. The Craftsman passes content to
 
 - **agent-loop.ts** — Core agentic loop: multi-round LLM + tool calling with retries, timeouts. The LLM decides which tools to call and when to stop. Calls `config.onInit()` before the first LLM round and `config.onShutdown()` in a `finally` block (guaranteed even on error). Hook failures are logged but don't abort the agent or mask loop errors.
 - **agent-bus.ts** — In-memory inter-agent message routing with cross-product namespace support. Resolves handlers via `domain:name` first, then name-only fallback.
-- **agent-protocol.ts** — Standard types: `AgentTool`, `AgentContext`, `AgentConfig`, `AgentMessage`. `AgentConfig` includes optional `capabilities`, `onInit`, and `onShutdown` fields.
+- **agent-protocol.ts** — Standard types: `AgentTool`, `AgentContext`, `AgentConfig`, `AgentMessage`. `AgentConfig` includes optional `capabilities`, `onInit`, and `onShutdown` fields. `AgentTool` includes optional `model_tier` field for declarative cost-tier routing.
 - **agent-context.ts** — Creates runtime context (pipeline state, SSE, gates) for tools.
 - **agent-registry.ts** — Agent self-registration on module load via `registerAgent<TState, TEvent>()` helper. Supports capability-based discovery (`findByCapability`), domain listing (`listDomains`), and agent description (`describe`).
 - **shared-tools.ts** — Domain-agnostic tool factories shared across agents. Currently exports `createEmitTransparency<TState, TEvent>(config?)` which accepts an optional `prefix` string and returns a fully-typed `AgentTool`.
+- **product-config.ts** — `ProductConfig` interface (plain object, not a class) declaring phases, inter-agent handlers, gate definitions, stage labels, and runtime params. Also exports `AgentPhase`, `GateDef`, `InterAgentHandler`, and `RuntimeParams` types.
+- **product-coordinator.ts** — `runProductPipeline(config, state, emit, signal)` generic coordinator. Wires bus subscriptions from `config.interAgentHandlers`, sequences phases, manages gates, emits SSE stage events. Zero product-specific logic.
 
 ### Shared Tool Factory Pattern
 
@@ -118,7 +138,7 @@ The registry stores agents as `AgentConfig<BaseState, BaseEvent>` internally. Th
 
 ## LLM Model Routing
 
-`server/src/lib/llm.ts` routes tools to cost-appropriate models via `getModelForTool()`:
+`server/src/lib/llm.ts` routes tools to cost-appropriate models. Tools declare their cost tier via the `model_tier` field on `AgentTool`. `resolveToolModel(tool, registry?)` checks `tool.model_tier` first, then falls back to the deprecated `TOOL_MODEL_MAP` for backward compatibility.
 
 | Tier | Model | Cost (in/out per M) | Used For |
 |------|-------|---------------------|----------|
@@ -127,7 +147,7 @@ The registry stores agents as `AgentConfig<BaseState, BaseEvent>` internally. Th
 | ORCHESTRATOR | glm-4.7-flashx | $0.07/$0.40 | Main agent loop reasoning, fallback |
 | LIGHT | glm-4.7-flash | FREE | JD analysis, humanize-check, research |
 
-Agent loops use ORCHESTRATOR (cheap) for reasoning; individual tools route to their own cost tiers.
+All 26 tools now have `model_tier` set. `TOOL_MODEL_MAP` is kept as a deprecated fallback and will be removed in a future sprint. Agent loops use ORCHESTRATOR (cheap) for reasoning; individual tools route to their own cost tiers via `getModelForTier(tier)`.
 
 ## LLM Provider Abstraction
 
@@ -213,11 +233,34 @@ Supabase Auth (email/password) with `AuthContext` provider. React Router v7 with
 
 TailwindCSS utility classes. Glass morphism design system: `GlassCard`, `GlassButton`, `GlassInput`. `cn()` helper for conditional class merging.
 
+## Product Route Factory
+
+`server/src/routes/product-route-factory.ts` exports `createProductRoutes(productConfig)`. Given a `ProductConfig`, the factory generates a standard set of Hono routes:
+
+- `POST /start` — begins a pipeline run for a session
+- `GET /:sessionId/stream` — SSE event stream
+- `POST /respond` — user response to gates/questionnaires
+
+The factory handles session creation, SSE registration, gate wiring, and error responses generically. Products pass their `ProductConfig` and get working routes without writing boilerplate.
+
+Note: `routes/pipeline.ts` was NOT refactored to use the factory in Sprint 12. It has 1985 lines of resume-specific routing logic (session management, heartbeat, lock handling) that requires a dedicated refactor story. Deferred to a future sprint.
+
+## Cover Letter POC (`agents/cover-letter/`)
+
+A minimal second product validating the `ProductConfig` abstraction. Feature-flagged via `FF_COVER_LETTER` (default false). Routes mounted at `/api/cover-letter/*` using `createProductRoutes()`.
+
+- **analyst/** — `analyze_job` and `analyze_resume` tools. Parses the job description and candidate resume.
+- **writer/** — `draft_opening`, `draft_body`, `draft_closing` tools. Writes the three cover letter sections.
+- **product.ts** — `coverLetterProductConfig` implementing `ProductConfig` with 2 phases and zero user gates.
+
+The POC runs fully autonomously (no `waitForUser()` calls). Its purpose is to prove that `runProductPipeline()` supports any product, not just the resume pipeline.
+
 ## Route → Agent System Mapping
 
 | Route | Agent System | Status |
 |-------|-------------|--------|
-| `routes/pipeline.ts` | `agents/coordinator.ts` → 3-agent pipeline | **Active** |
+| `routes/pipeline.ts` | `agents/coordinator.ts` → `runProductPipeline(resumeProductConfig)` | **Active** |
+| `routes/cover-letter.ts` | `createProductRoutes(coverLetterProductConfig)` → 2-agent pipeline | **Active (FF_COVER_LETTER=false)** |
 | `routes/sessions.ts` | Grounded status replies only (chat loop decommissioned) | **Active** |
 
 ## Commerce

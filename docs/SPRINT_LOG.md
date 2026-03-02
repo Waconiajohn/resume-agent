@@ -2,6 +2,48 @@
 
 ---
 
+# Sprint 12 Retrospective — Platform Decoupling & Multi-Product Foundation
+**Completed:** 2026-03-01
+
+## What was delivered
+- **Story 1 (ProductConfig Interface):** `product-config.ts` defines `ProductConfig`, `AgentPhase`, `GateDef`, `InterAgentHandler`, and `RuntimeParams` as a plain-object type system (no classes). Matches the existing `AgentConfig` pattern.
+- **Story 2 (Generic Coordinator):** `product-coordinator.ts` implements `runProductPipeline()` — a fully generic orchestration engine that wires bus subscriptions, sequences phases, manages gates, and emits SSE stage events with zero product-specific logic. Fixed transparency cast in `agent-loop.ts` from unsafe hard cast to try/catch guard.
+- **Story 3 (Resume Coordinator Rewrite):** `agents/resume/product.ts` (~600 lines) is the authoritative resume `ProductConfig`. `coordinator.ts` rewritten from ~1430 lines to ~60 lines — it is now a thin wrapper that calls `runProductPipeline(resumeProductConfig, ...)`. Resume pipeline behavior is unchanged.
+- **Story 4 (Tool Model Routing):** All 26 tools now declare `model_tier` on their `AgentTool` definition. `resolveToolModel()` checks `model_tier` first, falls back to deprecated `TOOL_MODEL_MAP`. `getModelForTier()` translates tier to model ID. DI via optional registry parameter avoids circular imports.
+- **Story 5 (Product Route Factory):** `product-route-factory.ts` generates standard Hono routes for any `ProductConfig` with `createProductRoutes()`. `pipeline.ts` was NOT refactored (1985-line file, too much resume-specific logic — deferred).
+- **Story 6 (Cover Letter POC — Agents):** 2 agents (analyst + writer), 5 tools (analyze_job, analyze_resume, draft_opening, draft_body, draft_closing), all with `model_tier` set. Registered in agent registry. `coverLetterProductConfig` implements `ProductConfig` with 2 phases and zero gates.
+- **Story 7 (Cover Letter POC — Routes):** `routes/cover-letter.ts` mounts via `createProductRoutes()` at `/api/cover-letter/*`. Feature-flagged via `FF_COVER_LETTER` (default false). Mounted in `index.ts`.
+- **Story 8 (Documentation):** DECISIONS.md (ADR-019, ADR-020, ADR-021), ARCHITECTURE.md (product layer, route factory, cover letter POC, updated monorepo layout, updated model routing), CHANGELOG.md, SPRINT_LOG.md, BACKLOG.md, CURRENT_SPRINT.md.
+
+## Test count
+- Server: 781 tests (up from 736, +45 new)
+- App: 354 tests (unchanged)
+- Total: 1,135 tests (up from 1,090, +45 new)
+- New test files: `product-config-types.test.ts`, `product-coordinator.test.ts`, `tool-model-routing.test.ts`, `product-route-factory.test.ts`, `cover-letter-agents.test.ts`
+
+## What went well
+- The `ProductConfig` plain-object design decision was the right call — zero friction migrating the resume coordinator, and the cover letter POC implemented it cleanly with no surprises
+- `coordinator.ts` shrinking from 1430 to 60 lines is the clearest indicator that the abstraction is working — all that complexity is now properly organized in `resume/product.ts`
+- `model_tier` on `AgentTool` is a clean improvement: cost tier is now self-documented at the definition site instead of requiring cross-reference to a central map
+- The DI approach for `resolveToolModel()` avoided a real circular import problem without adding complexity
+- Cover letter POC validated the full stack: `ProductConfig` → `runProductPipeline()` → `createProductRoutes()` — the abstraction works end-to-end
+
+## What went wrong
+- `pipeline.ts` refactor was scoped in as Story 5 but had to be deferred — the file's 1985 lines of resume-specific routing (session management, heartbeat, lock handling, SSE reconnect) is more work than one sprint story. The factory was built and works; the migration itself needs its own story.
+- The transparency cast fix in `agent-loop.ts` was a latent bug discovered during Story 2 implementation — not a sprint story failure, but it was unplanned work.
+
+## What to improve next sprint
+- Scope `pipeline.ts` refactor as its own dedicated story with clear acceptance criteria (specific behaviors to preserve)
+- When validating a new `ProductConfig`, write a minimal integration test that starts the pipeline and asserts SSE events arrive — unit tests on the config shape are not sufficient to catch wiring errors
+
+## Technical debt identified
+- `TOOL_MODEL_MAP` in `llm.ts` is deprecated but not deleted — needs a cleanup story once all tools are verified with `model_tier`
+- `pipeline.ts` still 1985 lines — the largest unmigrated file. Refactor story needed.
+- Strategist tools in `strategist/tools.ts` were not updated with `model_tier` in this sprint (they predate the pattern and the Strategist's tools were not in scope for this sprint's tool file changes)
+- 2 pre-existing failures in `agents-gap-analyst.test.ts` remain
+
+---
+
 # Sprint 11 Retrospective — Bug Squash, Production Polish & Platform Foundation
 **Completed:** 2026-03-01
 

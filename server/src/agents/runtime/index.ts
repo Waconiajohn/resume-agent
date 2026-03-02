@@ -18,3 +18,12 @@ export {
   type BaseState,
   toToolDef,
 } from './agent-protocol.js';
+export { agentRegistry, registerAgent, type AgentDescription } from './agent-registry.js';
+export {
+  type ProductConfig,
+  type AgentPhase,
+  type GateDef,
+  type InterAgentHandler,
+  type RuntimeParams,
+} from './product-config.js';
+export { runProductPipeline, type ProductPipelineResult } from './product-coordinator.js';

@@ -53,3 +53,11 @@ export const FF_REDIS_RATE_LIMIT = envBool('FF_REDIS_RATE_LIMIT', false);
  * Enable for A/B testing to measure quality impact.
  */
 export const FF_SELF_REVIEW_LIGHT = envBool('FF_SELF_REVIEW_LIGHT', false);
+
+/**
+ * FF_COVER_LETTER — Enable the Cover Letter product routes.
+ *
+ * When false (default), /api/cover-letter/* returns 404.
+ * Backend-only POC — no frontend UI yet.
+ */
+export const FF_COVER_LETTER = envBool('FF_COVER_LETTER', false);

@@ -168,6 +168,7 @@ const writeSectionTool: ResumeAgentTool = {
     'Write a single resume section from the blueprint slice and evidence sources. ' +
     'Stores the result in scratchpad[section_{name}] and emits a section_draft SSE event. ' +
     'Always call self_review_section immediately after.',
+  model_tier: 'primary',
   input_schema: {
     type: 'object',
     properties: {
@@ -465,6 +466,7 @@ const checkKeywordCoverageTool: ResumeAgentTool = {
     'Check which target keywords appear in the section content using case-insensitive string matching. ' +
     'Returns { found, missing, coverage_pct }. No LLM call. ' +
     'If coverage_pct < 60, consider revising to weave in missing keywords naturally.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {
@@ -517,6 +519,7 @@ const checkAntiPatternsTool: ResumeAgentTool = {
     'Check section content against the resume anti-patterns list using regex and string matching. ' +
     'Returns { found_patterns, clean }. No LLM call. ' +
     'If clean is false, call revise_section to fix the found patterns.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {
@@ -683,6 +686,7 @@ const presentToUserTool: ResumeAgentTool = {
     'Returns the user response: true (approved), { approved: false, feedback: string } (changes requested), ' +
     'or { approved: false, edited_content: string } (direct edit). ' +
     'If the user requests changes, call revise_section with their feedback, then call present_to_user again.',
+  model_tier: 'orchestrator',
   input_schema: {
     type: 'object',
     properties: {

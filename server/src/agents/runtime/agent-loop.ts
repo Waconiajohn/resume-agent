@@ -128,13 +128,21 @@ export async function runAgentLoop<
 
       log.info({ round, messageCount: messages.length }, 'Agent round start');
 
-      // Emit transparency event. The loop emits a generic transparency marker;
-      // cast is safe because BaseEvent allows any extra string fields.
-      ctx.emit({
-        type: 'transparency',
-        stage: (ctx.getState() as Record<string, unknown>)['current_stage'] as string,
-        message: `${config.identity.name}: round ${round + 1}/${maxRounds}`,
-      } as unknown as Parameters<typeof ctx.emit>[0]);
+      // Emit transparency event via a type-safe cast. The loop emits a generic
+      // transparency marker that works with any product's event union.
+      // Products must include `{ type: 'transparency'; stage: string; message: string }`
+      // in their event union for this to surface to the frontend.
+      try {
+        const state = ctx.getState() as Record<string, unknown>;
+        const stage = typeof state['current_stage'] === 'string' ? state['current_stage'] : 'unknown';
+        ctx.emit({
+          type: 'transparency',
+          stage,
+          message: `${config.identity.name}: round ${round + 1}/${maxRounds}`,
+        } as unknown as TEvent);
+      } catch {
+        // Transparency emit is non-critical — swallow errors
+      }
 
       // Call LLM with retry
       const response = await withRetry(
