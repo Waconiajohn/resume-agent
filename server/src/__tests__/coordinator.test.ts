@@ -689,7 +689,7 @@ describe('extractEvidenceItems (via saveMasterResume path)', () => {
         if (n === 0) {
           contextParams.state.intake    = makeIntakeOutput();
           contextParams.state.architect = makeArchitectOutput();
-          contextParams.state.interview_transcript = [
+          contextParams.state.questionnaire_responses = [
             {
               question_id: 'q1',
               question_text: 'Tell me about your biggest win.',
@@ -935,7 +935,7 @@ describe('runPipeline — craftsman initial message', () => {
         if (n === 0) {
           contextParams.state.intake    = makeIntakeOutput();
           contextParams.state.architect = makeArchitectOutput();
-          contextParams.state.interview_transcript = [
+          contextParams.state.questionnaire_responses = [
             {
               question_id: 'q1',
               question_text: 'Biggest win?',

@@ -47,31 +47,6 @@ export function getModelForTier(tier: ModelTier): string {
   return TIER_TO_MODEL[tier];
 }
 
-// ─── Tool → model mapping (deprecated — use model_tier on tools) ─────
-// Kept as backward-compatible fallback for tools not yet in the registry.
-
-const TOOL_MODEL_MAP: Record<string, string> = {
-  // ── PRIMARY (glm-4.7, $0.60/$2.20) — Quality writing ──
-  generate_section: MODEL_PRIMARY,
-  write_section: MODEL_PRIMARY,
-  revise_section: MODEL_PRIMARY,
-  design_blueprint: MODEL_PRIMARY,
-  adversarial_review: MODEL_MID,
-
-  // ── MID (glm-4.5-air, $0.20/$1.10) — Analysis ──
-  classify_fit: MODEL_MID,
-  build_benchmark: MODEL_MID,
-  self_review_section: MODEL_MID,
-  check_narrative_coherence: MODEL_MID,
-
-  // ── LIGHT (glm-4.7-flash, FREE) — Extraction ──
-  analyze_jd: MODEL_LIGHT,
-  research_company: MODEL_LIGHT,
-  research_industry: MODEL_LIGHT,
-  humanize_check: MODEL_LIGHT,
-  check_evidence_integrity: MODEL_LIGHT,
-};
-
 /** Minimal interface for registry lookup (avoids circular import of full AgentRegistry). */
 export interface ToolRegistryLike {
   list(): Array<{ tools: Array<{ name: string; model_tier?: ModelTier }> }>;
@@ -96,7 +71,7 @@ function getRegistry(): ToolRegistryLike | null {
 
 /**
  * Resolve the model for a tool by checking the agent registry first,
- * then falling back to the static TOOL_MODEL_MAP.
+ * then falling back to MODEL_ORCHESTRATOR.
  *
  * Queries all registered agents for a tool with the given name and reads
  * its `model_tier` field. Optionally scoped to a specific domain.
@@ -116,11 +91,11 @@ export function resolveToolModel(toolName: string, domain?: string, registry?: T
         }
       }
     } catch {
-      // Registry error — fall through to static map
+      // Registry error — fall through to MODEL_ORCHESTRATOR
     }
   }
 
-  return TOOL_MODEL_MAP[toolName] ?? MODEL_ORCHESTRATOR;
+  return MODEL_ORCHESTRATOR;
 }
 
 /** Reset the cached registry reference (for testing). */
@@ -130,10 +105,10 @@ export function _resetRegistryCache(): void {
 
 /**
  * Get the appropriate model for a tool invocation.
- * Checks registry model_tier first, falls back to TOOL_MODEL_MAP.
+ * Delegates to resolveToolModel (registry lookup, falls back to MODEL_ORCHESTRATOR).
  */
 export function getModelForTool(toolName: string): string {
-  return TOOL_MODEL_MAP[toolName] ?? MODEL_ORCHESTRATOR;
+  return resolveToolModel(toolName);
 }
 
 // ─── Provider factory ────────────────────────────────────────────────

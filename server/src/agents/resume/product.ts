@@ -171,7 +171,7 @@ function buildCraftsmanMessage(state: PipelineState): string {
   const blueprint   = state.architect!;
   const positioning = state.positioning;
   const gapAnalysis = state.gap_analysis;
-  const transcript  = state.interview_transcript;
+  const transcript  = state.questionnaire_responses;
 
   return [
     '## Architect Blueprint',
@@ -557,7 +557,7 @@ function extractEvidenceItems(
     }
   }
 
-  const transcript = state.interview_transcript ?? [];
+  const transcript = state.questionnaire_responses ?? [];
   for (const entry of transcript) {
     const answerText = capEvidenceText(entry.answer?.trim() ?? '');
     if (answerText.length > 10) {

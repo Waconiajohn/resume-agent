@@ -4,31 +4,14 @@
 
 The Product Definition Layer is complete. `ProductConfig`, `runProductPipeline()`, and `createProductRoutes()` form the generic multi-product runtime. The resume product runs through the generic coordinator. The cover letter POC validates the abstraction with a second product.
 
-### Follow-up: Migrate `routes/pipeline.ts` to Product Route Factory
-- **As a** developer
-- **I want to** refactor `routes/pipeline.ts` to use `createProductRoutes(resumeProductConfig)`
-- **So that** the resume product has no bespoke routing code outside of `product.ts`
-- **Acceptance Criteria:**
-  - [ ] `routes/pipeline.ts` replaced by `createProductRoutes(resumeProductConfig)` mount in `index.ts`
-  - [ ] All existing pipeline behaviors preserved (session management, heartbeat, lock handling, SSE reconnect)
-  - [ ] TypeScript clean, all server tests pass
-  - [ ] E2E full pipeline still passes
-- **Estimated complexity:** Large
-- **Dependencies:** Sprint 12 (product-coordinator, product-route-factory — complete)
+### ~~Follow-up: Migrate `routes/pipeline.ts` to Product Route Factory~~ COMPLETE (Sprint 13, Stories 3-6)
+`routes/pipeline.ts` deleted. Resume pipeline now uses `createProductRoutes()` with lifecycle hooks via `routes/resume-pipeline.ts`.
 
-### Follow-up: Remove Deprecated `TOOL_MODEL_MAP`
-- **As a** developer
-- **I want to** delete `TOOL_MODEL_MAP` from `llm.ts`
-- **So that** all model routing goes through the `model_tier` + `resolveToolModel()` path
-- **Acceptance Criteria:**
-  - [ ] All tools in `strategist/tools.ts` have `model_tier` set
-  - [ ] All tools in `craftsman/tools.ts` have `model_tier` set (done in Sprint 12)
-  - [ ] All tools in `producer/tools.ts` have `model_tier` set (done in Sprint 12)
-  - [ ] `TOOL_MODEL_MAP` deleted
-  - [ ] `resolveToolModel()` simplified (no fallback branch)
-  - [ ] TypeScript clean, all server tests pass
-- **Estimated complexity:** Small
-- **Dependencies:** Sprint 12 (model_tier on tool defs — partial, Strategist tools not yet updated)
+### ~~Follow-up: Remove Deprecated `TOOL_MODEL_MAP`~~ COMPLETE (Sprint 13, Story 1)
+`TOOL_MODEL_MAP` deleted. All 26 tools have `model_tier` set. `resolveToolModel()` simplified.
+
+### Follow-up: Rename `interview_transcript` to `questionnaire_responses` COMPLETE (Sprint 13, Story 2)
+Field renamed across all references. No functional change.
 
 ---
 
@@ -94,13 +77,24 @@ The Product Definition Layer is complete. `ProductConfig`, `runProductPipeline()
 - **Estimated complexity:** Medium
 - **Dependencies:** None
 
-### Story: Rename `interview_transcript` to `questionnaire_responses` in PipelineState
+### ~~Story: Rename `interview_transcript` to `questionnaire_responses`~~ COMPLETE (Sprint 13, Story 2)
+
+### Story: Deduplicate Workflow Persistence Helpers
 - **As a** developer
-- **I want to** rename the `interview_transcript` field in `PipelineState`
-- **So that** the field name accurately reflects that it is populated via the questionnaire path (not a single-question interview)
+- **I want to** consolidate the duplicate `persistWorkflowArtifactBestEffort`, `upsertWorkflowNodeStatusBestEffort`, and `resetWorkflowNodesForNewRunBestEffort` functions
+- **So that** there is a single source of truth for workflow DB operations
 - **Acceptance Criteria:**
-  - [ ] `PipelineState.interview_transcript` renamed to `questionnaire_responses`
-  - [ ] All references updated (coordinator, craftsman, types)
-  - [ ] TypeScript clean, all server tests pass
+  - [ ] Shared helpers moved to a common module (e.g., `lib/workflow-persistence.ts`)
+  - [ ] Both `event-middleware.ts` and `route-hooks.ts` import from the shared module
+  - [ ] No functional change, all tests pass
 - **Estimated complexity:** Small
-- **Dependencies:** None (Sprint 10 removed the single-question interview tool)
+- **Dependencies:** None
+
+### Story: Fix `resumes-edit.test.ts` TypeScript Error
+- **As a** developer
+- **I want to** fix the pre-existing `tsc --noEmit` error at line 292 (null-to-Record cast)
+- **So that** server TypeScript is fully clean
+- **Acceptance Criteria:**
+  - [ ] `cd server && npx tsc --noEmit` produces zero errors
+- **Estimated complexity:** Small
+- **Dependencies:** None

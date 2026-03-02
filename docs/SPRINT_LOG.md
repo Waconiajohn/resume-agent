@@ -2,6 +2,48 @@
 
 ---
 
+# Sprint 13 Retrospective — Pipeline Migration & Platform Cleanup
+**Completed:** 2026-03-02
+
+## What was delivered
+- **Story 1 (Remove TOOL_MODEL_MAP):** Deleted `TOOL_MODEL_MAP` from `llm.ts`, simplified `resolveToolModel()` to registry → tier fallback only. Updated 11 tool-model-routing tests.
+- **Story 2 (Rename interview_transcript):** Pure field rename across 4 files (`types.ts`, `strategist/tools.ts`, `resume/product.ts`, `coordinator.test.ts`). No functional change.
+- **Story 3 (Factory Lifecycle Hooks):** Added 7 optional lifecycle hooks to `ProductRouteConfig`: `onBeforeStart`, `transformInput`, `onEvent`, `onBeforeRespond`, `onRespond`, `onComplete`, `onError`. Added `startMiddleware` array. 12 new type contract tests.
+- **Story 4 (Event Middleware Extraction):** Created `agents/resume/event-middleware.ts` (~620 lines) — closure factory for per-session SSE event processing. Extracts section context sanitization, panel persistence debouncing, workflow artifact persistence, runtime metrics tracking, and per-event-type dispatch. 30 new tests.
+- **Story 5 (Route Hooks Extraction):** Created `agents/resume/route-hooks.ts` (~570 lines) — implements `resumeBeforeStart`, `resumeTransformInput`, `resumeOnRespond`. Extracts JD URL resolution (SSRF-protected), stale pipeline recovery, capacity management, workflow init, master resume loading, question persistence. 44 new tests.
+- **Story 6 (Integration & Deletion):** Created `routes/resume-pipeline.ts` (~150 lines) wiring all hooks. Deleted `routes/pipeline.ts` (1,985 lines). Added `onBeforeRespond` hook to factory. Updated all imports and test mocks.
+- **Story 7 (Documentation):** ADR-022, ARCHITECTURE.md, CHANGELOG.md, SPRINT_LOG.md, BACKLOG.md, CURRENT_SPRINT.md.
+
+## Test count
+- Server: 864 tests (up from 781, +83 new)
+- App: 354 tests (unchanged)
+- Total: 1,218 tests (up from 1,135, +83 new)
+- New test files: `resume-event-middleware.test.ts`, `resume-route-hooks.test.ts`
+- Updated test files: `pipeline-limits.test.ts`, `pipeline-respond.test.ts`, `product-route-factory.test.ts`, `tool-model-routing.test.ts`
+
+## What went well
+- The hook-based extraction pattern worked cleanly — 7 optional hooks give products full lifecycle control without subclassing or inheritance
+- Deleting 1,985 lines of monolithic code and replacing with 150 lines of wiring is a strong signal the Sprint 12 abstraction was the right design
+- Per-session closure factory pattern for event middleware elegantly solved the static-config-meets-per-session-state problem
+- Stories 4 and 5 were independently extractable, enabling parallel development
+- All 864 tests pass without flaky failures
+
+## What went wrong
+- `workflow.ts` also imported from `pipeline.ts` — missed during initial impact analysis. Caught by TypeScript.
+- The factory stale-snapshot false-409 race required a non-obvious fix (mutating the session object passed by reference)
+- Duplicate workflow persistence helpers (event-middleware.ts vs route-hooks.ts) are tech debt from parallel extraction
+
+## What to improve next sprint
+- Run a more thorough import dependency scan before deleting major files
+- Consider creating shared utility modules for cross-cutting DB operations before extraction, not after
+
+## Technical debt identified
+- Duplicate workflow persistence helpers in `event-middleware.ts` and `route-hooks.ts`
+- `resumes-edit.test.ts` line 292 pre-existing TypeScript error (null-to-Record cast)
+- Legacy `agent/` directory still exists (used by chat route)
+
+---
+
 # Sprint 12 Retrospective — Platform Decoupling & Multi-Product Foundation
 **Completed:** 2026-03-01
 

@@ -10,7 +10,7 @@
 | Primary LLM | Z.AI GLM models (OpenAI-compatible) | 4-tier model routing |
 | Fallback LLM | Anthropic Claude (optional) | Selectable via `LLM_PROVIDER` env var |
 | E2E Testing | Playwright | Full pipeline tests (~28 min with Z.AI latency) |
-| Unit Testing | Vitest | Server (663 tests) + App (327 tests) |
+| Unit Testing | Vitest | Server (864 tests) + App (354 tests) |
 
 ## Monorepo Layout
 
@@ -30,6 +30,8 @@ server/                       # Backend (Hono + Node.js)
     knowledge/                # Rules (resume-guide), formatting-guide (structured extracts)
     resume/                   # Resume product definition
                               #   product.ts — resumeProductConfig (ProductConfig impl)
+                              #   event-middleware.ts — per-session SSE event processing (closure factory)
+                              #   route-hooks.ts — lifecycle hooks for product route factory
     strategist/               # Agent 1: Understanding + intelligence + positioning
     craftsman/                # Agent 2: Content creation + self-review
     producer/                 # Agent 3: Quality assurance + document production
@@ -39,8 +41,9 @@ server/                       # Backend (Hono + Node.js)
                               #   product.ts — coverLetterProductConfig
     coordinator.ts            # Thin wrapper (~60 lines) — calls runProductPipeline(resumeProductConfig)
     types.ts                  # PipelineState, PipelineSSEEvent, agent I/O interfaces
-  src/routes/                 # pipeline.ts, sessions.ts, resumes.ts
+  src/routes/                 # resume-pipeline.ts, sessions.ts, resumes.ts
                               #   product-route-factory.ts — createProductRoutes() factory
+                              #   resume-pipeline.ts — resume routes via createProductRoutes() + hooks
                               #   cover-letter.ts — /api/cover-letter/* routes (FF_COVER_LETTER)
   src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts
 supabase/
@@ -235,15 +238,42 @@ TailwindCSS utility classes. Glass morphism design system: `GlassCard`, `GlassBu
 
 ## Product Route Factory
 
-`server/src/routes/product-route-factory.ts` exports `createProductRoutes(productConfig)`. Given a `ProductConfig`, the factory generates a standard set of Hono routes:
+`server/src/routes/product-route-factory.ts` exports `createProductRoutes(config)`. Given a `ProductRouteConfig`, the factory generates a standard set of Hono routes:
 
 - `POST /start` — begins a pipeline run for a session
 - `GET /:sessionId/stream` — SSE event stream
 - `POST /respond` — user response to gates/questionnaires
 
-The factory handles session creation, SSE registration, gate wiring, and error responses generically. Products pass their `ProductConfig` and get working routes without writing boilerplate.
+The factory handles session creation, SSE registration, gate wiring, and error responses generically. Products pass their config and get working routes without writing boilerplate.
 
-Note: `routes/pipeline.ts` was NOT refactored to use the factory in Sprint 12. It has 1985 lines of resume-specific routing logic (session management, heartbeat, lock handling) that requires a dedicated refactor story. Deferred to a future sprint.
+### Lifecycle Hooks
+
+`ProductRouteConfig` supports 7 optional lifecycle hooks that let products inject domain-specific logic:
+
+| Hook | When | Can short-circuit? |
+|------|------|-------------------|
+| `onBeforeStart` | After input validation, before pipeline run | Yes (return `Response`) |
+| `transformInput` | After `onBeforeStart`, enriches validated input | No |
+| `onEvent` | Per SSE event, before broadcast | Yes (return transformed event) |
+| `onBeforeRespond` | In `/respond`, after pipeline_status check | Yes (return `Response`) |
+| `onRespond` | After gate response is persisted | No |
+| `onComplete` | Pipeline finished successfully | No |
+| `onError` | Pipeline failed with error | No |
+
+All hooks are optional — the cover letter POC uses none. The resume product uses all 7.
+
+### Resume Pipeline Wiring
+
+`server/src/routes/resume-pipeline.ts` wires the resume product into the factory:
+
+- `onBeforeStart` — stale pipeline recovery, capacity checks, pipeline slot claim, workflow init, per-session event middleware creation
+- `transformInput` — JD URL resolution (SSRF-protected), master resume loading
+- `onEvent` — delegates to per-session `ResumeEventMiddleware` (panel persistence, workflow artifacts, runtime metrics)
+- `onBeforeRespond` — stale pipeline detection on respond
+- `onRespond` — question response persistence
+- `onComplete` / `onError` — middleware cleanup, running pipeline unregistration
+
+The per-session event middleware is created as a closure factory (`createResumeEventMiddleware()`) that returns `{ onEvent, onComplete, onError, flushPanelPersists, dispose }`. Instances are tracked in a `Map<sessionId, middleware>` and cleaned up on complete/error.
 
 ## Cover Letter POC (`agents/cover-letter/`)
 
@@ -259,7 +289,7 @@ The POC runs fully autonomously (no `waitForUser()` calls). Its purpose is to pr
 
 | Route | Agent System | Status |
 |-------|-------------|--------|
-| `routes/pipeline.ts` | `agents/coordinator.ts` → `runProductPipeline(resumeProductConfig)` | **Active** |
+| `routes/resume-pipeline.ts` | `createProductRoutes()` + resume hooks → `runProductPipeline(resumeProductConfig)` | **Active** |
 | `routes/cover-letter.ts` | `createProductRoutes(coverLetterProductConfig)` → 2-agent pipeline | **Active (FF_COVER_LETTER=false)** |
 | `routes/sessions.ts` | Grounded status replies only (chat loop decommissioned) | **Active** |
 

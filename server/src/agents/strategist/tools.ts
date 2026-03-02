@@ -398,14 +398,14 @@ const interviewCandidateTool: ResumeAgentTool = {
     (ctx.scratchpad.interview_answers as typeof answerRecord[]).push(answerRecord);
 
     // Persist raw Q&A to pipeline state so the Craftsman can hear the candidate's voice
-    const transcript = [...(ctx.getState().interview_transcript ?? [])];
+    const transcript = [...(ctx.getState().questionnaire_responses ?? [])];
     transcript.push({
       question_id: question.id,
       question_text: questionText,
       category,
       answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
     });
-    ctx.updateState({ interview_transcript: transcript });
+    ctx.updateState({ questionnaire_responses: transcript });
 
     // Also build a minimal evidence item from the answer so classify_fit can use it
     const evidenceItem: EvidenceItem = {
@@ -595,7 +595,7 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
       timestamp: string;
     }>;
 
-    const transcript = [...(ctx.getState().interview_transcript ?? [])];
+    const transcript = [...(ctx.getState().questionnaire_responses ?? [])];
 
     if (!ctx.scratchpad.evidence_library) {
       ctx.scratchpad.evidence_library = [];
@@ -639,7 +639,7 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
       }
     }
 
-    ctx.updateState({ interview_transcript: transcript });
+    ctx.updateState({ questionnaire_responses: transcript });
 
     return {
       success: true,

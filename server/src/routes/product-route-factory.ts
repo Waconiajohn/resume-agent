@@ -4,15 +4,19 @@
  * Creates the standard 3 routes: POST /start, GET /:sessionId/stream, POST /respond.
  * Handles SSE connection management, heartbeat, gate polling, session validation,
  * and pipeline concurrency. Products plug in their own schema, ProductConfig, and
- * optional event processing hooks.
+ * optional lifecycle hooks for domain-specific processing.
  *
- * Note: The resume pipeline (routes/pipeline.ts) predates this factory and has
- * extensive product-specific event processing. It is NOT refactored to use this
- * factory — that's a follow-up sprint item. This factory is used by new products
- * (e.g., cover letter POC) to avoid duplicating SSE/gate infrastructure.
+ * Lifecycle hooks (all optional):
+ * - onBeforeStart: Pre-pipeline validation (capacity, JD resolution). Return Response to short-circuit.
+ * - transformInput: Enrich validated input before buildProductConfig.
+ * - onEvent: Per-SSE-event processing (workflow artifacts, panel persistence, metrics).
+ * - onRespond: After gate response persisted (question response persistence).
+ * - onComplete: Pipeline success cleanup.
+ * - onError: Pipeline failure cleanup.
  */
 
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import type { ZodSchema } from 'zod';
 import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
@@ -38,7 +42,7 @@ import { runProductPipeline } from '../agents/runtime/product-coordinator.js';
 const GATE_TIMEOUT_MS = 10 * 60 * 1000;
 const GATE_POLL_BASE_MS = 250;
 const GATE_POLL_MAX_MS = 2_000;
-const STALE_PIPELINE_MS = 15 * 60 * 1000;
+export const STALE_PIPELINE_MS = 15 * 60 * 1000;
 const HEARTBEAT_MS = 5 * 60 * 1000;
 
 function gatePollDelayMs(attempt: number): number {
@@ -172,6 +176,16 @@ function pruneStaleProductPipelines(now = Date.now()): void {
   }
 }
 
+// ─── DB state type (shared with hooks) ────────────────────────────────
+
+export interface DbPipelineState {
+  pipeline_status: string | null;
+  pipeline_stage: string | null;
+  pending_gate: string | null;
+  pending_gate_data: unknown;
+  updated_at: string | null;
+}
+
 // ─── Route configuration ──────────────────────────────────────────────
 
 export interface ProductRouteConfig<
@@ -195,6 +209,91 @@ export interface ProductRouteConfig<
 
   /** Optional: feature flag check — return false to 404 the routes */
   isEnabled?: () => boolean;
+
+  // ── Lifecycle hooks ──────────────────────────────────────────────
+
+  /**
+   * Pre-pipeline validation hook. Called after schema validation and session lookup
+   * but before marking the pipeline as running. Use for domain-specific checks
+   * (capacity, JD URL resolution, stale recovery, etc.).
+   *
+   * Return a Response to short-circuit (e.g., 4xx/5xx). Return void to continue.
+   * The `session` parameter is the raw DB row for the session.
+   */
+  onBeforeStart?: (
+    input: Record<string, unknown>,
+    c: Context,
+    session: Record<string, unknown>,
+  ) => Promise<Response | void>;
+
+  /**
+   * Input enrichment hook. Called after onBeforeStart succeeds but before
+   * buildProductConfig. Use to resolve/transform input (e.g., fetch JD from URL,
+   * load master resume from DB).
+   *
+   * Returns enriched input that replaces the original for buildProductConfig.
+   */
+  transformInput?: (
+    input: Record<string, unknown>,
+    session: Record<string, unknown>,
+  ) => Promise<Record<string, unknown>>;
+
+  /**
+   * Per-SSE-event processing hook. Called for every event emitted by the pipeline.
+   * Use for workflow artifact persistence, panel state persistence, metrics tracking.
+   *
+   * May optionally return a transformed event for SSE broadcast. Return void to
+   * broadcast the original event unchanged.
+   *
+   * When both `onEvent` and `processEvent` are set, `onEvent` runs first. If
+   * `onEvent` returns a transformed event, that is broadcast. Otherwise
+   * `processEvent` runs on the original event.
+   */
+  onEvent?: (event: TEvent, sessionId: string) => TEvent | void;
+
+  /**
+   * Post-gate-response hook. Called after a gate response is persisted in the DB.
+   * Use for question response persistence, analytics, etc.
+   */
+  onRespond?: (
+    sessionId: string,
+    gate: string,
+    response: unknown,
+    dbState: DbPipelineState,
+  ) => Promise<void>;
+
+  /**
+   * Pipeline success cleanup hook. Called after the pipeline completes successfully
+   * and the DB status is updated to 'complete'.
+   */
+  onComplete?: (sessionId: string) => Promise<void>;
+
+  /**
+   * Pipeline failure cleanup hook. Called after the pipeline fails and the DB
+   * status is updated to 'error'.
+   */
+  onError?: (sessionId: string, error: unknown) => Promise<void>;
+
+  /**
+   * Pre-respond validation hook. Called after basic validation and pipeline_status
+   * check but before gate response persistence. Use for stale pipeline detection,
+   * response normalization, etc.
+   *
+   * Return a Response to short-circuit the respond handler. Return void to continue.
+   */
+  onBeforeRespond?: (
+    sessionId: string,
+    gate: string | undefined,
+    response: unknown,
+    dbState: DbPipelineState,
+    c: Context,
+  ) => Promise<Response | void>;
+
+  /**
+   * Additional Hono middleware to apply before /start (e.g., subscriptionGuard).
+   * Array of middleware functions applied in order.
+   */
+  startMiddleware?: Array<(c: Context, next: () => Promise<void>) => Promise<Response | void>>;
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────
@@ -216,6 +315,14 @@ export function createProductRoutes<
   const maxRespondBytes = config.maxRespondBodyBytes ?? 120_000;
 
   // ── POST /start ─────────────────────────────────────────────────
+
+  // Apply optional product-specific middleware before the start handler
+  if (config.startMiddleware) {
+    for (const mw of config.startMiddleware) {
+      router.post('/start', mw as never);
+    }
+  }
+
   router.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     if (config.isEnabled && !config.isEnabled()) {
       return c.json({ error: 'This product is not available' }, 404);
@@ -230,13 +337,13 @@ export function createProductRoutes<
       return c.json({ error: 'Invalid request', details: parsed.error.issues }, 400);
     }
 
-    const input = parsed.data as Record<string, unknown>;
+    let input = parsed.data as Record<string, unknown>;
     const sessionId = input.session_id as string;
 
-    // Verify session belongs to user
+    // Verify session belongs to user — select extra fields for hooks
     const { data: session, error } = await supabaseAdmin
       .from('coach_sessions')
-      .select('id, user_id, pipeline_status')
+      .select('id, user_id, pipeline_status, status, updated_at, master_resume_id')
       .eq('id', sessionId)
       .eq('user_id', user.id)
       .single();
@@ -245,8 +352,21 @@ export function createProductRoutes<
       return c.json({ error: 'Session not found' }, 404);
     }
 
-    if (session.pipeline_status === 'complete') {
+    const sessionRecord = session as Record<string, unknown>;
+
+    if (sessionRecord.pipeline_status === 'complete' || sessionRecord.status === 'completed') {
       return c.json({ error: 'Pipeline already completed for this session' }, 409);
+    }
+
+    // Hook: onBeforeStart — domain-specific pre-pipeline validation
+    if (config.onBeforeStart) {
+      const hookResult = await config.onBeforeStart(input, c, sessionRecord);
+      if (hookResult instanceof Response) return hookResult;
+    }
+
+    // Hook: transformInput — enrich input before building ProductConfig
+    if (config.transformInput) {
+      input = await config.transformInput(input, sessionRecord);
     }
 
     // In-process dedup
@@ -261,7 +381,7 @@ export function createProductRoutes<
 
     pruneStaleProductPipelines();
 
-    if (session.pipeline_status === 'running') {
+    if (sessionRecord.pipeline_status === 'running') {
       return c.json({ error: 'Pipeline already running for this session' }, 409);
     }
 
@@ -275,14 +395,27 @@ export function createProductRoutes<
       return c.json({ error: 'Failed to start pipeline' }, 500);
     }
 
-    // Build emitter that broadcasts to SSE connections
+    // Build emitter that broadcasts to SSE connections (with hook support)
     const emit = (event: TEvent) => {
-      const processed = config.processEvent ? config.processEvent(event) : event;
+      // Hook: onEvent — domain-specific per-event processing
+      let broadcastEvent = event;
+      if (config.onEvent) {
+        const transformed = config.onEvent(event, sessionId);
+        if (transformed !== undefined && transformed !== null) {
+          broadcastEvent = transformed;
+        }
+      }
+
+      // Legacy processEvent for backward compat (only if onEvent didn't transform)
+      const finalEvent = broadcastEvent === event && config.processEvent
+        ? config.processEvent(broadcastEvent)
+        : broadcastEvent;
+
       const emitters = sseConnections.get(sessionId);
       if (emitters) {
         for (const emitter of [...emitters]) {
           try {
-            emitter(processed as never);
+            emitter(finalEvent as never);
           } catch {
             // Connection may be closed
           }
@@ -327,6 +460,12 @@ export function createProductRoutes<
         .from('coach_sessions')
         .update({ pipeline_status: 'complete', pending_gate: null, pending_gate_data: null })
         .eq('id', sessionId);
+      // Hook: onComplete — domain-specific success cleanup
+      if (config.onComplete) {
+        await config.onComplete(sessionId).catch((err) => {
+          logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onComplete hook failed');
+        });
+      }
     }).catch(async (pipelineError) => {
       logger.error(
         { session_id: sessionId, error: pipelineError instanceof Error ? pipelineError.message : String(pipelineError) },
@@ -336,6 +475,12 @@ export function createProductRoutes<
         .from('coach_sessions')
         .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
         .eq('id', sessionId);
+      // Hook: onError — domain-specific failure cleanup
+      if (config.onError) {
+        await config.onError(sessionId, pipelineError).catch((err) => {
+          logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onError hook failed');
+        });
+      }
     }).finally(() => {
       clearInterval(heartbeatTimer);
       runningProductPipelines.delete(sessionId);
@@ -383,6 +528,12 @@ export function createProductRoutes<
       return c.json({ error: 'Pipeline is not running for this session' }, 409);
     }
 
+    // Hook: onBeforeRespond — domain-specific pre-respond validation (stale detection, etc.)
+    if (config.onBeforeRespond) {
+      const hookResult = await config.onBeforeRespond(session_id, gate, parsed.data.response, dbState, c);
+      if (hookResult instanceof Response) return hookResult;
+    }
+
     const hasExplicitResponse = Object.prototype.hasOwnProperty.call(parsed.data, 'response');
     const normalizedResponse = hasExplicitResponse ? parsed.data.response : undefined;
     if (!hasExplicitResponse) {
@@ -417,6 +568,13 @@ export function createProductRoutes<
         return c.json({ error: 'Failed to persist gate response' }, 500);
       }
 
+      // Hook: onRespond — domain-specific post-response processing
+      if (config.onRespond) {
+        void config.onRespond(session_id, dbState.pending_gate, normalizedResponse, dbState).catch((err) => {
+          logger.warn({ session_id, gate: dbState.pending_gate, error: err instanceof Error ? err.message : String(err) }, 'onRespond hook failed');
+        });
+      }
+
       return c.json({ status: 'ok', gate: dbState.pending_gate });
     }
 
@@ -437,6 +595,14 @@ export function createProductRoutes<
       if (bufferError) {
         return c.json({ error: 'Failed to buffer gate response' }, 500);
       }
+
+      // Hook: onRespond — also called for buffered responses
+      if (config.onRespond) {
+        void config.onRespond(session_id, gate, normalizedResponse, dbState).catch((err) => {
+          logger.warn({ session_id, gate, error: err instanceof Error ? err.message : String(err) }, 'onRespond hook failed (buffered)');
+        });
+      }
+
       return c.json({ status: 'buffered', gate });
     }
 

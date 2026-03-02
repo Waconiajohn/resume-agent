@@ -36,9 +36,47 @@ vi.mock('../routes/sessions.js', () => ({
   sseConnections: new Map(),
 }));
 
-// Mock coordinator so we never spin up real agent loops
-vi.mock('../agents/coordinator.js', () => ({
-  runPipeline: vi.fn().mockResolvedValue({ current_stage: 'complete', revision_count: 0 }),
+// Mock product-coordinator (used by the product route factory)
+vi.mock('../agents/runtime/product-coordinator.js', () => ({
+  runProductPipeline: vi.fn(async () => ({
+    state: {},
+    usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
+    stage_timings: {},
+  })),
+}));
+
+// Mock resume product config builder (avoids deep agent dependency tree)
+vi.mock('../agents/resume/product.js', () => ({
+  createResumeProductConfig: vi.fn(() => ({
+    domain: 'resume',
+    agents: [],
+    createInitialState: (sid: string, uid: string) => ({ session_id: sid, user_id: uid, current_stage: 'start' }),
+    buildAgentMessage: () => '',
+    finalizeResult: () => ({}),
+  })),
+}));
+
+// Mock resume event middleware (not relevant to respond tests)
+vi.mock('../agents/resume/event-middleware.js', () => ({
+  createResumeEventMiddleware: vi.fn(() => ({
+    onEvent: vi.fn(),
+    onComplete: vi.fn(async () => {}),
+    onError: vi.fn(async () => {}),
+    flushPanelPersists: vi.fn(async () => 0),
+    dispose: vi.fn(),
+  })),
+  flushAllQueuedPanelPersists: vi.fn(async () => 0),
+}));
+
+// Mock resume route hooks (not relevant to respond route tests)
+vi.mock('../agents/resume/route-hooks.js', () => ({
+  resumeBeforeStart: vi.fn(async () => undefined),
+  resumeTransformInput: vi.fn(async (input: Record<string, unknown>) => input),
+  resumeOnRespond: vi.fn(async () => {}),
+  registerRunningPipeline: vi.fn(),
+  unregisterRunningPipeline: vi.fn(),
+  handleStalePipelineOnRespond: vi.fn(async () => {}),
+  getPipelineRouteStats: vi.fn(() => ({ running_pipelines: 0 })),
 }));
 
 // Mock middleware that the pipeline router applies to all routes
@@ -55,7 +93,14 @@ vi.mock('../middleware/rate-limit.js', () => ({
   }),
 }));
 
-// Mock non-essential infra that pipeline.ts imports at module level
+// subscriptionGuard is applied to /start — allow all requests through in tests.
+vi.mock('../middleware/subscription-guard.js', () => ({
+  subscriptionGuard: vi.fn(async (_c: unknown, next: () => Promise<void>) => {
+    await next();
+  }),
+}));
+
+// Mock non-essential infra imports
 vi.mock('../lib/logger.js', () => ({
   default: {
     info: vi.fn(),
@@ -88,7 +133,7 @@ vi.mock('../lib/workflow-nodes.js', () => ({
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { Hono } from 'hono';
-import { pipeline, STALE_PIPELINE_MS } from '../routes/pipeline.js';
+import { pipeline, STALE_PIPELINE_MS } from '../routes/resume-pipeline.js';
 
 // ─── Helper: build a lightweight Hono test app wrapping the route ─────────────
 

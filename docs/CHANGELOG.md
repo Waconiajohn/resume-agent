@@ -1,5 +1,117 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 5
+**Sprint:** 13 | **Story:** Story 7 — Documentation & Backlog Update
+**Summary:** Sprint 13 documentation: ADR-022, ARCHITECTURE.md, CHANGELOG.md, SPRINT_LOG.md, BACKLOG.md, CURRENT_SPRINT.md.
+
+### Changes Made
+- `docs/DECISIONS.md` — ADR-022: Pipeline Route Migration — Event Middleware Hook Design
+- `docs/ARCHITECTURE.md` — Updated route factory hooks, resume event middleware, pipeline deletion, route→agent mapping, test counts
+- `docs/CHANGELOG.md` — All Sprint 13 changes (Stories 1-7)
+- `docs/SPRINT_LOG.md` — Sprint 13 retrospective
+- `docs/BACKLOG.md` — Marked pipeline migration and TOOL_MODEL_MAP items complete; added new tech debt
+- `docs/CURRENT_SPRINT.md` — All stories marked done
+
+---
+
+## 2026-03-02 — Session 4
+**Sprint:** 13 | **Story:** Story 6 — Wire Resume Pipeline to Product Route Factory & Delete pipeline.ts
+**Summary:** Created `routes/resume-pipeline.ts` (~150 lines) wiring all resume hooks into `createProductRoutes()`, deleted the 1,985-line `routes/pipeline.ts` monolith, and updated all imports/tests. 864 tests pass.
+
+### Changes Made
+- `server/src/routes/resume-pipeline.ts` — New file. Thin wiring layer: defines `startSchema` (Zod), per-session event middleware registry (`Map<string, ResumeEventMiddleware>`), wires all hooks (`onBeforeStart`, `transformInput`, `onEvent`, `onBeforeRespond`, `onRespond`, `onComplete`, `onError`) into `createProductRoutes<PipelineState, PipelineSSEEvent>()`. Adds GET `/status` endpoint manually. Exports: `pipeline`, `getPipelineRouteStats`, `flushAllQueuedPanelPersists`, `STALE_PIPELINE_MS`.
+- `server/src/routes/pipeline.ts` — Deleted (1,985 lines).
+- `server/src/routes/product-route-factory.ts` — Added `onBeforeRespond` hook to `ProductRouteConfig`: `(sessionId, gate, response, dbState, c) => Promise<Response | void>`. Wired in `/respond` handler after pipeline_status check.
+- `server/src/routes/workflow.ts` — Updated import from `./pipeline.js` to `./resume-pipeline.js`.
+- `server/src/index.ts` — Updated import from `./routes/pipeline.js` to `./routes/resume-pipeline.js`.
+- `server/src/agents/resume/route-hooks.ts` — Added `session.pipeline_status = 'error'` after stale recovery to prevent factory false-409 on snapshot stale detection.
+- `server/src/__tests__/pipeline-limits.test.ts` — Replaced `coordinator.js` mock with `product-coordinator.js`, `resume/product.js`, `resume/event-middleware.js` mocks. Updated import path.
+- `server/src/__tests__/pipeline-respond.test.ts` — Same mock replacement plus `subscription-guard.js` and `resume/route-hooks.js` mocks. Updated import path.
+- `server/src/__tests__/product-route-factory.test.ts` — Added `onBeforeRespond` type contract tests (2 tests).
+
+### Decisions Made
+- `onBeforeRespond` hook added to factory for stale pipeline detection in `/respond` — returns `Response` to short-circuit. This keeps the resume-specific stale detection out of the generic factory.
+- Per-session event middleware registry pattern (`Map<sessionId, ResumeEventMiddleware>`) bridges the static factory config with per-session closure state. Created in `onBeforeStart`, looked up in `onEvent`/`onComplete`/`onError`.
+- `architect_review` default response normalization skipped — the frontend always sends explicit responses (`true` or `{approved:true, edits}`).
+- Factory stale-snapshot false-409 fix: after `resumeBeforeStart` recovers stale pipeline, mutate `session.pipeline_status = 'error'` so factory's stale snapshot check passes.
+
+### Known Issues
+- `server/src/__tests__/resumes-edit.test.ts` line 292 pre-existing `tsc --noEmit` error (null-to-Record cast). Not introduced by this story.
+- Duplicate workflow persistence helpers exist in both `event-middleware.ts` and `route-hooks.ts` (documented tech debt).
+
+### Next Steps
+- Story 7: Documentation & Backlog Update
+
+---
+
+## 2026-03-02 — Session 3
+**Sprint:** 13 | **Story:** Story 5 — Extract Resume Route Hooks (Start, Respond, Status)
+**Summary:** Created `server/src/agents/resume/route-hooks.ts` (~570 lines) implementing all three ProductRouteConfig lifecycle hooks for the resume product, plus 44 unit tests.
+
+### Changes Made
+- `server/src/agents/resume/route-hooks.ts` — New file. Implements `resumeBeforeStart` (onBeforeStart hook: JD URL resolution, stale pipeline recovery, capacity checks, pipeline slot claim, workflow artifact initialization), `resumeTransformInput` (transformInput hook: master resume loading from DB), `resumeOnRespond` (onRespond hook: question response persistence). Also exports: `registerRunningPipeline`, `unregisterRunningPipeline`, `getPipelineRouteStats`, `PIPELINE_STAGES`, SSRF protection helpers (`isPrivateIPv4`, `isPrivateIPv6`, `isPrivateHost`, `resolveJobDescriptionInput`), and workflow persistence helpers (`persistWorkflowArtifactBestEffort`, `upsertWorkflowNodeStatusBestEffort`, `resetWorkflowNodesForNewRunBestEffort`, `persistQuestionResponseBestEffort`) shared with the event middleware.
+- `server/src/__tests__/resume-route-hooks.test.ts` — New file. 44 tests covering SSRF helpers, JD URL resolution, HTML text extraction, `getPipelineRouteStats` shape, `resumeOnRespond`, and `persistQuestionResponseBestEffort`.
+- `docs/CURRENT_SPRINT.md` — Marked Story 5 done; Phase 3 marked COMPLETE.
+
+### Decisions Made
+- JD URL resolution is performed inside `resumeBeforeStart` (not `transformInput`) because it has access to the Hono `Context` and can return a 400 Response directly on failure. The resolved text is stored back into the `input` record (mutated in place) so that `transformInput` and `buildProductConfig` receive the resolved value.
+- `persistQuestionResponseBestEffort` is defined and exported here (not in event-middleware.ts) because it is also called from `resumeOnRespond`. Story 4 (event-middleware.ts) can import from this module if needed, keeping a single source of truth.
+- `handleStalePipelineOnRespond` is exported for use by the route wiring layer (Story 6) since stale detection on respond must happen before the gate persistence logic and cannot be fully encapsulated in onRespond.
+- The module-level `runningPipelines` Map and its cleanup timer live in this file; `registerRunningPipeline` / `unregisterRunningPipeline` are exported as the factory wiring layer needs to call them.
+
+### Known Issues
+- `server/src/__tests__/resumes-edit.test.ts` line 292 has a pre-existing `tsc --noEmit` error (null-to-Record cast). Not introduced by this story.
+
+### Next Steps
+- Story 6: Wire Resume Pipeline to Product Route Factory & Delete pipeline.ts
+
+---
+
+## 2026-03-02 — Session 2
+**Sprint:** 13 | **Story:** Story 4 — Extract Resume SSE Event Processing into event-middleware.ts
+**Summary:** Created `server/src/agents/resume/event-middleware.ts` — a factory function that extracts all SSE event processing logic from `pipeline.ts` into a reusable middleware module, plus 30 unit tests.
+
+### Changes Made
+- `server/src/agents/resume/event-middleware.ts` — New file (~620 lines). Factory function `createResumeEventMiddleware(sessionId, pipelineRunStartedAt)` returns `{ onEvent, onComplete, onError, flushPanelPersists, dispose }`. Module-level `flushAllQueuedPanelPersists()` exported for graceful shutdown. Extracted: section context sanitization helpers, `workflowNodeFromPanelType`, workflow persistence helpers, panel persistence debouncing, question response persistence, runtime metrics tracking, per-event-type persistence dispatch. Also exports `resetWorkflowNodesForNewRunBestEffort` (called from route hooks, not event middleware). Sanitizes `pipeline_error` events before SSE broadcast (replaces internal error with generic message).
+- `server/src/__tests__/resume-event-middleware.test.ts` — New file (~280 lines). 30 unit tests covering: `sanitizeSectionContext` truncation, `deriveSectionBundleStatusFromContext` bundle status computation, `workflowNodeFromPanelType` mapping, `createResumeEventMiddleware` lifecycle methods, `flushAllQueuedPanelPersists` module-level registry, `pipeline_error` sanitization.
+
+### Decisions Made
+- Factory pattern (closure state per instance) chosen over module-level globals for `queuedPanelPersists` and `runtimeMetricsState`. This allows clean per-session isolation and avoids cross-session contamination when the factory is instantiated per pipeline run.
+- Module-level `activeMiddlewares` Set tracks all live instances so `flushAllQueuedPanelPersists()` can flush all at graceful shutdown.
+- `onError` both cancels (discards) and flushes queued panel persists — cancel removes from queue, flush handles any that arrived between cancel and the flush call. In practice after `cancelQueuedPanelPersist` the flush returns immediately with nothing queued.
+- `pipeline.ts` is NOT modified — extraction only creates the new file per story scope.
+
+### Known Issues
+- `server/src/__tests__/resumes-edit.test.ts` line 292 pre-existing `tsc --noEmit` error (null-to-Record cast). Not introduced by this story.
+- `server/src/agents/resume/route-hooks.ts` pre-existing `tsc --noEmit` error (AuthUser cast). Not introduced by this story.
+- `server/src/__tests__/resume-route-hooks.test.ts` has 1 failing test (`throws for invalid URL structure`) — pre-existing Story 5 test file.
+
+### Next Steps
+- Story 5: Extract Resume Route Hooks (Start, Respond, Status) into `server/src/agents/resume/route-hooks.ts`
+
+---
+
+## 2026-03-02 — Session 1
+**Sprint:** 13 | **Story:** Story 2 — Rename interview_transcript to questionnaire_responses
+**Summary:** Pure field rename across 4 files; no functional change.
+
+### Changes Made
+- `server/src/agents/types.ts` — Renamed `PipelineState.interview_transcript` to `questionnaire_responses`; updated comment from "Raw interview Q&A" to "Raw questionnaire Q&A"
+- `server/src/agents/strategist/tools.ts` — Updated 4 references: 2x `ctx.getState().interview_transcript` → `ctx.getState().questionnaire_responses` and 2x `ctx.updateState({ interview_transcript: ... })` → `ctx.updateState({ questionnaire_responses: ... })`
+- `server/src/agents/resume/product.ts` — Updated 2 references: `state.interview_transcript` → `state.questionnaire_responses` (in `buildCraftsmanMessage` and evidence assembly)
+- `server/src/__tests__/coordinator.test.ts` — Updated 2 test fixture assignments: `contextParams.state.interview_transcript` → `contextParams.state.questionnaire_responses`
+
+### Decisions Made
+- No type definition change — only the field name was updated. The array element shape remains identical.
+
+### Known Issues
+- `server/src/__tests__/resumes-edit.test.ts` line 292 has a pre-existing `tsc --noEmit` error (null-to-Record cast). Not introduced by this story.
+
+### Next Steps
+- Story 3: Extend Product Route Factory with Event & Lifecycle Hooks
+
+---
+
 ## 2026-03-01 — Sprint 12 Complete
 **Sprint:** 12 | **Stories:** 1-8 (Platform Decoupling & Multi-Product Foundation)
 **Summary:** Extracted a generic Product Definition Layer from the resume coordinator; validated the abstraction with a Cover Letter proof-of-concept product; added declarative model-tier routing to all 26 tools; built a product route factory for zero-boilerplate multi-product routes.

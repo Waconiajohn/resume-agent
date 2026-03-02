@@ -23,7 +23,7 @@ import {
   isWorkflowNodeKey,
   workflowNodeFromStage,
 } from '../lib/workflow-nodes.js';
-import { STALE_PIPELINE_MS, pipeline as pipelineRouter } from './pipeline.js';
+import { STALE_PIPELINE_MS, pipeline as pipelineRouter } from './resume-pipeline.js';
 
 const workflow = new Hono();
 workflow.use('*', authMiddleware);

@@ -32,8 +32,36 @@ vi.mock('../routes/sessions.js', () => ({
   sseConnections: new Map(),
 }));
 
-vi.mock('../agents/coordinator.js', () => ({
-  runPipeline: vi.fn().mockResolvedValue({ current_stage: 'complete', revision_count: 0 }),
+// Mock product-coordinator (used by the product route factory)
+vi.mock('../agents/runtime/product-coordinator.js', () => ({
+  runProductPipeline: vi.fn(async () => ({
+    state: {},
+    usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
+    stage_timings: {},
+  })),
+}));
+
+// Mock resume product config builder (avoids deep agent dependency tree)
+vi.mock('../agents/resume/product.js', () => ({
+  createResumeProductConfig: vi.fn(() => ({
+    domain: 'resume',
+    agents: [],
+    createInitialState: (sid: string, uid: string) => ({ session_id: sid, user_id: uid, current_stage: 'start' }),
+    buildAgentMessage: () => '',
+    finalizeResult: () => ({}),
+  })),
+}));
+
+// Mock resume event middleware (not relevant to capacity tests)
+vi.mock('../agents/resume/event-middleware.js', () => ({
+  createResumeEventMiddleware: vi.fn(() => ({
+    onEvent: vi.fn(),
+    onComplete: vi.fn(async () => {}),
+    onError: vi.fn(async () => {}),
+    flushPanelPersists: vi.fn(async () => 0),
+    dispose: vi.fn(),
+  })),
+  flushAllQueuedPanelPersists: vi.fn(async () => 0),
 }));
 
 vi.mock('../middleware/auth.js', () => ({
@@ -100,7 +128,7 @@ vi.mock('../lib/workflow-nodes.js', () => ({
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { Hono } from 'hono';
-import { pipeline } from '../routes/pipeline.js';
+import { pipeline } from '../routes/resume-pipeline.js';
 
 function makeApp() {
   const app = new Hono();

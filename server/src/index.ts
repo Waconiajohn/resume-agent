@@ -6,7 +6,7 @@ import path from 'node:path';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
-import { pipeline, getPipelineRouteStats, flushAllQueuedPanelPersists } from './routes/pipeline.js';
+import { pipeline, getPipelineRouteStats, flushAllQueuedPanelPersists } from './routes/resume-pipeline.js';
 import { workflow } from './routes/workflow.js';
 import { billing } from './routes/billing.js';
 import { admin } from './routes/admin.js';

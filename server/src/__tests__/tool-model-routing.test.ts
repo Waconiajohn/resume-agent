@@ -3,8 +3,8 @@
  *
  * Verifies:
  * - getModelForTier() maps all 4 tiers correctly
- * - getModelForTool() falls back to TOOL_MODEL_MAP / orchestrator
- * - resolveToolModel() checks registry first, falls back to static map
+ * - getModelForTool() delegates to resolveToolModel / falls back to MODEL_ORCHESTRATOR
+ * - resolveToolModel() checks registry first, falls back to MODEL_ORCHESTRATOR
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -38,19 +38,13 @@ describe('getModelForTier', () => {
 });
 
 describe('getModelForTool', () => {
-  it('returns MODEL_PRIMARY for write_section', () => {
-    expect(getModelForTool('write_section')).toBe(MODEL_PRIMARY);
-  });
-
-  it('returns MODEL_MID for classify_fit', () => {
-    expect(getModelForTool('classify_fit')).toBe(MODEL_MID);
-  });
-
-  it('returns MODEL_LIGHT for analyze_jd', () => {
-    expect(getModelForTool('analyze_jd')).toBe(MODEL_LIGHT);
-  });
-
-  it('falls back to MODEL_ORCHESTRATOR for unknown tools', () => {
+  it('returns MODEL_ORCHESTRATOR for any tool not in the registry', () => {
+    // getModelForTool delegates to resolveToolModel which uses the singleton registry.
+    // In the test environment the real registry is not loaded, so all lookups fall back
+    // to MODEL_ORCHESTRATOR regardless of the tool name.
+    expect(getModelForTool('write_section')).toBe(MODEL_ORCHESTRATOR);
+    expect(getModelForTool('classify_fit')).toBe(MODEL_ORCHESTRATOR);
+    expect(getModelForTool('analyze_jd')).toBe(MODEL_ORCHESTRATOR);
     expect(getModelForTool('nonexistent_tool')).toBe(MODEL_ORCHESTRATOR);
   });
 });
@@ -91,13 +85,12 @@ describe('resolveToolModel', () => {
     expect(listByDomainSpy).toHaveBeenCalledWith('resume');
   });
 
-  it('falls back to TOOL_MODEL_MAP when tool not in registry', () => {
+  it('falls back to MODEL_ORCHESTRATOR when tool not in registry', () => {
     const registry = makeRegistry([
       { tools: [{ name: 'other_tool', model_tier: 'light' }] },
     ]);
 
-    // write_section is in TOOL_MODEL_MAP as MODEL_PRIMARY
-    expect(resolveToolModel('write_section', undefined, registry)).toBe(MODEL_PRIMARY);
+    expect(resolveToolModel('write_section', undefined, registry)).toBe(MODEL_ORCHESTRATOR);
   });
 
   it('falls back to MODEL_ORCHESTRATOR when tool not found anywhere', () => {
@@ -107,8 +100,8 @@ describe('resolveToolModel', () => {
   });
 
   it('falls back gracefully when registry is not provided', () => {
-    // Without registry param, falls through to TOOL_MODEL_MAP
-    expect(resolveToolModel('analyze_jd')).toBe(MODEL_LIGHT);
+    // Without registry param, falls through to MODEL_ORCHESTRATOR
+    expect(resolveToolModel('analyze_jd')).toBe(MODEL_ORCHESTRATOR);
   });
 
   it('falls back gracefully when registry throws', () => {
@@ -117,6 +110,6 @@ describe('resolveToolModel', () => {
       listByDomain: () => { throw new Error('Registry broken'); },
     };
 
-    expect(resolveToolModel('analyze_jd', undefined, registry)).toBe(MODEL_LIGHT);
+    expect(resolveToolModel('analyze_jd', undefined, registry)).toBe(MODEL_ORCHESTRATOR);
   });
 });
