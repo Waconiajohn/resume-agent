@@ -23,7 +23,6 @@ import {
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
 import { PROCESS_STEP_CONTRACTS, processStepFromPhase, processStepFromWorkflowNode } from '@/constants/process-contract';
-import { PHASE_LABELS } from '@/constants/phases';
 import type {
   ChatMessage,
   ToolStatus,
@@ -480,7 +479,7 @@ export function CoachScreen({
           <div className="mb-2 flex items-center gap-2 px-1">
             <span className="text-sm font-medium text-white/85">{displayProcessStep.title}</span>
             <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/75">
-              Step {displayProcessStep.number} of 7 · {PHASE_LABELS[displayPhase] ?? displayPhase}
+              Step {displayProcessStep.number} of 7 · {displayProcessStep.title}
             </span>
             {!isViewingLiveNode && (
               <span className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2 py-0.5 text-[10px] text-white/58">
