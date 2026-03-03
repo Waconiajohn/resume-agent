@@ -5,6 +5,7 @@
 ## Stories This Sprint
 1. [x] Story 1: Multi-Select + Editable Suggestion Cards — [status: done] (Medium)
 2. [x] Story 2: Visual Overhaul — Professional UI Cleanup — [status: done] (Large)
+3. [x] Story 3: Kill Right Pane — 2-Column Layout + Bottom Chat Drawer — [status: done] (Large)
 
 ## Out of Scope (Explicitly)
 - Backend changes to `interview_candidate` tool

@@ -1,5 +1,27 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 15
+**Sprint:** 17 | **Story:** Kill Right Pane — 2-Column Layout + Bottom Chat Drawer
+**Summary:** Removed the 430px right side panel and replaced with a collapsible bottom ChatDrawer, giving the main workspace ~430px more width on desktop.
+
+### Changes Made
+- `app/src/components/ChatDrawer.tsx` — New component (~155 lines). Collapsible bottom drawer wrapping ChatPanel. 36px toggle bar with status dot, "Coach" label, and status text. CSS grid-rows transition for smooth expand/collapse. Auto-expands when streaming text starts, phase gate appears, ask prompt appears, or new messages arrive. Never auto-collapses. Status derivation inlined (mirrors ChatPanel logic).
+- `app/src/components/workspace/WorkspaceShell.tsx` — Removed `side` prop from `WorkspaceShellProps` interface and destructured params. Deleted the right `<aside>` block (430px side panel with mobile footerRail). Simplified inner layout from `flex-col xl:flex-row` wrapper with `<main>` + `<aside>` to a single `<main>` element. Removed `min-h-[300px]`, `overflow-y-auto`, `xl:border-r` from main (now handled by mainPanel internals).
+- `app/src/components/CoachScreen.tsx` — Replaced `ChatPanel` import with `ChatDrawer`. Deleted `sidePanel` variable (~30 lines). Restructured `mainPanel`: wrapped banners + content area in scrollable `div` (`min-h-0 flex-1 overflow-y-auto`), added mobile compact WorkflowStatsRail (`flex-shrink-0 lg:hidden`) and `ChatDrawer` pinned at bottom. Simplified `footerRail` from dual desktop/mobile render pattern to single non-compact WorkflowStatsRail (left nav only). Removed `side={sidePanel}` from WorkspaceShell props.
+- `app/src/__tests__/ChatDrawer.test.tsx` — 9 new tests: collapsed by default, click toggle expands, click again collapses, auto-expand on streamingText transition, auto-expand on phaseGate transition, auto-expand on messages.length increase, no auto-collapse after triggers clear, status label reflects runtime state, aria-expanded reflects state.
+
+### Decisions Made
+- Chat moved to a bottom drawer rather than a modal or tab — keeps it always accessible without obscuring the main panel content
+- Auto-expand triggers are one-way (expand only) — the user controls when to collapse, avoiding jarring auto-hide behavior
+- Status derivation duplicated inline in ChatDrawer rather than extracting a shared hook — 3 ternary chains don't warrant the abstraction overhead
+- `footerRail` simplified to single non-compact render — mobile compact version moved inline above ChatDrawer in mainPanel
+
+### Known Issues
+- None
+
+### Next Steps
+- Sprint 17 documentation and retrospective
+
 ## 2026-03-02 — Session 14
 **Sprint:** 17 | **Story:** Visual Overhaul — Professional UI Cleanup
 **Summary:** Replaced pill/badge clutter with typography-driven hierarchy across 7 coaching screen components. Net -195 lines.
