@@ -2,6 +2,38 @@
 
 ---
 
+# Sprint 17 Retrospective — UX Polish & Interaction Quality
+**Completed:** 2026-03-02
+
+## What was delivered
+- Story 1: Multi-select + editable suggestion cards for positioning interview — radio buttons replaced with checkboxes, inline textarea editing on selection, composed multi-selection submit. 8 new tests.
+- Story 2: Visual overhaul across 7 coaching screen components — pills/badges replaced with typography-driven hierarchy (colored dots, font weight/size/opacity). Net -195 lines. Minimum font size raised from 10px to 11px project-wide.
+- Story 3: Killed the 430px right side panel — replaced with collapsible bottom ChatDrawer (CSS grid-rows transition, auto-expand on new messages/gates, 36px toggle bar). WorkspaceShell simplified from 2-pane to single `<main>`. 9 new unit tests.
+- Story 4: Fixed broken full-pipeline E2E selector (textarea inside collapsed ChatDrawer) and added 5 new ChatDrawer E2E tests. Then fixed 9 additional E2E failures across dashboard, workbench-fallback, and workbench-suggestions tests (ambiguous selectors, outdated text assertions, broken Supabase query).
+
+## What went well
+- All 4 stories completed in a single sprint day with clean TypeScript throughout
+- The layout change (Story 3) was the riskiest story — removing the right pane and restructuring CoachScreen — but landed cleanly with no regressions
+- E2E test fixes (Story 4 follow-up) uncovered a real bug: the dashboard Supabase query used non-existent columns (`company_name`, `job_title`), returning a silent 400 error that had been masked by the `!res.ok` guard returning `[]`
+- All 38 chromium E2E tests pass, all 386 app unit tests pass, all 891 server tests pass
+- The visual overhaul (Story 2) touched 7 components but maintained all existing functionality — typography hierarchy effectively replaced dozens of bordered pill elements
+
+## What went wrong
+- The E2E test failures from Stories 2 and 3 weren't caught until Story 4 — 9 tests broke due to changed button text, reformatted labels, and new duplicate elements from the layout restructuring. Next time, E2E tests should be run after each UI story, not batched at the end.
+- The `xs:` Tailwind breakpoint in `SectionWorkbench.tsx` (used on "Looks Good" span) isn't a valid Tailwind v3 breakpoint without custom config — the span is permanently hidden. This wasn't caught by the visual overhaul because it's a pre-existing issue, but it means the button label is always "Next Section" rather than "Looks Good / Next Section" as intended.
+
+## What to improve next sprint
+- Run E2E tests after each UI-facing story, not as a batch at sprint end
+- Audit remaining uses of non-standard Tailwind breakpoints (`xs:`) to confirm they're configured or remove them
+- Consider adding visual snapshot tests for layout-critical components (ChatDrawer, WorkspaceShell)
+
+## Technical debt identified
+- `xs:` breakpoint usage on SectionWorkbench "Looks Good" span — either add custom breakpoint config or remove the responsive hide
+- Status derivation logic duplicated in ChatDrawer.tsx and ChatPanel.tsx — candidate for shared hook extraction if a third consumer appears
+- `runtimeMetrics` and `pipelineActivity` optional props on ChatPanel/WorkflowStatsRail still present after Sprint 16 consumer removal (carried forward)
+
+---
+
 # Sprint 16 Retrospective — UX Transparency & Visual Declutter
 **Completed:** 2026-03-02
 
