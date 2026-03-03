@@ -285,3 +285,27 @@ Sticky sessions solve 95% of the scaling problem with zero code changes. Railway
 **Decision:** Introduce a `user_platform_context` table in Supabase and a `server/src/lib/platform-context.ts` module with three functions: `getUserContext(userId, contextType)`, `upsertUserContext(userId, contextType, content, sourceProduct, sourceSessionId?)`, and `listUserContextByType(userId, types?)`. The resume product's `persistResult` hook calls `savePlatformContext()` (best-effort, wrapped in try/catch) to persist positioning strategy and evidence items on pipeline completion.
 **Reasoning:** A dedicated cross-product table is simpler than trying to reuse product-specific tables (e.g., `user_positioning_profiles`, `master_resumes`). The `(user_id, context_type, source_product)` upsert key means the store reflects the latest run per product rather than accumulating unlimited rows. Using the admin client for writes ensures the data is always persisted regardless of which user session is active, while RLS policies ensure users can only query their own rows via the public client. The best-effort pattern (try/catch wrapping) ensures platform context failures never block pipeline completion — the core user deliverable (the resume) is never affected by a context persistence error.
 **Consequences:** `user_platform_context` table created (migration `20260302120000_user_platform_context.sql`). `platform-context.ts` exports three typed functions with full error handling. The resume pipeline's `persistResult` now calls `savePlatformContext()` as a final best-effort step. Future products call `getUserContext()` or `listUserContextByType()` to bootstrap from accumulated intelligence. The `ContextType` union (`'positioning_strategy' | 'evidence_item' | 'career_narrative' | 'target_role'`) can be extended as new context shapes emerge.
+
+## ADR-024: Own CoverLetterScreen (Not CoachScreen Reuse)
+**Date:** 2026-03-02
+**Status:** accepted
+**Context:** The cover letter frontend needed a workspace screen. CoachScreen is 728 lines with 11 panel types, sidebar workflow navigation, snapshot management, and gate handling. The cover letter pipeline is a straight-through 2-agent flow (Analyst → Writer) with no user gates.
+**Decision:** Create a dedicated `CoverLetterScreen` component (~180 lines) with its own internal state machine (intake → running → complete → error) rather than reusing or parameterizing CoachScreen.
+**Reasoning:** CoachScreen's complexity is driven by the resume workflow's interactive gates, snapshot navigation, and 11 panel types. The cover letter needs none of this — it's a form submission → progress display → letter output flow. Attempting to make CoachScreen configurable would add complexity to both products. A dedicated screen is simpler and more maintainable.
+**Consequences:** `app/src/components/cover-letter/CoverLetterScreen.tsx` is a standalone component. If future products need similar straight-through flows, this screen can be used as a template.
+
+## ADR-025: New useCoverLetter Hook (Not Configurable useSession)
+**Date:** 2026-03-02
+**Status:** accepted
+**Context:** The cover letter frontend needs SSE streaming from `/api/cover-letter/{sessionId}/stream`. The existing `useSession` hook manages 13 resume-specific operations (create session, list resumes, save base resume, etc.). The existing `useSSEConnection` hook is tightly coupled to `PipelineStateManager`.
+**Decision:** Create a new `useCoverLetter` hook (~220 lines) that manages the cover letter pipeline lifecycle: start pipeline, SSE connection, event parsing, and state management.
+**Reasoning:** `useSession` bundles too many resume-specific concerns. `useSSEConnection` requires the full `PipelineStateManager` interface with 20+ refs and setters. A dedicated hook that directly uses `fetch` + `parseSSEStream` is far simpler and avoids coupling to resume infrastructure.
+**Consequences:** `app/src/hooks/useCoverLetter.ts` handles 6 CoverLetterSSEEvent types. Reconnect with exponential backoff (max 3 attempts). AbortController cleanup on unmount. Tested via pure state-transition unit tests (9 tests).
+
+## ADR-026: Cover Letter as 'cover-letter' View in App.tsx
+**Date:** 2026-03-02
+**Status:** accepted
+**Context:** The cover letter product needed URL routing. The resume product uses `view === 'coach'` and the tools catalog uses `view === 'tools'`.
+**Decision:** Add `'cover-letter'` to the `View` type union. ProductCatalogGrid CTA navigates to `/cover-letter`. `navigateTo()` and `popstate` handler recognize the new path.
+**Reasoning:** Consistent with the existing routing pattern. Each product gets its own view and URL path. The ToolsScreen's `onNavigate` is updated to pass `/cover-letter` through to the App router rather than treating it as a `/tools/*` subpath.
+**Consequences:** `App.tsx` renders `CoverLetterScreen` when `view === 'cover-letter'`. The cover letter product in `PRODUCT_CATALOG` uses route `/cover-letter` (not `/tools/cover-letter`) and status `'active'`.

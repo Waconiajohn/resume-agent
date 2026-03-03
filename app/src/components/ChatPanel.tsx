@@ -15,7 +15,6 @@ import type {
   AskUserPromptData,
   PhaseGateData,
   PipelineActivitySnapshot,
-  PipelineRuntimeMetricsSnapshot,
 } from '@/types/session';
 import type { PanelType, PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
@@ -32,7 +31,6 @@ interface ChatPanelProps {
   lastBackendActivityAt?: string | null;
   stalledSuspected?: boolean;
   pipelineActivity?: PipelineActivitySnapshot | null;
-  runtimeMetrics?: PipelineRuntimeMetricsSnapshot | null;
   onReconnectStream?: () => void;
   onRefreshWorkflowState?: () => void | Promise<void>;
   isRefreshingWorkflowState?: boolean;
@@ -61,7 +59,6 @@ export function ChatPanel({
   lastBackendActivityAt = null,
   stalledSuspected = false,
   pipelineActivity = null,
-  runtimeMetrics = null,
   onReconnectStream,
   onRefreshWorkflowState,
   isRefreshingWorkflowState = false,

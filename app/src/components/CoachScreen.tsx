@@ -354,7 +354,6 @@ export function CoachScreen({
   const displayProcessStep = PROCESS_STEP_CONTRACTS[displayProcessStepKey] ?? PROCESS_STEP_CONTRACTS[processStepFromPhase(displayPhase)];
 
   const effectivePipelineActivity = pipelineActivity ?? workflowSession.summary?.pipeline_activity_status ?? null;
-  const runtimeMetricsSummary = workflowSession.summary?.runtime_metrics ?? null;
 
   const pipelineActivityStageElapsed = formatDurationShort(effectivePipelineActivity?.stage_started_at, runtimeClockMs);
   const pipelineActivityLastProgress = formatRelativeShort(effectivePipelineActivity?.last_progress_at, runtimeClockMs);
@@ -647,7 +646,6 @@ export function CoachScreen({
           isGateActive={Boolean(isPipelineGateActive)}
           stalledSuspected={Boolean(stalledSuspected)}
           pipelineActivity={effectivePipelineActivity}
-          runtimeMetrics={runtimeMetricsSummary}
           sessionComplete={sessionComplete}
           error={error}
           panelData={panelData}
@@ -667,7 +665,6 @@ export function CoachScreen({
         lastBackendActivityAt={lastBackendActivityAt}
         stalledSuspected={stalledSuspected}
         pipelineActivity={effectivePipelineActivity}
-        runtimeMetrics={runtimeMetricsSummary}
         onReconnectStream={onReconnectStream}
         onRefreshWorkflowState={refreshWorkflowState}
         isRefreshingWorkflowState={workflowSession.loadingSummary || workflowSession.loadingNode}
@@ -690,7 +687,6 @@ export function CoachScreen({
       isGateActive={Boolean(isPipelineGateActive)}
       stalledSuspected={Boolean(stalledSuspected)}
       pipelineActivity={effectivePipelineActivity}
-      runtimeMetrics={runtimeMetricsSummary}
       sessionComplete={sessionComplete}
       error={error}
       panelData={panelData}

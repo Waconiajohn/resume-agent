@@ -2,6 +2,39 @@
 
 ---
 
+# Sprint 18 Retrospective — Cover Letter Frontend + Tech Debt
+**Completed:** 2026-03-02
+
+## What was delivered
+- Story 1: Removed orphaned `runtimeMetrics` prop from ChatPanel, ChatDrawer, WorkflowStatsRail, and CoachScreen (4 files, removed `runtimeMetricsSummary` variable)
+- Story 2: Fixed `xs:inline` to `sm:inline` on SectionWorkbench approve button (xs: isn't a valid Tailwind v3 breakpoint)
+- Story 3: Cover letter intake form and routing — activated product in catalog, added `cover-letter` View, wired URL routing, created CoverLetterIntakeForm with 3-field validation
+- Story 4: useCoverLetter hook — SSE streaming for 6 CoverLetterSSEEvent types, reconnect with exponential backoff, AbortController cleanup, 9 unit tests
+- Story 5: CoverLetterScreen — internal state machine (intake/running/complete/error), activity feed, letter display with quality badge, dynamic import for exports
+- Story 6: Cover letter text and PDF export — downloadCoverLetterAsText + exportCoverLetterPdf using existing filename builder and jsPDF conventions, 4 unit tests
+- Story 7: Documentation — ADR-024/025/026, feature flag comment, changelog, sprint log
+
+## What went well
+- All 7 stories completed in a single session
+- ADR decisions (own screen, own hook, own view) proved correct — CoverLetterScreen is 180 lines vs CoachScreen's 728 lines
+- Zero TypeScript errors throughout — both app and server `tsc --noEmit` clean
+- 13 new tests (9 hook + 4 export), all 416 app tests passing, all server tests passing
+- Dynamic import pattern for export functions keeps the bundle lean for non-export flows
+
+## What went wrong
+- Nothing significant — clean delivery
+
+## What to improve next sprint
+- Manual E2E testing of the full cover letter flow (requires FF_COVER_LETTER=true and working Z.AI API)
+- Consider E2E test coverage for the cover letter intake → complete flow
+
+## Technical debt identified
+- Cover letter DOCX export (backlogged)
+- Cover letter sessions not visible in dashboard history
+- Cover letter doesn't reuse master resume from intake form (could pre-populate resume_text)
+
+---
+
 # Sprint 17 Retrospective — UX Polish & Interaction Quality
 **Completed:** 2026-03-02
 

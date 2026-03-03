@@ -2,7 +2,7 @@ import { GlassCard } from './GlassCard';
 import { PHASE_LABELS } from '@/constants/phases';
 import type { PanelData } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
-import type { PipelineActivitySnapshot, PipelineRuntimeMetricsSnapshot } from '@/types/session';
+import type { PipelineActivitySnapshot } from '@/types/session';
 
 interface WorkflowStatsRailProps {
   currentPhase: string;
@@ -10,7 +10,6 @@ interface WorkflowStatsRailProps {
   isGateActive?: boolean;
   stalledSuspected?: boolean;
   pipelineActivity?: PipelineActivitySnapshot | null;
-  runtimeMetrics?: PipelineRuntimeMetricsSnapshot | null;
   sessionComplete?: boolean;
   error?: string | null;
   panelData: PanelData | null;
@@ -111,7 +110,6 @@ export function WorkflowStatsRail({
   isGateActive = false,
   stalledSuspected = false,
   pipelineActivity = null,
-  runtimeMetrics = null,
   sessionComplete,
   error,
   panelData,

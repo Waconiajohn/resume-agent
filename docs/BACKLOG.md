@@ -95,19 +95,43 @@ Fixed null-to-Record cast at line 292. `tsc --noEmit` clean.
 
 ---
 
-## Epic: Cover Letter Product (Future)
+## Epic: Cover Letter Product
 
-### Story: Cover Letter Frontend UI
+### ~~Story: Cover Letter Frontend UI~~ COMPLETE (Sprint 18)
+Intake form, SSE streaming hook, CoverLetterScreen workspace, text + PDF export. 7 stories delivered.
+
+### Story: Cover Letter DOCX Export
 - **As a** user
-- **I want to** access the cover letter tool through a proper frontend interface
-- **So that** I can generate cover letters alongside my resume sessions
+- **I want to** download my cover letter as a DOCX file
+- **So that** I can edit it in Word before submitting
 - **Acceptance Criteria:**
-  - [ ] Cover letter intake form (resume text, JD, company name)
-  - [ ] SSE stream connection to cover letter pipeline
-  - [ ] Letter draft display with quality score
-  - [ ] Export to DOCX/PDF
-- **Estimated complexity:** Large
-- **Dependencies:** Sprint 15 (complete — backend + context consumption ready)
+  - [ ] DOCX export using docx library (same as resume DOCX export)
+  - [ ] Filename: `{Name}_{Company}_Cover_Letter.docx`
+  - [ ] Export button in CoverLetterScreen
+- **Estimated complexity:** Small
+- **Dependencies:** None
+
+### Story: Cover Letter Dashboard Integration
+- **As a** user
+- **I want to** see my cover letter sessions in the dashboard
+- **So that** I can revisit and re-export previous cover letters
+- **Acceptance Criteria:**
+  - [ ] Cover letter sessions visible in Sessions tab
+  - [ ] Ability to view completed cover letter text
+  - [ ] Re-export to PDF/text
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: Cover Letter Master Resume Pre-population
+- **As a** user
+- **I want to** have my default resume auto-filled in the cover letter intake
+- **So that** I don't have to paste my resume each time
+- **Acceptance Criteria:**
+  - [ ] Load default master resume on mount
+  - [ ] Pre-fill resume_text field
+  - [ ] Allow override by pasting different resume
+- **Estimated complexity:** Small
+- **Dependencies:** None
 
 ### Story: Full Waitlist Backend
 - **As a** product owner

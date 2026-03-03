@@ -14,9 +14,10 @@ import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { ToolsScreen } from '@/components/platform/ToolsScreen';
+import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { resumeToText } from '@/lib/export';
 
-type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools';
+type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter';
 
 export default function App() {
   const { user, session, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
@@ -97,6 +98,7 @@ export default function App() {
     else if (path === '/billing') setView('billing');
     else if (path === '/affiliate') setView('affiliate');
     else if (path === '/dashboard') setView('dashboard');
+    else if (path === '/cover-letter') setView('cover-letter');
     else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
     else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
   }, []);
@@ -137,6 +139,7 @@ export default function App() {
       else if (path === '/billing') setView('billing');
       else if (path === '/affiliate') setView('affiliate');
       else if (path === '/dashboard') setView('dashboard');
+      else if (path === '/cover-letter') setView('cover-letter');
       else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
       else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
       else setView('landing');
@@ -365,7 +368,14 @@ export default function App() {
       }
       return;
     }
-    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools'];
+    if (viewName === 'cover-letter' || viewName === '/cover-letter') {
+      setView('cover-letter');
+      if (window.location.pathname !== '/cover-letter') {
+        window.history.pushState({}, '', '/cover-letter');
+      }
+      return;
+    }
+    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter'];
     const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
     setView(newView);
     const paths: Record<View, string> = {
@@ -377,6 +387,7 @@ export default function App() {
       affiliate: '/affiliate',
       dashboard: '/dashboard',
       tools: '/tools',
+      'cover-letter': '/cover-letter',
     };
     const newPath = paths[newView];
     if (newPath && window.location.pathname !== newPath) {
@@ -533,9 +544,17 @@ export default function App() {
           onNavigate={(route) => {
             if (route === '/tools') navigateTo('tools');
             else if (route.startsWith('/tools/')) navigateTo(route);
+            else if (route === '/cover-letter') navigateTo('cover-letter');
             else if (route === '/app' || route === '/') navigateTo('landing');
             else navigateTo('landing');
           }}
+        />
+      )}
+
+      {view === 'cover-letter' && (
+        <CoverLetterScreen
+          accessToken={accessToken}
+          onNavigate={navigateTo}
         />
       )}
 

@@ -1,5 +1,39 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 18
+**Sprint:** 18 | **Story:** Cover Letter Frontend + Tech Debt
+**Summary:** Delivered a complete cover letter frontend connecting to the existing 2-agent backend pipeline, cleaned up 2 tech debt items.
+
+### Changes Made
+- `app/src/components/ChatPanel.tsx` — Removed orphaned `runtimeMetrics` prop from interface and destructuring
+- `app/src/components/ChatDrawer.tsx` — Removed orphaned `runtimeMetrics` prop from interface, destructuring, and ChatPanel pass-through
+- `app/src/components/WorkflowStatsRail.tsx` — Removed orphaned `runtimeMetrics` prop from interface and destructuring
+- `app/src/components/CoachScreen.tsx` — Removed `runtimeMetricsSummary` variable and 3 `runtimeMetrics` prop pass-throughs
+- `app/src/components/panels/SectionWorkbench.tsx` — Fixed `hidden xs:inline` to `hidden sm:inline` (xs: not a valid Tailwind breakpoint)
+- `app/src/types/platform.ts` — Changed cover letter status from `coming_soon` to `active`, route from `/tools/cover-letter` to `/cover-letter`
+- `app/src/App.tsx` — Added `'cover-letter'` to View type, URL routing (mount + popstate + navigateTo), CoverLetterScreen import and render block, ToolsScreen onNavigate pass-through for `/cover-letter`
+- `app/src/components/cover-letter/CoverLetterIntakeForm.tsx` — New component: 3-field intake form (resume_text min 50, job_description min 1, company_name min 1) with validation, glass morphism styling
+- `app/src/components/cover-letter/CoverLetterScreen.tsx` — New component (~180 lines): internal state machine (intake/running/complete/error), activity feed with graduated opacity, letter display with quality badge, PDF + text export buttons, "Write Another" flow
+- `app/src/hooks/useCoverLetter.ts` — New hook (~220 lines): startPipeline (POST + SSE connect), handles 6 CoverLetterSSEEvent types, reconnect with exponential backoff (max 3), AbortController cleanup, reset for re-use
+- `app/src/lib/export-cover-letter.ts` — New module: `downloadCoverLetterAsText()` and `exportCoverLetterPdf()` using existing buildResumeFilename + jsPDF (Helvetica, 54pt margins)
+- `server/src/lib/feature-flags.ts` — Updated FF_COVER_LETTER comment to note frontend availability
+- `docs/DECISIONS.md` — Added ADR-024 (own screen), ADR-025 (new hook), ADR-026 (cover-letter view)
+
+### Decisions Made
+- ADR-024: Own CoverLetterScreen rather than reusing CoachScreen — cover letter is a straight-through flow with no gates, CoachScreen's 728-line complexity is unnecessary
+- ADR-025: New useCoverLetter hook rather than configurable useSession — useSession has 13 resume-specific operations, cover letter needs only 3
+- ADR-026: cover-letter as its own View/URL rather than a /tools/* sub-route — consistent with resume routing pattern
+
+### Known Issues
+- FF_COVER_LETTER must be set to `true` in `server/.env` for the backend routes to be active
+- DOCX export not implemented (backlogged)
+- Cover letter sessions not shown in dashboard history
+
+### Next Steps
+- Sprint 18 retrospective
+- Enable FF_COVER_LETTER in production when ready
+- Backlog: cover letter DOCX export, dashboard integration
+
 ## 2026-03-02 — Session 17
 **Sprint:** 17 | **Story:** Fix 9 Failing E2E Tests
 **Summary:** Fixed 9 E2E test failures across 3 files caused by ambiguous selectors, outdated text assertions, and a broken Supabase query in the dashboard test.

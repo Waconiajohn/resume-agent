@@ -747,7 +747,7 @@ export function SectionWorkbench({
                 disabled={isRefining}
               >
                 <Check className="mr-1.5 h-3.5 w-3.5" />
-                <span className="hidden xs:inline">Looks Good — </span>Next Section
+                <span className="hidden sm:inline">Looks Good — </span>Next Section
               </GlassButton>
               <GlassButton
                 variant="ghost"

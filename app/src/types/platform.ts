@@ -65,8 +65,8 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     longDescription:
       'Generates a tailored cover letter that reinforces your resume positioning. Leverages your existing strategy, evidence, and career narrative so you never start from scratch.',
     icon: '\u2709\uFE0F',
-    status: 'coming_soon',
-    route: '/tools/cover-letter',
+    status: 'active',
+    route: '/cover-letter',
     category: 'career',
     features: [
       {
