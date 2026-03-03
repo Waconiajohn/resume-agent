@@ -36,6 +36,11 @@ import { createEmitTransparency } from '../runtime/shared-tools.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
+/** Check if a blueprint slice contains role keys (role_0, role_1, etc.) */
+function hasRoleKeys(obj: Record<string, unknown>): boolean {
+  return Object.keys(obj).some(k => /^role_\d+$/.test(k));
+}
+
 /** Extract cliché phrases from RESUME_ANTI_PATTERNS for fast string matching */
 function extractClichePhrases(): string[] {
   // Parse the CLICHE PHRASES block from the anti-patterns string
@@ -200,13 +205,82 @@ const writeSectionTool: ResumeAgentTool = {
 
   async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = input.section as string;
-    const blueprint_slice = input.blueprint_slice as Record<string, unknown>;
+    let blueprint_slice = input.blueprint_slice as Record<string, unknown>;
     // Groq models may send evidence_sources as an array or object — normalize to object
     const rawEvidence = input.evidence_sources;
     const evidence_sources: Record<string, unknown> = Array.isArray(rawEvidence)
       ? Object.fromEntries((rawEvidence as unknown[]).map((item, i) => [`evidence_${i}`, item]))
       : (rawEvidence as Record<string, unknown>) ?? {};
-    const global_rules = input.global_rules as ArchitectOutput['global_rules'];
+
+    // Auto-fill blueprint_slice from pipeline state when the orchestrator model passes
+    // incomplete data. Groq's Scout model often passes empty {} for complex sections.
+    const state = ctx.getState();
+    const architect = state.architect;
+
+    if (architect) {
+      const isExperience = section === 'experience' || section.startsWith('experience_');
+      const sliceIsEmpty = !blueprint_slice || Object.keys(blueprint_slice).length === 0;
+
+      if (isExperience && (sliceIsEmpty || !hasRoleKeys(blueprint_slice))) {
+        const expAlloc = architect.evidence_allocation?.experience_section ?? {};
+        const expBlueprint = architect.experience_blueprint;
+        const allocRoles = { ...expAlloc };
+
+        // Ensure every role in experience_blueprint.roles has an allocation entry.
+        // The architect LLM (especially on Groq) often only generates allocations for
+        // 1-2 roles when the resume has 5+. Create stub entries for missing roles.
+        if (expBlueprint?.roles) {
+          for (let ri = 0; ri < expBlueprint.roles.length; ri++) {
+            const roleKey = `role_${ri}`;
+            if (!allocRoles[roleKey]) {
+              const roleMeta = expBlueprint.roles[ri];
+              allocRoles[roleKey] = {
+                company: roleMeta.company,
+                bullet_count_range: [Math.max(2, roleMeta.bullet_count ?? 3), Math.min(5, (roleMeta.bullet_count ?? 3) + 1)],
+              };
+            }
+          }
+        }
+
+        if (Object.keys(allocRoles).length > 0) {
+          logger.info(
+            `write_section: auto-filling experience blueprint_slice from pipeline state ` +
+            `(${Object.keys(allocRoles).length} roles total, ` +
+            `${Object.keys(expAlloc).length} from architect, ` +
+            `${Object.keys(allocRoles).length - Object.keys(expAlloc).length} stub-filled)`,
+          );
+          blueprint_slice = {
+            ...allocRoles,
+            ...(expBlueprint ? { experience_blueprint: expBlueprint } : {}),
+          };
+        }
+      } else if (section === 'summary' && sliceIsEmpty && architect.summary_blueprint) {
+        logger.info('write_section: auto-filling summary blueprint_slice from pipeline state');
+        blueprint_slice = architect.summary_blueprint as unknown as Record<string, unknown>;
+      } else if (section === 'skills' && sliceIsEmpty && architect.skills_blueprint) {
+        logger.info('write_section: auto-filling skills blueprint_slice from pipeline state');
+        blueprint_slice = architect.skills_blueprint as unknown as Record<string, unknown>;
+      }
+    }
+
+    // Auto-fill global_rules from pipeline state if not provided
+    const global_rules = (input.global_rules as ArchitectOutput['global_rules']) ??
+      architect?.global_rules ?? {
+        voice: 'executive',
+        bullet_format: 'RAS',
+        length_target: '1-2 pages',
+        ats_rules: 'standard',
+      };
+
+    // Auto-fill evidence_sources from pipeline state if not provided
+    let finalEvidence = evidence_sources;
+    if (Object.keys(finalEvidence).length === 0 && state.positioning?.evidence_library) {
+      logger.info('write_section: auto-filling evidence_sources from positioning profile');
+      const lib = state.positioning.evidence_library;
+      finalEvidence = Object.fromEntries(
+        lib.map((item, i) => [item.id ?? `evidence_${i}`, item]),
+      );
+    }
 
     // Build cross-section context from previously completed sections (sliding window)
     const MAX_CROSS_SECTION_ENTRIES = 5;
@@ -241,7 +315,7 @@ const writeSectionTool: ResumeAgentTool = {
     const writerInput: SectionWriterInput = {
       section,
       blueprint_slice,
-      evidence_sources,
+      evidence_sources: finalEvidence,
       global_rules,
       cross_section_context: Object.keys(crossSectionContext).length > 0 ? crossSectionContext : undefined,
       signal: ctx.signal,

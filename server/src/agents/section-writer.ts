@@ -14,6 +14,7 @@
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../lib/llm.js';
 import { repairJSON } from '../lib/json-repair.js';
 import { ATS_RULEBOOK_SNIPPET } from './ats-rules.js';
+import logger from '../lib/logger.js';
 import type {
   SectionWriterInput,
   SectionWriterOutput,
@@ -22,8 +23,34 @@ import type {
 
 /**
  * Write a single resume section based on the Architect's blueprint slice.
+ *
+ * For experience sections with multiple roles, splits into per-position LLM
+ * calls so each role gets sufficient output tokens. The results are
+ * concatenated into a single SectionWriterOutput.
  */
 export async function runSectionWriter(input: SectionWriterInput): Promise<SectionWriterOutput> {
+  const { section, blueprint_slice, evidence_sources, global_rules } = input;
+
+  // Multi-role experience: split into per-position calls
+  if (isExperienceSection(section)) {
+    const roleKeys = extractRoleKeys(blueprint_slice);
+    logger.info(
+      `section-writer: experience detection — ${roleKeys.length} roles found. ` +
+      `Blueprint keys: [${Object.keys(blueprint_slice).join(', ')}]. ` +
+      `Role keys: [${roleKeys.join(', ')}]`,
+    );
+    if (roleKeys.length > 1) {
+      return writeExperienceByRole(input, roleKeys);
+    }
+  }
+
+  return writeSingleSection(input);
+}
+
+/**
+ * Standard single-section writer — one LLM call.
+ */
+async function writeSingleSection(input: SectionWriterInput): Promise<SectionWriterOutput> {
   const { section, blueprint_slice, evidence_sources, global_rules } = input;
 
   // Use MODEL_MID for simpler structural sections, MODEL_PRIMARY for creative ones
@@ -67,6 +94,109 @@ export async function runSectionWriter(input: SectionWriterInput): Promise<Secti
     requirements_addressed: (parsed.requirements_addressed as string[]) ?? [],
     evidence_ids_used: (parsed.evidence_ids_used as string[]) ?? [],
   };
+}
+
+/**
+ * Write experience section by iterating over each role individually.
+ *
+ * Each role gets its own LLM call with a focused blueprint slice, ensuring
+ * the model has sufficient output tokens to write 3-5 bullets per position
+ * instead of trying to cram all roles into a single 4096-token response.
+ */
+async function writeExperienceByRole(
+  input: SectionWriterInput,
+  roleKeys: string[],
+): Promise<SectionWriterOutput> {
+  const { section, blueprint_slice, evidence_sources, global_rules } = input;
+
+  // Extract role metadata (titles, companies, dates) from experience_blueprint if present
+  const expBlueprint = blueprint_slice.experience_blueprint as
+    | { roles?: Array<{ company: string; title: string; dates: string; title_adjustment?: string; bullet_count?: number }> }
+    | undefined;
+  const roleMetadata = expBlueprint?.roles ?? [];
+
+  const allContents: string[] = [];
+  const allKeywords: string[] = [];
+  const allRequirements: string[] = [];
+  const allEvidenceIds: string[] = [];
+
+  for (let i = 0; i < roleKeys.length; i++) {
+    const roleKey = roleKeys[i];
+    const roleAllocation = (blueprint_slice as Record<string, unknown>)[roleKey] ??
+      (blueprint_slice.experience_section as Record<string, unknown> | undefined)?.[roleKey];
+
+    if (!roleAllocation || typeof roleAllocation !== 'object') {
+      logger.warn({ roleKey, i }, 'writeExperienceByRole: skipping role — no allocation data');
+      continue;
+    }
+
+    logger.info({ roleKey, i, company: (roleAllocation as Record<string, unknown>).company },
+      `writeExperienceByRole: writing role ${i + 1}/${roleKeys.length}`);
+
+    // Build a focused blueprint slice for this single role
+    const roleMeta = roleMetadata[i];
+    const perRoleBlueprint: Record<string, unknown> = {
+      ...(roleAllocation as Record<string, unknown>),
+      // Inject role metadata if available
+      ...(roleMeta && {
+        title: roleMeta.title_adjustment ?? roleMeta.title,
+        company: roleMeta.company,
+        dates: roleMeta.dates,
+        bullet_count: roleMeta.bullet_count,
+      }),
+    };
+
+    const roleInput: SectionWriterInput = {
+      section: `experience_role_${i}`,
+      blueprint_slice: perRoleBlueprint,
+      evidence_sources,
+      global_rules,
+      cross_section_context: input.cross_section_context,
+      signal: input.signal,
+    };
+
+    const result = await writeSingleSection(roleInput);
+
+    if (result.content.trim()) {
+      allContents.push(result.content.trim());
+    }
+    allKeywords.push(...result.keywords_used);
+    allRequirements.push(...result.requirements_addressed);
+    allEvidenceIds.push(...result.evidence_ids_used);
+  }
+
+  return {
+    section,
+    content: allContents.join('\n\n'),
+    keywords_used: [...new Set(allKeywords)],
+    requirements_addressed: [...new Set(allRequirements)],
+    evidence_ids_used: [...new Set(allEvidenceIds)],
+  };
+}
+
+/** Check if a section name is an experience section */
+function isExperienceSection(section: string): boolean {
+  return section === 'experience' || section.startsWith('experience_');
+}
+
+/**
+ * Extract role keys (role_0, role_1, ...) from a blueprint slice.
+ * Checks both top-level keys and nested experience_section object.
+ */
+function extractRoleKeys(blueprint: Record<string, unknown>): string[] {
+  const rolePattern = /^role_\d+$/;
+
+  // Check top-level keys first
+  const topLevel = Object.keys(blueprint).filter(k => rolePattern.test(k)).sort();
+  if (topLevel.length > 0) return topLevel;
+
+  // Check nested experience_section
+  const expSection = blueprint.experience_section;
+  if (expSection && typeof expSection === 'object') {
+    return Object.keys(expSection).filter(k => rolePattern.test(k)).sort();
+  }
+
+  return [];
 }
 
 /**
@@ -270,18 +400,40 @@ function buildSectionPrompt(
       break;
 
     default:
-      if (section === 'experience' || section.startsWith('experience_role_')) {
-        lines.push('Write the COMPLETE experience section covering ALL positions listed in the blueprint.');
-        lines.push('');
-        lines.push('FORMAT — Each position MUST follow this exact structure:');
-        lines.push('');
-        lines.push('[Title] | [Company] | [Start Date] – [End Date]');
-        lines.push('• [Bullet 1: Action verb + specific achievement + quantified result from evidence]');
-        lines.push('• [Bullet 2: ...]');
-        lines.push('• [Continue for each bullet specified in the blueprint]');
-        lines.push('');
-        lines.push('IMPORTANT:');
-        lines.push('- Include EVERY position from the blueprint — do not skip any roles.');
+      if (section === 'experience' || section.startsWith('experience_role_') || section.startsWith('experience_')) {
+        const isSingleRole = section.startsWith('experience_role_');
+
+        if (isSingleRole) {
+          // Per-position mode: writing ONE role at a time
+          const title = blueprint.title ?? blueprint.title_adjustment ?? '';
+          const company = blueprint.company ?? '';
+          const dates = blueprint.dates ?? '';
+          lines.push(`Write ONE position entry for this role${title ? `: ${title} at ${company}` : ''}.`);
+          lines.push('');
+          lines.push('FORMAT — Follow this exact structure:');
+          lines.push('');
+          lines.push(`${title || '[Title]'}, ${company || '[Company]'}, ${dates || '[Start Date] – [End Date]'}`);
+          lines.push('• [Bullet 1: Action verb + specific achievement + quantified result from evidence]');
+          lines.push('• [Bullet 2: ...]');
+          lines.push('');
+          lines.push('IMPORTANT:');
+          lines.push('- Write ONLY this one position — do not add other roles.');
+          lines.push('- Use the title, company, and dates from the blueprint. Apply any title_adjustment if specified.');
+        } else {
+          // Full experience section mode (single role or legacy)
+          lines.push('Write the COMPLETE experience section covering ALL positions listed in the blueprint.');
+          lines.push('');
+          lines.push('FORMAT — Each position MUST follow this exact structure:');
+          lines.push('');
+          lines.push('[Title], [Company], [Start Date] – [End Date]');
+          lines.push('• [Bullet 1: Action verb + specific achievement + quantified result from evidence]');
+          lines.push('• [Bullet 2: ...]');
+          lines.push('• [Continue for each bullet specified in the blueprint]');
+          lines.push('');
+          lines.push('IMPORTANT:');
+          lines.push('- Include EVERY position from the blueprint — do not skip any roles.');
+        }
+
         lines.push('- Rewrite each bullet to be stronger and more impactful than the original — do NOT just copy bullets from the evidence.');
         lines.push('- Start each bullet with a strong action verb (Built, Architected, Reduced, Drove, Led, Designed, Established).');
         lines.push('- Each bullet must contain a specific, measurable result from the evidence. Do NOT invent new metrics.');

@@ -21,7 +21,9 @@ const ZAI_MODEL_LIGHT = process.env.ZAI_MODEL_LIGHT ?? 'glm-4.7-flash';
 
 // ─── Groq model constants ────────────────────────────────────────────
 
-/** Quality writing — llama-3.3-70b-versatile ($0.59/$0.79 per M tokens) */
+/** Quality writing — llama-3.3-70b-versatile ($0.59/$0.79 per M tokens).
+ *  Dense 70B: best writing quality on Groq. Maverick (17Bx128E MoE) tested
+ *  but produced fewer sections and weaker content despite lower cost. */
 const GROQ_MODEL_PRIMARY = process.env.GROQ_MODEL_PRIMARY ?? 'llama-3.3-70b-versatile';
 
 /** Mid-tier analysis — llama-4-scout ($0.11/$0.34 per M tokens) */
