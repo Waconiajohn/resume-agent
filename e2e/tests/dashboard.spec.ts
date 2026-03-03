@@ -39,17 +39,41 @@ const TEST_USER_ID =
   process.env.TEST_USER_ID || '5b756a7a-3e35-4465-bcf4-69d92f160f21';
 
 /**
+ * Extract the authenticated user ID from stored Playwright auth state.
+ * Falls back to the hardcoded TEST_USER_ID if auth state is unavailable.
+ */
+function getAuthUserId(): string {
+  try {
+    const state = JSON.parse(
+      readFileSync(resolve(process.cwd(), '.auth/user.json'), 'utf-8'),
+    );
+    for (const origin of state.origins ?? []) {
+      for (const item of origin.localStorage ?? []) {
+        if (item.name?.includes('auth-token')) {
+          const parsed = JSON.parse(item.value);
+          if (parsed?.user?.id) return parsed.user.id;
+        }
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  return TEST_USER_ID;
+}
+
+/**
  * Fetch sessions for the test user directly via the Supabase REST API.
  * Returns the list sorted newest-first (same as the app).
  */
 async function fetchTestSessions(): Promise<
-  Array<{ id: string; pipeline_status: string | null; company_name: string | null; job_title: string | null }>
+  Array<{ id: string; pipeline_status: string | null }>
 > {
   const { url, serviceKey } = loadSupabaseConfig();
   if (!url || !serviceKey) return [];
 
+  const userId = getAuthUserId();
   const res = await fetch(
-    `${url}/rest/v1/coach_sessions?user_id=eq.${TEST_USER_ID}&select=id,pipeline_status,company_name,job_title&order=created_at.desc`,
+    `${url}/rest/v1/coach_sessions?user_id=eq.${userId}&select=id,pipeline_status&order=created_at.desc`,
     {
       headers: {
         apikey: serviceKey,
@@ -62,8 +86,6 @@ async function fetchTestSessions(): Promise<
   return (await res.json()) as Array<{
     id: string;
     pipeline_status: string | null;
-    company_name: string | null;
-    job_title: string | null;
   }>;
 }
 
@@ -119,8 +141,6 @@ test.describe('Dashboard Flows', () => {
   let allSessions: Array<{
     id: string;
     pipeline_status: string | null;
-    company_name: string | null;
-    job_title: string | null;
   }> = [];
   let completeSessions: typeof allSessions = [];
 

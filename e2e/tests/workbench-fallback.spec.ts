@@ -7,7 +7,7 @@ test.describe('Workbench ActionChips fallback', () => {
     await navigateToWorkbench(page, workbenchSSEEvents({ suggestions: [] }));
 
     // ActionChips "Refine" label should be visible
-    await expect(page.getByText('Refine')).toBeVisible();
+    await expect(page.getByText('Refine', { exact: true })).toBeVisible();
     // Action chip buttons should exist (e.g. "Sharpen Opening" for summary section)
     await expect(page.getByRole('button', { name: /Sharpen Opening/i })).toBeVisible();
     // No suggestion card elements
@@ -21,7 +21,7 @@ test.describe('Workbench ActionChips fallback', () => {
     await navigateToWorkbench(page, workbenchSSEEvents({ suggestions: null }));
 
     // ActionChips should render
-    await expect(page.getByText('Refine')).toBeVisible();
+    await expect(page.getByText('Refine', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Sharpen Opening/i })).toBeVisible();
   });
 });

@@ -172,7 +172,7 @@ test.describe('Workbench Suggestions', () => {
   test('"Looks Good" button sends approve gate with review_token', async ({ page }) => {
     const { captured } = await navigateToWorkbench(page, workbenchSSEEvents());
 
-    await page.getByRole('button', { name: /Looks Good/i }).click();
+    await page.getByRole('button', { name: /Next Section/i }).click();
     await page.waitForTimeout(500);
 
     const respondReq = captured.find(
@@ -189,9 +189,9 @@ test.describe('Workbench Suggestions', () => {
   test('bundled review banner renders and one-click bundle approval sends flag', async ({ page }) => {
     const { captured } = await navigateToWorkbench(page, workbenchSSEEvents({ bundledReview: true }));
 
-    await expect(page.getByText('Bundled Review')).toBeVisible();
-    await expect(page.getByText(/Review set:/i)).toBeVisible();
-    await expect(page.getByText(/1\/3 bundles • Headline/i)).toBeVisible();
+    await expect(page.getByText('Bundled Review').first()).toBeVisible();
+    await expect(page.getByText(/Reviewing.*high-impact section/i)).toBeVisible();
+    await expect(page.getByText(/Current bundle: Headline/i).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Approve Remaining Review Set/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Approve Remaining Review Set/i }).click();
@@ -210,8 +210,8 @@ test.describe('Workbench Suggestions', () => {
   test('current bundle approval sends approve_remaining_current_bundle flag', async ({ page }) => {
     const { captured } = await navigateToWorkbench(page, workbenchSSEEvents({ bundledReview: true }));
 
-    await expect(page.getByRole('button', { name: /Approve Current Bundle \(Headline\)/i })).toBeVisible();
-    await page.getByRole('button', { name: /Approve Current Bundle \(Headline\)/i }).click();
+    await expect(page.getByRole('button', { name: /Finish Headline Bundle/i })).toBeVisible();
+    await page.getByRole('button', { name: /Finish Headline Bundle/i }).click();
     await page.waitForTimeout(500);
 
     const respondReq = captured.find((r) => r.url.includes('/pipeline/respond'));
@@ -228,14 +228,14 @@ test.describe('Workbench Suggestions', () => {
     await navigateToWorkbench(page, workbenchSSEEvents({ includeDraftReadiness: true }));
 
     await expect(page.getByText('Ready To Draft')).toBeVisible();
-    await expect(page.getByText(/Evidence 5\/5/i)).toBeVisible();
-    await expect(page.getByText(/Coverage 74% \/ 65%/i)).toBeVisible();
+    await expect(page.getByText(/5 evidence items/i)).toBeVisible();
+    await expect(page.getByText(/74% \/ 65% coverage/i)).toBeVisible();
   });
 
   test('live replan banner renders from SSE lifecycle event', async ({ page }) => {
     await navigateToWorkbench(page, workbenchSSEEvents({ includeReplanStarted: true }));
 
-    await expect(page.getByText(/Regenerating/i)).toBeVisible();
+    await expect(page.getByText('Regenerating', { exact: true })).toBeVisible();
     await expect(page.getByText(/benchmark edit v1/i)).toBeVisible();
   });
 
@@ -288,7 +288,7 @@ test.describe('Workbench Suggestions', () => {
 
     await expect(page.getByRole('button', { name: /Generate Draft Now/i })).not.toBeVisible();
     await expect(page.getByText(/marked stale/i)).toBeVisible();
-    await expect(page.getByText(/Rebuild required/i)).toBeVisible();
+    await expect(page.getByText(/Rebuild required/i).first()).toBeVisible();
   });
 
   test('direct edit shows "Save Edits" and "Discard" buttons', async ({ page }) => {
@@ -307,6 +307,6 @@ test.describe('Workbench Suggestions', () => {
     await expect(page.getByRole('button', { name: /Save Edits/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Discard/i })).toBeVisible();
     // "Looks Good" should be replaced
-    await expect(page.getByRole('button', { name: /Looks Good/i })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /Next Section/i })).not.toBeVisible();
   });
 });
