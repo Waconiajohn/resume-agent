@@ -1,5 +1,24 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 17
+**Sprint:** 17 | **Story:** Fix 9 Failing E2E Tests
+**Summary:** Fixed 9 E2E test failures across 3 files caused by ambiguous selectors, outdated text assertions, and a broken Supabase query in the dashboard test.
+
+### Changes Made
+- `e2e/tests/workbench-fallback.spec.ts` — `getByText('Refine')` → `getByText('Refine', { exact: true })` on 2 assertions. The non-exact match resolved to 3 elements (ProcessStepGuideCard body, ActionChips label, and footer button).
+- `e2e/tests/workbench-suggestions.spec.ts` — 8 selector fixes: `Looks Good` → `Next Section` (hidden span via `xs:inline`), `Bundled Review` + `Current bundle: Headline` → `.first()` (duplicate in sidebar + main), `Approve Current Bundle (Headline)` → `Finish Headline Bundle` (button text changed), `Evidence 5/5` → `5 evidence items` and `Coverage 74% / 65%` → `74% / 65% coverage` (format changed), `Regenerating` → exact match (matched in status + body), `Rebuild required` → `.first()` (matched across 6 stale nodes).
+- `e2e/tests/dashboard.spec.ts` — Added `getAuthUserId()` to extract user ID from Playwright auth state (`.auth/user.json`). Removed `company_name` and `job_title` from Supabase REST query — those columns don't exist on `coach_sessions`, causing a silent 400 error that made `fetchTestSessions()` return 0 sessions.
+
+### Decisions Made
+- Preferred `.first()` over more specific container-scoped selectors where the first match is always the correct one — simpler and less brittle
+- Used `{ exact: true }` for single-word labels that appear as substrings in longer text
+
+### Known Issues
+- None — all 38 chromium E2E tests passing
+
+### Next Steps
+- Sprint 17 retrospective
+
 ## 2026-03-02 — Session 16
 **Sprint:** 17 | **Story:** E2E Tests — Chat Drawer + Full Pipeline Fix
 **Summary:** Fixed broken full-pipeline E2E selector (textarea inside collapsed ChatDrawer) and added 5 new mocked E2E tests for the ChatDrawer component.
@@ -15,7 +34,7 @@
 - Used `textarea` locator instead of placeholder match for the expanded-drawer test — the active section gate changes the placeholder to "Use the panel above to continue"
 
 ### Known Issues
-- 9 pre-existing E2E failures in dashboard, workbench-fallback, and workbench-suggestions tests (unrelated to these changes)
+- 9 pre-existing E2E failures in dashboard, workbench-fallback, and workbench-suggestions tests (fixed in Session 17)
 
 ### Next Steps
 - Sprint 17 retrospective
