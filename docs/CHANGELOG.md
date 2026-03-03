@@ -1,5 +1,31 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 19
+**Sprint:** 19 | **Story:** Add Groq LLM Provider
+**Summary:** Added Groq as an alternative LLM provider to reduce pipeline latency from 15-30 min to an estimated 1-3 min, at ~54% lower cost.
+
+### Changes Made
+- `server/src/lib/llm-provider.ts` — Extended `ZAIConfig` with optional `providerName`, `chatTimeoutMs`, `streamTimeoutMs` fields (backward compatible). Made `ZAIProvider.name` configurable via constructor. Replaced hardcoded timeouts (180s/300s) with instance fields. Added `GroqProvider` class extending `ZAIProvider` with 30s/60s timeouts and Groq base URL.
+- `server/src/lib/llm.ts` — Added Groq model constants (`GROQ_MODEL_PRIMARY`, etc.) with env var overrides. Made `MODEL_PRIMARY/MID/ORCHESTRATOR/LIGHT` exports provider-aware via `ACTIVE_PROVIDER` detection. Added Groq model pricing (5 models). Updated `createProvider()` factory to support `LLM_PROVIDER=groq`. Updated `getDefaultModel()` to handle Groq.
+- `docs/DECISIONS.md` — Added ADR-027: Groq as Alternative LLM Provider for Latency Reduction
+
+### Decisions Made
+- ADR-027: Groq over SiliconFlow — proven LPU infrastructure, deterministic latency, OpenAI-compatible API
+- Default Groq model mapping: PRIMARY → llama-3.3-70b-versatile (production), MID → llama-4-scout (preview), ORCHESTRATOR/LIGHT → llama-3.1-8b-instant (production)
+- Extended ZAIProvider rather than duplicating ~200 lines — configurable timeouts via constructor is a backward-compatible change, not a refactoring
+
+### Known Issues
+- Llama 4 Scout is in "Preview" status on Groq — may have availability limits
+- Llama 4 Maverick not currently listed in Groq production models (pricing in MODEL_PRICING for reference)
+- Resume writing quality with llama-3.3-70b-versatile needs validation against Z.AI glm-4.7 baseline
+- Groq has rate limits that may affect high-volume usage (check console.groq.com for current limits)
+
+### Next Steps
+- Set `LLM_PROVIDER=groq` and `GROQ_API_KEY=<key>` in `server/.env` to activate
+- Run 3-5 full pipelines comparing Groq output quality vs Z.AI baseline
+- If 70B writing quality is insufficient, try `GROQ_MODEL_PRIMARY=meta-llama/llama-4-maverick-17b-128e-instruct` or `GROQ_MODEL_PRIMARY=qwen/qwen3-32b`
+- Consider reducing heartbeat interval and stale pipeline thresholds for faster Groq pipelines
+
 ## 2026-03-02 — Session 18
 **Sprint:** 18 | **Story:** Cover Letter Frontend + Tech Debt
 **Summary:** Delivered a complete cover letter frontend connecting to the existing 2-agent backend pipeline, cleaned up 2 tech debt items.

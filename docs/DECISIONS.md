@@ -309,3 +309,11 @@ Sticky sessions solve 95% of the scaling problem with zero code changes. Railway
 **Decision:** Add `'cover-letter'` to the `View` type union. ProductCatalogGrid CTA navigates to `/cover-letter`. `navigateTo()` and `popstate` handler recognize the new path.
 **Reasoning:** Consistent with the existing routing pattern. Each product gets its own view and URL path. The ToolsScreen's `onNavigate` is updated to pass `/cover-letter` through to the App router rather than treating it as a `/tools/*` subpath.
 **Consequences:** `App.tsx` renders `CoverLetterScreen` when `view === 'cover-letter'`. The cover letter product in `PRODUCT_CATALOG` uses route `/cover-letter` (not `/tools/cover-letter`) and status `'active'`.
+
+## ADR-027: Groq as Alternative LLM Provider for Latency Reduction
+**Date:** 2026-03-02
+**Status:** accepted
+**Context:** Z.AI has 1-5 minute latency per LLM call. A balanced pipeline makes ~30-40 calls, resulting in 15-30+ minute total pipeline time — the #1 UX pain point. Groq offers sub-second latency via custom LPU hardware with OpenAI-compatible API.
+**Decision:** Add `GroqProvider` class (extends `ZAIProvider` with shorter timeouts) and provider-aware model tier mapping. Selectable via `LLM_PROVIDER=groq` + `GROQ_API_KEY`. Z.AI remains available as `LLM_PROVIDER=zai`. Default model mapping: PRIMARY → `llama-3.3-70b-versatile` ($0.59/$0.79), MID → `llama-4-scout` ($0.11/$0.34), ORCHESTRATOR/LIGHT → `llama-3.1-8b-instant` ($0.05/$0.08). All models overridable via `GROQ_MODEL_{TIER}` env vars.
+**Reasoning:** Groq's LPU architecture delivers deterministic sub-second latency (400-1500 tok/sec). Estimated pipeline time drops from 15-30 min to 1-3 min. Cost is ~$0.12/pipeline vs $0.26 on Z.AI (~54% savings). The OpenAI-compatible API means `GroqProvider` reuses all of `ZAIProvider`'s message translation, streaming, and tool-call parsing — only timeouts and base URL differ. SiliconFlow was considered but has less proven infrastructure and fewer model options.
+**Consequences:** `ZAIConfig` now accepts optional `chatTimeoutMs`/`streamTimeoutMs`/`providerName` fields (backward compatible). Groq uses 30s chat / 60s stream timeouts (vs Z.AI's 180s/300s). The heartbeat workaround and stale pipeline recovery may need tuning for faster pipelines. Quality should be validated with 3-5 full pipeline runs before production switch.

@@ -348,23 +348,34 @@ export class AnthropicProvider implements LLMProvider {
 interface ZAIConfig {
   apiKey: string;
   baseUrl: string;
+  /** Override provider name (default: 'zai'). Used by GroqProvider. */
+  providerName?: string;
+  /** Chat (non-streaming) timeout in ms. Default: 180_000 (3 min). */
+  chatTimeoutMs?: number;
+  /** Streaming timeout in ms. Default: 300_000 (5 min). */
+  streamTimeoutMs?: number;
 }
 
 export class ZAIProvider implements LLMProvider {
-  readonly name = 'zai';
+  readonly name: string;
   private apiKey: string;
   private baseUrl: string;
+  private chatTimeoutMs: number;
+  private streamTimeoutMs: number;
 
   constructor(config: ZAIConfig) {
+    this.name = config.providerName ?? 'zai';
     this.apiKey = config.apiKey;
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
+    this.chatTimeoutMs = config.chatTimeoutMs ?? 180_000;
+    this.streamTimeoutMs = config.streamTimeoutMs ?? 300_000;
   }
 
   async chat(params: ChatParams): Promise<ChatResponse> {
     const body = this.buildRequestBody(params, false);
     const { signal: combinedSignal, cleanup: cleanupCombinedSignal } = createCombinedAbortSignal(
       params.signal,
-      180_000,
+      this.chatTimeoutMs,
     );
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -379,7 +390,7 @@ export class ZAIProvider implements LLMProvider {
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        throw new Error(`ZAI API error ${response.status}: ${errText}`);
+        throw new Error(`${this.name} API error ${response.status}: ${errText}`);
       }
 
       const data = await response.json() as OpenAIChatResponse;
@@ -395,7 +406,7 @@ export class ZAIProvider implements LLMProvider {
     const body = this.buildRequestBody(params, true);
     const { signal: combinedSignal, cleanup: cleanupCombinedSignal } = createCombinedAbortSignal(
       params.signal,
-      300_000,
+      this.streamTimeoutMs,
     );
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     // Hoisted so the finally block can record partial usage on interruption.
@@ -416,11 +427,11 @@ export class ZAIProvider implements LLMProvider {
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        throw new Error(`ZAI API error ${response.status}: ${errText}`);
+        throw new Error(`${this.name} API error ${response.status}: ${errText}`);
       }
 
       if (!response.body) {
-        throw new Error('ZAI API returned no body for stream');
+        throw new Error(`${this.name} API returned no body for stream`);
       }
 
       // Parse SSE stream
@@ -688,6 +699,25 @@ export class ZAIProvider implements LLMProvider {
         output_tokens: data.usage?.completion_tokens ?? 0,
       },
     };
+  }
+}
+
+// ─── Groq provider (OpenAI-compatible, low-latency) ──────────────────
+
+interface GroqConfig {
+  apiKey: string;
+  baseUrl?: string;
+}
+
+export class GroqProvider extends ZAIProvider {
+  constructor(config: GroqConfig) {
+    super({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl ?? 'https://api.groq.com/openai/v1',
+      providerName: 'groq',
+      chatTimeoutMs: 30_000,
+      streamTimeoutMs: 60_000,
+    });
   }
 }
 
