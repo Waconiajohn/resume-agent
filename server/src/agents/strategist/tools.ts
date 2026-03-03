@@ -578,10 +578,46 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
       submitted_at: string;
     };
 
-    const answers = extractInterviewAnswers(
+    let answers = extractInterviewAnswers(
       typedSubmission as import('../types.js').QuestionnaireSubmission,
       positioningQuestions,
     );
+
+    // Fallback: if extractInterviewAnswers returns empty (e.g., malformed submission from
+    // auto-responders or non-standard clients), try to extract from alternative formats
+    if (answers.length === 0 && submission && typeof submission === 'object') {
+      const rawSub = submission as Record<string, unknown>;
+      // Handle {answers: [{question_id, answer}]} format
+      const rawAnswers = Array.isArray(rawSub.answers) ? rawSub.answers as Record<string, unknown>[] : [];
+      if (rawAnswers.length > 0) {
+        answers = rawAnswers.map((ra, i) => {
+          const q = positioningQuestions[i] ?? positioningQuestions[0];
+          return {
+            question_id: q?.id ?? `fallback_${i}`,
+            question_text: q?.question_text ?? String(ra.question_id ?? `Question ${i + 1}`),
+            category: q?.category ?? 'requirement_mapped',
+            answer: String(ra.answer ?? ra.custom_text ?? ''),
+            timestamp: new Date().toISOString(),
+          };
+        }).filter(a => a.answer.trim().length > 0);
+      }
+      // Handle simple {responses: [{custom_text}]} without matching question IDs
+      if (answers.length === 0 && Array.isArray(rawSub.responses)) {
+        const rawResps = rawSub.responses as Record<string, unknown>[];
+        answers = rawResps
+          .filter(r => r.custom_text && String(r.custom_text).trim())
+          .map((r, i) => {
+            const q = positioningQuestions[i] ?? positioningQuestions[0];
+            return {
+              question_id: q?.id ?? `fallback_${i}`,
+              question_text: q?.question_text ?? `Question ${i + 1}`,
+              category: q?.category ?? 'requirement_mapped',
+              answer: String(r.custom_text),
+              timestamp: new Date().toISOString(),
+            };
+          });
+      }
+    }
 
     // Persist answers to scratchpad + pipeline state (same format as interview_candidate)
     if (!ctx.scratchpad.interview_answers) {

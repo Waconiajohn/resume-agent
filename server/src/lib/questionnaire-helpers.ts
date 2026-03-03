@@ -120,7 +120,11 @@ export function extractInterviewAnswers(
 }> {
   const questionMap = new Map(originals.map(q => [q.id, q]));
 
-  return submission.responses
+  // Defensive: gate response may arrive in non-standard format (e.g., {answers: [...]})
+  const responses = Array.isArray(submission?.responses) ? submission.responses : [];
+  if (responses.length === 0) return [];
+
+  return responses
     .filter(r => !r.skipped)
     .map(r => {
       const original = questionMap.get(r.question_id);

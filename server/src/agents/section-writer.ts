@@ -164,20 +164,31 @@ VOICE & AUTHENTICITY:
 - Authentic voice beats resume-speak. "Grew the team from 3 to 40 people" beats "Scaled organizational headcount by 1233%."
 - If the candidate describes something with a vivid phrase, keep it. That is what makes this resume theirs.
 
-RULES:
+CRITICAL — HONESTY RULES (NEVER VIOLATE):
+- NEVER fabricate metrics, percentages, dollar amounts, team sizes, or any specific numbers that are not explicitly stated in the evidence sources or blueprint.
+- NEVER invent achievements, scope, titles, or credentials. Every claim must trace back to the evidence.
+- If a specific number is not in the evidence, use qualitative scale language: "enterprise-wide," "cross-functional," "organization-wide" — do NOT make up a number.
+- If the original resume says "$18B annual transaction volume," you may use that exact number. Do NOT round it, inflate it, or change it.
+
+WRITING RULES:
 - Follow the blueprint instructions. Add creative interpretation where the blueprint provides strategic direction rather than prescriptive bullet instructions.
-- Every bullet must have at least one quantified element (number, percentage, dollar amount, scale).
+- Rewrite and improve every bullet for maximum impact — do NOT copy bullets verbatim from the evidence sources. Your job is to make them stronger, not to echo them.
+- Every bullet must have at least one quantified element (number, percentage, dollar amount, scale) — but ONLY from the evidence.
 - Use the candidate's authentic phrases where specified. Do NOT replace them with corporate-speak.
 - Vary sentence structure. Never start 3+ bullets the same way.
 - Avoid: "leveraged," "spearheaded," "synergized," "passionate about," "proven track record," "results-oriented"
 - Use strong, specific action verbs: Built, Designed, Negotiated, Reduced, Implemented, Transformed
 - Keep bullets concise: 1-2 lines each, front-loaded with the most important information.
-- Do NOT fabricate metrics or scope that aren't in the evidence sources.
-- If the evidence doesn't include a specific number, use qualitative impact language instead of making one up.
 - Never use vertical bar separators (" | ") in any resume line; use commas, semicolons, or line breaks.
 ${ATS_RULEBOOK_SNIPPET}
 
-Return your output as JSON with: content (the section text), keywords_used, requirements_addressed, evidence_ids_used.`;
+Return your output as ONLY valid JSON — no markdown, no explanation, no text before or after the JSON:
+{
+  "content": "The complete section content as formatted text",
+  "keywords_used": ["keywords present in the section"],
+  "requirements_addressed": ["JD requirements addressed by this section"],
+  "evidence_ids_used": ["evidence IDs from the evidence library used"]
+}`;
 
 // ─── Prompt builders ─────────────────────────────────────────────────
 
@@ -222,10 +233,12 @@ function buildSectionPrompt(
   // Section-specific instructions
   switch (section) {
     case 'summary':
-      lines.push('Write a professional summary (NOT an objective statement).');
+      lines.push('Write a 3-5 sentence professional summary (NOT an objective statement).');
       lines.push('Include the positioning angle, must-include elements, and embedded keywords.');
       lines.push('Echo the authentic phrases naturally — don\'t force them.');
       lines.push('If a gap reframe is specified, weave it in subtly.');
+      lines.push('CRITICAL: Only use metrics that appear in the evidence sources. Do NOT invent percentages, dollar amounts, or team sizes.');
+      lines.push('Target the summary toward the specific company and role in the blueprint.');
       break;
 
     case 'selected_accomplishments':
@@ -235,9 +248,20 @@ function buildSectionPrompt(
       break;
 
     case 'skills':
-      lines.push('Organize skills into the categories specified in the blueprint.');
+      lines.push('Write a skills section organized into categories from the blueprint.');
       lines.push('List the most JD-relevant category first.');
       lines.push('Remove any skills flagged for age protection.');
+      lines.push('');
+      lines.push('FORMAT — Use this exact structure:');
+      lines.push('[Category Name]: [Skill 1], [Skill 2], [Skill 3], ...');
+      lines.push('[Category Name]: [Skill 1], [Skill 2], ...');
+      lines.push('');
+      lines.push('Example:');
+      lines.push('Technical Leadership: Engineering Strategy, Architecture Review, Technical Roadmapping, M&A Due Diligence');
+      lines.push('Cloud & Infrastructure: AWS, GCP, Kubernetes, Terraform, Microservices, Event-Driven Architecture');
+      lines.push('');
+      lines.push('If the blueprint does not specify categories, create 3-4 logical groupings from the evidence.');
+      lines.push('Include 4-8 skills per category. Prioritize skills mentioned in the job description.');
       break;
 
     case 'education_and_certifications':
@@ -247,18 +271,32 @@ function buildSectionPrompt(
 
     default:
       if (section === 'experience' || section.startsWith('experience_role_')) {
-        lines.push('Write the experience entry for this specific role.');
+        lines.push('Write the COMPLETE experience section covering ALL positions listed in the blueprint.');
+        lines.push('');
+        lines.push('FORMAT — Each position MUST follow this exact structure:');
+        lines.push('');
+        lines.push('[Title] | [Company] | [Start Date] – [End Date]');
+        lines.push('• [Bullet 1: Action verb + specific achievement + quantified result from evidence]');
+        lines.push('• [Bullet 2: ...]');
+        lines.push('• [Continue for each bullet specified in the blueprint]');
+        lines.push('');
+        lines.push('IMPORTANT:');
+        lines.push('- Include EVERY position from the blueprint — do not skip any roles.');
+        lines.push('- Rewrite each bullet to be stronger and more impactful than the original — do NOT just copy bullets from the evidence.');
+        lines.push('- Start each bullet with a strong action verb (Built, Architected, Reduced, Drove, Led, Designed, Established).');
+        lines.push('- Each bullet must contain a specific, measurable result from the evidence. Do NOT invent new metrics.');
+        lines.push('- Front-load bullets with the most impressive achievement.');
+        lines.push('');
 
         // Detect strategic vs prescriptive mode from blueprint slice
         if (hasEvidencePriorities(blueprint)) {
-          lines.push('');
           lines.push('STRATEGIC MODE — You have creative freedom for this section.');
           lines.push('The blueprint provides evidence_priorities: requirements to address, available evidence, and importance levels.');
           lines.push('You decide how to construct each bullet. Address "critical" priorities first, then "important", then "supporting".');
           lines.push('Use the bullet_count_range as your target. Do not include topics listed in do_not_include.');
-          lines.push('Each bullet should address one requirement using the available evidence. Front-load with impact.');
         } else {
           lines.push('Follow bullet instructions: each bullet has a focus, evidence source, and target metric.');
+          lines.push('Improve every bullet for narrative impact — do not copy them mechanically.');
         }
 
         lines.push('Keep bullets that are marked to keep. Remove bullets marked to cut.');
@@ -268,12 +306,12 @@ function buildSectionPrompt(
   }
 
   lines.push('');
-  lines.push('Return ONLY valid JSON:');
+  lines.push('Return ONLY valid JSON — no markdown fences, no explanation, no text before or after:');
   lines.push('{');
-  lines.push('  "content": "The complete section content as formatted text",');
-  lines.push('  "keywords_used": ["keywords present in the section"],');
-  lines.push('  "requirements_addressed": ["JD requirements addressed by this section"],');
-  lines.push('  "evidence_ids_used": ["evidence IDs from the evidence library used"]');
+  lines.push('  "content": "The complete section content as a single string. Use \\n for line breaks between entries.",');
+  lines.push('  "keywords_used": ["keyword1", "keyword2"],');
+  lines.push('  "requirements_addressed": ["requirement1", "requirement2"],');
+  lines.push('  "evidence_ids_used": ["id1", "id2"]');
   lines.push('}');
 
   return lines.join('\n');

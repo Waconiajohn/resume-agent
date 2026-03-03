@@ -47,12 +47,12 @@ export const craftsmanConfig: ResumeAgentConfig = {
   model: MODEL_ORCHESTRATOR_COMPLEX,
 
   /**
-   * 15 rounds gives the Craftsman enough headroom for a realistic session:
-   * Per section: ~5 rounds (write + self-review + anti-patterns + keywords + present)
-   * Plus revision cycles when user requests changes or self-review fails.
-   * A typical 5-section resume uses ~10-12 rounds.
+   * Per section: ~5-7 rounds (write + self-review + anti-patterns + keywords + present + transparency).
+   * On providers that disable parallel tool calls (Groq), each tool is its own round.
+   * A 5-section resume (summary + accomplishments + experience + skills + education)
+   * needs 25-35 rounds. 40 provides headroom for revision cycles.
    */
-  max_rounds: 15,
+  max_rounds: 40,
 
   /** 3 minutes per round — section writing (MODEL_PRIMARY) can be slow */
   round_timeout_ms: 180_000,
