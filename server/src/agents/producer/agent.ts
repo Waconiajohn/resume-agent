@@ -17,7 +17,7 @@
  * Max rounds: 8 (template + 5 checks + triage + emit)
  */
 
-import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
+import { MODEL_ORCHESTRATOR_COMPLEX } from '../../lib/llm.js';
 import { PRODUCER_SYSTEM_PROMPT } from './prompts.js';
 import { producerTools } from './tools.js';
 import type { ResumeAgentConfig } from '../types.js';
@@ -31,14 +31,25 @@ export const producerConfig: ResumeAgentConfig = {
   system_prompt: PRODUCER_SYSTEM_PROMPT,
   tools: producerTools,
   capabilities: ['quality_review', 'document_production', 'ats_compliance', 'template_selection'],
-  model: MODEL_ORCHESTRATOR,
-  max_rounds: 8,
+  /**
+   * Uses MODEL_ORCHESTRATOR_COMPLEX — Producer tools have complex nested schemas
+   * (adversarial_review, check_blueprint_compliance, etc.) that require a model
+   * stronger than Groq's 8B for reliable tool calling.
+   */
+  model: MODEL_ORCHESTRATOR_COMPLEX,
+  /**
+   * Max LLM round-trips. Producer calls ~7-9 tools sequentially:
+   * 1 select_template + 3 structural checks + 3 content checks + 1-2 triage/emit.
+   * On providers that disable parallel tool calls (Groq), each tool is its own round.
+   */
+  max_rounds: 15,
   round_timeout_ms: 120_000,   // 2 min per round
   overall_timeout_ms: 600_000, // 10 min total
 
   /**
    * All Producer tools are independent LLM calls or read-only checks — safe to run in parallel.
    * The Producer's checks don't mutate shared state; they only read the assembled resume and emit scores.
+   * On providers supporting parallel tool calls, the runtime executes these concurrently.
    */
   parallel_safe_tools: [
     'verify_cross_section_consistency',
@@ -50,8 +61,11 @@ export const producerConfig: ResumeAgentConfig = {
     'emit_transparency',
   ],
 
-  /** Producer loop is coordination; individual tools handle their own token limits */
-  loop_max_tokens: 2048,
+  /**
+   * Producer tools pass large payloads (assembled_resume, blueprint, evidence_library)
+   * as parameters. adversarial_review alone can be 3-4K tokens. 8192 prevents truncation.
+   */
+  loop_max_tokens: 8192,
 };
 
 registerAgent(producerConfig);

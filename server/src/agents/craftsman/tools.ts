@@ -181,8 +181,7 @@ const writeSectionTool: ResumeAgentTool = {
         description: 'The blueprint instructions for this specific section from ArchitectOutput',
       },
       evidence_sources: {
-        type: 'object',
-        description: 'Relevant evidence items from the positioning profile evidence library',
+        description: 'Relevant evidence items from the positioning profile evidence library. Pass as an object map or array of evidence items. Can be empty ({} or []) if no evidence applies.',
       },
       global_rules: {
         type: 'object',
@@ -202,7 +201,11 @@ const writeSectionTool: ResumeAgentTool = {
   async execute(input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
     const section = input.section as string;
     const blueprint_slice = input.blueprint_slice as Record<string, unknown>;
-    const evidence_sources = input.evidence_sources as Record<string, unknown>;
+    // Groq models may send evidence_sources as an array or object — normalize to object
+    const rawEvidence = input.evidence_sources;
+    const evidence_sources: Record<string, unknown> = Array.isArray(rawEvidence)
+      ? Object.fromEntries((rawEvidence as unknown[]).map((item, i) => [`evidence_${i}`, item]))
+      : (rawEvidence as Record<string, unknown>) ?? {};
     const global_rules = input.global_rules as ArchitectOutput['global_rules'];
 
     // Build cross-section context from previously completed sections (sliding window)

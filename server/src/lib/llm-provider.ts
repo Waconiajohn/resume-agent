@@ -354,6 +354,8 @@ interface ZAIConfig {
   chatTimeoutMs?: number;
   /** Streaming timeout in ms. Default: 300_000 (5 min). */
   streamTimeoutMs?: number;
+  /** Disable parallel tool calls. Groq's Llama models need this to avoid XML-format tool call failures. */
+  disableParallelToolCalls?: boolean;
 }
 
 export class ZAIProvider implements LLMProvider {
@@ -362,6 +364,7 @@ export class ZAIProvider implements LLMProvider {
   private baseUrl: string;
   private chatTimeoutMs: number;
   private streamTimeoutMs: number;
+  private disableParallelToolCalls: boolean;
 
   constructor(config: ZAIConfig) {
     this.name = config.providerName ?? 'zai';
@@ -369,6 +372,7 @@ export class ZAIProvider implements LLMProvider {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.chatTimeoutMs = config.chatTimeoutMs ?? 180_000;
     this.streamTimeoutMs = config.streamTimeoutMs ?? 300_000;
+    this.disableParallelToolCalls = config.disableParallelToolCalls ?? false;
   }
 
   async chat(params: ChatParams): Promise<ChatResponse> {
@@ -390,6 +394,18 @@ export class ZAIProvider implements LLMProvider {
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
+
+        // Groq returns 400 with tool_use_failed when the model generates tool call
+        // parameters that don't match the schema. Instead of crashing, try to recover
+        // by extracting the failed_generation and parsing the tool calls ourselves.
+        if (response.status === 400 && errText.includes('tool_use_failed')) {
+          const recovered = this.recoverFromToolValidation(errText);
+          if (recovered) {
+            logger.warn({ provider: this.name }, 'Recovered tool call from Groq tool_use_failed response');
+            return recovered;
+          }
+        }
+
         throw new Error(`${this.name} API error ${response.status}: ${errText}`);
       }
 
@@ -568,8 +584,17 @@ export class ZAIProvider implements LLMProvider {
           name: t.name,
           description: t.description,
           parameters: t.input_schema,
+          // Disable strict server-side parameter validation on Groq.
+          // Groq validates tool call params against the schema and returns 400
+          // for type mismatches (e.g. array vs object). Our agent loop handles
+          // coercion defensively instead.
+          ...(this.disableParallelToolCalls && { strict: false }),
         },
       }));
+
+      if (this.disableParallelToolCalls) {
+        body.parallel_tool_calls = false;
+      }
     }
 
     if (params.tool_choice) {
@@ -667,6 +692,146 @@ export class ZAIProvider implements LLMProvider {
     return result;
   }
 
+  /**
+   * Recover tool calls from Groq's tool_use_failed 400 response.
+   * Groq includes the model's attempted tool call in `failed_generation`.
+   * Handles both JSON format and XML format (<function=name>{params}</function>).
+   *
+   * When the model generates multiple tool calls (despite parallel_tool_calls=false),
+   * we recover only the FIRST valid tool call. This prevents issues with truncated
+   * multi-tool outputs and respects sequential execution semantics.
+   */
+  private recoverFromToolValidation(errText: string): ChatResponse | null {
+    try {
+      const errData = JSON.parse(errText) as {
+        error?: { failed_generation?: string };
+      };
+      const failedGen = errData?.error?.failed_generation;
+      if (!failedGen) return null;
+
+      const tool_calls: ToolCall[] = [];
+
+      // Try JSON array format first: [{"name":"...", "parameters":{...}}]
+      // The array may be truncated (Groq output limit exceeded), so parse
+      // individual objects even if the overall array is invalid JSON.
+      if (failedGen.trimStart().startsWith('[')) {
+        const extracted = this.extractToolCallsFromTruncatedArray(failedGen);
+        if (extracted.length > 0) {
+          // Only take the first tool call — let the model call others in subsequent rounds
+          const first = extracted[0];
+          tool_calls.push({
+            id: `recovered_${Date.now()}_0`,
+            name: first.name,
+            input: first.parameters ?? {},
+          });
+          logger.info(
+            { recovered: 1, total: extracted.length, firstName: first.name },
+            'Recovered first tool call from truncated array',
+          );
+          return { text: '', tool_calls, usage: { input_tokens: 0, output_tokens: 0 } };
+        }
+      }
+
+      // Try complete JSON parse (single object or well-formed array)
+      try {
+        const parsed = JSON.parse(failedGen);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.name) {
+          tool_calls.push({
+            id: `recovered_${Date.now()}_0`,
+            name: parsed[0].name,
+            input: parsed[0].parameters ?? {},
+          });
+          return { text: '', tool_calls, usage: { input_tokens: 0, output_tokens: 0 } };
+        }
+        if (parsed?.name) {
+          tool_calls.push({
+            id: `recovered_${Date.now()}_0`,
+            name: parsed.name,
+            input: parsed.parameters ?? {},
+          });
+          return { text: '', tool_calls, usage: { input_tokens: 0, output_tokens: 0 } };
+        }
+      } catch { /* Not valid JSON — try XML format */ }
+
+      // Try XML format: <function=name>{params}</function>
+      const xmlPattern = /<function=([^>]+)>([\s\S]*?)<\/function>/g;
+      const match = xmlPattern.exec(failedGen);
+      if (match) {
+        const name = match[1];
+        let input: Record<string, unknown> = {};
+        try {
+          const paramsStr = match[2].replace(/\.\s*$/, '').trim();
+          input = JSON.parse(paramsStr);
+        } catch { /* empty */ }
+        tool_calls.push({ id: `recovered_${Date.now()}_0`, name, input });
+        return { text: '', tool_calls, usage: { input_tokens: 0, output_tokens: 0 } };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Extract complete tool call objects from a potentially truncated JSON array.
+   * Groq may truncate output when the model generates too many tool calls,
+   * resulting in "[{...},{...},{incomplete..." — this extracts the complete ones.
+   */
+  private extractToolCallsFromTruncatedArray(
+    text: string,
+  ): Array<{ name: string; parameters: Record<string, unknown> }> {
+    const results: Array<{ name: string; parameters: Record<string, unknown> }> = [];
+
+    // Find each top-level object in the array by tracking brace depth
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    let objStart = -1;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (ch === '\\' && inString) {
+        escape = true;
+        continue;
+      }
+
+      if (ch === '"' && !escape) {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (ch === '{') {
+        if (depth === 0) objStart = i;
+        depth++;
+      } else if (ch === '}') {
+        depth--;
+        if (depth === 0 && objStart >= 0) {
+          const objStr = text.slice(objStart, i + 1);
+          try {
+            const obj = JSON.parse(objStr) as { name?: string; parameters?: Record<string, unknown> };
+            if (obj.name) {
+              results.push({ name: obj.name, parameters: obj.parameters ?? {} });
+            }
+          } catch {
+            // Incomplete or malformed — skip
+          }
+          objStart = -1;
+        }
+      }
+    }
+
+    return results;
+  }
+
   private parseResponse(data: OpenAIChatResponse): ChatResponse {
     const choice = data.choices?.[0];
     const message = choice?.message;
@@ -717,6 +882,7 @@ export class GroqProvider extends ZAIProvider {
       providerName: 'groq',
       chatTimeoutMs: 30_000,
       streamTimeoutMs: 60_000,
+      disableParallelToolCalls: true,
     });
   }
 }

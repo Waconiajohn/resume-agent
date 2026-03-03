@@ -27,10 +27,13 @@ const GROQ_MODEL_PRIMARY = process.env.GROQ_MODEL_PRIMARY ?? 'llama-3.3-70b-vers
 /** Mid-tier analysis — llama-4-scout ($0.11/$0.34 per M tokens) */
 const GROQ_MODEL_MID = process.env.GROQ_MODEL_MID ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
 
-/** Main loop orchestrator — llama-3.1-8b ($0.05/$0.08 per M tokens) */
-const GROQ_MODEL_ORCHESTRATOR = process.env.GROQ_MODEL_ORCHESTRATOR ?? 'llama-3.1-8b-instant';
+/** Main loop orchestrator — llama-4-scout ($0.11/$0.34 per M tokens).
+ *  8B model is unreliable for tool calling on Groq (generates XML format,
+ *  stringifies parameters). Scout handles tool schemas correctly. */
+const GROQ_MODEL_ORCHESTRATOR = process.env.GROQ_MODEL_ORCHESTRATOR ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
 
-/** Lightweight extraction — llama-3.1-8b ($0.05/$0.08 per M tokens) */
+/** Lightweight extraction — llama-3.1-8b ($0.05/$0.08 per M tokens).
+ *  8B is fine for non-tool-calling tasks (text extraction, analysis). */
 const GROQ_MODEL_LIGHT = process.env.GROQ_MODEL_LIGHT ?? 'llama-3.1-8b-instant';
 
 // ─── Provider-aware model exports ────────────────────────────────────
@@ -43,6 +46,14 @@ export const MODEL_PRIMARY = selectModel(ZAI_MODEL_PRIMARY, GROQ_MODEL_PRIMARY);
 export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID);
 export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR);
 export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT);
+
+/**
+ * Orchestrator model for agent loops with complex nested tool schemas.
+ * Groq's 8B model (MODEL_ORCHESTRATOR) can't reliably generate nested object
+ * parameters in tool calls — uses Scout (MID) instead.
+ * On Z.AI, the flashx orchestrator model handles complex schemas fine.
+ */
+export const MODEL_ORCHESTRATOR_COMPLEX = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_MID);
 
 export const MAX_TOKENS = parseInt(process.env.MAX_TOKENS ?? '8192', 10);
 

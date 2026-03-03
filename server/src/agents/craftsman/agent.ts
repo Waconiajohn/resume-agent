@@ -13,7 +13,7 @@
  *           evidence-integrity, present-to-user, transparency)
  */
 
-import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
+import { MODEL_ORCHESTRATOR_COMPLEX } from '../../lib/llm.js';
 import type { ResumeAgentConfig } from '../types.js';
 import { registerAgent } from '../runtime/agent-registry.js';
 import { CRAFTSMAN_SYSTEM_PROMPT } from './prompts.js';
@@ -32,7 +32,11 @@ export const craftsmanConfig: ResumeAgentConfig = {
   capabilities: ['content_creation', 'self_review', 'section_writing', 'revision'],
 
   /**
-   * Main loop uses MODEL_ORCHESTRATOR — coordination logic between tools.
+   * Main loop uses MODEL_ORCHESTRATOR_COMPLEX — coordination logic between tools.
+   * On Groq, the 8B orchestrator model can't generate complex nested tool call
+   * parameters (write_section has nested objects). Uses Scout (MID) on Groq,
+   * falls back to cheap flashx on Z.AI.
+   *
    * Each tool routes to the appropriate cost tier internally:
    *   - write_section / revise_section → MODEL_PRIMARY (via runSectionWriter/runSectionRevision)
    *   - self_review_section → MODEL_MID
@@ -40,7 +44,7 @@ export const craftsmanConfig: ResumeAgentConfig = {
    *   - check_keyword_coverage / check_anti_patterns → no LLM
    *   - present_to_user / emit_transparency → no LLM
    */
-  model: MODEL_ORCHESTRATOR,
+  model: MODEL_ORCHESTRATOR_COMPLEX,
 
   /**
    * 15 rounds gives the Craftsman enough headroom for a realistic session:

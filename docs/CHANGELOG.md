@@ -1,5 +1,44 @@
 # Changelog — Resume Agent
 
+## 2026-03-03 — Session 20
+**Sprint:** 19 | **Story:** Groq Pipeline Hardening — Full E2E on Groq
+**Summary:** Fixed 4 Groq-specific tool calling failures and achieved a full end-to-end pipeline on Groq in ~1m42s (vs 15-30 min on Z.AI). All three agent phases (Strategist, Craftsman, Producer) now work on Groq.
+
+### Changes Made
+- `server/src/lib/llm.ts` — Changed `GROQ_MODEL_ORCHESTRATOR` from 8B (`llama-3.1-8b-instant`) to Scout (`meta-llama/llama-4-scout-17b-16e-instruct`) — 8B is unreliable for tool calling on Groq (generates XML format, stringifies parameters). Added `MODEL_ORCHESTRATOR_COMPLEX` constant that maps to Scout (MID) on Groq, flashx (ORCHESTRATOR) on Z.AI — for agent loops with complex nested tool schemas.
+- `server/src/lib/llm-provider.ts` — Added `disableParallelToolCalls` config option to `ZAIConfig`, sends `parallel_tool_calls: false` and `strict: false` on tool definitions for Groq. Added `recoverFromToolValidation()` method that extracts tool calls from Groq's `tool_use_failed` 400 responses — handles both JSON arrays and XML-format (`<function=name>{params}</function>`) failed generations. Added `extractToolCallsFromTruncatedArray()` for recovering first valid tool call from output-truncated multi-tool arrays. Recovery limits to first tool call to enforce sequential execution semantics.
+- `server/src/agents/runtime/agent-loop.ts` — Added `coerceToolParameters()` function that defensively parses stringified JSON parameters back to objects/arrays based on the tool's input_schema. Applied to both sequential and parallel tool execution paths.
+- `server/src/agents/craftsman/tools.ts` — Fixed `evidence_sources` schema in `write_section`: removed `type: 'object'` constraint, added normalize logic to convert array evidence to object map in execute function. Scout model sends arrays instead of objects.
+- `server/src/agents/craftsman/agent.ts` — Changed model from `MODEL_ORCHESTRATOR` to `MODEL_ORCHESTRATOR_COMPLEX` for reliable tool calling with complex nested section schemas on Groq.
+- `server/src/agents/producer/agent.ts` — Changed model to `MODEL_ORCHESTRATOR_COMPLEX`. Increased `max_rounds` from 8 to 15 (sequential tool calling on Groq needs more rounds). Increased `loop_max_tokens` from 2048 to 8192 (adversarial_review passes entire assembled resume as parameter).
+- `server/src/agents/producer/prompts.ts` — Removed "Batch independent checks in the same round" instruction from Producer prompt. Changed to "Call each tool individually — the runtime handles parallel execution when safe." This prevents Groq models from generating multi-tool responses that exceed output limits.
+- `server/src/lib/json-repair.ts` — Added `stripJsonComments()` function to strip `//` and `/* */` comments from LLM-generated JSON before parsing. Llama models sometimes add comments to JSON output.
+
+### Decisions Made
+- **8B → Scout for ORCHESTRATOR on Groq**: `llama-3.1-8b-instant` generates XML-style `<function=name>{params}</function>` instead of proper tool_calls format ~20% of the time. This is unfixable at the prompt level. Scout handles tool schemas correctly. 8B kept for LIGHT tier (non-tool-calling tasks).
+- **Recovery-first strategy for tool validation**: Rather than trying to prevent all Groq validation errors, we recover from them. `recoverFromToolValidation()` extracts the first tool call from Groq's `failed_generation` field, supporting both JSON and XML formats.
+- **First-tool-only recovery**: When recovering from truncated multi-tool outputs, take only the first complete tool call. The model will call remaining tools in subsequent rounds. This is safer than trying to parse incomplete JSON.
+- **Prompt-level sequential enforcement**: Telling the model to "call each tool individually" is more reliable than relying on Groq's `parallel_tool_calls: false` parameter, which the model doesn't always respect.
+
+### Pipeline Performance (Groq vs Z.AI)
+| Phase | Z.AI | Groq |
+|-------|------|------|
+| Strategist (intake + interview) | 5-15 min | ~32s |
+| Craftsman (3 sections + review) | 5-10 min | ~39s |
+| Producer (quality review) | 3-5 min | ~31s |
+| **Total** | **15-30 min** | **~1m 42s** |
+
+### Known Issues
+- Groq `llm_provider` column in DB still shows 'zai' (cosmetic — the `LLM_PROVIDER` env var controls actual provider)
+- Usage tracking shows 0 tokens for Groq pipeline (flush timing issue — usage accumulator may not persist before session cleanup)
+- Resume writing quality with llama-3.3-70b-versatile needs validation against Z.AI glm-4.7 baseline
+
+### Next Steps
+- Run 3-5 additional pipelines to validate stability
+- A/B compare resume writing quality (Groq vs Z.AI)
+- Fix usage tracking persistence for Groq (shorter flush intervals)
+- Consider reducing heartbeat/stale thresholds for Groq's faster pipelines
+
 ## 2026-03-02 — Session 19
 **Sprint:** 19 | **Story:** Add Groq LLM Provider
 **Summary:** Added Groq as an alternative LLM provider to reduce pipeline latency from 15-30 min to an estimated 1-3 min, at ~54% lower cost.

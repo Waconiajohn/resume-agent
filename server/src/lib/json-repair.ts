@@ -16,7 +16,12 @@ export function repairJSON<T>(text: string): T | null {
   // Step 1: Strip markdown fences
   let cleaned = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
-  // Step 2: Direct parse attempt
+  // Step 2: Strip JavaScript-style comments (common with Llama/Groq models)
+  // Single-line comments: // ... to end of line (only outside strings)
+  // Block comments: /* ... */
+  cleaned = stripJsonComments(cleaned);
+
+  // Step 3: Direct parse attempt
   try {
     return JSON.parse(cleaned) as T;
   } catch {
@@ -113,4 +118,62 @@ export function repairJSON<T>(text: string): T | null {
   // Step 8: Give up — log raw snippet for debugging
   logger.warn({ rawSnippet: text.substring(0, 300) }, 'Failed to repair JSON');
   return null;
+}
+
+/**
+ * Strip JavaScript-style comments from a JSON-like string.
+ * Handles both single-line (//) and block comments, while
+ * preserving // inside quoted strings (e.g. URLs).
+ */
+function stripJsonComments(text: string): string {
+  let result = '';
+  let i = 0;
+  let inString = false;
+  let escape = false;
+
+  while (i < text.length) {
+    const ch = text[i];
+
+    if (escape) {
+      result += ch;
+      escape = false;
+      i++;
+      continue;
+    }
+
+    if (inString) {
+      if (ch === '\\') escape = true;
+      else if (ch === '"') inString = false;
+      result += ch;
+      i++;
+      continue;
+    }
+
+    // Not inside a string
+    if (ch === '"') {
+      inString = true;
+      result += ch;
+      i++;
+      continue;
+    }
+
+    // Single-line comment
+    if (ch === '/' && text[i + 1] === '/') {
+      const eol = text.indexOf('\n', i);
+      i = eol < 0 ? text.length : eol;
+      continue;
+    }
+
+    // Block comment
+    if (ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2);
+      i = end < 0 ? text.length : end + 2;
+      continue;
+    }
+
+    result += ch;
+    i++;
+  }
+
+  return result;
 }

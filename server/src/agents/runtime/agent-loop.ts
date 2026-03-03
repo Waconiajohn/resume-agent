@@ -220,9 +220,10 @@ export async function runAgentLoop<
             }
 
             log.info({ tool: tc.name, round }, 'Executing tool (sequential)');
+            const coercedInput = coerceToolParameters(tc.input, tool.input_schema);
 
             try {
-              const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, roundCtx, roundTimeoutMs);
+              const result = await executeToolWithTimeout<TState, TEvent>(tool, coercedInput, roundCtx, roundTimeoutMs);
               const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
               resultMap.set(tc.id, {
                 type: 'tool_result',
@@ -255,7 +256,8 @@ export async function runAgentLoop<
                   return { id: tc.id, content: JSON.stringify({ error: `Unknown tool: ${tc.name}` }) };
                 }
                 log.info({ tool: tc.name, round }, 'Executing tool (parallel)');
-                const result = await executeToolWithTimeout<TState, TEvent>(tool, tc.input, roundCtx, roundTimeoutMs);
+                const coercedInput = coerceToolParameters(tc.input, tool.input_schema);
+                const result = await executeToolWithTimeout<TState, TEvent>(tool, coercedInput, roundCtx, roundTimeoutMs);
                 const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
                 return { id: tc.id, content: resultStr };
               }),
@@ -438,6 +440,49 @@ function compactConversationHistory(
     messages.push(bridgeMessage);
   }
   messages.push(...recentMessages);
+}
+
+/**
+ * Coerce stringified JSON in tool parameters back to objects/arrays.
+ * Smaller LLMs (Groq 8B) sometimes pass `"[]"` or `"{'key':'val'}"` as strings
+ * instead of proper JSON objects. This defensively parses them based on the
+ * tool's input_schema.
+ */
+function coerceToolParameters(
+  input: Record<string, unknown>,
+  schema: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (!schema) return input;
+  const properties = schema.properties as Record<string, { type?: string }> | undefined;
+  if (!properties) return input;
+
+  let coerced = false;
+  const result = { ...input };
+
+  for (const [key, propSchema] of Object.entries(properties)) {
+    const value = result[key];
+    if (typeof value !== 'string') continue;
+
+    const expectedType = propSchema?.type;
+    if (expectedType === 'object' || expectedType === 'array') {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed === 'object' && parsed !== null) {
+          result[key] = parsed;
+          coerced = true;
+        }
+      } catch {
+        // Not valid JSON — leave as-is, tool execution will handle the error
+      }
+    }
+  }
+
+  if (coerced) {
+    logger.info({ keys: Object.keys(result).filter(k => result[k] !== input[k]) },
+      'Coerced stringified tool parameters to objects');
+  }
+
+  return result;
 }
 
 async function executeToolWithTimeout<
