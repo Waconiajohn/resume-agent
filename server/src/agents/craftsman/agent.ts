@@ -13,7 +13,7 @@
  *           evidence-integrity, present-to-user, transparency)
  */
 
-import { MODEL_ORCHESTRATOR_COMPLEX } from '../../lib/llm.js';
+import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
 import type { ResumeAgentConfig } from '../types.js';
 import { registerAgent } from '../runtime/agent-registry.js';
 import { CRAFTSMAN_SYSTEM_PROMPT } from './prompts.js';
@@ -32,10 +32,9 @@ export const craftsmanConfig: ResumeAgentConfig = {
   capabilities: ['content_creation', 'self_review', 'section_writing', 'revision'],
 
   /**
-   * Main loop uses MODEL_ORCHESTRATOR_COMPLEX — coordination logic between tools.
-   * On Groq, the 8B orchestrator model can't generate complex nested tool call
-   * parameters (write_section has nested objects). Uses Scout (MID) on Groq,
-   * falls back to cheap flashx on Z.AI.
+   * Main loop uses MODEL_ORCHESTRATOR — llama-3.3-70b-versatile on Groq (GA, reliable
+   * tool calling), glm-4.7-flashx on Z.AI. The agent "brain" deciding tool sequencing
+   * should be as capable as the "hands" writing content.
    *
    * Each tool routes to the appropriate cost tier internally:
    *   - write_section / revise_section → MODEL_PRIMARY (via runSectionWriter/runSectionRevision)
@@ -44,7 +43,7 @@ export const craftsmanConfig: ResumeAgentConfig = {
    *   - check_keyword_coverage / check_anti_patterns → no LLM
    *   - present_to_user / emit_transparency → no LLM
    */
-  model: MODEL_ORCHESTRATOR_COMPLEX,
+  model: MODEL_ORCHESTRATOR,
 
   /**
    * Per section: ~5-7 rounds (write + self-review + anti-patterns + keywords + present + transparency).
@@ -54,11 +53,11 @@ export const craftsmanConfig: ResumeAgentConfig = {
    */
   max_rounds: 40,
 
-  /** 3 minutes per round — section writing (MODEL_PRIMARY) can be slow */
-  round_timeout_ms: 180_000,
+  /** 60s per round — Groq 70B responds in <5s. Generous for section writing (MODEL_PRIMARY). */
+  round_timeout_ms: 60_000,
 
-  /** 15 minutes total — covers writing all sections with revision cycles */
-  overall_timeout_ms: 900_000,
+  /** 10 min total — Craftsman has user gates (section approvals) that add wall-clock time. */
+  overall_timeout_ms: 600_000,
 
   /**
    * Tools safe to run concurrently. check_keyword_coverage and check_anti_patterns

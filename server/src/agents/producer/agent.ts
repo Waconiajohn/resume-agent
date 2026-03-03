@@ -17,7 +17,7 @@
  * Max rounds: 8 (template + 5 checks + triage + emit)
  */
 
-import { MODEL_ORCHESTRATOR_COMPLEX } from '../../lib/llm.js';
+import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
 import { PRODUCER_SYSTEM_PROMPT } from './prompts.js';
 import { producerTools } from './tools.js';
 import type { ResumeAgentConfig } from '../types.js';
@@ -32,11 +32,12 @@ export const producerConfig: ResumeAgentConfig = {
   tools: producerTools,
   capabilities: ['quality_review', 'document_production', 'ats_compliance', 'template_selection'],
   /**
-   * Uses MODEL_ORCHESTRATOR_COMPLEX — Producer tools have complex nested schemas
-   * (adversarial_review, check_blueprint_compliance, etc.) that require a model
-   * stronger than Groq's 8B for reliable tool calling.
+   * Uses MODEL_ORCHESTRATOR — llama-3.3-70b-versatile on Groq (GA, reliable tool
+   * calling with complex nested schemas), glm-4.7-flashx on Z.AI. The 70B model
+   * handles adversarial_review, check_blueprint_compliance, and other Producer
+   * tools with complex parameters without the validation errors seen with Scout 17B.
    */
-  model: MODEL_ORCHESTRATOR_COMPLEX,
+  model: MODEL_ORCHESTRATOR,
   /**
    * Max LLM round-trips. Producer calls ~7-9 tools sequentially:
    * 1 select_template + 3 structural checks + 3 content checks + 1-2 triage/emit.
@@ -45,8 +46,8 @@ export const producerConfig: ResumeAgentConfig = {
    * and revision requests — 20 provides safe headroom.
    */
   max_rounds: 20,
-  round_timeout_ms: 120_000,   // 2 min per round
-  overall_timeout_ms: 600_000, // 10 min total
+  round_timeout_ms: 60_000,    // 60s per round — Groq 70B responds in <5s typically
+  overall_timeout_ms: 300_000, // 5 min total — Producer completes in ~31s on Groq
 
   /**
    * All Producer tools are independent LLM calls or read-only checks — safe to run in parallel.

@@ -116,21 +116,31 @@ test.describe('Full Pipeline E2E', () => {
       ).toBeVisible({ timeout: 30_000 });
 
       // Wait for the workspace to show pipeline progress breadcrumb (visible even if panel root has zero height)
+      // Groq responds in <5s typically. 60s is generous but catches cold starts.
       await expect(page.getByText(/Step \d+ of 7 ·/)).toBeVisible({
-        timeout: 5 * 60_000, // 5 min for first LLM response + workspace
+        timeout: 60_000, // 60s for first LLM response (was 5 min for Z.AI)
       });
     });
 
     // Step 5: Run through all pipeline gates automatically
+    let pipelineDurationMs = 0;
     await test.step('Complete all pipeline stages', async () => {
+      const pipelineStart = Date.now();
       await runPipelineToCompletion(page);
+      pipelineDurationMs = Date.now() - pipelineStart;
     });
 
-    // Step 6: Verify completion panel
+    // Step 6: Verify completion panel and pipeline timing
     await test.step('Verify completion panel', async () => {
       await expect(page.getByText('Session Complete')).toBeVisible({
         timeout: 10_000,
       });
+
+      // Groq pipelines should complete within 5 minutes (typically ~2-3 min).
+      // This assertion catches regressions that significantly degrade performance.
+      const pipelineMinutes = pipelineDurationMs / 60_000;
+      console.log(`[test] Pipeline completed in ${pipelineMinutes.toFixed(1)} minutes`);
+      expect(pipelineDurationMs).toBeLessThan(5 * 60_000); // 5 min max
     });
 
     // Step 7: Download resume (PDF — free tier; DOCX requires paid plan)

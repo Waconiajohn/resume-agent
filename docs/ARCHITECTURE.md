@@ -7,10 +7,10 @@
 | Backend | Hono + Node.js | Port 3001, ESM modules |
 | Frontend | Vite + React 19 + TailwindCSS | Port 5173, glass morphism design system |
 | Database | Supabase (PostgreSQL) | RLS on all tables, service-key admin client |
-| Primary LLM | Z.AI GLM models (OpenAI-compatible) | 4-tier model routing |
-| Fallback LLM | Anthropic Claude (optional) | Selectable via `LLM_PROVIDER` env var |
-| E2E Testing | Playwright | Full pipeline tests (~28 min with Z.AI latency) |
-| Unit Testing | Vitest | Server (891 tests) + App (386 tests) |
+| Primary LLM | Groq (LPU inference, OpenAI-compatible) | 4-tier model routing, sub-second latency |
+| Fallback LLM | Z.AI GLM + Anthropic Claude | Selectable via `LLM_PROVIDER` env var |
+| E2E Testing | Playwright | Full pipeline tests (~2-3 min with Groq, 15 min timeout) |
+| Unit Testing | Vitest | Server (891 tests) + App (416 tests) |
 
 ## Monorepo Layout
 
@@ -142,24 +142,45 @@ The registry stores agents as `AgentConfig<BaseState, BaseEvent>` internally. Th
 
 ## LLM Model Routing
 
-`server/src/lib/llm.ts` routes tools to cost-appropriate models. Tools declare their cost tier via the `model_tier` field on `AgentTool`. `resolveToolModel(tool, registry?)` checks `tool.model_tier` first, then falls back to the deprecated `TOOL_MODEL_MAP` for backward compatibility.
+`server/src/lib/llm.ts` routes tools to cost-appropriate models. Provider-aware: each tier maps to different concrete models depending on `LLM_PROVIDER`. Tools declare their cost tier via the `model_tier` field on `AgentTool`. `resolveToolModel(tool, registry?)` checks `tool.model_tier` first, then falls back to `MODEL_ORCHESTRATOR`.
+
+**Groq models (primary — `LLM_PROVIDER=groq`):**
+
+| Tier | Model | Cost (in/out per M) | Used For |
+|------|-------|---------------------|----------|
+| PRIMARY | llama-3.3-70b-versatile | $0.59/$0.79 | Section writing, adversarial review |
+| MID | llama-4-scout-17b-16e-instruct | $0.11/$0.34 | Self-review, gap analysis, benchmarking |
+| ORCHESTRATOR | llama-3.3-70b-versatile | $0.59/$0.79 | Agent loop reasoning (all 3 agents) |
+| LIGHT | llama-3.1-8b-instant | $0.05/$0.08 | Text extraction, JD analysis |
+
+**Z.AI models (fallback — `LLM_PROVIDER=zai`):**
 
 | Tier | Model | Cost (in/out per M) | Used For |
 |------|-------|---------------------|----------|
 | PRIMARY | glm-4.7 | $0.60/$2.20 | Section writing, synthesis, adversarial review |
-| MID | glm-4.5-air | $0.20/$1.10 | Question generation, benchmark, classify-fit, narrative coherence |
+| MID | glm-4.5-air | $0.20/$1.10 | Question generation, benchmark, classify-fit |
 | ORCHESTRATOR | glm-4.7-flashx | $0.07/$0.40 | Main agent loop reasoning, fallback |
 | LIGHT | glm-4.7-flash | FREE | JD analysis, humanize-check, research |
 
-All 26 tools now have `model_tier` set. `TOOL_MODEL_MAP` is kept as a deprecated fallback and will be removed in a future sprint. Agent loops use ORCHESTRATOR (cheap) for reasoning; individual tools route to their own cost tiers via `getModelForTier(tier)`.
+Key design: ORCHESTRATOR = PRIMARY on Groq (both 70B). The agent "brain" deciding tool sequencing is as capable as the "hands" writing content. Estimated pipeline cost: ~$0.23/run (Groq) vs ~$0.26/run (Z.AI). See ADR-028 and ADR-029 for rationale.
+
+All 26 tools have `model_tier` set. Agent loops use ORCHESTRATOR for reasoning; individual tools route to their own cost tiers via `getModelForTier(tier)`.
 
 ## LLM Provider Abstraction
 
-`server/src/lib/llm-provider.ts` — `ZAIProvider` (primary) + `AnthropicProvider` (optional fallback).
+`server/src/lib/llm-provider.ts` — `GroqProvider` (primary) + `ZAIProvider` (fallback) + `AnthropicProvider` (optional).
 
+- `GroqProvider` extends `ZAIProvider` with Groq-specific defaults: 45s chat timeout, 60s stream timeout, `disableParallelToolCalls: true`, `strict: false` on tool schemas.
 - Translates between internal content-block format and OpenAI message format.
 - `createCombinedAbortSignal(userSignal, timeoutMs)` for timeout management.
-- Timeouts: ZAI chat 180s, ZAI stream 300s, Anthropic stream 300s.
+- Timeouts: Groq chat 45s / stream 60s, ZAI chat 180s / stream 300s, Anthropic stream 300s.
+- `recoverFromToolValidation()` — recovers tool calls from Groq's `tool_use_failed` 400 responses (JSON and XML formats). Safety net; should trigger rarely with 70B orchestrator.
+
+### Agent Loop Resilience (`agents/runtime/agent-loop.ts`)
+
+- **History compaction**: Sliding window (MAX_HISTORY_MESSAGES=60, KEEP_RECENT=40) prevents context overflow. With 70B's 131K context, compaction rarely triggers.
+- **Parameter coercion**: `coerceToolParameters()` defensively parses stringified JSON parameters. Should trigger rarely with 70B. Logged at warn level for monitoring.
+- **JSON comment stripping**: `stripJsonComments()` in `json-repair.ts` handles Llama-generated comments in JSON output.
 
 ## SSE Communication
 

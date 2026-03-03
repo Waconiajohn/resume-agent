@@ -20,13 +20,16 @@
  * - Detects pipeline crashes via consecutive 409 errors and fails fast with diagnostics.
  */
 import type { Page, Locator } from '@playwright/test';
+import type { PipelineCaptureData } from './pipeline-capture';
+import { captureQualityScores, captureSectionContent } from './pipeline-capture';
 
-const POLL_INTERVAL_MS = 4_000;
-const MAX_WAIT_MS = 55 * 60 * 1_000; // 55 min safety
-const STAGE_TIMEOUT_MS = 10 * 60 * 1_000; // 10 min per stage before warning
-const RESPONSE_COOLDOWN_MS = 15_000; // Don't re-respond to same panel for 15s
-const POST_RESPONSE_DELAY_MS = 5_000; // Wait 5s after API-triggering actions
-const MAX_CONSECUTIVE_409 = 3; // Fail fast after 3 consecutive 409 errors
+// Groq pipelines complete in ~2-3 min total. Timeouts calibrated accordingly.
+const POLL_INTERVAL_MS = 2_000;          // Groq responds sub-second — poll faster
+const MAX_WAIT_MS = 12 * 60 * 1_000;    // 12 min safety (was 55 min for Z.AI)
+const STAGE_TIMEOUT_MS = 3 * 60 * 1_000; // 3 min per stage (was 10 min)
+const RESPONSE_COOLDOWN_MS = 10_000;     // Don't re-respond to same panel for 10s
+const POST_RESPONSE_DELAY_MS = 3_000;    // Wait 3s after API-triggering actions (was 5s)
+const MAX_CONSECUTIVE_409 = 3;           // Fail fast after 3 consecutive 409 errors
 
 type PanelType =
   | 'positioning_profile_choice'
@@ -370,8 +373,8 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
         '[pipeline-responder] Questionnaire submitted, waiting for pipeline to advance...',
       );
 
-      const QUESTIONNAIRE_ADVANCE_TIMEOUT_MS = 5 * 60 * 1_000;
-      const QUESTIONNAIRE_POLL_MS = 5_000;
+      const QUESTIONNAIRE_ADVANCE_TIMEOUT_MS = 2 * 60 * 1_000; // 2 min (was 5 min for Z.AI)
+      const QUESTIONNAIRE_POLL_MS = 3_000;
       const advanceStart = Date.now();
 
       while (Date.now() - advanceStart < QUESTIONNAIRE_ADVANCE_TIMEOUT_MS) {
@@ -543,10 +546,9 @@ async function approveSectionReview(page: Page): Promise<void> {
     `[pipeline-responder] Section review: clicking "Looks Good" for "${currentTitle}"`,
   );
 
-  // Wait for the panel to advance. The pipeline needs to process approval
-  // and start writing the next section (LLM call, 1-5 min on Z.AI).
-  const SECTION_ADVANCE_TIMEOUT_MS = 5 * 60 * 1_000;
-  const SECTION_POLL_MS = 5_000;
+  // Wait for the panel to advance. Groq writes sections in <10s typically.
+  const SECTION_ADVANCE_TIMEOUT_MS = 2 * 60 * 1_000; // 2 min (was 5 min for Z.AI)
+  const SECTION_POLL_MS = 3_000;
   const advanceStart = Date.now();
 
   // eslint-disable-next-line no-console
@@ -600,7 +602,10 @@ async function approveSectionReview(page: Page): Promise<void> {
  * Run through the entire pipeline by polling for panel changes and responding.
  * Returns when the completion panel is detected or the safety timeout expires.
  */
-export async function runPipelineToCompletion(page: Page): Promise<void> {
+export async function runPipelineToCompletion(
+  page: Page,
+  capture?: PipelineCaptureData,
+): Promise<void> {
   const lastResponded = new Map<string, number>();
   const start = Date.now();
   let lastActivityAt = Date.now();
@@ -769,6 +774,19 @@ export async function runPipelineToCompletion(page: Page): Promise<void> {
         panelType === 'gap_analysis' ||
         panelType === 'quality_dashboard'
       ) {
+        // Capture quality scores when dashboard is visible
+        if (panelType === 'quality_dashboard' && capture && !capture.qualityScores) {
+          const scores = await captureQualityScores(page);
+          if (scores && Object.keys(scores.primary).length > 0) {
+            capture.qualityScores = scores;
+            // eslint-disable-next-line no-console
+            console.log(
+              '[pipeline-responder] Captured quality scores:',
+              JSON.stringify(scores),
+            );
+          }
+        }
+
         const elapsed = Math.round((Date.now() - start) / 1000);
         const sinceActivity = Math.round(
           (Date.now() - lastActivityAt) / 1000,
@@ -844,6 +862,16 @@ export async function runPipelineToCompletion(page: Page): Promise<void> {
             await approveBlueprint(page);
             break;
           case 'section_review':
+            if (capture) {
+              const section = await captureSectionContent(page);
+              if (section && section.lines.length > 0) {
+                capture.sections.push(section);
+                // eslint-disable-next-line no-console
+                console.log(
+                  `[pipeline-responder] Captured section: "${section.title}" (${section.lines.length} lines)`,
+                );
+              }
+            }
             await approveSectionReview(page);
             break;
         }

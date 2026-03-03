@@ -371,7 +371,7 @@ This philosophy must guide all LLM prompts, tool implementations, and UX decisio
 - **Backend**: Hono + Node.js (port 3001)
 - **Frontend**: Vite + React 19 + TailwindCSS (port 5173)
 - **Database**: Supabase (PostgreSQL) with RLS policies
-- **LLM**: Z.AI GLM models (OpenAI-compatible) as primary provider, with optional Anthropic fallback
+- **LLM**: Groq (LPU inference, OpenAI-compatible) as primary provider. Z.AI GLM and Anthropic Claude available as fallbacks via `LLM_PROVIDER` env var.
 
 ## Monorepo Layout
 
@@ -399,10 +399,11 @@ supabase/
 ## Dev Setup & Commands
 
 **Environment variables** (in `server/.env`):
-- `LLM_PROVIDER` optional (defaults to `zai` when `ZAI_API_KEY` exists; can be set to `anthropic`)
+- `LLM_PROVIDER` — `groq` (primary), `zai`, or `anthropic`. Defaults to `zai` when `ZAI_API_KEY` exists.
+- `GROQ_API_KEY` — required when `LLM_PROVIDER=groq`
 - `ZAI_API_KEY`, `PERPLEXITY_API_KEY`
 - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
-- Optional: `ZAI_MODEL_PRIMARY`, `ZAI_MODEL_MID`, `ZAI_MODEL_ORCHESTRATOR`, `ZAI_MODEL_LIGHT`
+- Optional model overrides: `GROQ_MODEL_PRIMARY`, `GROQ_MODEL_MID`, `GROQ_MODEL_ORCHESTRATOR`, `GROQ_MODEL_LIGHT` (or `ZAI_MODEL_*` for Z.AI)
 - Feature flags: `FF_INTAKE_QUIZ`, `FF_RESEARCH_VALIDATION`, `FF_GAP_ANALYSIS_QUIZ`, `FF_QUALITY_REVIEW_APPROVAL`, `FF_BLUEPRINT_APPROVAL` (all default true)
 
 **Commands**:
@@ -458,18 +459,31 @@ All agent types are in `server/src/agents/types.ts` — `PipelineState`, `Pipeli
 
 ### LLM Provider
 
-`server/src/lib/llm-provider.ts` — `ZAIProvider` (primary) + `AnthropicProvider` (optional fallback). Selectable via `LLM_PROVIDER` env var.
+`server/src/lib/llm-provider.ts` — `GroqProvider` (primary) + `ZAIProvider` (fallback) + `AnthropicProvider` (optional). Selectable via `LLM_PROVIDER` env var. `GroqProvider` extends `ZAIProvider` with shorter timeouts (45s chat, 60s stream) and `disableParallelToolCalls: true`.
 
 ### Model Routing
 
-`server/src/lib/llm.ts` — routes tools to cost-appropriate models:
+`server/src/lib/llm.ts` — routes tools to cost-appropriate models. Provider-aware: each tier maps to different concrete models depending on `LLM_PROVIDER`.
+
+**Groq models (primary — `LLM_PROVIDER=groq`):**
 
 | Tier | Model | Cost (in/out per M) | Used For |
 |------|-------|---------------------|----------|
-| PRIMARY | glm-4.7 | $0.60/$2.20 | generate_section, propose_section_edit, adversarial_review |
+| PRIMARY | llama-3.3-70b-versatile | $0.59/$0.79 | Section writing, adversarial review |
+| MID | llama-4-scout-17b-16e-instruct | $0.11/$0.34 | Self-review, gap analysis, benchmarking |
+| ORCHESTRATOR | llama-3.3-70b-versatile | $0.59/$0.79 | Agent loop reasoning (all 3 agents) |
+| LIGHT | llama-3.1-8b-instant | $0.05/$0.08 | Text extraction, JD analysis |
+
+**Z.AI models (fallback — `LLM_PROVIDER=zai`):**
+
+| Tier | Model | Cost (in/out per M) | Used For |
+|------|-------|---------------------|----------|
+| PRIMARY | glm-4.7 | $0.60/$2.20 | Section writing, adversarial review |
 | MID | glm-4.5-air | $0.20/$1.10 | classify_fit, build_benchmark |
 | ORCHESTRATOR | glm-4.7-flashx | $0.07/$0.40 | Main loop, fallback for unknown tools |
-| LIGHT | glm-4.7-flash | FREE | analyze_jd, humanize_check, research_*, export_resume |
+| LIGHT | glm-4.7-flash | FREE | analyze_jd, humanize_check, research_* |
+
+**Estimated pipeline cost:** ~$0.23/pipeline (Groq) vs ~$0.26/pipeline (Z.AI). Pipeline time: ~2-3 min (Groq) vs 15-30 min (Z.AI).
 
 ### SSE Communication
 
@@ -547,7 +561,7 @@ Migrations in `supabase/migrations/` — numbered sequentially (001-012, then ti
 - **Inter-agent messaging**: Agents communicate through `AgentBus` using standard `AgentMessage` format. The coordinator subscribes to bus events to handle cross-agent requests (e.g., Producer -> Craftsman revision requests).
 - **Self-review loop**: The Craftsman writes each section, then self-reviews against quality checklist and anti-pattern list before presenting to the user. This write-review-revise cycle happens autonomously within the agent loop.
 - **Pipeline gates**: `waitForUser()` pauses -> SSE event to frontend -> user interacts -> `POST /api/pipeline/respond` -> pipeline resumes.
-- **Tool-to-model routing**: `getModelForTool(toolName)` in `llm.ts` maps each tool to the right cost tier. Agent loops use `MODEL_ORCHESTRATOR` (cheap) for reasoning; individual tools route to their own cost tiers.
+- **Tool-to-model routing**: `getModelForTool(toolName)` in `llm.ts` maps each tool to the right cost tier. Agent loops use `MODEL_ORCHESTRATOR` (70B on Groq, flashx on Z.AI) for reasoning; individual tools route to their own cost tiers.
 - **Panel rendering**: `panel-renderer.tsx` maps `PanelData.type` -> component. `PanelErrorBoundary` wraps each panel.
 - **Message format**: Internal content-block format; `ZAIProvider` translates to/from OpenAI format when active.
 - **Imports**: `@/` alias for app imports; `.js` extensions for server imports (ESM).
@@ -558,18 +572,20 @@ Migrations in `supabase/migrations/` — numbered sequentially (001-012, then ti
 
 ## Known Issues
 
-- **Z.AI API latency**: 1-5 min per call; timeouts at 3min (chat) / 5min (stream) in `llm-provider.ts`
-- **Z.AI type coercion**: Sometimes returns objects where strings expected — runtime coercion in several tools
+- **Groq tool validation recovery**: 70B is GA with reliable tool calling, but `recoverFromToolValidation()` in `llm-provider.ts` is kept as a safety net. Monitor warn-level logs for trigger frequency.
+- **Parameter coercion**: `coerceToolParameters()` in `agent-loop.ts` handles stringified JSON params. Should trigger rarely with 70B. Monitor warn-level logs.
+- **JSON comment stripping**: `stripJsonComments()` in `json-repair.ts` handles Llama-generated `//` comments in JSON. Kept as safety net.
+- **Z.AI API latency** (if using Z.AI fallback): 1-5 min per call; timeouts at 3min (chat) / 5min (stream)
 - **MaxListenersExceededWarning**: Abort listeners exceed 10 on long sessions
 - **Revision loops (Bug 16)**: Agent may re-propose edits after user approves a section
-- **Context forgetfulness (Bug 17)**: Agent may forget completed sections on long sessions (context window)
+- **Context forgetfulness (Bug 17)**: Agent may forget completed sections on long sessions (mitigated by raising MAX_HISTORY_MESSAGES to 60)
 - **409 Conflict (Bug 18)**: Frontend sends messages while agent is still processing
 - **PDF Unicode**: Check PDF exports for `?` characters replacing special chars
 
 ## Testing & Verification
 
-- **Server**: 53 tests passing (`cd server && npx vitest run`)
-- **App**: 19 tests passing (`cd app && npx vitest run`)
-- **E2E full pipeline**: 2 tests passing (`npx playwright test --project=full-pipeline`, ~28 min)
+- **Server**: 891 tests passing (`cd server && npx vitest run`)
+- **App**: 416 tests passing (`cd app && npx vitest run`)
+- **E2E full pipeline**: `npx playwright test --project=full-pipeline` (15 min timeout, expects <5 min completion with Groq)
 - TypeScript compilation (`tsc --noEmit`) is the primary CI gate
 - Manual E2E: Login with test credentials -> start new session -> paste JD -> run through all stages -> export PDF

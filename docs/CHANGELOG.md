@@ -1,5 +1,66 @@
 # Changelog — Resume Agent
 
+## 2026-03-03 — Session 21
+**Sprint:** 19 | **Story:** Quality-First Model Strategy — All Phases (Stories 1-8, 10)
+**Summary:** Upgraded all three agent loops from Scout 17B (Preview) to llama-3.3-70b-versatile (GA) for reasoning, adjusted timeouts for Groq latency, documented MID tier decision, refined all three agent prompts for goal-oriented autonomy, raised history compaction thresholds, calibrated E2E tests for Groq's sub-second inference, and updated all project documentation to reflect Groq as primary provider.
+
+### Changes Made
+- `server/src/lib/llm.ts` — Changed `GROQ_MODEL_ORCHESTRATOR` default from `meta-llama/llama-4-scout-17b-16e-instruct` to `llama-3.3-70b-versatile`. Updated `MODEL_ORCHESTRATOR_COMPLEX` to map to `GROQ_MODEL_ORCHESTRATOR` (now same as `MODEL_ORCHESTRATOR` on Groq). Added 3 Groq models to pricing table (Scout free tier, DeepSeek R1 70B, Mistral Saba 24B).
+- `server/src/agents/strategist/agent.ts` — Updated model comment to reflect 70B. Reduced `round_timeout_ms` from 180s→60s, `overall_timeout_ms` from 900s→300s.
+- `server/src/agents/craftsman/agent.ts` — Changed import and model from `MODEL_ORCHESTRATOR_COMPLEX` to `MODEL_ORCHESTRATOR`. Reduced `round_timeout_ms` from 180s→60s, `overall_timeout_ms` from 900s→600s.
+- `server/src/agents/producer/agent.ts` — Changed import and model from `MODEL_ORCHESTRATOR_COMPLEX` to `MODEL_ORCHESTRATOR`. Reduced `round_timeout_ms` from 120s→60s, `overall_timeout_ms` from 600s→300s.
+- `server/src/lib/llm-provider.ts` — Increased GroqProvider `chatTimeoutMs` from 30s→45s (70B may take slightly longer than Scout per request).
+- `docs/DECISIONS.md` — Added ADR-028 (Model Tier Restructure — 70B for Agent Orchestration) and ADR-029 (MID Tier — Keep Scout 17B for Non-Orchestration Tasks).
+
+### Model Tier Map (After Phase 1)
+| Tier | Model | Price (in/out/M) | Used For |
+|------|-------|-------------------|----------|
+| PRIMARY | llama-3.3-70b-versatile | $0.59/$0.79 | Section writing, adversarial review |
+| MID | llama-4-scout-17b | $0.11/$0.34 | Self-review, gap analysis, benchmarking |
+| ORCHESTRATOR | llama-3.3-70b-versatile | $0.59/$0.79 | Agent loop reasoning (upgraded from Scout) |
+| LIGHT | llama-3.1-8b-instant | $0.05/$0.08 | Text extraction, JD analysis |
+
+### Decisions Made
+- **70B for all agent loops (ADR-028):** The agent brain deciding tool sequencing should be as capable as the hands writing content. At ~$0.23/pipeline, still cheaper than Z.AI's ~$0.26.
+- **Keep Scout 17B for MID (ADR-029):** Scout's tool-calling quirks don't affect MID tasks (self_review, classify_fit, build_benchmark). Qwen3 32B is fallback if quality degrades.
+- **Reduced timeouts:** Groq 70B responds in <5s typically. Old Z.AI-era timeouts (3-15 min) were unnecessarily generous.
+
+### Phase 2 Changes (Prompt Refinement)
+- `server/src/agents/strategist/prompts.ts` — Replaced rigid 6-step numbered workflow with goal-oriented guidance. Phases kept as recommended workflow, not mandatory. Added "Ethics — Non-Negotiable" consolidated section. Removed scattered "never fabricate" warnings. Added explicit permission: "You may skip or reorder phases when the evidence already supports it."
+- `server/src/agents/craftsman/prompts.ts` — Replaced forced waterfall (write→self-review→anti-patterns→keywords→revise→evidence→present) with discretionary quality checks. Strong sections can go directly to present_to_user. Complex sections still get full review. Added: "You are a world-class resume writer. Trust your craft." check_evidence_integrity still recommended for experience/accomplishment sections.
+- `server/src/agents/producer/prompts.ts` — Added decision authority: Producer resolves minor formatting/ATS issues directly without routing to Craftsman. Added ATS vs authenticity tradeoff: "favor authenticity if the candidate's language is specific and distinctive." Improved template selection with criteria (industry match, seniority level, career span, content density).
+
+### Phase 3 Changes (Infrastructure & Testing)
+- `server/src/agents/runtime/agent-loop.ts` — Raised `MAX_HISTORY_MESSAGES` from 30→60, `KEEP_RECENT_MESSAGES` from 20→40 (70B has 131K context, compaction should rarely trigger). Upgraded parameter coercion logging from `info`→`warn` for monitoring. Updated comments noting 70B should reduce coercion frequency.
+- `server/src/lib/llm-provider.ts` — Added monitoring note to `recoverFromToolValidation()` comment: with 70B as orchestrator, recovery should trigger rarely.
+- `e2e/helpers/pipeline-responder.ts` — Calibrated all timeouts for Groq: POLL_INTERVAL 4s→2s, MAX_WAIT 55min→12min, STAGE_TIMEOUT 10min→3min, POST_RESPONSE_DELAY 5s→3s, section/questionnaire advance timeouts 5min→2min, poll intervals 5s→3s.
+- `e2e/tests/full-pipeline.spec.ts` — Reduced first LLM response timeout from 5min→60s. Added pipeline completion time assertion: `expect(pipelineDurationMs).toBeLessThan(5 * 60_000)`.
+- `playwright.config.ts` — Reduced full-pipeline project timeout from 60min→15min.
+
+### Known Issues
+- Resume writing quality with 70B orchestrator + refined prompts needs validation against previous runs
+- Workaround code (tool validation recovery, parameter coercion) kept as safety nets — monitor warn-level logs across 5+ pipeline runs to verify 70B reduces trigger frequency
+- `MODEL_ORCHESTRATOR_COMPLEX` export kept for backward compatibility but is now identical to `MODEL_ORCHESTRATOR` on Groq
+- Craftsman discretion on quality checks may reduce quality for edge cases — monitor first 3-5 pipeline runs
+- E2E test timing assertion (<5 min) may need adjustment if pipeline includes many user gates
+
+### Phase 4 Changes (Documentation)
+- `CLAUDE.md` — Updated Technical Overview: Groq is primary provider. Updated env vars section with `GROQ_API_KEY` and `GROQ_MODEL_*` overrides. Replaced single Z.AI model routing table with dual Groq/Z.AI tables. Updated LLM Provider section to describe GroqProvider. Updated Known Issues: replaced Z.AI latency/coercion with Groq-specific workaround monitoring notes. Updated Testing section with current test counts and Groq timing.
+- `docs/ARCHITECTURE.md` — Updated tech stack table: Groq primary, Z.AI+Anthropic fallback, E2E ~2-3 min. Replaced single model routing table with dual Groq/Z.AI tables with ADR references. Updated LLM Provider section to describe GroqProvider (timeouts, parallel tool calls, recovery). Added Agent Loop Resilience subsection documenting history compaction, parameter coercion, and JSON comment stripping.
+
+### Phase 4 Changes (Quality Validation — Story 9)
+- `e2e/helpers/pipeline-capture.ts` — NEW: DOM scraping utilities for quality validation. `captureQualityScores(page)` extracts primary scores from ScoreRing `aria-label` attributes and secondary metrics from label/value text rows. `captureSectionContent(page)` extracts section title (h2/h3) and content lines (p.text-sm elements). All using `page.evaluate()` to bypass zero-height panel layout.
+- `e2e/fixtures/quality-validation-data.ts` — NEW: 2 additional resume/JD fixtures for quality validation — Marketing VP→CMO (Meridian Consumer Brands, $450M CPG) and Operations Director→VP (Atlas Manufacturing Group, $320M manufacturer). Exports `QUALITY_FIXTURES` array with `QualityFixture` interface.
+- `e2e/tests/quality-validation.spec.ts` — NEW: Serial test suite running 3 pipelines (cloud-director, marketing-vp, operations-director), each with capture. Asserts: pipeline <5 min, primary scores ≥60%, secondary scores ≥50%, sections captured. Saves per-fixture JSON to `test-results/quality-validation/`. Summary test logs all results.
+- `e2e/helpers/pipeline-responder.ts` — Added optional `PipelineCaptureData` parameter to `runPipelineToCompletion()`. When provided: captures quality scores on `quality_dashboard` detection, captures section content before each `section_review` approval. Backward compatible — existing tests pass no capture object.
+- `playwright.config.ts` — Added `quality-validation` project (45 min timeout, video+trace). Excluded from default `chromium` project.
+
+### Next Steps
+- Run `npx playwright test --project=quality-validation` to execute quality validation
+- Review captured JSON outputs in `test-results/quality-validation/`
+- Compare Groq 70B output quality against previous Scout-orchestrated runs
+- Monitor warn-level logs for workaround trigger frequency across pipeline runs
+
 ## 2026-03-03 — Session 20
 **Sprint:** 19 | **Story:** Groq Pipeline Hardening — Full E2E on Groq
 **Summary:** Fixed 4 Groq-specific tool calling failures and achieved a full end-to-end pipeline on Groq in ~1m42s (vs 15-30 min on Z.AI). All three agent phases (Strategist, Craftsman, Producer) now work on Groq.

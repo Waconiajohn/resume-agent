@@ -35,8 +35,10 @@ const DEFAULT_OVERALL_TIMEOUT_MS = 600_000; // 10 min total
 
 // Sliding window to prevent context overflow on long sessions (Bug 17).
 // When message count exceeds MAX, keep the initial instruction + last KEEP_RECENT messages.
-const MAX_HISTORY_MESSAGES = 30;
-const KEEP_RECENT_MESSAGES = 20;
+// Raised from 30/20 → 60/40 for Groq's 70B model (131K context window).
+// Compaction should rarely trigger with these limits but remains as a safety net.
+const MAX_HISTORY_MESSAGES = 60;
+const KEEP_RECENT_MESSAGES = 40;
 
 // ─── Public API ──────────────────────────────────────────────────────
 
@@ -444,9 +446,12 @@ function compactConversationHistory(
 
 /**
  * Coerce stringified JSON in tool parameters back to objects/arrays.
- * Smaller LLMs (Groq 8B) sometimes pass `"[]"` or `"{'key':'val'}"` as strings
- * instead of proper JSON objects. This defensively parses them based on the
- * tool's input_schema.
+ * Smaller LLMs (Groq 8B, Scout 17B) sometimes pass `"[]"` or `"{'key':'val'}"`
+ * as strings instead of proper JSON objects. This defensively parses them based
+ * on the tool's input_schema.
+ *
+ * With 70B as orchestrator this should trigger rarely. Kept as a safety net —
+ * monitor warn-level logs to verify reduction.
  */
 function coerceToolParameters(
   input: Record<string, unknown>,
@@ -478,8 +483,8 @@ function coerceToolParameters(
   }
 
   if (coerced) {
-    logger.info({ keys: Object.keys(result).filter(k => result[k] !== input[k]) },
-      'Coerced stringified tool parameters to objects');
+    logger.warn({ keys: Object.keys(result).filter(k => result[k] !== input[k]) },
+      'coerceToolParameters: stringified params detected (monitor: should be rare with 70B)');
   }
 
   return result;

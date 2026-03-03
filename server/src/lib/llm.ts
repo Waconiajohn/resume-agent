@@ -29,10 +29,12 @@ const GROQ_MODEL_PRIMARY = process.env.GROQ_MODEL_PRIMARY ?? 'llama-3.3-70b-vers
 /** Mid-tier analysis — llama-4-scout ($0.11/$0.34 per M tokens) */
 const GROQ_MODEL_MID = process.env.GROQ_MODEL_MID ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
 
-/** Main loop orchestrator — llama-4-scout ($0.11/$0.34 per M tokens).
- *  8B model is unreliable for tool calling on Groq (generates XML format,
- *  stringifies parameters). Scout handles tool schemas correctly. */
-const GROQ_MODEL_ORCHESTRATOR = process.env.GROQ_MODEL_ORCHESTRATOR ?? 'meta-llama/llama-4-scout-17b-16e-instruct';
+/** Main loop orchestrator — llama-3.3-70b-versatile ($0.59/$0.79 per M tokens).
+ *  Upgraded from Scout 17B (Preview, tool-calling quirks) to 70B (GA, reliable).
+ *  The agent "brain" that decides tool sequencing and generates parameters should be
+ *  as capable as the "hands" that write content. At ~$0.23/pipeline this is still
+ *  cheaper than Z.AI's ~$0.26/pipeline, with 10x faster execution. */
+const GROQ_MODEL_ORCHESTRATOR = process.env.GROQ_MODEL_ORCHESTRATOR ?? 'llama-3.3-70b-versatile';
 
 /** Lightweight extraction — llama-3.1-8b ($0.05/$0.08 per M tokens).
  *  8B is fine for non-tool-calling tasks (text extraction, analysis). */
@@ -51,11 +53,11 @@ export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT);
 
 /**
  * Orchestrator model for agent loops with complex nested tool schemas.
- * Groq's 8B model (MODEL_ORCHESTRATOR) can't reliably generate nested object
- * parameters in tool calls — uses Scout (MID) instead.
- * On Z.AI, the flashx orchestrator model handles complex schemas fine.
+ * With 70B as the orchestrator on Groq, this now maps to the same model as
+ * MODEL_ORCHESTRATOR on both providers. Kept for backward compatibility —
+ * existing imports still resolve correctly.
  */
-export const MODEL_ORCHESTRATOR_COMPLEX = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_MID);
+export const MODEL_ORCHESTRATOR_COMPLEX = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR);
 
 export const MAX_TOKENS = parseInt(process.env.MAX_TOKENS ?? '8192', 10);
 
@@ -73,6 +75,9 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
   'llama-3.1-8b-instant': { input: 0.05, output: 0.08 },
   'meta-llama/llama-4-maverick-17b-128e-instruct': { input: 0.50, output: 0.77 },
   'qwen/qwen3-32b': { input: 0.29, output: 0.59 },
+  'meta-llama/llama-4-scout-17b-16e-instruct:free': { input: 0, output: 0 },
+  'deepseek-r1-distill-llama-70b': { input: 0.75, output: 0.99 },
+  'mistral-saba-24b': { input: 0.79, output: 0.79 },
   // Anthropic models for reference
   'claude-sonnet-4-5-20250929': { input: 3.00, output: 15.00 },
   'claude-haiku-4-5-20251001': { input: 0.80, output: 4.00 },

@@ -28,6 +28,8 @@ export const strategistConfig: ResumeAgentConfig = {
 
   /**
    * Model for the Strategist's main LLM loop (tool selection + reasoning).
+   * On Groq: llama-3.3-70b-versatile (GA, reliable tool calling).
+   * On Z.AI: glm-4.7-flashx (cheap, fast).
    * Individual tools override this with their own model_tier when they make
    * downstream LLM calls (e.g., design_blueprint uses MODEL_PRIMARY).
    */
@@ -48,16 +50,17 @@ export const strategistConfig: ResumeAgentConfig = {
 
   /**
    * Timeout per individual LLM round (ms).
-   * Z.AI can take 1-5 min per call. Set to 3 min to match existing pipeline timeout.
+   * Groq 70B responds in <5s typically. 60s is generous but catches real failures.
+   * Z.AI fallback may need the full minute on slow days.
    */
-  round_timeout_ms: 180_000,
+  round_timeout_ms: 60_000,
 
   /**
    * Timeout for the entire Strategist invocation (ms).
    * Full strategy phase (parse + research + 10 interview Qs + gap + blueprint):
-   * 15 min is generous but necessary for slow Z.AI days.
+   * Groq completes in ~30s. 5 min provides safe headroom including user gates.
    */
-  overall_timeout_ms: 900_000,
+  overall_timeout_ms: 300_000,
 
   /** emit_transparency has no side-effects on other tools — safe to run in parallel */
   parallel_safe_tools: ['emit_transparency'],

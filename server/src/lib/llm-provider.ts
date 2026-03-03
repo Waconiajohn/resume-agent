@@ -700,6 +700,9 @@ export class ZAIProvider implements LLMProvider {
    * When the model generates multiple tool calls (despite parallel_tool_calls=false),
    * we recover only the FIRST valid tool call. This prevents issues with truncated
    * multi-tool outputs and respects sequential execution semantics.
+   *
+   * With 70B as orchestrator (GA, reliable tool calling), this recovery should
+   * trigger rarely. Kept as a safety net — monitor warn-level logs to verify.
    */
   private recoverFromToolValidation(errText: string): ChatResponse | null {
     try {
@@ -880,7 +883,7 @@ export class GroqProvider extends ZAIProvider {
       apiKey: config.apiKey,
       baseUrl: config.baseUrl ?? 'https://api.groq.com/openai/v1',
       providerName: 'groq',
-      chatTimeoutMs: 30_000,
+      chatTimeoutMs: 45_000,  // 70B may take slightly longer than Scout per request
       streamTimeoutMs: 60_000,
       disableParallelToolCalls: true,
     });
