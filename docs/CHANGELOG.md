@@ -1,5 +1,25 @@
 # Changelog — Resume Agent
 
+## 2026-03-02 — Session 16
+**Sprint:** 17 | **Story:** E2E Tests — Chat Drawer + Full Pipeline Fix
+**Summary:** Fixed broken full-pipeline E2E selector (textarea inside collapsed ChatDrawer) and added 5 new mocked E2E tests for the ChatDrawer component.
+
+### Changes Made
+- `e2e/tests/full-pipeline.spec.ts` — Replaced `getByPlaceholder(/Type a message/i)` visibility check with `button[aria-expanded]` locator. The textarea is now inside the collapsed ChatDrawer (0fr grid row) and not visible to Playwright; the toggle bar button is always rendered at 36px.
+- `e2e/tests/chat-drawer.spec.ts` — New test file (5 tests). Covers: toggle bar visible and starts collapsed, click expand/collapse cycle, chat input visible when expanded, status text displayed in toggle bar, chevron icon present. Uses mocked SSE via `navigateToWorkbench`.
+- `e2e/fixtures/mock-sse.ts` — Added `assistantMessageEvent()` and `transparencyEvent()` factory functions for future test use.
+
+### Decisions Made
+- Used `button[aria-expanded]` as the coach-screen-loaded signal — always visible regardless of drawer state, unique on the page at that pipeline stage
+- Replaced the planned auto-expand test with status text and chevron tests — SSE events arrive synchronously via fetch override before React mount, so `prevMessagesLenRef` already matches and auto-expand doesn't fire in mocked mode
+- Used `textarea` locator instead of placeholder match for the expanded-drawer test — the active section gate changes the placeholder to "Use the panel above to continue"
+
+### Known Issues
+- 9 pre-existing E2E failures in dashboard, workbench-fallback, and workbench-suggestions tests (unrelated to these changes)
+
+### Next Steps
+- Sprint 17 retrospective
+
 ## 2026-03-02 — Session 15
 **Sprint:** 17 | **Story:** Kill Right Pane — 2-Column Layout + Bottom Chat Drawer
 **Summary:** Removed the 430px right side panel and replaced with a collapsible bottom ChatDrawer, giving the main workspace ~430px more width on desktop.

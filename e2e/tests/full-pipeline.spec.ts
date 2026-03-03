@@ -109,9 +109,10 @@ test.describe('Full Pipeline E2E', () => {
         timeout: 60_000,
       });
 
-      // Wait for the message input to confirm we're on the coach screen
+      // Wait for the ChatDrawer toggle bar to confirm we're on the coach screen
+      // (textarea is inside the collapsed drawer — not visible until expanded)
       await expect(
-        page.getByPlaceholder(/Type a message/i),
+        page.locator('button[aria-expanded]'),
       ).toBeVisible({ timeout: 30_000 });
 
       // Wait for the workspace to show pipeline progress breadcrumb (visible even if panel root has zero height)

@@ -142,6 +142,16 @@ export function sectionDraftEvent(payload: {
   return { event: 'section_draft', data: payload };
 }
 
+/** assistant_message event — triggers auto-expand of ChatDrawer */
+export function assistantMessageEvent(content: string): SSEEvent {
+  return { event: 'assistant_message', data: { content } };
+}
+
+/** transparency event — activity feed update */
+export function transparencyEvent(message: string): SSEEvent {
+  return { event: 'transparency', data: { message } };
+}
+
 /** pipeline_complete event */
 export function pipelineCompleteEvent(): SSEEvent {
   return { event: 'pipeline_complete', data: {} };
