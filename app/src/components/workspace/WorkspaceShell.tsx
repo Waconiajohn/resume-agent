@@ -26,7 +26,6 @@ interface WorkspaceShellProps {
   onForward: () => void;
   onSelectNode: (node: WorkflowNodeKey) => void;
   main: React.ReactNode;
-  side: React.ReactNode;
   footerRail?: React.ReactNode;
   activeGate?: {
     active: boolean;
@@ -92,7 +91,6 @@ export function WorkspaceShell({
   onForward,
   onSelectNode,
   main,
-  side,
   footerRail,
   activeGate,
 }: WorkspaceShellProps) {
@@ -238,17 +236,9 @@ export function WorkspaceShell({
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-            <main className="min-h-[300px] min-w-0 flex-1 overflow-y-auto border-b border-white/[0.06] xl:border-b-0 xl:border-r xl:border-white/[0.06]">
-              {main}
-            </main>
-            <aside className="flex min-h-[320px] w-full min-w-0 flex-col xl:w-[430px] xl:shrink-0">
-              <div className="min-h-0 flex-1">{side}</div>
-              <div className="border-t border-white/[0.06] xl:hidden">
-                {footerRail}
-              </div>
-            </aside>
-          </div>
+          <main className="min-h-0 min-w-0 flex-1">
+            {main}
+          </main>
         </div>
       </div>
     </div>

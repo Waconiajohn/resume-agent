@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChatPanel } from './ChatPanel';
+import { ChatDrawer } from './ChatDrawer';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { WorkflowStatsRail } from './WorkflowStatsRail';
 import { GlassCard } from './GlassCard';
@@ -385,6 +385,7 @@ export function CoachScreen({
 
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto">
         <ErrorBanner
           error={error}
@@ -638,12 +639,23 @@ export function CoachScreen({
           </GlassCard>
         </div>
       </div>
-    </div>
-  );
-
-  const sidePanel = (
-    <div className="flex h-full min-h-0 flex-col">
-      <ChatPanel
+      </div>
+      <div className="flex-shrink-0 lg:hidden">
+        <WorkflowStatsRail
+          currentPhase={effectiveCurrentPhase}
+          isProcessing={isProcessing}
+          isGateActive={Boolean(isPipelineGateActive)}
+          stalledSuspected={Boolean(stalledSuspected)}
+          pipelineActivity={effectivePipelineActivity}
+          runtimeMetrics={runtimeMetricsSummary}
+          sessionComplete={sessionComplete}
+          error={error}
+          panelData={panelData}
+          resume={resume}
+          compact
+        />
+      </div>
+      <ChatDrawer
         messages={messages}
         streamingText={streamingText}
         tools={tools}
@@ -667,44 +679,24 @@ export function CoachScreen({
         onPipelineRespond={onPipelineRespond}
         onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
         approvedSections={approvedSections}
-        hideWorkProduct
       />
     </div>
   );
 
   const footerRail = (
-    <>
-      <div className="hidden lg:block">
-        <WorkflowStatsRail
-          currentPhase={effectiveCurrentPhase}
-          isProcessing={isProcessing}
-          isGateActive={Boolean(isPipelineGateActive)}
-          stalledSuspected={Boolean(stalledSuspected)}
-          pipelineActivity={effectivePipelineActivity}
-          runtimeMetrics={runtimeMetricsSummary}
-          sessionComplete={sessionComplete}
-          error={error}
-          panelData={panelData}
-          resume={resume}
-          compact={false}
-        />
-      </div>
-      <div className="lg:hidden">
-        <WorkflowStatsRail
-          currentPhase={effectiveCurrentPhase}
-          isProcessing={isProcessing}
-          isGateActive={Boolean(isPipelineGateActive)}
-          stalledSuspected={Boolean(stalledSuspected)}
-          pipelineActivity={effectivePipelineActivity}
-          runtimeMetrics={runtimeMetricsSummary}
-          sessionComplete={sessionComplete}
-          error={error}
-          panelData={panelData}
-          resume={resume}
-          compact
-        />
-      </div>
-    </>
+    <WorkflowStatsRail
+      currentPhase={effectiveCurrentPhase}
+      isProcessing={isProcessing}
+      isGateActive={Boolean(isPipelineGateActive)}
+      stalledSuspected={Boolean(stalledSuspected)}
+      pipelineActivity={effectivePipelineActivity}
+      runtimeMetrics={runtimeMetricsSummary}
+      sessionComplete={sessionComplete}
+      error={error}
+      panelData={panelData}
+      resume={resume}
+      compact={false}
+    />
   );
 
   return (
@@ -730,7 +722,6 @@ export function CoachScreen({
         isGenerateDraftNowPending: workflowSession.isGenerateDraftNowPending,
       }}
       main={mainPanel}
-      side={sidePanel}
       footerRail={footerRail}
     />
   );
