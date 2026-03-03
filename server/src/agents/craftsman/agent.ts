@@ -66,8 +66,13 @@ export const craftsmanConfig: ResumeAgentConfig = {
    */
   parallel_safe_tools: ['check_keyword_coverage', 'check_anti_patterns', 'emit_transparency'],
 
-  /** Craftsman loop is coordination; individual tools handle their own token limits */
-  loop_max_tokens: 2048,
+  /**
+   * Craftsman loop max tokens. write_section tool calls pass the full blueprint_slice
+   * (evidence allocations for all positions) as a parameter — a 5-position resume's
+   * experience section can easily need 4000+ tokens for the tool call alone.
+   * 8192 prevents output truncation on Groq.
+   */
+  loop_max_tokens: 8192,
 };
 
 registerAgent(craftsmanConfig);

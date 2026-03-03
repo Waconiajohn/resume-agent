@@ -41,8 +41,10 @@ export const producerConfig: ResumeAgentConfig = {
    * Max LLM round-trips. Producer calls ~7-9 tools sequentially:
    * 1 select_template + 3 structural checks + 3 content checks + 1-2 triage/emit.
    * On providers that disable parallel tool calls (Groq), each tool is its own round.
+   * Large resumes (5+ positions) may need extra rounds due to tool call recoveries
+   * and revision requests — 20 provides safe headroom.
    */
-  max_rounds: 15,
+  max_rounds: 20,
   round_timeout_ms: 120_000,   // 2 min per round
   overall_timeout_ms: 600_000, // 10 min total
 
