@@ -755,9 +755,14 @@ export function handleSectionApproved(
   data: Record<string, any>,
   state: PipelineStateManager,
 ): void {
-  const section = data.section as string;
-  if (section && state.sectionsMapRef.current[section]) {
-    const content = state.sectionsMapRef.current[section];
+  const section = data.section as string | undefined;
+  if (!section) return;
+
+  // Use sectionsMapRef content, fall back to event payload content
+  const content = state.sectionsMapRef.current[section]
+    ?? (typeof data.content === 'string' ? data.content : null);
+
+  if (content) {
     state.setApprovedSections((prev) => ({
       ...prev,
       [section]: content,

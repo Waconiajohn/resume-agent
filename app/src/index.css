@@ -213,10 +213,13 @@ body {
     visibility: hidden;
   }
   #resume-print-target,
-  #resume-print-target * {
+  #resume-print-target *,
+  #live-resume-document,
+  #live-resume-document * {
     visibility: visible;
   }
-  #resume-print-target {
+  #resume-print-target,
+  #live-resume-document {
     position: absolute;
     left: 0;
     top: 0;

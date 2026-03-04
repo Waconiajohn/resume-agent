@@ -423,10 +423,11 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsPipelineGateActive: state.setIsPipelineGateActive,
     dismissSuggestion,
     approvedSections: state.approvedSections,
-    sectionDrafts: state.sectionDraftsRef.current,
+    sectionDrafts: state.sectionDraftsSnapshot,
     sectionDraftsVersion: state.sectionDraftsVersion,
     sectionBuildOrder: state.sectionBuildOrder,
     reconnectStreamNow,
     activityMessages: state.activityMessages,
+    updateSectionLocally: state.setSectionDraftEntry,
   };
 }

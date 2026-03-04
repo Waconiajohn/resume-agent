@@ -129,6 +129,7 @@ function makeMockState(overrides?: Partial<PipelineStateManager>): PipelineState
     // Live document section tracking
     sectionDraftsRef: { current: {} },
     sectionDraftsVersion: 0,
+    sectionDraftsSnapshot: {},
     sectionBuildOrder: [],
     setSectionBuildOrder: vi.fn(),
     setSectionDraftEntry: vi.fn(),

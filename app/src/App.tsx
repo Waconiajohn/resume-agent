@@ -82,6 +82,7 @@ export default function App() {
     sectionBuildOrder,
     reconnectStreamNow,
     activityMessages,
+    updateSectionLocally,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
   // Request-level lock: prevents concurrent gate responses even when React state
@@ -517,6 +518,7 @@ export default function App() {
           sectionDraftsVersion={sectionDraftsVersion}
           sectionBuildOrder={sectionBuildOrder}
           onDismissSuggestion={dismissSuggestion}
+          onLocalSectionEdit={updateSectionLocally}
           onRestartPipelineFromLastInputs={handleRestartPipelineFromCache}
           liveDraftReadiness={draftReadiness}
           liveWorkflowReplan={workflowReplan}

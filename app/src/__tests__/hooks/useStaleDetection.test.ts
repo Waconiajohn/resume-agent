@@ -119,6 +119,7 @@ function makeMockState(
     setApprovedSections: vi.fn(),
     sectionDraftsRef: { current: {} },
     sectionDraftsVersion: 0,
+    sectionDraftsSnapshot: {},
     sectionBuildOrder: [],
     setSectionBuildOrder: vi.fn(),
     setSectionDraftEntry: vi.fn(),

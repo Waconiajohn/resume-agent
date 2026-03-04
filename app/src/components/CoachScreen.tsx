@@ -3,10 +3,10 @@ import { ChatDrawer } from './ChatDrawer';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { WorkflowStatsRail } from './WorkflowStatsRail';
 import { GlassCard } from './GlassCard';
-import { GlassButton } from './GlassButton';
 import { ResumePanel } from './ResumePanel';
 import { SafePanelContent } from './panels/panel-renderer';
 import { LiveResumeDocument } from './panels/LiveResumeDocument';
+import { LiveResumeDocumentErrorBoundary } from './panels/LiveResumeDocumentErrorBoundary';
 import { ContextPanel } from './panels/ContextPanel';
 import { runPanelPayloadSmokeChecks } from './panels/panel-smoke';
 import { WorkspaceShell } from './workspace/WorkspaceShell';
@@ -52,7 +52,6 @@ import {
   nodeTitle,
   formatPendingGateLabelForWorkspace,
   defaultEvidenceTargetForMode,
-  formatReadinessPriorityLabel,
   formatRelativeShort,
   formatDurationShort,
   getSectionsBundleNavDetail,
@@ -92,6 +91,7 @@ interface CoachScreenProps {
   sectionDraftsVersion?: number;
   sectionBuildOrder?: string[];
   onDismissSuggestion?: (id: string) => void;
+  onLocalSectionEdit?: (sectionKey: string, content: string) => void;
   onRestartPipelineFromLastInputs?: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   liveDraftReadiness?: DraftReadinessUpdate | null;
   liveWorkflowReplan?: WorkflowReplanUpdate | null;
@@ -128,6 +128,7 @@ export function CoachScreen({
   sectionDraftsVersion = 0,
   sectionBuildOrder = [],
   onDismissSuggestion,
+  onLocalSectionEdit,
   onRestartPipelineFromLastInputs,
   liveDraftReadiness = null,
   liveWorkflowReplan = null,
@@ -407,7 +408,7 @@ export function CoachScreen({
   // Derive the currently-active section key from the panel data or section draft
   const activeSectionKey = useMemo(() => {
     if (displayPanelData?.type === 'section_review') {
-      return (displayPanelData as PanelData & { section?: string }).section ?? null;
+      return displayPanelData.section ?? null;
     }
     return null;
   }, [displayPanelData]);
@@ -434,12 +435,11 @@ export function CoachScreen({
     }
     // Check if completion panel has scores
     if (displayPanelData?.type === 'completion') {
-      const completion = displayPanelData as PanelData & { ats_score?: number; keyword_coverage?: number; authenticity_score?: number };
-      if (typeof completion.ats_score === 'number') {
+      if (typeof displayPanelData.ats_score === 'number') {
         return {
-          ats_score: completion.ats_score,
-          keyword_coverage: completion.keyword_coverage,
-          authenticity_score: completion.authenticity_score,
+          ats_score: displayPanelData.ats_score,
+          keyword_coverage: displayPanelData.keyword_coverage,
+          authenticity_score: displayPanelData.authenticity_score,
         };
       }
     }
@@ -459,25 +459,26 @@ export function CoachScreen({
         isViewingLiveNode
         && isPipelineGateActive
         && displayPanelData?.type === 'section_review'
-        && (displayPanelData as PanelData & { section?: string }).section === sectionKey
+        && displayPanelData.section === sectionKey
         && onPipelineRespond
       ) {
-        const reviewToken = (displayPanelData as PanelData & { review_token?: string }).review_token;
+        const reviewToken = displayPanelData.review_token;
         onPipelineRespond(`section_review_${sectionKey}`, {
           approved: false,
           edited_content: newContent,
           review_token: reviewToken,
         });
+      } else {
+        // Update locally for post-pipeline edits
+        onLocalSectionEdit?.(sectionKey, newContent);
       }
-      // Otherwise just update approved sections locally (for post-pipeline edits)
-      // This will be picked up by the export logic
     },
-    [isViewingLiveNode, isPipelineGateActive, displayPanelData, onPipelineRespond],
+    [isViewingLiveNode, isPipelineGateActive, displayPanelData, onPipelineRespond, onLocalSectionEdit],
   );
 
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-hidden">
       <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto">
         <ErrorBanner
           error={error}
@@ -697,18 +698,20 @@ export function CoachScreen({
           <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/[0.06]">
             {/* Left: Always-visible live resume document */}
             <div className="min-h-0 min-w-0 flex-1">
-              <LiveResumeDocument
-                sectionOrder={sectionBuildOrder}
-                sectionContent={sectionDrafts}
-                sectionDraftsVersion={sectionDraftsVersion}
-                approvedSections={approvedSections}
-                activeSectionKey={activeSectionKey}
-                onEditSection={handleEditSection}
-                resume={displayResume}
-                isProcessing={isViewingLiveNode ? isProcessing : false}
-                sessionComplete={sessionComplete}
-                qualityData={qualityOverlayData}
-              />
+              <LiveResumeDocumentErrorBoundary>
+                <LiveResumeDocument
+                  sectionOrder={sectionBuildOrder}
+                  sectionContent={sectionDrafts}
+                  sectionDraftsVersion={sectionDraftsVersion}
+                  approvedSections={approvedSections}
+                  activeSectionKey={activeSectionKey}
+                  onEditSection={handleEditSection}
+                  resume={displayResume}
+                  isProcessing={isViewingLiveNode ? isProcessing : false}
+                  sessionComplete={sessionComplete}
+                  qualityData={qualityOverlayData}
+                />
+              </LiveResumeDocumentErrorBoundary>
             </div>
 
             {/* Right: Context panel for interactions */}

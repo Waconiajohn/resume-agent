@@ -1,11 +1,17 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Download, FileType2, Printer, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Download, FileType2, Printer, Loader2, Pencil } from 'lucide-react';
 import { DEFAULT_SECTION_ORDER } from '@/lib/constants';
 import { resumeToText, downloadAsText } from '@/lib/export';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { useTypingAnimation } from '@/hooks/useTypingAnimation';
 import type { FinalResume } from '@/types/resume';
 import type { QualityDashboardData } from '@/types/panels';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function stripHtml(text: string): string {
+  return text.replace(/<[^>]*>/g, '');
+}
 
 function toTitleCase(str: string): string {
   return str
@@ -23,6 +29,8 @@ const SECTION_DISPLAY_NAMES: Record<string, string> = {
   certifications: 'Certifications',
 };
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface LiveResumeDocumentProps {
   sectionOrder: string[];
   sectionContent: Record<string, string>;
@@ -36,77 +44,80 @@ interface LiveResumeDocumentProps {
   qualityData?: QualityDashboardData | null;
 }
 
-/**
- * Resolve the best content for a given section key.
- * Priority: FinalResume > approved > draft > null (placeholder)
- */
+type SectionSource = 'resume' | 'approved' | 'draft' | 'placeholder';
+
+// ─── Content Resolution ──────────────────────────────────────────────────────
+
 function resolveSectionContent(
   key: string,
   resume: FinalResume | null,
   approvedSections: Record<string, string>,
   sectionContent: Record<string, string>,
-): { content: string | null; source: 'resume' | 'approved' | 'draft' | 'placeholder' } {
-  // 1. FinalResume sections
-  if (resume) {
-    const resumeVal = getResumeSection(resume, key);
-    if (resumeVal) return { content: resumeVal, source: 'resume' };
+): { content: string | null; source: SectionSource; hasStructuredData: boolean } {
+  if (resume && hasStructuredResumeSection(resume, key)) {
+    return { content: null, source: 'resume', hasStructuredData: true };
   }
-  // 2. Approved
-  if (approvedSections[key]) return { content: approvedSections[key], source: 'approved' };
-  // 3. Draft
-  if (sectionContent[key]) return { content: sectionContent[key], source: 'draft' };
-  // 4. Placeholder
-  return { content: null, source: 'placeholder' };
+  if (approvedSections[key]) return { content: approvedSections[key], source: 'approved', hasStructuredData: false };
+  if (sectionContent[key]) return { content: sectionContent[key], source: 'draft', hasStructuredData: false };
+  return { content: null, source: 'placeholder', hasStructuredData: false };
 }
 
-function getResumeSection(resume: FinalResume, key: string): string | null {
+function hasStructuredResumeSection(resume: FinalResume, key: string): boolean {
   switch (key) {
-    case 'summary':
-      return resume.summary || null;
-    case 'selected_accomplishments':
-      return resume.selected_accomplishments || null;
+    case 'summary': return Boolean(resume.summary);
+    case 'selected_accomplishments': return Boolean(resume.selected_accomplishments);
+    case 'skills': return Boolean(resume.skills && typeof resume.skills === 'object' && Object.keys(resume.skills).length > 0);
+    case 'experience': return Array.isArray(resume.experience) && resume.experience.length > 0;
+    case 'education': return Array.isArray(resume.education) && resume.education.length > 0;
+    case 'certifications': return Array.isArray(resume.certifications) && resume.certifications.length > 0;
+    default: return Boolean(resume._raw_sections?.[key]);
+  }
+}
+
+function getResumeSectionText(resume: FinalResume, key: string): string {
+  switch (key) {
+    case 'summary': return resume.summary || '';
+    case 'selected_accomplishments': return resume.selected_accomplishments || '';
     case 'skills': {
-      if (!resume.skills) return null;
-      if (typeof resume.skills === 'object' && !Array.isArray(resume.skills)) {
-        return Object.entries(resume.skills)
-          .map(([cat, items]) => `${cat}: ${Array.isArray(items) ? items.join(', ') : String(items)}`)
-          .join('\n');
-      }
-      return String(resume.skills);
+      if (!resume.skills || typeof resume.skills !== 'object') return '';
+      return Object.entries(resume.skills)
+        .map(([cat, items]) => `${cat}: ${Array.isArray(items) ? items.join(', ') : String(items)}`)
+        .join('\n');
     }
     case 'experience': {
-      if (!Array.isArray(resume.experience) || resume.experience.length === 0) return null;
+      if (!Array.isArray(resume.experience)) return '';
       return resume.experience
         .map((exp) => {
-          const header = `${exp.title} — ${exp.company} (${exp.start_date} – ${exp.end_date})`;
-          const bullets = exp.bullets?.map((b) => `  • ${b.text}`).join('\n') ?? '';
+          const header = `${exp.title ?? 'Position'} — ${exp.company ?? 'Company'} (${exp.start_date ?? ''} – ${exp.end_date ?? 'Present'})`;
+          const bullets = exp.bullets?.map((b) => `  • ${b.text ?? ''}`).join('\n') ?? '';
           return `${header}\n${bullets}`;
         })
         .join('\n\n');
     }
     case 'education': {
-      if (!Array.isArray(resume.education) || resume.education.length === 0) return null;
+      if (!Array.isArray(resume.education)) return '';
       return resume.education
-        .map((edu) => `${edu.degree}${edu.field ? ` in ${edu.field}` : ''}, ${edu.institution}${edu.year ? ` (${edu.year})` : ''}`)
+        .map((edu) => `${edu.degree ?? ''}${edu.field ? ` in ${edu.field}` : ''}, ${edu.institution ?? ''}${edu.year ? ` (${edu.year})` : ''}`)
         .join('\n');
     }
     case 'certifications': {
-      if (!Array.isArray(resume.certifications) || resume.certifications.length === 0) return null;
+      if (!Array.isArray(resume.certifications)) return '';
       return resume.certifications
-        .map((cert) => `${cert.name}${cert.issuer ? ` — ${cert.issuer}` : ''}${cert.year ? ` (${cert.year})` : ''}`)
+        .map((cert) => `${cert.name ?? ''}${cert.issuer ? ` — ${cert.issuer}` : ''}${cert.year ? ` (${cert.year})` : ''}`)
         .join('\n');
     }
-    default:
-      return resume._raw_sections?.[key] ?? null;
+    default: return resume._raw_sections?.[key] ?? '';
   }
 }
+
+// ─── Contact Header ──────────────────────────────────────────────────────────
 
 function ContactHeaderPlaceholder() {
   return (
     <div className="mb-4 text-center">
-      <div className="mx-auto h-6 w-48 animate-pulse rounded bg-gray-200" />
-      <div className="mx-auto mt-2 h-3 w-64 animate-pulse rounded bg-gray-100" />
-      <hr className="mt-2 border-gray-300" />
+      <div className="mx-auto h-7 w-52 animate-pulse rounded bg-gray-200" />
+      <div className="mx-auto mt-2 h-3 w-72 animate-pulse rounded bg-gray-100" style={{ animationDelay: '150ms' }} />
+      <hr className="mt-3 border-gray-400" />
     </div>
   );
 }
@@ -123,36 +134,132 @@ function ContactHeader({ resume }: { resume: FinalResume }) {
 
   return (
     <div className="mb-4 text-center">
-      <h1 className="text-xl font-bold text-gray-900">{ci.name}</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-gray-900">{ci.name}</h1>
       {contactParts.length > 0 && (
-        <p className="mt-1 text-xs text-gray-500">{contactParts.join(' • ')}</p>
+        <p className="mt-1 text-xs text-gray-500">{contactParts.join(' \u2022 ')}</p>
       )}
-      <hr className="mt-2 border-gray-400" />
+      <hr className="mt-3 border-gray-400" />
     </div>
   );
 }
 
+// ─── Structured Section Renderers (mirror WYSIWYGResume) ──────────────────────
+
+function StructuredSummarySection({ resume }: { resume: FinalResume }) {
+  if (!resume.summary) return null;
+  return <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{stripHtml(resume.summary)}</p>;
+}
+
+function StructuredAccomplishmentsSection({ resume }: { resume: FinalResume }) {
+  if (!resume.selected_accomplishments) return null;
+  return <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{stripHtml(resume.selected_accomplishments)}</div>;
+}
+
+function StructuredSkillsSection({ resume }: { resume: FinalResume }) {
+  const skills = resume.skills;
+  if (!skills || typeof skills !== 'object' || Object.keys(skills).length === 0) return null;
+  return (
+    <div className="space-y-1">
+      {Object.entries(skills).map(([category, items]) => (
+        <div key={category || '_default'} className="text-sm">
+          {category && <span className="font-semibold text-gray-700">{category}: </span>}
+          <span className="text-gray-800">{Array.isArray(items) ? items.join(', ') : String(items)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StructuredExperienceSection({ resume }: { resume: FinalResume }) {
+  if (!Array.isArray(resume.experience) || resume.experience.length === 0) return null;
+  return (
+    <div className="space-y-4">
+      {resume.experience.map((exp, i) => (
+        <div key={i}>
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm font-bold text-gray-900">{exp.title ?? 'Position'}</span>
+            <span className="text-xs text-gray-500">{exp.start_date ?? ''} – {exp.end_date ?? 'Present'}</span>
+          </div>
+          <div className="text-sm text-gray-600">
+            {exp.company ?? 'Company'}{exp.location ? `, ${exp.location}` : ''}
+          </div>
+          {exp.bullets && exp.bullets.length > 0 && (
+            <ul className="mt-1.5 space-y-0.5 pl-4">
+              {exp.bullets.map((b, j) => (
+                <li key={j} className="list-disc text-sm text-gray-800">{stripHtml(b.text ?? '')}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StructuredEducationSection({ resume }: { resume: FinalResume }) {
+  if (!Array.isArray(resume.education) || resume.education.length === 0) return null;
+  return (
+    <div>
+      {resume.education.map((edu, i) => (
+        <div key={i} className="text-sm text-gray-800">
+          <span className="font-semibold">{edu.degree ?? ''}</span>
+          {edu.field ? ` in ${edu.field}` : ''}, {edu.institution ?? ''}
+          {edu.year ? ` (${edu.year})` : ''}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StructuredCertificationsSection({ resume }: { resume: FinalResume }) {
+  if (!Array.isArray(resume.certifications) || resume.certifications.length === 0) return null;
+  return (
+    <div>
+      {resume.certifications.map((cert, i) => (
+        <div key={i} className="text-sm text-gray-800">
+          <span className="font-semibold">{cert.name ?? ''}</span>
+          {cert.issuer ? ` — ${cert.issuer}` : ''}
+          {cert.year ? ` (${cert.year})` : ''}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const structuredRenderers: Record<string, React.ComponentType<{ resume: FinalResume }>> = {
+  summary: StructuredSummarySection,
+  selected_accomplishments: StructuredAccomplishmentsSection,
+  skills: StructuredSkillsSection,
+  experience: StructuredExperienceSection,
+  education: StructuredEducationSection,
+  certifications: StructuredCertificationsSection,
+};
+
+// ─── Placeholder Section ──────────────────────────────────────────────────────
+
 function PlaceholderSection({ name }: { name: string }) {
   return (
     <section className="mb-5">
-      <h2 className="mb-2 border-b border-dashed border-gray-200 pb-1 text-sm font-bold uppercase tracking-wider text-gray-300">
+      <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-300">
         {SECTION_DISPLAY_NAMES[name] ?? toTitleCase(name)}
       </h2>
       <div className="space-y-2 py-1">
         <div className="h-3 w-full animate-pulse rounded bg-gray-100" />
-        <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" />
-        <div className="h-3 w-4/6 animate-pulse rounded bg-gray-50" />
+        <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" style={{ animationDelay: '150ms' }} />
+        <div className="h-3 w-4/6 animate-pulse rounded bg-gray-50" style={{ animationDelay: '300ms' }} />
       </div>
     </section>
   );
 }
+
+// ─── Section Status Badge ─────────────────────────────────────────────────────
 
 function SectionStatusBadge({ source, isActive }: { source: string; isActive: boolean }) {
   if (isActive) {
     return (
       <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-blue-500">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
-        Writing...
+        Creating...
       </span>
     );
   }
@@ -175,16 +282,127 @@ function SectionStatusBadge({ source, isActive }: { source: string; isActive: bo
   return null;
 }
 
-function AnimatedContentSection({
-  name,
+// ─── Section Wrapper ──────────────────────────────────────────────────────────
+
+function SectionWrapper({
+  sectionKey,
+  source,
+  isActive,
+  canEdit,
+  editing,
+  onStartEdit,
+  children,
+}: {
+  sectionKey: string;
+  source: SectionSource;
+  isActive: boolean;
+  canEdit: boolean;
+  editing: boolean;
+  onStartEdit: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className={`group mb-5 rounded transition-all duration-300 ${
+        isActive ? 'border-l-[3px] border-blue-500 bg-blue-50/30 pl-3 shadow-sm' : ''
+      } ${canEdit && !editing ? 'cursor-pointer hover:ring-2 hover:ring-blue-300/30' : ''}`}
+      onClick={canEdit && !editing ? onStartEdit : undefined}
+      role={canEdit && !editing ? 'button' : undefined}
+      tabIndex={canEdit && !editing ? 0 : undefined}
+      onKeyDown={canEdit && !editing ? (e) => { if (e.key === 'Enter') onStartEdit(); } : undefined}
+    >
+      <h2 className="mb-2 flex items-center border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-700">
+        {SECTION_DISPLAY_NAMES[sectionKey] ?? toTitleCase(sectionKey)}
+        <SectionStatusBadge source={source} isActive={isActive} />
+        {canEdit && !editing && (
+          <span className="ml-auto flex items-center gap-1 text-[10px] font-normal normal-case tracking-normal text-gray-400 opacity-40 transition-opacity group-hover:opacity-100">
+            <Pencil className="h-3 w-3" />
+            Click to edit
+          </span>
+        )}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+// ─── Inline Edit Overlay ──────────────────────────────────────────────────────
+
+function InlineEditOverlay({
+  value,
+  onSave,
+  onCancel,
+}: {
+  value: string;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const [editValue, setEditValue] = useState(value);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(
+        textareaRef.current.value.length,
+        textareaRef.current.value.length,
+      );
+    }
+  }, []);
+
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <textarea
+        ref={textareaRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        className="w-full resize-y rounded-lg border-2 border-blue-400 bg-blue-50 p-3 text-sm leading-relaxed text-gray-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        rows={Math.max(4, editValue.split('\n').length + 1)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onCancel();
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            onSave(editValue);
+          }
+        }}
+      />
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-[10px] text-gray-400">
+          {navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl'}+Enter to save \u00b7 Esc to cancel
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded px-3 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(editValue)}
+            className="rounded bg-blue-500 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-600"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Animated Content Section (for draft/approved text) ───────────────────────
+
+const AnimatedContentSection = React.memo(function AnimatedContentSection({
+  sectionKey,
   content,
   source,
   isActive,
   onEdit,
 }: {
-  name: string;
+  sectionKey: string;
   content: string;
-  source: string;
+  source: SectionSource;
   isActive: boolean;
   onEdit?: (key: string, content: string) => void;
 }) {
@@ -194,102 +412,99 @@ function AnimatedContentSection({
   });
 
   const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(content);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const canEdit = !isActive && !isAnimating && Boolean(onEdit) && (source === 'approved' || source === 'draft');
 
-  // Sync edit value when content changes externally
-  useEffect(() => {
-    if (!editing) setEditValue(content);
-  }, [content, editing]);
-
-  // Auto-focus textarea when entering edit mode
-  useEffect(() => {
-    if (editing && textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(
-        textareaRef.current.value.length,
-        textareaRef.current.value.length,
-      );
-    }
-  }, [editing]);
-
-  const canEdit = !isActive && !isAnimating && onEdit && (source === 'approved' || source === 'resume' || source === 'draft');
-
-  const handleSave = () => {
-    onEdit?.(name, editValue);
+  const handleSave = useCallback((newContent: string) => {
+    onEdit?.(sectionKey, newContent);
     setEditing(false);
-  };
+  }, [onEdit, sectionKey]);
 
-  const handleCancel = () => {
-    setEditValue(content);
-    setEditing(false);
-  };
+  const handleCancel = useCallback(() => setEditing(false), []);
 
   return (
-    <section
-      className={`group mb-5 rounded transition-all duration-300 ${
-        isActive ? 'border-l-2 border-blue-400 pl-3' : ''
-      } ${canEdit && !editing ? 'cursor-pointer hover:ring-2 hover:ring-blue-300/30' : ''}`}
-      onClick={canEdit && !editing ? () => setEditing(true) : undefined}
-      role={canEdit && !editing ? 'button' : undefined}
-      tabIndex={canEdit && !editing ? 0 : undefined}
-      onKeyDown={canEdit && !editing ? (e) => { if (e.key === 'Enter') setEditing(true); } : undefined}
+    <SectionWrapper
+      sectionKey={sectionKey}
+      source={source}
+      isActive={isActive}
+      canEdit={canEdit}
+      editing={editing}
+      onStartEdit={() => setEditing(true)}
     >
-      <h2 className="mb-2 flex items-center border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-700">
-        {SECTION_DISPLAY_NAMES[name] ?? toTitleCase(name)}
-        <SectionStatusBadge source={source} isActive={isActive} />
-        {canEdit && !editing && (
-          <span className="ml-auto text-[10px] font-normal normal-case tracking-normal text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
-            Click to edit
-          </span>
-        )}
-      </h2>
-
       {editing ? (
-        <div onClick={(e) => e.stopPropagation()}>
-          <textarea
-            ref={textareaRef}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            className="w-full resize-y rounded border border-blue-300 bg-blue-50/50 p-2 text-sm leading-relaxed text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            rows={Math.max(4, editValue.split('\n').length + 1)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') handleCancel();
-            }}
-          />
-          <div className="mt-2 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="rounded px-3 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="rounded bg-blue-500 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-600"
-            >
-              Save
-            </button>
-          </div>
-        </div>
+        <InlineEditOverlay value={content} onSave={handleSave} onCancel={handleCancel} />
       ) : (
         <div
-          className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800"
+          className={`whitespace-pre-wrap text-sm leading-relaxed text-gray-800 ${isAnimating ? 'cursor-pointer' : ''}`}
           onClick={isAnimating ? skipToEnd : undefined}
           role={isAnimating ? 'button' : undefined}
           tabIndex={isAnimating ? 0 : undefined}
           onKeyDown={isAnimating ? (e) => { if (e.key === 'Enter' || e.key === ' ') skipToEnd(); } : undefined}
           title={isAnimating ? 'Click to skip animation' : undefined}
+          aria-busy={isAnimating}
         >
-          {isActive ? displayText : content}
-          {isAnimating && <span className="inline-block h-4 w-0.5 animate-pulse bg-gray-400 align-text-bottom" />}
+          {isActive ? displayText : stripHtml(content)}
+          {isAnimating && <span className="inline-block h-3.5 w-0.5 animate-pulse bg-gray-400 align-text-bottom" />}
         </div>
       )}
-    </section>
+    </SectionWrapper>
   );
-}
+}, (prev, next) => {
+  return prev.content === next.content
+    && prev.isActive === next.isActive
+    && prev.source === next.source
+    && prev.sectionKey === next.sectionKey
+    && prev.onEdit === next.onEdit;
+});
+
+// ─── Structured Resume Section (for completed FinalResume) ────────────────────
+
+const StructuredResumeSection = React.memo(function StructuredResumeSection({
+  sectionKey,
+  resume,
+  onEdit,
+}: {
+  sectionKey: string;
+  resume: FinalResume;
+  onEdit?: (key: string, content: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const canEdit = Boolean(onEdit);
+  const Renderer = structuredRenderers[sectionKey];
+
+  const handleSave = useCallback((newContent: string) => {
+    onEdit?.(sectionKey, newContent);
+    setEditing(false);
+  }, [onEdit, sectionKey]);
+
+  const handleCancel = useCallback(() => setEditing(false), []);
+
+  return (
+    <SectionWrapper
+      sectionKey={sectionKey}
+      source="resume"
+      isActive={false}
+      canEdit={canEdit}
+      editing={editing}
+      onStartEdit={() => setEditing(true)}
+    >
+      {editing ? (
+        <InlineEditOverlay
+          value={getResumeSectionText(resume, sectionKey)}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
+      ) : Renderer ? (
+        <Renderer resume={resume} />
+      ) : (
+        <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+          {stripHtml(resume._raw_sections?.[sectionKey] ?? '')}
+        </div>
+      )}
+    </SectionWrapper>
+  );
+});
+
+// ─── Quality Badge (outside the document) ─────────────────────────────────────
 
 function qualityScoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10';
@@ -297,10 +512,10 @@ function qualityScoreColor(score: number): string {
   return 'text-red-400 border-red-400/40 bg-red-400/10';
 }
 
-function QualityOverlay({ data }: { data: QualityDashboardData }) {
+function QualityBadge({ data }: { data: QualityDashboardData }) {
   const [expanded, setExpanded] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Compute overall score (average of available scores)
   const scores: { label: string; value: number }[] = [];
   if (typeof data.ats_score === 'number') scores.push({ label: 'ATS', value: data.ats_score });
   if (typeof data.keyword_coverage === 'number') scores.push({ label: 'Keywords', value: data.keyword_coverage });
@@ -310,32 +525,37 @@ function QualityOverlay({ data }: { data: QualityDashboardData }) {
   if (typeof data.narrative_coherence === 'number') scores.push({ label: 'Coherence', value: data.narrative_coherence });
 
   if (scores.length === 0) return null;
-
   const overallScore = Math.round(scores.reduce((sum, s) => sum + s.value, 0) / scores.length);
 
+  useEffect(() => {
+    if (!expanded) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [expanded]);
+
   return (
-    <div className="absolute right-4 top-4 z-10">
+    <div ref={overlayRef} className="relative">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className={`flex h-12 w-12 items-center justify-center rounded-full border-2 text-lg font-bold shadow-lg transition-all ${qualityScoreColor(overallScore)}`}
-        title={`Quality score: ${overallScore}%`}
+        className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold shadow-lg transition-all ${qualityScoreColor(overallScore)}`}
+        aria-label={`Quality score ${overallScore}%. Click for breakdown.`}
       >
         {overallScore}
       </button>
-
       {expanded && (
-        <div className="absolute right-0 top-14 w-56 rounded-lg border border-gray-200 bg-white p-3 shadow-xl">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Quality Breakdown
-          </div>
+        <div className="absolute left-0 top-12 z-20 w-56 rounded-lg border border-gray-200 bg-white p-3 shadow-xl">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Quality Breakdown</div>
           <div className="space-y-1.5">
             {scores.map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">{label}</span>
-                <span className={`font-semibold ${
-                  value >= 80 ? 'text-emerald-600' : value >= 60 ? 'text-amber-600' : 'text-red-600'
-                }`}>
+                <span className={`font-semibold ${value >= 80 ? 'text-emerald-600' : value >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
                   {value}%
                 </span>
               </div>
@@ -352,11 +572,19 @@ function QualityOverlay({ data }: { data: QualityDashboardData }) {
   );
 }
 
+// ─── Export Toolbar ────────────────────────────────────────────────────────────
+
 function ExportToolbar({ resume }: { resume: FinalResume }) {
   const [exportingDocx, setExportingDocx] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const isExporting = exportingDocx || exportingPdf;
+
+  useEffect(() => {
+    if (!exportError) return;
+    const timer = setTimeout(() => setExportError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [exportError]);
 
   const handleDownloadText = () => {
     setExportError(null);
@@ -381,33 +609,29 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
     }
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     setExportError(null);
     setExportingPdf(true);
-    requestAnimationFrame(() => {
-      void import('@/lib/export-pdf')
-        .then(({ exportPdf }) => {
-          const result = exportPdf(resume);
-          if (!result.success) setExportError(result.error ?? 'Failed to export PDF');
-        })
-        .catch((err: unknown) => {
-          setExportError(err instanceof Error ? err.message : 'Failed to export PDF');
-        })
-        .finally(() => setExportingPdf(false));
-    });
+    try {
+      const { exportPdf } = await import('@/lib/export-pdf');
+      const result = exportPdf(resume);
+      if (!result.success) setExportError(result.error ?? 'Failed to export PDF');
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : 'Failed to export PDF');
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   return (
-    <div className="mb-3 flex w-full max-w-[8.5in] items-center justify-end gap-2 px-1">
-      {exportError && (
-        <span className="mr-auto text-xs text-red-400">{exportError}</span>
-      )}
+    <>
+      {exportError && <span className="mr-auto text-xs text-red-400">{exportError}</span>}
       <button
         type="button"
         onClick={handleDownloadText}
         disabled={isExporting}
         className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/20 hover:text-white disabled:opacity-40"
-        title="Download as text"
+        aria-label="Download resume as text file"
       >
         <Download className="h-3.5 w-3.5" />
         Text
@@ -417,24 +641,26 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
         onClick={() => void handleDownloadDocx()}
         disabled={isExporting}
         className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/20 hover:text-white disabled:opacity-40"
-        title="Download as DOCX"
+        aria-label="Download resume as DOCX document"
       >
         {exportingDocx ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileType2 className="h-3.5 w-3.5" />}
         DOCX
       </button>
       <button
         type="button"
-        onClick={handleDownloadPdf}
+        onClick={() => void handleDownloadPdf()}
         disabled={isExporting}
         className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/20 hover:text-white disabled:opacity-40"
-        title="Print / Save as PDF"
+        aria-label="Print or save resume as PDF"
       >
         {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
         PDF
       </button>
-    </div>
+    </>
   );
 }
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function LiveResumeDocument({
   sectionOrder,
@@ -448,31 +674,28 @@ export function LiveResumeDocument({
   sessionComplete,
   qualityData,
 }: LiveResumeDocumentProps) {
-  const documentRef = useRef<HTMLDivElement>(null);
   const activeSectionRef = useRef<HTMLDivElement>(null);
 
-  // Determine section order: blueprint order > default
   const effectiveOrder = useMemo(
     () => (sectionOrder.length > 0 ? sectionOrder : DEFAULT_SECTION_ORDER),
     [sectionOrder],
   );
 
-  // Count completed sections for progress
-  // sectionDraftsVersion is included to re-compute when ref-based sectionContent changes
-  const completedCount = useMemo(() => {
-    let count = 0;
-    for (const key of effectiveOrder) {
-      const { source } = resolveSectionContent(key, resume, approvedSections, sectionContent);
-      if (source !== 'placeholder') count++;
-    }
-    return count;
+  const resolvedSections = useMemo(() => {
+    return effectiveOrder.map((key) => ({
+      key,
+      ...resolveSectionContent(key, resume, approvedSections, sectionContent),
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveOrder, resume, approvedSections, sectionContent, sectionDraftsVersion]);
 
+  const completedCount = useMemo(
+    () => resolvedSections.filter((s) => s.source !== 'placeholder').length,
+    [resolvedSections],
+  );
   const totalCount = effectiveOrder.length;
   const allComplete = completedCount === totalCount || sessionComplete;
 
-  // Auto-scroll to active section
   useEffect(() => {
     if (activeSectionKey && activeSectionRef.current) {
       activeSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -481,40 +704,42 @@ export function LiveResumeDocument({
 
   return (
     <div className="flex h-full flex-col items-center overflow-y-auto bg-[#1a1d23] px-4 py-6">
-      {/* Document-level progress */}
-      {isProcessing && !allComplete && (
-        <div className="mb-3 flex w-full max-w-[8.5in] items-center gap-3 px-1">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-700">
-            <div
-              className="h-full rounded-full bg-blue-400 transition-all duration-500"
-              style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
-            />
+      {/* Toolbar: progress + quality + export */}
+      <div className="mb-3 flex w-full max-w-[8.5in] items-center gap-3 px-1">
+        {isProcessing && !allComplete && (
+          <div className="flex flex-1 items-center gap-3">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-700">
+              <div
+                className="h-full rounded-full bg-blue-400 transition-all duration-500"
+                style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
+              />
+            </div>
+            <span className="whitespace-nowrap text-xs text-white/50">
+              {completedCount}/{totalCount} sections
+            </span>
           </div>
-          <span className="text-xs text-white/50">
-            {completedCount}/{totalCount} sections
-          </span>
-        </div>
-      )}
+        )}
+        {isProcessing && allComplete && !sessionComplete && (
+          <div className="flex flex-1 items-center gap-2">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-white/40" />
+            <span className="text-xs text-white/50">Finalizing...</span>
+          </div>
+        )}
+        {(!isProcessing || (allComplete && sessionComplete)) && <div className="flex-1" />}
 
-      {/* Export toolbar — visible when resume has content */}
-      {resume && completedCount > 0 && <ExportToolbar resume={resume} />}
+        {qualityData && <QualityBadge data={qualityData} />}
+        {resume && completedCount > 0 && <ExportToolbar resume={resume} />}
+      </div>
 
       {/* A4 document */}
       <div
-        ref={documentRef}
         id="live-resume-document"
-        className="relative mx-auto w-full max-w-[8.5in] rounded-lg bg-white px-4 py-6 shadow-2xl shadow-black/40 text-gray-900 md:px-10 md:py-8"
+        className="relative mx-auto w-full max-w-[8.5in] rounded-lg bg-white px-6 py-6 shadow-2xl shadow-black/40 text-gray-900 sm:px-8 md:px-10 md:py-8 lg:px-12"
         style={{ fontFamily: 'Calibri, "Segoe UI", system-ui, sans-serif' }}
       >
-        {/* Quality overlay */}
-        {qualityData && <QualityOverlay data={qualityData} />}
-
-        {/* Contact header */}
         {resume ? <ContactHeader resume={resume} /> : <ContactHeaderPlaceholder />}
 
-        {/* Sections */}
-        {effectiveOrder.map((key) => {
-          const { content, source } = resolveSectionContent(key, resume, approvedSections, sectionContent);
+        {resolvedSections.map(({ key, source, content, hasStructuredData }) => {
           const isActive = key === activeSectionKey;
 
           if (source === 'placeholder') {
@@ -525,10 +750,22 @@ export function LiveResumeDocument({
             );
           }
 
+          if (source === 'resume' && hasStructuredData && resume) {
+            return (
+              <div key={key} ref={isActive ? activeSectionRef : undefined}>
+                <StructuredResumeSection
+                  sectionKey={key}
+                  resume={resume}
+                  onEdit={onEditSection}
+                />
+              </div>
+            );
+          }
+
           return (
             <div key={key} ref={isActive ? activeSectionRef : undefined}>
               <AnimatedContentSection
-                name={key}
+                sectionKey={key}
                 content={content!}
                 source={source}
                 isActive={isActive}

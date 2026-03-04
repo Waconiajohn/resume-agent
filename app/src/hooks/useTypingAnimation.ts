@@ -30,23 +30,44 @@ export function useTypingAnimation({
   const wordsRef = useRef<string[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Check prefers-reduced-motion
-  const prefersReducedMotion = useRef(
-    typeof window !== 'undefined'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
+  const prefersReducedMotion = useRef(false);
 
-  // Split target text into words
+  // Initialize and listen for reduced motion changes
   useEffect(() => {
-    wordsRef.current = targetText ? targetText.split(/(\s+)/) : [];
-    // When target text changes and we're active, find divergence point
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    prefersReducedMotion.current = mq.matches;
+    const handler = (e: MediaQueryListEvent) => {
+      prefersReducedMotion.current = e.matches;
+      if (e.matches) {
+        setSkipped(true);
+        setWordIndex(wordsRef.current.length);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Split target text into words and find divergence point
+  useEffect(() => {
+    const newWords = targetText ? targetText.split(/(\s+)/) : [];
+    const oldWords = wordsRef.current;
+    wordsRef.current = newWords;
+
     if (isActive && !skipped && !prefersReducedMotion.current) {
-      const newWords = targetText ? targetText.split(/(\s+)/) : [];
-      // Reset to beginning for new content
-      setWordIndex(0);
+      // Find divergence point to avoid re-animating already-shown content
+      let divergeAt = 0;
+      const minLen = Math.min(oldWords.length, newWords.length);
+      while (divergeAt < minLen && oldWords[divergeAt] === newWords[divergeAt]) {
+        divergeAt++;
+      }
+      setWordIndex((prev) => Math.min(prev, divergeAt));
     } else if (!isActive) {
-      // Not active — show full text
-      setWordIndex(wordsRef.current.length);
+      setWordIndex(newWords.length);
       setSkipped(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

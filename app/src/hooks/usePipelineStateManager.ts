@@ -99,6 +99,7 @@ export interface PipelineStateManager {
   // ── Live document section tracking ─────────────────────────────────────────
   sectionDraftsRef: React.MutableRefObject<Record<string, string>>;
   sectionDraftsVersion: number;
+  sectionDraftsSnapshot: Record<string, string>;
   sectionBuildOrder: string[];
   setSectionBuildOrder: React.Dispatch<React.SetStateAction<string[]>>;
   setSectionDraftEntry: (key: string, content: string) => void;
@@ -199,10 +200,12 @@ export function usePipelineStateManager(
   // ── Live document section tracking ──────────────────────────────────────
   const sectionDraftsRef = useRef<Record<string, string>>({});
   const [sectionDraftsVersion, setSectionDraftsVersion] = useState(0);
+  const [sectionDraftsSnapshot, setSectionDraftsSnapshot] = useState<Record<string, string>>({});
   const [sectionBuildOrder, setSectionBuildOrder] = useState<string[]>([]);
 
   const setSectionDraftEntry = useCallback((key: string, content: string) => {
     sectionDraftsRef.current[key] = content;
+    setSectionDraftsSnapshot((prev) => ({ ...prev, [key]: content }));
     setSectionDraftsVersion((v) => v + 1);
     setSectionBuildOrder((prev) => (prev.includes(key) ? prev : [...prev, key]));
   }, []);
@@ -282,6 +285,7 @@ export function usePipelineStateManager(
       setSectionDraft(null);
       setApprovedSections({});
       sectionDraftsRef.current = {};
+      setSectionDraftsSnapshot({});
       setSectionDraftsVersion(0);
       setSectionBuildOrder([]);
       sectionsMapRef.current = {};
@@ -375,6 +379,7 @@ export function usePipelineStateManager(
     // Live document section tracking
     sectionDraftsRef,
     sectionDraftsVersion,
+    sectionDraftsSnapshot,
     sectionBuildOrder,
     setSectionBuildOrder,
     setSectionDraftEntry,
