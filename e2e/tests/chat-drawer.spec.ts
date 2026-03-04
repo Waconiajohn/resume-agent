@@ -1,7 +1,10 @@
 /**
  * E2E tests for the ChatDrawer component.
  *
- * Sprint 17: Verify the collapsible bottom ChatDrawer introduced in commit 6f5c5bd.
+ * Sprint 20: Verify the floating icon-button ChatDrawer introduced in the
+ * document-centric layout redesign. The drawer starts collapsed as a small
+ * icon button (bottom-left) and expands to a fixed overlay when clicked.
+ *
  * Uses mocked API/SSE (no real LLM calls) via the shared interceptAllAPI + navigateToWorkbench pattern.
  *
  * Runs under the 'chromium' project (fast, mocked, ~5s).
@@ -45,69 +48,62 @@ function minimalSSEEvents() {
 }
 
 test.describe('ChatDrawer', () => {
-  test('drawer toggle bar is visible and starts collapsed', async ({ page }) => {
+  test('open button is visible and drawer starts collapsed', async ({ page }) => {
     await navigateToWorkbench(page, minimalSSEEvents());
 
-    const toggle = page.locator('button[aria-expanded]');
-    await expect(toggle).toBeVisible({ timeout: 5_000 });
+    const openBtn = page.getByRole('button', { name: /open coach/i });
+    await expect(openBtn).toBeVisible({ timeout: 5_000 });
 
-    // Should contain "Coach" label text
-    await expect(toggle).toContainText('Coach');
-
-    // Should start collapsed (SSE events arrive synchronously before mount,
-    // so prevMessagesLenRef already matches — no auto-expand)
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    // Close button should not be visible when collapsed
+    await expect(page.getByRole('button', { name: /close coach/i })).not.toBeVisible();
   });
 
-  test('clicking toggle expands and collapses the drawer', async ({ page }) => {
+  test('clicking open button expands, clicking close collapses', async ({ page }) => {
     await navigateToWorkbench(page, minimalSSEEvents());
 
-    const toggle = page.locator('button[aria-expanded]');
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    const openBtn = page.getByRole('button', { name: /open coach/i });
+    await openBtn.click();
 
-    // Expand
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // Close button appears when expanded
+    const closeBtn = page.getByRole('button', { name: /close coach/i });
+    await expect(closeBtn).toBeVisible({ timeout: 3_000 });
 
     // Collapse
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await closeBtn.click();
+    await expect(openBtn).toBeVisible({ timeout: 3_000 });
   });
 
   test('chat input area is visible when drawer is expanded', async ({ page }) => {
     await navigateToWorkbench(page, minimalSSEEvents());
 
-    const toggle = page.locator('button[aria-expanded]');
+    const openBtn = page.getByRole('button', { name: /open coach/i });
+    await openBtn.click();
 
-    // Expand drawer
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-
-    // When a section_draft gate is active, the textarea shows "Use the panel above
-    // to continue" (disabled). Verify the textarea element exists in the expanded body.
+    // Verify the textarea exists in the expanded body
     const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible({ timeout: 5_000 });
   });
 
-  test('toggle bar displays status text', async ({ page }) => {
+  test('open button includes status text in aria-label', async ({ page }) => {
     await navigateToWorkbench(page, workbenchSSEEvents());
 
-    const toggle = page.locator('button[aria-expanded]');
-    await expect(toggle).toBeVisible({ timeout: 5_000 });
+    const openBtn = page.getByRole('button', { name: /open coach/i });
+    await expect(openBtn).toBeVisible({ timeout: 5_000 });
 
-    // The toggle bar should show a status label inside (Waiting for input, Working, etc.)
-    // With a section_draft pending gate, status should be "Waiting for input"
-    await expect(toggle).toContainText(/Waiting for input|Working|Idle|Connected/);
+    // aria-label contains status like "Waiting for input", "Working", etc.
+    await expect(openBtn).toHaveAttribute(
+      'aria-label',
+      /Open coach – (Waiting for input|Working|Idle|Connected)/,
+    );
   });
 
-  test('toggle bar shows chevron icon', async ({ page }) => {
+  test('expanded header shows Coach label and status', async ({ page }) => {
     await navigateToWorkbench(page, minimalSSEEvents());
 
-    const toggle = page.locator('button[aria-expanded]');
-    await expect(toggle).toBeVisible({ timeout: 5_000 });
+    const openBtn = page.getByRole('button', { name: /open coach/i });
+    await openBtn.click();
 
-    // ChevronUp SVG should be present in the toggle bar
-    const chevron = toggle.locator('svg').last();
-    await expect(chevron).toBeVisible();
+    // Header contains "Coach" text
+    await expect(page.locator('text=Coach').first()).toBeVisible({ timeout: 3_000 });
   });
 });

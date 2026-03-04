@@ -34,7 +34,6 @@ const SECTION_DISPLAY_NAMES: Record<string, string> = {
 interface LiveResumeDocumentProps {
   sectionOrder: string[];
   sectionContent: Record<string, string>;
-  sectionDraftsVersion: number;
   approvedSections: Record<string, string>;
   activeSectionKey: string | null;
   onEditSection?: (key: string, content: string) => void;
@@ -375,6 +374,7 @@ function InlineEditOverlay({
         ref={textareaRef}
         value={editValue}
         onChange={(e) => setEditValue(e.target.value)}
+        aria-label="Edit section content"
         className="w-full resize-y rounded-lg border-2 border-blue-400 bg-blue-50 p-3 text-sm leading-relaxed text-gray-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
         rows={Math.max(4, editValue.split('\n').length + 1)}
         onKeyDown={(e) => {
@@ -686,7 +686,6 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
 export function LiveResumeDocument({
   sectionOrder,
   sectionContent,
-  sectionDraftsVersion,
   approvedSections,
   activeSectionKey,
   onEditSection,
@@ -707,9 +706,6 @@ export function LiveResumeDocument({
       key,
       ...resolveSectionContent(key, resume, approvedSections, sectionContent),
     }));
-    // sectionDraftsVersion is intentionally omitted: setSectionDraftsSnapshot always
-    // produces a new object reference (via spread), so sectionContent identity already
-    // changes whenever content changes — the version counter is redundant here.
   }, [effectiveOrder, resume, approvedSections, sectionContent]);
 
   const completedCount = useMemo(

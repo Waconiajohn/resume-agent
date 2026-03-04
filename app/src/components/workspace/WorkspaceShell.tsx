@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Lock, Sparkles, FileText, Target, Search, MessageCircle, Map, Layers, ShieldCheck, Download } from 'lucide-react';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
@@ -15,8 +15,6 @@ export interface WorkspaceNodeNavItem {
 }
 
 interface WorkspaceShellProps {
-  title: string;
-  subtitle?: string;
   nodes: WorkspaceNodeNavItem[];
   selectedNode: WorkflowNodeKey;
   activeNode: WorkflowNodeKey;
@@ -91,8 +89,6 @@ function statusStyles(status: WorkflowNodeStatus) {
 }
 
 export function WorkspaceShell({
-  title,
-  subtitle,
   nodes,
   selectedNode,
   activeNode,
@@ -114,6 +110,13 @@ export function WorkspaceShell({
   const handleMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     setSidebarExpanded(false);
+  }, []);
+
+  // Cleanup hover timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
   }, []);
 
   return (

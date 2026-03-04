@@ -109,15 +109,13 @@ test.describe('Full Pipeline E2E', () => {
         timeout: 60_000,
       });
 
-      // Wait for the ChatDrawer toggle bar to confirm we're on the coach screen
-      // (textarea is inside the collapsed drawer — not visible until expanded)
+      // Wait for the ChatDrawer icon button to confirm we're on the coach screen
       await expect(
-        page.locator('button[aria-expanded]'),
+        page.getByRole('button', { name: /open coach/i }),
       ).toBeVisible({ timeout: 30_000 });
 
-      // Wait for the workspace to show pipeline progress breadcrumb (visible even if panel root has zero height)
-      // Groq responds in <5s typically. 60s is generous but catches cold starts.
-      await expect(page.getByText(/Step \d+ of 7/).first()).toBeVisible({
+      // Wait for the context panel to appear (pipeline gate or panel content)
+      await expect(page.locator('[data-panel-root]').first()).toBeVisible({
         timeout: 60_000, // 60s for first LLM response (was 5 min for Z.AI)
       });
     });

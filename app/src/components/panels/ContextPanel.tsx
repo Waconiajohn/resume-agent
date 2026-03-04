@@ -1,48 +1,43 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface ContextPanelProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Focus trap: return focus when panel closes
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Focus management: move focus into panel on open, restore on close
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement as HTMLElement;
+      // Wait for transition to start, then focus close button
+      requestAnimationFrame(() => closeButtonRef.current?.focus());
     } else if (previousFocusRef.current) {
       previousFocusRef.current.focus();
       previousFocusRef.current = null;
     }
-    return () => {
-      if (previousFocusRef.current) {
-        previousFocusRef.current.focus();
-        previousFocusRef.current = null;
-      }
-    };
   }, [isOpen]);
 
-  // Close on Escape key
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape' && isOpen) {
-      onClose();
-    }
-  }, [isOpen, onClose]);
-
+  // Close on Escape key — only listen when open
   useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+  }, [isOpen, onClose]);
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — click to close */}
       {isOpen && (
         <div
           className="fixed inset-0 z-30 transition-opacity"
@@ -58,7 +53,8 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
-        aria-modal="true"
+        aria-modal={isOpen}
+        aria-hidden={!isOpen}
         aria-label={title ?? 'Context panel'}
       >
         {/* Header */}
@@ -67,6 +63,7 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
             {title ?? 'Context'}
           </span>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             className="rounded p-1 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"

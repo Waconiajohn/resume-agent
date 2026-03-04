@@ -97,14 +97,21 @@ function ToastItem({
 }) {
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slideOutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const accent = ACCENT_STYLES[toast.type];
   const duration = toast.duration ?? DEFAULT_DURATIONS[toast.type];
 
+  // Cleanup all timers on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (slideOutRef.current) clearTimeout(slideOutRef.current);
+    };
+  }, []);
+
   // Slide-in on mount
   useEffect(() => {
-    // Small delay so the browser paints the initial off-screen position first,
-    // then we trigger the CSS transition.
     const frame = requestAnimationFrame(() => {
       setVisible(true);
     });
@@ -115,8 +122,7 @@ function ToastItem({
   useEffect(() => {
     timerRef.current = setTimeout(() => {
       setVisible(false);
-      // Allow slide-out animation before removing
-      setTimeout(() => onDismiss(toast.id), 300);
+      slideOutRef.current = setTimeout(() => onDismiss(toast.id), 300);
     }, duration);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -126,7 +132,7 @@ function ToastItem({
   const handleDismiss = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setVisible(false);
-    setTimeout(() => onDismiss(toast.id), 300);
+    slideOutRef.current = setTimeout(() => onDismiss(toast.id), 300);
   }, [onDismiss, toast.id]);
 
   return (
@@ -205,6 +211,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
       {/* Toast container */}
       <div
+        role="status"
+        aria-live="polite"
         className={[
           'fixed bottom-4 z-50 flex flex-col gap-2 pointer-events-none',
           // Centered on mobile, right-aligned on sm+

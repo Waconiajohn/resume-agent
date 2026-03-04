@@ -79,10 +79,8 @@ export default function App() {
     dismissSuggestion,
     approvedSections,
     sectionDrafts,
-    sectionDraftsVersion,
     sectionBuildOrder,
     reconnectStreamNow,
-    activityMessages,
     updateSectionLocally,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
@@ -521,11 +519,9 @@ export default function App() {
           onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
           approvedSections={approvedSections}
           sectionDrafts={sectionDrafts}
-          sectionDraftsVersion={sectionDraftsVersion}
           sectionBuildOrder={sectionBuildOrder}
           onDismissSuggestion={dismissSuggestion}
           onLocalSectionEdit={updateSectionLocally}
-          onRestartPipelineFromLastInputs={handleRestartPipelineFromCache}
           liveDraftReadiness={draftReadiness}
           liveWorkflowReplan={workflowReplan}
           pipelineActivity={pipelineActivity}

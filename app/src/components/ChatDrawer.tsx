@@ -39,6 +39,8 @@ interface ChatDrawerProps {
   approvedSections?: Record<string, string>;
 }
 
+const EMPTY_APPROVED_SECTIONS: Record<string, string> = {};
+
 export function ChatDrawer({
   messages,
   streamingText,
@@ -61,7 +63,7 @@ export function ChatDrawer({
   onPipelineRespond,
   isPipelineGateActive,
   onSaveCurrentResumeAsBase,
-  approvedSections = {},
+  approvedSections = EMPTY_APPROVED_SECTIONS,
 }: ChatDrawerProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -89,7 +91,7 @@ export function ChatDrawer({
               ? 'Complete'
               : runtimeState === 'error'
                 ? 'Error'
-                : (connected ? (pipelinePhaseActive ? 'Idle' : 'Connected') : 'Reconnecting');
+                : (pipelinePhaseActive ? 'Idle' : 'Connected');
   const statusDotColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
       ? 'bg-rose-400'
@@ -99,7 +101,7 @@ export function ChatDrawer({
           ? 'bg-amber-400'
           : runtimeState === 'complete'
             ? 'bg-emerald-400'
-            : (connected ? 'bg-emerald-400' : 'bg-white/40');
+            : 'bg-emerald-400';
 
   return (
     <>
@@ -111,19 +113,24 @@ export function ChatDrawer({
           className="fixed bottom-4 left-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.12] bg-[#0d1117]/90 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117]"
           aria-label={`Open coach – ${statusLabel}`}
         >
-          <MessageCircle className="h-4.5 w-4.5 text-white/60" />
+          <MessageCircle className="h-[1.125rem] w-[1.125rem] text-white/60" />
           <span className={cn('absolute right-0.5 top-0.5 h-2 w-2 rounded-full', statusDotColor)} />
         </button>
       )}
 
       {/* Expanded: fixed overlay from bottom — does NOT affect document layout */}
       {expanded && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex max-h-[50vh] flex-col border-t border-white/[0.08] bg-[#0d1117]/98 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        <div
+          className="fixed inset-x-0 bottom-0 z-20 flex max-h-[50vh] flex-col border-t border-white/[0.08] bg-[#0d1117] shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.5)]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Coach drawer"
+        >
           {/* Header bar */}
           <div className="flex h-[36px] shrink-0 items-center gap-2 px-4">
             <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotColor)} />
             <span className="text-xs font-medium text-white/80">Coach</span>
-            <span className="text-xs text-white/50">{statusLabel}</span>
+            <span className="text-xs text-white/50" aria-live="polite">{statusLabel}</span>
             {isProcessing && <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />}
             <button
               type="button"

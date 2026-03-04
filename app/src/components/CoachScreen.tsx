@@ -78,11 +78,9 @@ interface CoachScreenProps {
   ) => Promise<{ success: boolean; message: string }>;
   approvedSections?: Record<string, string>;
   sectionDrafts?: Record<string, string>;
-  sectionDraftsVersion?: number;
   sectionBuildOrder?: string[];
   onDismissSuggestion?: (id: string) => void;
   onLocalSectionEdit?: (sectionKey: string, content: string) => void;
-  onRestartPipelineFromLastInputs?: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   liveDraftReadiness?: DraftReadinessUpdate | null;
   liveWorkflowReplan?: WorkflowReplanUpdate | null;
   pipelineActivity?: PipelineActivitySnapshot | null;
@@ -114,11 +112,9 @@ export function CoachScreen({
   onSaveCurrentResumeAsBase,
   approvedSections = {},
   sectionDrafts = {},
-  sectionDraftsVersion = 0,
   sectionBuildOrder = [],
   onDismissSuggestion,
   onLocalSectionEdit,
-  onRestartPipelineFromLastInputs,
   liveDraftReadiness = null,
   liveWorkflowReplan = null,
   pipelineActivity = null,
@@ -130,6 +126,10 @@ export function CoachScreen({
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevPanelDataRef = useRef<PanelData | null>(null);
   const { addToast } = useToast();
+
+  // Stable ref for onReconnectStream so toast action buttons aren't stale
+  const reconnectRef = useRef(onReconnectStream);
+  reconnectRef.current = onReconnectStream;
 
   useEffect(() => {
     runPanelPayloadSmokeChecks();
@@ -191,7 +191,7 @@ export function CoachScreen({
           : 'Live connection disconnected while processing.',
         duration: 8000,
         action: onReconnectStream
-          ? <button type="button" onClick={onReconnectStream} className="mt-1 rounded bg-white/10 px-2.5 py-1 text-xs font-medium text-white/80 transition-colors hover:bg-white/20">Reconnect</button>
+          ? <button type="button" onClick={() => reconnectRef.current?.()} className="mt-1 rounded bg-white/10 px-2.5 py-1 text-xs font-medium text-white/80 transition-colors hover:bg-white/20">Reconnect</button>
           : undefined,
       });
     }
@@ -287,10 +287,13 @@ export function CoachScreen({
 
   // ── Workflow-dependent toast notifications ──────────────
   // Workflow error toast (replaces WorkflowErrorBanner)
+  const prevWorkflowErrorRef = useRef<string | null>(null);
   useEffect(() => {
-    if (workflowSession.error) {
+    const errStr = workflowSession.error ? String(workflowSession.error) : null;
+    if (errStr && errStr !== prevWorkflowErrorRef.current) {
       addToast({ type: 'warning', message: 'Having trouble loading the latest workflow state.' });
     }
+    prevWorkflowErrorRef.current = errStr;
   }, [workflowSession.error, addToast]);
 
   // Workflow action toast (replaces WorkflowActionBanner)
@@ -532,7 +535,6 @@ export function CoachScreen({
           <LiveResumeDocument
             sectionOrder={sectionBuildOrder}
             sectionContent={sectionDrafts}
-            sectionDraftsVersion={sectionDraftsVersion}
             approvedSections={approvedSections}
             activeSectionKey={activeSectionKey}
             onEditSection={handleEditSection}
@@ -739,8 +741,6 @@ export function CoachScreen({
 
   return (
     <WorkspaceShell
-      title="Resume Workspace"
-      subtitle={isViewingLiveNode ? nodeTitle(selectedNode) : `${nodeTitle(selectedNode)} — Previous version`}
       nodes={navItems}
       selectedNode={selectedNode}
       activeNode={activeNode}

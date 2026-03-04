@@ -113,9 +113,9 @@ test.describe.serial('Quality Validation', () => {
         timeout: 60_000,
       });
       await expect(
-        page.locator('button[aria-expanded]'),
+        page.getByRole('button', { name: /open coach/i }),
       ).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByText(/Step \d+ of 7/).first()).toBeVisible({
+      await expect(page.locator('[data-panel-root]').first()).toBeVisible({
         timeout: 60_000,
       });
 
