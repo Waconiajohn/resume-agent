@@ -348,15 +348,25 @@ export function CoachScreen({
     [nodeStatuses, mergedSnapshots, workflowSession.summary, liveWorkflowReplan, liveDraftReadiness],
   );
 
-  const liveSnapshot: WorkspaceNodeSnapshot = {
-    nodeKey: activeNode,
-    panelType,
-    panelData,
-    resume,
-    capturedAt: new Date().toISOString(),
-    currentPhase: effectiveCurrentPhase,
-    isGateActive: Boolean(isPipelineGateActive),
-  };
+  const liveSnapshotCapturedAt = useMemo(
+    () => new Date().toISOString(),
+    // Re-stamp only when the content that defines the snapshot changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [panelData, resume, activeNode],
+  );
+
+  const liveSnapshot: WorkspaceNodeSnapshot = useMemo(
+    () => ({
+      nodeKey: activeNode,
+      panelType,
+      panelData,
+      resume,
+      capturedAt: liveSnapshotCapturedAt,
+      currentPhase: effectiveCurrentPhase,
+      isGateActive: Boolean(isPipelineGateActive),
+    }),
+    [activeNode, panelType, panelData, resume, liveSnapshotCapturedAt, effectiveCurrentPhase, isPipelineGateActive],
+  );
 
   const selectedSnapshot = selectedNode === activeNode
     ? liveSnapshot
@@ -395,11 +405,11 @@ export function CoachScreen({
     setEvidenceTargetDraft(activeMinimumEvidenceTarget);
   }, [activeMinimumEvidenceTarget, sessionId]);
 
-  const refreshWorkflowState = async () => {
+  const refreshWorkflowState = useCallback(async () => {
     await workflowSession.refreshSummary();
     const nodesToRefresh = new Set<WorkflowNodeKey>([selectedNode, activeNode]);
     await Promise.all(Array.from(nodesToRefresh).map((node) => workflowSession.refreshNode(node)));
-  };
+  }, [workflowSession.refreshSummary, workflowSession.refreshNode, selectedNode, activeNode]);
 
   const toggleContextPanel = useCallback(() => {
     setContextPanelOpen((prev) => !prev);
@@ -478,7 +488,7 @@ export function CoachScreen({
 
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto">
         <ErrorBanner
           error={error}

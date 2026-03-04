@@ -31,10 +31,17 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
   return (
     <div
       ref={panelRef}
-      className={`flex h-full w-[300px] flex-shrink-0 flex-col border-l border-white/[0.08] bg-[#0d1117]/95 backdrop-blur-sm transition-all duration-300 ease-in-out lg:w-[360px] xl:w-[420px] ${
+      // Issue 3 fix: when collapsed, use `hidden` (display:none) rather than
+      // `w-0` + `flex-shrink-0`. The previous approach left a 0-width flex
+      // item in the layout because `flex-shrink-0` prevents the container from
+      // collapsing it, and the responsive `lg:w-[360px]` / `xl:w-[420px]`
+      // classes win over a plain `w-0` on larger viewports. `hidden` removes
+      // the element from the flex layout entirely, so the document panel
+      // correctly expands to fill the full available width when closed.
+      className={`flex-shrink-0 flex-col border-l border-white/[0.08] bg-[#0d1117]/95 backdrop-blur-sm transition-all duration-300 ease-in-out ${
         isOpen
-          ? 'translate-x-0 opacity-100'
-          : 'pointer-events-none w-0 translate-x-4 overflow-hidden border-l-0 opacity-0'
+          ? 'flex h-full w-[300px] translate-x-0 opacity-100 lg:w-[360px] xl:w-[420px]'
+          : 'hidden'
       }`}
     >
       {isOpen && (

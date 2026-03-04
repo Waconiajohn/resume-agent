@@ -54,11 +54,16 @@ function resolveSectionContent(
   approvedSections: Record<string, string>,
   sectionContent: Record<string, string>,
 ): { content: string | null; source: SectionSource; hasStructuredData: boolean } {
+  // User local edits (written via onLocalSectionEdit -> setSectionDraftEntry) live in
+  // sectionContent. They must take highest priority so that post-pipeline inline edits
+  // to structured sections are not silently discarded. By the time `resume` structured
+  // data exists, the SSE pipeline is complete and no further SSE drafts will arrive for
+  // these sections, so checking sectionContent first is safe here.
+  if (sectionContent[key]) return { content: sectionContent[key], source: 'draft', hasStructuredData: false };
   if (resume && hasStructuredResumeSection(resume, key)) {
     return { content: null, source: 'resume', hasStructuredData: true };
   }
   if (approvedSections[key]) return { content: approvedSections[key], source: 'approved', hasStructuredData: false };
-  if (sectionContent[key]) return { content: sectionContent[key], source: 'draft', hasStructuredData: false };
   return { content: null, source: 'placeholder', hasStructuredData: false };
 }
 
@@ -114,7 +119,7 @@ function getResumeSectionText(resume: FinalResume, key: string): string {
 
 function ContactHeaderPlaceholder() {
   return (
-    <div className="mb-4 text-center">
+    <div className="mb-4 text-center" aria-hidden="true">
       <div className="mx-auto h-7 w-52 animate-pulse rounded bg-gray-200" />
       <div className="mx-auto mt-2 h-3 w-72 animate-pulse rounded bg-gray-100" style={{ animationDelay: '150ms' }} />
       <hr className="mt-3 border-gray-400" />
@@ -702,8 +707,10 @@ export function LiveResumeDocument({
       key,
       ...resolveSectionContent(key, resume, approvedSections, sectionContent),
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveOrder, resume, approvedSections, sectionContent, sectionDraftsVersion]);
+    // sectionDraftsVersion is intentionally omitted: setSectionDraftsSnapshot always
+    // produces a new object reference (via spread), so sectionContent identity already
+    // changes whenever content changes — the version counter is redundant here.
+  }, [effectiveOrder, resume, approvedSections, sectionContent]);
 
   const completedCount = useMemo(
     () => resolvedSections.filter((s) => s.source !== 'placeholder').length,
@@ -750,7 +757,7 @@ export function LiveResumeDocument({
       {/* A4 document */}
       <div
         id="live-resume-document"
-        className="relative mx-auto w-full max-w-[8.5in] break-words rounded-lg bg-white px-6 py-6 shadow-2xl shadow-black/40 text-gray-900 sm:px-8 md:px-10 md:py-8 lg:px-12"
+        className="relative mx-auto w-full max-w-[8.5in] overflow-x-auto break-words rounded-lg bg-white px-4 py-6 shadow-2xl shadow-black/40 text-gray-900 md:px-10 md:py-8"
         style={{ fontFamily: 'Calibri, "Segoe UI", system-ui, sans-serif' }}
       >
         {resume ? <ContactHeader resume={resume} /> : <ContactHeaderPlaceholder />}

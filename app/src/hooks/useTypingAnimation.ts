@@ -27,7 +27,13 @@ export function useTypingAnimation({
 }: UseTypingAnimationProps): UseTypingAnimationReturn {
   const [wordIndex, setWordIndex] = useState(0);
   const [skipped, setSkipped] = useState(false);
-  const wordsRef = useRef<string[]>([]);
+
+  // Issue 2 fix: update wordsRef synchronously during render so that displayText
+  // computed below always reads from the current split, never stale data.
+  const newWordsSplit = targetText ? targetText.split(/(\s+)/) : [];
+  const wordsRef = useRef<string[]>(newWordsSplit);
+  wordsRef.current = newWordsSplit;
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const prefersReducedMotion = useRef(false);
@@ -52,11 +58,21 @@ export function useTypingAnimation({
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Split target text into words and find divergence point
+  // Handle targetText changes and isActive transitions.
+  //
+  // Issue 1 fix: when isActive goes false, do NOT reset `skipped`. The skip
+  // state is intentional user input and should persist unless the text itself
+  // changes while active. We only reset `skipped` (and restart the animation
+  // from the divergence point) when targetText changes while isActive is true.
+  //
+  // Issue 2 fix: wordsRef.current is already up to date (set during render
+  // above). We keep a separate prevWordsRef to track the previous split for
+  // divergence comparison, since wordsRef.current no longer holds the old value.
+  const prevWordsRef = useRef<string[]>([]);
   useEffect(() => {
-    const newWords = targetText ? targetText.split(/(\s+)/) : [];
-    const oldWords = wordsRef.current;
-    wordsRef.current = newWords;
+    const newWords = wordsRef.current;
+    const oldWords = prevWordsRef.current;
+    prevWordsRef.current = newWords;
 
     if (isActive && !skipped && !prefersReducedMotion.current) {
       // Find divergence point to avoid re-animating already-shown content
@@ -66,9 +82,23 @@ export function useTypingAnimation({
         divergeAt++;
       }
       setWordIndex((prev) => Math.min(prev, divergeAt));
+    } else if (isActive && skipped) {
+      // targetText changed while active and already skipped — check if the text
+      // actually diverged. If it did, reset skip so the new content animates in.
+      let divergeAt = 0;
+      const minLen = Math.min(oldWords.length, newWords.length);
+      while (divergeAt < minLen && oldWords[divergeAt] === newWords[divergeAt]) {
+        divergeAt++;
+      }
+      const textChanged = divergeAt < newWords.length || newWords.length !== oldWords.length;
+      if (textChanged) {
+        setSkipped(false);
+        setWordIndex(divergeAt);
+      }
     } else if (!isActive) {
+      // Deactivating: show full text but do NOT reset skipped. The user's skip
+      // intent must survive a deactivation/reactivation cycle on the same text.
       setWordIndex(newWords.length);
-      setSkipped(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetText, isActive]);
