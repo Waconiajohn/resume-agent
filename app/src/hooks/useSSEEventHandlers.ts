@@ -382,7 +382,7 @@ export function handleTransparency(
     {
       id: state.nextId(),
       role: 'system',
-      content: data.message,
+      content: message,
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -784,8 +784,9 @@ export function handleQualityScores(
   state.setQualityScores(scores);
   state.qualityScoresRef.current = scores;
   // Expose on window for E2E test capture (quality_dashboard panel is transient)
+  // Expose on window for E2E test capture (quality_dashboard panel is transient)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).__qualityScores__ = scores;
+  if (typeof window !== 'undefined') (window as any).__qualityScores__ = scores;
   const details = (data.details ?? {}) as Record<string, unknown>;
   state.setPanelType('quality_dashboard');
   state.setPanelData({

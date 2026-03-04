@@ -134,11 +134,11 @@ function ContactHeader({ resume }: { resume: FinalResume }) {
 
   return (
     <div className="mb-4 text-center">
-      <h1 className="text-2xl font-bold tracking-tight text-gray-900">{ci.name}</h1>
+      <h1 className="text-xl font-bold text-gray-900">{ci.name}</h1>
       {contactParts.length > 0 && (
-        <p className="mt-1 text-xs text-gray-500">{contactParts.join(' \u2022 ')}</p>
+        <p className="mt-1 text-xs text-gray-500">{contactParts.join('; ')}</p>
       )}
-      <hr className="mt-3 border-gray-400" />
+      <hr className="mt-2 border-gray-400" />
     </div>
   );
 }
@@ -171,11 +171,15 @@ function StructuredSkillsSection({ resume }: { resume: FinalResume }) {
 }
 
 function StructuredExperienceSection({ resume }: { resume: FinalResume }) {
-  if (!Array.isArray(resume.experience) || resume.experience.length === 0) return null;
+  if (!resume.experience) return null;
+  if (!Array.isArray(resume.experience)) {
+    return <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{stripHtml(String(resume.experience))}</div>;
+  }
+  if (resume.experience.length === 0) return null;
   return (
     <div className="space-y-4">
       {resume.experience.map((exp, i) => (
-        <div key={i}>
+        <div key={`${exp.company ?? ''}-${exp.title ?? ''}-${i}`}>
           <div className="flex items-baseline justify-between">
             <span className="text-sm font-bold text-gray-900">{exp.title ?? 'Position'}</span>
             <span className="text-xs text-gray-500">{exp.start_date ?? ''} – {exp.end_date ?? 'Present'}</span>
@@ -197,11 +201,15 @@ function StructuredExperienceSection({ resume }: { resume: FinalResume }) {
 }
 
 function StructuredEducationSection({ resume }: { resume: FinalResume }) {
-  if (!Array.isArray(resume.education) || resume.education.length === 0) return null;
+  if (!resume.education) return null;
+  if (!Array.isArray(resume.education)) {
+    return <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{stripHtml(String(resume.education))}</div>;
+  }
+  if (resume.education.length === 0) return null;
   return (
     <div>
       {resume.education.map((edu, i) => (
-        <div key={i} className="text-sm text-gray-800">
+        <div key={`${edu.institution ?? ''}-${edu.degree ?? ''}-${i}`} className="text-sm text-gray-800">
           <span className="font-semibold">{edu.degree ?? ''}</span>
           {edu.field ? ` in ${edu.field}` : ''}, {edu.institution ?? ''}
           {edu.year ? ` (${edu.year})` : ''}
@@ -212,11 +220,15 @@ function StructuredEducationSection({ resume }: { resume: FinalResume }) {
 }
 
 function StructuredCertificationsSection({ resume }: { resume: FinalResume }) {
-  if (!Array.isArray(resume.certifications) || resume.certifications.length === 0) return null;
+  if (!resume.certifications) return null;
+  if (!Array.isArray(resume.certifications)) {
+    return <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{stripHtml(String(resume.certifications))}</div>;
+  }
+  if (resume.certifications.length === 0) return null;
   return (
     <div>
       {resume.certifications.map((cert, i) => (
-        <div key={i} className="text-sm text-gray-800">
+        <div key={`${cert.name ?? ''}-${i}`} className="text-sm text-gray-800">
           <span className="font-semibold">{cert.name ?? ''}</span>
           {cert.issuer ? ` — ${cert.issuer}` : ''}
           {cert.year ? ` (${cert.year})` : ''}
@@ -240,7 +252,7 @@ const structuredRenderers: Record<string, React.ComponentType<{ resume: FinalRes
 function PlaceholderSection({ name }: { name: string }) {
   return (
     <section className="mb-5">
-      <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-300">
+      <h2 className="mb-2 border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-400">
         {SECTION_DISPLAY_NAMES[name] ?? toTitleCase(name)}
       </h2>
       <div className="space-y-2 py-1">
@@ -257,7 +269,7 @@ function PlaceholderSection({ name }: { name: string }) {
 function SectionStatusBadge({ source, isActive }: { source: string; isActive: boolean }) {
   if (isActive) {
     return (
-      <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-blue-500">
+      <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-blue-500" role="status" aria-live="polite">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
         Creating...
       </span>
@@ -307,18 +319,20 @@ function SectionWrapper({
         isActive ? 'border-l-[3px] border-blue-500 bg-blue-50/30 pl-3 shadow-sm' : ''
       } ${canEdit && !editing ? 'cursor-pointer hover:ring-2 hover:ring-blue-300/30' : ''}`}
       onClick={canEdit && !editing ? onStartEdit : undefined}
-      role={canEdit && !editing ? 'button' : undefined}
-      tabIndex={canEdit && !editing ? 0 : undefined}
-      onKeyDown={canEdit && !editing ? (e) => { if (e.key === 'Enter') onStartEdit(); } : undefined}
     >
       <h2 className="mb-2 flex items-center border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-700">
         {SECTION_DISPLAY_NAMES[sectionKey] ?? toTitleCase(sectionKey)}
         <SectionStatusBadge source={source} isActive={isActive} />
         {canEdit && !editing && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] font-normal normal-case tracking-normal text-gray-400 opacity-40 transition-opacity group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
+            className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-normal normal-case tracking-normal text-gray-400 opacity-40 transition-opacity hover:bg-gray-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 group-hover:opacity-100"
+            aria-label={`Edit ${SECTION_DISPLAY_NAMES[sectionKey] ?? toTitleCase(sectionKey)}`}
+          >
             <Pencil className="h-3 w-3" />
-            Click to edit
-          </span>
+            Edit
+          </button>
         )}
       </h2>
       {children}
@@ -368,7 +382,7 @@ function InlineEditOverlay({
       />
       <div className="mt-2 flex items-center justify-between">
         <span className="text-[10px] text-gray-400">
-          {navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl'}+Enter to save \u00b7 Esc to cancel
+          {/Mac|iPhone|iPad/.test(navigator.userAgent) ? '\u2318' : 'Ctrl'}+Enter to save \u00b7 Esc to cancel
         </span>
         <div className="flex gap-2">
           <button
@@ -431,7 +445,7 @@ const AnimatedContentSection = React.memo(function AnimatedContentSection({
       onStartEdit={() => setEditing(true)}
     >
       {editing ? (
-        <InlineEditOverlay value={content} onSave={handleSave} onCancel={handleCancel} />
+        <InlineEditOverlay value={stripHtml(content)} onSave={handleSave} onCancel={handleCancel} />
       ) : (
         <div
           className={`whitespace-pre-wrap text-sm leading-relaxed text-gray-800 ${isAnimating ? 'cursor-pointer' : ''}`}
@@ -516,17 +530,6 @@ function QualityBadge({ data }: { data: QualityDashboardData }) {
   const [expanded, setExpanded] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const scores: { label: string; value: number }[] = [];
-  if (typeof data.ats_score === 'number') scores.push({ label: 'ATS', value: data.ats_score });
-  if (typeof data.keyword_coverage === 'number') scores.push({ label: 'Keywords', value: data.keyword_coverage });
-  if (typeof data.authenticity_score === 'number') scores.push({ label: 'Authenticity', value: data.authenticity_score });
-  if (typeof data.evidence_integrity === 'number') scores.push({ label: 'Evidence', value: data.evidence_integrity });
-  if (typeof data.blueprint_compliance === 'number') scores.push({ label: 'Blueprint', value: data.blueprint_compliance });
-  if (typeof data.narrative_coherence === 'number') scores.push({ label: 'Coherence', value: data.narrative_coherence });
-
-  if (scores.length === 0) return null;
-  const overallScore = Math.round(scores.reduce((sum, s) => sum + s.value, 0) / scores.length);
-
   useEffect(() => {
     if (!expanded) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -537,6 +540,17 @@ function QualityBadge({ data }: { data: QualityDashboardData }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [expanded]);
+
+  const scores: { label: string; value: number }[] = [];
+  if (typeof data.ats_score === 'number') scores.push({ label: 'ATS', value: data.ats_score });
+  if (typeof data.keyword_coverage === 'number') scores.push({ label: 'Keywords', value: data.keyword_coverage });
+  if (typeof data.authenticity_score === 'number') scores.push({ label: 'Authenticity', value: data.authenticity_score });
+  if (typeof data.evidence_integrity === 'number') scores.push({ label: 'Evidence', value: data.evidence_integrity });
+  if (typeof data.blueprint_compliance === 'number') scores.push({ label: 'Blueprint', value: data.blueprint_compliance });
+  if (typeof data.narrative_coherence === 'number') scores.push({ label: 'Coherence', value: data.narrative_coherence });
+
+  if (scores.length === 0) return null;
+  const overallScore = Math.round(scores.reduce((sum, s) => sum + s.value, 0) / scores.length);
 
   return (
     <div ref={overlayRef} className="relative">
@@ -549,7 +563,7 @@ function QualityBadge({ data }: { data: QualityDashboardData }) {
         {overallScore}
       </button>
       {expanded && (
-        <div className="absolute left-0 top-12 z-20 w-56 rounded-lg border border-gray-200 bg-white p-3 shadow-xl">
+        <div className="absolute right-0 top-12 z-20 w-56 rounded-lg border border-gray-200 bg-white p-3 shadow-xl">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Quality Breakdown</div>
           <div className="space-y-1.5">
             {scores.map(({ label, value }) => (
@@ -604,6 +618,8 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
       const { exportDocx } = await import('@/lib/export-docx');
       const result = await exportDocx(resume);
       if (!result.success) setExportError(result.error ?? 'Failed to export DOCX');
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : 'Failed to export DOCX');
     } finally {
       setExportingDocx(false);
     }
@@ -728,13 +744,13 @@ export function LiveResumeDocument({
         {(!isProcessing || (allComplete && sessionComplete)) && <div className="flex-1" />}
 
         {qualityData && <QualityBadge data={qualityData} />}
-        {resume && completedCount > 0 && <ExportToolbar resume={resume} />}
+        {resume && allComplete && <ExportToolbar resume={resume} />}
       </div>
 
       {/* A4 document */}
       <div
         id="live-resume-document"
-        className="relative mx-auto w-full max-w-[8.5in] rounded-lg bg-white px-6 py-6 shadow-2xl shadow-black/40 text-gray-900 sm:px-8 md:px-10 md:py-8 lg:px-12"
+        className="relative mx-auto w-full max-w-[8.5in] break-words rounded-lg bg-white px-6 py-6 shadow-2xl shadow-black/40 text-gray-900 sm:px-8 md:px-10 md:py-8 lg:px-12"
         style={{ fontFamily: 'Calibri, "Segoe UI", system-ui, sans-serif' }}
       >
         {resume ? <ContactHeader resume={resume} /> : <ContactHeaderPlaceholder />}

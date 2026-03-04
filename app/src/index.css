@@ -231,4 +231,12 @@ body {
     margin: 0 !important;
     padding: 0.5in !important;
   }
+  #resume-print-target section,
+  #live-resume-document section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .animate-pulse {
+    display: none !important;
+  }
 }

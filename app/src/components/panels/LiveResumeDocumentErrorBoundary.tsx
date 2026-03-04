@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -18,8 +18,8 @@ export class LiveResumeDocumentErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error) {
-    console.error('[LiveResumeDocument] Render error:', error);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[LiveResumeDocument] Render error:', error, errorInfo.componentStack);
   }
 
   render() {
