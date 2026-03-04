@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Loader2, MessageCircle, X } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 import { cn } from '@/lib/utils';
@@ -65,28 +65,7 @@ export function ChatDrawer({
 }: ChatDrawerProps) {
   const [expanded, setExpanded] = useState(false);
 
-  // Refs to track previous values for auto-expand
-  const prevStreamingRef = useRef(streamingText);
-  const prevPhaseGateRef = useRef(phaseGate);
-  const prevAskPromptRef = useRef(askPrompt);
-  const prevMessagesLenRef = useRef(messages.length);
-
-  // Auto-expand triggers
-  useEffect(() => {
-    const streamingStarted = !prevStreamingRef.current && streamingText;
-    const gateAppeared = !prevPhaseGateRef.current && phaseGate;
-    const askAppeared = !prevAskPromptRef.current && askPrompt;
-    const newMessages = messages.length > prevMessagesLenRef.current;
-
-    prevStreamingRef.current = streamingText;
-    prevPhaseGateRef.current = phaseGate;
-    prevAskPromptRef.current = askPrompt;
-    prevMessagesLenRef.current = messages.length;
-
-    if (streamingStarted || gateAppeared || askAppeared || newMessages) {
-      setExpanded(true);
-    }
-  }, [streamingText, phaseGate, askPrompt, messages.length]);
+  // No auto-expand — user opens manually via icon button
 
   // Status derivation (mirrors ChatPanel logic)
   const pipelinePhaseActive = currentPhase !== 'onboarding' && currentPhase !== 'complete';

@@ -45,7 +45,7 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/20 transition-opacity"
+          className="fixed inset-0 z-30 transition-opacity"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -54,7 +54,7 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
       {/* Slide-over panel */}
       <div
         ref={panelRef}
-        className={`fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-white/[0.08] bg-[#0d1117]/98 shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-transform duration-300 ease-in-out sm:w-[400px] lg:w-[440px] xl:w-[500px] ${
+        className={`fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-white/[0.08] bg-[#0d1117] shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-in-out sm:w-[400px] lg:w-[440px] xl:w-[500px] ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
