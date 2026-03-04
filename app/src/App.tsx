@@ -530,7 +530,6 @@ export default function App() {
           liveWorkflowReplan={workflowReplan}
           pipelineActivity={pipelineActivity}
           onReconnectStream={reconnectStreamNow}
-          activityMessages={activityMessages}
         />
       )}
 

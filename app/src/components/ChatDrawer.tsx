@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronUp, Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle, X } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
-import { IntelligenceActivityFeed } from '@/components/IntelligenceActivityFeed';
-import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 import { cn } from '@/lib/utils';
 import type {
   ChatMessage as ChatMessageType,
@@ -39,7 +37,6 @@ interface ChatDrawerProps {
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
   approvedSections?: Record<string, string>;
-  activityMessages?: ActivityMessage[];
 }
 
 export function ChatDrawer({
@@ -65,7 +62,6 @@ export function ChatDrawer({
   isPipelineGateActive,
   onSaveCurrentResumeAsBase,
   approvedSections = {},
-  activityMessages = [],
 }: ChatDrawerProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -127,71 +123,69 @@ export function ChatDrawer({
             : (connected ? 'bg-emerald-400' : 'bg-white/40');
 
   return (
-    <div
-      className={cn(
-        'grid flex-shrink-0 border-t border-white/[0.08] bg-white/[0.02] backdrop-blur-xl transition-[grid-template-rows] duration-300 ease-in-out',
-        expanded ? 'grid-rows-[36px_1fr]' : 'grid-rows-[36px_0fr]',
+    <>
+      {/* Collapsed: small icon button, bottom-left — zero layout footprint */}
+      {!expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="fixed bottom-4 left-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.12] bg-[#0d1117]/90 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117]"
+          aria-label={`Open coach – ${statusLabel}`}
+        >
+          <MessageCircle className="h-4.5 w-4.5 text-white/60" />
+          <span className={cn('absolute right-0.5 top-0.5 h-2 w-2 rounded-full', statusDotColor)} />
+        </button>
       )}
-      style={{ maxHeight: expanded ? '40vh' : '36px' }}
-    >
-      {/* Toggle bar */}
-      <button
-        type="button"
-        onClick={() => setExpanded((prev) => !prev)}
-        aria-expanded={expanded}
-        className="flex h-[36px] w-full items-center gap-2 px-4 text-left transition-colors hover:bg-white/[0.04]"
-      >
-        <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotColor)} />
-        <span className="text-xs font-medium text-white/80">Coach</span>
-        <span className="text-xs text-white/50">{statusLabel}</span>
-        {isProcessing && <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />}
-        <ChevronUp
-          className={cn(
-            'ml-auto h-4 w-4 text-white/50 transition-transform duration-200',
-            expanded ? '' : 'rotate-180',
-          )}
-        />
-      </button>
 
-      {/* Drawer body */}
-      <div className="min-h-0 overflow-hidden">
-        {activityMessages.length > 0 && (
-          <details className="border-b border-white/[0.08]">
-            <summary className="flex cursor-pointer items-center gap-2 px-4 py-2 text-xs text-white/60 select-none hover:bg-white/[0.03]">
-              <span className="font-medium">Activity Log</span>
-              <span className="text-white/40">({activityMessages.length})</span>
-            </summary>
-            <div className="px-3 pb-2">
-              <IntelligenceActivityFeed messages={activityMessages} isProcessing={isProcessing} />
-            </div>
-          </details>
-        )}
-        <ChatPanel
-          messages={messages}
-          streamingText={streamingText}
-          tools={tools}
-          askPrompt={askPrompt}
-          phaseGate={phaseGate}
-          currentPhase={currentPhase}
-          isProcessing={isProcessing}
-          connected={connected}
-          lastBackendActivityAt={lastBackendActivityAt}
-          stalledSuspected={stalledSuspected}
-          pipelineActivity={pipelineActivity}
-          onReconnectStream={onReconnectStream}
-          onRefreshWorkflowState={onRefreshWorkflowState}
-          isRefreshingWorkflowState={isRefreshingWorkflowState}
-          onSendMessage={onSendMessage}
-          panelType={panelType}
-          panelData={panelData}
-          resume={resume}
-          onPipelineRespond={onPipelineRespond}
-          isPipelineGateActive={isPipelineGateActive}
-          onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
-          approvedSections={approvedSections}
-          hideWorkProduct
-        />
-      </div>
-    </div>
+      {/* Expanded: fixed overlay from bottom — does NOT affect document layout */}
+      {expanded && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex max-h-[50vh] flex-col border-t border-white/[0.08] bg-[#0d1117]/98 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+          {/* Header bar */}
+          <div className="flex h-[36px] shrink-0 items-center gap-2 px-4">
+            <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotColor)} />
+            <span className="text-xs font-medium text-white/80">Coach</span>
+            <span className="text-xs text-white/50">{statusLabel}</span>
+            {isProcessing && <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />}
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="ml-auto rounded p-1 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70"
+              aria-label="Close coach drawer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Chat body */}
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ChatPanel
+              messages={messages}
+              streamingText={streamingText}
+              tools={tools}
+              askPrompt={askPrompt}
+              phaseGate={phaseGate}
+              currentPhase={currentPhase}
+              isProcessing={isProcessing}
+              connected={connected}
+              lastBackendActivityAt={lastBackendActivityAt}
+              stalledSuspected={stalledSuspected}
+              pipelineActivity={pipelineActivity}
+              onReconnectStream={onReconnectStream}
+              onRefreshWorkflowState={onRefreshWorkflowState}
+              isRefreshingWorkflowState={isRefreshingWorkflowState}
+              onSendMessage={onSendMessage}
+              panelType={panelType}
+              panelData={panelData}
+              resume={resume}
+              onPipelineRespond={onPipelineRespond}
+              isPipelineGateActive={isPipelineGateActive}
+              onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
+              approvedSections={approvedSections}
+              hideWorkProduct
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

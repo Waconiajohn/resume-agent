@@ -33,82 +33,78 @@ describe('ChatDrawer', () => {
     cleanup();
   });
 
-  it('renders collapsed by default with toggle bar visible', () => {
+  it('renders collapsed by default with open button visible', () => {
     render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    expect(toggle).toBeTruthy();
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    const openBtn = screen.getByRole('button', { name: /open coach/i });
+    expect(openBtn).toBeTruthy();
+    // Close button should not be present when collapsed
+    expect(screen.queryByRole('button', { name: /close coach/i })).toBeNull();
   });
 
-  it('expands when toggle is clicked', () => {
+  it('expands when open button is clicked', () => {
     render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /open coach/i }));
+    // Close button appears when expanded
+    expect(screen.getByRole('button', { name: /close coach/i })).toBeTruthy();
   });
 
-  it('collapses when toggle is clicked again', () => {
+  it('collapses when close button is clicked', () => {
     render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    fireEvent.click(toggle); // expand
-    fireEvent.click(toggle); // collapse
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: /open coach/i }));
+    fireEvent.click(screen.getByRole('button', { name: /close coach/i }));
+    // Back to collapsed — open button reappears
+    expect(screen.getByRole('button', { name: /open coach/i })).toBeTruthy();
   });
 
   it('auto-expands when streamingText transitions from empty to non-empty', () => {
     const { rerender } = render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: /close coach/i })).toBeNull();
 
     rerender(<ChatDrawer {...makeProps({ streamingText: 'Hello' })} />);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /close coach/i })).toBeTruthy();
   });
 
   it('auto-expands when phaseGate transitions from null to non-null', () => {
     const { rerender } = render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: /close coach/i })).toBeNull();
 
     const gate = { toolCallId: 'test', currentPhase: 'intake', nextPhase: 'research', phaseSummary: 'Done', nextPhasePreview: 'Next' };
     rerender(<ChatDrawer {...makeProps({ phaseGate: gate })} />);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /close coach/i })).toBeTruthy();
   });
 
   it('auto-expands when messages.length increases', () => {
     const { rerender } = render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: /close coach/i })).toBeNull();
 
     const msg: ChatMessageType = { id: '1', role: 'assistant', content: 'Hi', timestamp: new Date().toISOString() };
     rerender(<ChatDrawer {...makeProps({ messages: [msg] })} />);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /close coach/i })).toBeTruthy();
   });
 
   it('does not auto-collapse after triggers clear', () => {
     const { rerender } = render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
 
     // Trigger auto-expand
     rerender(<ChatDrawer {...makeProps({ streamingText: 'Working...' })} />);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /close coach/i })).toBeTruthy();
 
-    // Clear the trigger
+    // Clear the trigger — should stay expanded
     rerender(<ChatDrawer {...makeProps({ streamingText: '' })} />);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /close coach/i })).toBeTruthy();
   });
 
-  it('shows status label based on runtime state', () => {
+  it('shows status label in open button aria-label', () => {
     render(<ChatDrawer {...makeProps({ isProcessing: true })} />);
-    // The toggle bar contains "Coach" and the status label
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    expect(toggle.textContent).toContain('Working');
+    const openBtn = screen.getByRole('button', { name: /open coach/i });
+    expect(openBtn.getAttribute('aria-label')).toContain('Working');
   });
 
-  it('aria-expanded reflects current state', () => {
-    render(<ChatDrawer {...makeProps()} />);
-    const toggle = screen.getByRole('button', { name: /coach/i });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  it('shows status label in expanded header', () => {
+    render(<ChatDrawer {...makeProps({ isProcessing: true })} />);
+    fireEvent.click(screen.getByRole('button', { name: /open coach/i }));
+    // Status label appears in the header bar
+    const labels = screen.getAllByText('Working');
+    expect(labels.length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -16,7 +16,6 @@ import { SectionsNodeSummary } from '@/components/SectionsNodeSummary';
 import { BenchmarkInspectorCard } from '@/components/BenchmarkInspectorCard';
 import { WorkflowPreferencesCard } from '@/components/CoachScreenBanners';
 import { useToast } from '@/components/Toast';
-import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
 import type {
@@ -88,7 +87,6 @@ interface CoachScreenProps {
   liveWorkflowReplan?: WorkflowReplanUpdate | null;
   pipelineActivity?: PipelineActivitySnapshot | null;
   onReconnectStream?: () => void;
-  activityMessages?: ActivityMessage[];
 }
 
 export function CoachScreen({
@@ -125,7 +123,6 @@ export function CoachScreen({
   liveWorkflowReplan = null,
   pipelineActivity = null,
   onReconnectStream,
-  activityMessages = [],
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
   const [evidenceTargetDraft, setEvidenceTargetDraft] = useState<number>(8);
@@ -721,7 +718,6 @@ export function CoachScreen({
         onPipelineRespond={onPipelineRespond}
         onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
         approvedSections={approvedSections}
-        activityMessages={activityMessages}
       />
     </div>
   );
