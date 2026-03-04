@@ -96,6 +96,13 @@ export interface PipelineStateManager {
   approvedSections: Record<string, string>;
   setApprovedSections: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 
+  // ── Live document section tracking ─────────────────────────────────────────
+  sectionDraftsRef: React.MutableRefObject<Record<string, string>>;
+  sectionDraftsVersion: number;
+  sectionBuildOrder: string[];
+  setSectionBuildOrder: React.Dispatch<React.SetStateAction<string[]>>;
+  setSectionDraftEntry: (key: string, content: string) => void;
+
   // ── Pipeline-specific state ──────────────────────────────────────────────────
   positioningQuestion: PositioningQuestion | null;
   setPositioningQuestion: React.Dispatch<React.SetStateAction<PositioningQuestion | null>>;
@@ -189,6 +196,17 @@ export function usePipelineStateManager(
   } | null>(null);
   const [approvedSections, setApprovedSections] = useState<Record<string, string>>({});
 
+  // ── Live document section tracking ──────────────────────────────────────
+  const sectionDraftsRef = useRef<Record<string, string>>({});
+  const [sectionDraftsVersion, setSectionDraftsVersion] = useState(0);
+  const [sectionBuildOrder, setSectionBuildOrder] = useState<string[]>([]);
+
+  const setSectionDraftEntry = useCallback((key: string, content: string) => {
+    sectionDraftsRef.current[key] = content;
+    setSectionDraftsVersion((v) => v + 1);
+    setSectionBuildOrder((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }, []);
+
   // ── Pipeline-specific ─────────────────────────────────────────────────────
   const [positioningQuestion, setPositioningQuestion] =
     useState<PositioningQuestion | null>(null);
@@ -263,6 +281,9 @@ export function usePipelineStateManager(
       setBlueprintReady(null);
       setSectionDraft(null);
       setApprovedSections({});
+      sectionDraftsRef.current = {};
+      setSectionDraftsVersion(0);
+      setSectionBuildOrder([]);
       sectionsMapRef.current = {};
       lastTextCompleteRef.current = '';
       lastSeqRef.current = 0;
@@ -350,6 +371,13 @@ export function usePipelineStateManager(
     setSectionDraft,
     approvedSections,
     setApprovedSections,
+
+    // Live document section tracking
+    sectionDraftsRef,
+    sectionDraftsVersion,
+    sectionBuildOrder,
+    setSectionBuildOrder,
+    setSectionDraftEntry,
 
     // Pipeline-specific
     positioningQuestion,

@@ -423,6 +423,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     setIsPipelineGateActive: state.setIsPipelineGateActive,
     dismissSuggestion,
     approvedSections: state.approvedSections,
+    sectionDrafts: state.sectionDraftsRef.current,
+    sectionDraftsVersion: state.sectionDraftsVersion,
+    sectionBuildOrder: state.sectionBuildOrder,
     reconnectStreamNow,
     activityMessages: state.activityMessages,
   };

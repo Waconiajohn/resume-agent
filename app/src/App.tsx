@@ -77,6 +77,9 @@ export default function App() {
     setIsPipelineGateActive,
     dismissSuggestion,
     approvedSections,
+    sectionDrafts,
+    sectionDraftsVersion,
+    sectionBuildOrder,
     reconnectStreamNow,
     activityMessages,
   } = useAgent(currentSession?.id ?? null, accessToken);
@@ -510,6 +513,9 @@ export default function App() {
           positioningProfileFound={positioningProfileFound}
           onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
           approvedSections={approvedSections}
+          sectionDrafts={sectionDrafts}
+          sectionDraftsVersion={sectionDraftsVersion}
+          sectionBuildOrder={sectionBuildOrder}
           onDismissSuggestion={dismissSuggestion}
           onRestartPipelineFromLastInputs={handleRestartPipelineFromCache}
           liveDraftReadiness={draftReadiness}

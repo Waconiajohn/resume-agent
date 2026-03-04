@@ -646,6 +646,10 @@ export function handleBlueprintReady(
   state.setIsPipelineGateActive(true);
   state.setBlueprintReady(data.blueprint);
   const bp = data.blueprint as Record<string, unknown>;
+  const sectionPlan = bp.section_plan as { order?: string[] } | undefined;
+  if (sectionPlan?.order && Array.isArray(sectionPlan.order)) {
+    state.setSectionBuildOrder(sectionPlan.order);
+  }
   state.setPanelType('blueprint_review');
   state.setPanelData({
     type: 'blueprint_review',
@@ -710,6 +714,7 @@ export function handleSectionDraft(
   const content = data.content as string;
   state.setSectionDraft({ section, content });
   state.sectionsMapRef.current[section] = content;
+  state.setSectionDraftEntry(section, content);
   const contextForSection =
     state.sectionContextRef.current?.section === section
       ? state.sectionContextRef.current.context
@@ -742,6 +747,7 @@ export function handleSectionRevised(
   const content = data.content as string;
   state.setSectionDraft({ section, content });
   state.sectionsMapRef.current[section] = content;
+  state.setSectionDraftEntry(section, content);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -751,10 +757,12 @@ export function handleSectionApproved(
 ): void {
   const section = data.section as string;
   if (section && state.sectionsMapRef.current[section]) {
+    const content = state.sectionsMapRef.current[section];
     state.setApprovedSections((prev) => ({
       ...prev,
-      [section]: state.sectionsMapRef.current[section],
+      [section]: content,
     }));
+    state.setSectionDraftEntry(section, content);
   }
 }
 
@@ -770,6 +778,9 @@ export function handleQualityScores(
   const scores = data.scores as QualityScores;
   state.setQualityScores(scores);
   state.qualityScoresRef.current = scores;
+  // Expose on window for E2E test capture (quality_dashboard panel is transient)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__qualityScores__ = scores;
   const details = (data.details ?? {}) as Record<string, unknown>;
   state.setPanelType('quality_dashboard');
   state.setPanelData({

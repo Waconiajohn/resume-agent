@@ -126,6 +126,13 @@ function makeMockState(overrides?: Partial<PipelineStateManager>): PipelineState
     approvedSections: {},
     setApprovedSections: vi.fn(),
 
+    // Live document section tracking
+    sectionDraftsRef: { current: {} },
+    sectionDraftsVersion: 0,
+    sectionBuildOrder: [],
+    setSectionBuildOrder: vi.fn(),
+    setSectionDraftEntry: vi.fn(),
+
     // Pipeline-specific
     positioningQuestion: null,
     setPositioningQuestion: vi.fn(),

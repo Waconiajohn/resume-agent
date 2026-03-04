@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatDrawer } from './ChatDrawer';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { WorkflowStatsRail } from './WorkflowStatsRail';
@@ -6,6 +6,8 @@ import { GlassCard } from './GlassCard';
 import { GlassButton } from './GlassButton';
 import { ResumePanel } from './ResumePanel';
 import { SafePanelContent } from './panels/panel-renderer';
+import { LiveResumeDocument } from './panels/LiveResumeDocument';
+import { ContextPanel } from './panels/ContextPanel';
 import { runPanelPayloadSmokeChecks } from './panels/panel-smoke';
 import { WorkspaceShell } from './workspace/WorkspaceShell';
 import { QuestionsNodeSummary } from '@/components/QuestionsNodeSummary';
@@ -34,7 +36,7 @@ import type {
   PipelineActivitySnapshot,
 } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { PanelType, PanelData } from '@/types/panels';
+import type { PanelType, PanelData, QualityDashboardData } from '@/types/panels';
 import {
   WORKFLOW_NODES,
   panelDataToWorkflowNode,
@@ -86,6 +88,9 @@ interface CoachScreenProps {
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
   approvedSections?: Record<string, string>;
+  sectionDrafts?: Record<string, string>;
+  sectionDraftsVersion?: number;
+  sectionBuildOrder?: string[];
   onDismissSuggestion?: (id: string) => void;
   onRestartPipelineFromLastInputs?: (sessionId: string) => Promise<{ success: boolean; message: string }>;
   liveDraftReadiness?: DraftReadinessUpdate | null;
@@ -119,6 +124,9 @@ export function CoachScreen({
   positioningProfileFound,
   onSaveCurrentResumeAsBase,
   approvedSections = {},
+  sectionDrafts = {},
+  sectionDraftsVersion = 0,
+  sectionBuildOrder = [],
   onDismissSuggestion,
   onRestartPipelineFromLastInputs,
   liveDraftReadiness = null,
@@ -133,11 +141,21 @@ export function CoachScreen({
   const [evidenceTargetDraft, setEvidenceTargetDraft] = useState<number>(8);
   const [localSnapshots, setLocalSnapshots] = useState<SnapshotMap>({});
   const [runtimeClockMs, setRuntimeClockMs] = useState<number>(Date.now());
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevPanelDataRef = useRef<PanelData | null>(null);
 
   useEffect(() => {
     runPanelPayloadSmokeChecks();
   }, []);
+
+  // Auto-open context panel when an interaction gate fires; auto-close when resolved
+  useEffect(() => {
+    if (isPipelineGateActive) {
+      setContextPanelOpen(true);
+    } else {
+      setContextPanelOpen(false);
+    }
+  }, [isPipelineGateActive]);
 
   useEffect(() => {
     const timer = setInterval(() => setRuntimeClockMs(Date.now()), 1000);
@@ -382,6 +400,81 @@ export function CoachScreen({
     await Promise.all(Array.from(nodesToRefresh).map((node) => workflowSession.refreshNode(node)));
   };
 
+  const toggleContextPanel = useCallback(() => {
+    setContextPanelOpen((prev) => !prev);
+  }, []);
+
+  // Derive the currently-active section key from the panel data or section draft
+  const activeSectionKey = useMemo(() => {
+    if (displayPanelData?.type === 'section_review') {
+      return (displayPanelData as PanelData & { section?: string }).section ?? null;
+    }
+    return null;
+  }, [displayPanelData]);
+
+  // Context panel title derived from panel type
+  const contextPanelTitle = useMemo(() => {
+    if (!displayPanelData) return 'Context';
+    switch (displayPanelData.type) {
+      case 'questionnaire': return 'Questionnaire';
+      case 'section_review': return 'Section Review';
+      case 'blueprint_review': return 'Blueprint Review';
+      case 'positioning_interview': return 'Positioning Interview';
+      case 'quality_dashboard': return 'Quality Dashboard';
+      case 'completion': return 'Completion';
+      default: return 'Context';
+    }
+  }, [displayPanelData]);
+
+  // Derive quality data from panel data for the document overlay
+  const qualityOverlayData = useMemo<QualityDashboardData | null>(() => {
+    // Check current and all snapshot panels for quality dashboard data
+    if (displayPanelData?.type === 'quality_dashboard') {
+      return displayPanelData as QualityDashboardData;
+    }
+    // Check if completion panel has scores
+    if (displayPanelData?.type === 'completion') {
+      const completion = displayPanelData as PanelData & { ats_score?: number; keyword_coverage?: number; authenticity_score?: number };
+      if (typeof completion.ats_score === 'number') {
+        return {
+          ats_score: completion.ats_score,
+          keyword_coverage: completion.keyword_coverage,
+          authenticity_score: completion.authenticity_score,
+        };
+      }
+    }
+    // Check snapshots for a quality dashboard
+    const qualitySnapshot = mergedSnapshots.quality;
+    if (qualitySnapshot?.panelData?.type === 'quality_dashboard') {
+      return qualitySnapshot.panelData as QualityDashboardData;
+    }
+    return null;
+  }, [displayPanelData, mergedSnapshots]);
+
+  // Handle inline section edits from the live document
+  const handleEditSection = useCallback(
+    (sectionKey: string, newContent: string) => {
+      // If a section review gate is active for this section, respond via pipeline
+      if (
+        isViewingLiveNode
+        && isPipelineGateActive
+        && displayPanelData?.type === 'section_review'
+        && (displayPanelData as PanelData & { section?: string }).section === sectionKey
+        && onPipelineRespond
+      ) {
+        const reviewToken = (displayPanelData as PanelData & { review_token?: string }).review_token;
+        onPipelineRespond(`section_review_${sectionKey}`, {
+          approved: false,
+          edited_content: newContent,
+          review_token: reviewToken,
+        });
+      }
+      // Otherwise just update approved sections locally (for post-pipeline edits)
+      // This will be picked up by the export logic
+    },
+    [isViewingLiveNode, isPipelineGateActive, displayPanelData, onPipelineRespond],
+  );
+
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -600,42 +693,66 @@ export function CoachScreen({
             />
           )}
 
-          <GlassCard className="min-h-0 flex-1 overflow-y-auto">
-            {displayPanelData ? (
-              <SafePanelContent
-                panelType={displayPanelType}
-                panelData={displayPanelData}
+          {/* Two-column layout: Live Document + Context Panel */}
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/[0.06]">
+            {/* Left: Always-visible live resume document */}
+            <div className="min-h-0 min-w-0 flex-1">
+              <LiveResumeDocument
+                sectionOrder={sectionBuildOrder}
+                sectionContent={sectionDrafts}
+                sectionDraftsVersion={sectionDraftsVersion}
+                approvedSections={approvedSections}
+                activeSectionKey={activeSectionKey}
+                onEditSection={handleEditSection}
                 resume={displayResume}
                 isProcessing={isViewingLiveNode ? isProcessing : false}
-                onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
-                onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
-                onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
-                onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
+                sessionComplete={sessionComplete}
+                qualityData={qualityOverlayData}
               />
-            ) : displayResume ? (
-              <ResumePanel resume={displayResume} />
-            ) : selectedNode === 'questions' ? (
-              <QuestionsNodeSummary
-                isActiveNode={isViewingLiveNode}
-                draftReadiness={draftReadiness}
-                questionMetrics={workflowSession.summary?.question_response_metrics ?? null}
-                questionHistory={workflowSession.summary?.question_response_history ?? null}
-                questionReuseSummaries={workflowSession.summary?.question_reuse_summaries ?? null}
-                questionReuseMetrics={workflowSession.summary?.question_reuse_metrics ?? null}
-                onOpenQuestions={() => {
-                  void workflowSession.refreshSummary();
-                  void workflowSession.refreshNode('questions');
-                }}
-              />
-            ) : selectedNode === 'sections' ? (
-              <SectionsNodeSummary
-                isActiveNode={isViewingLiveNode}
-                bundleSummary={workflowSession.summary?.sections_bundle_review ?? null}
-              />
-            ) : (
-              renderNodeContentPlaceholder(selectedNode, isViewingLiveNode)
-            )}
-          </GlassCard>
+            </div>
+
+            {/* Right: Context panel for interactions */}
+            <ContextPanel
+              isOpen={contextPanelOpen}
+              onClose={toggleContextPanel}
+              title={contextPanelTitle}
+            >
+              {displayPanelData ? (
+                <SafePanelContent
+                  panelType={displayPanelType}
+                  panelData={displayPanelData}
+                  resume={displayResume}
+                  isProcessing={isViewingLiveNode ? isProcessing : false}
+                  onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
+                  onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
+                  onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
+                  onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
+                />
+              ) : displayResume ? (
+                <ResumePanel resume={displayResume} />
+              ) : selectedNode === 'questions' ? (
+                <QuestionsNodeSummary
+                  isActiveNode={isViewingLiveNode}
+                  draftReadiness={draftReadiness}
+                  questionMetrics={workflowSession.summary?.question_response_metrics ?? null}
+                  questionHistory={workflowSession.summary?.question_response_history ?? null}
+                  questionReuseSummaries={workflowSession.summary?.question_reuse_summaries ?? null}
+                  questionReuseMetrics={workflowSession.summary?.question_reuse_metrics ?? null}
+                  onOpenQuestions={() => {
+                    void workflowSession.refreshSummary();
+                    void workflowSession.refreshNode('questions');
+                  }}
+                />
+              ) : selectedNode === 'sections' ? (
+                <SectionsNodeSummary
+                  isActiveNode={isViewingLiveNode}
+                  bundleSummary={workflowSession.summary?.sections_bundle_review ?? null}
+                />
+              ) : (
+                renderNodeContentPlaceholder(selectedNode, isViewingLiveNode)
+              )}
+            </ContextPanel>
+          </div>
         </div>
       </div>
       </div>
