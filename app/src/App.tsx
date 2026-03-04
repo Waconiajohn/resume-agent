@@ -15,6 +15,7 @@ import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
+import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
 
 type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter';
@@ -401,9 +402,11 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
-      </div>
+      <ToastProvider>
+        <div className="flex h-screen items-center justify-center bg-surface">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+        </div>
+      </ToastProvider>
     );
   }
 
@@ -412,15 +415,18 @@ export default function App() {
 
   if (!user) {
     return (
-      <AuthGate
-        onSignIn={signInWithEmail}
-        onSignUp={signUpWithEmail}
-        onGoogleSignIn={signInWithGoogle}
-      />
+      <ToastProvider>
+        <AuthGate
+          onSignIn={signInWithEmail}
+          onSignUp={signUpWithEmail}
+          onGoogleSignIn={signInWithGoogle}
+        />
+      </ToastProvider>
     );
   }
 
   return (
+    <ToastProvider>
     <ErrorBoundary key={currentSession?.id ?? view}>
       <div className="h-screen bg-surface">
         <Header
@@ -589,5 +595,6 @@ export default function App() {
       )}
       </div>
     </ErrorBoundary>
+    </ToastProvider>
   );
 }

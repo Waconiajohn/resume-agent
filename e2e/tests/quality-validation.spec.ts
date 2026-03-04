@@ -115,7 +115,7 @@ test.describe.serial('Quality Validation', () => {
       await expect(
         page.locator('button[aria-expanded]'),
       ).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByText(/Step \d+ of 7 ·/)).toBeVisible({
+      await expect(page.getByText(/Step \d+ of 7/).first()).toBeVisible({
         timeout: 60_000,
       });
 

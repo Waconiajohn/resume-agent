@@ -117,7 +117,7 @@ test.describe('Full Pipeline E2E', () => {
 
       // Wait for the workspace to show pipeline progress breadcrumb (visible even if panel root has zero height)
       // Groq responds in <5s typically. 60s is generous but catches cold starts.
-      await expect(page.getByText(/Step \d+ of 7 ·/)).toBeVisible({
+      await expect(page.getByText(/Step \d+ of 7/).first()).toBeVisible({
         timeout: 60_000, // 60s for first LLM response (was 5 min for Z.AI)
       });
     });

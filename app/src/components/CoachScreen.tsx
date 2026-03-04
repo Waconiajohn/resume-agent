@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PanelRight } from 'lucide-react';
 import { ChatDrawer } from './ChatDrawer';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { WorkflowStatsRail } from './WorkflowStatsRail';
@@ -13,19 +14,11 @@ import { WorkspaceShell } from './workspace/WorkspaceShell';
 import { QuestionsNodeSummary } from '@/components/QuestionsNodeSummary';
 import { SectionsNodeSummary } from '@/components/SectionsNodeSummary';
 import { BenchmarkInspectorCard } from '@/components/BenchmarkInspectorCard';
-import {
-  ErrorBanner,
-  WorkflowErrorBanner,
-  PipelineActivityBanner,
-  RuntimeRecoveryBanner,
-  WorkflowActionBanner,
-  WorkflowReplanBanner,
-  WorkflowPreferencesCard,
-} from '@/components/CoachScreenBanners';
+import { WorkflowPreferencesCard } from '@/components/CoachScreenBanners';
+import { useToast } from '@/components/Toast';
 import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
-import { PROCESS_STEP_CONTRACTS, processStepFromPhase, processStepFromWorkflowNode } from '@/constants/process-contract';
 import type {
   ChatMessage,
   ToolStatus,
@@ -52,8 +45,6 @@ import {
   nodeTitle,
   formatPendingGateLabelForWorkspace,
   defaultEvidenceTargetForMode,
-  formatRelativeShort,
-  formatDurationShort,
   getSectionsBundleNavDetail,
   getSectionsBundleNavDetailFromSummary,
   buildReplanNodeDetailMap,
@@ -137,35 +128,78 @@ export function CoachScreen({
   activityMessages = [],
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
-  const [errorDismissed, setErrorDismissed] = useState(false);
-  const [isRestartingPipeline, setIsRestartingPipeline] = useState(false);
   const [evidenceTargetDraft, setEvidenceTargetDraft] = useState<number>(8);
   const [localSnapshots, setLocalSnapshots] = useState<SnapshotMap>({});
-  const [runtimeClockMs, setRuntimeClockMs] = useState<number>(Date.now());
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevPanelDataRef = useRef<PanelData | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     runPanelPayloadSmokeChecks();
   }, []);
 
-  // Auto-open context panel when an interaction gate fires; auto-close when resolved
+  // Auto-open context panel when an interaction gate fires.
+  // Auto-close only when the gate is cleared AND panel data is no longer an
+  // interactive type. This prevents the panel from briefly closing during
+  // intermediate gate responses (e.g. Apply on a suggestion sends a gate
+  // response that optimistically clears isPipelineGateActive, but the
+  // section_review panel data persists until the server sends a new event).
   useEffect(() => {
     if (isPipelineGateActive) {
       setContextPanelOpen(true);
+    } else if (panelData) {
+      const interactiveTypes = new Set([
+        'section_review',
+        'questionnaire',
+        'blueprint_review',
+        'positioning_interview',
+      ]);
+      if (!interactiveTypes.has(panelData.type)) {
+        setContextPanelOpen(false);
+      }
+      // else: keep open — panel data is still interactive even though gate
+      // was momentarily cleared (e.g. intermediate suggestion Apply).
     } else {
       setContextPanelOpen(false);
     }
-  }, [isPipelineGateActive]);
+  }, [isPipelineGateActive, panelData]);
 
+  // ── Toast notifications (non-workflow-dependent) ──────────────
+  // Error toast (replaces ErrorBanner)
   useEffect(() => {
-    const timer = setInterval(() => setRuntimeClockMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    if (error) {
+      addToast({ type: 'error', message: error });
+    }
+  }, [error, addToast]);
 
+  // Workflow replan toast (replaces WorkflowReplanBanner)
   useEffect(() => {
-    setErrorDismissed(false);
-  }, [error]);
+    if (!liveWorkflowReplan) return;
+    if (liveWorkflowReplan.state === 'in_progress') {
+      addToast({ type: 'info', message: liveWorkflowReplan.message ?? 'Applying updated benchmark assumptions...' });
+    } else if (liveWorkflowReplan.state === 'completed') {
+      addToast({ type: 'success', message: `Benchmark replan applied (v${liveWorkflowReplan.benchmark_edit_version}).` });
+    }
+  }, [liveWorkflowReplan, addToast]);
+
+  // Runtime recovery toast (replaces RuntimeRecoveryBanner)
+  const prevStalledRef = useRef(false);
+  useEffect(() => {
+    const shouldShow = Boolean(stalledSuspected) || (!connected && Boolean(isProcessing));
+    if (shouldShow && !prevStalledRef.current) {
+      addToast({
+        type: 'error',
+        message: stalledSuspected
+          ? 'Processing may be stalled. Try reconnecting.'
+          : 'Live connection disconnected while processing.',
+        duration: 8000,
+        action: onReconnectStream
+          ? <button type="button" onClick={onReconnectStream} className="mt-1 rounded bg-white/10 px-2.5 py-1 text-xs font-medium text-white/80 transition-colors hover:bg-white/20">Reconnect</button>
+          : undefined,
+      });
+    }
+    prevStalledRef.current = shouldShow;
+  }, [stalledSuspected, connected, isProcessing, onReconnectStream, addToast]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -253,6 +287,23 @@ export function CoachScreen({
     if (liveWorkflowReplan.state !== 'completed') return;
     void workflowSession.refreshSummary();
   }, [liveWorkflowReplan, workflowSession.refreshSummary]);
+
+  // ── Workflow-dependent toast notifications ──────────────
+  // Workflow error toast (replaces WorkflowErrorBanner)
+  useEffect(() => {
+    if (workflowSession.error) {
+      addToast({ type: 'warning', message: 'Having trouble loading the latest workflow state.' });
+    }
+  }, [workflowSession.error, addToast]);
+
+  // Workflow action toast (replaces WorkflowActionBanner)
+  useEffect(() => {
+    if (workflowSession.actionError) {
+      addToast({ type: 'error', message: workflowSession.actionError });
+    } else if (workflowSession.actionMessage) {
+      addToast({ type: 'success', message: workflowSession.actionMessage });
+    }
+  }, [workflowSession.actionMessage, workflowSession.actionError, addToast]);
 
   const mergedSnapshots: SnapshotMap = useMemo(
     () => ({
@@ -376,19 +427,9 @@ export function CoachScreen({
   const displayPanelType = selectedSnapshot?.panelType ?? null;
   const displayPanelData = selectedSnapshot?.panelData ?? null;
   const displayResume = selectedSnapshot?.resume ?? resume;
-  const displayPhase = isViewingLiveNode
-    ? effectiveCurrentPhase
-    : (selectedSnapshot?.currentPhase ?? effectiveCurrentPhase);
-  const displayProcessStepKey = processStepFromWorkflowNode(selectedNode, { currentPhase: displayPhase });
-  const displayProcessStep = PROCESS_STEP_CONTRACTS[displayProcessStepKey] ?? PROCESS_STEP_CONTRACTS[processStepFromPhase(displayPhase)];
-
   const effectivePipelineActivity = pipelineActivity ?? workflowSession.summary?.pipeline_activity_status ?? null;
 
-  const pipelineActivityStageElapsed = formatDurationShort(effectivePipelineActivity?.stage_started_at, runtimeClockMs);
-  const pipelineActivityLastProgress = formatRelativeShort(effectivePipelineActivity?.last_progress_at, runtimeClockMs);
-
   const draftReadiness = liveDraftReadiness ?? workflowSession.summary?.draft_readiness ?? null;
-  const draftPathDecision = workflowSession.summary?.draft_path_decision ?? null;
   const workflowPreferences = workflowSession.summary?.workflow_preferences ?? null;
   const activeWorkflowMode =
     workflowPreferences?.workflow_mode
@@ -488,77 +529,33 @@ export function CoachScreen({
 
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto">
-        <ErrorBanner
-          error={error}
-          errorDismissed={errorDismissed}
-          onDismiss={() => setErrorDismissed(true)}
-        />
-        <WorkflowErrorBanner
-          error={workflowSession.error}
-          loadingSummary={workflowSession.loadingSummary}
-          loadingNode={workflowSession.loadingNode}
-          onRefresh={async () => {
-            await workflowSession.refreshSummary();
-            await workflowSession.refreshNode(selectedNode);
-          }}
-        />
-        <PipelineActivityBanner
-          isViewingLiveNode={isViewingLiveNode}
-          messages={activityMessages}
-          isProcessing={isProcessing}
-        />
-        <RuntimeRecoveryBanner
-          stalledSuspected={Boolean(stalledSuspected)}
-          connected={connected}
-          isProcessing={isProcessing}
-          pipelineActivityStageElapsed={pipelineActivityStageElapsed}
-          pipelineActivityLastProgress={pipelineActivityLastProgress}
-          onReconnectStream={onReconnectStream}
-          loadingSummary={workflowSession.loadingSummary}
-          loadingNode={workflowSession.loadingNode}
-          selectedNode={selectedNode}
-          activeNode={activeNode}
-          onRefreshState={async () => {
-            await workflowSession.refreshSummary();
-            await workflowSession.refreshNode(selectedNode);
-            await workflowSession.refreshNode(activeNode);
-          }}
-        />
-        <WorkflowActionBanner
-          actionMessage={workflowSession.actionMessage}
-          actionError={workflowSession.actionError}
-          actionRequiresRestart={workflowSession.actionRequiresRestart}
-          sessionId={sessionId}
-          isRestartingPipeline={isRestartingPipeline}
-          isRestartPipelinePending={workflowSession.isRestartPipelinePending}
-          isProcessing={isProcessing}
-          onRestart={async () => {
-            setIsRestartingPipeline(true);
-            try {
-              const usedWorkflowAction = await workflowSession.restartPipeline();
-              if (!usedWorkflowAction.success && onRestartPipelineFromLastInputs && sessionId) {
-                await onRestartPipelineFromLastInputs(sessionId);
-              }
-            } finally {
-              setIsRestartingPipeline(false);
-            }
-          }}
-          onDismiss={workflowSession.clearActionMessage}
-        />
-        <WorkflowReplanBanner
-          summaryReplan={workflowSession.summary?.replan
-            ? {
-                ...workflowSession.summary.replan,
-                rebuild_from_stage: workflowSession.summary.replan.rebuild_from_stage ?? undefined,
-              }
-            : null}
-          summaryReplanStatus={workflowSession.summary?.replan_status ?? null}
-          liveWorkflowReplan={liveWorkflowReplan ?? null}
-        />
+      {/* Document fills all available space */}
+      <div className="min-h-0 flex-1">
+        <LiveResumeDocumentErrorBoundary>
+          <LiveResumeDocument
+            sectionOrder={sectionBuildOrder}
+            sectionContent={sectionDrafts}
+            sectionDraftsVersion={sectionDraftsVersion}
+            approvedSections={approvedSections}
+            activeSectionKey={activeSectionKey}
+            onEditSection={handleEditSection}
+            resume={displayResume}
+            isProcessing={isViewingLiveNode ? isProcessing : false}
+            sessionComplete={sessionComplete}
+            qualityData={qualityOverlayData}
+          />
+        </LiveResumeDocumentErrorBoundary>
+      </div>
+
+      {/* Slide-over context panel (fixed, doesn't affect layout) */}
+      <ContextPanel
+        isOpen={contextPanelOpen}
+        onClose={toggleContextPanel}
+        title={contextPanelTitle}
+      >
+        {/* Positioning profile choice (relocated from banner zone) */}
         {positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
-          <div className="px-3 pt-3">
+          <div className="border-b border-white/[0.08] px-4 py-3">
             <PositioningProfileChoice
               updatedAt={positioningProfileFound.updated_at}
               onChoice={(choice) => {
@@ -568,109 +565,55 @@ export function CoachScreen({
             />
           </div>
         )}
-      </div>
-      <div className="min-h-0 flex-1 p-3 md:p-4">
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="mb-2 flex items-center gap-2 px-1">
-            <span className="text-sm font-medium text-white/85">
-              Step {displayProcessStep.number} · {displayProcessStep.title}
-            </span>
-            {!isViewingLiveNode && (
-              <span className="text-xs italic text-white/45">previous version</span>
-            )}
-          </div>
 
-          {draftReadiness && (
-            <div className="mb-2 px-1">
+        {/* Draft readiness summary (relocated from main view) */}
+        {draftReadiness && (
+          <details className="border-b border-white/[0.08]">
+            <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 select-none hover:bg-white/[0.03]">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${draftReadiness.ready ? 'bg-emerald-400' : 'bg-white/40'}`} />
+              <span className="text-xs font-medium text-white/85">
+                {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
+              </span>
+              <span className="ml-auto text-[11px] text-white/40">
+                {Math.round(draftReadiness.coverage_score)}% coverage
+              </span>
+            </summary>
+            <div className="px-4 pb-3">
               <GlassCard className={`px-3 py-2.5 ${draftReadiness.ready ? 'border-emerald-300/25 bg-emerald-400/[0.05]' : ''}`}>
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 shrink-0 rounded-full ${draftReadiness.ready ? 'bg-emerald-400' : 'bg-white/40'}`} />
-                  <span className="text-xs font-medium text-white/85">
-                    {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
-                  </span>
-                </div>
-                <p className="mt-1.5 text-xs text-white/65">
+                <p className="text-xs text-white/65">
                   {draftReadiness.evidence_count} evidence items · {Math.round(draftReadiness.coverage_score)}% / {Math.round(draftReadiness.coverage_threshold)}% coverage · {draftReadiness.workflow_mode.replace('_', ' ')}
-                  {typeof draftReadiness.remaining_coverage_needed === 'number' && draftReadiness.remaining_coverage_needed > 0 && (
-                    <> · <span className="text-sky-200/80">need +{draftReadiness.remaining_coverage_needed}%</span></>
-                  )}
-                  {typeof draftReadiness.suggested_question_count === 'number' && draftReadiness.suggested_question_count > 0 && (
-                    <> · ~{draftReadiness.suggested_question_count} question{draftReadiness.suggested_question_count === 1 ? '' : 's'} likely</>
-                  )}
                 </p>
-                {draftReadiness.note && (
-                  <p className="mt-1 text-xs leading-relaxed text-white/50">
-                    {draftReadiness.note}
-                  </p>
-                )}
-                {draftPathDecision && (displayPhase === 'gap_analysis' || displayPhase === 'architect' || displayPhase === 'architect_review' || displayPhase === 'section_writing' || displayPhase === 'section_review' || displayPhase === 'quality_review' || displayPhase === 'revision' || displayPhase === 'complete') && (
-                  <p className={`mt-2 text-xs leading-relaxed ${
-                    draftPathDecision.proceeding_reason === 'momentum_mode' ? 'text-amber-100/75' : 'text-emerald-100/75'
-                  }`}>
-                    {draftPathDecision.proceeding_reason === 'momentum_mode' ? 'Proceeding with open items' : 'Readiness met'} — {draftPathDecision.message}
-                    {draftPathDecision.blocking_reasons?.includes('coverage_threshold')
-                      && typeof draftPathDecision.remaining_coverage_needed === 'number'
-                      && draftPathDecision.remaining_coverage_needed > 0 && (
-                        <> · <span className="text-sky-200/80">+{draftPathDecision.remaining_coverage_needed}% coverage still open</span></>
-                      )}
-                  </p>
-                )}
                 {draftReadiness.gap_breakdown && draftReadiness.gap_breakdown.total > 0 && (
                   <p className="mt-1.5 text-xs text-white/55">
-                    Requirements: <span className="text-emerald-200/75">{draftReadiness.gap_breakdown.strong} strong</span> · <span className="text-amber-200/75">{draftReadiness.gap_breakdown.partial} partial</span> · <span className="text-rose-200/75">{draftReadiness.gap_breakdown.gap} gaps</span>
+                    <span className="text-emerald-200/75">{draftReadiness.gap_breakdown.strong} strong</span> · <span className="text-amber-200/75">{draftReadiness.gap_breakdown.partial} partial</span> · <span className="text-rose-200/75">{draftReadiness.gap_breakdown.gap} gaps</span>
                   </p>
-                )}
-                {draftReadiness.evidence_quality && draftReadiness.evidence_count > 0 && (
-                  <p className="mt-1 text-xs text-white/50">
-                    Validated {draftReadiness.evidence_quality.user_validated_count}/{draftReadiness.evidence_count} · Metrics {draftReadiness.evidence_quality.metrics_defensible_count}/{draftReadiness.evidence_count} · Mapped {draftReadiness.evidence_quality.mapped_requirement_evidence_count}/{draftReadiness.evidence_count}
-                  </p>
-                )}
-                {Array.isArray(draftReadiness.high_impact_remaining) && draftReadiness.high_impact_remaining.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-[11px] uppercase tracking-[0.08em] text-white/40">
-                      Highest-Impact Remaining
-                    </div>
-                    <ul className="mt-1 space-y-1">
-                      {draftReadiness.high_impact_remaining.slice(0, 4).map((item, index) => (
-                        <li
-                          key={`${item.requirement}-${index}`}
-                          className="flex items-start gap-2 text-xs text-white/70 cursor-pointer transition-colors hover:text-white/85"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => goToNode('questions')}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              goToNode('questions');
-                            }
-                          }}
-                        >
-                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                            item.priority === 'must_have'
-                              ? 'bg-rose-400'
-                              : item.priority === 'implicit'
-                                ? 'bg-amber-400'
-                                : 'bg-white/40'
-                          }`} />
-                          <span className="min-w-0">
-                            <span className={item.classification === 'gap' ? 'text-rose-200/75' : 'text-amber-200/75'}>
-                              {item.classification === 'gap' ? 'Gap' : 'Partial'}
-                            </span>
-                            {' · '}
-                            <span className="truncate" title={item.requirement}>{item.requirement}</span>
-                            {item.evidence_count > 0 && (
-                              <span className="text-white/40"> · {item.evidence_count} evidence</span>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                 )}
               </GlassCard>
             </div>
-          )}
+          </details>
+        )}
 
+        {/* Benchmark inspector (relocated from main view) */}
+        {selectedNode === 'benchmark' && (
+          <div className="border-b border-white/[0.08]">
+            <BenchmarkInspectorCard
+              panelData={displayPanelData}
+              benchmarkEditSummary={workflowSession.summary?.benchmark_edit ?? null}
+              replanSummary={workflowSession.summary?.replan ?? null}
+              replanStatus={workflowSession.summary?.replan_status
+                ? {
+                    state: workflowSession.summary.replan_status.state,
+                    benchmark_edit_version: workflowSession.summary.replan_status.benchmark_edit_version,
+                  }
+                : null}
+              onSaveAssumptions={workflowSession.saveBenchmarkAssumptions}
+              isSaving={workflowSession.isSavingBenchmarkAssumptions}
+            />
+          </div>
+        )}
+
+        {/* Workflow preferences (relocated from main view) */}
+        <div className="border-b border-white/[0.08]">
           <WorkflowPreferencesCard
             activeWorkflowMode={activeWorkflowMode}
             activeMinimumEvidenceTarget={activeMinimumEvidenceTarget}
@@ -687,88 +630,58 @@ export function CoachScreen({
               });
             }}
           />
-
-          {selectedNode === 'benchmark' && (
-            <BenchmarkInspectorCard
-              panelData={displayPanelData}
-              benchmarkEditSummary={workflowSession.summary?.benchmark_edit ?? null}
-              replanSummary={workflowSession.summary?.replan ?? null}
-              replanStatus={workflowSession.summary?.replan_status
-                ? {
-                    state: workflowSession.summary.replan_status.state,
-                    benchmark_edit_version: workflowSession.summary.replan_status.benchmark_edit_version,
-                  }
-                : null}
-              onSaveAssumptions={workflowSession.saveBenchmarkAssumptions}
-              isSaving={workflowSession.isSavingBenchmarkAssumptions}
-            />
-          )}
-
-          {/* Two-column layout: Live Document + Context Panel */}
-          <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/[0.06]">
-            {/* Left: Always-visible live resume document */}
-            <div className="min-h-0 min-w-0 flex-1">
-              <LiveResumeDocumentErrorBoundary>
-                <LiveResumeDocument
-                  sectionOrder={sectionBuildOrder}
-                  sectionContent={sectionDrafts}
-                  sectionDraftsVersion={sectionDraftsVersion}
-                  approvedSections={approvedSections}
-                  activeSectionKey={activeSectionKey}
-                  onEditSection={handleEditSection}
-                  resume={displayResume}
-                  isProcessing={isViewingLiveNode ? isProcessing : false}
-                  sessionComplete={sessionComplete}
-                  qualityData={qualityOverlayData}
-                />
-              </LiveResumeDocumentErrorBoundary>
-            </div>
-
-            {/* Right: Context panel for interactions */}
-            <ContextPanel
-              isOpen={contextPanelOpen}
-              onClose={toggleContextPanel}
-              title={contextPanelTitle}
-            >
-              {displayPanelData ? (
-                <SafePanelContent
-                  panelType={displayPanelType}
-                  panelData={displayPanelData}
-                  resume={displayResume}
-                  isProcessing={isViewingLiveNode ? isProcessing : false}
-                  onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
-                  onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
-                  onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
-                  onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
-                />
-              ) : displayResume ? (
-                <ResumePanel resume={displayResume} />
-              ) : selectedNode === 'questions' ? (
-                <QuestionsNodeSummary
-                  isActiveNode={isViewingLiveNode}
-                  draftReadiness={draftReadiness}
-                  questionMetrics={workflowSession.summary?.question_response_metrics ?? null}
-                  questionHistory={workflowSession.summary?.question_response_history ?? null}
-                  questionReuseSummaries={workflowSession.summary?.question_reuse_summaries ?? null}
-                  questionReuseMetrics={workflowSession.summary?.question_reuse_metrics ?? null}
-                  onOpenQuestions={() => {
-                    void workflowSession.refreshSummary();
-                    void workflowSession.refreshNode('questions');
-                  }}
-                />
-              ) : selectedNode === 'sections' ? (
-                <SectionsNodeSummary
-                  isActiveNode={isViewingLiveNode}
-                  bundleSummary={workflowSession.summary?.sections_bundle_review ?? null}
-                />
-              ) : (
-                renderNodeContentPlaceholder(selectedNode, isViewingLiveNode)
-              )}
-            </ContextPanel>
-          </div>
         </div>
-      </div>
-      </div>
+
+        {/* Panel content */}
+        {displayPanelData ? (
+          <SafePanelContent
+            panelType={displayPanelType}
+            panelData={displayPanelData}
+            resume={displayResume}
+            isProcessing={isViewingLiveNode ? isProcessing : false}
+            onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
+            onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
+            onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
+            onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
+          />
+        ) : displayResume ? (
+          <ResumePanel resume={displayResume} />
+        ) : selectedNode === 'questions' ? (
+          <QuestionsNodeSummary
+            isActiveNode={isViewingLiveNode}
+            draftReadiness={draftReadiness}
+            questionMetrics={workflowSession.summary?.question_response_metrics ?? null}
+            questionHistory={workflowSession.summary?.question_response_history ?? null}
+            questionReuseSummaries={workflowSession.summary?.question_reuse_summaries ?? null}
+            questionReuseMetrics={workflowSession.summary?.question_reuse_metrics ?? null}
+            onOpenQuestions={() => {
+              void workflowSession.refreshSummary();
+              void workflowSession.refreshNode('questions');
+            }}
+          />
+        ) : selectedNode === 'sections' ? (
+          <SectionsNodeSummary
+            isActiveNode={isViewingLiveNode}
+            bundleSummary={workflowSession.summary?.sections_bundle_review ?? null}
+          />
+        ) : (
+          renderNodeContentPlaceholder(selectedNode, isViewingLiveNode)
+        )}
+      </ContextPanel>
+
+      {/* Floating button to open context panel when closed */}
+      {!contextPanelOpen && (displayPanelData || isPipelineGateActive) && (
+        <button
+          type="button"
+          onClick={toggleContextPanel}
+          className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/[0.12] bg-[#0d1117]/90 p-2.5 text-white/60 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117] hover:text-white/90"
+          aria-label="Open context panel"
+        >
+          <PanelRight className="h-5 w-5" />
+        </button>
+      )}
+
+      {/* Mobile stats rail */}
       <div className="flex-shrink-0 lg:hidden">
         <WorkflowStatsRail
           currentPhase={effectiveCurrentPhase}
@@ -783,6 +696,8 @@ export function CoachScreen({
           compact
         />
       </div>
+
+      {/* Chat drawer with activity feed */}
       <ChatDrawer
         messages={messages}
         streamingText={streamingText}
@@ -806,6 +721,7 @@ export function CoachScreen({
         onPipelineRespond={onPipelineRespond}
         onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
         approvedSections={approvedSections}
+        activityMessages={activityMessages}
       />
     </div>
   );

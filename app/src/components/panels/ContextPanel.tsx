@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { X } from 'lucide-react';
 
 interface ContextPanelProps {
@@ -11,7 +11,7 @@ interface ContextPanelProps {
 export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Focus trap: return focus when panel closes or unmounts
+  // Focus trap: return focus when panel closes
   const previousFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (isOpen) {
@@ -28,42 +28,59 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
     };
   }, [isOpen]);
 
+  // Close on Escape key
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && isOpen) {
+      onClose();
+    }
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   return (
-    <div
-      ref={panelRef}
-      // Issue 3 fix: when collapsed, use `hidden` (display:none) rather than
-      // `w-0` + `flex-shrink-0`. The previous approach left a 0-width flex
-      // item in the layout because `flex-shrink-0` prevents the container from
-      // collapsing it, and the responsive `lg:w-[360px]` / `xl:w-[420px]`
-      // classes win over a plain `w-0` on larger viewports. `hidden` removes
-      // the element from the flex layout entirely, so the document panel
-      // correctly expands to fill the full available width when closed.
-      className={`flex-shrink-0 flex-col border-l border-white/[0.08] bg-[#0d1117]/95 backdrop-blur-sm transition-all duration-300 ease-in-out ${
-        isOpen
-          ? 'flex h-full w-[300px] translate-x-0 opacity-100 lg:w-[360px] xl:w-[420px]'
-          : 'hidden'
-      }`}
-    >
+    <>
+      {/* Backdrop */}
       {isOpen && (
-        <>
-          <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
-            <span className="text-sm font-medium text-white/85">
-              {title ?? 'Context'}
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded p-1 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-              aria-label="Close context panel"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {children}
-          </div>
-        </>
+        <div
+          className="fixed inset-0 z-30 bg-black/20 transition-opacity"
+          onClick={onClose}
+          aria-hidden="true"
+        />
       )}
-    </div>
+
+      {/* Slide-over panel */}
+      <div
+        ref={panelRef}
+        className={`fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-white/[0.08] bg-[#0d1117]/98 shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-transform duration-300 ease-in-out sm:w-[400px] lg:w-[440px] xl:w-[500px] ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title ?? 'Context panel'}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
+          <span className="text-sm font-medium text-white/85">
+            {title ?? 'Context'}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            aria-label="Close context panel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {children}
+        </div>
+      </div>
+    </>
   );
 }

@@ -1,5 +1,5 @@
-import { ArrowLeft, ArrowRight, Lock, Sparkles } from 'lucide-react';
-import { GlassCard } from '@/components/GlassCard';
+import { useState, useCallback, useRef } from 'react';
+import { ArrowLeft, ArrowRight, Lock, Sparkles, FileText, Target, Search, MessageCircle, Map, Layers, ShieldCheck, Download } from 'lucide-react';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import type { WorkflowNodeKey, WorkflowNodeStatus } from '@/types/workflow';
@@ -36,6 +36,17 @@ interface WorkspaceShellProps {
     isGenerateDraftNowPending?: boolean;
   };
 }
+
+const NODE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  overview: FileText,
+  benchmark: Target,
+  gaps: Search,
+  questions: MessageCircle,
+  blueprint: Map,
+  sections: Layers,
+  quality: ShieldCheck,
+  export: Download,
+};
 
 function statusStyles(status: WorkflowNodeStatus) {
   switch (status) {
@@ -94,6 +105,17 @@ export function WorkspaceShell({
   footerRail,
   activeGate,
 }: WorkspaceShellProps) {
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    hoverTimerRef.current = setTimeout(() => setSidebarExpanded(true), 200);
+  }, []);
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setSidebarExpanded(false);
+  }, []);
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] min-h-0 flex-col">
       <div className="border-b border-white/[0.08] bg-white/[0.02] px-3 py-2 backdrop-blur-xl">
@@ -118,10 +140,6 @@ export function WorkspaceShell({
           >
             <ArrowRight className="h-3.5 w-3.5" />
           </GlassButton>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-white/88">{title}</div>
-            {subtitle && <div className="truncate text-xs text-white/52">{subtitle}</div>}
-          </div>
         </div>
 
         {activeGate?.active && (
@@ -129,8 +147,8 @@ export function WorkspaceShell({
             <Sparkles className="h-3.5 w-3.5 text-amber-200/90" />
             <p className="min-w-0 flex-1 truncate text-xs text-amber-100/85">
               {selectedNode === activeGate.activeNode
-                ? `An action is waiting in this step${activeGate.label ? `: ${activeGate.label}` : ''}. You can complete it here, or request a faster path to draft when available.`
-                : `An action is waiting in another step${activeGate.label ? `: ${activeGate.label}` : ''}. You can browse here and return when ready.`}
+                ? `Action waiting${activeGate.label ? `: ${activeGate.label}` : ''}`
+                : `Action waiting in another step${activeGate.label ? `: ${activeGate.label}` : ''}`}
             </p>
             {selectedNode !== activeGate.activeNode && (
               <GlassButton
@@ -139,7 +157,7 @@ export function WorkspaceShell({
                 onClick={activeGate.onReturn}
                 className="h-auto px-2 py-1 text-[11px]"
               >
-                Return To Active Step
+                Return
               </GlassButton>
             )}
             {activeGate.onGenerateDraftNow && (
@@ -157,36 +175,47 @@ export function WorkspaceShell({
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-[270px] shrink-0 overflow-hidden border-r border-white/[0.08] bg-white/[0.015] lg:block">
-          <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
-            <GlassCard className="min-h-0 shrink-0 p-3">
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
-                Workflow
-              </div>
-              <div className="space-y-2">
-                {nodes.map((node) => {
-                  const selectedNodeItem = node.key === selectedNode;
-                  const styles = statusStyles(node.status);
-                  const isLocked = node.status === 'locked';
-                  return (
+      <div className="relative flex min-h-0 flex-1">
+        <aside
+          className={cn(
+            'hidden shrink-0 border-r border-white/[0.08] bg-white/[0.015] lg:block',
+            'transition-[width] duration-200 ease-in-out',
+            sidebarExpanded ? 'absolute inset-y-0 left-0 z-10 w-[270px] shadow-[4px_0_24px_-12px_rgba(0,0,0,0.5)]' : 'relative w-14',
+          )}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="flex h-full flex-col gap-3 overflow-y-auto p-2">
+            <div className="space-y-1">
+              {nodes.map((node) => {
+                const isSelected = node.key === selectedNode;
+                const styles = statusStyles(node.status);
+                const isLocked = node.status === 'locked';
+                const Icon = NODE_ICONS[node.key] ?? FileText;
+
+                return (
+                  <div key={node.key} className="group relative">
                     <button
-                      key={node.key}
                       type="button"
                       disabled={isLocked}
                       onClick={() => onSelectNode(node.key)}
                       className={cn(
-                        'w-full rounded-xl border px-3 py-2 text-left transition-all',
+                        'relative flex w-full items-center gap-3 rounded-xl border px-2.5 py-2 text-left transition-all',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/70',
                         isLocked
-                          ? 'cursor-not-allowed border-white/[0.06] bg-white/[0.015] opacity-65'
-                          : 'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.14] hover:bg-white/[0.045]',
-                        selectedNodeItem && 'border-[#afc4ff]/30 bg-[#afc4ff]/[0.08] shadow-[0_0_0_1px_rgba(175,196,255,0.08)_inset]',
-                        node.key === activeNode && !selectedNodeItem && 'border-[#afc4ff]/14',
+                          ? 'cursor-not-allowed border-transparent opacity-40'
+                          : 'border-transparent hover:border-white/[0.14] hover:bg-white/[0.045]',
+                        isSelected && 'border-[#afc4ff]/30 bg-[#afc4ff]/[0.08] shadow-[0_0_0_1px_rgba(175,196,255,0.08)_inset]',
+                        node.key === activeNode && !isSelected && 'border-[#afc4ff]/14',
                       )}
                     >
-                      <div className="flex items-start gap-2">
-                        <span className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', styles.dot)} />
+                      <div className="relative shrink-0">
+                        <Icon className={cn('h-5 w-5', isSelected ? 'text-[#afc4ff]' : 'text-white/60')} />
+                        {/* Status dot */}
+                        <span className={cn('absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full', styles.dot)} />
+                      </div>
+
+                      {sidebarExpanded && (
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="truncate text-sm font-medium text-white/88">{node.label}</span>
@@ -197,13 +226,23 @@ export function WorkspaceShell({
                             <div className="mt-1 text-[11px] text-white/55">{node.detailLabel}</div>
                           )}
                         </div>
-                      </div>
+                      )}
                     </button>
-                  );
-                })}
-              </div>
-            </GlassCard>
-            {footerRail && <div className="min-h-0 flex-1 overflow-y-auto">{footerRail}</div>}
+
+                    {/* Tooltip on hover when collapsed */}
+                    {!sidebarExpanded && (
+                      <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/[0.1] bg-[#0d1117]/95 px-3 py-1.5 text-xs text-white/80 opacity-0 shadow-xl backdrop-blur-xl transition-opacity group-hover:opacity-100">
+                        {node.label}
+                        {node.detailLabel && <span className="ml-1 text-white/50">&middot; {node.detailLabel}</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {sidebarExpanded && footerRail && (
+              <div className="min-h-0 flex-1 overflow-y-auto">{footerRail}</div>
+            )}
           </div>
         </aside>
 

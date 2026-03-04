@@ -726,7 +726,7 @@ export function LiveResumeDocument({
   }, [activeSectionKey]);
 
   return (
-    <div className="flex h-full flex-col items-center overflow-y-auto bg-[#1a1d23] px-4 py-6">
+    <div className="flex h-full flex-col items-center overflow-y-auto bg-[#1a1d23] px-6 py-8 lg:px-8 lg:py-10">
       {/* Toolbar: progress + quality + export */}
       <div className="mb-3 flex w-full max-w-[8.5in] items-center gap-3 px-1">
         {isProcessing && !allComplete && (

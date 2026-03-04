@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronUp, Loader2 } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
+import { IntelligenceActivityFeed } from '@/components/IntelligenceActivityFeed';
+import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
 import { cn } from '@/lib/utils';
 import type {
   ChatMessage as ChatMessageType,
@@ -37,6 +39,7 @@ interface ChatDrawerProps {
     mode: 'default' | 'alternate',
   ) => Promise<{ success: boolean; message: string }>;
   approvedSections?: Record<string, string>;
+  activityMessages?: ActivityMessage[];
 }
 
 export function ChatDrawer({
@@ -62,6 +65,7 @@ export function ChatDrawer({
   isPipelineGateActive,
   onSaveCurrentResumeAsBase,
   approvedSections = {},
+  activityMessages = [],
 }: ChatDrawerProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -151,6 +155,17 @@ export function ChatDrawer({
 
       {/* Drawer body */}
       <div className="min-h-0 overflow-hidden">
+        {activityMessages.length > 0 && (
+          <details className="border-b border-white/[0.08]">
+            <summary className="flex cursor-pointer items-center gap-2 px-4 py-2 text-xs text-white/60 select-none hover:bg-white/[0.03]">
+              <span className="font-medium">Activity Log</span>
+              <span className="text-white/40">({activityMessages.length})</span>
+            </summary>
+            <div className="px-3 pb-2">
+              <IntelligenceActivityFeed messages={activityMessages} isProcessing={isProcessing} />
+            </div>
+          </details>
+        )}
         <ChatPanel
           messages={messages}
           streamingText={streamingText}
