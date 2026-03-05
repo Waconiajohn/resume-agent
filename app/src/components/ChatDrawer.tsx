@@ -68,6 +68,7 @@ export function ChatDrawer({
   const [expanded, setExpanded] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const openButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   // Focus management: move focus into drawer on open, restore on close
   useEffect(() => {
@@ -141,10 +142,22 @@ export function ChatDrawer({
       {/* Expanded: fixed overlay from bottom — does NOT affect document layout */}
       {expanded && (
         <div
+          ref={drawerRef}
           className="fixed inset-x-0 bottom-0 z-20 flex max-h-[50vh] flex-col border-t border-white/[0.08] bg-[#0d1117] shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.5)]"
-          role="complementary"
+          role="dialog"
           aria-label="Coach drawer"
         >
+          {/* Focus trap: top sentinel */}
+          <div
+            tabIndex={0}
+            className="sr-only"
+            onFocus={() => {
+              const focusable = drawerRef.current?.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+              );
+              if (focusable?.length) focusable[focusable.length - 1].focus();
+            }}
+          />
           {/* Header bar */}
           <div className="flex h-[36px] shrink-0 items-center gap-2 px-4">
             <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotColor)} />
@@ -190,6 +203,12 @@ export function ChatDrawer({
               hideWorkProduct
             />
           </div>
+          {/* Focus trap: bottom sentinel */}
+          <div
+            tabIndex={0}
+            className="sr-only"
+            onFocus={() => closeButtonRef.current?.focus()}
+          />
         </div>
       )}
     </>

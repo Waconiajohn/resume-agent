@@ -1,5 +1,24 @@
 # Changelog — Resume Agent
 
+## 2026-03-05 — Session 24
+**Sprint:** 22 | **Stories:** Accessibility & Dead Code Cleanup (Stories 1-6)
+**Summary:** WCAG AA compliance pass — keyboard navigation, focus management, color independence. Plus dead code removal from PipelineIntakeForm.
+
+### Changes Made
+- `app/src/components/workspace/WorkspaceShell.tsx` — Story 1: Added skip-to-content link (sr-only + focus:not-sr-only), added id="main-content" to main element. Story 2: Added onFocusCapture/onBlurCapture handlers to sidebar for keyboard expand/collapse. Story 4: Status dots now have distinct shapes per status (filled circle=complete, rounded square=blocked, ring=in_progress, diamond=stale, hollow circle=ready, dash=locked) for WCAG 1.4.1 color independence.
+- `app/src/components/ChatDrawer.tsx` — Story 3: Added focus trap with top/bottom sentinel divs that redirect focus back into the drawer. Changed role="complementary" to role="dialog". Added drawerRef for querying focusable elements.
+- `app/src/components/panels/SectionWorkbench.tsx` — Story 5: Rewrote ~20 jargon labels in bundled review section. "Bundled Review"→"Grouped Sections", "Action required: this section is in the review set"→"Please review this section", "What To Do"→"Your Next Step", "Current bundle"→"Current group", "Review set progress"→"Your progress", "auto-approved by mode"→"auto-approved", "Approve Remaining Review Set"→"Approve All Remaining", and more.
+- `app/src/components/PipelineIntakeForm.tsx` — Story 6: Removed ~140 lines of dead code: defaultEvidenceTargetForMode function, 5 dead state variables (workflowMode, minimumEvidenceTarget, minimumEvidenceTargetTouched, resumePriority, seniorityDelta), dead useEffect, and entire {false && (...)} Advanced Options block. Hardcoded defaults in handleSubmit. Fixed remaining "JD" abbreviations.
+
+### Decisions Made
+- Focus trap uses sentinel div pattern (tabIndex={0} + onFocus redirect) rather than a library — minimal, no new dependencies
+- Status dot shapes chosen for maximum visual distinctness at 6px: circle, square, ring, diamond, hollow, dash
+- PipelineIntakeForm dead code fully removed rather than commented — git has history per CLAUDE.md rules
+
+### Next Steps
+- Sprint 22 complete — plan Sprint 23
+- Consider Playwright E2E test updates for renamed labels (out of scope this sprint)
+
 ## 2026-03-05 — Session 23
 **Sprint:** 21 | **Stories:** UX Overhaul — "Margaret Can Understand" (Stories 1-19)
 **Summary:** Transformed the entire frontend from a developer dashboard into a premium consultation experience for non-technical executives. Four phases: narrative + de-jargon, layout simplification, copy rewrite + victory moments, and polish + progressive disclosure. Followed by a comprehensive 6-agent UI/UX audit that found 16 Critical, 48 Medium, 53 Low issues — applied fixes for all Critical and most Medium issues. 25 files modified, 3 orphaned files deleted, frontend-only (no backend changes).

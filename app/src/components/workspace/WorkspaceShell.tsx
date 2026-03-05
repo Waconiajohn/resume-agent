@@ -45,38 +45,38 @@ function statusStyles(status: WorkflowNodeStatus) {
   switch (status) {
     case 'complete':
       return {
-        dot: 'bg-emerald-300 animate-node-complete-pop',
+        dot: 'h-1.5 w-1.5 rounded-full bg-emerald-300 animate-node-complete-pop',
         pill: 'text-emerald-100/90 border-emerald-300/25 bg-emerald-400/[0.08]',
         label: '\u2713',
       };
     case 'blocked':
       return {
-        dot: 'bg-amber-300 animate-node-pulse',
+        dot: 'h-1.5 w-1.5 rounded-[2px] bg-amber-300 animate-node-pulse',
         pill: 'text-amber-100/90 border-amber-300/20 bg-amber-300/[0.08]',
         label: 'Your turn',
       };
     case 'in_progress':
       return {
-        dot: 'bg-[#afc4ff] animate-node-pulse',
+        dot: 'h-1.5 w-1.5 rounded-full border-[1.5px] border-[#afc4ff] animate-node-pulse',
         pill: 'text-[#d5e1ff] border-[#afc4ff]/25 bg-[#afc4ff]/[0.09]',
         label: 'Active',
       };
     case 'stale':
       return {
-        dot: 'bg-orange-300',
+        dot: 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-orange-300',
         pill: 'text-orange-100/90 border-orange-300/20 bg-orange-300/[0.08]',
         label: '',
       };
     case 'ready':
       return {
-        dot: 'bg-white/45',
+        dot: 'h-1.5 w-1.5 rounded-full border border-white/45',
         pill: 'text-white/72 border-white/[0.12] bg-white/[0.04]',
         label: '',
       };
     case 'locked':
     default:
       return {
-        dot: 'bg-white/20',
+        dot: 'h-[3px] w-1.5 rounded-[1px] bg-white/20',
         pill: 'text-white/45 border-white/[0.08] bg-white/[0.02]',
         label: '',
       };
@@ -109,8 +109,27 @@ export function WorkspaceShell({
     };
   }, []);
 
+  // Keyboard accessibility: expand sidebar on focus, collapse on blur
+  const handleFocusCapture = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setSidebarExpanded(true);
+  }, []);
+  const handleBlurCapture = useCallback((e: React.FocusEvent) => {
+    // Only collapse if focus is leaving the sidebar entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setSidebarExpanded(false);
+    }
+  }, []);
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] min-h-0 flex-col">
+      {/* Skip to main content link for keyboard/screen reader users */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-16 focus:z-50 focus:rounded-lg focus:border focus:border-[#afc4ff]/40 focus:bg-[#0d1117] focus:px-4 focus:py-2 focus:text-sm focus:text-white/90 focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
       {activeGate?.active && (
         <div className="border-b border-white/[0.08] bg-white/[0.02] px-3 py-2 backdrop-blur-xl">
           <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-3 py-2">
@@ -155,6 +174,8 @@ export function WorkspaceShell({
           )}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
+          onFocusCapture={handleFocusCapture}
+          onBlurCapture={handleBlurCapture}
         >
           <div className="flex h-full flex-col gap-3 overflow-y-auto p-2">
             <div className="space-y-1">
@@ -184,7 +205,7 @@ export function WorkspaceShell({
                       <div className="relative shrink-0">
                         <Icon className={cn('h-5 w-5', isSelected ? 'text-[#afc4ff]' : 'text-white/60')} />
                         {/* Status dot */}
-                        <span className={cn('absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full', styles.dot)} />
+                        <span className={cn('absolute -right-0.5 -top-0.5', styles.dot)} />
                       </div>
 
                       {sidebarExpanded && (
@@ -244,7 +265,7 @@ export function WorkspaceShell({
             </div>
           </div>
 
-          <main className="min-h-0 min-w-0 flex-1">
+          <main id="main-content" className="min-h-0 min-w-0 flex-1">
             {main}
           </main>
         </div>

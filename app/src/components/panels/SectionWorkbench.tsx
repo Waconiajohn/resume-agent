@@ -313,15 +313,15 @@ export function SectionWorkbench({
             <div className="rounded-2xl border border-white/[0.1] bg-white/[0.025] p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
-                  Bundled Review
+                  Grouped Sections
                 </span>
                 <span className="text-xs text-white/60">
-                  Reviewing {reviewRequiredSections.length || 1} high-impact section{(reviewRequiredSections.length || 1) === 1 ? '' : 's'}
+                  We've grouped {reviewRequiredSections.length || 1} section{(reviewRequiredSections.length || 1) === 1 ? '' : 's'} for your review
                 </span>
                 {reviewRequiredSections.includes(section) ? (
-                  <span className="text-[11px] text-emerald-200/85">Action required: this section is in the review set.</span>
+                  <span className="text-[11px] text-emerald-200/85">Please review this section.</span>
                 ) : (
-                  <span className="text-[11px] text-white/45">This section is editable even if auto-approved by mode.</span>
+                  <span className="text-[11px] text-white/45">This section was approved automatically, but you can still edit it.</span>
                 )}
               </div>
               {reviewRequiredSections.length > 0 && (
@@ -329,7 +329,7 @@ export function SectionWorkbench({
                   <div className="mb-2 rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
                       <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
-                        What To Do
+                        Your Next Step
                       </span>
                       {reviewRequiredSections.includes(section) ? (
                         <span className="text-white/78">
@@ -342,7 +342,7 @@ export function SectionWorkbench({
                       )}
                       {currentBundleMeta && (
                         <span className="text-white/52">
-                          Current bundle: {currentBundleMeta.label}
+                          Current group: {currentBundleMeta.label}
                         </span>
                       )}
                     </div>
@@ -354,7 +354,7 @@ export function SectionWorkbench({
                         onClick={() => setShowBundleDetails((prev) => !prev)}
                         className="flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.015] px-2.5 py-2 text-left text-[11px] text-white/68 transition-colors hover:bg-white/[0.03] hover:text-white/82"
                       >
-                        <span>Bundle details, section list, and auto-approved items</span>
+                        <span>Details and section list</span>
                         {showBundleDetails ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </button>
                     </div>
@@ -382,7 +382,7 @@ export function SectionWorkbench({
                               </div>
                             </div>
                             <div className="mt-1 text-[10px] text-white/50">
-                              {isCurrentBundle ? 'Current bundle' : (
+                              {isCurrentBundle ? 'Reviewing now' : (
                                 bundle.status === 'complete'
                                   ? 'Complete'
                                   : bundle.status === 'in_progress'
@@ -412,7 +412,7 @@ export function SectionWorkbench({
                                     >
                                       <span className="truncate">{toTitleCase(bundleSection)}</span>
                                       <span className="text-[9px] text-white/45">
-                                        {isCurrentSection ? 'current' : isApproved ? 'approved' : (requiresReview ? 'review' : 'auto')}
+                                        {isCurrentSection ? 'reviewing' : isApproved ? 'approved' : (requiresReview ? 'needs review' : 'auto-approved')}
                                       </span>
                                     </div>
                                   );
@@ -444,20 +444,20 @@ export function SectionWorkbench({
                           <span
                             key={`bundle-pill-${bundle.key}`}
                             className={`rounded-full border px-2 py-0.5 text-[10px] ${toneClass}`}
-                            title={`${bundle.label}: ${bundle.reviewed_required}/${bundle.review_required} review sections approved`}
+                            title={`${bundle.label}: ${bundle.reviewed_required}/${bundle.review_required} sections approved`}
                           >
                             {bundle.label}
                             {bundle.status === 'auto_approved'
                               ? ' • auto'
                               : ` • ${bundle.reviewed_required}/${bundle.review_required}`}
-                            {isCurrentBundle ? ' • current bundle' : ''}
+                            {isCurrentBundle ? ' • reviewing now' : ''}
                           </span>
                         );
                       })}
                     </div>
                   )}
                   <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/65">
-                    <span>Review set progress</span>
+                    <span>Your progress</span>
                     <span>{approvedReviewSections.length}/{reviewRequiredSections.length} approved</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
@@ -495,7 +495,7 @@ export function SectionWorkbench({
                       <div className="flex flex-wrap items-center gap-2">
                         {currentBundleMeta && (
                           <span>
-                            Current bundle: <span className="text-white/82">{currentBundleMeta.label}</span>
+                            Current group: <span className="text-white/82">{currentBundleMeta.label}</span>
                             {typeof currentBundleMeta.reviewed_required === 'number' && typeof currentBundleMeta.review_required === 'number'
                               ? ` (${currentBundleMeta.reviewed_required}/${currentBundleMeta.review_required})`
                               : ''}
@@ -505,16 +505,16 @@ export function SectionWorkbench({
                           <span>
                             Next: <span className="text-white/78">{nextPendingReviewBundleMeta.label}</span>
                             {typeof nextPendingReviewBundleMeta.review_required === 'number'
-                              ? ` (${nextPendingReviewBundleMeta.review_required} review section${nextPendingReviewBundleMeta.review_required === 1 ? '' : 's'})`
+                              ? ` (${nextPendingReviewBundleMeta.review_required} section${nextPendingReviewBundleMeta.review_required === 1 ? '' : 's'} to review)`
                               : ''}
                           </span>
                         )}
                         {!nextPendingReviewBundleMeta && currentBundleMeta?.status === 'complete' && (
-                          <span className="text-emerald-200/80">Current bundle is complete.</span>
+                          <span className="text-emerald-200/80">This group is complete.</span>
                         )}
                         {autoApprovedBundleCount > 0 && (
                           <span className="text-white/45">
-                            {autoApprovedBundleCount} bundle{autoApprovedBundleCount === 1 ? '' : 's'} auto-approved by mode
+                            {autoApprovedBundleCount} group{autoApprovedBundleCount === 1 ? '' : 's'} auto-approved
                           </span>
                         )}
                       </div>
@@ -524,7 +524,7 @@ export function SectionWorkbench({
               )}
               {reviewRequiredSections.length > 0 && showBundleDetails && (
                 <p className="mt-2 text-[11px] leading-relaxed text-white/50">
-                  Review set: {reviewRequiredSections.map((s) => toTitleCase(s)).join(', ')}
+                  Sections for review: {reviewRequiredSections.map((s) => toTitleCase(s)).join(', ')}
                 </p>
               )}
               {((reviewRequiredSections.includes(section)
@@ -547,11 +547,10 @@ export function SectionWorkbench({
                         disabled={isRefining || hasLocalEdits}
                         className="h-8 px-3 text-[11px]"
                       >
-                        Finish {currentBundleMeta.label} Bundle
+                        Approve Remaining in This Group
                       </GlassButton>
                       <p className="mt-1 text-[10px] text-white/35">
-                        Approves the rest of this bundle&apos;s review sections
-                        {nextPendingReviewBundleMeta ? ` and continues to ${nextPendingReviewBundleMeta.label}.` : '.'}
+                        Approves the remaining sections in this group{nextPendingReviewBundleMeta ? ` and continues to ${nextPendingReviewBundleMeta.label}.` : '.'}
                       </p>
                     </div>
                   )}
@@ -563,10 +562,10 @@ export function SectionWorkbench({
                         disabled={isRefining || hasLocalEdits}
                         className="h-8 px-3 text-[11px]"
                       >
-                        Approve Remaining Review Set ({remainingReviewSections.length})
+                        Approve All Remaining ({remainingReviewSections.length})
                       </GlassButton>
                       <p className="mt-1 text-[10px] text-white/35">
-                        This approves the rest of the bundled review sections and moves faster to quality review.
+                        Approves all remaining sections and moves to quality review.
                       </p>
                     </div>
                   )}
@@ -576,11 +575,11 @@ export function SectionWorkbench({
                 <p className="mt-1 text-[11px] leading-relaxed text-white/40">
                   {showBundleDetails ? (
                     <>
-                      Auto-approved by mode: {autoApprovedSections.slice(0, 6).map((s) => toTitleCase(s)).join(', ')}
+                      Auto-approved: {autoApprovedSections.slice(0, 6).map((s) => toTitleCase(s)).join(', ')}
                       {autoApprovedSections.length > 6 ? ` +${autoApprovedSections.length - 6} more` : ''}
                     </>
                   ) : (
-                    <>Auto-approved by mode: {autoApprovedSections.length} section{autoApprovedSections.length === 1 ? '' : 's'} (open bundle details to review names)</>
+                    <>Auto-approved: {autoApprovedSections.length} section{autoApprovedSections.length === 1 ? '' : 's'} (expand details to see names)</>
                   )}
                 </p>
               )}
