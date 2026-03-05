@@ -289,7 +289,7 @@ export function SectionWorkbench({
             step="section_writing"
             tone="review"
             compact
-            userDoesOverride="Review this section, approve it, or request changes. Informational chips and progress bars are here to help, not to block you."
+            userDoesOverride="Read this section. If it looks right, approve it. If you'd like changes, use the refine button or edit directly."
             nextOverride="Once review sections are approved, the process moves to quality review."
           />
 
@@ -304,6 +304,10 @@ export function SectionWorkbench({
               </p>
             )}
           </div>
+
+          <p className="text-center text-xs text-white/50 max-w-md mx-auto">
+            Read this section. If it looks right, approve it. If you'd like changes, tell us what to fix.
+          </p>
 
           {reviewStrategy === 'bundled' && (
             <div className="rounded-2xl border border-white/[0.1] bg-white/[0.025] p-3">
@@ -523,40 +527,50 @@ export function SectionWorkbench({
                   Review set: {reviewRequiredSections.map((s) => toTitleCase(s)).join(', ')}
                 </p>
               )}
-              {reviewRequiredSections.includes(section)
+              {((reviewRequiredSections.includes(section)
                 && currentBundleMeta
                 && currentBundleMeta.review_required > 1
                 && currentBundleMeta.status !== 'complete'
-                && onApproveCurrentBundle && (
-                <div className="mt-2">
-                  <GlassButton
-                    variant="ghost"
-                    onClick={onApproveCurrentBundle}
-                  disabled={isRefining || hasLocalEdits}
-                  className="h-8 px-3 text-[11px]"
-                >
-                    Finish {currentBundleMeta.label} Bundle
-                  </GlassButton>
-                  <p className="mt-1 text-[10px] text-white/35">
-                    Approves the rest of this bundle&apos;s review sections
-                    {nextPendingReviewBundleMeta ? ` and continues to ${nextPendingReviewBundleMeta.label}.` : '.'}
-                  </p>
-                </div>
-              )}
-              {reviewRequiredSections.includes(section) && remainingReviewSections.length > 0 && onApproveRemainingBundle && (
-                <div className="mt-2">
-                  <GlassButton
-                    variant="ghost"
-                    onClick={onApproveRemainingBundle}
-                    disabled={isRefining || hasLocalEdits}
-                    className="h-8 px-3 text-[11px]"
-                  >
-                    Approve Remaining Review Set ({remainingReviewSections.length})
-                  </GlassButton>
-                  <p className="mt-1 text-[10px] text-white/35">
-                    This approves the rest of the bundled review sections and moves faster to quality review.
-                  </p>
-                </div>
+                && onApproveCurrentBundle)
+                || (reviewRequiredSections.includes(section) && remainingReviewSections.length > 0 && onApproveRemainingBundle)) && (
+                <details className="mt-2">
+                  <summary className="text-[11px] text-white/50 cursor-pointer">More options</summary>
+                  {reviewRequiredSections.includes(section)
+                    && currentBundleMeta
+                    && currentBundleMeta.review_required > 1
+                    && currentBundleMeta.status !== 'complete'
+                    && onApproveCurrentBundle && (
+                    <div className="mt-2">
+                      <GlassButton
+                        variant="ghost"
+                        onClick={onApproveCurrentBundle}
+                        disabled={isRefining || hasLocalEdits}
+                        className="h-8 px-3 text-[11px]"
+                      >
+                        Finish {currentBundleMeta.label} Bundle
+                      </GlassButton>
+                      <p className="mt-1 text-[10px] text-white/35">
+                        Approves the rest of this bundle&apos;s review sections
+                        {nextPendingReviewBundleMeta ? ` and continues to ${nextPendingReviewBundleMeta.label}.` : '.'}
+                      </p>
+                    </div>
+                  )}
+                  {reviewRequiredSections.includes(section) && remainingReviewSections.length > 0 && onApproveRemainingBundle && (
+                    <div className="mt-2">
+                      <GlassButton
+                        variant="ghost"
+                        onClick={onApproveRemainingBundle}
+                        disabled={isRefining || hasLocalEdits}
+                        className="h-8 px-3 text-[11px]"
+                      >
+                        Approve Remaining Review Set ({remainingReviewSections.length})
+                      </GlassButton>
+                      <p className="mt-1 text-[10px] text-white/35">
+                        This approves the rest of the bundled review sections and moves faster to quality review.
+                      </p>
+                    </div>
+                  )}
+                </details>
               )}
               {autoApprovedSections.length > 0 && (
                 <p className="mt-1 text-[11px] leading-relaxed text-white/40">
@@ -747,7 +761,7 @@ export function SectionWorkbench({
                 disabled={isRefining}
               >
                 <Check className="mr-1.5 h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Looks Good — </span>Next Section
+                <span className="hidden sm:inline">Looks Good</span><span className="sm:hidden">Next</span>
               </GlassButton>
               <GlassButton
                 variant="ghost"

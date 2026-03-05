@@ -1,5 +1,84 @@
 # Changelog — Resume Agent
 
+## 2026-03-05 — Session 23
+**Sprint:** 21 | **Stories:** UX Overhaul — "Margaret Can Understand" (Stories 1-19)
+**Summary:** Transformed the entire frontend from a developer dashboard into a premium consultation experience for non-technical executives. Four phases: narrative + de-jargon, layout simplification, copy rewrite + victory moments, and polish + progressive disclosure. Followed by a comprehensive 6-agent UI/UX audit that found 16 Critical, 48 Medium, 53 Low issues — applied fixes for all Critical and most Medium issues. 25 files modified, 3 orphaned files deleted, frontend-only (no backend changes).
+
+### Changes Made — Phase 1: Narrative + De-Jargon
+- `app/src/components/InterviewLayout.tsx` — Removed InterviewStepper and DraftReadinessBadge. Added NarrativeStatusLine (phase-mapped warm messages), VictoryMoment component (emerald-accented auto-dismiss), and welcome narrative during processing dead zones.
+- `app/src/components/ModeTransition.tsx` — Added review→edit transition, expanded interview→review to warm bridging copy, increased display duration from 300ms to 1200ms.
+- `app/src/components/panels/QuestionnairePanel.tsx` — Renamed batch labels to consumer language ("Getting to Know You", "Closing the Gaps"), removed jargon pills, renamed buttons ("Submit Answers", "Next"), replaced "Draft Now" with "I'm Ready — Start Writing" + confirmation dialog.
+- `app/src/components/GlassButton.tsx` — Changed disabled:opacity-45 to disabled:opacity-30 disabled:border-dashed disabled:shadow-none for better visibility on dark backgrounds.
+- `app/src/components/IntelligenceActivityFeed.tsx` — Added CONSUMER_MESSAGE_MAP (15 regex→replacement pairs) translating developer log messages to friendly language.
+- `app/src/constants/pipeline-stages.ts` — Renamed all stage labels to consumer language.
+- `app/src/constants/phases.ts` — Rewrote all PHASE_LABELS from "Step N: Technical Term" to plain language.
+
+### Changes Made — Phase 2: Layout Simplification
+- `app/src/components/workspace/WorkspaceShell.tsx` — Removed back/forward nav arrows and props, removed footerRail prop, simplified status badges (complete→"✓", blocked→"Your turn").
+- `app/src/components/CoachScreen.tsx` — Removed developer sections from ContextPanel (draft readiness, WorkflowReplanBanner, BenchmarkInspectorCard, WorkflowPreferencesCard, WorkflowStatsRail). Rewrote contextPanelTitle mapping to consumer language.
+- `app/src/components/ChatDrawer.tsx` — Moved from bottom-left to bottom-right, increased button to h-12, added "Need Help?" text label.
+
+### Changes Made — Phase 3: Copy Rewrite + Victory Moments
+- `app/src/constants/process-contract.ts` — Added victoryMessage field to ProcessStepContract. Rewrote all 7 contracts in warm "we" language with victory messages.
+- `app/src/types/workflow.ts` — Renamed all WORKFLOW_NODES labels to consumer language.
+- `app/src/components/panels/OnboardingSummaryPanel.tsx` — Header: "Resume Snapshot" → "Here's What We Found"
+- `app/src/components/panels/GapAnalysisPanel.tsx` — Header: "Gap Analysis" → "How Your Experience Matches"
+- `app/src/components/panels/SectionReviewPanel.tsx` — Header: "Section Review" → "Review This Section"
+- `app/src/components/panels/QualityDashboardPanel.tsx` — Header: "Quality Dashboard" → "Your Resume Quality Score"
+- `app/src/components/panels/BlueprintReviewPanel.tsx` — Header: "Resume Blueprint" → "Your Resume Plan"
+
+### Changes Made — Phase 4: Polish + Progressive Disclosure
+- `app/src/components/PipelineIntakeForm.tsx` — "New Resume Session" → "Let's Build Your Resume", "Start Resume Session" → "Let's Get Started", simplified JD placeholder, hid Advanced Options.
+- `app/src/components/panels/CompletionPanel.tsx` — "Session Complete" → "Your Resume Is Ready!", added ATS victory message, removed developer diagnostics, added "What To Do Next" section.
+- `app/src/components/panels/SectionWorkbench.tsx` — Added contextual micro-help text, progressive disclosure for power-user bundle options.
+- `app/src/components/ReviewModeToolbar.tsx` — Consumer copy for status messages.
+
+### Changes Made — Phase 5: UI/UX Audit (Story 19)
+- `app/src/components/panels/QualityDashboardPanel.tsx` — Fixed raw Tailwind colors to theme hex, rewrote 9 jargon labels (Evidence Integrity→Proof Strength, Blueprint Compliance→Plan Alignment, ATS Findings→Hiring System Findings, etc.)
+- `app/src/components/panels/CompletionPanel.tsx` — "ATS validation" → friendly language, "Reqs Met" → "Requirements Met", "Save As New Default Base" → "Save as My Main Resume", added aria-labels to export buttons.
+- `app/src/components/InterviewLayout.tsx` — Added aria-live/role="alert" to dynamic elements, increased victory duration 1.5s→3s, removed unused draftReadiness prop, added phase narratives for section_review/revision/positioning_profile_choice.
+- `app/src/components/panels/BlueprintReviewPanel.tsx` — "evidence pts" → "key achievements", "keywords targeted" → "relevant terms", transparency disclaimer rewritten.
+- `app/src/components/panels/GapAnalysisPanel.tsx` — "Requirements Addressed" → "How Well You Match", added role="progressbar" with aria attributes, rewrote "misclassified" callout.
+- `app/src/components/CoachScreen.tsx` — Rewrote benchmark/replan toast jargon, added focus-visible ring to floating button, removed draftReadiness prop pass.
+- `app/src/components/shared/ProcessStepGuideCard.tsx` — "System does" → "What we're doing", "You do" → "What you can do".
+- `app/src/constants/pipeline-stages.ts` — Fixed revision mapping inconsistency, unified labels with warmer "Your" variants.
+- `app/src/constants/phases.ts` — Added missing positioning_profile_choice, fixed section_review tone.
+- `app/src/constants/process-contract.ts` — Polished quality_review victory message.
+- `app/src/components/panels/OnboardingSummaryPanel.tsx` — Replaced "parse" jargon, "Initial Strengths" → "Your Standout Strengths".
+- `app/src/components/ChatDrawer.tsx` — Status labels rewritten to consumer language.
+- `app/src/components/workspace/WorkspaceShell.tsx` — "Action waiting" → "Your input is needed".
+- `app/src/components/GlassButton.tsx` — Added aria-busy when loading.
+- `app/src/components/panels/SectionReviewPanel.tsx` — Added aria-pressed to Edit button.
+- `app/src/components/IntelligenceActivityFeed.tsx` — Added role="log" + aria-live, changed fallback to hide unmatched dev messages.
+- `app/src/components/ModeTransition.tsx` — Fixed JS/CSS timer mismatch.
+- `app/src/components/PipelineIntakeForm.tsx` — Fixed "JD" abbreviation in error message.
+
+### Deleted
+- `e2e/tests/manual-takeover.spec.ts` — Removed temporary test script.
+- `app/src/components/WorkflowStatsRail.tsx` — Orphaned (218 lines), zero imports.
+- `app/src/components/BenchmarkInspectorCard.tsx` — Orphaned (399 lines), zero imports.
+- `app/src/components/CoachScreenBanners.tsx` — Orphaned (entire file), zero imports.
+
+### Decisions Made
+- All changes are frontend presentation layer only — no backend, SSE, or DB changes.
+- Warm "we" language throughout, targeting non-technical executive persona ("Margaret").
+- VictoryMoment auto-dismisses after 3s between phase transitions (increased from 1.5s for readability).
+- Advanced pipeline options hidden rather than removed to preserve power-user access path.
+- Unmatched developer log messages now show "Working on your resume..." instead of raw text.
+- `revision` phase consistently maps to `section_writing` across all three mapping files.
+
+### Known Issues
+- Playwright E2E test selectors may need updating for renamed labels (backlog).
+- WorkspaceShell sidebar lacks keyboard accessibility (needs onFocus/onBlur).
+- ChatDrawer lacks focus trap when expanded.
+- SectionWorkbench bundled review copy still uses some system-state language (needs design decision).
+- Color-only status dots need shape/icon differentiation per WCAG 1.4.1.
+
+### Next Steps
+- Commit all changes and merge to main.
+- Update Playwright test selectors for renamed labels.
+- Plan Sprint 22: Accessibility deep dive (keyboard nav, focus traps, skip links).
+
 ## 2026-03-04 — Session 22
 **Sprint:** 20 | **Story:** Progressive Disclosure UI (Stories 1-8)
 **Summary:** Implemented 3-mode progressive disclosure UI that shows the right interface for each pipeline phase: Interview Mode (centered panel, no document), Review Mode (document with inline approve/edit/reject controls), and Edit Mode (full inline editing). Replaced static document-always layout with mode-conditional rendering driven by a new `useUIMode` hook.

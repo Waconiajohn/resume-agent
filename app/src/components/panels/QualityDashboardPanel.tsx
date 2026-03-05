@@ -28,9 +28,9 @@ function scoreColor(score: number): string {
 }
 
 function secondaryScoreColor(score: number): string {
-  if (score >= 80) return 'text-green-400';
-  if (score >= 60) return 'text-yellow-400';
-  return 'text-red-400';
+  if (score >= 80) return 'text-[#b5dec2]';
+  if (score >= 60) return 'text-[#dfc797]';
+  return 'text-[#e0abab]';
 }
 
 interface CollapsibleSectionProps {
@@ -53,7 +53,7 @@ function CollapsibleSection({ icon, title, count, children, defaultOpen = false 
         aria-expanded={open}
       >
         {icon}
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60 flex-1">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60 flex-1" id={`section-${title.replace(/\s+/g, '-').toLowerCase()}`}>
           {title}
         </h3>
         <span className="text-[10px] text-white/50 mr-2">
@@ -102,7 +102,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
       ? {
           score: hiring_manager.checklist_total ?? 0,
           max: hiring_manager.checklist_max ?? 50,
-          label: 'Hiring Mgr',
+          label: 'Hiring Manager',
           color: hiring_manager.pass ? 'text-[#b5dec2]' : 'text-[#e0abab]',
         }
       : null,
@@ -121,28 +121,28 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
 
   const secondaryMetrics = [
     evidence_integrity != null
-      ? { label: 'Evidence Integrity', score: evidence_integrity }
+      ? { label: 'Proof Strength', score: evidence_integrity }
       : null,
     blueprint_compliance != null
-      ? { label: 'Blueprint Compliance', score: blueprint_compliance }
+      ? { label: 'Plan Alignment', score: blueprint_compliance }
       : null,
     narrative_coherence != null
-      ? { label: 'Narrative Coherence', score: narrative_coherence }
+      ? { label: 'Story Consistency', score: narrative_coherence }
       : null,
   ].filter(Boolean) as Array<{ label: string; score: number }>;
 
   return (
     <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">Quality Dashboard</span>
+        <span className="text-sm font-medium text-white/85">Your Resume Quality Score</span>
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
         <ProcessStepGuideCard
           step="quality_review"
           tone="review"
-          userDoesOverride={hasActionableRisks ? 'Review high-risk flags before exporting.' : 'Use this as the final quality gate. Scores look good — ready to export.'}
-          nextOverride={hasActionableRisks ? 'Review risk sections, then export.' : 'Export and optionally save as a reusable base resume.'}
+          userDoesOverride={hasActionableRisks ? 'Review the items flagged below before downloading.' : 'Scores look good — your resume is ready to download.'}
+          nextOverride={hasActionableRisks ? 'Review the flagged items, then download your resume.' : 'Download your resume, or save it for future applications.'}
         />
 
         {/* Primary score rings — 3 rings: Hiring Mgr, ATS, Authenticity */}
@@ -181,7 +181,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                 'flex items-center justify-between text-xs border-t border-white/[0.08] pt-3',
                 (primaryRings.length > 0 || secondaryMetrics.length > 0) ? 'mt-3' : '',
               )}>
-                <span className="text-white/60">Keyword Coverage</span>
+                <span className="text-white/60">Key Requirements Matched</span>
                 <span className="text-white/85">{keyword_coverage}%</span>
               </div>
             )}
@@ -198,7 +198,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
               <div className="flex items-center gap-2 mb-3">
                 <ShieldCheck className="h-3.5 w-3.5 text-[#afc4ff]" />
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
-                  Checklist Breakdown
+                  Score Details
                 </h3>
                 <span className="ml-auto text-[10px] text-white/50">
                   {hiring_manager.checklist_total ?? 0} / {hiring_manager.checklist_max ?? 50}
@@ -259,7 +259,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {atsFindingsCount > 0 && (
           <CollapsibleSection
             icon={<ClipboardList className="h-3.5 w-3.5 text-[#afc4ff]" />}
-            title="ATS Findings"
+            title="Hiring System Findings"
             count={atsFindingsCount}
           >
             <div className="space-y-1.5">
@@ -296,7 +296,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {humanizeIssuesCount > 0 && (
           <CollapsibleSection
             icon={<Bot className="h-3.5 w-3.5 text-[#afc4ff]" />}
-            title="AI Pattern Issues"
+            title="Naturalness Check"
             count={humanizeIssuesCount}
           >
             <div className="space-y-1.5">
@@ -316,7 +316,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {coherenceIssuesCount > 0 && (
           <CollapsibleSection
             icon={<GitBranch className="h-3.5 w-3.5 text-[#afc4ff]" />}
-            title="Narrative Coherence Issues"
+            title="Story Consistency"
             count={coherenceIssuesCount}
           >
             <div className="space-y-1.5">
@@ -345,7 +345,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
               </span>
               <Flag className="h-3.5 w-3.5 text-white/62" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
-                Risk Flags
+                Items to Review
               </h3>
             </div>
             <div className="space-y-2">

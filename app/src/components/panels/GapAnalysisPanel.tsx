@@ -136,7 +136,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
   return (
     <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">Gap Analysis</span>
+        <span className="text-sm font-medium text-white/85">How Your Experience Matches</span>
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -150,12 +150,12 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         {/* Progress bar */}
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-white/70">Requirements Addressed</span>
+            <span className="text-xs text-white/70">How Well You Match</span>
             <span className="text-xs font-medium text-white/85">
               {addressed} of {total}
             </span>
           </div>
-          <div className="h-2 rounded-full bg-white/[0.10] overflow-hidden">
+          <div className="h-2 rounded-full bg-white/[0.10] overflow-hidden" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`${addressed} of ${total} requirements matched`}>
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#9cb6ff] to-[#c2d2ff] transition-all duration-500"
               style={{ width: `${progressPct}%` }}
@@ -184,7 +184,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
         </div>
 
         <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-white/58">
-          This map updates as the system collects more evidence. If something is misclassified, fix it by answering the follow-up questions (not by editing this list directly).
+          This updates as we learn more about your experience. If something doesn't look right, you can fix it by answering the follow-up questions.
         </div>
 
         {/* Requirement list — collapsible */}

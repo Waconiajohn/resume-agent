@@ -100,18 +100,18 @@ export function ChatDrawer({
   );
   const statusLabel =
     runtimeState === 'stalled_suspected'
-      ? 'May be stalled'
+      ? 'Taking longer than expected'
       : runtimeState === 'processing'
         ? 'Working'
         : runtimeState === 'waiting_for_input'
-          ? 'Waiting for input'
+          ? 'Waiting for your input'
           : runtimeState === 'reconnecting'
-            ? 'Reconnecting'
+            ? 'Reconnecting...'
             : runtimeState === 'complete'
               ? 'Complete'
               : runtimeState === 'error'
-                ? 'Error'
-                : (pipelinePhaseActive ? 'Idle' : 'Connected');
+                ? 'Something went wrong'
+                : 'Ready';
   const statusDotColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
       ? 'bg-rose-400'
@@ -129,10 +129,11 @@ export function ChatDrawer({
           ref={openButtonRef}
           type="button"
           onClick={() => setExpanded(true)}
-          className="fixed bottom-4 left-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.12] bg-[#0d1117]/90 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117]"
+          className="fixed bottom-4 right-4 z-20 flex h-12 items-center rounded-full border border-white/[0.12] bg-[#0d1117]/90 px-4 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117]"
           aria-label={`Open coach – ${statusLabel}`}
         >
           <MessageCircle className="h-[1.125rem] w-[1.125rem] text-white/60" />
+          <span className="text-xs font-medium text-white/70 ml-1.5">Need Help?</span>
           <span className={cn('absolute right-0.5 top-0.5 h-2 w-2 rounded-full', statusDotColor)} />
         </button>
       )}

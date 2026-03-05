@@ -184,7 +184,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         <div className="border-b border-white/[0.12] px-4 py-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-[#afc4ff]" />
-            <span className="text-sm font-medium text-white/85">Resume Blueprint</span>
+            <span className="text-sm font-medium text-white/85">Your Resume Plan</span>
           </div>
         </div>
 
@@ -316,10 +316,10 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         {(evidence_allocation_count > 0 || keyword_count > 0) && (
           <div className="flex flex-wrap gap-2">
             {evidence_allocation_count > 0 && (
-              <StatBadge label={`${evidence_allocation_count} evidence pts allocated`} />
+              <StatBadge label={`${evidence_allocation_count} key achievements matched`} />
             )}
             {keyword_count > 0 && (
-              <StatBadge label={`${keyword_count} keywords targeted`} />
+              <StatBadge label={`${keyword_count} relevant terms included`} />
             )}
           </div>
         )}
@@ -365,7 +365,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
         <div className="pt-1 pb-2">
           {!onApprove && (
             <div className="mb-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56">
-              This blueprint is shown for transparency. In your current mode, the pipeline may continue automatically without a manual approval step.
+              This is a preview of your resume plan. Writing will begin automatically.
             </div>
           )}
           {hasEdits && (
@@ -386,7 +386,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
             aria-label={hasEdits ? 'Approve blueprint with edits and start writing' : 'Approve blueprint and start writing'}
           >
             <ShieldCheck className="h-4 w-4" />
-            {hasEdits ? 'Approve with Edits & Start Writing' : 'Approve Blueprint & Start Section Writing'}
+            {hasEdits ? 'Approve with Edits & Start Writing' : 'Looks Good — Start Writing'}
             <ArrowRight className="h-4 w-4 ml-auto" />
           </GlassButton>
         </div>

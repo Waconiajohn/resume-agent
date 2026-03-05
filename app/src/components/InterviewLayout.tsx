@@ -1,97 +1,50 @@
+import { useState, useEffect, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { SafePanelContent } from './panels/panel-renderer';
-import { PIPELINE_STAGES } from '@/constants/pipeline-stages';
-import { getStageInfo } from '@/constants/pipeline-stages';
+import { PROCESS_STEP_CONTRACTS, processStepFromPhase } from '@/constants/process-contract';
 import type { PanelRendererProps } from './panels/panel-renderer';
-// ─── Interview Stepper ─────────────────────────────────────────────────────────
 
-/** The first 5 pipeline stages map to interview mode phases */
-const INTERVIEW_STEPS = PIPELINE_STAGES.slice(0, 5);
+// ─── Narrative Status Line ──────────────────────────────────────────────────
 
-type StepState = 'completed' | 'active' | 'pending';
+const PHASE_NARRATIVE: Record<string, string> = {
+  intake: 'Reading your resume...',
+  onboarding: "Here's what we found in your resume.",
+  research: 'Studying what this company is looking for...',
+  positioning: "Let's strengthen your story with a few questions.",
+  gap_analysis: 'Almost there — a few more questions to close the gaps.',
+  architect: 'Planning the best structure for your resume...',
+  architect_review: 'Planning the best structure for your resume...',
+  section_writing: 'Writing your resume now...',
+  section_review: 'Reviewing what we wrote...',
+  revision: 'Making revisions...',
+  positioning_profile_choice: 'We found your saved positioning profile.',
+  quality_review: 'Doing a final quality check...',
+  complete: 'Your resume is ready!',
+};
 
-function getStepState(stepKey: string, currentPhaseKey: string): StepState {
-  const stepInfo = getStageInfo(stepKey);
-  const currentInfo = getStageInfo(currentPhaseKey);
-  if (!stepInfo || !currentInfo) return 'pending';
-  if (stepInfo.index < currentInfo.index) return 'completed';
-  if (stepInfo.index === currentInfo.index) return 'active';
-  return 'pending';
-}
-
-function InterviewStepper({ currentPhase }: { currentPhase: string }) {
+function NarrativeStatusLine({ phase }: { phase: string }) {
+  const message = PHASE_NARRATIVE[phase] ?? PHASE_NARRATIVE.intake;
   return (
-    <div className="flex items-center justify-center gap-1 px-4 py-3 sm:gap-3">
-      {INTERVIEW_STEPS.map((step, i) => {
-        const state = getStepState(step.key, currentPhase);
-        return (
-          <div key={step.key} className="flex items-center gap-1 sm:gap-3">
-            {i > 0 && (
-              <div
-                className={`hidden h-px w-6 sm:block lg:w-10 ${
-                  state === 'pending' ? 'bg-white/20' : 'bg-emerald-400/50'
-                }`}
-              />
-            )}
-            <div className="flex items-center gap-1.5">
-              <div
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
-                  state === 'completed'
-                    ? 'bg-emerald-400/20 text-emerald-400'
-                    : state === 'active'
-                      ? 'bg-blue-400/20 text-blue-400 ring-2 ring-blue-400/30 dot-current'
-                      : 'bg-white/10 text-white/40'
-                }`}
-              >
-                {state === 'completed' ? (
-                  <Check className="h-3 w-3" />
-                ) : (
-                  <span>{step.index}</span>
-                )}
-              </div>
-              <span
-                className={`hidden text-xs font-medium sm:inline ${
-                  state === 'completed'
-                    ? 'text-emerald-400/80'
-                    : state === 'active'
-                      ? 'text-blue-400'
-                      : 'text-white/40'
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <p role="status" aria-live="polite" className="px-4 py-3 text-center text-sm font-medium text-white/70">
+      {message}
+    </p>
   );
 }
 
-// ─── Draft Readiness Summary (compact, for interview mode) ──────────────────
+// ─── Victory Moment ─────────────────────────────────────────────────────────
 
-interface DraftReadinessData {
-  ready: boolean;
-  coverage_score: number;
-}
-
-function DraftReadinessBadge({ data }: { data: DraftReadinessData }) {
+function VictoryMoment({ message }: { message: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2">
-      <span
-        className={`h-2 w-2 shrink-0 rounded-full ${
-          data.ready ? 'bg-emerald-400' : 'bg-white/40'
-        }`}
-      />
-      <span className="text-xs font-medium text-white/85">
-        {data.ready ? 'Ready to Draft' : 'Building Evidence'}
-      </span>
-      <span className="ml-auto text-[11px] text-white/40">
-        {Math.round(data.coverage_score)}% coverage
-      </span>
-    </div>
+    <GlassCard role="alert" className="border-emerald-400/20 bg-emerald-400/[0.04] p-6 text-center">
+      <div className="mb-2 flex justify-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/20">
+          <Check className="h-5 w-5 text-emerald-400" />
+        </div>
+      </div>
+      <p className="text-sm font-medium text-emerald-200/90">{message}</p>
+    </GlassCard>
   );
 }
 
@@ -101,7 +54,6 @@ interface InterviewLayoutProps extends PanelRendererProps {
   effectiveCurrentPhase: string;
   positioningProfileFound?: { profile: unknown; updated_at: string } | null;
   onProfileChoice?: (choice: unknown) => void;
-  draftReadiness?: DraftReadinessData | null;
 }
 
 export function InterviewLayout({
@@ -116,15 +68,33 @@ export function InterviewLayout({
   onDismissSuggestion,
   positioningProfileFound,
   onProfileChoice,
-  draftReadiness,
 }: InterviewLayoutProps) {
   const showProfileChoice = Boolean(positioningProfileFound && onProfileChoice);
+  const showWelcomeNarrative = !panelData && isProcessing;
+
+  // Victory moment on phase transitions
+  const [victoryMessage, setVictoryMessage] = useState<string | null>(null);
+  const prevPhaseRef = useRef(effectiveCurrentPhase);
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = effectiveCurrentPhase;
+    if (prev === effectiveCurrentPhase) return;
+
+    const prevStep = processStepFromPhase(prev);
+    const contract = PROCESS_STEP_CONTRACTS[prevStep];
+    if (contract?.victoryMessage) {
+      setVictoryMessage(contract.victoryMessage);
+      const timer = setTimeout(() => setVictoryMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [effectiveCurrentPhase]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Progress stepper */}
+      {/* Narrative status line */}
       <div className="flex-shrink-0 border-b border-white/[0.08]">
-        <InterviewStepper currentPhase={effectiveCurrentPhase} />
+        <NarrativeStatusLine phase={effectiveCurrentPhase} />
       </div>
 
       {/* Centered panel content area */}
@@ -140,25 +110,38 @@ export function InterviewLayout({
             </GlassCard>
           )}
 
-          {/* Draft readiness indicator */}
-          {draftReadiness && (
-            <DraftReadinessBadge data={draftReadiness} />
+          {/* Victory moment between phases */}
+          {victoryMessage && (
+            <VictoryMoment message={victoryMessage} />
+          )}
+
+          {/* Welcome narrative during processing dead zone */}
+          {showWelcomeNarrative && !victoryMessage && (
+            <GlassCard className="p-6 text-center">
+              <p className="text-sm leading-relaxed text-white/70">
+                We're reading your resume and studying the job posting. In a moment,
+                we'll show you what we found and start asking a few questions to
+                strengthen your positioning. This usually takes about 30 seconds.
+              </p>
+            </GlassCard>
           )}
 
           {/* Main panel content */}
-          <GlassCard className="overflow-hidden">
-            <SafePanelContent
-              panelType={panelType}
-              panelData={panelData}
-              resume={resume}
-              isProcessing={isProcessing}
-              onSendMessage={onSendMessage}
-              onPipelineRespond={onPipelineRespond}
-              onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
-              onDismissSuggestion={onDismissSuggestion}
-              variant="inline"
-            />
-          </GlassCard>
+          {panelData && (
+            <GlassCard className="overflow-hidden">
+              <SafePanelContent
+                panelType={panelType}
+                panelData={panelData}
+                resume={resume}
+                isProcessing={isProcessing}
+                onSendMessage={onSendMessage}
+                onPipelineRespond={onPipelineRespond}
+                onSaveCurrentResumeAsBase={onSaveCurrentResumeAsBase}
+                onDismissSuggestion={onDismissSuggestion}
+                variant="inline"
+              />
+            </GlassCard>
+          )}
         </div>
       </div>
     </div>

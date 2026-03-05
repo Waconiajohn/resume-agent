@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Lock, Sparkles, FileText, Target, Search, MessageCircle, Map, Layers, ShieldCheck, Download } from 'lucide-react';
+import { Lock, Sparkles, FileText, Target, Search, MessageCircle, Map, Layers, ShieldCheck, Download } from 'lucide-react';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import type { WorkflowNodeKey, WorkflowNodeStatus } from '@/types/workflow';
@@ -18,13 +18,8 @@ interface WorkspaceShellProps {
   nodes: WorkspaceNodeNavItem[];
   selectedNode: WorkflowNodeKey;
   activeNode: WorkflowNodeKey;
-  canGoBack: boolean;
-  canGoForward: boolean;
-  onBack: () => void;
-  onForward: () => void;
   onSelectNode: (node: WorkflowNodeKey) => void;
   main: React.ReactNode;
-  footerRail?: React.ReactNode;
   activeGate?: {
     active: boolean;
     activeNode: WorkflowNodeKey;
@@ -52,13 +47,13 @@ function statusStyles(status: WorkflowNodeStatus) {
       return {
         dot: 'bg-emerald-300 animate-node-complete-pop',
         pill: 'text-emerald-100/90 border-emerald-300/25 bg-emerald-400/[0.08]',
-        label: 'Complete',
+        label: '\u2713',
       };
     case 'blocked':
       return {
         dot: 'bg-amber-300 animate-node-pulse',
         pill: 'text-amber-100/90 border-amber-300/20 bg-amber-300/[0.08]',
-        label: 'Needs Input',
+        label: 'Your turn',
       };
     case 'in_progress':
       return {
@@ -70,20 +65,20 @@ function statusStyles(status: WorkflowNodeStatus) {
       return {
         dot: 'bg-orange-300',
         pill: 'text-orange-100/90 border-orange-300/20 bg-orange-300/[0.08]',
-        label: 'Stale',
+        label: '',
       };
     case 'ready':
       return {
         dot: 'bg-white/45',
         pill: 'text-white/72 border-white/[0.12] bg-white/[0.04]',
-        label: 'Ready',
+        label: '',
       };
     case 'locked':
     default:
       return {
         dot: 'bg-white/20',
         pill: 'text-white/45 border-white/[0.08] bg-white/[0.02]',
-        label: 'Locked',
+        label: '',
       };
   }
 }
@@ -92,13 +87,8 @@ export function WorkspaceShell({
   nodes,
   selectedNode,
   activeNode,
-  canGoBack,
-  canGoForward,
-  onBack,
-  onForward,
   onSelectNode,
   main,
-  footerRail,
   activeGate,
 }: WorkspaceShellProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -121,37 +111,14 @@ export function WorkspaceShell({
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] min-h-0 flex-col">
-      <div className="border-b border-white/[0.08] bg-white/[0.02] px-3 py-2 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <GlassButton
-            type="button"
-            variant="ghost"
-            onClick={onBack}
-            disabled={!canGoBack}
-            className="h-auto px-2 py-1 text-xs"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-          </GlassButton>
-          <GlassButton
-            type="button"
-            variant="ghost"
-            onClick={onForward}
-            disabled={!canGoForward}
-            className="h-auto px-2 py-1 text-xs"
-            aria-label="Forward"
-          >
-            <ArrowRight className="h-3.5 w-3.5" />
-          </GlassButton>
-        </div>
-
-        {activeGate?.active && (
-          <div role="status" aria-live="polite" className="mt-2 flex items-center gap-2 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-3 py-2">
+      {activeGate?.active && (
+        <div className="border-b border-white/[0.08] bg-white/[0.02] px-3 py-2 backdrop-blur-xl">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-3 py-2">
             <Sparkles className="h-3.5 w-3.5 text-amber-200/90" />
             <p className="min-w-0 flex-1 truncate text-xs text-amber-100/85">
               {selectedNode === activeGate.activeNode
-                ? `Action waiting${activeGate.label ? `: ${activeGate.label}` : ''}`
-                : `Action waiting in another step${activeGate.label ? `: ${activeGate.label}` : ''}`}
+                ? `Your input is needed${activeGate.label ? `: ${activeGate.label}` : ''}`
+                : `Your input is needed on a different step${activeGate.label ? `: ${activeGate.label}` : ''}`}
             </p>
             {selectedNode !== activeGate.activeNode && (
               <GlassButton
@@ -175,8 +142,8 @@ export function WorkspaceShell({
               </GlassButton>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="relative flex min-h-0 flex-1">
         <aside
@@ -245,9 +212,6 @@ export function WorkspaceShell({
                 );
               })}
             </div>
-            {sidebarExpanded && footerRail && (
-              <div className="min-h-0 flex-1 overflow-y-auto">{footerRail}</div>
-            )}
           </div>
         </aside>
 

@@ -29,6 +29,34 @@ export interface IntelligenceActivityFeedProps {
 
 const MAX_VISIBLE_MESSAGES = 10;
 
+/** Consumer-friendly translations for developer log messages */
+const CONSUMER_MESSAGE_MAP: [RegExp, string][] = [
+  [/analyzing jd requirements/i, 'Reading what the company is looking for...'],
+  [/building benchmark candidate profile/i, 'Understanding the ideal candidate for this role...'],
+  [/classifying fit/i, 'Comparing your experience to what they need...'],
+  [/writing section:\s*summary/i, 'Writing your professional summary...'],
+  [/writing section:\s*(.+)/i, 'Writing your $1 section...'],
+  [/self[- ]review/i, 'Reviewing the draft for quality...'],
+  [/adversarial review/i, 'Running a final quality check...'],
+  [/parsing resume/i, 'Reading your resume...'],
+  [/extracting jd/i, 'Studying the job posting...'],
+  [/research.*company/i, 'Researching the company...'],
+  [/build.*benchmark/i, 'Understanding the ideal candidate...'],
+  [/gap.*analysis/i, 'Checking how your experience matches...'],
+  [/design.*blueprint/i, 'Planning the best structure for your resume...'],
+  [/ats.*compliance/i, 'Checking compatibility with hiring systems...'],
+  [/keyword.*coverage/i, 'Ensuring your resume uses the right keywords...'],
+];
+
+function translateMessage(raw: string): string {
+  for (const [pattern, replacement] of CONSUMER_MESSAGE_MAP) {
+    if (pattern.test(raw)) {
+      return raw.replace(pattern, replacement);
+    }
+  }
+  return 'Working on your resume...';
+}
+
 /**
  * Returns a graduated opacity class based on position from the bottom.
  * Position 0 = most recent (bottom), higher = older.
@@ -69,7 +97,9 @@ export function IntelligenceActivityFeed({
     <div
       ref={scrollRef}
       className="max-h-[140px] overflow-y-auto rounded-lg border border-white/[0.08] bg-white/[0.03]"
-      aria-label="Pipeline activity log"
+      role="log"
+      aria-live="polite"
+      aria-label="Progress updates"
     >
       {total === 0 ? (
         <div className="px-3 py-2 text-xs text-white/40">
@@ -94,7 +124,7 @@ export function IntelligenceActivityFeed({
                 )}
               >
                 <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                  {msg.message}
+                  {translateMessage(msg.message)}
                 </span>
               </li>
             );

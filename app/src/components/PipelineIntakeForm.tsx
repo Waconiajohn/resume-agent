@@ -138,7 +138,7 @@ export function PipelineIntakeForm({
         }
         setJobDescription(extracted);
       } catch (err) {
-        setJobFileError(err instanceof Error ? err.message : 'Failed to read file. Please paste JD text or use a job link.');
+        setJobFileError(err instanceof Error ? err.message : 'Failed to read file. Please paste the job description or use a link.');
       } finally {
         setJobFileLoading(false);
         e.target.value = '';
@@ -204,9 +204,9 @@ export function PipelineIntakeForm({
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.12] bg-white/[0.04]">
             <Sparkles className="h-8 w-8 text-[#afc4ff]" />
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-white/90">New Resume Session</h1>
+          <h1 className="mb-2 text-3xl font-bold text-white/90">Let's Build Your Resume</h1>
           <p className="max-w-md text-sm text-white/50">
-            Start from a saved resume, upload a file, or paste text. For the job description, paste text, use a link, or upload a file.
+            Upload your resume and paste the job posting. We'll take it from there.
           </p>
         </div>
 
@@ -356,7 +356,7 @@ export function PipelineIntakeForm({
                 id="job-description"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the job description text or a job posting URL..."
+                placeholder="Paste the job posting here (or a link to it)"
                 rows={8}
                 disabled={loading}
                 aria-required="true"
@@ -408,7 +408,8 @@ export function PipelineIntakeForm({
               />
             </div>
 
-            {/* Advanced Options disclosure */}
+            {/* Advanced Options — hidden for simplified intake */}
+            {false && (
             <details className="group">
               <summary className="cursor-pointer list-none text-sm text-white/60 hover:text-white/80 transition-colors flex items-center gap-1.5 select-none">
                 <span className="text-xs transition-transform group-open:rotate-90 inline-block">&#9654;</span>
@@ -540,6 +541,7 @@ export function PipelineIntakeForm({
                 </div>
               </div>
             </details>
+            )}
 
             {/* Submit button */}
             <GlassButton
@@ -556,7 +558,7 @@ export function PipelineIntakeForm({
               ) : (
                 <>
                   <Sparkles className="h-5 w-5" />
-                  Start Resume Session
+                  Let's Get Started
                 </>
               )}
             </GlassButton>

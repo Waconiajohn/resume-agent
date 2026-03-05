@@ -75,9 +75,9 @@ export function ReviewModeToolbar({
       {/* Status label */}
       <span className="ml-auto text-xs text-white/50">
         {isProcessing && activeLabel
-          ? `Writing: ${activeLabel}`
+          ? `Writing your ${activeLabel}...`
           : activeLabel
-            ? `Waiting for review: ${activeLabel}`
+            ? `Please review your ${activeLabel}`
             : `${approvedCount} of ${sectionBuildOrder.length} sections`}
       </span>
     </div>

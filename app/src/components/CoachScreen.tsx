@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PanelRight } from 'lucide-react';
 import { ChatDrawer } from './ChatDrawer';
 import { PositioningProfileChoice } from './PositioningProfileChoice';
-import { WorkflowStatsRail } from './WorkflowStatsRail';
-import { GlassCard } from './GlassCard';
 import { ResumePanel } from './ResumePanel';
 import { InterviewLayout } from './InterviewLayout';
 import { ReviewModeToolbar } from './ReviewModeToolbar';
@@ -17,8 +15,6 @@ import { WorkspaceShell } from './workspace/WorkspaceShell';
 import { useUIMode } from '@/hooks/useUIMode';
 import { QuestionsNodeSummary } from '@/components/QuestionsNodeSummary';
 import { SectionsNodeSummary } from '@/components/SectionsNodeSummary';
-import { BenchmarkInspectorCard } from '@/components/BenchmarkInspectorCard';
-import { WorkflowPreferencesCard } from '@/components/CoachScreenBanners';
 import { useToast } from '@/components/Toast';
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { useWorkflowSession } from '@/hooks/useWorkflowSession';
@@ -46,7 +42,6 @@ import {
   loadSnapshotMap,
   persistSnapshotMap,
   formatPendingGateLabelForWorkspace,
-  defaultEvidenceTargetForMode,
   getSectionsBundleNavDetail,
   getSectionsBundleNavDetailFromSummary,
   buildReplanNodeDetailMap,
@@ -129,7 +124,6 @@ export function CoachScreen({
   onReconnectStream,
 }: CoachScreenProps) {
   const [profileChoiceMade, setProfileChoiceMade] = useState(false);
-  const [evidenceTargetDraft, setEvidenceTargetDraft] = useState<number>(8);
   const [localSnapshots, setLocalSnapshots] = useState<SnapshotMap>({});
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const prevPanelDataRef = useRef<PanelData | null>(null);
@@ -190,9 +184,9 @@ export function CoachScreen({
   useEffect(() => {
     if (!liveWorkflowReplan) return;
     if (liveWorkflowReplan.state === 'in_progress') {
-      addToast({ type: 'info', message: liveWorkflowReplan.message ?? 'Applying updated benchmark assumptions...' });
+      addToast({ type: 'info', message: liveWorkflowReplan.message ?? 'Updating your resume strategy based on your changes...' });
     } else if (liveWorkflowReplan.state === 'completed') {
-      addToast({ type: 'success', message: `Benchmark replan applied (v${liveWorkflowReplan.benchmark_edit_version}).` });
+      addToast({ type: 'success', message: 'Your changes have been applied. Your resume is being updated.' });
     }
   }, [liveWorkflowReplan, addToast]);
 
@@ -278,11 +272,7 @@ export function CoachScreen({
 
   const {
     selectedNode,
-    canGoBack,
-    canGoForward,
     goToNode,
-    goBack,
-    goForward,
     returnToActiveNode,
   } = useWorkspaceNavigation({
     sessionId,
@@ -468,21 +458,6 @@ export function CoachScreen({
   const effectivePipelineActivity = pipelineActivity ?? workflowSession.summary?.pipeline_activity_status ?? null;
 
   const draftReadiness = liveDraftReadiness ?? workflowSession.summary?.draft_readiness ?? null;
-  const workflowPreferences = workflowSession.summary?.workflow_preferences ?? null;
-  const activeWorkflowMode =
-    workflowPreferences?.workflow_mode
-    ?? draftReadiness?.workflow_mode
-    ?? 'balanced';
-  const activeMinimumEvidenceTarget =
-    (typeof workflowPreferences?.minimum_evidence_target === 'number'
-      ? workflowPreferences.minimum_evidence_target
-      : (typeof draftReadiness?.minimum_evidence_target === 'number'
-          ? draftReadiness.minimum_evidence_target
-          : defaultEvidenceTargetForMode(activeWorkflowMode)));
-
-  useEffect(() => {
-    setEvidenceTargetDraft(activeMinimumEvidenceTarget);
-  }, [activeMinimumEvidenceTarget, sessionId]);
 
   const refreshWorkflowState = useCallback(async () => {
     await workflowSession.refreshSummary();
@@ -504,15 +479,15 @@ export function CoachScreen({
 
   // Context panel title derived from panel type
   const contextPanelTitle = useMemo(() => {
-    if (!displayPanelData) return 'Context';
+    if (!displayPanelData) return 'Details';
     switch (displayPanelData.type) {
-      case 'questionnaire': return 'Questionnaire';
-      case 'section_review': return 'Section Review';
-      case 'blueprint_review': return 'Blueprint Review';
-      case 'positioning_interview': return 'Positioning Interview';
-      case 'quality_dashboard': return 'Quality Dashboard';
-      case 'completion': return 'Completion';
-      default: return 'Context';
+      case 'questionnaire': return 'Questions';
+      case 'section_review': return 'Review This Section';
+      case 'blueprint_review': return 'Your Resume Plan';
+      case 'positioning_interview': return 'Your Story';
+      case 'quality_dashboard': return 'Quality Score';
+      case 'completion': return 'Your Resume Is Ready!';
+      default: return 'Details';
     }
   }, [displayPanelData]);
 
@@ -608,7 +583,6 @@ export function CoachScreen({
                 onPipelineRespond('positioning_profile_choice', choice);
                 setProfileChoiceMade(true);
               } : undefined}
-              draftReadiness={draftReadiness}
             />
           ) : (
             <>
@@ -662,72 +636,6 @@ export function CoachScreen({
                   </div>
                 )}
 
-                {/* Draft readiness summary */}
-                {draftReadiness && (
-                  <details className="border-b border-white/[0.08]">
-                    <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 select-none hover:bg-white/[0.03]">
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${draftReadiness.ready ? 'bg-emerald-400' : 'bg-white/40'}`} />
-                      <span className="text-xs font-medium text-white/85">
-                        {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
-                      </span>
-                      <span className="ml-auto text-[11px] text-white/40">
-                        {Math.round(draftReadiness.coverage_score)}% coverage
-                      </span>
-                    </summary>
-                    <div className="px-4 pb-3">
-                      <GlassCard className={`px-3 py-2.5 ${draftReadiness.ready ? 'border-emerald-300/25 bg-emerald-400/[0.05]' : ''}`}>
-                        <p className="text-xs text-white/65">
-                          {draftReadiness.evidence_count} evidence items · {Math.round(draftReadiness.coverage_score)}% / {Math.round(draftReadiness.coverage_threshold)}% coverage · {draftReadiness.workflow_mode.replace('_', ' ')}
-                        </p>
-                        {draftReadiness.gap_breakdown && draftReadiness.gap_breakdown.total > 0 && (
-                          <p className="mt-1.5 text-xs text-white/55">
-                            <span className="text-emerald-200/75">{draftReadiness.gap_breakdown.strong} strong</span> · <span className="text-amber-200/75">{draftReadiness.gap_breakdown.partial} partial</span> · <span className="text-rose-200/75">{draftReadiness.gap_breakdown.gap} gaps</span>
-                          </p>
-                        )}
-                      </GlassCard>
-                    </div>
-                  </details>
-                )}
-
-                {/* Benchmark inspector */}
-                {selectedNode === 'benchmark' && (
-                  <div className="border-b border-white/[0.08]">
-                    <BenchmarkInspectorCard
-                      panelData={displayPanelData}
-                      benchmarkEditSummary={workflowSession.summary?.benchmark_edit ?? null}
-                      replanSummary={workflowSession.summary?.replan ?? null}
-                      replanStatus={workflowSession.summary?.replan_status
-                        ? {
-                            state: workflowSession.summary.replan_status.state,
-                            benchmark_edit_version: workflowSession.summary.replan_status.benchmark_edit_version,
-                          }
-                        : null}
-                      onSaveAssumptions={workflowSession.saveBenchmarkAssumptions}
-                      isSaving={workflowSession.isSavingBenchmarkAssumptions}
-                    />
-                  </div>
-                )}
-
-                {/* Workflow preferences */}
-                <div className="border-b border-white/[0.08]">
-                  <WorkflowPreferencesCard
-                    activeWorkflowMode={activeWorkflowMode}
-                    activeMinimumEvidenceTarget={activeMinimumEvidenceTarget}
-                    evidenceTargetDraft={evidenceTargetDraft}
-                    isUpdatingWorkflowPreferences={workflowSession.isUpdatingWorkflowPreferences}
-                    workflowPreferencesSource={workflowPreferences?.source ?? null}
-                    onChangeMode={async (mode) => {
-                      await workflowSession.updateWorkflowPreferences({ workflow_mode: mode });
-                    }}
-                    onChangeEvidenceTargetDraft={setEvidenceTargetDraft}
-                    onApplyEvidenceTarget={async () => {
-                      await workflowSession.updateWorkflowPreferences({
-                        minimum_evidence_target: evidenceTargetDraft,
-                      });
-                    }}
-                  />
-                </div>
-
                 {/* Panel content */}
                 {displayPanelData ? (
                   <SafePanelContent
@@ -770,7 +678,7 @@ export function CoachScreen({
                 <button
                   type="button"
                   onClick={toggleContextPanel}
-                  className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/[0.12] bg-[#0d1117]/90 p-2.5 text-white/60 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117] hover:text-white/90"
+                  className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/[0.12] bg-[#0d1117]/90 p-2.5 text-white/60 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117] hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45"
                   aria-label="Open context panel"
                 >
                   <PanelRight className="h-5 w-5" />
@@ -779,22 +687,6 @@ export function CoachScreen({
             </>
           )}
         </ModeTransition>
-      </div>
-
-      {/* Mobile stats rail — all modes */}
-      <div className="flex-shrink-0 lg:hidden">
-        <WorkflowStatsRail
-          currentPhase={effectiveCurrentPhase}
-          isProcessing={isProcessing}
-          isGateActive={Boolean(isPipelineGateActive)}
-          stalledSuspected={Boolean(stalledSuspected)}
-          pipelineActivity={effectivePipelineActivity}
-          sessionComplete={sessionComplete}
-          error={error}
-          panelData={panelData}
-          resume={resume}
-          compact
-        />
       </div>
 
       {/* Chat drawer — all modes */}
@@ -825,30 +717,11 @@ export function CoachScreen({
     </div>
   );
 
-  const footerRail = (
-    <WorkflowStatsRail
-      currentPhase={effectiveCurrentPhase}
-      isProcessing={isProcessing}
-      isGateActive={Boolean(isPipelineGateActive)}
-      stalledSuspected={Boolean(stalledSuspected)}
-      pipelineActivity={effectivePipelineActivity}
-      sessionComplete={sessionComplete}
-      error={error}
-      panelData={panelData}
-      resume={resume}
-      compact={false}
-    />
-  );
-
   return (
     <WorkspaceShell
       nodes={navItems}
       selectedNode={selectedNode}
       activeNode={activeNode}
-      canGoBack={canGoBack}
-      canGoForward={canGoForward}
-      onBack={goBack}
-      onForward={goForward}
       onSelectNode={goToNode}
       activeGate={{
         active: Boolean(isPipelineGateActive),
@@ -861,7 +734,6 @@ export function CoachScreen({
         isGenerateDraftNowPending: workflowSession.isGenerateDraftNowPending,
       }}
       main={mainPanel}
-      footerRail={footerRail}
     />
   );
 }

@@ -114,7 +114,7 @@ export function SectionReviewPanel({
       {/* Header */}
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-white/85">Section Review</span>
+          <span className="text-sm font-medium text-white/85">Review This Section</span>
           <span className="rounded-full border border-white/[0.14] bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-medium text-white/78">
             {sectionTitle(section)}
           </span>
@@ -224,6 +224,7 @@ export function SectionReviewPanel({
               variant="ghost"
               className="flex-1"
               onClick={() => handleModeButton('edit')}
+              aria-pressed={false}
             >
               <Pencil className="mr-1.5 h-3.5 w-3.5" />
               Edit

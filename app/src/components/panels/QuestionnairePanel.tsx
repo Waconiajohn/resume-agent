@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, SkipForward, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, SkipForward } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { GlassTextarea } from '../GlassInput';
@@ -59,12 +59,12 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
   const processStep = processStepFromQuestionnaireStage(stage);
   const batchModeLabel =
     stage === 'positioning'
-      ? 'Quick Batch (Step 3)'
+      ? 'Getting to Know You'
       : stage === 'gap_analysis'
-        ? 'Targeted Gap Batch (Step 4)'
+        ? 'Closing the Gaps'
         : stage === 'quality_fixes'
-          ? 'Quality Fix Batch (Step 7)'
-          : 'Question Batch';
+          ? 'Final Touches'
+          : 'Questions';
 
   // Track responses keyed by question id
   const [responses, setResponses] = useState<QuestionnaireResponse[]>(() =>
@@ -276,11 +276,8 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
                 <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
                   {batchModeLabel}
                 </span>
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/45">
-                  What To Do
-                </span>
                 <span className="text-[11px] text-white/65">
-                  Answer the action area below, then continue. Context and impact labels are informational. Finish Batch submits this set and returns to the workflow.
+                  Answer the questions below, then submit your answers. We'll use them to strengthen your resume.
                 </span>
               </div>
             </GlassCard>
@@ -330,14 +327,6 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           )}
 
           {/* Input area */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
-              Action Required
-            </span>
-            <span className="text-[11px] text-white/55">
-              Choose an option, type an answer, or skip if allowed.
-            </span>
-          </div>
           {currentQuestion.input_type === 'rating' ? (
             <RatingInput
               value={currentResponse.selected_option_ids[0] ?? null}
@@ -368,9 +357,6 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {currentQuestion.allow_custom && (
             <div className="space-y-1">
               <label className="flex items-center gap-2 text-xs text-white/50 pl-0.5">
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-white/45">
-                  Action
-                </span>
                 <span>
                   {currentResponse.selected_option_ids.length > 0
                     ? 'Add detail (optional)'
@@ -407,16 +393,19 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           Back
         </GlassButton>
 
-        {/* Draft Now — positioning stage only */}
+        {/* Skip to writing — positioning stage only */}
         {stage === 'positioning' && onDraftNow && (
           <GlassButton
             variant="ghost"
-            onClick={onDraftNow}
+            onClick={() => {
+              if (window.confirm('This will skip the remaining questions and start writing your resume. You can always come back to answer more later. Continue?')) {
+                onDraftNow();
+              }
+            }}
             aria-label="Skip remaining questions and start writing resume"
             className="gap-1.5 px-3 text-amber-200/70 hover:text-amber-200/90"
           >
-            <Zap className="h-3.5 w-3.5" />
-            Draft Now
+            I'm Ready — Start Writing
           </GlassButton>
         )}
 
@@ -440,17 +429,15 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           variant="primary"
           disabled={!canContinue()}
           onClick={handleContinue}
-          aria-label={isLast ? 'Finish questionnaire batch' : 'Continue to next question'}
+          aria-label={isLast ? 'Submit your answers' : 'Next question'}
           className="gap-1.5"
         >
-          {isLast ? 'Finish Batch' : 'Continue'}
+          {isLast ? 'Submit Answers' : 'Next'}
           <ArrowRight className="h-3.5 w-3.5" />
         </GlassButton>
       </div>
       <div className="border-t border-white/[0.04] px-4 pb-2 text-center text-[10px] text-white/35">
-        {isLast
-          ? 'Finish Batch submits these answers and returns to the workflow.'
-          : 'Continue moves to the next question in this batch.'}
+        We'll use your answers to strengthen your resume.
       </div>
     </div>
   );

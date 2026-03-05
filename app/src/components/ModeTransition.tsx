@@ -9,7 +9,8 @@ interface ModeTransitionProps {
 type TransitionState = 'idle' | 'fade-out' | 'message' | 'fade-in';
 
 const TRANSITION_MESSAGE: Record<string, string> = {
-  'interview→review': 'Your resume is taking shape...',
+  'interview→review': 'Great work on the interview. Now let\'s review each section of your resume together.',
+  'review→edit': 'Your resume is nearly complete. Let\'s do a final quality check.',
 };
 
 function getTransitionKey(from: UIMode, to: UIMode): string {
@@ -69,7 +70,7 @@ export function ModeTransition({ uiMode, children }: ModeTransitionProps) {
           setDisplayedChildren(childrenRef.current);
           setState('fade-in');
           timersRef.current.push(setTimeout(() => setState('idle'), 200));
-        }, 300));
+        }, 1200));
       }, 200));
     } else {
       // Simple crossfade
@@ -78,7 +79,7 @@ export function ModeTransition({ uiMode, children }: ModeTransitionProps) {
         setDisplayedChildren(childrenRef.current);
         setState('fade-in');
         timersRef.current.push(setTimeout(() => setState('idle'), 300));
-      }, 150));
+      }, 200));
     }
 
     return clearTimers;
