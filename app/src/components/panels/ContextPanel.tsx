@@ -9,7 +9,6 @@ interface ContextPanelProps {
 }
 
 export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -53,12 +52,11 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
 
       {/* Slide-over panel */}
       <div
-        ref={panelRef}
         className={`fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-white/[0.08] bg-[#0d1117] shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-in-out sm:w-[400px] lg:w-[440px] xl:w-[500px] ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
-        aria-modal={isOpen}
+        aria-modal={isOpen || undefined}
         aria-hidden={!isOpen}
         inert={!isOpen ? true : undefined}
         aria-label={title ?? 'Context panel'}

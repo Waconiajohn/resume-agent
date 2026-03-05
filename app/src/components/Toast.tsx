@@ -161,6 +161,7 @@ function ToastItem({
       </div>
 
       <button
+        type="button"
         onClick={handleDismiss}
         className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:text-white/70"
         aria-label="Dismiss notification"

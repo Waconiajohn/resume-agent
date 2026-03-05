@@ -432,17 +432,17 @@ export default function App() {
 
         {checkoutStatus === 'success' && (
           <div className="mx-auto max-w-6xl px-4 pt-3">
-            <div className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 flex items-center justify-between">
+            <div role="status" aria-live="polite" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 flex items-center justify-between">
               <span>Subscription activated! You now have access to all plan features.</span>
-              <button onClick={() => setCheckoutStatus(null)} className="text-emerald-300 hover:text-emerald-100 text-xs ml-4">Dismiss</button>
+              <button type="button" onClick={() => setCheckoutStatus(null)} className="text-emerald-300 hover:text-emerald-100 text-xs ml-4">Dismiss</button>
             </div>
           </div>
         )}
         {checkoutStatus === 'cancelled' && (
           <div className="mx-auto max-w-6xl px-4 pt-3">
-            <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200 flex items-center justify-between">
+            <div role="status" aria-live="polite" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200 flex items-center justify-between">
               <span>Checkout cancelled. You can try again anytime from the pricing page.</span>
-              <button onClick={() => setCheckoutStatus(null)} className="text-amber-300 hover:text-amber-100 text-xs ml-4">Dismiss</button>
+              <button type="button" onClick={() => setCheckoutStatus(null)} className="text-amber-300 hover:text-amber-100 text-xs ml-4">Dismiss</button>
             </div>
           </div>
         )}

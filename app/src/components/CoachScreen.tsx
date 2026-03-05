@@ -200,7 +200,9 @@ export function CoachScreen({
       });
     }
     prevStalledRef.current = shouldShow;
-  }, [stalledSuspected, connected, isProcessing, onReconnectStream, addToast]);
+    // onReconnectStream omitted — accessed via stable reconnectRef
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stalledSuspected, connected, isProcessing, addToast]);
 
   useEffect(() => {
     if (!sessionId) {
