@@ -15,14 +15,19 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
 
   // Focus management: move focus into panel on open, restore on close
   useEffect(() => {
+    let rafId: number;
     if (isOpen) {
       previousFocusRef.current = document.activeElement as HTMLElement;
-      // Wait for transition to start, then focus close button
-      requestAnimationFrame(() => closeButtonRef.current?.focus());
+      rafId = requestAnimationFrame(() => closeButtonRef.current?.focus());
     } else if (previousFocusRef.current) {
-      previousFocusRef.current.focus();
+      if (document.body.contains(previousFocusRef.current)) {
+        previousFocusRef.current.focus();
+      }
       previousFocusRef.current = null;
     }
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [isOpen]);
 
   // Close on Escape key — only listen when open
@@ -55,6 +60,7 @@ export function ContextPanel({ isOpen, onClose, title, children }: ContextPanelP
         role="dialog"
         aria-modal={isOpen}
         aria-hidden={!isOpen}
+        inert={!isOpen ? true : undefined}
         aria-label={title ?? 'Context panel'}
       >
         {/* Header */}

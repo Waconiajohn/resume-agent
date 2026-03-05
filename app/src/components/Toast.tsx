@@ -151,7 +151,7 @@ function ToastItem({
           ? 'translate-x-0 opacity-100'
           : 'translate-x-full opacity-0',
       ].join(' ')}
-      role="alert"
+      role={toast.type === 'error' ? 'alert' : 'status'}
     >
       <ToastIcon type={toast.type} />
 

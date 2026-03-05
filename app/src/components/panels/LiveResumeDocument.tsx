@@ -785,7 +785,7 @@ export function LiveResumeDocument({
             <div key={key} ref={isActive ? activeSectionRef : undefined}>
               <AnimatedContentSection
                 sectionKey={key}
-                content={content!}
+                content={content ?? ''}
                 source={source}
                 isActive={isActive}
                 onEdit={onEditSection}

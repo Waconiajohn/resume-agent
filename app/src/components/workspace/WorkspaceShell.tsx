@@ -146,7 +146,7 @@ export function WorkspaceShell({
         </div>
 
         {activeGate?.active && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-3 py-2">
+          <div role="status" aria-live="polite" className="mt-2 flex items-center gap-2 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-3 py-2">
             <Sparkles className="h-3.5 w-3.5 text-amber-200/90" />
             <p className="min-w-0 flex-1 truncate text-xs text-amber-100/85">
               {selectedNode === activeGate.activeNode
@@ -180,6 +180,7 @@ export function WorkspaceShell({
 
       <div className="relative flex min-h-0 flex-1">
         <aside
+          aria-label="Workflow navigation"
           className={cn(
             'hidden shrink-0 border-r border-white/[0.08] bg-white/[0.015] lg:block',
             'transition-[width] duration-200 ease-in-out',
@@ -202,6 +203,7 @@ export function WorkspaceShell({
                       type="button"
                       disabled={isLocked}
                       onClick={() => onSelectNode(node.key)}
+                      aria-label={!sidebarExpanded ? `${node.label}${node.detailLabel ? ` – ${node.detailLabel}` : ''}` : undefined}
                       className={cn(
                         'relative flex w-full items-center gap-3 rounded-xl border px-2.5 py-2 text-left transition-all',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/70',

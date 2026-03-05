@@ -44,7 +44,6 @@ export default function App() {
     sendMessage,
     setCurrentSession,
     startPipeline,
-    restartPipelineWithCachedInputs,
     respondToGate,
     getSessionResume,
     updateMasterResume,
@@ -342,11 +341,6 @@ export default function App() {
     [currentSession, isPipelineGateActive, respondToGate, setIsPipelineGateActive],
   );
 
-  const handleRestartPipelineFromCache = useCallback(
-    async (sessionId: string) => restartPipelineWithCachedInputs(sessionId),
-    [restartPipelineWithCachedInputs],
-  );
-
   const handleSignOut = useCallback(async () => {
     await signOut();
     setCurrentSession(null);
@@ -409,7 +403,7 @@ export default function App() {
   }
 
   const isSalesPage = ['/', '/sales'].includes(window.location.pathname);
-  if (isSalesPage) return <SalesPage />;
+  if (isSalesPage) return <ToastProvider><SalesPage /></ToastProvider>;
 
   if (!user) {
     return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, MessageCircle, X } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 import { cn } from '@/lib/utils';
@@ -66,8 +66,28 @@ export function ChatDrawer({
   approvedSections = EMPTY_APPROVED_SECTIONS,
 }: ChatDrawerProps) {
   const [expanded, setExpanded] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
 
-  // No auto-expand — user opens manually via icon button
+  // Focus management: move focus into drawer on open, restore on close
+  useEffect(() => {
+    if (expanded) {
+      requestAnimationFrame(() => closeButtonRef.current?.focus());
+    } else {
+      openButtonRef.current?.focus();
+    }
+  }, [expanded]);
+
+  // Close on Escape key
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') setExpanded(false);
+  }, []);
+
+  useEffect(() => {
+    if (!expanded) return;
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [expanded, handleEscape]);
 
   // Status derivation (mirrors ChatPanel logic)
   const pipelinePhaseActive = currentPhase !== 'onboarding' && currentPhase !== 'complete';
@@ -99,15 +119,14 @@ export function ChatDrawer({
         ? 'bg-sky-400 animate-pulse'
         : runtimeState === 'waiting_for_input'
           ? 'bg-amber-400'
-          : runtimeState === 'complete'
-            ? 'bg-emerald-400'
-            : 'bg-emerald-400';
+          : 'bg-emerald-400';
 
   return (
     <>
       {/* Collapsed: small icon button, bottom-left — zero layout footprint */}
       {!expanded && (
         <button
+          ref={openButtonRef}
           type="button"
           onClick={() => setExpanded(true)}
           className="fixed bottom-4 left-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.12] bg-[#0d1117]/90 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117]"
@@ -122,8 +141,7 @@ export function ChatDrawer({
       {expanded && (
         <div
           className="fixed inset-x-0 bottom-0 z-20 flex max-h-[50vh] flex-col border-t border-white/[0.08] bg-[#0d1117] shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.5)]"
-          role="dialog"
-          aria-modal="true"
+          role="complementary"
           aria-label="Coach drawer"
         >
           {/* Header bar */}
@@ -133,6 +151,7 @@ export function ChatDrawer({
             <span className="text-xs text-white/50" aria-live="polite">{statusLabel}</span>
             {isProcessing && <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />}
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={() => setExpanded(false)}
               className="ml-auto rounded p-1 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70"

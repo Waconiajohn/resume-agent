@@ -41,7 +41,6 @@ import {
   type SnapshotMap,
   loadSnapshotMap,
   persistSnapshotMap,
-  nodeTitle,
   formatPendingGateLabelForWorkspace,
   defaultEvidenceTargetForMode,
   getSectionsBundleNavDetail,
@@ -50,6 +49,11 @@ import {
   computeNodeStatuses,
   renderNodeContentPlaceholder,
 } from '@/lib/coach-screen-utils';
+
+// Stable default prop references to avoid unnecessary re-renders
+const EMPTY_APPROVED: Record<string, string> = {};
+const EMPTY_DRAFTS: Record<string, string> = {};
+const EMPTY_BUILD_ORDER: string[] = [];
 
 interface CoachScreenProps {
   sessionId?: string | null;
@@ -110,9 +114,9 @@ export function CoachScreen({
   onPipelineRespond,
   positioningProfileFound,
   onSaveCurrentResumeAsBase,
-  approvedSections = {},
-  sectionDrafts = {},
-  sectionBuildOrder = [],
+  approvedSections = EMPTY_APPROVED,
+  sectionDrafts = EMPTY_DRAFTS,
+  sectionBuildOrder = EMPTY_BUILD_ORDER,
   onDismissSuggestion,
   onLocalSectionEdit,
   liveDraftReadiness = null,
@@ -297,12 +301,16 @@ export function CoachScreen({
   }, [workflowSession.error, addToast]);
 
   // Workflow action toast (replaces WorkflowActionBanner)
+  const prevActionMsgRef = useRef<string | null>(null);
+  const prevActionErrRef = useRef<string | null>(null);
   useEffect(() => {
-    if (workflowSession.actionError) {
+    if (workflowSession.actionError && workflowSession.actionError !== prevActionErrRef.current) {
       addToast({ type: 'error', message: workflowSession.actionError });
-    } else if (workflowSession.actionMessage) {
+    } else if (workflowSession.actionMessage && workflowSession.actionMessage !== prevActionMsgRef.current) {
       addToast({ type: 'success', message: workflowSession.actionMessage });
     }
+    prevActionMsgRef.current = workflowSession.actionMessage ?? null;
+    prevActionErrRef.current = workflowSession.actionError ?? null;
   }, [workflowSession.actionMessage, workflowSession.actionError, addToast]);
 
   const mergedSnapshots: SnapshotMap = useMemo(
