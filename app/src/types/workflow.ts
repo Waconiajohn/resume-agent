@@ -1,6 +1,8 @@
 import type { PanelData, PanelType } from '@/types/panels';
 import type { FinalResume } from '@/types/resume';
 
+export type { UIMode } from '@/hooks/useUIMode';
+
 export type WorkflowNodeKey =
   | 'overview'
   | 'benchmark'

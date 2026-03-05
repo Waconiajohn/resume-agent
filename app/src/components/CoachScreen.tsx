@@ -5,12 +5,16 @@ import { PositioningProfileChoice } from './PositioningProfileChoice';
 import { WorkflowStatsRail } from './WorkflowStatsRail';
 import { GlassCard } from './GlassCard';
 import { ResumePanel } from './ResumePanel';
+import { InterviewLayout } from './InterviewLayout';
+import { ReviewModeToolbar } from './ReviewModeToolbar';
+import { ModeTransition } from './ModeTransition';
 import { SafePanelContent } from './panels/panel-renderer';
 import { LiveResumeDocument } from './panels/LiveResumeDocument';
 import { LiveResumeDocumentErrorBoundary } from './panels/LiveResumeDocumentErrorBoundary';
 import { ContextPanel } from './panels/ContextPanel';
 import { runPanelPayloadSmokeChecks } from './panels/panel-smoke';
 import { WorkspaceShell } from './workspace/WorkspaceShell';
+import { useUIMode } from '@/hooks/useUIMode';
 import { QuestionsNodeSummary } from '@/components/QuestionsNodeSummary';
 import { SectionsNodeSummary } from '@/components/SectionsNodeSummary';
 import { BenchmarkInspectorCard } from '@/components/BenchmarkInspectorCard';
@@ -140,12 +144,21 @@ export function CoachScreen({
   }, []);
 
   // Auto-open context panel when an interaction gate fires.
+  // In interview mode, panel content renders inline — no ContextPanel auto-open needed.
   // Auto-close only when the gate is cleared AND panel data is no longer an
   // interactive type. This prevents the panel from briefly closing during
   // intermediate gate responses (e.g. Apply on a suggestion sends a gate
   // response that optimistically clears isPipelineGateActive, but the
   // section_review panel data persists until the server sends a new event).
+  // Note: uiMode is checked via autoOpenGuardRef so this effect can run
+  // before uiMode is defined in the component body. The ref is updated below.
+  const autoOpenGuardRef = useRef<'interview' | 'review' | 'edit' | null>(null);
   useEffect(() => {
+    // In interview mode, InterviewLayout handles panel content inline
+    if (autoOpenGuardRef.current === 'interview') {
+      setContextPanelOpen(false);
+      return;
+    }
     if (isPipelineGateActive) {
       setContextPanelOpen(true);
     } else if (panelData) {
@@ -434,6 +447,21 @@ export function CoachScreen({
     : (mergedSnapshots[selectedNode] ?? null);
 
   const isViewingLiveNode = selectedNode === activeNode;
+
+  const uiMode = useUIMode({
+    effectiveCurrentPhase,
+    isViewingLiveNode,
+    selectedSnapshot,
+  });
+  autoOpenGuardRef.current = uiMode;
+
+  // Close context panel when entering interview mode
+  useEffect(() => {
+    if (uiMode === 'interview') {
+      setContextPanelOpen(false);
+    }
+  }, [uiMode]);
+
   const displayPanelType = selectedSnapshot?.panelType ?? null;
   const displayPanelData = selectedSnapshot?.panelData ?? null;
   const displayResume = selectedSnapshot?.resume ?? resume;
@@ -537,160 +565,223 @@ export function CoachScreen({
     [isViewingLiveNode, isPipelineGateActive, displayPanelData, onPipelineRespond, onLocalSectionEdit],
   );
 
+  // ── Review mode handlers (Story 4) ──────────────────────
+  const reviewModeActive = uiMode === 'review'
+    && isViewingLiveNode
+    && isPipelineGateActive
+    && displayPanelData?.type === 'section_review';
+
+  const handleApproveSection = useCallback(() => {
+    if (!reviewModeActive || !displayPanelData || !onPipelineRespond) return;
+    onPipelineRespond(`section_review_${displayPanelData.section}`, {
+      approved: true,
+      review_token: displayPanelData.review_token,
+    });
+  }, [reviewModeActive, displayPanelData, onPipelineRespond]);
+
+  const handleQuickFixSection = useCallback((feedback: string) => {
+    if (!reviewModeActive || !displayPanelData || !onPipelineRespond) return;
+    onPipelineRespond(`section_review_${displayPanelData.section}`, {
+      approved: false,
+      feedback,
+      review_token: displayPanelData.review_token,
+    });
+  }, [reviewModeActive, displayPanelData, onPipelineRespond]);
+
   const mainPanel = (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Document fills all available space */}
       <div className="min-h-0 flex-1">
-        <LiveResumeDocumentErrorBoundary>
-          <LiveResumeDocument
-            sectionOrder={sectionBuildOrder}
-            sectionContent={sectionDrafts}
-            approvedSections={approvedSections}
-            activeSectionKey={activeSectionKey}
-            onEditSection={handleEditSection}
-            resume={displayResume}
-            isProcessing={isViewingLiveNode ? isProcessing : false}
-            sessionComplete={sessionComplete}
-            qualityData={qualityOverlayData}
-          />
-        </LiveResumeDocumentErrorBoundary>
-      </div>
-
-      {/* Slide-over context panel (fixed, doesn't affect layout) */}
-      <ContextPanel
-        isOpen={contextPanelOpen}
-        onClose={toggleContextPanel}
-        title={contextPanelTitle}
-      >
-        {/* Positioning profile choice (relocated from banner zone) */}
-        {positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
-          <div className="border-b border-white/[0.08] px-4 py-3">
-            <PositioningProfileChoice
-              updatedAt={positioningProfileFound.updated_at}
-              onChoice={(choice) => {
+        <ModeTransition uiMode={uiMode}>
+          {uiMode === 'interview' ? (
+            <InterviewLayout
+              effectiveCurrentPhase={effectiveCurrentPhase}
+              panelType={displayPanelType}
+              panelData={displayPanelData}
+              resume={displayResume}
+              isProcessing={isViewingLiveNode ? isProcessing : false}
+              onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
+              onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
+              onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
+              onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
+              positioningProfileFound={positioningProfileFound}
+              onProfileChoice={onPipelineRespond ? (choice) => {
                 onPipelineRespond('positioning_profile_choice', choice);
                 setProfileChoiceMade(true);
-              }}
+              } : undefined}
+              draftReadiness={draftReadiness}
             />
-          </div>
-        )}
+          ) : (
+            <>
+              {/* Review mode progress toolbar */}
+              {uiMode === 'review' && (
+                <ReviewModeToolbar
+                  sectionBuildOrder={sectionBuildOrder}
+                  approvedSections={approvedSections}
+                  activeSectionKey={activeSectionKey}
+                  isProcessing={isViewingLiveNode ? isProcessing : false}
+                />
+              )}
 
-        {/* Draft readiness summary (relocated from main view) */}
-        {draftReadiness && (
-          <details className="border-b border-white/[0.08]">
-            <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 select-none hover:bg-white/[0.03]">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${draftReadiness.ready ? 'bg-emerald-400' : 'bg-white/40'}`} />
-              <span className="text-xs font-medium text-white/85">
-                {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
-              </span>
-              <span className="ml-auto text-[11px] text-white/40">
-                {Math.round(draftReadiness.coverage_score)}% coverage
-              </span>
-            </summary>
-            <div className="px-4 pb-3">
-              <GlassCard className={`px-3 py-2.5 ${draftReadiness.ready ? 'border-emerald-300/25 bg-emerald-400/[0.05]' : ''}`}>
-                <p className="text-xs text-white/65">
-                  {draftReadiness.evidence_count} evidence items · {Math.round(draftReadiness.coverage_score)}% / {Math.round(draftReadiness.coverage_threshold)}% coverage · {draftReadiness.workflow_mode.replace('_', ' ')}
-                </p>
-                {draftReadiness.gap_breakdown && draftReadiness.gap_breakdown.total > 0 && (
-                  <p className="mt-1.5 text-xs text-white/55">
-                    <span className="text-emerald-200/75">{draftReadiness.gap_breakdown.strong} strong</span> · <span className="text-amber-200/75">{draftReadiness.gap_breakdown.partial} partial</span> · <span className="text-rose-200/75">{draftReadiness.gap_breakdown.gap} gaps</span>
-                  </p>
+              {/* Edit mode hint */}
+              <LiveResumeDocumentErrorBoundary>
+                <LiveResumeDocument
+                  sectionOrder={sectionBuildOrder}
+                  sectionContent={sectionDrafts}
+                  approvedSections={approvedSections}
+                  activeSectionKey={activeSectionKey}
+                  onEditSection={handleEditSection}
+                  resume={displayResume}
+                  isProcessing={isViewingLiveNode ? isProcessing : false}
+                  sessionComplete={sessionComplete}
+                  qualityData={qualityOverlayData}
+                  reviewMode={reviewModeActive}
+                  reviewSection={reviewModeActive ? displayPanelData?.section : undefined}
+                  reviewToken={reviewModeActive ? displayPanelData?.review_token : undefined}
+                  onApproveSection={handleApproveSection}
+                  onQuickFixSection={handleQuickFixSection}
+                  editModeHint={uiMode === 'edit'}
+                />
+              </LiveResumeDocumentErrorBoundary>
+
+              {/* Slide-over context panel (review/edit modes only) */}
+              <ContextPanel
+                isOpen={contextPanelOpen}
+                onClose={toggleContextPanel}
+                title={contextPanelTitle}
+              >
+                {/* Positioning profile choice */}
+                {positioningProfileFound && onPipelineRespond && !profileChoiceMade && (
+                  <div className="border-b border-white/[0.08] px-4 py-3">
+                    <PositioningProfileChoice
+                      updatedAt={positioningProfileFound.updated_at}
+                      onChoice={(choice) => {
+                        onPipelineRespond('positioning_profile_choice', choice);
+                        setProfileChoiceMade(true);
+                      }}
+                    />
+                  </div>
                 )}
-              </GlassCard>
-            </div>
-          </details>
-        )}
 
-        {/* Benchmark inspector (relocated from main view) */}
-        {selectedNode === 'benchmark' && (
-          <div className="border-b border-white/[0.08]">
-            <BenchmarkInspectorCard
-              panelData={displayPanelData}
-              benchmarkEditSummary={workflowSession.summary?.benchmark_edit ?? null}
-              replanSummary={workflowSession.summary?.replan ?? null}
-              replanStatus={workflowSession.summary?.replan_status
-                ? {
-                    state: workflowSession.summary.replan_status.state,
-                    benchmark_edit_version: workflowSession.summary.replan_status.benchmark_edit_version,
-                  }
-                : null}
-              onSaveAssumptions={workflowSession.saveBenchmarkAssumptions}
-              isSaving={workflowSession.isSavingBenchmarkAssumptions}
-            />
-          </div>
-        )}
+                {/* Draft readiness summary */}
+                {draftReadiness && (
+                  <details className="border-b border-white/[0.08]">
+                    <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 select-none hover:bg-white/[0.03]">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${draftReadiness.ready ? 'bg-emerald-400' : 'bg-white/40'}`} />
+                      <span className="text-xs font-medium text-white/85">
+                        {draftReadiness.ready ? 'Ready To Draft' : 'Building Evidence'}
+                      </span>
+                      <span className="ml-auto text-[11px] text-white/40">
+                        {Math.round(draftReadiness.coverage_score)}% coverage
+                      </span>
+                    </summary>
+                    <div className="px-4 pb-3">
+                      <GlassCard className={`px-3 py-2.5 ${draftReadiness.ready ? 'border-emerald-300/25 bg-emerald-400/[0.05]' : ''}`}>
+                        <p className="text-xs text-white/65">
+                          {draftReadiness.evidence_count} evidence items · {Math.round(draftReadiness.coverage_score)}% / {Math.round(draftReadiness.coverage_threshold)}% coverage · {draftReadiness.workflow_mode.replace('_', ' ')}
+                        </p>
+                        {draftReadiness.gap_breakdown && draftReadiness.gap_breakdown.total > 0 && (
+                          <p className="mt-1.5 text-xs text-white/55">
+                            <span className="text-emerald-200/75">{draftReadiness.gap_breakdown.strong} strong</span> · <span className="text-amber-200/75">{draftReadiness.gap_breakdown.partial} partial</span> · <span className="text-rose-200/75">{draftReadiness.gap_breakdown.gap} gaps</span>
+                          </p>
+                        )}
+                      </GlassCard>
+                    </div>
+                  </details>
+                )}
 
-        {/* Workflow preferences (relocated from main view) */}
-        <div className="border-b border-white/[0.08]">
-          <WorkflowPreferencesCard
-            activeWorkflowMode={activeWorkflowMode}
-            activeMinimumEvidenceTarget={activeMinimumEvidenceTarget}
-            evidenceTargetDraft={evidenceTargetDraft}
-            isUpdatingWorkflowPreferences={workflowSession.isUpdatingWorkflowPreferences}
-            workflowPreferencesSource={workflowPreferences?.source ?? null}
-            onChangeMode={async (mode) => {
-              await workflowSession.updateWorkflowPreferences({ workflow_mode: mode });
-            }}
-            onChangeEvidenceTargetDraft={setEvidenceTargetDraft}
-            onApplyEvidenceTarget={async () => {
-              await workflowSession.updateWorkflowPreferences({
-                minimum_evidence_target: evidenceTargetDraft,
-              });
-            }}
-          />
-        </div>
+                {/* Benchmark inspector */}
+                {selectedNode === 'benchmark' && (
+                  <div className="border-b border-white/[0.08]">
+                    <BenchmarkInspectorCard
+                      panelData={displayPanelData}
+                      benchmarkEditSummary={workflowSession.summary?.benchmark_edit ?? null}
+                      replanSummary={workflowSession.summary?.replan ?? null}
+                      replanStatus={workflowSession.summary?.replan_status
+                        ? {
+                            state: workflowSession.summary.replan_status.state,
+                            benchmark_edit_version: workflowSession.summary.replan_status.benchmark_edit_version,
+                          }
+                        : null}
+                      onSaveAssumptions={workflowSession.saveBenchmarkAssumptions}
+                      isSaving={workflowSession.isSavingBenchmarkAssumptions}
+                    />
+                  </div>
+                )}
 
-        {/* Panel content */}
-        {displayPanelData ? (
-          <SafePanelContent
-            panelType={displayPanelType}
-            panelData={displayPanelData}
-            resume={displayResume}
-            isProcessing={isViewingLiveNode ? isProcessing : false}
-            onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
-            onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
-            onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
-            onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
-          />
-        ) : displayResume ? (
-          <ResumePanel resume={displayResume} />
-        ) : selectedNode === 'questions' ? (
-          <QuestionsNodeSummary
-            isActiveNode={isViewingLiveNode}
-            draftReadiness={draftReadiness}
-            questionMetrics={workflowSession.summary?.question_response_metrics ?? null}
-            questionHistory={workflowSession.summary?.question_response_history ?? null}
-            questionReuseSummaries={workflowSession.summary?.question_reuse_summaries ?? null}
-            questionReuseMetrics={workflowSession.summary?.question_reuse_metrics ?? null}
-            onOpenQuestions={() => {
-              void workflowSession.refreshSummary();
-              void workflowSession.refreshNode('questions');
-            }}
-          />
-        ) : selectedNode === 'sections' ? (
-          <SectionsNodeSummary
-            isActiveNode={isViewingLiveNode}
-            bundleSummary={workflowSession.summary?.sections_bundle_review ?? null}
-          />
-        ) : (
-          renderNodeContentPlaceholder(selectedNode, isViewingLiveNode)
-        )}
-      </ContextPanel>
+                {/* Workflow preferences */}
+                <div className="border-b border-white/[0.08]">
+                  <WorkflowPreferencesCard
+                    activeWorkflowMode={activeWorkflowMode}
+                    activeMinimumEvidenceTarget={activeMinimumEvidenceTarget}
+                    evidenceTargetDraft={evidenceTargetDraft}
+                    isUpdatingWorkflowPreferences={workflowSession.isUpdatingWorkflowPreferences}
+                    workflowPreferencesSource={workflowPreferences?.source ?? null}
+                    onChangeMode={async (mode) => {
+                      await workflowSession.updateWorkflowPreferences({ workflow_mode: mode });
+                    }}
+                    onChangeEvidenceTargetDraft={setEvidenceTargetDraft}
+                    onApplyEvidenceTarget={async () => {
+                      await workflowSession.updateWorkflowPreferences({
+                        minimum_evidence_target: evidenceTargetDraft,
+                      });
+                    }}
+                  />
+                </div>
 
-      {/* Floating button to open context panel when closed */}
-      {!contextPanelOpen && (displayPanelData || isPipelineGateActive) && (
-        <button
-          type="button"
-          onClick={toggleContextPanel}
-          className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/[0.12] bg-[#0d1117]/90 p-2.5 text-white/60 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117] hover:text-white/90"
-          aria-label="Open context panel"
-        >
-          <PanelRight className="h-5 w-5" />
-        </button>
-      )}
+                {/* Panel content */}
+                {displayPanelData ? (
+                  <SafePanelContent
+                    panelType={displayPanelType}
+                    panelData={displayPanelData}
+                    resume={displayResume}
+                    isProcessing={isViewingLiveNode ? isProcessing : false}
+                    onSendMessage={isViewingLiveNode ? onSendMessage : undefined}
+                    onPipelineRespond={isViewingLiveNode ? onPipelineRespond : undefined}
+                    onSaveCurrentResumeAsBase={isViewingLiveNode ? onSaveCurrentResumeAsBase : undefined}
+                    onDismissSuggestion={isViewingLiveNode ? onDismissSuggestion : undefined}
+                  />
+                ) : displayResume ? (
+                  <ResumePanel resume={displayResume} />
+                ) : selectedNode === 'questions' ? (
+                  <QuestionsNodeSummary
+                    isActiveNode={isViewingLiveNode}
+                    draftReadiness={draftReadiness}
+                    questionMetrics={workflowSession.summary?.question_response_metrics ?? null}
+                    questionHistory={workflowSession.summary?.question_response_history ?? null}
+                    questionReuseSummaries={workflowSession.summary?.question_reuse_summaries ?? null}
+                    questionReuseMetrics={workflowSession.summary?.question_reuse_metrics ?? null}
+                    onOpenQuestions={() => {
+                      void workflowSession.refreshSummary();
+                      void workflowSession.refreshNode('questions');
+                    }}
+                  />
+                ) : selectedNode === 'sections' ? (
+                  <SectionsNodeSummary
+                    isActiveNode={isViewingLiveNode}
+                    bundleSummary={workflowSession.summary?.sections_bundle_review ?? null}
+                  />
+                ) : (
+                  renderNodeContentPlaceholder(selectedNode, isViewingLiveNode)
+                )}
+              </ContextPanel>
 
-      {/* Mobile stats rail */}
+              {/* Floating button to open context panel when closed */}
+              {!contextPanelOpen && (displayPanelData || isPipelineGateActive) && (
+                <button
+                  type="button"
+                  onClick={toggleContextPanel}
+                  className="fixed right-4 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/[0.12] bg-[#0d1117]/90 p-2.5 text-white/60 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117] hover:text-white/90"
+                  aria-label="Open context panel"
+                >
+                  <PanelRight className="h-5 w-5" />
+                </button>
+              )}
+            </>
+          )}
+        </ModeTransition>
+      </div>
+
+      {/* Mobile stats rail — all modes */}
       <div className="flex-shrink-0 lg:hidden">
         <WorkflowStatsRail
           currentPhase={effectiveCurrentPhase}
@@ -706,7 +797,7 @@ export function CoachScreen({
         />
       </div>
 
-      {/* Chat drawer with activity feed */}
+      {/* Chat drawer — all modes */}
       <ChatDrawer
         messages={messages}
         streamingText={streamingText}

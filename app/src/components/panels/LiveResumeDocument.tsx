@@ -41,6 +41,12 @@ interface LiveResumeDocumentProps {
   isProcessing: boolean;
   sessionComplete?: boolean;
   qualityData?: QualityDashboardData | null;
+  reviewMode?: boolean;
+  reviewSection?: string;
+  reviewToken?: string;
+  onApproveSection?: () => void;
+  onQuickFixSection?: (feedback: string) => void;
+  editModeHint?: boolean;
 }
 
 type SectionSource = 'resume' | 'approved' | 'draft' | 'placeholder';
@@ -681,6 +687,177 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
   );
 }
 
+// ─── Inline Review Bar (Story 4) ───────────────────────────────────────────────
+
+const INLINE_QUICK_FIX_CHIPS = [
+  'Add metrics',
+  'Make shorter',
+  'More leadership focus',
+  'Strengthen verbs',
+  'Add specifics',
+  'Reduce jargon',
+] as const;
+
+function QuickFixPopover({
+  onSend,
+  onClose,
+}: {
+  onSend: (feedback: string) => void;
+  onClose: () => void;
+}) {
+  const [selectedChips, setSelectedChips] = useState<Set<string>>(new Set());
+  const [customText, setCustomText] = useState('');
+
+  const toggleChip = (chip: string) => {
+    setSelectedChips((prev) => {
+      const next = new Set(prev);
+      if (next.has(chip)) next.delete(chip);
+      else next.add(chip);
+      return next;
+    });
+  };
+
+  const handleSend = () => {
+    const parts = Array.from(selectedChips);
+    if (customText.trim()) parts.push(customText.trim());
+    if (parts.length === 0) return;
+    onSend(parts.join('; '));
+    onClose();
+  };
+
+  return (
+    <div
+      className="mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {INLINE_QUICK_FIX_CHIPS.map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            onClick={() => toggleChip(chip)}
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              selectedChips.has(chip)
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+            }`}
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={customText}
+        onChange={(e) => setCustomText(e.target.value)}
+        placeholder="Additional feedback..."
+        className="w-full resize-none rounded border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-200"
+        rows={2}
+      />
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded px-2.5 py-1 text-[11px] font-medium text-gray-500 hover:bg-gray-100"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={selectedChips.size === 0 && !customText.trim()}
+          className="rounded bg-amber-500 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-amber-600 disabled:opacity-40"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InlineReviewBar({
+  onApprove,
+  onQuickFix,
+  onEdit,
+}: {
+  onApprove: () => void;
+  onQuickFix: (feedback: string) => void;
+  onEdit: () => void;
+}) {
+  const [showQuickFix, setShowQuickFix] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't fire when user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        onApprove();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onApprove]);
+
+  return (
+    <div className="mt-3 border-t border-gray-200 pt-3" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onApprove}
+          className="flex items-center gap-1.5 rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-600"
+          title={`${/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+Enter`}
+        >
+          Approve
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowQuickFix(!showQuickFix)}
+          className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+            showQuickFix
+              ? 'border-amber-300 bg-amber-50 text-amber-700'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          Quick Fix ▾
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+        >
+          Edit
+        </button>
+      </div>
+      {showQuickFix && (
+        <QuickFixPopover
+          onSend={onQuickFix}
+          onClose={() => setShowQuickFix(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Edit Mode Hint ────────────────────────────────────────────────────────────
+
+function EditModeHint() {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div className="edit-hint-fade mb-2 rounded-md bg-blue-50 px-3 py-1.5 text-center text-xs font-medium text-blue-600">
+      Click any section to edit
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function LiveResumeDocument({
@@ -693,6 +870,12 @@ export function LiveResumeDocument({
   isProcessing,
   sessionComplete,
   qualityData,
+  reviewMode,
+  reviewSection,
+  reviewToken: _reviewToken,
+  onApproveSection,
+  onQuickFixSection,
+  editModeHint,
 }: LiveResumeDocumentProps) {
   const activeSectionRef = useRef<HTMLDivElement>(null);
 
@@ -758,8 +941,11 @@ export function LiveResumeDocument({
       >
         {resume ? <ContactHeader resume={resume} /> : <ContactHeaderPlaceholder />}
 
+        {editModeHint && <EditModeHint />}
+
         {resolvedSections.map(({ key, source, content, hasStructuredData }) => {
           const isActive = key === activeSectionKey;
+          const isReviewTarget = reviewMode && key === reviewSection;
 
           if (source === 'placeholder') {
             return (
@@ -777,6 +963,18 @@ export function LiveResumeDocument({
                   resume={resume}
                   onEdit={onEditSection}
                 />
+                {isReviewTarget && onApproveSection && onQuickFixSection && (
+                  <InlineReviewBar
+                    onApprove={onApproveSection}
+                    onQuickFix={onQuickFixSection}
+                    onEdit={() => {
+                      // Find and click the section's edit button
+                      const section = activeSectionRef.current;
+                      const editBtn = section?.querySelector<HTMLButtonElement>('button[aria-label^="Edit"]');
+                      editBtn?.click();
+                    }}
+                  />
+                )}
               </div>
             );
           }
@@ -790,6 +988,17 @@ export function LiveResumeDocument({
                 isActive={isActive}
                 onEdit={onEditSection}
               />
+              {isReviewTarget && onApproveSection && onQuickFixSection && (
+                <InlineReviewBar
+                  onApprove={onApproveSection}
+                  onQuickFix={onQuickFixSection}
+                  onEdit={() => {
+                    const section = activeSectionRef.current;
+                    const editBtn = section?.querySelector<HTMLButtonElement>('button[aria-label^="Edit"]');
+                    editBtn?.click();
+                  }}
+                />
+              )}
             </div>
           );
         })}

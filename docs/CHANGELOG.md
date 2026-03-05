@@ -1,5 +1,42 @@
 # Changelog — Resume Agent
 
+## 2026-03-04 — Session 22
+**Sprint:** 20 | **Story:** Progressive Disclosure UI (Stories 1-8)
+**Summary:** Implemented 3-mode progressive disclosure UI that shows the right interface for each pipeline phase: Interview Mode (centered panel, no document), Review Mode (document with inline approve/edit/reject controls), and Edit Mode (full inline editing). Replaced static document-always layout with mode-conditional rendering driven by a new `useUIMode` hook.
+
+### Changes Made
+- `app/src/hooks/useUIMode.ts` — **Created.** Maps pipeline phases to `UIMode` enum (`interview`/`review`/`edit`). Includes 500ms debounce for fast_draft to prevent interview→review flash. Derives mode from snapshot phase when viewing historical nodes.
+- `app/src/types/workflow.ts` — Re-exports `UIMode` type for convenience.
+- `app/src/components/InterviewLayout.tsx` — **Created.** Full-height centered panel container for interview phases. Includes 5-step progress stepper (intake→architect), renders `SafePanelContent` in a glass card, shows positioning profile choice and draft readiness inline.
+- `app/src/components/ReviewModeToolbar.tsx` — **Created.** Slim toolbar above document in review mode showing section dots (completed/active/pending) and current section status label.
+- `app/src/components/ModeTransition.tsx` — **Created.** Animated wrapper for mode transitions. Interview→review shows "Your resume is taking shape..." interstitial. Review→edit uses simple crossfade. Respects `prefers-reduced-motion`. Properly cleans up timeouts on unmount and mode changes.
+- `app/src/components/CoachScreen.tsx` — **Major modification.** Replaced static `mainPanel` with mode-conditional rendering: InterviewLayout for interview phases, document+ContextPanel for review/edit. Added `useUIMode` hook call. Guarded auto-open logic to skip in interview mode. Added review mode handlers (`handleApproveSection`, `handleQuickFixSection`) that wire inline review bar to pipeline responses. Passes new review/edit props to LiveResumeDocument.
+- `app/src/components/panels/LiveResumeDocument.tsx` — Added `InlineReviewBar` sub-component (approve/quickfix/edit buttons, light theme, Cmd+Enter keyboard shortcut scoped to avoid text inputs). Added `QuickFixPopover` with 6 predefined chips + custom textarea. Added `EditModeHint` that auto-dismisses after 5s. New props: `reviewMode`, `reviewSection`, `reviewToken`, `onApproveSection`, `onQuickFixSection`, `editModeHint`.
+- `app/src/index.css` — Added keyframes: `mode-fade-out`, `mode-fade-in`, `edit-hint-fade` (5s auto-dismiss).
+- `app/src/__tests__/useUIMode.test.ts` — **Created.** 17 unit tests covering all phase→mode mappings, null/undefined handling, unknown phase fallback.
+
+### Decisions Made
+- Interview phases render in a centered InterviewLayout instead of showing an empty document shell — users see focused question flow without distraction.
+- Review mode adds inline approve/quickfix/edit controls directly on the active section in the document, reducing reliance on the slide-over ContextPanel.
+- Mode transitions use lightweight CSS keyframes rather than a heavy animation library.
+- `useUIMode` debounces the interview→review transition by 500ms to prevent visual flash during fast_draft mode where phases fly through sub-second.
+
+### QA Fixes Applied
+- Fixed ModeTransition timeout cleanup (memory leak on unmount)
+- Fixed stale children closure in ModeTransition by using ref
+- Fixed prevModeRef timing bug in transition message lookup
+- Removed unused `useMemo` import from InterviewLayout
+- Scoped Cmd+Enter keyboard shortcut to skip INPUT/TEXTAREA/contentEditable elements
+- Made InlineReviewBar Edit button functional (programmatically clicks section edit button)
+
+### Known Issues
+- `autoOpenGuardRef` in CoachScreen is `null` on first render — self-corrects via subsequent effect, but may cause brief context panel flash on initial load in interview mode
+- The 500ms debounce in `useUIMode` means InterviewLayout briefly persists while the pipeline is already in section_writing — InterviewLayout renders with no panel data during this window
+
+### Next Steps
+- Manual E2E verification across all 3 modes
+- Consider adding Playwright tests for mode transitions
+
 ## 2026-03-03 — Session 21
 **Sprint:** 19 | **Story:** Quality-First Model Strategy — All Phases (Stories 1-8, 10)
 **Summary:** Upgraded all three agent loops from Scout 17B (Preview) to llama-3.3-70b-versatile (GA) for reasoning, adjusted timeouts for Groq latency, documented MID tier decision, refined all three agent prompts for goal-oriented autonomy, raised history compaction thresholds, calibrated E2E tests for Groq's sub-second inference, and updated all project documentation to reflect Groq as primary provider.
