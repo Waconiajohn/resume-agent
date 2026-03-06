@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 export function GlassSkeleton({ className }: { className?: string }) {
-  return <div className={cn('rounded-lg bg-white/[0.06] animate-pulse', className)} />;
+  return <div className={cn('rounded-lg bg-white/[0.06] motion-safe:animate-pulse', className)} />;
 }
 
 export function GlassSkeletonCard({ lines = 3, className }: { lines?: number; className?: string }) {

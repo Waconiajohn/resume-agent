@@ -87,7 +87,7 @@ describe('CompletionPanel', () => {
   // 1. Panel header renders
   it('renders the Session Complete header', () => {
     render(<CompletionPanel data={makeData()} resume={makeResume()} />);
-    expect(screen.getByText('Session Complete')).toBeInTheDocument();
+    expect(screen.getByText('Your Resume Is Ready!')).toBeInTheDocument();
   });
 
   // 2. Statistics render
@@ -100,7 +100,7 @@ describe('CompletionPanel', () => {
   it('renders requirements addressed stat badge', () => {
     render(<CompletionPanel data={makeData()} resume={makeResume()} />);
     expect(screen.getByText('14')).toBeInTheDocument();
-    expect(screen.getByText('Reqs Met')).toBeInTheDocument();
+    expect(screen.getByText('Requirements Met')).toBeInTheDocument();
   });
 
   it('renders sections rewritten stat badge', () => {
@@ -112,17 +112,17 @@ describe('CompletionPanel', () => {
   // 3. Export buttons are present when resume is available
   it('renders Download Word button when resume is provided', () => {
     render(<CompletionPanel data={makeData()} resume={makeResume()} />);
-    expect(screen.getByRole('button', { name: /download word/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /download resume as word/i })).toBeInTheDocument();
   });
 
   it('renders Download PDF button when resume is provided', () => {
     render(<CompletionPanel data={makeData()} resume={makeResume()} />);
-    expect(screen.getByRole('button', { name: /download pdf/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /download resume as pdf/i })).toBeInTheDocument();
   });
 
   it('renders Download Text button when resume is provided', () => {
     render(<CompletionPanel data={makeData()} resume={makeResume()} />);
-    expect(screen.getByRole('button', { name: /download text/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /download resume as plain text/i })).toBeInTheDocument();
   });
 
   // 4. Shows unavailable message when resume is null
@@ -140,15 +140,15 @@ describe('CompletionPanel', () => {
         onSaveCurrentResumeAsBase={vi.fn()}
       />,
     );
-    expect(screen.getByText('Save As Base Resume')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save as new default base/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save as alternate/i })).toBeInTheDocument();
+    expect(screen.getByText('Save for Future Applications')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save as your main resume/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save as a backup/i })).toBeInTheDocument();
   });
 
   // 6. Save as base resume section hidden when handler not provided
   it('does not render Save As Base Resume section when onSaveCurrentResumeAsBase is not provided', () => {
     render(<CompletionPanel data={makeData()} resume={makeResume()} />);
-    expect(screen.queryByText('Save As Base Resume')).not.toBeInTheDocument();
+    expect(screen.queryByText('Save for Future Applications')).not.toBeInTheDocument();
   });
 
   // 7. Positioning Summary section renders
@@ -159,8 +159,8 @@ describe('CompletionPanel', () => {
   });
 
   // 8. Ready to export status when no issues
-  it('shows "Ready to export" status when no validation issues exist', () => {
+  it('shows download section when no validation issues exist', () => {
     render(<CompletionPanel data={makeData()} resume={makeResume()} />);
-    expect(screen.getByText('Ready to export')).toBeInTheDocument();
+    expect(screen.getByText('Download Your Resume')).toBeInTheDocument();
   });
 });

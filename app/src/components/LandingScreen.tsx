@@ -203,7 +203,7 @@ export function LandingScreen({
           <h2 className="mb-4 text-left text-sm font-medium text-white/60">Base Resumes</h2>
           {resumesLoading ? (
             <GlassCard className="w-full p-4">
-              <div className="h-4 w-40 animate-pulse rounded-lg bg-white/[0.03]" />
+              <div className="h-4 w-40 motion-safe:animate-pulse rounded-lg bg-white/[0.03]" />
             </GlassCard>
           ) : resumes.length === 0 ? (
             <GlassCard className="w-full p-4 text-left">
@@ -297,7 +297,7 @@ export function LandingScreen({
 
         {loading && (
           <GlassCard className="w-full p-4">
-            <div className="h-4 w-32 bg-white/[0.03] animate-pulse rounded-lg" />
+            <div className="h-4 w-32 bg-white/[0.03] motion-safe:animate-pulse rounded-lg" />
           </GlassCard>
         )}
       </div>

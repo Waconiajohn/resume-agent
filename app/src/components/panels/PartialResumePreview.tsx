@@ -60,11 +60,11 @@ export function PartialResumePreview({ approvedSections, totalSections = 7 }: Pa
                   key={`pending-${i}`}
                   className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3"
                 >
-                  <div className="mb-2 h-3 w-24 animate-pulse rounded bg-white/[0.08]" />
+                  <div className="mb-2 h-3 w-24 motion-safe:animate-pulse rounded bg-white/[0.08]" />
                   <div className="space-y-1.5">
-                    <div className="h-2 w-full animate-pulse rounded bg-white/[0.05]" />
-                    <div className="h-2 w-3/4 animate-pulse rounded bg-white/[0.05]" />
-                    <div className="h-2 w-5/6 animate-pulse rounded bg-white/[0.05]" />
+                    <div className="h-2 w-full motion-safe:animate-pulse rounded bg-white/[0.05]" />
+                    <div className="h-2 w-3/4 motion-safe:animate-pulse rounded bg-white/[0.05]" />
+                    <div className="h-2 w-5/6 motion-safe:animate-pulse rounded bg-white/[0.05]" />
                   </div>
                 </div>
               ))}

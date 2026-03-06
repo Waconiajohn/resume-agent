@@ -46,7 +46,7 @@ describe('QualityDashboardPanel', () => {
   // 1. Panel header renders
   it('renders the Quality Dashboard header', () => {
     render(<QualityDashboardPanel data={makeData()} />);
-    expect(screen.getByText('Quality Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Your Resume Quality Score')).toBeInTheDocument();
   });
 
   // 2. Renders primary score rings
@@ -62,7 +62,7 @@ describe('QualityDashboardPanel', () => {
 
   it('renders Hiring Manager score ring', () => {
     render(<QualityDashboardPanel data={makeData()} />);
-    expect(screen.getByRole('img', { name: /Hiring Mgr/i })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Hiring Manager/i })).toBeInTheDocument();
   });
 
   it('renders keyword coverage percentage', () => {
@@ -73,19 +73,19 @@ describe('QualityDashboardPanel', () => {
   // 2b. Secondary metrics render as text rows
   it('renders Evidence Integrity as a text metric row', () => {
     render(<QualityDashboardPanel data={makeData({ evidence_integrity: 85 })} />);
-    expect(screen.getByText('Evidence Integrity')).toBeInTheDocument();
+    expect(screen.getByText('Proof Strength')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
   });
 
   it('renders Blueprint Compliance as a text metric row', () => {
     render(<QualityDashboardPanel data={makeData({ blueprint_compliance: 88 })} />);
-    expect(screen.getByText('Blueprint Compliance')).toBeInTheDocument();
+    expect(screen.getByText('Plan Alignment')).toBeInTheDocument();
     expect(screen.getByText('88%')).toBeInTheDocument();
   });
 
   it('renders Narrative Coherence as a text metric row', () => {
     render(<QualityDashboardPanel data={makeData({ narrative_coherence: 74 })} />);
-    expect(screen.getByText('Narrative Coherence')).toBeInTheDocument();
+    expect(screen.getByText('Story Consistency')).toBeInTheDocument();
     expect(screen.getByText('74%')).toBeInTheDocument();
   });
 
@@ -98,19 +98,19 @@ describe('QualityDashboardPanel', () => {
   it('applies green color for secondary metric score >= 80', () => {
     render(<QualityDashboardPanel data={makeData({ evidence_integrity: 85 })} />);
     const scoreEl = screen.getByText('85%');
-    expect(scoreEl.className).toContain('text-green-400');
+    expect(scoreEl.className).toContain('text-[#b5dec2]');
   });
 
   it('applies yellow color for secondary metric score 60-79', () => {
     render(<QualityDashboardPanel data={makeData({ narrative_coherence: 74 })} />);
     const scoreEl = screen.getByText('74%');
-    expect(scoreEl.className).toContain('text-yellow-400');
+    expect(scoreEl.className).toContain('text-[#dfc797]');
   });
 
   it('applies red color for secondary metric score < 60', () => {
     render(<QualityDashboardPanel data={makeData({ blueprint_compliance: 55 })} />);
     const scoreEl = screen.getByText('55%');
-    expect(scoreEl.className).toContain('text-red-400');
+    expect(scoreEl.className).toContain('text-[#e0abab]');
   });
 
   // 3. Renders overall assessment text
@@ -124,7 +124,7 @@ describe('QualityDashboardPanel', () => {
   // 4. Handles empty findings gracefully
   it('does not render ATS findings section when list is empty', () => {
     render(<QualityDashboardPanel data={makeData({ ats_findings: [] })} />);
-    expect(screen.queryByText('ATS Findings')).not.toBeInTheDocument();
+    expect(screen.queryByText('Hiring System Findings')).not.toBeInTheDocument();
   });
 
   // 5. ATS findings render when populated
@@ -137,7 +137,7 @@ describe('QualityDashboardPanel', () => {
     });
     render(<QualityDashboardPanel data={data} />);
     // Collapsible section header renders
-    expect(screen.getByText('ATS Findings')).toBeInTheDocument();
+    expect(screen.getByText('Hiring System Findings')).toBeInTheDocument();
   });
 
   // 6. ATS findings are collapsed by default; expanding shows content
@@ -150,7 +150,7 @@ describe('QualityDashboardPanel', () => {
     render(<QualityDashboardPanel data={data} />);
 
     // Click the collapsible section header button
-    const atsButton = screen.getByRole('button', { name: /ATS Findings/i });
+    const atsButton = screen.getByRole('button', { name: /Hiring System Findings/i });
     fireEvent.click(atsButton);
 
     expect(screen.getByText('Missing keyword: cloud infrastructure')).toBeInTheDocument();
@@ -164,20 +164,20 @@ describe('QualityDashboardPanel', () => {
       ],
     });
     render(<QualityDashboardPanel data={data} />);
-    expect(screen.getByText('Risk Flags')).toBeInTheDocument();
+    expect(screen.getByText('Items to Review')).toBeInTheDocument();
     expect(screen.getByText('Thin evidence for cloud experience claim')).toBeInTheDocument();
   });
 
   // 8. Hiring manager checklist breakdown renders
   it('renders checklist scores breakdown when hiring_manager has scores', () => {
     render(<QualityDashboardPanel data={makeData()} />);
-    expect(screen.getByText('Checklist Breakdown')).toBeInTheDocument();
+    expect(screen.getByText('Score Details')).toBeInTheDocument();
   });
 
   // 9. Renders without crashing when all optional fields are omitted
   it('renders without crashing with minimal data', () => {
     render(<QualityDashboardPanel data={{}} />);
-    expect(screen.getByText('Quality Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Your Resume Quality Score')).toBeInTheDocument();
   });
 
   // 10. Shows coherence issues when populated
@@ -186,7 +186,7 @@ describe('QualityDashboardPanel', () => {
       coherence_issues: ['Summary and experience bullet tone mismatch'],
     });
     render(<QualityDashboardPanel data={data} />);
-    const coherenceBtn = screen.getByRole('button', { name: /Narrative Coherence Issues/i });
+    const coherenceBtn = screen.getByRole('button', { name: /Story Consistency/i });
     fireEvent.click(coherenceBtn);
     expect(screen.getByText('Summary and experience bullet tone mismatch')).toBeInTheDocument();
   });

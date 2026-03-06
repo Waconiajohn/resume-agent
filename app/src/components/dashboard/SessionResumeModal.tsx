@@ -94,7 +94,7 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <div className="h-7 w-7 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+              <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
             </div>
           )}
 

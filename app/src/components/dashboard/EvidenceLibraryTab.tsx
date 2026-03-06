@@ -102,7 +102,7 @@ export function EvidenceLibraryTab({
       {loading ? (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-white/[0.04]" />
+            <div key={i} className="h-20 motion-safe:animate-pulse rounded-xl bg-white/[0.04]" />
           ))}
         </div>
       ) : !resume ? (

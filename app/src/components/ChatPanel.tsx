@@ -204,11 +204,11 @@ export function ChatPanel({
               aria-label="Refresh workflow state"
               title="Refresh workflow state"
             >
-              <RefreshCw className={cn('h-3.5 w-3.5', isRefreshingWorkflowState && 'animate-spin')} />
+              <RefreshCw className={cn('h-3.5 w-3.5', isRefreshingWorkflowState && 'motion-safe:animate-spin')} />
             </button>
           )}
           {isBusy && (
-            <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />
+            <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" />
           )}
         </div>
       </div>
@@ -238,7 +238,7 @@ export function ChatPanel({
         {/* Tool status indicators */}
         {tools.filter((t) => t.status === 'running').map((tool) => (
           <div key={tool.name} className="flex items-center gap-2 px-4 py-2" role="status" aria-label={tool.description ?? 'Processing'}>
-            <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" aria-hidden="true" />
+            <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" aria-hidden="true" />
             <span className="text-xs text-white/50">{tool.description}</span>
           </div>
         ))}
@@ -246,7 +246,7 @@ export function ChatPanel({
         {/* Processing indicator (when agent is working but no text streaming yet) */}
         {isProcessing && !streamingText && tools.every((t) => t.status !== 'running') && (
           <div className="flex items-center gap-2 px-4 py-3" role="status" aria-label="Coach is thinking">
-            <Loader2 className="h-4 w-4 animate-spin text-[#aec3ff]" aria-hidden="true" />
+            <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#aec3ff]" aria-hidden="true" />
             <span className="text-sm text-white/50">Your coach is thinking...</span>
           </div>
         )}
@@ -367,7 +367,7 @@ export function ChatPanel({
             aria-label="Send message"
           >
             {isBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
             ) : (
               <Send className="h-4 w-4" />
             )}

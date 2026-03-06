@@ -144,7 +144,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
     return (
       <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+          <div className="h-8 w-8 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
           <span className="text-sm text-white/50">Loading affiliate dashboard...</span>
         </div>
       </div>
@@ -181,7 +181,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
           <h1 className="text-2xl font-bold text-white">Affiliate Dashboard</h1>
           <p className="mt-1 text-sm text-white/50">
             Welcome back, {affiliate.name}. Commission rate:{' '}
-            <span className="text-emerald-400 font-semibold">
+            <span className="text-[#b5dec2] font-semibold">
               {Math.round(affiliate.commission_rate * 100)}%
             </span>
           </p>
@@ -210,7 +210,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
           >
             {copied ? (
               <>
-                <Check className="h-4 w-4 text-emerald-400" />
+                <Check className="h-4 w-4 text-[#b5dec2]" />
                 Copied
               </>
             ) : (
@@ -248,7 +248,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
           label="Total earnings"
           value={`$${stats.total_earnings.toFixed(2)}`}
           icon={DollarSign}
-          valueClassName="text-emerald-400"
+          valueClassName="text-[#b5dec2]"
         />
       </div>
 
@@ -269,7 +269,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
                 </div>
                 <div className="text-right">
                   {event.commission_amount != null && event.commission_amount > 0 ? (
-                    <span className="text-sm font-semibold text-emerald-400">
+                    <span className="text-sm font-semibold text-[#b5dec2]">
                       +${event.commission_amount.toFixed(2)}
                     </span>
                   ) : (
@@ -278,7 +278,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
                         'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
                         event.event_type === 'click'
                           ? 'bg-white/5 text-white/40'
-                          : 'bg-blue-500/10 text-blue-300',
+                          : 'bg-[#afc4ff]/10 text-[#afc4ff]',
                       )}
                     >
                       {formatEventType(event.event_type)}

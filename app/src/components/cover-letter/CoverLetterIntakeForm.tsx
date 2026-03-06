@@ -59,7 +59,7 @@ export function CoverLetterIntakeForm({
         </p>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-rose-300/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-4 rounded-lg border border-[#e0abab]/20 bg-[#e0abab]/10 px-4 py-3 text-sm text-[#e0abab]">
             {error}
           </div>
         )}
@@ -79,7 +79,7 @@ export function CoverLetterIntakeForm({
                 disabled={loading}
               />
               {resumeText.length > 0 && resumeText.trim().length < 50 && (
-                <p className="mt-1 text-xs text-amber-200/70">
+                <p className="mt-1 text-xs text-[#dfc797]/70">
                   Minimum 50 characters ({resumeText.trim().length}/50)
                 </p>
               )}
@@ -120,7 +120,7 @@ export function CoverLetterIntakeForm({
               >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
                     Starting...
                   </>
                 ) : (

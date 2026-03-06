@@ -28,8 +28,8 @@ interface StatusBadgeProps {
 function StatusBadge({ status }: StatusBadgeProps) {
   const normalized = status ?? 'unknown';
   const config: Record<string, { dot: string; label: string; text: string }> = {
-    running: { dot: 'bg-blue-400', label: 'Running', text: 'text-blue-300' },
-    complete: { dot: 'bg-emerald-400', label: 'Complete', text: 'text-emerald-300' },
+    running: { dot: 'bg-[#afc4ff]', label: 'Running', text: 'text-[#afc4ff]' },
+    complete: { dot: 'bg-[#b5dec2]', label: 'Complete', text: 'text-[#b5dec2]' },
     error: { dot: 'bg-red-400', label: 'Error', text: 'text-red-300' },
   };
   const cfg = config[normalized] ?? { dot: 'bg-white/30', label: normalized, text: 'text-white/50' };

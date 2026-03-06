@@ -28,7 +28,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(funct
       )}
       {...props}
     >
-      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+      {loading && <Loader2 className="h-4 w-4 motion-safe:animate-spin" />}
       {children}
     </button>
   );

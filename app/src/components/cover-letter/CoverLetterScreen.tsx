@@ -128,7 +128,7 @@ export function CoverLetterScreen({ accessToken, onNavigate }: CoverLetterScreen
         {effectivePhase === 'running' && (
           <GlassCard className="mb-6 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-[#aec3ff]" />
+              <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#aec3ff]" />
               <span className="text-sm font-medium text-white/85">
                 {currentStage
                   ? currentStage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -154,17 +154,17 @@ export function CoverLetterScreen({ accessToken, onNavigate }: CoverLetterScreen
             )}
             {/* Progress bar */}
             <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
-              <div className="h-full animate-pulse rounded-full bg-[#aec3ff]/40" style={{ width: '60%' }} />
+              <div className="h-full motion-safe:animate-pulse rounded-full bg-[#aec3ff]/40" style={{ width: '60%' }} />
             </div>
           </GlassCard>
         )}
 
         {/* Error Phase */}
         {effectivePhase === 'error' && (
-          <GlassCard className="mb-6 border-rose-300/20 p-5">
+          <GlassCard className="mb-6 border-[#e0abab]/20 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-rose-400" />
-              <span className="text-sm font-medium text-rose-200">Something went wrong</span>
+              <AlertCircle className="h-4 w-4 text-[#e0abab]" />
+              <span className="text-sm font-medium text-[#e0abab]">Something went wrong</span>
             </div>
             <p className="mb-4 text-xs text-white/60">
               {pipelineError ?? 'An unexpected error occurred.'}
@@ -181,7 +181,7 @@ export function CoverLetterScreen({ accessToken, onNavigate }: CoverLetterScreen
           <>
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                <CheckCircle className="h-4 w-4 text-[#b5dec2]" />
                 <span className="text-sm font-medium text-white/85">Cover Letter Ready</span>
                 {companyName && (
                   <span className="text-xs text-white/50">for {companyName}</span>
@@ -192,10 +192,10 @@ export function CoverLetterScreen({ accessToken, onNavigate }: CoverLetterScreen
                   className={cn(
                     'rounded-full px-2.5 py-0.5 text-xs font-medium',
                     qualityScore >= 80
-                      ? 'bg-emerald-500/15 text-emerald-300'
+                      ? 'bg-[#b5dec2]/15 text-[#b5dec2]'
                       : qualityScore >= 60
-                        ? 'bg-amber-500/15 text-amber-300'
-                        : 'bg-rose-500/15 text-rose-300',
+                        ? 'bg-[#dfc797]/15 text-[#dfc797]'
+                        : 'bg-[#e0abab]/15 text-[#e0abab]',
                   )}
                 >
                   Quality: {qualityScore}/100

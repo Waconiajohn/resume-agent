@@ -107,10 +107,10 @@ export function ResumePanel({ resume }: ResumePanelProps) {
             <Download className="h-4 w-4" />
           </GlassButton>
           <GlassButton variant="ghost" onClick={handleDownloadDocx} className="h-8 px-2" aria-label="Download as DOCX" disabled={isExporting}>
-            {exportingDocx ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileType2 className="h-4 w-4" />}
+            {exportingDocx ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <FileType2 className="h-4 w-4" />}
           </GlassButton>
           <GlassButton variant="ghost" onClick={handleDownloadPdf} className="h-8 px-2" aria-label="Print or save as PDF" disabled={isExporting}>
-            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            {exportingPdf ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Printer className="h-4 w-4" />}
           </GlassButton>
         </div>
       </div>

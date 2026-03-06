@@ -1,39 +1,36 @@
-# Sprint 24: Re-Audit Theme & Accessibility Fixes
-**Goal:** Fix all remaining raw Tailwind semantic colors, missing motion-safe prefixes, aria-label gaps, and jargon found in the second full codebase audit.
+# Sprint 25: Third Audit — Full Codebase Theme, Motion-Safe & Test Alignment
+**Goal:** Fix all remaining raw Tailwind semantic colors in peripheral files, add motion-safe: prefixes to all animate-* classes across the entire codebase, fix aria-labels, update jargon, and align test assertions with Phase 3 copy rewrites.
 **Started:** 2026-03-05
 
 ## Stories This Sprint
 
-### Theme Colors — Critical
-1. [x] Story 1: Fix raw Tailwind status dot colors in ChatPanel + ChatDrawer (rose/sky/amber/emerald → theme hex) — done
-2. [x] Story 2: Fix raw Tailwind colors in WorkspaceShell sidebar status (emerald/amber/orange → theme hex) — done
-3. [x] Story 3: Fix raw Tailwind colors in InterviewLayout VictoryMoment + SectionWorkbench approval overlay (emerald → theme hex) — done
-4. [x] Story 4: Fix raw Tailwind colors in SectionWorkbench bundled review UI (emerald/sky → theme hex) — done
-5. [x] Story 5: Fix raw Tailwind colors in OnboardingSummaryPanel + ResearchDashboardPanel (emerald/amber/rose/sky → theme hex) — done
-6. [x] Story 6: Fix raw Tailwind colors in QualityDashboardPanel + BlueprintReviewPanel (amber → theme hex) — done
-7. [x] Story 7: Fix raw Tailwind colors in PositioningInterviewPanel (blue/green/amber → theme hex) + QuestionnairePanel (sky/rose) + CompletionPanel (emerald/sky/amber) — done
-8. [x] Story 8: Fix ChatMessage icon color (#b8caff → #afc4ff) + IntelligenceActivityFeed border (blue-400 → theme hex) — done
+### Theme Colors — Core
+1. [x] Story 1: Fix decoration-red-400/30 in LiveResumePanel → #e0abab — done
+2. [x] Story 2: Fix emerald/amber/blue semantic colors in App.tsx checkout banners — done
 
-### Accessibility — Medium
-9. [x] Story 9: SectionReviewPanel aria-pressed — confirmed correct (already `false` due to narrowing inside `mode !== 'edit'` guard) — done
-10. [x] Story 10: Add motion-safe: prefix to WorkbenchProgressDots animate-pulse + SectionWorkbench approval animations — done
-11. [x] Story 11: Add aria-label to QualityDashboardPanel CollapsibleSection + fix LandingScreen button type + ResumePanel aria-labels — done
+### Theme Colors — Peripheral Files
+3. [x] Story 3: Fix SalesPage (6 patterns: red/amber/blue/emerald → theme hex) — done
+4. [x] Story 4: Fix PricingPage (3 patterns: emerald → #b5dec2) — done
+5. [x] Story 5: Fix BillingDashboard + AffiliateDashboard (emerald/blue/amber → theme hex) — done
+6. [x] Story 6: Fix CoverLetterIntakeForm + CoverLetterScreen (rose/emerald/amber → theme hex) — done
+7. [x] Story 7: Fix dashboard components (EvidenceItemCard, DashboardSessionCard, ComparisonSectionBlock: blue/emerald/amber → theme hex) — done
+8. [x] Story 8: Fix network-intelligence components (JobMatchesList, CsvUploader: blue/green/amber/red → theme hex) — done
 
-### Copy — Low
-12. [x] Story 12: Replace "Action Required" jargon in PositioningInterviewPanel with consumer-friendly label — done
+### Accessibility — Motion-Safe Prefixes
+9. [x] Story 9: Add motion-safe: to all animate-spin across codebase (~15 files) — done
+10. [x] Story 10: Add motion-safe: to all animate-pulse across codebase (~15 files) — done
+11. [x] Story 11: Add motion-safe: to custom animations in WorkspaceShell (node-complete-pop, node-pulse) — done
 
-### Bonus Fixes (discovered during implementation)
-- Toast.tsx: Replaced all 4 raw Tailwind accent colors with theme hex
-- ProcessStepGuideCard.tsx: Replaced border-l tone colors (sky/amber/emerald → theme hex)
-- PositioningProfileChoice.tsx: Replaced sky badge colors with theme hex
-- SectionsNodeSummary.tsx: Replaced emerald/sky bundle status colors with theme hex
-- QuestionsNodeSummary.tsx: Replaced rose/amber/sky/emerald badge colors with theme hex
-- WorkbenchSuggestions.tsx: Replaced emerald-400/70 check icon with theme hex
-- PipelineIntakeForm.tsx: Replaced emerald-300/80 text with theme hex
-- ContextPanel.tsx: Replaced focus-visible:ring-blue-400 with theme hex
+### Aria-Labels & Jargon
+12. [x] Story 12: Add aria-labels to LiveResumePanel Save/Cancel/Approve/Revise buttons — done
+13. [x] Story 13: Replace "Not inferred" → "Not available" in ResearchDashboardPanel — done
+
+### Test Alignment
+14. [x] Story 14: Update QualityDashboardPanel.test.tsx — align 14 assertions with Phase 3 renamed headers/labels/colors — done
+15. [x] Story 15: Update CompletionPanel.test.tsx — align 7 assertions with Phase 3 renamed headers/labels/aria-labels — done
+16. [x] Story 16: Update panel-renderer.test.tsx — align validation message with Phase 3 consumer-friendly copy — done
 
 ## Out of Scope (Explicitly)
 - Backend/server changes
-- Type safety improvements (logged for later)
-- Code quality refactors (logged for later)
-- New features
+- LiveResumeDocument.tsx (intentionally light-theme)
+- purple-400 in JobMatchesList STATUS_COLORS (no theme equivalent — design decision needed)

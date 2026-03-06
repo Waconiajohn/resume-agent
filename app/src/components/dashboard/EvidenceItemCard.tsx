@@ -4,9 +4,9 @@ import { GlassCard } from '@/components/GlassCard';
 import type { MasterResumeEvidenceItem } from '@/types/resume';
 
 const SOURCE_CONFIG: Record<MasterResumeEvidenceItem['source'], { label: string; classes: string }> = {
-  crafted: { label: 'Crafted', classes: 'bg-blue-500/20 text-blue-300 border-blue-400/30' },
-  upgraded: { label: 'Upgraded', classes: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' },
-  interview: { label: 'Interview', classes: 'bg-amber-500/20 text-amber-300 border-amber-400/30' },
+  crafted: { label: 'Crafted', classes: 'bg-[#afc4ff]/20 text-[#afc4ff] border-[#afc4ff]/30' },
+  upgraded: { label: 'Upgraded', classes: 'bg-[#b5dec2]/20 text-[#b5dec2] border-[#b5dec2]/30' },
+  interview: { label: 'Interview', classes: 'bg-[#dfc797]/20 text-[#dfc797] border-[#dfc797]/30' },
 };
 
 interface EvidenceItemCardProps {

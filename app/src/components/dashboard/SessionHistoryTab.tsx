@@ -106,9 +106,9 @@ export function SessionHistoryTab({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <GlassCard key={i} className="p-4">
-              <div className="mb-2 h-4 w-3/4 animate-pulse rounded-lg bg-white/[0.05]" />
-              <div className="mb-1 h-3 w-1/2 animate-pulse rounded-lg bg-white/[0.03]" />
-              <div className="h-3 w-1/3 animate-pulse rounded-lg bg-white/[0.03]" />
+              <div className="mb-2 h-4 w-3/4 motion-safe:animate-pulse rounded-lg bg-white/[0.05]" />
+              <div className="mb-1 h-3 w-1/2 motion-safe:animate-pulse rounded-lg bg-white/[0.03]" />
+              <div className="h-3 w-1/3 motion-safe:animate-pulse rounded-lg bg-white/[0.03]" />
             </GlassCard>
           ))}
         </div>

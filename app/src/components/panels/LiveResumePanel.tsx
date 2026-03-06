@@ -77,6 +77,7 @@ function EditableLine({
             type="button"
             onClick={() => onSaveEdit(index)}
             className="rounded border border-white/[0.14] bg-white/[0.08] px-3 py-1 text-xs font-medium text-white/85 transition-colors hover:bg-white/[0.12]"
+            aria-label={`Save edit for line ${index + 1}`}
           >
             Save
           </button>
@@ -84,6 +85,7 @@ function EditableLine({
             type="button"
             onClick={onCancelEdit}
             className="rounded bg-white/5 px-3 py-1 text-xs font-medium text-white/50 hover:bg-white/10 transition-colors"
+            aria-label="Cancel edit"
           >
             Cancel
           </button>
@@ -144,7 +146,7 @@ function ChangeBlock({
           <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-white/56">
             Original
           </span>
-          <p className="text-xs text-white/60 leading-relaxed line-through decoration-red-400/30 break-words">
+          <p className="text-xs text-white/60 leading-relaxed line-through decoration-[#e0abab]/30 break-words">
             {cleanText(change.original)}
           </p>
         </div>
@@ -186,6 +188,7 @@ function ChangeBlock({
             onClick={() => onSendMessage(`I approve change ${index + 1} in ${sectionTitle(section)}.`)}
             disabled={disabled}
             className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/78 transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            aria-label={`Approve change ${index + 1}`}
           >
             <Check className="h-3 w-3" />
             Approve
@@ -195,6 +198,7 @@ function ChangeBlock({
             onClick={() => onSendMessage(`I'd like to revise change ${index + 1} in ${sectionTitle(section)}. `)}
             disabled={disabled}
             className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            aria-label={`Revise change ${index + 1}`}
           >
             <X className="h-3 w-3" />
             Revise

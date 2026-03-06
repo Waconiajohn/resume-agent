@@ -45,19 +45,19 @@ function statusStyles(status: WorkflowNodeStatus) {
   switch (status) {
     case 'complete':
       return {
-        dot: 'h-1.5 w-1.5 rounded-full bg-[#b5dec2] animate-node-complete-pop',
+        dot: 'h-1.5 w-1.5 rounded-full bg-[#b5dec2] motion-safe:animate-node-complete-pop',
         pill: 'text-[#b5dec2]/90 border-[#b5dec2]/25 bg-[#b5dec2]/[0.08]',
         label: '\u2713',
       };
     case 'blocked':
       return {
-        dot: 'h-1.5 w-1.5 rounded-[2px] bg-[#dfc797] animate-node-pulse',
+        dot: 'h-1.5 w-1.5 rounded-[2px] bg-[#dfc797] motion-safe:animate-node-pulse',
         pill: 'text-[#dfc797]/90 border-[#dfc797]/20 bg-[#dfc797]/[0.08]',
         label: 'Your turn',
       };
     case 'in_progress':
       return {
-        dot: 'h-1.5 w-1.5 rounded-full border-[1.5px] border-[#afc4ff] animate-node-pulse',
+        dot: 'h-1.5 w-1.5 rounded-full border-[1.5px] border-[#afc4ff] motion-safe:animate-node-pulse',
         pill: 'text-[#d5e1ff] border-[#afc4ff]/25 bg-[#afc4ff]/[0.09]',
         label: 'Active',
       };

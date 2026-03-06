@@ -1,5 +1,49 @@
 # Changelog — Resume Agent
 
+## 2026-03-05 — Session 27
+**Sprint:** 25 | **Stories:** Third Audit — Full Codebase Theme, Motion-Safe & Test Alignment (Stories 1-16)
+**Summary:** Fixed all remaining raw Tailwind semantic colors in peripheral files (SalesPage, PricingPage, BillingDashboard, AffiliateDashboard, CoverLetter*, dashboard/*, network-intelligence/*), added motion-safe: prefixes to every animate-spin and animate-pulse across ~30 files, fixed aria-labels on LiveResumePanel buttons, replaced jargon in ResearchDashboardPanel, and aligned all 22 failing test assertions with Phase 3 copy rewrites. 426/426 tests passing, `tsc --noEmit` clean.
+
+### Changes Made — Core
+- `app/src/components/GlassButton.tsx` — animate-spin → motion-safe:animate-spin
+- `app/src/components/panels/SectionWorkbench.tsx` — animate-pulse + animate-[shimmer] → motion-safe:
+- `app/src/components/panels/CompletionPanel.tsx` — animate-spin (3) → motion-safe:animate-spin
+- `app/src/components/ChatPanel.tsx` — animate-spin (5) → motion-safe:animate-spin
+- `app/src/components/ChatDrawer.tsx` — animate-spin → motion-safe:animate-spin
+- `app/src/components/workspace/WorkspaceShell.tsx` — 3 custom animations → motion-safe:
+- `app/src/components/panels/LiveResumePanel.tsx` — aria-labels on Save/Cancel/Approve/Revise buttons; decoration-red-400/30 → #e0abab
+- `app/src/components/panels/ResearchDashboardPanel.tsx` — "Not inferred" → "Not available" (4 instances)
+- `app/src/App.tsx` — emerald/amber checkout banners → theme hex; animate-spin → motion-safe:
+
+### Changes Made — Peripheral
+- `app/src/components/SalesPage.tsx` — 6 edits: red/amber/blue/emerald → theme hex
+- `app/src/components/PricingPage.tsx` — 3 edits: emerald → #b5dec2
+- `app/src/components/BillingDashboard.tsx` — StatusBadge + usage bar colors → theme hex
+- `app/src/components/AffiliateDashboard.tsx` — emerald-400 (5) + blue-500 → theme hex
+- `app/src/components/cover-letter/CoverLetterIntakeForm.tsx` — rose/amber → theme hex
+- `app/src/components/cover-letter/CoverLetterScreen.tsx` — rose/emerald/amber → theme hex + motion-safe:
+- `app/src/components/dashboard/EvidenceItemCard.tsx` — SOURCE_CONFIG colors → theme hex
+- `app/src/components/dashboard/DashboardSessionCard.tsx` — StatusBadge colors → theme hex
+- `app/src/components/dashboard/ComparisonSectionBlock.tsx` — emerald border/badge → #b5dec2
+- `app/src/components/network-intelligence/JobMatchesList.tsx` — STATUS_COLORS → theme hex + motion-safe:
+- `app/src/components/network-intelligence/CsvUploader.tsx` — drag/upload/complete colors → theme hex + motion-safe:
+
+### Changes Made — Motion-Safe Additions (~20 files)
+- PipelineIntakeForm, ResumePanel, LandingScreen, GlassSkeleton, PartialResumePreview, MasterResumeTab, ResumeComparisonModal, SessionResumeModal, EvidenceLibraryTab, SessionHistoryTab, ConnectionsBrowser, TargetTitlesManager, NetworkIntelligenceTab, CompanyCard
+
+### Changes Made — Test Alignment
+- `app/src/__tests__/panels/QualityDashboardPanel.test.tsx` — 14 assertions updated: header → "Your Resume Quality Score", labels → consumer names, colors → theme hex, section titles → Phase 3 names
+- `app/src/__tests__/panels/CompletionPanel.test.tsx` — 7 assertions updated: header → "Your Resume Is Ready!", "Reqs Met" → "Requirements Met", button selectors → aria-labels, "Save As Base Resume" → "Save for Future Applications"
+- `app/src/__tests__/panels/panel-renderer.test.tsx` — validation message → "Still loading your resume plan..."
+
+### Decisions Made
+- purple-400 in JobMatchesList STATUS_COLORS (applied status) left as-is — no theme equivalent exists, needs design decision
+- LiveResumeDocument.tsx remains out of scope (intentionally light-theme for print preview)
+
+### Next Steps
+- Run fourth full codebase audit to verify zero findings remain
+- Continue audit-fix-re-audit cycle until clean
+
 ## 2026-03-05 — Session 26
 **Sprint:** 24 | **Stories:** Re-Audit Theme & Accessibility Fixes (Stories 1-12 + bonus)
 **Summary:** Fixed all findings from the second full codebase audit — 12 stories + 8 bonus fixes covering raw Tailwind semantic color replacements (rose/sky/amber/emerald/blue/indigo/green → theme hex), motion-safe prefixes, aria-labels, and jargon across 26 files. `tsc --noEmit` passes clean.

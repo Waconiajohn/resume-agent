@@ -28,14 +28,14 @@ function formatAssumptionLabel(key: string) {
 }
 
 function renderAssumptionValue(value: unknown): string {
-  if (typeof value === 'string') return value.trim() || 'Not inferred';
-  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'Not inferred';
+  if (typeof value === 'string') return value.trim() || 'Not available';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'Not available';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (Array.isArray(value)) {
     const items = value.filter((item): item is string | number => typeof item === 'string' || typeof item === 'number');
-    return items.length > 0 ? items.slice(0, 4).join(', ') : 'Not inferred';
+    return items.length > 0 ? items.slice(0, 4).join(', ') : 'Not available';
   }
-  return 'Not inferred';
+  return 'Not available';
 }
 
 export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
@@ -47,7 +47,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
   const sectionExpectationEntries = Object.entries(sectionExpectations).filter(([, value]) => typeof value === 'string' && value.trim());
   const benchmarkAssumptions = benchmark.assumptions && typeof benchmark.assumptions === 'object' ? benchmark.assumptions : {};
   const assumptionEntries = Object.entries(benchmarkAssumptions)
-    .filter(([_, value]) => value != null && renderAssumptionValue(value) !== 'Not inferred')
+    .filter(([_, value]) => value != null && renderAssumptionValue(value) !== 'Not available')
     .slice(0, 8);
   const researchStatusTone = data.loading_state === 'running'
     ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]/90'

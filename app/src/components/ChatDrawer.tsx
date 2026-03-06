@@ -163,7 +163,7 @@ export function ChatDrawer({
             <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotColor)} />
             <span className="text-xs font-medium text-white/80">Coach</span>
             <span className="text-xs text-white/50" aria-live="polite">{statusLabel}</span>
-            {isProcessing && <Loader2 className="h-3 w-3 animate-spin text-[#aec3ff]" />}
+            {isProcessing && <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" />}
             <button
               ref={closeButtonRef}
               type="button"

@@ -589,11 +589,11 @@ export function SectionWorkbench({
           {isRefining && (
             <div className="relative rounded-xl border border-[#98b3ff]/20 bg-[#98b3ff]/[0.04] p-3">
               <div className="flex items-center gap-2 justify-center">
-                <div className="h-2 w-2 rounded-full bg-[#98b3ff] animate-pulse" />
+                <div className="h-2 w-2 rounded-full bg-[#98b3ff] motion-safe:animate-pulse" />
                 <p className="text-xs text-[#98b3ff]/80 font-medium">Refining section…</p>
               </div>
               <div className="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                <div className="h-full w-1/3 rounded-full bg-[#98b3ff]/40 animate-[shimmer_1.5s_ease-in-out_infinite]" />
+                <div className="h-full w-1/3 rounded-full bg-[#98b3ff]/40 motion-safe:animate-[shimmer_1.5s_ease-in-out_infinite]" />
               </div>
             </div>
           )}

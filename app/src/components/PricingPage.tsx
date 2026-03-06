@@ -170,7 +170,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
           Every plan includes the full 3-agent workflow — strategy, writing, and quality review.
         </p>
         {referralCode && (
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#b5dec2]/30 bg-[#b5dec2]/10 px-3 py-1 text-xs font-medium text-[#b5dec2]">
             <Gift className="h-3.5 w-3.5" />
             Referred by a friend
           </div>
@@ -215,7 +215,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
               <ul className="flex flex-col gap-2">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-sm text-white/70">
-                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#b5dec2]" />
                     {feature}
                   </li>
                 ))}
@@ -240,7 +240,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
                         Redirecting...
                       </>
                     ) : (
@@ -274,7 +274,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
             onClick={() => void handleValidatePromo()}
             disabled={!promoCode.trim() || promoValidating || !accessToken}
           >
-            {promoValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+            {promoValidating ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : 'Apply'}
           </GlassButton>
         </div>
 
@@ -283,7 +283,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
             className={cn(
               'w-full rounded-xl border px-4 py-3 text-sm',
               promoResult.valid
-                ? 'border-emerald-300/30 bg-emerald-500/10 text-emerald-200'
+                ? 'border-[#b5dec2]/30 bg-[#b5dec2]/10 text-[#b5dec2]'
                 : 'border-red-300/30 bg-red-500/10 text-red-200',
             )}
           >

@@ -309,6 +309,6 @@ describe('SafePanelContent — error boundary', () => {
     );
 
     // The PanelError component renders the validation message
-    expect(screen.getByText('Blueprint payload is missing section order.')).toBeInTheDocument();
+    expect(screen.getByText('Still loading your resume plan. This will appear shortly.')).toBeInTheDocument();
   });
 });

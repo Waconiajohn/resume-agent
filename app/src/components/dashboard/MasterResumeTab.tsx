@@ -148,7 +148,7 @@ export function MasterResumeTab({
       <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <GlassCard key={i} className="p-4">
-            <div className="h-4 w-2/3 animate-pulse rounded-lg bg-white/[0.05]" />
+            <div className="h-4 w-2/3 motion-safe:animate-pulse rounded-lg bg-white/[0.05]" />
           </GlassCard>
         ))}
       </div>
@@ -217,7 +217,7 @@ export function MasterResumeTab({
 
       {resumeLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+          <div className="h-7 w-7 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
         </div>
       ) : draft ? (
         <>

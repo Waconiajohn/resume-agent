@@ -42,9 +42,9 @@ function formatPrice(cents: number): string {
 
 function StatusBadge({ status }: { status: string }) {
   const classes: Record<string, string> = {
-    active: 'border-emerald-300/30 bg-emerald-500/10 text-emerald-300',
-    trialing: 'border-blue-300/30 bg-blue-500/10 text-blue-300',
-    past_due: 'border-amber-300/30 bg-amber-500/10 text-amber-300',
+    active: 'border-[#b5dec2]/30 bg-[#b5dec2]/10 text-[#b5dec2]',
+    trialing: 'border-[#afc4ff]/30 bg-[#afc4ff]/10 text-[#afc4ff]',
+    past_due: 'border-[#dfc797]/30 bg-[#dfc797]/10 text-[#dfc797]',
     cancelled: 'border-red-300/30 bg-red-500/10 text-red-300',
   };
 
@@ -171,7 +171,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+        <Loader2 className="h-6 w-6 motion-safe:animate-spin text-white/40" />
       </div>
     );
   }
@@ -266,7 +266,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         {/* Progress bar */}
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-red-400' : usagePercent >= 70 ? 'bg-amber-400' : 'bg-[#9eb8ff]'}`}
+            className={`h-full rounded-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[#e0abab]' : usagePercent >= 70 ? 'bg-[#dfc797]' : 'bg-[#9eb8ff]'}`}
             style={{ width: `${usagePercent}%` }}
           />
         </div>

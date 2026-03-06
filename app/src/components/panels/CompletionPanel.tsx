@@ -262,7 +262,7 @@ export function CompletionPanel({
             <div className="space-y-2">
               <GlassButton variant="primary" className="w-full" onClick={() => void handleResumeDocx()} disabled={exportingResume || !!blockingIssue} aria-label="Download resume as Word document">
                 {exportingResume ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
                 ) : docxBlocked ? (
                   <Lock className="mr-2 h-4 w-4" />
                 ) : (
@@ -310,7 +310,7 @@ export function CompletionPanel({
                 aria-label="Save as your main resume for future applications"
               >
                 {savingMode === 'default' ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}
@@ -324,7 +324,7 @@ export function CompletionPanel({
                 aria-label="Save as a backup version"
               >
                 {savingMode === 'alternate' ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 motion-safe:animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}

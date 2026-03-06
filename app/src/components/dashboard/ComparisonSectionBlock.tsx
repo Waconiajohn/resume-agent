@@ -12,12 +12,12 @@ export function ComparisonSectionBlock({ title, leftContent, rightContent }: Com
   return (
     <div className={cn(
       'rounded-xl border p-4',
-      isDifferent ? 'border-emerald-400/30 bg-emerald-500/[0.04]' : 'border-white/[0.08] bg-white/[0.02]',
+      isDifferent ? 'border-[#b5dec2]/30 bg-[#b5dec2]/[0.04]' : 'border-white/[0.08] bg-white/[0.02]',
     )}>
       <div className="mb-3 flex items-center gap-2">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-white/60">{title}</h4>
         {isDifferent && (
-          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-300">
+          <span className="rounded-full bg-[#b5dec2]/20 px-2 py-0.5 text-[10px] text-[#b5dec2]">
             Different
           </span>
         )}
