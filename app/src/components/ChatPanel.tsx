@@ -103,7 +103,7 @@ export function ChatPanel({
               ? 'Complete'
               : runtimeState === 'error'
                 ? 'Error'
-                : (connected ? (pipelinePhaseActive ? 'Connected (idle)' : 'Connected') : 'Reconnecting');
+                : (connected ? (pipelinePhaseActive ? 'Ready' : 'Connected') : 'Reconnecting');
   const statusDotColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
       ? 'bg-rose-400'
@@ -294,7 +294,7 @@ export function ChatPanel({
           <div className="mx-4 my-3 min-h-[400px] overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.025]">
             <div className="flex items-center justify-between border-b border-white/[0.1] px-3 py-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
-                Current Work Product
+                Current View
               </span>
               <div className="flex items-center gap-2">
                 {canOpenResumePreview && (

@@ -135,8 +135,10 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
       {/* Footer actions */}
       <div className="mt-2.5 flex items-center gap-2">
         <button
+          type="button"
           onClick={() => setExpanded((p) => !p)}
           className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white/60 transition-colors"
+          aria-label={expanded ? 'Show less detail' : 'Show more detail'}
         >
           {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           {expanded ? 'Less' : 'More'}
@@ -144,8 +146,10 @@ function EvidenceCard({ item, content, onWeaveIn }: EvidenceCardProps) {
         <div className="flex-1" />
         {!used && (
           <button
+            type="button"
             onClick={() => onWeaveIn(item)}
             className="flex items-center gap-1 rounded-full border border-white/[0.1] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium text-white/55 hover:border-white/[0.2] hover:text-white/80 transition-all duration-150"
+            aria-label="Add this achievement to the section"
           >
             <Layers className="h-3 w-3" />
             Weave In
@@ -171,7 +175,7 @@ export function WorkbenchEvidenceCards({
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-medium tracking-wide uppercase text-white/35 px-0.5">
-        Evidence Library
+        Your Achievements
       </p>
       <div className="space-y-2">
         {visible.map((item, idx) => (
@@ -185,8 +189,10 @@ export function WorkbenchEvidenceCards({
       </div>
       {!showAll && hiddenCount > 0 && (
         <button
+          type="button"
           onClick={() => setShowAll(true)}
           className="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] py-2 text-xs text-white/40 hover:text-white/60 hover:border-white/[0.1] transition-all duration-150"
+          aria-label={`Show ${hiddenCount} more achievements`}
         >
           Show {hiddenCount} more
         </button>

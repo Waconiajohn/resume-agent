@@ -49,19 +49,20 @@ export function ReviewModeToolbar({
               <div
                 className={`h-2 w-2 rounded-full transition-all ${
                   isApproved
-                    ? 'bg-emerald-400'
+                    ? 'bg-[#a8d7b8]'
                     : isActive
-                      ? 'bg-blue-400 ring-2 ring-blue-400/30 dot-current'
+                      ? 'bg-[#afc4ff] ring-2 ring-[#afc4ff]/30 dot-current'
                       : 'border border-white/30 bg-transparent'
                 }`}
-                title={SECTION_DISPLAY_NAMES[key] ?? toTitleCase(key)}
+                role="img"
+                aria-label={`${SECTION_DISPLAY_NAMES[key] ?? toTitleCase(key)}: ${isApproved ? 'approved' : isActive ? 'reviewing now' : 'pending'}`}
               />
               <span
                 className={`hidden text-[11px] font-medium sm:inline ${
                   isApproved
-                    ? 'text-emerald-400/80'
+                    ? 'text-[#a8d7b8]/80'
                     : isActive
-                      ? 'text-blue-400'
+                      ? 'text-[#afc4ff]'
                       : 'text-white/40'
                 }`}
               >

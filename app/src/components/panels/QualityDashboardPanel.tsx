@@ -265,9 +265,9 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="space-y-1.5">
               {ats_findings!.map((finding, i) => {
                 const priorityStyles: Record<string, string> = {
-                  high: 'border-red-500/25 bg-red-500/10 text-red-300/90',
-                  medium: 'border-amber-500/25 bg-amber-500/10 text-amber-300/90',
-                  low: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300/90',
+                  high: 'border-[#e0abab]/25 bg-[#e0abab]/10 text-[#e0abab]/90',
+                  medium: 'border-[#dfc797]/25 bg-[#dfc797]/10 text-[#dfc797]/90',
+                  low: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#b5dec2]/90',
                 };
                 const badgeStyle =
                   priorityStyles[finding.priority?.toLowerCase()] ??
@@ -351,9 +351,9 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="space-y-2">
               {risk_flags.map((rf, i) => {
                 const severityColor = ({
-                  low: 'border-emerald-500/20 bg-emerald-500/10',
-                  medium: 'border-amber-500/20 bg-amber-500/10',
-                  high: 'border-red-500/20 bg-red-500/10',
+                  low: 'border-[#b5dec2]/20 bg-[#b5dec2]/10',
+                  medium: 'border-[#dfc797]/20 bg-[#dfc797]/10',
+                  high: 'border-[#e0abab]/20 bg-[#e0abab]/10',
                 } as Record<string, string>)[rf.severity] ?? 'border-white/[0.1] bg-white/[0.04]';
                 return (
                   <div key={`risk-flag-${rf.flag.slice(0, 30)}-${i}`} className={`rounded-lg border p-2.5 ${severityColor}`}>

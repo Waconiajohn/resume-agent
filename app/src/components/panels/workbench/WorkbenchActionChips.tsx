@@ -38,9 +38,9 @@ const SECTION_CHIPS: Record<string, Chip[]> = {
       instruction: 'Strengthen the leadership signal — add clear indicators of team leadership, organizational scope, or strategic accountability',
     },
     {
-      label: 'Embed Keywords',
+      label: 'Add Key Terms',
       icon: <Target className="h-3 w-3" />,
-      instruction: 'Naturally embed the most important ATS keywords from the job description into this section',
+      instruction: 'Naturally embed the most important keywords from the job description into this section',
     },
     {
       label: 'Tighten to 3 Lines',
@@ -65,9 +65,9 @@ const SECTION_CHIPS: Record<string, Chip[]> = {
       instruction: 'Make the business impact explicit — connect actions directly to outcomes and why they mattered to the organization',
     },
     {
-      label: 'ATS Keyword',
+      label: 'Add Key Terms',
       icon: <Target className="h-3 w-3" />,
-      instruction: 'Naturally integrate missing ATS keywords from the job description into this experience section',
+      instruction: 'Naturally integrate missing keywords from the job description into this experience section',
     },
     {
       label: 'Tighten',

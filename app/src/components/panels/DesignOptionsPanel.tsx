@@ -149,6 +149,23 @@ export function DesignOptionsPanel({ data }: DesignOptionsPanelProps) {
         className="flex-1 overflow-y-auto p-4 space-y-3"
         role="radiogroup"
         aria-label="Resume design options"
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            const currentIdx = displayOptions.findIndex((o) => o.id === effectiveSelectedId);
+            const next = (currentIdx + 1) % displayOptions.length;
+            handleSelect(displayOptions[next].id);
+            const el = e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[next];
+            el?.focus();
+          } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const currentIdx = displayOptions.findIndex((o) => o.id === effectiveSelectedId);
+            const prev = (currentIdx - 1 + displayOptions.length) % displayOptions.length;
+            handleSelect(displayOptions[prev].id);
+            const el = e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[prev];
+            el?.focus();
+          }
+        }}
       >
         {displayOptions.map((option) => (
           <DesignCard

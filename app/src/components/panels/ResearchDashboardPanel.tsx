@@ -58,7 +58,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
   return (
     <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">Research Dashboard</span>
+        <span className="text-sm font-medium text-white/85">Role Research</span>
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -79,7 +79,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
                 {data.loading_state === 'running'
                   ? 'Research running'
                   : data.loading_state === 'background_running'
-                    ? 'Research running in background'
+                    ? 'Researching in the background'
                     : 'Research ready'}
               </span>
               {data.status_note && (
@@ -133,7 +133,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           <div className="flex items-center gap-2 mb-3">
             <Target className="h-4 w-4 text-[#afc4ff]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60">
-              JD Requirements
+              Job Requirements
             </h3>
           </div>
 

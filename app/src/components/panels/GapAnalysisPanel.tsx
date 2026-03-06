@@ -87,21 +87,21 @@ const classificationConfig = {
     color: 'text-[#a8d7b8]',
     border: 'border-white/[0.12]',
     bg: 'bg-white/[0.035]',
-    label: 'Strong',
+    label: 'Strong Match',
   },
   partial: {
     icon: AlertTriangle,
     color: 'text-[#dcc390]',
     border: 'border-white/[0.12]',
     bg: 'bg-white/[0.03]',
-    label: 'Partial',
+    label: 'Partial Match',
   },
   gap: {
     icon: XCircle,
     color: 'text-[#e1a4a4]',
     border: 'border-white/[0.12]',
     bg: 'bg-white/[0.03]',
-    label: 'Gap',
+    label: 'Needs Attention',
   },
 };
 

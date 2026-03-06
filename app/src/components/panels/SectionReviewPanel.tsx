@@ -171,6 +171,7 @@ export function SectionReviewPanel({
                 const active = selectedChips.has(chip);
                 return (
                   <button
+                    type="button"
                     key={chip}
                     onClick={() => toggleChip(chip)}
                     className={cn(

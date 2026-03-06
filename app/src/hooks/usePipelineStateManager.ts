@@ -5,7 +5,7 @@
  * Returns all state values, setters, refs, and a reset function.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type {
   ChatMessage,
   ToolStatus,
@@ -226,6 +226,9 @@ export function usePipelineStateManager(
   // ── Refs ──────────────────────────────────────────────────────────────────
   const qualityScoresRef = useRef<QualityScores | null>(null);
   const accessTokenRef = useRef<string | null>(accessToken);
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+  }, [accessToken]);
   const abortControllerRef = useRef<AbortController | null>(null);
   const sectionsMapRef = useRef<Record<string, string>>({});
   const sectionContextRef = useRef<{

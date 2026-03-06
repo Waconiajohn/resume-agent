@@ -66,7 +66,7 @@ function PanelError({ message }: { message?: string }) {
       <div className="flex flex-col items-center gap-3 text-center">
         <AlertTriangle className="h-8 w-8 text-white/28" />
         <p className="text-sm text-white/50">
-          {message ?? "Panel data couldn't be displayed. It will update on the next event."}
+          {message ?? "This section is loading. It will appear shortly."}
         </p>
       </div>
     </div>
@@ -79,20 +79,20 @@ export function validatePanelData(panelData: PanelData | null): string | null {
   switch (panelData.type) {
     case 'section_review':
       if (typeof panelData.section !== 'string' || typeof panelData.content !== 'string') {
-        return 'Section review payload is missing section or content.';
+        return 'Still loading your section review. This will appear shortly.';
       }
       return null;
     case 'blueprint_review':
       if (!panelData.section_plan?.order || !Array.isArray(panelData.section_plan.order)) {
-        return 'Blueprint payload is missing section order.';
+        return 'Still loading your resume plan. This will appear shortly.';
       }
       return null;
     case 'live_resume':
       if (typeof panelData.active_section !== 'string') {
-        return 'Live resume payload is missing active section.';
+        return 'Still loading the resume preview. This will appear shortly.';
       }
       if (!Array.isArray(panelData.changes)) {
-        return 'Live resume payload is missing changes array.';
+        return 'Still loading resume changes. This will appear shortly.';
       }
       return null;
     case 'positioning_interview':
@@ -100,12 +100,12 @@ export function validatePanelData(panelData: PanelData | null): string | null {
         typeof panelData.questions_total !== 'number'
         || typeof panelData.questions_answered !== 'number'
       ) {
-        return 'Positioning interview payload is incomplete.';
+        return 'Still loading your questions. This will appear shortly.';
       }
       return null;
     case 'questionnaire':
       if (!panelData.questionnaire_id || !Array.isArray(panelData.questions)) {
-        return 'Questionnaire payload is missing required fields.';
+        return 'Still loading the questionnaire. This will appear shortly.';
       }
       return null;
     case 'quality_dashboard':
@@ -116,7 +116,7 @@ export function validatePanelData(panelData: PanelData | null): string | null {
     case 'design_options':
       return null;
     default:
-      return 'Unknown panel type.';
+      return 'This section is loading. It will appear shortly.';
   }
 }
 

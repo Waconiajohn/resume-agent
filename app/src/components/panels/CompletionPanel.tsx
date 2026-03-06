@@ -33,11 +33,11 @@ function StatBadge({ label, value }: { label: string; value: string | number }) 
 function toneClass(tone: 'error' | 'warning' | 'success' | 'info'): string {
   switch (tone) {
     case 'error':
-      return 'border-red-300/28 bg-red-500/[0.08] text-red-100/90';
+      return 'border-[#e0abab]/28 bg-[#e0abab]/[0.08] text-[#e0abab]/90';
     case 'warning':
-      return 'border-amber-300/28 bg-amber-500/[0.08] text-amber-100/90';
+      return 'border-[#dfc797]/28 bg-[#dfc797]/[0.08] text-[#dfc797]/90';
     case 'success':
-      return 'border-emerald-300/28 bg-emerald-500/[0.08] text-emerald-100/90';
+      return 'border-[#b5dec2]/28 bg-[#b5dec2]/[0.08] text-[#b5dec2]/90';
     case 'info':
     default:
       return 'border-white/[0.14] bg-white/[0.04] text-white/74';
@@ -225,17 +225,17 @@ export function CompletionPanel({
         {(data.ats_score != null || data.requirements_addressed != null) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {data.ats_score != null && (
-              <div className="opacity-0 animate-card-stagger" style={{ animationDelay: '0ms' }}>
+              <div className="motion-safe:opacity-0 motion-safe:animate-card-stagger" style={{ animationDelay: '0ms' }}>
                 <StatBadge label="ATS Score" value={`${data.ats_score}%`} />
               </div>
             )}
             {data.requirements_addressed != null && (
-              <div className="opacity-0 animate-card-stagger" style={{ animationDelay: '75ms' }}>
+              <div className="motion-safe:opacity-0 motion-safe:animate-card-stagger" style={{ animationDelay: '75ms' }}>
                 <StatBadge label="Requirements Met" value={data.requirements_addressed} />
               </div>
             )}
             {data.sections_rewritten != null && (
-              <div className="opacity-0 animate-card-stagger" style={{ animationDelay: '150ms' }}>
+              <div className="motion-safe:opacity-0 motion-safe:animate-card-stagger" style={{ animationDelay: '150ms' }}>
                 <StatBadge label="Sections" value={data.sections_rewritten} />
               </div>
             )}

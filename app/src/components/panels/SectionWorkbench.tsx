@@ -91,18 +91,8 @@ export function SectionWorkbench({
     }, 2000);
   }, [onApprove]);
 
-  // Reset local state on new server draft content OR a new review token.
+  // Reset local state when section, content, or review token changes.
   // Token-only changes can happen when the server reissues a draft with unchanged text.
-  useEffect(() => {
-    setLocalContent(content);
-    setHasLocalEdits(false);
-    setUndoStack([]);
-    setRedoStack([]);
-    setIsApprovalAnimating(false);
-    unlockRefineState();
-  }, [content, reviewToken, unlockRefineState]);
-
-  // Also reset when section changes
   useEffect(() => {
     setLocalContent(content);
     setHasLocalEdits(false);
@@ -112,7 +102,7 @@ export function SectionWorkbench({
     setShowBundleDetails(false);
     setIsApprovalAnimating(false);
     unlockRefineState();
-  }, [section, unlockRefineState]);
+  }, [section, content, reviewToken, unlockRefineState]);
 
   useEffect(() => {
     return () => {

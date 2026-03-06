@@ -131,7 +131,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
           {cards.map(({ label, value, icon: Icon }, i) => {
             if (value == null) return null;
             return (
-              <GlassCard key={label} className="opacity-0 animate-card-stagger p-3" style={{ animationDelay: `${i * 75}ms` }}>
+              <GlassCard key={label} className="motion-safe:opacity-0 motion-safe:animate-card-stagger p-3" style={{ animationDelay: `${i * 75}ms` }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className="h-3.5 w-3.5 text-[#afc4ff]" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-white/60">

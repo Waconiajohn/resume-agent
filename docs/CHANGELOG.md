@@ -1,5 +1,35 @@
 # Changelog — Resume Agent
 
+## 2026-03-05 — Session 25
+**Sprint:** 23 | **Stories:** Full Codebase Audit Fixes (Stories 1-10)
+**Summary:** Fixed all findings from the 6-agent full codebase audit — 10 stories covering accessibility, WCAG compliance, copy/jargon rewrites, theme color consistency, and code quality. All critical and medium findings resolved.
+
+### Changes Made
+- `app/src/components/panels/QualityDashboardPanel.tsx` — Story 1: Replaced raw Tailwind colors (red-500, amber-500, emerald-500) with theme hex colors (#e0abab, #dfc797, #b5dec2) in priorityStyles and severityColor.
+- `app/src/components/panels/workbench/WorkbenchKeywordBar.tsx` — Story 2: Fixed WCAG 1.4.1 color-only information by adding shape symbols (✓ met, ◐ partial), aria-labels, type="button", replaced yellow-400 with theme #dfc797.
+- `app/src/components/panels/OnboardingSummaryPanel.tsx` — Story 3: Fixed prefers-reduced-motion breakage with motion-safe: prefix on card stagger animation.
+- `app/src/hooks/usePipelineStateManager.ts` — Story 4: Fixed stale closure by adding useEffect to sync accessTokenRef with accessToken prop changes. Added useEffect import.
+- `app/src/components/panels/LiveResumePanel.tsx` — Story 5/8: Added type="button" to 7 buttons, replaced title attrs with aria-labels, fixed "JD Alignment" → "Job Alignment".
+- `app/src/components/panels/workbench/WorkbenchEvidenceCards.tsx` — Story 5/8: Added type="button" and aria-labels to 3 buttons, renamed "Evidence Library" → "Your Achievements".
+- `app/src/components/panels/SectionReviewPanel.tsx` — Story 5: Added type="button" to quick fix chip buttons.
+- `app/src/components/panels/DesignOptionsPanel.tsx` — Story 6: Added arrow key navigation (Up/Down/Left/Right) for radiogroup with focus management.
+- `app/src/components/ReviewModeToolbar.tsx` — Story 7: Replaced raw Tailwind colors (emerald-400, blue-400) with theme hex (#a8d7b8, #afc4ff). Added role="img" + aria-labels to status dots.
+- `app/src/components/panels/CompletionPanel.tsx` — Story 7/9: Replaced raw Tailwind colors in toneClass (red→#e0abab, amber→#dfc797, emerald→#b5dec2). Added motion-safe: prefix to stat badge animations.
+- `app/src/components/panels/panel-renderer.tsx` — Story 8: Rewrote all developer-facing error messages to consumer-friendly "Still loading..." messages.
+- `app/src/components/panels/ResearchDashboardPanel.tsx` — Story 8: "Research Dashboard" → "Role Research", "Research running in background" → "Researching in the background", "JD Requirements" → "Job Requirements".
+- `app/src/components/ChatPanel.tsx` — Story 8: "Current Work Product" → "Current View", "Connected (idle)" → "Ready".
+- `app/src/components/panels/workbench/WorkbenchActionChips.tsx` — Story 8: "ATS Keyword"/"Embed Keywords" → "Add Key Terms", removed "ATS" from instructions.
+- `app/src/components/panels/GapAnalysisPanel.tsx` — Story 8: "Strong" → "Strong Match", "Partial" → "Partial Match", "Gap" → "Needs Attention".
+- `app/src/components/panels/SectionWorkbench.tsx` — Story 10: Merged two duplicate useEffects into single effect with [section, content, reviewToken] deps.
+
+### Decisions Made
+- Merged Stories 8 and 9 since the remaining copy jargon from Story 9 was addressed as part of Stories 7-8 edits
+- useSession.ts "localStorage logging" finding from audit was a false positive — no console.log exists
+- process-contract.ts default cases are intentional fallbacks, not code quality issues
+
+### Next Steps
+- Re-audit per user request: repeat full codebase audit until zero findings remain
+
 ## 2026-03-05 — Session 24
 **Sprint:** 22 | **Stories:** Accessibility & Dead Code Cleanup (Stories 1-6)
 **Summary:** WCAG AA compliance pass — keyboard navigation, focus management, color independence. Plus dead code removal from PipelineIntakeForm.

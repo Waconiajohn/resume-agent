@@ -74,12 +74,14 @@ function EditableLine({
         />
         <div className="mt-2 flex items-center gap-2">
           <button
+            type="button"
             onClick={() => onSaveEdit(index)}
             className="rounded border border-white/[0.14] bg-white/[0.08] px-3 py-1 text-xs font-medium text-white/85 transition-colors hover:bg-white/[0.12]"
           >
             Save
           </button>
           <button
+            type="button"
             onClick={onCancelEdit}
             className="rounded bg-white/5 px-3 py-1 text-xs font-medium text-white/50 hover:bg-white/10 transition-colors"
           >
@@ -101,16 +103,18 @@ function EditableLine({
         </p>
         <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex-shrink-0">
           <button
+            type="button"
             onClick={() => onStartEdit(index, displayText)}
             className="rounded p-1 text-white/30 hover:bg-white/10 hover:text-white/60 transition-colors"
-            title="Edit"
+            aria-label={`Edit line ${index + 1}`}
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => onDelete(index)}
             className="rounded p-1 text-white/30 transition-colors hover:bg-white/[0.1] hover:text-white/72"
-            title="Remove"
+            aria-label={`Remove line ${index + 1}`}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -159,7 +163,7 @@ function ChangeBlock({
       {change.jd_requirements?.length > 0 && (
         <div className="space-y-1">
           <span className="text-[9px] font-semibold uppercase tracking-wider text-white/40">
-            JD Alignment
+            Job Alignment
           </span>
           <div className="flex flex-wrap gap-1">
             {change.jd_requirements.map((req, i) => (
@@ -178,6 +182,7 @@ function ChangeBlock({
       {onSendMessage && (
         <div className="flex items-center gap-2 pt-1 border-t border-white/[0.06]">
           <button
+            type="button"
             onClick={() => onSendMessage(`I approve change ${index + 1} in ${sectionTitle(section)}.`)}
             disabled={disabled}
             className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/78 transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
@@ -186,6 +191,7 @@ function ChangeBlock({
             Approve
           </button>
           <button
+            type="button"
             onClick={() => onSendMessage(`I'd like to revise change ${index + 1} in ${sectionTitle(section)}. `)}
             disabled={disabled}
             className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
@@ -307,8 +313,10 @@ export function LiveResumePanel({ data, isProcessing, onSendMessage }: LiveResum
         {contentLines.length > 0 && changes.length > 0 && (
           <div>
             <button
+              type="button"
               onClick={() => setShowDiffs(!showDiffs)}
               className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors"
+              aria-label={showDiffs ? 'Hide change details' : `View ${changes.length} change${changes.length !== 1 ? 's' : ''}`}
             >
               {showDiffs ? (
                 <ChevronUp className="h-3.5 w-3.5" />
