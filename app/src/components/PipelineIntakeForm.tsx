@@ -314,7 +314,7 @@ export function PipelineIntakeForm({
                 />
               </div>
               {initialResumeText?.trim() && (
-                <p className="text-xs text-emerald-300/80">
+                <p className="text-xs text-[#b5dec2]/80">
                   Default base resume is available. You can reuse it, load another saved resume, upload a new file, or edit manually.
                 </p>
               )}

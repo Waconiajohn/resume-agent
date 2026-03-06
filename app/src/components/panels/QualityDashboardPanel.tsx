@@ -51,6 +51,7 @@ function CollapsibleSection({ icon, title, count, children, defaultOpen = false 
         className="flex w-full items-center gap-2 text-left"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
+        aria-label={`${title}: ${count} ${count === 1 ? 'item' : 'items'}`}
       >
         {icon}
         <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60 flex-1" id={`section-${title.replace(/\s+/g, '-').toLowerCase()}`}>
@@ -338,7 +339,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="flex items-center gap-2 mb-3">
               <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
                 highRiskCount > 0
-                  ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
+                  ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/85'
                   : 'border-white/[0.08] bg-white/[0.02] text-white/48'
               }`}>
                 {highRiskCount > 0 ? 'Action required' : 'Review'}
@@ -370,7 +371,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {age_bias_risks && age_bias_risks.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-full border border-amber-300/20 bg-amber-400/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-100/85">
+              <span className="rounded-full border border-[#dfc797]/20 bg-[#dfc797]/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#dfc797]/85">
                 Action required
               </span>
               <AlertTriangle className="h-3.5 w-3.5 text-white/62" />

@@ -309,7 +309,7 @@ export function SectionWorkbench({
                   We've grouped {reviewRequiredSections.length || 1} section{(reviewRequiredSections.length || 1) === 1 ? '' : 's'} for your review
                 </span>
                 {reviewRequiredSections.includes(section) ? (
-                  <span className="text-[11px] text-emerald-200/85">Please review this section.</span>
+                  <span className="text-[11px] text-[#b5dec2]/85">Please review this section.</span>
                 ) : (
                   <span className="text-[11px] text-white/45">This section was approved automatically, but you can still edit it.</span>
                 )}
@@ -355,9 +355,9 @@ export function SectionWorkbench({
                         const bundleSections = sectionsByBundle[bundle.key as LocalBundleKey] ?? [];
                         const isCurrentBundle = bundle.key === currentReviewBundleKey;
                         const toneClass = bundle.status === 'complete'
-                          ? 'border-emerald-300/18 bg-emerald-400/[0.04]'
+                          ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04]'
                           : bundle.status === 'in_progress'
-                            ? 'border-sky-300/18 bg-sky-400/[0.04]'
+                            ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
                             : bundle.status === 'auto_approved'
                               ? 'border-white/[0.08] bg-white/[0.02]'
                               : 'border-white/[0.06] bg-white/[0.015]';
@@ -393,9 +393,9 @@ export function SectionWorkbench({
                                       key={`${bundle.key}:${bundleSection}`}
                                       className={`flex items-center justify-between gap-2 rounded-md border px-1.5 py-1 text-[10px] ${
                                         isCurrentSection
-                                          ? 'border-sky-300/20 bg-sky-400/[0.06] text-sky-100/90'
+                                          ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]/90'
                                           : isApproved
-                                            ? 'border-emerald-300/18 bg-emerald-400/[0.04] text-emerald-100/85'
+                                            ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04] text-[#b5dec2]/85'
                                             : 'border-white/[0.05] bg-white/[0.01] text-white/60'
                                       }`}
                                       title={toTitleCase(bundleSection)}
@@ -424,9 +424,9 @@ export function SectionWorkbench({
                       {reviewBundles.map((bundle) => {
                         const isCurrentBundle = bundle.key === currentReviewBundleKey;
                         const toneClass = bundle.status === 'complete'
-                          ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
+                          ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
                           : bundle.status === 'in_progress'
-                            ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+                            ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/90'
                             : bundle.status === 'auto_approved'
                               ? 'border-white/[0.08] bg-white/[0.03] text-white/65'
                               : 'border-white/[0.06] bg-white/[0.02] text-white/50';
@@ -466,9 +466,9 @@ export function SectionWorkbench({
                             key={reviewSection}
                             className={`rounded-full border px-2 py-0.5 text-[10px] ${
                               isApproved
-                                ? 'border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100/85'
+                                ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.07] text-[#b5dec2]/85'
                                 : isCurrent
-                                  ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/90'
+                                  ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/90'
                                   : 'border-white/[0.08] bg-white/[0.02] text-white/55'
                             }`}
                             title={toTitleCase(reviewSection)}
@@ -500,7 +500,7 @@ export function SectionWorkbench({
                           </span>
                         )}
                         {!nextPendingReviewBundleMeta && currentBundleMeta?.status === 'complete' && (
-                          <span className="text-emerald-200/80">This group is complete.</span>
+                          <span className="text-[#b5dec2]/80">This group is complete.</span>
                         )}
                         {autoApprovedBundleCount > 0 && (
                           <span className="text-white/45">
@@ -665,10 +665,10 @@ export function SectionWorkbench({
       </div>
 
       {isApprovalAnimating && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-emerald-500/[0.08] backdrop-blur-sm animate-[fadeIn_200ms_ease-out]">
-          <div className="flex flex-col items-center gap-2 animate-[scaleIn_300ms_ease-out]">
-            <Check className="h-8 w-8 text-emerald-400" />
-            <span className="text-sm font-medium text-emerald-300">Section approved</span>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#b5dec2]/[0.08] backdrop-blur-sm motion-safe:animate-[fadeIn_200ms_ease-out]">
+          <div className="flex flex-col items-center gap-2 motion-safe:animate-[scaleIn_300ms_ease-out]">
+            <Check className="h-8 w-8 text-[#b5dec2]" />
+            <span className="text-sm font-medium text-[#b5dec2]">Section approved</span>
           </div>
         </div>
       )}

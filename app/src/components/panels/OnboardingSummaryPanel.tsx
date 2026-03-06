@@ -74,10 +74,10 @@ function normalizeData(data: OnboardingSummaryData & Record<string, unknown>) {
 export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
   const { cards, strengths, opportunities, parseConfidence, parseWarnings } = normalizeData(data as OnboardingSummaryData & Record<string, unknown>);
   const confidenceTone = parseConfidence === 'high'
-    ? 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/90'
+    ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90'
     : parseConfidence === 'medium'
-      ? 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/90'
-      : 'border-rose-300/20 bg-rose-400/[0.06] text-rose-100/90';
+      ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.06] text-[#dfc797]/90'
+      : 'border-[#e0abab]/20 bg-[#e0abab]/[0.06] text-[#e0abab]/90';
   const confidenceLabel = parseConfidence === 'high'
     ? 'Resume read successfully'
     : parseConfidence === 'medium'

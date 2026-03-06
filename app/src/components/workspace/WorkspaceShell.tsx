@@ -45,14 +45,14 @@ function statusStyles(status: WorkflowNodeStatus) {
   switch (status) {
     case 'complete':
       return {
-        dot: 'h-1.5 w-1.5 rounded-full bg-emerald-300 animate-node-complete-pop',
-        pill: 'text-emerald-100/90 border-emerald-300/25 bg-emerald-400/[0.08]',
+        dot: 'h-1.5 w-1.5 rounded-full bg-[#b5dec2] animate-node-complete-pop',
+        pill: 'text-[#b5dec2]/90 border-[#b5dec2]/25 bg-[#b5dec2]/[0.08]',
         label: '\u2713',
       };
     case 'blocked':
       return {
-        dot: 'h-1.5 w-1.5 rounded-[2px] bg-amber-300 animate-node-pulse',
-        pill: 'text-amber-100/90 border-amber-300/20 bg-amber-300/[0.08]',
+        dot: 'h-1.5 w-1.5 rounded-[2px] bg-[#dfc797] animate-node-pulse',
+        pill: 'text-[#dfc797]/90 border-[#dfc797]/20 bg-[#dfc797]/[0.08]',
         label: 'Your turn',
       };
     case 'in_progress':
@@ -63,8 +63,8 @@ function statusStyles(status: WorkflowNodeStatus) {
       };
     case 'stale':
       return {
-        dot: 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-orange-300',
-        pill: 'text-orange-100/90 border-orange-300/20 bg-orange-300/[0.08]',
+        dot: 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-[#dfc797]',
+        pill: 'text-[#dfc797]/90 border-[#dfc797]/20 bg-[#dfc797]/[0.08]',
         label: '',
       };
     case 'ready':
@@ -132,9 +132,9 @@ export function WorkspaceShell({
       </a>
       {activeGate?.active && (
         <div className="border-b border-white/[0.08] bg-white/[0.02] px-3 py-2 backdrop-blur-xl">
-          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-amber-300/18 bg-amber-300/[0.06] px-3 py-2">
-            <Sparkles className="h-3.5 w-3.5 text-amber-200/90" />
-            <p className="min-w-0 flex-1 truncate text-xs text-amber-100/85">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-[#dfc797]/18 bg-[#dfc797]/[0.06] px-3 py-2">
+            <Sparkles className="h-3.5 w-3.5 text-[#dfc797]/90" />
+            <p className="min-w-0 flex-1 truncate text-xs text-[#dfc797]/85">
               {selectedNode === activeGate.activeNode
                 ? `Your input is needed${activeGate.label ? `: ${activeGate.label}` : ''}`
                 : `Your input is needed on a different step${activeGate.label ? `: ${activeGate.label}` : ''}`}

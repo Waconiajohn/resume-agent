@@ -18,11 +18,11 @@ interface ProcessStepGuideCardProps {
 function toneBorderClass(tone: GuideTone): string {
   switch (tone) {
     case 'action':
-      return 'border-l-sky-400/60';
+      return 'border-l-[#afc4ff]/60';
     case 'review':
-      return 'border-l-amber-400/60';
+      return 'border-l-[#dfc797]/60';
     case 'export':
-      return 'border-l-emerald-400/60';
+      return 'border-l-[#b5dec2]/60';
     case 'info':
     default:
       return 'border-l-white/20';

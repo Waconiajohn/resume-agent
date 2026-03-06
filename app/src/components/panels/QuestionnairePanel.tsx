@@ -273,7 +273,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
           {currentVisiblePos === 0 && (
             <GlassCard className="px-3.5 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+                <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
                   {batchModeLabel}
                 </span>
                 <span className="text-[11px] text-white/65">
@@ -294,9 +294,9 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
                   className={cn(
                     'rounded-full border px-2 py-0.5 text-[10px] font-medium',
                     currentQuestion.impact_tier === 'high'
-                      ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/85'
+                      ? 'border-[#e0abab]/20 bg-[#e0abab]/[0.08] text-[#e0abab]/85'
                       : currentQuestion.impact_tier === 'medium'
-                        ? 'border-sky-300/20 bg-sky-400/[0.07] text-sky-100/85'
+                        ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.07] text-[#afc4ff]/85'
                         : 'border-white/[0.1] bg-white/[0.03] text-white/60',
                   )}
                 >
@@ -403,7 +403,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
               }
             }}
             aria-label="Skip remaining questions and start writing resume"
-            className="gap-1.5 px-3 text-amber-200/70 hover:text-amber-200/90"
+            className="gap-1.5 px-3 text-[#dfc797]/70 hover:text-[#dfc797]/90"
           >
             I'm Ready — Start Writing
           </GlassButton>

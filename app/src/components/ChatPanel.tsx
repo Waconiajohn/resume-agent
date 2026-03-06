@@ -106,24 +106,24 @@ export function ChatPanel({
                 : (connected ? (pipelinePhaseActive ? 'Ready' : 'Connected') : 'Reconnecting');
   const statusDotColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
-      ? 'bg-rose-400'
+      ? 'bg-[#e0abab]'
       : runtimeState === 'processing'
-        ? 'bg-sky-400'
+        ? 'bg-[#afc4ff]'
         : runtimeState === 'waiting_for_input'
-          ? 'bg-amber-400'
+          ? 'bg-[#dfc797]'
           : runtimeState === 'complete'
-            ? 'bg-emerald-400'
-            : (connected ? 'bg-emerald-400' : 'bg-white/40');
+            ? 'bg-[#b5dec2]'
+            : (connected ? 'bg-[#b5dec2]' : 'bg-white/40');
   const statusTextColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
-      ? 'text-rose-100/90'
+      ? 'text-[#e0abab]/90'
       : runtimeState === 'processing'
-        ? 'text-sky-100/90'
+        ? 'text-[#afc4ff]/90'
         : runtimeState === 'waiting_for_input'
-          ? 'text-amber-100/90'
+          ? 'text-[#dfc797]/90'
           : runtimeState === 'complete'
-            ? 'text-emerald-100/90'
-            : (connected ? 'text-emerald-100/90' : 'text-white/70');
+            ? 'text-[#b5dec2]/90'
+            : (connected ? 'text-[#b5dec2]/90' : 'text-white/70');
   const lastActivityText = (() => {
     if (!lastBackendActivityAt) return null;
     const ms = Date.now() - new Date(lastBackendActivityAt).getTime();

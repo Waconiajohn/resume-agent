@@ -207,7 +207,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
               <span className={cn(
                 'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
                 angleWasEdited
-                  ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
+                  ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/90'
                   : 'border-white/[0.08] bg-white/[0.02] text-white/48',
               )}>
                 {angleWasEdited ? 'Edited' : 'Editable'}
@@ -267,7 +267,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                   <div className="flex items-start gap-2">
                     <p className={cn(
                       'flex-1 text-xs italic leading-relaxed',
-                      angleWasEdited ? 'text-amber-100/70' : 'text-white/62',
+                      angleWasEdited ? 'text-[#dfc797]/70' : 'text-white/62',
                     )}>
                       &ldquo;{currentAngle}&rdquo;
                     </p>
@@ -289,7 +289,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                 <span className={cn(
                   'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
                   orderWasEdited
-                    ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/90'
+                    ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/90'
                     : 'border-white/[0.08] bg-white/[0.02] text-white/48',
                 )}>
                   {orderWasEdited ? 'Edited' : 'Reorderable'}

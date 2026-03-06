@@ -1,5 +1,45 @@
 # Changelog — Resume Agent
 
+## 2026-03-05 — Session 26
+**Sprint:** 24 | **Stories:** Re-Audit Theme & Accessibility Fixes (Stories 1-12 + bonus)
+**Summary:** Fixed all findings from the second full codebase audit — 12 stories + 8 bonus fixes covering raw Tailwind semantic color replacements (rose/sky/amber/emerald/blue/indigo/green → theme hex), motion-safe prefixes, aria-labels, and jargon across 26 files. `tsc --noEmit` passes clean.
+
+### Changes Made
+- `app/src/components/ChatPanel.tsx` — Stories 1, 8: Replaced rose/sky/amber/emerald status dot and text colors with theme hex (#e0abab, #afc4ff, #dfc797, #b5dec2)
+- `app/src/components/ChatDrawer.tsx` — Story 1: Replaced status dot colors + added motion-safe:animate-pulse
+- `app/src/components/ChatMessage.tsx` — Story 8: #b8caff → #afc4ff on User icon
+- `app/src/components/IntelligenceActivityFeed.tsx` — Story 8: border-blue-400/40 → border-[#afc4ff]/40
+- `app/src/components/workspace/WorkspaceShell.tsx` — Story 2: Replaced emerald/amber/orange status + gate banner colors
+- `app/src/components/InterviewLayout.tsx` — Story 3: Replaced emerald VictoryMoment colors → #b5dec2
+- `app/src/components/panels/SectionWorkbench.tsx` — Stories 3, 4, 10: Massive replace_all of emerald/sky badge + overlay colors; added motion-safe: on approval animations
+- `app/src/components/panels/OnboardingSummaryPanel.tsx` — Story 5: Confidence badge colors (emerald/amber/rose → theme hex)
+- `app/src/components/panels/ResearchDashboardPanel.tsx` — Story 5: Research status tone colors (sky/amber/emerald → theme hex)
+- `app/src/components/panels/QualityDashboardPanel.tsx` — Stories 6, 11: Amber badge colors + aria-label on CollapsibleSection
+- `app/src/components/panels/BlueprintReviewPanel.tsx` — Story 6: Amber badge/text colors → #dfc797
+- `app/src/components/panels/PositioningInterviewPanel.tsx` — Stories 7, 12: Blue/green/amber/indigo → theme hex; "Action Required" → "Select Your Answer"
+- `app/src/components/panels/QuestionnairePanel.tsx` — Story 7: sky/rose badge + amber text colors → theme hex
+- `app/src/components/panels/CompletionPanel.tsx` — Story 7: emerald/sky/amber colors → theme hex
+- `app/src/components/panels/SectionReviewPanel.tsx` — Story 9: Confirmed aria-pressed={false} correct (TypeScript narrowing)
+- `app/src/components/panels/workbench/WorkbenchProgressDots.tsx` — Story 10: animate-pulse → motion-safe:animate-pulse
+- `app/src/components/LandingScreen.tsx` — Story 11: type="button" on dashboard link + toast emerald → #b5dec2
+- `app/src/components/ResumePanel.tsx` — Story 11: title → aria-label on 3 export buttons
+- `app/src/components/Toast.tsx` — Bonus: All 4 accent styles (red/amber/blue/emerald → theme hex)
+- `app/src/components/shared/ProcessStepGuideCard.tsx` — Bonus: border-l tone colors → theme hex
+- `app/src/components/PositioningProfileChoice.tsx` — Bonus: sky badge → #afc4ff
+- `app/src/components/SectionsNodeSummary.tsx` — Bonus: emerald/sky bundle status → theme hex
+- `app/src/components/QuestionsNodeSummary.tsx` — Bonus: rose/amber/sky/emerald badges → theme hex
+- `app/src/components/panels/workbench/WorkbenchSuggestions.tsx` — Bonus: emerald-400/70 check icon → #b5dec2/70
+- `app/src/components/PipelineIntakeForm.tsx` — Bonus: emerald-300/80 text → #b5dec2/80
+- `app/src/components/panels/ContextPanel.tsx` — Bonus: focus-visible:ring-blue-400 → #afc4ff
+
+### Decisions Made
+- SectionReviewPanel aria-pressed={false} is correct — the Edit button is only rendered inside `mode !== 'edit'` guard, so TypeScript narrows the type and `mode === 'edit'` would be unreachable
+- LiveResumeDocument.tsx intentionally uses raw Tailwind colors (light-theme document preview) — kept out of scope
+
+### Next Steps
+- Run third full codebase audit to verify zero raw Tailwind semantic colors remain
+- Continue audit-fix-re-audit cycle until clean
+
 ## 2026-03-05 — Session 25
 **Sprint:** 23 | **Stories:** Full Codebase Audit Fixes (Stories 1-10)
 **Summary:** Fixed all findings from the 6-agent full codebase audit — 10 stories covering accessibility, WCAG compliance, copy/jargon rewrites, theme color consistency, and code quality. All critical and medium findings resolved.

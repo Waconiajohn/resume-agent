@@ -34,7 +34,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
     },
     jd: {
       label: 'From JD',
-      className: 'bg-blue-500/[0.18] text-blue-300 border border-blue-400/[0.25]',
+      className: 'bg-[#afc4ff]/[0.18] text-[#afc4ff] border border-[#afc4ff]/[0.25]',
     },
   }[source];
 
@@ -113,7 +113,7 @@ function SuggestionCard({ label, description, source, isSelected, editedText, on
                 'mt-2 w-full resize-none rounded-lg border bg-white/[0.06] px-3 py-2',
                 'text-xs text-white/85 placeholder:text-white/35',
                 'backdrop-blur-xl transition-all duration-200',
-                'focus:outline-none focus:ring-2 focus:ring-blue-400/40',
+                'focus:outline-none focus:ring-2 focus:ring-[#afc4ff]/40',
                 'border-white/[0.15] focus:border-white/25',
               )}
               placeholder="Edit this suggestion or leave as-is..."
@@ -151,7 +151,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
               className={cn(
                 'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap',
                 isComplete
-                  ? 'bg-green-500/20 text-green-300 border border-green-400/25'
+                  ? 'bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/25'
                   : 'bg-white/[0.06] text-white/45 border border-white/[0.10]',
               )}
             >
@@ -169,7 +169,7 @@ function CategoryProgressBars({ categories }: CategoryProgressBarProps) {
               <div
                 className={cn(
                   'h-full rounded-full transition-all duration-500 ease-out',
-                  isComplete ? 'bg-green-400/70' : 'bg-[#b5c9ff]/60',
+                  isComplete ? 'bg-[#b5dec2]/70' : 'bg-[#b5c9ff]/60',
                 )}
                 style={{ width: `${pct}%` }}
               />
@@ -326,9 +326,9 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
     <div className="space-y-3">
       {/* Encouraging message from previous answer */}
       {encouragingText && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-green-400/[0.20] bg-green-500/[0.08] px-3.5 py-2.5">
-          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400/80" aria-hidden="true" />
-          <p className="text-xs text-green-300/90 leading-relaxed">{encouragingText}</p>
+        <div className="flex items-start gap-2.5 rounded-xl border border-[#b5dec2]/[0.20] bg-[#b5dec2]/[0.08] px-3.5 py-2.5">
+          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#b5dec2]/80" aria-hidden="true" />
+          <p className="text-xs text-[#b5dec2]/90 leading-relaxed">{encouragingText}</p>
         </div>
       )}
 
@@ -336,8 +336,8 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
       {suggestions.length > 0 && (
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
-              Action Required
+            <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
+              Select Your Answer
             </span>
             <span className="text-[11px] text-white/55">
               Select one or more suggestions. Click to edit any selection.
@@ -386,7 +386,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
             'w-full resize-none rounded-xl border bg-white/[0.06] px-3.5 py-2.5',
             'text-sm text-white/85 placeholder:text-white/35',
             'backdrop-blur-xl transition-all duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-blue-400/40',
+            'focus:outline-none focus:ring-2 focus:ring-[#afc4ff]/40',
             hasSelection
               ? 'border-white/[0.2] focus:border-white/[0.26]'
               : 'border-white/[0.12] focus:border-white/25',
@@ -396,7 +396,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
 
       {/* Elaboration hint for inferred/JD suggestions */}
       {needsElaboration && (
-        <p className="text-xs text-amber-300/70">
+        <p className="text-xs text-[#dfc797]/70">
           Please edit the selected suggestion or add a specific example below to confirm this applies to your experience.
         </p>
       )}
@@ -498,10 +498,10 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             {/* Follow-up indicator */}
             {current_question.is_follow_up && (
               <div className="flex items-center gap-2">
-                <div className="w-0.5 self-stretch rounded-full bg-indigo-400/50" aria-hidden="true" />
+                <div className="w-0.5 self-stretch rounded-full bg-[#afc4ff]/50" aria-hidden="true" />
                 <div className="flex items-center gap-1.5">
-                  <GitBranch className="h-3 w-3 text-indigo-400/70" aria-hidden="true" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-300/70">
+                  <GitBranch className="h-3 w-3 text-[#afc4ff]/70" aria-hidden="true" />
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-[#afc4ff]/70">
                     Follow-up
                   </span>
                 </div>
@@ -509,7 +509,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
             )}
 
             {/* Question text — indented slightly when it's a follow-up */}
-            <div className={cn(current_question.is_follow_up && 'pl-3 border-l border-indigo-400/25')}>
+            <div className={cn(current_question.is_follow_up && 'pl-3 border-l border-[#afc4ff]/25')}>
               <p className="text-base font-medium text-white leading-snug">
                 {current_question.question_text}
               </p>
@@ -521,7 +521,7 @@ export function PositioningInterviewPanel({ data, onRespond }: PositioningInterv
                   {current_question.requirement_map.map((req) => (
                     <span
                       key={req}
-                      className="rounded-full bg-blue-500/[0.14] border border-blue-400/[0.22] px-2 py-0.5 text-[10px] font-medium text-blue-300/80"
+                      className="rounded-full bg-[#afc4ff]/[0.14] border border-[#afc4ff]/[0.22] px-2 py-0.5 text-[10px] font-medium text-[#afc4ff]/80"
                     >
                       {req}
                     </span>

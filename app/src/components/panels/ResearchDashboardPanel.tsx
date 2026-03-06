@@ -50,10 +50,10 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
     .filter(([_, value]) => value != null && renderAssumptionValue(value) !== 'Not inferred')
     .slice(0, 8);
   const researchStatusTone = data.loading_state === 'running'
-    ? 'border-sky-300/20 bg-sky-400/[0.06] text-sky-100/90'
+    ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]/90'
     : data.loading_state === 'background_running'
-      ? 'border-amber-300/20 bg-amber-400/[0.06] text-amber-100/90'
-      : 'border-emerald-300/20 bg-emerald-400/[0.06] text-emerald-100/90';
+      ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.06] text-[#dfc797]/90'
+      : 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90';
 
   return (
     <div data-panel-root className="flex h-full flex-col">

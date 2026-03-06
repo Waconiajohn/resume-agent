@@ -97,14 +97,14 @@ export function QuestionsNodeSummary({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
                       item.priority === 'must_have'
-                        ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/85'
+                        ? 'border-[#e0abab]/20 bg-[#e0abab]/[0.08] text-[#e0abab]/85'
                         : item.priority === 'implicit'
-                          ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
+                          ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/85'
                           : 'border-white/[0.1] bg-white/[0.03] text-white/60'
                     }`}>
                       {item.priority === 'must_have' ? 'Must-have' : item.priority === 'implicit' ? 'Implicit' : 'Nice-to-have'}
                     </span>
-                    <span className={item.classification === 'gap' ? 'text-rose-100/80' : 'text-amber-100/80'}>
+                    <span className={item.classification === 'gap' ? 'text-[#e0abab]/80' : 'text-[#dfc797]/80'}>
                       {item.classification === 'gap' ? 'Gap' : 'Partial'}
                     </span>
                   </div>
@@ -145,18 +145,18 @@ export function QuestionsNodeSummary({
                       <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                         <span className={`rounded-full border px-1.5 py-0.5 ${
                           item.impact_tag === 'high'
-                            ? 'border-rose-300/20 bg-rose-400/[0.08] text-rose-100/85'
+                            ? 'border-[#e0abab]/20 bg-[#e0abab]/[0.08] text-[#e0abab]/85'
                             : item.impact_tag === 'medium'
-                              ? 'border-sky-300/20 bg-sky-400/[0.08] text-sky-100/85'
+                              ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/85'
                               : 'border-white/[0.1] bg-white/[0.03] text-white/60'
                         }`}>
                           {item.impact_tag ? `${item.impact_tag} impact` : 'untagged'}
                         </span>
                         <span className={`rounded-full border px-1.5 py-0.5 ${
                           item.status === 'answered'
-                            ? 'border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100/85'
+                            ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.08] text-[#b5dec2]/85'
                             : item.status === 'deferred'
-                              ? 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100/85'
+                              ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/85'
                               : 'border-white/[0.1] bg-white/[0.03] text-white/60'
                         }`}>
                           {item.status}
@@ -203,7 +203,7 @@ export function QuestionsNodeSummary({
                         <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-1.5 py-0.5 text-white/70">
                           {item.stage === 'positioning' ? 'Positioning' : 'Gap Analysis'}
                         </span>
-                        <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-1.5 py-0.5 text-sky-100/85">
+                        <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-1.5 py-0.5 text-[#afc4ff]/85">
                           Reused {item.skipped_count}
                         </span>
                         <span className="text-white/45">

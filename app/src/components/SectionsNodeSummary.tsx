@@ -56,9 +56,9 @@ export function SectionsNodeSummary({ isActiveNode, bundleSummary }: SectionsNod
                 key={`sections-node-bundle-${bundle.key}`}
                 className={`rounded-lg border px-2.5 py-2 ${
                   bundle.status === 'complete'
-                    ? 'border-emerald-300/18 bg-emerald-400/[0.04]'
+                    ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04]'
                     : bundle.status === 'in_progress'
-                      ? 'border-sky-300/18 bg-sky-400/[0.04]'
+                      ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
                       : bundle.status === 'auto_approved'
                         ? 'border-white/[0.08] bg-white/[0.015]'
                         : 'border-white/[0.06] bg-white/[0.01]'

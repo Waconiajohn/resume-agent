@@ -167,7 +167,7 @@ export function WorkbenchSuggestions({
     return (
       <div className="flex items-center justify-center gap-2 py-4">
         <Check
-          className={cn('h-4 w-4 text-emerald-400/70', 'suggestion-resolved')}
+          className={cn('h-4 w-4 text-[#b5dec2]/70', 'suggestion-resolved')}
         />
         <span className="text-xs text-white/40">All suggestions addressed</span>
       </div>

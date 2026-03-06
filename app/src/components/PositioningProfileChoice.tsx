@@ -31,7 +31,7 @@ export function PositioningProfileChoice({
       <div className="flex items-center gap-2 mb-1">
         <Sparkles className="h-4 w-4 flex-shrink-0 text-[#afc4ff]" />
         <p className="text-sm font-medium text-white/90">Saved Positioning Profile Found</p>
-        <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100/90">
+        <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#afc4ff]/90">
           Step 3 of 7
         </span>
       </div>

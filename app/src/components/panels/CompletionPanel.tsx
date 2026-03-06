@@ -175,7 +175,7 @@ export function CompletionPanel({
           <span className="text-lg font-semibold text-white/85">Your Resume Is Ready!</span>
         </div>
         {data.ats_score != null && (
-          <p className="text-sm text-emerald-200/80 mt-1">{data.ats_score}% match for this role</p>
+          <p className="text-sm text-[#b5dec2]/80 mt-1">{data.ats_score}% match for this role</p>
         )}
       </div>
 
@@ -252,7 +252,7 @@ export function CompletionPanel({
         {/* Resume Export */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="rounded-full border border-sky-300/20 bg-sky-400/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-sky-100/85">
+            <span className="rounded-full border border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#afc4ff]/85">
               Action
             </span>
             <FileText className="h-4 w-4 text-[#afc4ff]" />
@@ -270,7 +270,7 @@ export function CompletionPanel({
                 )}
                 Download Word (.docx)
                 {docxBlocked && (
-                  <span className="ml-2 rounded-full border border-amber-300/30 bg-amber-400/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-100/80">
+                  <span className="ml-2 rounded-full border border-[#dfc797]/30 bg-[#dfc797]/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-[#dfc797]/80">
                     Upgrade
                   </span>
                 )}

@@ -175,7 +175,7 @@ export function LandingScreen({
           <div
             className={`mb-6 w-full rounded-lg border px-4 py-2 text-left text-xs ${
               toast.type === 'success'
-                ? 'border-emerald-300/28 bg-emerald-500/[0.08] text-emerald-100/90'
+                ? 'border-[#b5dec2]/28 bg-[#b5dec2]/[0.08] text-[#b5dec2]/90'
                 : 'border-red-300/28 bg-red-500/[0.08] text-red-100/90'
             }`}
           >
@@ -190,6 +190,7 @@ export function LandingScreen({
 
         {onNavigateToDashboard && (
           <button
+            type="button"
             onClick={onNavigateToDashboard}
             className="mb-12 flex items-center gap-2 text-xs text-white/50 transition-colors hover:text-white/80"
           >
