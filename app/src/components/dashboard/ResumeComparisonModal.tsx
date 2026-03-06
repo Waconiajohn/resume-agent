@@ -134,7 +134,7 @@ export function ResumeComparisonModal({
           )}
 
           {!loading && error && (
-            <div className="rounded-lg border border-red-300/28 bg-red-500/[0.08] px-4 py-3 text-xs text-red-100/90">
+            <div className="rounded-lg border border-[#e0abab]/28 bg-[#e0abab]/[0.08] px-4 py-3 text-xs text-[#e0abab]/90">
               Failed to load resumes: {error}
             </div>
           )}

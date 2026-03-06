@@ -30,7 +30,7 @@ function StatusBadge({ status }: StatusBadgeProps) {
   const config: Record<string, { dot: string; label: string; text: string }> = {
     running: { dot: 'bg-[#afc4ff]', label: 'Running', text: 'text-[#afc4ff]' },
     complete: { dot: 'bg-[#b5dec2]', label: 'Complete', text: 'text-[#b5dec2]' },
-    error: { dot: 'bg-red-400', label: 'Error', text: 'text-red-300' },
+    error: { dot: 'bg-[#e0abab]', label: 'Error', text: 'text-[#e0abab]/80' },
   };
   const cfg = config[normalized] ?? { dot: 'bg-white/30', label: normalized, text: 'text-white/50' };
 
@@ -134,7 +134,7 @@ export function DashboardSessionCard({
           <button
             type="button"
             onClick={handleDeleteClick}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-red-400"
+            className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-[#e0abab]"
             aria-label="Delete session"
             title="Delete session"
           >

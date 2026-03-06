@@ -87,7 +87,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
             <button
               type="button"
               onClick={onDelete}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-red-400"
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-[#e0abab]"
               aria-label="Delete role"
               title="Delete role"
             >
@@ -124,7 +124,7 @@ export function ExperienceCard({ role, isEditing = false, onEdit, onDelete }: Ex
                 <button
                   type="button"
                   onClick={() => deleteBullet(i)}
-                  className="mt-1 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-red-400"
+                  className="mt-1 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-[#e0abab]"
                   aria-label="Delete bullet"
                 >
                   <Trash2 className="h-3 w-3" />

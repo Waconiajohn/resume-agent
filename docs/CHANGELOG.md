@@ -2,7 +2,7 @@
 
 ## 2026-03-05 — Session 27
 **Sprint:** 25 | **Stories:** Third Audit — Full Codebase Theme, Motion-Safe & Test Alignment (Stories 1-16)
-**Summary:** Fixed all remaining raw Tailwind semantic colors in peripheral files (SalesPage, PricingPage, BillingDashboard, AffiliateDashboard, CoverLetter*, dashboard/*, network-intelligence/*), added motion-safe: prefixes to every animate-spin and animate-pulse across ~30 files, fixed aria-labels on LiveResumePanel buttons, replaced jargon in ResearchDashboardPanel, and aligned all 22 failing test assertions with Phase 3 copy rewrites. 426/426 tests passing, `tsc --noEmit` clean.
+**Summary:** Fixed all remaining raw Tailwind semantic colors in peripheral files (SalesPage, PricingPage, BillingDashboard, AffiliateDashboard, CoverLetter*, dashboard/*, network-intelligence/*), added motion-safe: prefixes to every animate-spin and animate-pulse across ~30 files, fixed aria-labels on LiveResumePanel buttons, replaced jargon in ResearchDashboardPanel, and aligned all 22 failing test assertions with Phase 3 copy rewrites. Fourth audit pass found and fixed 28 remaining `red-*` semantic color instances across 16 files + 2 missing motion-safe: on celebration animations. 426/426 tests passing, `tsc --noEmit` clean.
 
 ### Changes Made — Core
 - `app/src/components/GlassButton.tsx` — animate-spin → motion-safe:animate-spin
@@ -30,6 +30,26 @@
 
 ### Changes Made — Motion-Safe Additions (~20 files)
 - PipelineIntakeForm, ResumePanel, LandingScreen, GlassSkeleton, PartialResumePreview, MasterResumeTab, ResumeComparisonModal, SessionResumeModal, EvidenceLibraryTab, SessionHistoryTab, ConnectionsBrowser, TargetTitlesManager, NetworkIntelligenceTab, CompanyCard
+
+### Changes Made — Fourth Audit: red-* Semantic Colors (28 instances across 16 files)
+- `app/src/components/AuthGate.tsx` — text-red-400 → #e0abab
+- `app/src/components/SalesPage.tsx` — 3 edits: border/bg/text red-400/500/300 → #e0abab
+- `app/src/components/PricingPage.tsx` — 2 error banners: red-300/500/200 → #e0abab
+- `app/src/components/ResumePanel.tsx` — error banner: red-300/500/100 → #e0abab
+- `app/src/components/BillingDashboard.tsx` — 3 edits: cancelled status + error icon + action error → #e0abab
+- `app/src/components/PipelineIntakeForm.tsx` — 4 edits: error banner + 3 inline errors → #e0abab
+- `app/src/components/LandingScreen.tsx` — 2 error banners → #e0abab
+- `app/src/components/dashboard/DashboardScreen.tsx` — error banner → #e0abab
+- `app/src/components/dashboard/DashboardSessionCard.tsx` — error status dot/text + delete hover → #e0abab
+- `app/src/components/dashboard/ExperienceCard.tsx` — 2 delete button hovers → #e0abab
+- `app/src/components/dashboard/EvidenceItemCard.tsx` — delete button hover → #e0abab
+- `app/src/components/dashboard/SkillsCategoryCard.tsx` — 2 delete button hovers → #e0abab
+- `app/src/components/dashboard/MasterResumeTab.tsx` — error banner → #e0abab
+- `app/src/components/dashboard/SessionResumeModal.tsx` — error banner → #e0abab
+- `app/src/components/dashboard/ResumeComparisonModal.tsx` — error banner → #e0abab
+- `app/src/components/network-intelligence/CsvUploader.tsx` — error text → #e0abab
+- `app/src/components/network-intelligence/TargetTitlesManager.tsx` — delete hover → #e0abab
+- `app/src/components/panels/CompletionPanel.tsx` — 2 celebration animations → motion-safe:
 
 ### Changes Made — Test Alignment
 - `app/src/__tests__/panels/QualityDashboardPanel.test.tsx` — 14 assertions updated: header → "Your Resume Quality Score", labels → consumer names, colors → theme hex, section titles → Phase 3 names

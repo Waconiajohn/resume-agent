@@ -37,7 +37,7 @@ export function EvidenceItemCard({ item, onDelete }: EvidenceItemCardProps) {
           <button
             type="button"
             onClick={onDelete}
-            className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-red-400"
+            className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-[#e0abab]"
             aria-label="Delete evidence item"
           >
             <Trash2 className="h-3.5 w-3.5" />

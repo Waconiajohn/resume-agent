@@ -169,7 +169,7 @@ export function CompletionPanel({
     <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="animate-celebration-check rounded-full animate-celebration-glow">
+          <div className="motion-safe:animate-celebration-check rounded-full motion-safe:animate-celebration-glow">
             <CheckCircle className="h-8 w-8 text-[#a8d7b8]" />
           </div>
           <span className="text-lg font-semibold text-white/85">Your Resume Is Ready!</span>

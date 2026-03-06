@@ -45,7 +45,7 @@ function StatusBadge({ status }: { status: string }) {
     active: 'border-[#b5dec2]/30 bg-[#b5dec2]/10 text-[#b5dec2]',
     trialing: 'border-[#afc4ff]/30 bg-[#afc4ff]/10 text-[#afc4ff]',
     past_due: 'border-[#dfc797]/30 bg-[#dfc797]/10 text-[#dfc797]',
-    cancelled: 'border-red-300/30 bg-red-500/10 text-red-300',
+    cancelled: 'border-[#e0abab]/30 bg-[#e0abab]/10 text-[#e0abab]/80',
   };
 
   const label: Record<string, string> = {
@@ -179,7 +179,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
   if (error) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <AlertCircle className="h-8 w-8 text-red-400" />
+        <AlertCircle className="h-8 w-8 text-[#e0abab]" />
         <p className="text-sm text-white/60">{error}</p>
         <GlassButton variant="ghost" onClick={() => void fetchSubscription()}>
           <RefreshCw className="h-4 w-4" />
@@ -279,7 +279,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
       </GlassCard>
 
       {actionError && (
-        <div className="rounded-xl border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div className="rounded-xl border border-[#e0abab]/30 bg-[#e0abab]/10 px-4 py-3 text-sm text-[#e0abab]/70">
           {actionError}
         </div>
       )}

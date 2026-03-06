@@ -30,6 +30,10 @@
 15. [x] Story 15: Update CompletionPanel.test.tsx — align 7 assertions with Phase 3 renamed headers/labels/aria-labels — done
 16. [x] Story 16: Update panel-renderer.test.tsx — align validation message with Phase 3 consumer-friendly copy — done
 
+### Fourth Audit Fixes (from audit cycle 4)
+17. [x] Story 17: Replace all red-* semantic colors (28 instances across 16 files) → #e0abab theme hex — done
+18. [x] Story 18: Add motion-safe: to CompletionPanel celebration animations — done
+
 ## Out of Scope (Explicitly)
 - Backend/server changes
 - LiveResumeDocument.tsx (intentionally light-theme)

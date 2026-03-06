@@ -75,7 +75,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
           </div>
 
           {error && (
-            <p id="auth-error" className="text-xs text-red-400" role="alert">{error}</p>
+            <p id="auth-error" className="text-xs text-[#e0abab]" role="alert">{error}</p>
           )}
 
           <GlassButton type="submit" disabled={loading} className="w-full">

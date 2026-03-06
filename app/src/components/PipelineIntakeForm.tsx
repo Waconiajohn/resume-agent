@@ -191,7 +191,7 @@ export function PipelineIntakeForm({
         {/* Form */}
         <GlassCard className="p-6">
           {error && (
-            <div className="mb-4 rounded-lg border border-red-300/28 bg-red-500/[0.08] px-3 py-2 text-xs text-red-100/90">
+            <div className="mb-4 rounded-lg border border-[#e0abab]/28 bg-[#e0abab]/[0.08] px-3 py-2 text-xs text-[#e0abab]/90">
               {error}
             </div>
           )}
@@ -278,7 +278,7 @@ export function PipelineIntakeForm({
                   </>
                 )}
                 {savedResumeLoadError && (
-                  <p className="mt-2 text-xs text-red-400" role="alert">{savedResumeLoadError}</p>
+                  <p className="mt-2 text-xs text-[#e0abab]" role="alert">{savedResumeLoadError}</p>
                 )}
               </div>
               <GlassTextarea
@@ -319,7 +319,7 @@ export function PipelineIntakeForm({
                 </p>
               )}
               {fileError && (
-                <p id="file-error" className="text-xs text-red-400" role="alert">
+                <p id="file-error" className="text-xs text-[#e0abab]" role="alert">
                   {fileError}
                 </p>
               )}
@@ -364,7 +364,7 @@ export function PipelineIntakeForm({
                 />
               </div>
               {jobFileError && (
-                <p className="text-xs text-red-400" role="alert">
+                <p className="text-xs text-[#e0abab]" role="alert">
                   {jobFileError}
                 </p>
               )}

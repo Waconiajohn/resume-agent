@@ -167,7 +167,7 @@ export function LandingScreen({
           I research companies, analyze job descriptions, and help you craft a tailored resume that gets interviews.
         </p>
         {error && (
-          <div className="mb-6 w-full rounded-lg border border-red-300/28 bg-red-500/[0.08] px-4 py-2 text-left text-xs text-red-100/90">
+          <div className="mb-6 w-full rounded-lg border border-[#e0abab]/28 bg-[#e0abab]/[0.08] px-4 py-2 text-left text-xs text-[#e0abab]/90">
             {error}
           </div>
         )}
@@ -176,7 +176,7 @@ export function LandingScreen({
             className={`mb-6 w-full rounded-lg border px-4 py-2 text-left text-xs ${
               toast.type === 'success'
                 ? 'border-[#b5dec2]/28 bg-[#b5dec2]/[0.08] text-[#b5dec2]/90'
-                : 'border-red-300/28 bg-red-500/[0.08] text-red-100/90'
+                : 'border-[#e0abab]/28 bg-[#e0abab]/[0.08] text-[#e0abab]/90'
             }`}
           >
             {toast.message}
