@@ -88,6 +88,51 @@ vi.mock('../lib/ni/company-normalizer.js', () => ({
   }),
 }));
 
+// Boolean search — stub so route tests don't need the LLM provider.
+vi.mock('../lib/ni/boolean-search.js', () => ({
+  generateBooleanSearch: vi.fn().mockResolvedValue({
+    id: 'bs_test_abc123',
+    result: {
+      linkedin: '"VP Operations" -intern',
+      indeed: 'title:("VP Operations")',
+      google: 'site:linkedin.com/jobs "VP Operations"',
+      extractedTerms: { skills: [], titles: ['VP Operations'], industries: [] },
+      generatedAt: '2026-03-07T00:00:00.000Z',
+    },
+  }),
+  getBooleanSearch: vi.fn().mockReturnValue(null),
+}));
+
+// Career scraper — stub to avoid fetch calls and supabase in route tests.
+vi.mock('../lib/ni/career-scraper.js', () => ({
+  scrapeCareerPages: vi.fn().mockResolvedValue({
+    companiesScanned: 0,
+    jobsFound: 0,
+    matchingJobs: 0,
+    referralAvailable: 0,
+    errors: [],
+  }),
+}));
+
+// Supabase — stub to prevent missing env var errors in route tests.
+vi.mock('../lib/supabase.js', () => ({
+  supabaseAdmin: {
+    from: vi.fn().mockImplementation(() => {
+      const chain: Record<string, unknown> = {};
+      chain.select = vi.fn().mockReturnValue(chain);
+      chain.insert = vi.fn().mockReturnValue(chain);
+      chain.update = vi.fn().mockReturnValue(chain);
+      chain.delete = vi.fn().mockReturnValue(chain);
+      chain.eq = vi.fn().mockReturnValue(chain);
+      chain.in = vi.fn().mockReturnValue(chain);
+      chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
+      chain.limit = vi.fn().mockResolvedValue({ data: [], error: null });
+      chain.then = undefined;
+      return chain;
+    }),
+  },
+}));
+
 // Logger — no-op to keep test output clean.
 vi.mock('../lib/logger.js', () => ({
   default: {

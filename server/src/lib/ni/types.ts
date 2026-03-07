@@ -157,3 +157,33 @@ export interface ScrapeLogRow {
   completed_at: string | null;
   created_at: string;
 }
+
+// ─── Boolean Search ───────────────────────────────────────────────────────────
+
+export interface BooleanSearchResult {
+  linkedin: string;
+  indeed: string;
+  google: string;
+  extractedTerms: {
+    skills: string[];
+    titles: string[];
+    industries: string[];
+  };
+  generatedAt: string;
+}
+
+// ─── Career Page Scraper ──────────────────────────────────────────────────────
+
+export interface CompanyInfo {
+  id: string;
+  name: string;
+  domain: string | null;
+}
+
+export interface ScrapeResult {
+  companiesScanned: number;
+  jobsFound: number;
+  matchingJobs: number;
+  referralAvailable: number;
+  errors: { company: string; error: string }[];
+}

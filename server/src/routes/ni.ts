@@ -32,6 +32,9 @@ import {
   updateJobMatchStatus,
 } from '../lib/ni/job-matches-store.js';
 import { normalizeCompanyBatch } from '../lib/ni/company-normalizer.js';
+import { generateBooleanSearch, getBooleanSearch } from '../lib/ni/boolean-search.js';
+import { scrapeCareerPages } from '../lib/ni/career-scraper.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { CsvUploadResponse } from '../lib/ni/types.js';
 
@@ -79,6 +82,16 @@ const jobMatchSchema = z.object({
 
 const jobMatchStatusSchema = z.object({
   status: z.enum(JOB_MATCH_STATUSES),
+});
+
+const booleanSearchSchema = z.object({
+  resume_text: z.string().min(1, 'resume_text is required').max(50_000),
+  target_titles: z.array(z.string().min(1).max(200)).max(20).optional(),
+});
+
+const scrapeStartSchema = z.object({
+  company_ids: z.array(z.string().uuid()).min(1).max(50),
+  target_titles: z.array(z.string().min(1).max(200)).max(20).optional(),
 });
 
 // ─── CSV Upload ───────────────────────────────────────────────────────────────
@@ -282,4 +295,126 @@ ni.patch('/matches/:id/status', async (c) => {
   }
 
   return c.json({ success: true });
+});
+
+// ─── Boolean Search ───────────────────────────────────────────────────────────
+
+ni.post('/boolean-search/generate', rateLimitMiddleware(10, 60_000), async (c) => {
+  const bodyResult = await parseJsonBodyWithLimit(c, 100_000);
+  if (!bodyResult.ok) return bodyResult.response;
+
+  const parsed = booleanSearchSchema.safeParse(bodyResult.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request', details: parsed.error.flatten().fieldErrors }, 400);
+  }
+
+  const userId = c.get('user').id;
+  const { resume_text, target_titles = [] } = parsed.data;
+
+  try {
+    const { id, result } = await generateBooleanSearch(resume_text, target_titles);
+    logger.info({ userId, id }, 'boolean-search: generated');
+    return c.json({ id, ...result });
+  } catch (err) {
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err), userId },
+      'boolean-search: generation failed',
+    );
+    return c.json({ error: 'Failed to generate boolean search strings' }, 500);
+  }
+});
+
+ni.get('/boolean-search/:id', async (c) => {
+  const id = c.req.param('id');
+  const result = getBooleanSearch(id);
+
+  if (!result) {
+    return c.json({ error: 'Boolean search not found' }, 404);
+  }
+
+  return c.json({ id, ...result });
+});
+
+// ─── Career Page Scraper ──────────────────────────────────────────────────────
+
+ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
+  const bodyResult = await parseJsonBodyWithLimit(c, 10_000);
+  if (!bodyResult.ok) return bodyResult.response;
+
+  const parsed = scrapeStartSchema.safeParse(bodyResult.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request', details: parsed.error.flatten().fieldErrors }, 400);
+  }
+
+  const userId = c.get('user').id;
+  const { company_ids, target_titles = [] } = parsed.data;
+
+  // Create scrape log entry upfront so we can return its ID immediately
+  const logId = await createScrapeLogEntry(userId, 'job_scrape', {
+    company_ids,
+    target_title_count: target_titles.length,
+  });
+
+  if (!logId) {
+    return c.json({ error: 'Failed to start scrape' }, 500);
+  }
+
+  // Fire and forget — scrape runs in background
+  void (async () => {
+    try {
+      // Fetch company info for the requested IDs
+      // supabaseAdmin imported statically at top of file
+      const { data: companies, error } = await supabaseAdmin
+        .from('company_directory')
+        .select('id, name_display, domain')
+        .in('id', company_ids);
+
+      if (error || !companies) {
+        await completeScrapeLogEntry(logId, 'failed', {}, 'Failed to fetch company records');
+        return;
+      }
+
+      const companyInfos = companies.map((row: { id: string; name_display: string; domain: string | null }) => ({
+        id: row.id,
+        name: row.name_display,
+        domain: row.domain,
+      }));
+
+      const result = await scrapeCareerPages(companyInfos, target_titles, userId);
+
+      await completeScrapeLogEntry(logId, 'completed', {
+        companies_scanned: result.companiesScanned,
+        jobs_found: result.jobsFound,
+        matching_jobs: result.matchingJobs,
+        referral_available: result.referralAvailable,
+        error_count: result.errors.length,
+      });
+
+      logger.info({ userId, logId, ...result }, 'career-scraper: scrape completed');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error({ error: msg, userId, logId }, 'career-scraper: scrape failed');
+      await completeScrapeLogEntry(logId, 'failed', {}, msg);
+    }
+  })();
+
+  return c.json({ scrape_log_id: logId }, 202);
+});
+
+ni.get('/scrape/status/:id', async (c) => {
+  const userId = c.get('user').id;
+  const logId = c.req.param('id');
+
+  const { data, error } = await supabaseAdmin
+    .from('scrape_logs')
+    .select('*')
+    .eq('id', logId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) {
+    return c.json({ error: 'Scrape log not found' }, 404);
+  }
+
+  return c.json({ log: data });
 });

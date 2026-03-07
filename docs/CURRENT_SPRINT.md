@@ -1,35 +1,32 @@
-# Sprint 35: Agents #18-#20 (Thank You Note, Personal Brand Audit, 90-Day Plan)
-**Goal:** Build three new agents — Thank You Note Writer (#18, single-agent), Personal Brand Audit (#19, 2-agent), and 90-Day Plan Generator (#20, 2-agent) — following established ProductConfig patterns.
+# Sprint 36: Frontend Build-Out + Network Intelligence Completion
+**Goal:** Make all 13 agents user-accessible through Career IQ rooms, complete the Network Intelligence module with boolean search generation and career page scraping, and update the product catalog to reflect the full platform.
 **Started:** 2026-03-07
 
 ## Stories This Sprint
 
-### Agent #18 — Thank You Note Writer
-1. [x] Story 1: Types & knowledge rules — **Status: done**
-2. [x] Story 2: Writer agent config + tools — **Status: done**
-3. [x] Story 3: ProductConfig + route + migration — **Status: done**
-4. [x] Story 4: Frontend hook — **Status: done**
-5. [x] Story 5: Tests (45 server + 12 app) — **Status: done**
+### Block 1: Career IQ Rooms for Hook-Only Agents (6 rooms)
+1. [ ] Story 1: Salary Negotiation Room — **Status: not started**
+2. [ ] Story 2: Executive Bio Room — **Status: not started**
+3. [ ] Story 3: Case Study Room — **Status: not started**
+4. [ ] Story 4: Thank You Note Room — **Status: not started**
+5. [ ] Story 5: Personal Brand Audit Room — **Status: not started**
+6. [ ] Story 6: 90-Day Plan Room — **Status: not started**
 
-### Agent #19 — Personal Brand Audit
-6. [x] Story 1: Types & knowledge rules — **Status: done**
-7. [x] Story 2: Auditor agent config + tools — **Status: done**
-8. [x] Story 3: Advisor agent config + tools — **Status: done**
-9. [x] Story 4: ProductConfig + route + migration — **Status: done**
-10. [x] Story 5: Frontend hook — **Status: done**
-11. [x] Story 6: Tests (53 server + 12 app) — **Status: done**
+### Block 2: Network Intelligence Completion
+7. [ ] Story 7: NI Career IQ Room — **Status: not started**
+8. [ ] Story 8: Boolean Search String Generator (Backend) — **Status: not started**
+9. [ ] Story 9: Boolean Search String Generator (Frontend) — **Status: not started**
+10. [ ] Story 10: Career Page Scraper Agent (Backend) — **Status: not started**
+11. [ ] Story 11: Career Page Scraper (Frontend Integration) — **Status: not started**
 
-### Agent #20 — 90-Day Plan Generator
-12. [x] Story 1: Types & knowledge rules — **Status: done**
-13. [x] Story 2: Researcher agent config + tools — **Status: done**
-14. [x] Story 3: Planner agent config + tools — **Status: done**
-15. [x] Story 4: ProductConfig + route + migration — **Status: done**
-16. [x] Story 5: Frontend hook — **Status: done**
-17. [x] Story 6: Tests (51 server + 12 app) — **Status: done**
+### Block 3: Platform Polish
+12. [ ] Story 12: Update Product Catalog — **Status: not started**
+13. [ ] Story 13: Career IQ Navigation Update — **Status: not started**
+14. [ ] Story 14: Tests for New Rooms — **Status: not started**
 
 ## Out of Scope (Explicitly)
-- Frontend UI pages/rooms for these agents
-- PDF export of generated content
-- Integration with email clients (thank-you notes)
-- LinkedIn API integration (brand audit)
-- Calendar integration (90-day plan)
+- SSE hook consolidation / hook factory (tech debt — separate sprint)
+- Agents #21+ backend builds
+- Redis bus adapter
+- Agent hot-reload
+- DOCX/PDF export for non-resume agents

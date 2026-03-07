@@ -19,3 +19,4 @@ test-results/
 .mcp.json.broken.*
 .playwright-mcp/
 app/docs/agentic-ai-planning/
+docs/obsidian/.obsidian/

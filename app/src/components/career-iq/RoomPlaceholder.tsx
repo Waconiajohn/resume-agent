@@ -9,6 +9,13 @@ const ROOM_INFO: Record<CareerIQRoom, { title: string; description: string }> = 
   jobs: { title: 'Job Command Center', description: 'Discover matching roles, manage Boolean searches, and track your application pipeline.' },
   networking: { title: 'Networking Hub', description: 'Identify target contacts, manage outreach, and track follow-ups.' },
   interview: { title: 'Interview Lab', description: 'Prepare for interviews, practice with mock sessions, and review your history.' },
+  'salary-negotiation': { title: 'Salary Negotiation', description: 'Get market benchmarks, leverage points, and word-for-word negotiation scripts.' },
+  'executive-bio': { title: 'Executive Bio Suite', description: 'Generate professional bios for speaker events, board roles, LinkedIn, and more.' },
+  'case-study': { title: 'Case Study Generator', description: 'Transform your achievements into consulting-grade case studies.' },
+  'thank-you-note': { title: 'Thank You Note', description: 'Craft personalized post-interview thank you notes that reinforce your candidacy.' },
+  'personal-brand': { title: 'Personal Brand Audit', description: 'Assess and strengthen your executive brand across all channels.' },
+  'ninety-day-plan': { title: '90-Day Plan', description: 'Build a compelling first 90 days roadmap tailored to your target role.' },
+  'network-intelligence': { title: 'Network Intelligence', description: 'Map your network, identify key connectors, and grow strategic relationships.' },
   financial: { title: 'Financial Wellness', description: 'Explore your Retirement Bridge Analysis, access educational resources, and connect with a financial planner.' },
   learning: { title: 'Learning Center', description: 'Browse our 150-tip library, attend live webinars, and access on-demand resources.' },
 };

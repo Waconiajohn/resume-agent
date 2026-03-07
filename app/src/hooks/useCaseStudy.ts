@@ -23,6 +23,7 @@ interface CaseStudyState {
 
 export interface CaseStudyInput {
   resumeText: string;
+  focusAreas?: string;
   targetRole?: string;
   targetIndustry?: string;
   maxCaseStudies?: number;

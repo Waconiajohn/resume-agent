@@ -171,7 +171,10 @@ At the START of every session/conversation, Claude MUST:
 2. Read `CURRENT_SPRINT.md` to know what's active
 3. Read `CONVENTIONS.md` to know project patterns
 4. Read `CHANGELOG.md` (last 10 entries) to know recent changes
-5. State: "I've reviewed the project context. Current sprint is [X], working on [story]."
+5. Read `docs/obsidian/10_Resume Agent/Project Hub.md` for platform-wide context, agent inventory, and architecture links
+6. Read `docs/obsidian/10_Resume Agent/Status.md` for current project health, active concerns, and recent decisions
+7. If the current work involves a specific agent, read its note from `docs/obsidian/10_Resume Agent/Agents/`
+8. State: "I've reviewed the project context. Current sprint is [X], working on [story]."
 
 ### Mid-Session Verification (Every 3-5 Significant Changes)
 
@@ -199,8 +202,9 @@ Before ending any session, Claude MUST:
 
 1. Update CHANGELOG.md with all changes made
 2. Update story status in CURRENT_SPRINT.md
-3. Note any blockers, questions, or concerns for the next session
-4. If a story is incomplete, document exactly where it left off
+3. Update `docs/obsidian/10_Resume Agent/Status.md` with current project health, any new concerns, and test counts
+4. Note any blockers, questions, or concerns for the next session
+5. If a story is incomplete, document exactly where it left off
 
 ---
 
@@ -242,6 +246,47 @@ When any significant technical decision is made, log it:
 **Reasoning:** [Why this choice over alternatives]
 **Consequences:** [What this means going forward]
 ```
+
+---
+
+## OBSIDIAN KNOWLEDGE BASE (`docs/obsidian/`)
+
+The Obsidian vault at `docs/obsidian/` is the project's extended memory and knowledge base. It contains navigable reference notes on architecture, all 13 agents, model routing, SSE events, and the platform blueprint. The canonical code docs remain in `docs/` (ARCHITECTURE.md, CONVENTIONS.md, etc.) — the vault provides context, cross-references, and deeper detail.
+
+### Structure
+
+```
+docs/obsidian/
+  10_Resume Agent/
+    Project Hub.md          <- Central entry point (read at session start)
+    Architecture Overview.md
+    Platform Blueprint.md
+    Model Routing.md
+    SSE Event System.md
+    Agents/                 <- One note per agent (#1-#20)
+  20_Prompts/               <- Prompt patterns and templates
+  30_Specs & Designs/       <- Feature specs, UX flows
+  40_Snippets & APIs/       <- Code patterns, API contracts
+  Templates/                <- Note templates (feature, decision, bug, prompt)
+```
+
+### Rules
+
+- **Reference, don't duplicate.** Vault notes link to canonical repo docs, not copy them.
+- **Keep notes atomic.** One concept per note, linked via `[[wikilinks]]`.
+- **Use tags consistently:** `#agent/name`, `#status/todo|in-progress|done`, `#type/spec|decision|bug|prompt`, `#sprint/N`.
+
+### Vault Maintenance (Mandatory)
+
+Claude MUST keep the vault current. These are not optional:
+
+1. **New agent built** → Create its note in `Agents/` using the existing agent notes as the format reference. Update the agent table in `Project Hub.md`.
+2. **Architecture changes** → Update `Architecture Overview.md`, `Model Routing.md`, or `SSE Event System.md` as applicable.
+3. **Session end** → Update `Status.md` with current test counts, active concerns, and any decisions made.
+4. **New prompt pattern discovered** → Add to `20_Prompts/` using the Prompt Pattern template.
+5. **Significant bug fixed** → Add to `40_Snippets & APIs/` using the Bug Postmortem template if the root cause is worth remembering.
+6. **New feature spec written** → Add to `30_Specs & Designs/` using the Feature Note template.
+7. **Test counts change** → Update `Project Hub.md` test health section and `Status.md`.
 
 ---
 

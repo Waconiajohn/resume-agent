@@ -19,6 +19,13 @@ const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then(m 
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then(m => ({ default: m.InterviewLabRoom })));
 const NetworkingHubRoom = lazy(() => import('./NetworkingHubRoom').then(m => ({ default: m.NetworkingHubRoom })));
 const ContentCalendarRoom = lazy(() => import('./ContentCalendarRoom').then(m => ({ default: m.ContentCalendarRoom })));
+const SalaryNegotiationRoom = lazy(() => import('./SalaryNegotiationRoom').then(m => ({ default: m.SalaryNegotiationRoom })));
+const ExecutiveBioRoom = lazy(() => import('./ExecutiveBioRoom').then(m => ({ default: m.ExecutiveBioRoom })));
+const CaseStudyRoom = lazy(() => import('./CaseStudyRoom').then(m => ({ default: m.CaseStudyRoom })));
+const ThankYouNoteRoom = lazy(() => import('./ThankYouNoteRoom').then(m => ({ default: m.ThankYouNoteRoom })));
+const PersonalBrandRoom = lazy(() => import('./PersonalBrandRoom').then(m => ({ default: m.PersonalBrandRoom })));
+const NinetyDayPlanRoom = lazy(() => import('./NinetyDayPlanRoom').then(m => ({ default: m.NinetyDayPlanRoom })));
+const NetworkIntelligenceRoom = lazy(() => import('./NetworkIntelligenceRoom').then(m => ({ default: m.NetworkIntelligenceRoom })));
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then(m => ({ default: m.RoomPlaceholder })));
 
 interface ResumeSession {
@@ -181,6 +188,41 @@ export function CareerIQScreen({
     // Networking Hub room
     if (activeRoom === 'networking') {
       return <NetworkingHubRoom />;
+    }
+
+    // Salary Negotiation room
+    if (activeRoom === 'salary-negotiation') {
+      return <SalaryNegotiationRoom />;
+    }
+
+    // Executive Bio room
+    if (activeRoom === 'executive-bio') {
+      return <ExecutiveBioRoom />;
+    }
+
+    // Case Study room
+    if (activeRoom === 'case-study') {
+      return <CaseStudyRoom />;
+    }
+
+    // Thank You Note room
+    if (activeRoom === 'thank-you-note') {
+      return <ThankYouNoteRoom />;
+    }
+
+    // Personal Brand room
+    if (activeRoom === 'personal-brand') {
+      return <PersonalBrandRoom />;
+    }
+
+    // 90-Day Plan room
+    if (activeRoom === 'ninety-day-plan') {
+      return <NinetyDayPlanRoom />;
+    }
+
+    // Network Intelligence room
+    if (activeRoom === 'network-intelligence') {
+      return <NetworkIntelligenceRoom />;
     }
 
     // Other rooms
