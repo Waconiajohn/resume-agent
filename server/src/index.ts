@@ -17,6 +17,8 @@ import { linkedInOptimizerRoutes } from './routes/linkedin-optimizer.js';
 import { contentCalendarRoutes } from './routes/content-calendar.js';
 import { networkingOutreachRoutes } from './routes/networking-outreach.js';
 import { jobTrackerRoutes } from './routes/job-tracker.js';
+import { salaryNegotiationRoutes } from './routes/salary-negotiation.js';
+import { executiveBioRoutes } from './routes/executive-bio.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -257,6 +259,8 @@ app.route('/api/linkedin-optimizer', linkedInOptimizerRoutes);
 app.route('/api/content-calendar', contentCalendarRoutes);
 app.route('/api/networking-outreach', networkingOutreachRoutes);
 app.route('/api/job-tracker', jobTrackerRoutes);
+app.route('/api/salary-negotiation', salaryNegotiationRoutes);
+app.route('/api/executive-bio', executiveBioRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

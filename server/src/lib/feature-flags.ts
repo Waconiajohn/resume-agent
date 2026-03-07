@@ -110,3 +110,19 @@ export const FF_NETWORKING_OUTREACH = envBool('FF_NETWORKING_OUTREACH', false);
  * Set FF_JOB_TRACKER=true in server/.env to activate.
  */
 export const FF_JOB_TRACKER = envBool('FF_JOB_TRACKER', false);
+
+/**
+ * FF_SALARY_NEGOTIATION — Enable the Salary Negotiation Agent (#15) routes.
+ *
+ * When false (default), /api/salary-negotiation/* returns 404.
+ * Set FF_SALARY_NEGOTIATION=true in server/.env to activate.
+ */
+export const FF_SALARY_NEGOTIATION = envBool('FF_SALARY_NEGOTIATION', false);
+
+/**
+ * FF_EXECUTIVE_BIO — Enable the Executive Bio Agent (#16) routes.
+ *
+ * When false (default), /api/executive-bio/* returns 404.
+ * Set FF_EXECUTIVE_BIO=true in server/.env to activate.
+ */
+export const FF_EXECUTIVE_BIO = envBool('FF_EXECUTIVE_BIO', false);

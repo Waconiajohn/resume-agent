@@ -1,0 +1,99 @@
+/**
+ * Salary Negotiation Routes — Agent #15 using the generic route factory.
+ *
+ * Mounted at /api/salary-negotiation/*. Feature-flagged via FF_SALARY_NEGOTIATION.
+ * Runs a 2-agent pipeline (Market Researcher → Negotiation Strategist) to research
+ * compensation benchmarks, design negotiation strategy, and generate talking points.
+ * Autonomous — no user gates.
+ *
+ * Cross-product context: Loads positioning strategy and why-me narrative
+ * from prior resume sessions if available.
+ */
+
+import { z } from 'zod';
+import { createProductRoutes } from './product-route-factory.js';
+import { createSalaryNegotiationProductConfig } from '../agents/salary-negotiation/product.js';
+import { FF_SALARY_NEGOTIATION } from '../lib/feature-flags.js';
+import { getUserContext } from '../lib/platform-context.js';
+import logger from '../lib/logger.js';
+import type { SalaryNegotiationState, SalaryNegotiationSSEEvent } from '../agents/salary-negotiation/types.js';
+
+const startSchema = z.object({
+  session_id: z.string().uuid(),
+  resume_text: z.string().min(50).max(100_000),
+  offer_company: z.string().min(1).max(200),
+  offer_role: z.string().min(1).max(200),
+  offer_base_salary: z.number().optional(),
+  offer_total_comp: z.number().optional(),
+  offer_equity_details: z.string().max(2000).optional(),
+  offer_other_details: z.string().max(2000).optional(),
+  current_base_salary: z.number().optional(),
+  current_total_comp: z.number().optional(),
+  current_equity: z.string().max(2000).optional(),
+  target_role: z.string().max(200).optional(),
+  target_industry: z.string().max(200).optional(),
+});
+
+export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationState, SalaryNegotiationSSEEvent>({
+  startSchema,
+  buildProductConfig: () => createSalaryNegotiationProductConfig(),
+  isEnabled: () => FF_SALARY_NEGOTIATION,
+
+  transformInput: async (input, session) => {
+    const userId = session.user_id as string | undefined;
+    if (!userId) return input;
+
+    // Restructure flat input fields into nested objects
+    const offer_details = {
+      company: input.offer_company as string,
+      role: input.offer_role as string,
+      base_salary: input.offer_base_salary as number | undefined,
+      total_comp: input.offer_total_comp as number | undefined,
+      equity_details: input.offer_equity_details as string | undefined,
+      other_details: input.offer_other_details as string | undefined,
+    };
+
+    const current_compensation = {
+      base_salary: input.current_base_salary as number | undefined,
+      total_comp: input.current_total_comp as number | undefined,
+      equity: input.current_equity as string | undefined,
+    };
+
+    const transformed: Record<string, unknown> = {
+      ...input,
+      offer_details,
+      current_compensation,
+    };
+
+    // Load cross-product platform context
+    try {
+      const [strategyRows, narrativeRows] = await Promise.all([
+        getUserContext(userId, 'positioning_strategy'),
+        getUserContext(userId, 'career_narrative'),
+      ]);
+
+      const platformContext: Record<string, unknown> = {};
+
+      if (strategyRows.length > 0) {
+        platformContext.positioning_strategy = strategyRows[0].content;
+      }
+      if (narrativeRows.length > 0) {
+        const narrative = narrativeRows[0].content;
+        platformContext.why_me_story = typeof narrative === 'object' && narrative !== null && 'why_me_story' in narrative
+          ? String((narrative as Record<string, unknown>).why_me_story)
+          : JSON.stringify(narrative);
+      }
+
+      if (Object.keys(platformContext).length > 0) {
+        transformed.platform_context = platformContext;
+      }
+    } catch (err) {
+      logger.warn(
+        { error: err instanceof Error ? err.message : String(err), userId },
+        'Salary negotiation: failed to load platform context (continuing without it)',
+      );
+    }
+
+    return transformed;
+  },
+});

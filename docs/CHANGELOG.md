@@ -1,5 +1,47 @@
 # Changelog — Resume Agent
 
+## 2026-03-07 — Session 31
+**Sprint:** 33 | **Stories:** Executive Bio Agent #16 (Stories 1-5)
+**Summary:** Built Agent #16 — Executive Bio — as a single-agent pipeline (Bio Writer). 5 bio formats (speaker, board, advisory, professional, linkedin_featured), 4 lengths (micro/short/standard/full), 8 knowledge rules, 4 tools, ProductConfig, route, FF_EXECUTIVE_BIO, DB migration, useExecutiveBio SSE hook, and 57 tests (45 server + 12 app). 1,314 server tests passing, 742 app tests passing, tsc clean.
+
+### Changes Made
+- `server/src/agents/executive-bio/types.ts` — ExecutiveBioState, SSE events, BioFormat/BioLength types
+- `server/src/agents/executive-bio/knowledge/rules.ts` — 8 rules (philosophy, format guidance, length calibration, tone, positioning, achievements, executive standards, self-review)
+- `server/src/agents/executive-bio/writer/agent.ts` — Bio Writer agent config + registration
+- `server/src/agents/executive-bio/writer/tools.ts` — 4 tools (analyze_positioning, write_bio, quality_check_bio, assemble_bio_collection)
+- `server/src/agents/executive-bio/product.ts` — ProductConfig with single-agent pipeline
+- `server/src/routes/executive-bio.ts` — Route with Zod validation + platform context loading
+- `server/src/lib/feature-flags.ts` — Added FF_EXECUTIVE_BIO
+- `server/src/index.ts` — Mounted executive-bio routes
+- `supabase/migrations/20260307070000_executive_bio_reports.sql` — Table + RLS
+- `app/src/hooks/useExecutiveBio.ts` — SSE hook with statusRef concurrency guard
+- `server/src/__tests__/executive-bio-agents.test.ts` — 45 server tests
+- `app/src/__tests__/hooks/useExecutiveBio.test.ts` — 12 app tests
+
+---
+
+## 2026-03-07 — Session 30
+**Sprint:** 32 | **Stories:** Salary Negotiation Agent #15 (Stories 1-6)
+**Summary:** Built Agent #15 — Salary Negotiation — as a 2-agent pipeline (Market Researcher → Negotiation Strategist). Full backend (types with 6 comp components + 3 scenario types, 8 knowledge rules, researcher tools, strategist tools, ProductConfig, route, FF_SALARY_NEGOTIATION, DB migration), frontend (useSalaryNegotiation SSE hook with concurrency guard), and 63 tests (51 server + 12 app). 1,269 server tests passing, 730 app tests passing, tsc clean.
+
+### Changes Made
+- `server/src/agents/salary-negotiation/types.ts` — SalaryNegotiationState, SSE events, comp/scenario types
+- `server/src/agents/salary-negotiation/knowledge/rules.ts` — 8 rules (philosophy, anchoring, BATNA, total comp, counter-offer, timing, executive norms, self-review)
+- `server/src/agents/salary-negotiation/researcher/agent.ts` — Market Researcher agent config + registration
+- `server/src/agents/salary-negotiation/researcher/tools.ts` — 4 tools (research_compensation, analyze_market_position, identify_leverage_points, assess_total_comp)
+- `server/src/agents/salary-negotiation/strategist/agent.ts` — Negotiation Strategist agent config + registration
+- `server/src/agents/salary-negotiation/strategist/tools.ts` — 5 tools (design_strategy, write_talking_points, simulate_scenario, write_counter_response, assemble_negotiation_prep)
+- `server/src/agents/salary-negotiation/product.ts` — ProductConfig with 2-agent pipeline
+- `server/src/routes/salary-negotiation.ts` — Route with Zod validation + platform context loading
+- `server/src/lib/feature-flags.ts` — Added FF_SALARY_NEGOTIATION
+- `server/src/index.ts` — Mounted salary-negotiation routes
+- `supabase/migrations/20260307060000_salary_negotiation_reports.sql` — Table + RLS
+- `app/src/hooks/useSalaryNegotiation.ts` — SSE hook with statusRef concurrency guard
+- `server/src/__tests__/salary-negotiation-agents.test.ts` — 51 server tests
+- `app/src/__tests__/hooks/useSalaryNegotiation.test.ts` — 12 app tests
+
+---
+
 ## 2026-03-07 — Session 29
 **Sprint:** 31 | **Stories:** Job Application Tracker Agent #14 (Stories 1-6)
 **Summary:** Built Agent #14 — Job Application Tracker — as a 2-agent pipeline (Analyst -> Follow-Up Writer). Full backend (types, 8 knowledge rules, analyst tools, writer tools, ProductConfig, route, feature flag, DB migration), frontend (SSE hook, TrackerGenerator UI in JobCommandCenterRoom), and 64 tests (52 server + 12 app). 1,216 server tests passing, 718 app tests passing, tsc clean.

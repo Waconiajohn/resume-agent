@@ -2,6 +2,60 @@
 
 ---
 
+# Sprint 33 Retrospective — Executive Bio Agent (#16)
+**Completed:** 2026-03-07
+
+## What was delivered
+- Story 1: Types (5 bio formats, 4 lengths with word count targets, SSE events) + 8 knowledge rules
+- Story 2: Bio Writer agent (4 tools: analyze_positioning, write_bio, quality_check_bio, assemble_bio_collection)
+- Story 3: ProductConfig (single-agent pipeline) + FF_EXECUTIVE_BIO + route + DB migration
+- Story 4: useExecutiveBio SSE hook with concurrency guard
+- Story 5: 57 tests (45 server + 12 app)
+
+## What went well
+- Single-agent pipeline was simpler to build than 2-agent pipelines
+- tsc caught `findLastIndex` compat issue immediately — fixed with manual loop
+- All tests passing: server 1,314, app 742
+
+## What went wrong
+- `findLastIndex` not available in target ES version — required manual fix
+
+## What to improve next sprint
+- Check ES target compat for newer array methods before using them
+
+## Technical debt identified
+- None new
+
+---
+
+# Sprint 32 Retrospective — Salary Negotiation Agent (#15)
+**Completed:** 2026-03-07
+
+## What was delivered
+- Story 1: Types (SalaryNegotiationState, 6 comp components, 3 scenario types, SSE events) + 8 knowledge rules
+- Story 2: Market Researcher agent (4 tools: research_compensation, analyze_market_position, identify_leverage_points, assess_total_comp)
+- Story 3: Negotiation Strategist agent (5 tools: design_strategy, write_talking_points, simulate_scenario, write_counter_response, assemble_negotiation_prep)
+- Story 4: ProductConfig + FF_SALARY_NEGOTIATION + route + DB migration
+- Story 5: useSalaryNegotiation SSE hook with concurrency guard
+- Story 6: 63 tests (51 server + 12 app)
+
+## What went well
+- All 6 stories delivered in a single session
+- tsc clean on first compile after parallel agent builds
+- All tests passing: server 1,269, app 730
+- Concurrency guard included from the start (lesson from Sprint 31 audit)
+
+## What went wrong
+- Nothing — clean delivery
+
+## What to improve next sprint
+- Continue the pattern: parallel agent builds for Stories 1-3, sequential for 4-6
+
+## Technical debt identified
+- None new
+
+---
+
 # Sprint 30 Retrospective — Networking Outreach Agent (#13)
 **Completed:** 2026-03-07
 
