@@ -94,3 +94,11 @@ export const FF_LINKEDIN_OPTIMIZER = envBool('FF_LINKEDIN_OPTIMIZER', false);
  * Set FF_CONTENT_CALENDAR=true in server/.env to activate.
  */
 export const FF_CONTENT_CALENDAR = envBool('FF_CONTENT_CALENDAR', false);
+
+/**
+ * FF_NETWORKING_OUTREACH — Enable the Networking Outreach Agent (#13) routes.
+ *
+ * When false (default), /api/networking-outreach/* returns 404.
+ * Set FF_NETWORKING_OUTREACH=true in server/.env to activate.
+ */
+export const FF_NETWORKING_OUTREACH = envBool('FF_NETWORKING_OUTREACH', false);

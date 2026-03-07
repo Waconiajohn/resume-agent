@@ -13,9 +13,14 @@ import {
   ChevronDown,
   ChevronUp,
   Link2,
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useNetworkingOutreach } from '@/hooks/useNetworkingOutreach';
 
 // --- Mock data ---
 
@@ -330,6 +335,193 @@ function RecruiterTracker() {
   );
 }
 
+// --- Outreach Generator (AI-powered) ---
+
+function OutreachGenerator() {
+  const outreach = useNetworkingOutreach();
+  const [targetName, setTargetName] = useState('');
+  const [targetTitle, setTargetTitle] = useState('');
+  const [targetCompany, setTargetCompany] = useState('');
+  const [targetLinkedIn, setTargetLinkedIn] = useState('');
+  const [contextNotes, setContextNotes] = useState('');
+  const [resumeText, setResumeText] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [showForm, setShowForm] = useState(true);
+
+  const canGenerate = targetName.trim() && targetTitle.trim() && targetCompany.trim() && resumeText.trim().length >= 50;
+
+  const handleGenerate = useCallback(async () => {
+    if (!canGenerate) return;
+    setShowForm(false);
+    await outreach.startPipeline({
+      resumeText,
+      targetInput: {
+        target_name: targetName.trim(),
+        target_title: targetTitle.trim(),
+        target_company: targetCompany.trim(),
+        target_linkedin_url: targetLinkedIn.trim() || undefined,
+        context_notes: contextNotes.trim() || undefined,
+      },
+    });
+  }, [canGenerate, outreach.startPipeline, resumeText, targetName, targetTitle, targetCompany, targetLinkedIn, contextNotes]);
+
+  const handleCopyReport = useCallback(() => {
+    if (!outreach.report) return;
+    navigator.clipboard.writeText(outreach.report).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [outreach.report]);
+
+  const handleReset = useCallback(() => {
+    outreach.reset();
+    setShowForm(true);
+  }, [outreach.reset]);
+
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles size={18} className="text-[#98b3ff]" />
+        <h3 className="text-[15px] font-semibold text-white/85">AI Outreach Generator</h3>
+        {outreach.status !== 'idle' && outreach.status !== 'connecting' && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="ml-auto flex items-center gap-1 text-[11px] text-white/30 hover:text-white/50 transition-colors"
+          >
+            <RotateCcw size={11} /> New Sequence
+          </button>
+        )}
+      </div>
+      <p className="text-[12px] text-white/35 mb-4">
+        Generate a personalized LinkedIn outreach sequence for any target contact. Powered by your resume and positioning.
+      </p>
+
+      {/* Input form */}
+      {showForm && outreach.status === 'idle' && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input
+              type="text"
+              placeholder="Target name *"
+              value={targetName}
+              onChange={(e) => setTargetName(e.target.value)}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Target title *"
+              value={targetTitle}
+              onChange={(e) => setTargetTitle(e.target.value)}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Target company *"
+              value={targetCompany}
+              onChange={(e) => setTargetCompany(e.target.value)}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="url"
+              placeholder="LinkedIn URL (optional)"
+              value={targetLinkedIn}
+              onChange={(e) => setTargetLinkedIn(e.target.value)}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Context notes (optional — shared events, mutual connections, etc.)"
+              value={contextNotes}
+              onChange={(e) => setContextNotes(e.target.value)}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+            />
+          </div>
+          <textarea
+            placeholder="Paste your resume text here * (minimum 50 characters)"
+            value={resumeText}
+            onChange={(e) => setResumeText(e.target.value)}
+            rows={4}
+            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none resize-none"
+          />
+          <GlassButton
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className="w-full sm:w-auto"
+          >
+            <Sparkles size={14} />
+            Generate Outreach Sequence
+          </GlassButton>
+        </div>
+      )}
+
+      {/* Running state */}
+      {(outreach.status === 'connecting' || outreach.status === 'running') && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-[13px] text-white/60">
+            <Loader2 size={14} className="animate-spin text-[#98b3ff]" />
+            <span>{outreach.currentStage === 'writing' ? 'Writing outreach messages...' : 'Researching target contact...'}</span>
+          </div>
+          {outreach.activityMessages.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-1.5">
+              {outreach.activityMessages.map((msg) => (
+                <div key={msg.id} className="flex items-start gap-2 text-[11px]">
+                  <span className="text-[#98b3ff]/40 font-mono shrink-0">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                  <span className="text-white/40">{msg.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Error state */}
+      {outreach.status === 'error' && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <AlertCircle size={14} className="text-red-400 shrink-0" />
+          <span className="text-[12px] text-red-300">{outreach.error}</span>
+        </div>
+      )}
+
+      {/* Complete state — show report */}
+      {outreach.status === 'complete' && outreach.report && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            {outreach.qualityScore != null && (
+              <span className={cn(
+                'text-[11px] font-medium px-2 py-0.5 rounded-full',
+                outreach.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
+                outreach.qualityScore >= 60 ? 'text-[#dfc797] bg-[#dfc797]/10' :
+                'text-red-400 bg-red-400/10',
+              )}>
+                Quality: {outreach.qualityScore}%
+              </span>
+            )}
+            {outreach.messageCount != null && (
+              <span className="text-[11px] text-white/30">{outreach.messageCount} messages</span>
+            )}
+            <button
+              type="button"
+              onClick={handleCopyReport}
+              className="ml-auto flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+            >
+              {copied ? <><Check size={11} className="text-[#b5dec2]" /> Copied</> : <><Copy size={11} /> Copy All</>}
+            </button>
+          </div>
+          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 max-h-[500px] overflow-y-auto">
+            <pre className="text-[12px] text-white/60 leading-relaxed whitespace-pre-wrap font-sans">
+              {outreach.report}
+            </pre>
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
 // --- Main component ---
 
 export function NetworkingHubRoom() {
@@ -341,6 +533,9 @@ export function NetworkingHubRoom() {
           Networking is your sales force. For every application, the Rule of Four gets you past the queue and in front of decision-makers.
         </p>
       </div>
+
+      {/* AI Outreach Generator — full width */}
+      <OutreachGenerator />
 
       {/* Rule of Four — full width */}
       <RuleOfFourSection />
