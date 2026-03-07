@@ -86,3 +86,11 @@ export const FF_INTERVIEW_PREP = envBool('FF_INTERVIEW_PREP', false);
  * Set FF_LINKEDIN_OPTIMIZER=true in server/.env to activate.
  */
 export const FF_LINKEDIN_OPTIMIZER = envBool('FF_LINKEDIN_OPTIMIZER', false);
+
+/**
+ * FF_CONTENT_CALENDAR — Enable the Content Calendar Agent (#12) routes.
+ *
+ * When false (default), /api/content-calendar/* returns 404.
+ * Set FF_CONTENT_CALENDAR=true in server/.env to activate.
+ */
+export const FF_CONTENT_CALENDAR = envBool('FF_CONTENT_CALENDAR', false);
