@@ -100,7 +100,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     longDescription:
       'Prepares you for interviews by generating likely questions from the JD, then coaching you through STAR-format answers drawn from your verified evidence library.',
     icon: '\u{1F3AF}',
-    status: 'coming_soon',
+    status: 'active',
     route: '/tools/interview-prep',
     category: 'career',
     features: [
