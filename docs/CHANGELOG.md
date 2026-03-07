@@ -1,5 +1,48 @@
 # Changelog — Resume Agent
 
+## 2026-03-06 — Session 28
+**Sprint:** 26 | **Stories:** LinkedIn Optimizer Agent (Stories 1-7 + Audit Fixes)
+**Summary:** Built Agent #11 — LinkedIn Optimizer — as a 2-agent pipeline (Analyzer → Writer). Full backend (types, knowledge rules, analyzer tools, writer tools, ProductConfig, route, feature flag), frontend (SSE hook, LinkedInStudioRoom wired to real pipeline), and 48 tests (36 server + 12 app). Post-delivery audit found and fixed 4 issues. 1,087 server tests passing, 683 app tests passing, tsc clean.
+
+### Changes Made
+- `server/src/agents/linkedin-optimizer/types.ts` — LinkedInOptimizerState, SSE event types, section types, SECTION_ORDER
+- `server/src/agents/linkedin-optimizer/knowledge/rules.ts` — 8 knowledge rules (RULE_0 through RULE_7)
+- `server/src/agents/linkedin-optimizer/analyzer/agent.ts` — AgentConfig with 3 capabilities, orchestrator model, 5 max rounds
+- `server/src/agents/linkedin-optimizer/analyzer/tools.ts` — parse_inputs (LIGHT), analyze_current_profile (MID), identify_keyword_gaps (MID)
+- `server/src/agents/linkedin-optimizer/writer/agent.ts` — AgentConfig with 4 capabilities, orchestrator model, 10 max rounds
+- `server/src/agents/linkedin-optimizer/writer/tools.ts` — write_headline (PRIMARY), write_about (PRIMARY), write_experience_entries (PRIMARY), optimize_keywords (MID), assemble_report (MID)
+- `server/src/agents/linkedin-optimizer/product.ts` — ProductConfig with createInitialState, buildAgentMessage, validateAfterAgent, finalizeResult, persistResult
+- `server/src/routes/linkedin-optimizer.ts` — Zod schema, transformInput (loads cross-product context), feature-flagged
+- `server/src/lib/feature-flags.ts` — Added FF_LINKEDIN_OPTIMIZER (default false)
+- `server/src/index.ts` — Mounted /api/linkedin-optimizer routes
+- `app/src/hooks/useLinkedInOptimizer.ts` — SSE hook with reconnect, activity messages, section progress
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — Wired to real pipeline, activity feed, quality score, report parsing, copy-to-clipboard
+- `server/src/__tests__/linkedin-optimizer-agents.test.ts` — 36 tests (registration, tools, knowledge, ProductConfig)
+- `app/src/__tests__/hooks/useLinkedInOptimizer.test.ts` — 12 tests (SSE event parsing, full pipeline flow)
+
+### Audit Fixes Applied
+- Removed double `report_complete` emission from assemble_report (writer/tools.ts) — finalizeResult already emits it
+- Fixed stale closure: `[optimizer]` → `[optimizer.startPipeline]` in LinkedInStudioRoom.tsx
+- Changed redundant `stage_start`/`stage_complete` → `transparency` in parse_inputs (analyzer/tools.ts)
+- Removed unused `whyMeClarity` from destructuring, made optional in interface
+
+### Decisions Made
+- Followed interview prep pattern exactly — 2-agent pipeline, ProductConfig, route factory, SSE hook
+- Deferred DB migration for `linkedin_optimization_reports` table (persist silently fails until created)
+- Quality scoring: starts at 100, deducts for missing sections and short content
+
+### Known Issues
+- `linkedin_optimization_reports` table not yet created
+- `parseReportSections()` uses fragile regex
+- Pre-existing ResearchDashboardPanel.test.tsx tsc errors (7 BenchmarkProfile type mismatches)
+
+### Next Steps
+- Create DB migration for linkedin_optimization_reports
+- Enable FF_LINKEDIN_OPTIMIZER and smoke test
+- Fix ResearchDashboardPanel.test.tsx tsc errors
+
+---
+
 ## 2026-03-05 — Session 27
 **Sprint:** 25 | **Stories:** Third Audit — Full Codebase Theme, Motion-Safe & Test Alignment (Stories 1-16)
 **Summary:** Fixed all remaining raw Tailwind semantic colors in peripheral files (SalesPage, PricingPage, BillingDashboard, AffiliateDashboard, CoverLetter*, dashboard/*, network-intelligence/*), added motion-safe: prefixes to every animate-spin and animate-pulse across ~30 files, fixed aria-labels on LiveResumePanel buttons, replaced jargon in ResearchDashboardPanel, and aligned all 22 failing test assertions with Phase 3 copy rewrites. Fourth audit pass found and fixed 28 remaining `red-*` semantic color instances across 16 files + 2 missing motion-safe: on celebration animations. 426/426 tests passing, `tsc --noEmit` clean.

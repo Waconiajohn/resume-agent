@@ -8,11 +8,25 @@ import type { ResearchDashboardData } from '../../types/panels';
 // Fixtures
 // ---------------------------------------------------------------------------
 
+function makeBenchmark(overrides?: Partial<ResearchDashboardData['benchmark']>): ResearchDashboardData['benchmark'] {
+  return {
+    required_skills: [],
+    experience_expectations: '',
+    culture_fit_traits: [],
+    communication_style: '',
+    industry_standards: [],
+    competitive_differentiators: [],
+    language_keywords: [],
+    ideal_candidate_summary: '',
+    ...overrides,
+  };
+}
+
 function makeData(overrides?: Partial<ResearchDashboardData>): ResearchDashboardData {
   return {
     company: {},
     jd_requirements: {},
-    benchmark: { required_skills: [], language_keywords: [] } as ResearchDashboardData['benchmark'],
+    benchmark: makeBenchmark(),
     ...overrides,
   };
 }
@@ -130,11 +144,9 @@ describe('ResearchDashboardPanel', () => {
     render(
       <ResearchDashboardPanel
         data={makeData({
-          benchmark: {
-            required_skills: [],
-            language_keywords: [],
+          benchmark: makeBenchmark({
             ideal_candidate_summary: 'A seasoned executive with cloud expertise',
-          } as ResearchDashboardData['benchmark'],
+          }),
         })}
       />,
     );
@@ -145,14 +157,13 @@ describe('ResearchDashboardPanel', () => {
     render(
       <ResearchDashboardPanel
         data={makeData({
-          benchmark: {
+          benchmark: makeBenchmark({
             required_skills: [
               { requirement: 'Cloud Architecture', importance: 'critical', category: 'tech' },
               { requirement: 'Team Leadership', importance: 'important', category: 'soft' },
               { requirement: 'Public Speaking', importance: 'nice_to_have', category: 'soft' },
             ],
-            language_keywords: [],
-          } as ResearchDashboardData['benchmark'],
+          }),
         })}
       />,
     );
@@ -166,10 +177,9 @@ describe('ResearchDashboardPanel', () => {
     render(
       <ResearchDashboardPanel
         data={makeData({
-          benchmark: {
-            required_skills: [],
+          benchmark: makeBenchmark({
             language_keywords: ['scalability', 'microservices'],
-          } as ResearchDashboardData['benchmark'],
+          }),
         })}
       />,
     );
@@ -182,11 +192,9 @@ describe('ResearchDashboardPanel', () => {
     render(
       <ResearchDashboardPanel
         data={makeData({
-          benchmark: {
-            required_skills: [],
-            language_keywords: [],
+          benchmark: makeBenchmark({
             assumptions: { years_experience: '15+', industry: 'SaaS' },
-          } as ResearchDashboardData['benchmark'],
+          }),
         })}
       />,
     );
@@ -199,13 +207,11 @@ describe('ResearchDashboardPanel', () => {
     render(
       <ResearchDashboardPanel
         data={makeData({
-          benchmark: {
-            required_skills: [],
-            language_keywords: [],
+          benchmark: makeBenchmark({
             section_expectations: {
               professional_summary: 'Concise 3-line summary with quantified impact',
             },
-          } as ResearchDashboardData['benchmark'],
+          }),
         })}
       />,
     );
@@ -217,7 +223,7 @@ describe('ResearchDashboardPanel', () => {
     const { container } = render(
       <ResearchDashboardPanel
         data={makeData({
-          benchmark: { required_skills: [], language_keywords: [] } as ResearchDashboardData['benchmark'],
+          benchmark: makeBenchmark(),
         })}
       />,
     );

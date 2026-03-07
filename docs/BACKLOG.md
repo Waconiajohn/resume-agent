@@ -143,3 +143,129 @@ Intake form, SSE streaming hook, CoverLetterScreen workspace, text + PDF export.
   - [ ] Notification system on product launch
 - **Estimated complexity:** Medium
 - **Dependencies:** None
+
+---
+
+## Epic: LinkedIn Content Calendar (Agent #12)
+
+A content calendar agent that generates a 30-day LinkedIn posting plan based on the user's positioning strategy, resume highlights, and industry trends. Uses the LinkedIn Optimizer's analysis data as input when available.
+
+### Story: Content Calendar Types & Knowledge
+- **As a** developer
+- **I want to** define ContentCalendarState, SSE events, and content strategy rules
+- **So that** the agent has structured output types and domain knowledge
+- **Acceptance Criteria:**
+  - [ ] ContentCalendarState with post_plan, content_themes, posting_schedule
+  - [ ] ContentCalendarSSEEvent types (theme_identified, post_drafted, calendar_complete)
+  - [ ] Content strategy rules: post frequency, content mix (thought leadership, engagement, storytelling), optimal posting times
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: Content Strategist Agent (Agent 1 of 2)
+- **As a** user
+- **I want to** have an AI analyze my expertise and industry to identify content themes
+- **So that** my LinkedIn posts are strategically aligned with my positioning
+- **Acceptance Criteria:**
+  - [ ] Agent config + registration with capabilities (content_strategy, theme_identification, audience_analysis)
+  - [ ] Tools: analyze_expertise, identify_themes, map_audience_interests, plan_content_mix
+  - [ ] Consumes positioning strategy + LinkedIn optimizer analysis when available
+  - [ ] Outputs 5-7 content themes with rationale
+- **Estimated complexity:** Large
+- **Dependencies:** Story 1
+
+### Story: Content Writer Agent (Agent 2 of 2)
+- **As a** user
+- **I want to** receive 30 days of ready-to-post LinkedIn content
+- **So that** I can maintain a consistent, professional presence without daily effort
+- **Acceptance Criteria:**
+  - [ ] Agent config + registration with capabilities (linkedin_content_writing, hook_crafting, cta_optimization)
+  - [ ] Tools: write_post, craft_hook, add_hashtags, schedule_post, assemble_calendar
+  - [ ] Each post: hook, body, CTA, hashtags, optimal posting time, content type tag
+  - [ ] Quality scoring per post and overall calendar coherence score
+- **Estimated complexity:** Large
+- **Dependencies:** Story 2
+
+### Story: ProductConfig + Route + Feature Flag
+- **As a** developer
+- **I want to** wire the content calendar into the platform runtime
+- **So that** users can generate calendars through the standard pipeline
+- **Acceptance Criteria:**
+  - [ ] ProductConfig with 2-agent pipeline (Strategist → Writer)
+  - [ ] FF_CONTENT_CALENDAR feature flag
+  - [ ] Route at /api/content-calendar with Zod validation
+  - [ ] DB migration for content_calendar_reports table
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 3
+
+### Story: Frontend — useContentCalendar Hook + CalendarRoom UI
+- **As a** user
+- **I want to** see my content calendar in a visual weekly/monthly view
+- **So that** I can browse, copy, and plan my LinkedIn posting schedule
+- **Acceptance Criteria:**
+  - [ ] useContentCalendar SSE hook (same pattern as useLinkedInOptimizer)
+  - [ ] CalendarRoom component with week/month toggle view
+  - [ ] Each post card: date, content type badge, preview text, copy button
+  - [ ] Activity feed during generation
+- **Estimated complexity:** Large
+- **Dependencies:** Story 4
+
+### Story: Tests
+- **As a** developer
+- **I want to** maintain test coverage for the content calendar agent
+- **So that** regressions are caught early
+- **Acceptance Criteria:**
+  - [ ] Server tests: agent registration, tool model tiers, knowledge rules, ProductConfig (target: 30+)
+  - [ ] App tests: SSE event parsing, state transitions (target: 10+)
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 5
+
+---
+
+## Epic: LinkedIn Optimizer v2 — Experience Section Rewriting
+
+Enhances the LinkedIn Optimizer (Agent #11) to generate full experience section rewrites, not just headline/about/keywords.
+
+### Story: Experience Writer Tool Enhancement
+- **As a** user
+- **I want to** receive optimized experience bullet points for each role
+- **So that** my entire LinkedIn profile is professionally positioned, not just the headline and about
+- **Acceptance Criteria:**
+  - [ ] Enhanced `write_experience_entries` tool generates per-role bullet rewrites
+  - [ ] Each role: optimized title, achievement bullets with metrics, keyword integration
+  - [ ] Respects LinkedIn character limits per experience entry
+  - [ ] Self-review against STAR/CAR framework
+- **Estimated complexity:** Medium
+- **Dependencies:** Sprint 26 (LinkedIn Optimizer v1 complete)
+
+### Story: Experience Section in Report
+- **As a** user
+- **I want to** see my current vs. optimized experience entries side-by-side
+- **So that** I can copy the improved versions into LinkedIn
+- **Acceptance Criteria:**
+  - [ ] Report includes per-role comparison (current vs. optimized)
+  - [ ] LinkedInStudioRoom shows expandable experience cards
+  - [ ] Copy-to-clipboard per role
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 1
+
+### Story: Experience Section Tests
+- **As a** developer
+- **I want to** test the experience rewriting enhancements
+- **So that** the v2 feature is regression-safe
+- **Acceptance Criteria:**
+  - [ ] Server tests for enhanced write_experience_entries tool
+  - [ ] App tests for experience card rendering
+- **Estimated complexity:** Small
+- **Dependencies:** Story 2
+
+---
+
+## Epic: Next Agent Candidates (Agent #13+)
+
+Priority-ordered candidates for the next agent after Content Calendar:
+
+1. **Networking Outreach Agent** — Generates personalized connection request messages and follow-up sequences based on target companies/roles. Complements Network Intelligence.
+2. **Job Application Tracker Agent** — AI-powered application status tracking with follow-up reminders, response rate analytics, and interview scheduling suggestions.
+3. **Salary Negotiation Agent** — Researches compensation benchmarks, generates negotiation talking points, and role-plays offer discussions.
+4. **Executive Bio Agent** — Generates speaker bios, board bios, and professional bios in multiple lengths (50/100/250 words) from resume data.
+5. **Portfolio/Case Study Agent** — Transforms work history achievements into detailed case studies for consulting/advisory positioning.
