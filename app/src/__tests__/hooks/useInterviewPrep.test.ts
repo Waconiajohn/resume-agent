@@ -72,11 +72,18 @@ function applyEvent(
         activityMessages: [...state.activityMessages, addActivity(data.message as string, data.stage as string)],
       };
 
-    case 'section_written':
+    case 'section_progress': {
+      const section = data.section as string;
+      const progressStatus = data.status as string;
+      let text = section;
+      if (progressStatus === 'writing') text = `Writing section: ${section}`;
+      else if (progressStatus === 'reviewing') text = `Reviewing section: ${section}`;
+      else if (progressStatus === 'complete') text = `Section complete: ${section}`;
       return {
         ...state,
-        activityMessages: [...state.activityMessages, addActivity(`Section written: ${data.section as string}`, 'writing')],
+        activityMessages: [...state.activityMessages, addActivity(text, 'writing')],
       };
+    }
 
     case 'report_complete':
       return {
@@ -137,13 +144,32 @@ describe('useInterviewPrep event parsing', () => {
     expect(state.activityMessages[0].text).toBe('Researching Medtronic...');
   });
 
-  it('section_written adds formatted activity message', () => {
-    const state = applyEvent(initialState(), 'section_written', {
+  it('section_progress writing adds formatted activity message', () => {
+    const state = applyEvent(initialState(), 'section_progress', {
       section: 'elevator_pitch',
+      status: 'writing',
     });
     expect(state.activityMessages).toHaveLength(1);
-    expect(state.activityMessages[0].text).toBe('Section written: elevator_pitch');
+    expect(state.activityMessages[0].text).toBe('Writing section: elevator_pitch');
     expect(state.activityMessages[0].stage).toBe('writing');
+  });
+
+  it('section_progress complete adds formatted activity message', () => {
+    const state = applyEvent(initialState(), 'section_progress', {
+      section: 'elevator_pitch',
+      status: 'complete',
+    });
+    expect(state.activityMessages).toHaveLength(1);
+    expect(state.activityMessages[0].text).toBe('Section complete: elevator_pitch');
+  });
+
+  it('section_progress reviewing adds formatted activity message', () => {
+    const state = applyEvent(initialState(), 'section_progress', {
+      section: 'behavioral_questions',
+      status: 'reviewing',
+    });
+    expect(state.activityMessages).toHaveLength(1);
+    expect(state.activityMessages[0].text).toBe('Reviewing section: behavioral_questions');
   });
 
   it('report_complete transitions to complete with report and score', () => {
@@ -205,8 +231,8 @@ describe('useInterviewPrep event parsing', () => {
     state = applyEvent(state, 'transparency', { stage: 'research', message: 'Researching Medtronic...' });
     state = applyEvent(state, 'stage_complete', { stage: 'research', message: 'Research complete' });
     state = applyEvent(state, 'stage_start', { stage: 'writing', message: 'Starting writing' });
-    state = applyEvent(state, 'section_written', { section: 'company_research' });
-    state = applyEvent(state, 'section_written', { section: 'elevator_pitch' });
+    state = applyEvent(state, 'section_progress', { section: 'company_research', status: 'complete' });
+    state = applyEvent(state, 'section_progress', { section: 'elevator_pitch', status: 'writing' });
     expect(state.activityMessages).toHaveLength(7);
     expect(state.currentStage).toBe('writing');
   });
@@ -218,8 +244,8 @@ describe('useInterviewPrep event parsing', () => {
     state = applyEvent(state, 'stage_complete', { stage: 'research', message: 'Done' });
     // Writing phase
     state = applyEvent(state, 'stage_start', { stage: 'writing', message: 'Writing...' });
-    state = applyEvent(state, 'section_written', { section: 'company_research' });
-    state = applyEvent(state, 'section_written', { section: 'elevator_pitch' });
+    state = applyEvent(state, 'section_progress', { section: 'company_research', status: 'complete' });
+    state = applyEvent(state, 'section_progress', { section: 'elevator_pitch', status: 'complete' });
     state = applyEvent(state, 'stage_complete', { stage: 'writing', message: 'Writing done' });
     // Report delivery
     state = applyEvent(state, 'report_complete', {

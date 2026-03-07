@@ -8,7 +8,7 @@
  * Delivery: Full report at once (not streamed section-by-section)
  */
 
-import type { BaseState, BaseEvent } from '../runtime/agent-protocol.js';
+import type { BaseState } from '../runtime/agent-protocol.js';
 
 // ─── Document Sections ──────────────────────────────────────────────
 
@@ -89,6 +89,9 @@ export interface InterviewPrepState extends BaseState {
   session_id: string;
   user_id: string;
   current_stage: string;
+
+  /** Job application ID for persistence linkage */
+  job_application_id?: string;
 
   /** Cross-product context from resume pipeline */
   platform_context?: {

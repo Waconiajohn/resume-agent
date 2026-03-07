@@ -14,7 +14,6 @@ import type {
   InterviewPrepSSEEvent,
   InterviewPrepSection,
   WrittenSection,
-  SECTION_ORDER,
 } from '../types.js';
 import { INTERVIEW_PREP_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';

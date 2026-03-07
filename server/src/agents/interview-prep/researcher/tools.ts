@@ -9,7 +9,7 @@
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type { InterviewPrepState, InterviewPrepSSEEvent } from '../types.js';
-import { queryPerplexity, queryWithFallback } from '../../../lib/perplexity.js';
+import { queryPerplexity } from '../../../lib/perplexity.js';
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { createSessionLogger } from '../../../lib/logger.js';

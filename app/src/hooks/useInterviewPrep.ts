@@ -88,9 +88,18 @@ export function useInterviewPrep() {
           addActivity(data.message as string, data.stage as string);
           break;
 
-        case 'section_written':
-          addActivity(`Section written: ${data.section as string}`, 'writing');
+        case 'section_progress': {
+          const section = data.section as string;
+          const progressStatus = data.status as string;
+          if (progressStatus === 'writing') {
+            addActivity(`Writing section: ${section}`, 'writing');
+          } else if (progressStatus === 'reviewing') {
+            addActivity(`Reviewing section: ${section}`, 'writing');
+          } else if (progressStatus === 'complete') {
+            addActivity(`Section complete: ${section}`, 'writing');
+          }
           break;
+        }
 
         case 'report_complete':
           setState((prev) => ({

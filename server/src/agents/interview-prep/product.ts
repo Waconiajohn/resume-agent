@@ -9,8 +9,9 @@
 import type { ProductConfig } from '../runtime/product-config.js';
 import { researcherConfig } from './researcher/agent.js';
 import { writerConfig } from './writer/agent.js';
-import type { InterviewPrepState, InterviewPrepSSEEvent, InterviewPrepSection } from './types.js';
+import type { InterviewPrepState, InterviewPrepSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
+import logger from '../../lib/logger.js';
 
 export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepState, InterviewPrepSSEEvent> {
   return {
@@ -64,6 +65,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
       session_id: sessionId,
       user_id: userId,
       current_stage: 'research',
+      job_application_id: input.job_application_id as string | undefined,
       platform_context: input.platform_context as InterviewPrepState['platform_context'],
       sections: {} as InterviewPrepState['sections'],
     }),
@@ -150,7 +152,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
           .from('interview_prep_reports')
           .insert({
             user_id: state.user_id,
-            job_application_id: (state as unknown as Record<string, unknown>).job_application_id ?? null,
+            job_application_id: state.job_application_id ?? null,
             company_name: state.jd_analysis?.company_name ?? 'Unknown',
             role_title: state.jd_analysis?.role_title ?? 'Unknown',
             report_markdown: data.report,
@@ -159,8 +161,11 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
             sourced_questions: data.sourced_questions,
             career_story_questions: data.career_story_questions,
           });
-      } catch {
-        // Persistence failure is non-fatal — report was already delivered via SSE
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err), userId: state.user_id },
+          'Interview prep: failed to persist report (non-fatal)',
+        );
       }
     },
 

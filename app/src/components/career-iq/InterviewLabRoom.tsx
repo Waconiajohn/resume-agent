@@ -375,7 +375,6 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd }: {
       <div className="space-y-3">
         {history.map((interview) => {
           const outcome = outcomeConfig[interview.outcome];
-          const Icon = outcome.icon;
           return (
             <div key={interview.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
               <div className="flex items-center justify-between mb-1">
@@ -391,7 +390,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd }: {
                         onClick={() => onUpdateOutcome(interview.id, o)}
                         className={cn(
                           'text-[10px] px-1.5 py-0.5 rounded-full transition-colors',
-                          isActive ? cfg.color.replace('text-', 'text-').concat(' font-medium') : 'text-white/20 hover:text-white/40',
+                          isActive ? `${cfg.color} font-medium` : 'text-white/20 hover:text-white/40',
                         )}
                         title={cfg.label}
                       >
@@ -505,11 +504,11 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
           {qualityScore !== null && (
             <div className={cn(
               'text-[12px] font-medium px-3 py-1 rounded-full',
-              qualityScore >= 8 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
-                : qualityScore >= 6 ? 'text-[#dfc797] bg-[#dfc797]/10'
+              qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
+                : qualityScore >= 60 ? 'text-[#dfc797] bg-[#dfc797]/10'
                 : 'text-[#e8a0a0] bg-[#e8a0a0]/10',
             )}>
-              Quality: {qualityScore}/10
+              Quality: {qualityScore}%
             </div>
           )}
         </div>
@@ -590,6 +589,8 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
   const [activeCompany, setActiveCompany] = useState('');
   const [activeRole, setActiveRole] = useState('');
   const [loadingInputs, setLoadingInputs] = useState(false);
+  const [inputError, setInputError] = useState<string | null>(null);
+  const [jdWarning, setJdWarning] = useState(false);
 
   const {
     status,
@@ -613,13 +614,15 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     setActiveCompany(interview.company);
     setActiveRole(interview.role);
     setLoadingInputs(true);
+    setInputError(null);
+    setJdWarning(false);
     setViewMode('generating');
 
     try {
       // Fetch resume text from user's master resume
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setViewMode('lab');
+        setInputError('Please sign in to generate interview prep.');
         setLoadingInputs(false);
         return;
       }
@@ -645,9 +648,13 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
       const jdText = jdResult.data?.jd_text ?? '';
 
       if (!resumeText || resumeText.length < 50) {
-        setViewMode('lab');
+        setInputError('No resume found. Please upload a resume in the Resume Strategist before generating interview prep.');
         setLoadingInputs(false);
         return;
+      }
+
+      if (!jdText) {
+        setJdWarning(true);
       }
 
       setLoadingInputs(false);
@@ -660,7 +667,7 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
       });
     } catch (err) {
       console.error('[InterviewLab] Failed to start prep:', err);
-      setViewMode('lab');
+      setInputError('Something went wrong loading your data. Please try again.');
       setLoadingInputs(false);
     }
   }, [startPipeline]);
@@ -713,7 +720,18 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
           <p className="text-[13px] text-white/40">Generating your interview prep report...</p>
         </div>
 
-        {loadingInputs ? (
+        {inputError ? (
+          <GlassCard className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle size={18} className="text-[#e8a0a0]" />
+              <span className="text-[13px] text-[#e8a0a0]">{inputError}</span>
+            </div>
+            <GlassButton variant="ghost" onClick={handleBack} className="text-[12px]">
+              <ArrowLeft size={14} className="mr-1.5" />
+              Back to Interview Lab
+            </GlassButton>
+          </GlassCard>
+        ) : loadingInputs ? (
           <GlassCard className="p-6">
             <div className="flex items-center gap-3">
               <Loader2 size={18} className="text-[#98b3ff] animate-spin" />
@@ -732,11 +750,23 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
             </GlassButton>
           </GlassCard>
         ) : (
-          <PrepProgress
-            company={activeCompany}
-            activityMessages={activityMessages}
-            currentStage={currentStage}
-          />
+          <>
+            {jdWarning && (
+              <GlassCard className="p-4 mb-0 border-[#dfc797]/20">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={14} className="text-[#dfc797] flex-shrink-0" />
+                  <span className="text-[12px] text-[#dfc797]/80">
+                    No job description found — the report will be based on the role title and company name only. For best results, add a JD to the job application.
+                  </span>
+                </div>
+              </GlassCard>
+            )}
+            <PrepProgress
+              company={activeCompany}
+              activityMessages={activityMessages}
+              currentStage={currentStage}
+            />
+          </>
         )}
 
         <div className="flex justify-start">
