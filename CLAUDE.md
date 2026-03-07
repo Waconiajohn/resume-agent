@@ -325,6 +325,40 @@ Resume only when confidence is 8 or above.
 *This framework is version 1.0. Update it through the normal story/sprint process — never ad hoc.*
 
 ---
+
+## Claude Code Skills — USE THESE PROACTIVELY
+
+Skills in `~/.claude/skills/` encode this project's patterns and conventions. **Use them automatically when the task matches — don't wait to be asked.**
+
+### When to use each skill:
+
+| Trigger | Skill | What it does |
+|---------|-------|-------------|
+| Adding a new agent tool | **agent-tool-scaffold** | Creates tool def, Zod schema, model routing in llm.ts, agent registration, test file — all 5 files in correct order |
+| Adding a new SSE event or panel | **sse-event-pipeline** | Creates PanelData union type, backend emission, event handler, panel component, panel-renderer case |
+| Before ANY commit | **qa-gate** | Runs tsc (both app + server), import resolution, stale closures |
+| Starting/ending a session | **scrum-session** | Automates the Session Start/End Protocol from this CLAUDE.md |
+| After implementing any feature | **component-test-gen** | Generates tests with project-specific mocks |
+| Creating/modifying DB tables | **supabase-migration** | Generates migration with RLS policies |
+| Making architectural decisions | **adr-writer** | Creates ADR in docs/DECISIONS.md (next number after ADR-034) |
+| Adding error handling | **error-pattern** | Pipeline error emission, Pino logging, Sentry integration |
+| Modifying AI prompts or model routing | **llm-prompt-lab** | Prompt versioning, cost estimation, model-specific quirk handling |
+| Suspecting unused code | **dead-code-hunter** | Scans for orphaned components, unused exports, legacy agent code |
+
+### Mandatory skill usage:
+
+1. **qa-gate**: MUST run before every commit. Both `app` and `server` tsc must pass.
+2. **agent-tool-scaffold**: MUST use when adding tools to any agent. The 5-file sequence is error-prone without it — especially the model routing entry in `llm.ts` which silently falls back to the wrong tier if missing.
+3. **sse-event-pipeline**: MUST use when adding new panel types. The 4-file sequence (type, component, renderer, backend) must stay in sync.
+4. **scrum-session**: SHOULD use at session start/end to maintain the scrum framework.
+5. **component-test-gen**: SHOULD generate tests for new components. Current test floor: server 1,014 tests, app 586 tests.
+
+### Quality floor (do not regress below):
+- Server tests: 1,014 passing, 0 failures
+- App tests: 586 passing, 0 failures
+- TypeScript: both `app` and `server` tsc must pass
+
+---
 ---
 
 # Resume Agent — Product & Technical Reference

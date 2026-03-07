@@ -1,0 +1,159 @@
+/**
+ * Network Intelligence — TypeScript types
+ *
+ * All server-side interfaces for CSV parsing, company normalization,
+ * and database row types for the 6 NI tables.
+ */
+
+// ─── CSV Parsing ──────────────────────────────────────────────────────────────
+
+export interface ParsedConnection {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  companyRaw: string;
+  position: string | null;
+  connectedOn: Date | null;
+}
+
+export interface CsvParseError {
+  row: number;
+  message: string;
+}
+
+export interface CsvParseResult {
+  connections: ParsedConnection[];
+  totalRows: number;
+  validRows: number;
+  skippedRows: number;
+  duplicatesRemoved: number;
+  uniqueCompanies: number;
+  errors: CsvParseError[];
+}
+
+// ─── Company Normalization ────────────────────────────────────────────────────
+
+export interface NormalizationResult {
+  rawName: string;
+  normalizedName: string;
+  companyId: string | null;
+  matchMethod: 'exact' | 'fuzzy' | 'llm' | 'new';
+}
+
+export interface NormalizationBatchResult {
+  results: NormalizationResult[];
+  newCompaniesCreated: number;
+  cacheHits: number;
+  llmCallsMade: number;
+}
+
+// ─── API Response ─────────────────────────────────────────────────────────────
+
+export interface CsvUploadResponse {
+  success: boolean;
+  totalRows: number;
+  validRows: number;
+  skippedRows: number;
+  duplicatesRemoved: number;
+  uniqueCompanies: number;
+  errors: CsvParseError[];
+}
+
+// ─── Database Row Types ───────────────────────────────────────────────────────
+
+export interface CompanyDirectoryRow {
+  id: string;
+  name_normalized: string;
+  name_display: string;
+  name_variants: string[];
+  domain: string | null;
+  industry: string | null;
+  employee_count: string | null;
+  headquarters: string | null;
+  description: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReferralBonusProgramRow {
+  id: string;
+  company_id: string;
+  bonus_amount: string | null;
+  bonus_currency: string | null;
+  program_url: string | null;
+  notes: string | null;
+  verified_at: string | null;
+  source: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientConnectionRow {
+  id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  company_raw: string;
+  company_id: string | null;
+  position: string | null;
+  connected_on: string | null;
+  import_batch: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnrichedConnectionRow extends ClientConnectionRow {
+  company_display_name: string | null;
+}
+
+export interface CompanySummaryRow {
+  companyRaw: string;
+  companyDisplayName: string | null;
+  companyId: string | null;
+  connectionCount: number;
+  topPositions: string[];
+}
+
+export interface ClientTargetTitleRow {
+  id: string;
+  user_id: string;
+  title: string;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobMatchRow {
+  id: string;
+  user_id: string;
+  company_id: string;
+  title: string;
+  url: string | null;
+  location: string | null;
+  salary_range: string | null;
+  description_snippet: string | null;
+  match_score: number | null;
+  referral_available: boolean;
+  connection_count: number;
+  status: 'new' | 'applied' | 'referred' | 'interviewing' | 'rejected' | 'archived';
+  scraped_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScrapeLogRow {
+  id: string;
+  user_id: string;
+  operation: 'csv_import' | 'job_scrape' | 'company_enrich' | 'normalization';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  input_summary: Record<string, unknown>;
+  output_summary: Record<string, unknown>;
+  error_message: string | null;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+}

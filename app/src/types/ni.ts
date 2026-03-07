@@ -1,0 +1,56 @@
+/**
+ * Network Intelligence — Frontend types
+ */
+
+export interface CsvUploadSummary {
+  totalRows: number;
+  validRows: number;
+  skippedRows: number;
+  duplicatesRemoved: number;
+  uniqueCompanies: number;
+  errors: Array<{ row: number; message: string }>;
+}
+
+export interface ConnectionItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  companyRaw: string;
+  companyNormalized: string | null;
+  position: string | null;
+  connectedOn: string | null;
+}
+
+export interface CompanySummary {
+  companyRaw: string;
+  companyDisplayName: string | null;
+  companyId: string | null;
+  connectionCount: number;
+  topPositions: string[];
+}
+
+export interface TargetTitle {
+  id: string;
+  title: string;
+  priority: number;
+  createdAt: string;
+}
+
+export type JobMatchStatus = 'new' | 'applied' | 'referred' | 'interviewing' | 'rejected' | 'archived';
+
+export interface JobMatch {
+  id: string;
+  companyId: string;
+  title: string;
+  url: string | null;
+  location: string | null;
+  salaryRange: string | null;
+  descriptionSnippet: string | null;
+  matchScore: number | null;
+  referralAvailable: boolean;
+  connectionCount: number;
+  status: JobMatchStatus;
+  scrapedAt: string | null;
+  createdAt: string;
+}

@@ -31,6 +31,14 @@ export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionC
           )}
           {email && (
             <button
+              onClick={() => onNavigate?.('career-iq')}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#98b3ff]/80 hover:bg-[#98b3ff]/10 hover:text-[#98b3ff] transition-colors"
+            >
+              CareerIQ
+            </button>
+          )}
+          {email && (
+            <button
               onClick={() => onNavigate?.('dashboard')}
               className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
             >

@@ -15,10 +15,11 @@ import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
+import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
 
-type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter';
+type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq';
 
 export default function App() {
   const { user, session, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
@@ -101,6 +102,7 @@ export default function App() {
     else if (path === '/affiliate') setView('affiliate');
     else if (path === '/dashboard') setView('dashboard');
     else if (path === '/cover-letter') setView('cover-letter');
+    else if (path === '/career-iq') setView('career-iq');
     else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
     else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
   }, []);
@@ -142,6 +144,7 @@ export default function App() {
       else if (path === '/affiliate') setView('affiliate');
       else if (path === '/dashboard') setView('dashboard');
       else if (path === '/cover-letter') setView('cover-letter');
+      else if (path === '/career-iq') setView('career-iq');
       else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
       else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
       else setView('landing');
@@ -372,7 +375,14 @@ export default function App() {
       }
       return;
     }
-    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter'];
+    if (viewName === 'career-iq' || viewName === '/career-iq') {
+      setView('career-iq');
+      if (window.location.pathname !== '/career-iq') {
+        window.history.pushState({}, '', '/career-iq');
+      }
+      return;
+    }
+    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter', 'career-iq'];
     const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
     setView(newView);
     const paths: Record<View, string> = {
@@ -385,6 +395,7 @@ export default function App() {
       dashboard: '/dashboard',
       tools: '/tools',
       'cover-letter': '/cover-letter',
+      'career-iq': '/career-iq',
     };
     const newPath = paths[newView];
     if (newPath && window.location.pathname !== newPath) {
@@ -558,6 +569,18 @@ export default function App() {
         <CoverLetterScreen
           accessToken={accessToken}
           onNavigate={navigateTo}
+        />
+      )}
+
+      {view === 'career-iq' && (
+        <CareerIQScreen
+          userName={user.email ?? ''}
+          onNavigate={navigateTo}
+          sessions={sessions}
+          resumes={resumes}
+          sessionsLoading={sessionLoading}
+          onNewSession={handleNewSession}
+          onResumeSession={handleResumeSession}
         />
       )}
 

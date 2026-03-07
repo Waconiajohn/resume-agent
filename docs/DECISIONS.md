@@ -333,3 +333,146 @@ Sticky sessions solve 95% of the scaling problem with zero code changes. Railway
 **Decision:** Keep Scout 17B ($0.11/$0.34) for the MID tier. These tasks are structured analysis (not creative writing or tool calling), and Scout handles them adequately. The MID tier no longer drives any agent loop reasoning.
 **Reasoning:** Scout's tool-calling quirks don't affect MID tier tasks — `self_review_section` and `classify_fit` receive structured input and produce structured output without tool calls. Upgrading to Qwen3 32B would cost ~2.6x more with uncertain quality benefit. Collapsing MID into PRIMARY (70B) would add ~$0.10/pipeline for marginal quality gain on analysis tasks. If self-review quality degrades after the 70B orchestrator upgrade, Qwen3 32B is the recommended next step.
 **Consequences:** MID tier cost unchanged. Scout 17B's Preview status remains a minor risk — if Groq deprecates it, Qwen3 32B is the ready fallback. Monitor self-review quality in pipeline runs.
+
+## ADR-030: Claude Code Skills System Adoption
+**Date:** 2026-03-05
+**Status:** accepted
+**Context:** Development follows a strict scrum framework (CLAUDE.md) but certain tasks — adding new agent tools, creating SSE panels, running pre-commit quality checks — require touching 4-5 files in the right order with project-specific patterns. These multi-file operations are error-prone, especially model routing entries in `llm.ts` which silently fall back to the wrong tier if missing.
+**Decision:** Adopt 12 Claude Code skills (`~/.claude/skills/`) that encode project-specific patterns. Skills applicable to this project: qa-gate, agent-tool-scaffold, sse-event-pipeline, component-test-gen, supabase-migration, scrum-session, dead-code-hunter, llm-prompt-lab, error-pattern, adr-writer.
+**Reasoning:** Skills persist across sessions — the agent-tool-scaffold skill encodes the exact 5-file sequence (tool definition, Zod schema, model routing, agent registration, test file) and warns about the input_schema/Zod mismatch pitfall and model routing fallback issue. The scrum-session skill automates the session start/end protocol from CLAUDE.md, reducing manual compliance overhead. The qa-gate skill codifies the quality checklist that prevents stale closures, import resolution failures, and type mismatches.
+**Consequences:** CLAUDE.md updated with skills reference section. Skills are validated against real tasks before being trusted. Skills may need updates as the agent runtime evolves (e.g., new agent bus protocol, Redis migration).
+
+## ADR-031: 4-Tier Model Routing for Cost Optimization
+
+**Date:** 2026-03-05 (retroactive — established ~2026-02)
+**Status:** accepted
+**Context:** A full pipeline run invokes 30-50 LLM calls across different tools with vastly different complexity requirements. Using a single model for all calls wastes money on simple tasks and risks quality on complex ones.
+**Decision:** Implement 4-tier model routing in `llm.ts`: PRIMARY (section writing, adversarial review), MID (self-review, benchmarking, gap analysis), ORCHESTRATOR (agent loop reasoning), LIGHT (text extraction, JD analysis). Each tool maps to one tier via `getModelForTool()`.
+**Reasoning:** Cost optimization — LIGHT tier is free on Z.AI and $0.05/M on Groq. Pipeline cost dropped from ~$2.50 to ~$0.23 per run on Groq. Tool complexity naturally clusters into 4 levels: extraction (trivial), analysis (moderate), creation (complex), reasoning (complex + long-context).
+**Consequences:** Adding new tools requires explicit tier assignment in `llm.ts`. Unknown tools fall back to ORCHESTRATOR tier. Each provider (Groq, Z.AI, Anthropic) maps tiers to different concrete models. Model overrides available via env vars.
+
+## ADR-032: Panel-Based Right Pane UX (Not Chat-First)
+
+**Date:** 2026-03-05 (retroactive — established ~2026-02)
+**Status:** accepted
+**Context:** Early prototypes used a chat-first UI where all agent output appeared as messages. This created a wall-of-text experience inappropriate for structured resume workflow stages (blueprint review, section editing, gap visualization).
+**Decision:** Replace chat-first with a panel system. The right pane renders specialized components (11 panel types) dispatched by `panel-renderer.tsx`. Each pipeline stage emits `right_panel_update` SSE events carrying typed `PanelData` payloads.
+**Reasoning:** Different workflow stages need fundamentally different UIs — a gap analysis matrix, a section editor with diff view, a questionnaire form. A chat interface forces all of these into text, losing structure. The panel discriminated union (`PanelData.type`) provides type safety for the frontend.
+**Consequences:** New panel types require: TypeScript type in `panels.ts` union, component in `panels/`, renderer case in `panel-renderer.tsx`, backend SSE emission. The sse-event-pipeline skill automates this 4-file sequence.
+
+## ADR-033: Self-Review Loop Before User Presentation
+
+**Date:** 2026-03-05 (retroactive — established ~2026-02)
+**Status:** accepted
+**Context:** Initial drafts from the Craftsman often contained anti-patterns (buzzword density, weak action verbs, missing quantification) that the user would catch and request fixes for, creating unnecessary revision cycles.
+**Decision:** The Craftsman runs an autonomous self-review loop after each section draft: `write_section` → `self_review_section` → `revise_section` (if needed) → `present_to_user`. The self-review checks against the quality checklist and anti-pattern list before any human sees the output.
+**Reasoning:** Catching issues before user presentation reduces revision rounds by ~60%. The self-review uses the MID tier model (cheaper than PRIMARY), so the cost overhead is minimal. This also teaches the agent to internalize quality standards over the course of a pipeline run.
+**Consequences:** Each section takes 2-3 LLM calls instead of 1, but user satisfaction is higher. The `check_anti_patterns` and `check_evidence_integrity` tools run during self-review. If self-review fails 3x, the section is presented with a quality warning.
+
+## ADR-034: JSON Repair Layer for LLM Response Reliability
+
+**Date:** 2026-03-05 (retroactive — established ~2026-01)
+**Status:** accepted
+**Context:** LLM responses frequently contain malformed JSON: trailing commas, JavaScript-style comments, unquoted keys, markdown code fences wrapping JSON, truncated responses. This caused pipeline crashes at JSON.parse boundaries.
+**Decision:** Implement `json-repair.ts` as a universal repair layer applied to all LLM JSON responses. It strips comments, fixes trailing commas, removes code fences, repairs truncated objects, and coerces stringified values. `coerceToolParameters()` in `agent-loop.ts` handles the specific case of stringified JSON in tool call arguments.
+**Reasoning:** Defensive parsing is cheaper than retrying failed LLM calls. The repair layer adds <1ms per call. Different models have different failure modes — Z.AI adds comments, Groq occasionally truncates, all models sometimes wrap JSON in markdown fences.
+**Consequences:** Pipeline reliability improved dramatically. The repair layer logs warnings when it intervenes, enabling monitoring of model-specific issues. Risk: repair could silently fix a genuine error, but this is acceptable given the alternative (crash).
+
+## ADR-035: React.lazy Code Splitting for CareerIQ Room Components
+
+**Date:** 2026-03-06
+**Status:** accepted
+
+**Context:**
+CareerIQ has 8 room components plus RoomPlaceholder, all imported eagerly in CareerIQScreen.tsx. Users typically visit 1-2 rooms per session, meaning 6-7 room bundles are downloaded but never rendered. As rooms grew richer (InterviewLabRoom ~400 lines, NetworkingHubRoom ~350 lines), the wasted initial payload became significant.
+
+**Decision:**
+Lazy-load all room components using `React.lazy()` with a shared `<Suspense fallback={<RoomLoadingSkeleton />}>` wrapper. Eagerly import only always-visible components (Sidebar, DashboardHome, WelcomeState, WhyMeEngine, LivePulseStrip, MobileBriefing, useWhyMeStory, useMediaQuery). Use the named-export lazy pattern: `lazy(() => import('./Room').then(m => ({ default: m.Room })))`.
+
+**Consequences:**
+
+*Positive:*
+- Initial bundle reduced — only dashboard shell + active room loaded
+- Vite handles chunk splitting automatically, no manual configuration needed
+- RoomLoadingSkeleton provides consistent loading UX across all rooms
+
+*Negative:*
+- Named export pattern is slightly verbose compared to default exports
+- First navigation to a room has a brief loading flash (mitigated by skeleton)
+
+*Neutral:*
+- Type imports (e.g., `PipelineInterviewCard`) still use eager `import type` — no lazy loading needed for types
+
+## ADR-036: Computed Signals from Existing Data (No New API Calls)
+
+**Date:** 2026-03-06
+**Status:** accepted
+
+**Context:**
+Zone 4 (Your Signals) displayed 3 static mock signal cards. The design brief called for real signals reflecting the user's positioning strength, activity level, and market alignment. Options were: (1) create a new backend endpoint that computes signals server-side, (2) derive signals client-side from data already in the component tree (Why-Me signals, session count, pipeline stats).
+
+**Decision:**
+Compute all 3 signals client-side from existing data already available in CareerIQScreen: Positioning Strength from Why-Me signal levels, Activity Score from session count + pipeline card count, Market Alignment from pipeline stage distribution. ZoneYourSignals accepts optional `whyMeSignals`, `sessionCount`, and `pipelineStats` props, falling back to mock data when props are absent.
+
+**Consequences:**
+
+*Positive:*
+- Zero new API calls — no added latency or backend work
+- Signals update instantly as users complete Why-Me steps or add pipeline cards
+- Graceful fallback: new users see mock signals until they generate real data
+
+*Negative:*
+- Signals are limited to data available in the frontend — no server-side analytics (e.g., resume quality scoring)
+- Pipeline stats require pipeline data to be loaded in DashboardHome (currently not — noted as tech debt)
+
+*Neutral:*
+- Signal computation is pure functions — easily testable and relocatable to a hook if needed later
+
+## ADR-037: Optimistic Drag-and-Drop with Supabase Rollback for Pipeline
+
+**Date:** 2026-03-06
+**Status:** accepted
+
+**Context:**
+ZoneYourPipeline implements a 5-stage Kanban board backed by Supabase `job_applications`. The UX question was whether to (1) wait for Supabase confirmation before updating the UI (pessimistic), (2) update UI immediately and persist in background (optimistic), or (3) use local-only state with periodic sync.
+
+**Decision:**
+Optimistic updates: drag-and-drop immediately moves the card in local state via `setCards()`, then fires an async Supabase upsert. On error, the component re-fetches the full card list from Supabase to rollback to server truth. Archive uses the same pattern — optimistic remove, then Supabase `status='archived'` update.
+
+**Consequences:**
+
+*Positive:*
+- Instant UI feedback — no perceptible latency on drag-and-drop
+- Rollback by re-fetch is simpler and more reliable than tracking previous state
+
+*Negative:*
+- Brief inconsistency window between UI and server state
+- If Supabase is completely down, rollback re-fetch also fails — user sees a flash of cards reappearing then disappearing
+
+*Neutral:*
+- Falls back to mock data on initial load if Supabase is unreachable — pipeline is fully usable in offline/demo mode
+
+## ADR-038: Cross-Room Data Flow via CareerIQScreen Prop Passing
+
+**Date:** 2026-03-06
+**Status:** accepted
+
+**Context:**
+Multiple rooms need access to the same data: Interview Lab needs pipeline cards in "Interviewing" stage, DashboardHome needs session data for computed signals and agent feed, Job Command Center needs pipeline summary. Options were: (1) each room loads its own data independently, (2) shared React context/provider, (3) parent component loads data and passes via props.
+
+**Decision:**
+CareerIQScreen acts as the data orchestration layer — it loads pipeline "Interviewing" cards from Supabase once and passes them to InterviewLabRoom as `pipelineInterviews` prop. It passes `recentSessions` and `sessionCount` to DashboardHome, which derives computed signals and feed events. PipelineSummary loads its own data independently (acceptable because it's a different query shape).
+
+**Consequences:**
+
+*Positive:*
+- No new dependencies (no context provider, no state library)
+- Data loading happens once at the parent level, preventing duplicate Supabase calls for Interview Lab
+- Type-safe prop passing catches mismatches at compile time
+
+*Negative:*
+- Pipeline data is still loaded independently in 3 places (ZoneYourPipeline, PipelineSummary, CareerIQScreen) — consolidation via shared context is identified tech debt
+- Adding new cross-room data flows requires threading props through CareerIQScreen
+
+*Neutral:*
+- This pattern is consistent with the existing approach (App.tsx passes sessions/resumes to CareerIQScreen the same way)
