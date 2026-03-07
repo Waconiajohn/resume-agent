@@ -13,6 +13,7 @@ import { admin } from './routes/admin.js';
 import { affiliates } from './routes/affiliates.js';
 import { coverLetterRoutes } from './routes/cover-letter.js';
 import { interviewPrepRoutes } from './routes/interview-prep.js';
+import { linkedInOptimizerRoutes } from './routes/linkedin-optimizer.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -249,6 +250,7 @@ app.route('/api/admin', admin);
 app.route('/api/affiliates', affiliates);
 app.route('/api/cover-letter', coverLetterRoutes);
 app.route('/api/interview-prep', interviewPrepRoutes);
+app.route('/api/linkedin-optimizer', linkedInOptimizerRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

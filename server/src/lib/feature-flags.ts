@@ -78,3 +78,11 @@ export const FF_NETWORK_INTELLIGENCE = envBool('FF_NETWORK_INTELLIGENCE', false)
  * Set FF_INTERVIEW_PREP=true in server/.env to activate.
  */
 export const FF_INTERVIEW_PREP = envBool('FF_INTERVIEW_PREP', false);
+
+/**
+ * FF_LINKEDIN_OPTIMIZER — Enable the LinkedIn Optimizer Agent (#11) routes.
+ *
+ * When false (default), /api/linkedin-optimizer/* returns 404.
+ * Set FF_LINKEDIN_OPTIMIZER=true in server/.env to activate.
+ */
+export const FF_LINKEDIN_OPTIMIZER = envBool('FF_LINKEDIN_OPTIMIZER', false);
