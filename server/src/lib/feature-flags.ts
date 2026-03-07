@@ -62,3 +62,19 @@ export const FF_SELF_REVIEW_LIGHT = envBool('FF_SELF_REVIEW_LIGHT', false);
  * Set FF_COVER_LETTER=true in server/.env to activate.
  */
 export const FF_COVER_LETTER = envBool('FF_COVER_LETTER', false);
+
+/**
+ * FF_NETWORK_INTELLIGENCE — Enable the Network Intelligence routes.
+ *
+ * When false (default), /api/ni/* returns 404.
+ * Set FF_NETWORK_INTELLIGENCE=true in server/.env to activate.
+ */
+export const FF_NETWORK_INTELLIGENCE = envBool('FF_NETWORK_INTELLIGENCE', false);
+
+/**
+ * FF_INTERVIEW_PREP — Enable the Interview Prep Agent (#10) routes.
+ *
+ * When false (default), /api/interview-prep/* returns 404.
+ * Set FF_INTERVIEW_PREP=true in server/.env to activate.
+ */
+export const FF_INTERVIEW_PREP = envBool('FF_INTERVIEW_PREP', false);
