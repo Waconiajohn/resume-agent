@@ -49,6 +49,8 @@ export function useNetworkingOutreach() {
 
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const statusRef = useRef(state.status);
+  statusRef.current = state.status;
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -227,6 +229,7 @@ export function useNetworkingOutreach() {
 
   const startPipeline = useCallback(
     async (input: NetworkingOutreachInput): Promise<boolean> => {
+      if (statusRef.current !== 'idle') return false;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token ?? null;
       if (!token) {

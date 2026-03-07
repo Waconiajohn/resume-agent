@@ -401,6 +401,8 @@ function OutreachGenerator() {
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input
+              id="outreach-target-name"
+              aria-label="Target name"
               type="text"
               placeholder="Target name *"
               value={targetName}
@@ -408,6 +410,8 @@ function OutreachGenerator() {
               className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
             />
             <input
+              id="outreach-target-title"
+              aria-label="Target title"
               type="text"
               placeholder="Target title *"
               value={targetTitle}
@@ -415,6 +419,8 @@ function OutreachGenerator() {
               className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
             />
             <input
+              id="outreach-target-company"
+              aria-label="Target company"
               type="text"
               placeholder="Target company *"
               value={targetCompany}
@@ -424,6 +430,8 @@ function OutreachGenerator() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
+              id="outreach-linkedin-url"
+              aria-label="Target LinkedIn URL"
               type="url"
               placeholder="LinkedIn URL (optional)"
               value={targetLinkedIn}
@@ -431,6 +439,8 @@ function OutreachGenerator() {
               className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
             />
             <input
+              id="outreach-context-notes"
+              aria-label="Context notes"
               type="text"
               placeholder="Context notes (optional — shared events, mutual connections, etc.)"
               value={contextNotes}
@@ -439,6 +449,8 @@ function OutreachGenerator() {
             />
           </div>
           <textarea
+            id="outreach-resume"
+            aria-label="Resume text"
             placeholder="Paste your resume text here * (minimum 50 characters)"
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}

@@ -35,6 +35,8 @@ export function useCoverLetter(accessToken: string | null) {
 
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const statusRef = useRef(state.status);
+  statusRef.current = state.status;
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -216,6 +218,7 @@ export function useCoverLetter(accessToken: string | null) {
       jobDescription: string,
       companyName: string,
     ): Promise<boolean> => {
+      if (statusRef.current !== 'idle') return false;
       if (!accessToken) return false;
 
       sessionIdRef.current = sessionId;

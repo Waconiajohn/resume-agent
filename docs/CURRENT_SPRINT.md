@@ -1,31 +1,35 @@
-# Sprint 30: Networking Outreach Agent (#13)
-**Goal:** Build the Networking Outreach Agent as Agent #13 — a 2-agent pipeline (Researcher → Writer) that generates personalized LinkedIn connection requests and follow-up message sequences from the user's resume, positioning strategy, and target company/role.
-**Started:** 2026-03-06
+# Sprint 31: Job Application Tracker Agent (#14)
+**Goal:** Build the Job Application Tracker Agent as Agent #14 — a 2-agent pipeline (Analyst -> Follow-Up Writer) that analyzes job applications against the user's resume/positioning, scores fit, generates follow-up messages, and produces portfolio-level analytics.
+**Started:** 2026-03-07
 
 ## Stories This Sprint
 
 ### Backend — Types & Knowledge
-1. [x] Story 1: Define `NetworkingOutreachState`, `NetworkingOutreachSSEEvent`, and message types — **Status: done**
-2. [x] Story 2: Write networking outreach knowledge rules (connection requests, follow-ups, personalization, timing) — **Status: done**
+1. [x] Story 1: Define `JobTrackerState`, `JobTrackerSSEEvent`, application status types, and tracking knowledge rules — **Status: done**
 
-### Backend — Researcher Agent
-3. [x] Story 3: Researcher agent config + tools (analyze_target, find_common_ground, assess_connection_path, plan_outreach_sequence) — **Status: done**
+### Backend — Application Analyst Agent
+2. [x] Story 2: Analyst agent config + tools (analyze_application, score_fit, assess_follow_up_timing, generate_portfolio_analytics) — **Status: done**
 
-### Backend — Writer Agent
-4. [x] Story 4: Writer agent config + tools (write_connection_request, write_follow_up, write_value_offer, assemble_sequence) — **Status: done**
+### Backend — Follow-Up Writer Agent
+3. [x] Story 3: Follow-Up Writer agent config + tools (write_follow_up_email, write_thank_you, write_check_in, assess_status, assemble_tracker_report) — **Status: done**
 
 ### Backend — ProductConfig & Route
-5. [x] Story 5: ProductConfig + feature flag + route + DB migration — **Status: done**
+4. [x] Story 4: ProductConfig + FF_JOB_TRACKER + route + DB migration — **Status: done**
 
 ### Frontend Integration
-6. [x] Story 6: `useNetworkingOutreach` SSE hook + OutreachRoom UI component — **Status: done**
+5. [x] Story 5: `useJobTracker` SSE hook + TrackerRoom UI component — **Status: done**
 
 ### Tests
-7. [x] Story 7: Server tests (38) + app tests (11) — **Status: done**
+6. [x] Story 6: Server tests (52) + app tests (12) — **Status: done**
 
 ## Out of Scope (Explicitly)
-- LinkedIn API integration for sending messages (requires OAuth)
-- Contact import from LinkedIn (requires API)
-- CRM-style contact management (separate feature)
-- Email outreach (LinkedIn only for v1)
-- Automated scheduling of messages (manual copy-paste for v1)
+- Real-time job board API integration (Indeed, LinkedIn Jobs)
+- Automated application submission
+- Interview scheduling/calendar integration
+- ATS status scraping
+- Historical application import from spreadsheets (future feature)
+
+## Upcoming Sprints
+- Sprint 32: Salary Negotiation Agent (#15)
+- Sprint 33: Executive Bio Agent (#16)
+- Sprint 34: Portfolio / Case Study Agent (#17)

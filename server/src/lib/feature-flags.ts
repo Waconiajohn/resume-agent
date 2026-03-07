@@ -102,3 +102,11 @@ export const FF_CONTENT_CALENDAR = envBool('FF_CONTENT_CALENDAR', false);
  * Set FF_NETWORKING_OUTREACH=true in server/.env to activate.
  */
 export const FF_NETWORKING_OUTREACH = envBool('FF_NETWORKING_OUTREACH', false);
+
+/**
+ * FF_JOB_TRACKER — Enable the Job Application Tracker Agent (#14) routes.
+ *
+ * When false (default), /api/job-tracker/* returns 404.
+ * Set FF_JOB_TRACKER=true in server/.env to activate.
+ */
+export const FF_JOB_TRACKER = envBool('FF_JOB_TRACKER', false);

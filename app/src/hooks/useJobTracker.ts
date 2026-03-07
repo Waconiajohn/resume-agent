@@ -3,7 +3,7 @@ import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
-export type LinkedInOptimizerStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+export type JobTrackerStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
 
 export interface ActivityMessage {
   id: string;
@@ -12,33 +12,43 @@ export interface ActivityMessage {
   timestamp: number;
 }
 
-interface LinkedInOptimizerState {
-  status: LinkedInOptimizerStatus;
+interface JobTrackerHookState {
+  status: JobTrackerStatus;
   report: string | null;
   qualityScore: number | null;
+  applicationCount: number | null;
+  followUpCount: number | null;
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
 }
 
-export interface LinkedInOptimizerInput {
+export interface ApplicationInputItem {
+  company: string;
+  role: string;
+  date_applied: string;
+  jd_text: string;
+  status: 'applied' | 'followed_up' | 'interviewing' | 'offered' | 'rejected' | 'ghosted' | 'withdrawn';
+  posting_url?: string;
+  contact_name?: string;
+  notes?: string;
+}
+
+export interface JobTrackerInput {
   resumeText: string;
-  linkedinHeadline?: string;
-  linkedinAbout?: string;
-  linkedinExperience?: string;
-  targetRole?: string;
-  targetIndustry?: string;
-  jobApplicationId?: string;
+  applications: ApplicationInputItem[];
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
-const MAX_ACTIVITY_MESSAGES = 30;
+const MAX_ACTIVITY_MESSAGES = 50;
 
-export function useLinkedInOptimizer() {
-  const [state, setState] = useState<LinkedInOptimizerState>({
+export function useJobTracker() {
+  const [state, setState] = useState<JobTrackerHookState>({
     status: 'idle',
     report: null,
     qualityScore: null,
+    applicationCount: null,
+    followUpCount: null,
     activityMessages: [],
     error: null,
     currentStage: null,
@@ -100,25 +110,37 @@ export function useLinkedInOptimizer() {
           addActivity(data.message as string, data.stage as string);
           break;
 
-        case 'section_progress': {
-          const section = data.section as string;
-          const progressStatus = data.status as string;
-          if (progressStatus === 'writing') {
-            addActivity(`Writing: ${section}`, 'writing');
-          } else if (progressStatus === 'reviewing') {
-            addActivity(`Reviewing: ${section}`, 'writing');
-          } else if (progressStatus === 'complete') {
-            addActivity(`Complete: ${section}`, 'writing');
-          }
+        case 'application_analyzed': {
+          const company = data.company as string;
+          const role = data.role as string;
+          const fitScore = data.fit_score as number;
+          addActivity(`Analyzed ${company} — ${role} (fit: ${fitScore}/100)`, 'analysis');
           break;
         }
 
-        case 'report_complete':
+        case 'follow_up_generated': {
+          const company = data.company as string;
+          const role = data.role as string;
+          const type = (data.follow_up_type as string).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+          addActivity(`Generated ${type} for ${company} — ${role}`, 'writing');
+          break;
+        }
+
+        case 'analytics_updated': {
+          const total = data.total as number;
+          const avgFit = data.average_fit as number;
+          addActivity(`Portfolio analytics updated — ${total} applications, avg fit ${avgFit}/100`, 'analysis');
+          break;
+        }
+
+        case 'tracker_complete':
           setState((prev) => ({
             ...prev,
             status: 'complete',
             report: data.report as string,
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
+            applicationCount: typeof data.application_count === 'number' ? data.application_count : prev.applicationCount,
+            followUpCount: typeof data.follow_up_count === 'number' ? data.follow_up_count : prev.followUpCount,
           }));
           abortRef.current?.abort();
           break;
@@ -161,7 +183,7 @@ export function useLinkedInOptimizer() {
 
       setState((prev) => ({ ...prev, status: 'connecting' }));
 
-      fetch(`${API_BASE}/linkedin-optimizer/${sessionId}/stream`, {
+      fetch(`${API_BASE}/job-tracker/${sessionId}/stream`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       })
@@ -189,7 +211,7 @@ export function useLinkedInOptimizer() {
             }
           } catch (err) {
             if (err instanceof DOMException && err.name === 'AbortError') return;
-            console.error('[useLinkedInOptimizer] SSE stream error:', err);
+            console.error('[useJobTracker] SSE stream error:', err);
           }
 
           if (!controller.signal.aborted && mountedRef.current) {
@@ -211,7 +233,7 @@ export function useLinkedInOptimizer() {
         })
         .catch((err) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
-          console.error('[useLinkedInOptimizer] SSE fetch error:', err);
+          console.error('[useJobTracker] SSE fetch error:', err);
           if (mountedRef.current) {
             setState((prev) => ({
               ...prev,
@@ -225,7 +247,7 @@ export function useLinkedInOptimizer() {
   );
 
   const startPipeline = useCallback(
-    async (input: LinkedInOptimizerInput): Promise<boolean> => {
+    async (input: JobTrackerInput): Promise<boolean> => {
       if (statusRef.current !== 'idle') return false;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token ?? null;
@@ -243,13 +265,15 @@ export function useLinkedInOptimizer() {
         status: 'connecting',
         report: null,
         qualityScore: null,
+        applicationCount: null,
+        followUpCount: null,
         activityMessages: [],
         error: null,
         currentStage: null,
       });
 
       try {
-        const res = await fetch(`${API_BASE}/linkedin-optimizer/start`, {
+        const res = await fetch(`${API_BASE}/job-tracker/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -258,12 +282,7 @@ export function useLinkedInOptimizer() {
           body: JSON.stringify({
             session_id: sessionId,
             resume_text: input.resumeText,
-            linkedin_headline: input.linkedinHeadline,
-            linkedin_about: input.linkedinAbout,
-            linkedin_experience: input.linkedinExperience,
-            target_role: input.targetRole,
-            target_industry: input.targetIndustry,
-            job_application_id: input.jobApplicationId,
+            applications: input.applications,
           }),
         });
 
@@ -301,6 +320,8 @@ export function useLinkedInOptimizer() {
       status: 'idle',
       report: null,
       qualityScore: null,
+      applicationCount: null,
+      followUpCount: null,
       activityMessages: [],
       error: null,
       currentStage: null,

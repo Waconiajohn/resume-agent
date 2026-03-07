@@ -75,6 +75,11 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
       user_id: userId,
       current_stage: 'strategy',
       platform_context: input.platform_context as ContentCalendarState['platform_context'],
+      target_context: {
+        target_role: (input.target_role as string) ?? '',
+        target_industry: (input.target_industry as string) ?? '',
+        target_seniority: (input.target_seniority as string) ?? '',
+      },
       posts: [],
     }),
 
@@ -192,6 +197,11 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
       if (agentName === 'strategist') {
         if (!state.resume_data) {
           throw new Error('Strategist did not parse resume data');
+        }
+      }
+      if (agentName === 'writer') {
+        if (!state.final_report) {
+          throw new Error('Writer did not produce a final report');
         }
       }
     },

@@ -1,5 +1,42 @@
 # Changelog — Resume Agent
 
+## 2026-03-07 — Session 29
+**Sprint:** 31 | **Stories:** Job Application Tracker Agent #14 (Stories 1-6)
+**Summary:** Built Agent #14 — Job Application Tracker — as a 2-agent pipeline (Analyst -> Follow-Up Writer). Full backend (types, 8 knowledge rules, analyst tools, writer tools, ProductConfig, route, feature flag, DB migration), frontend (SSE hook, TrackerGenerator UI in JobCommandCenterRoom), and 64 tests (52 server + 12 app). 1,216 server tests passing, 718 app tests passing, tsc clean.
+
+### Changes Made
+- `server/src/agents/job-tracker/types.ts` — JobTrackerState, SSE event types, 7 ApplicationStatus values, 4 FollowUpType values, STATUS_SEQUENCE/LABELS, FOLLOW_UP_SEQUENCE/LABELS/TIMING
+- `server/src/agents/job-tracker/knowledge/rules.ts` — 8 rules (RULE_0 philosophy through RULE_7 tone/self-review), JOB_TRACKER_RULES combined export
+- `server/src/agents/job-tracker/analyst/agent.ts` — AgentConfig with 4 capabilities, orchestrator model, 6 max rounds
+- `server/src/agents/job-tracker/analyst/tools.ts` — analyze_application (LIGHT), score_fit (MID), assess_follow_up_timing (MID), generate_portfolio_analytics (MID)
+- `server/src/agents/job-tracker/writer/agent.ts` — AgentConfig with 4 capabilities, orchestrator model, 12 max rounds
+- `server/src/agents/job-tracker/writer/tools.ts` — write_follow_up_email (PRIMARY), write_thank_you (PRIMARY), write_check_in (PRIMARY), assess_status (MID), assemble_tracker_report (MID)
+- `server/src/agents/job-tracker/product.ts` — ProductConfig with createInitialState, buildAgentMessage, validateAfterAgent, finalizeResult, persistResult
+- `server/src/routes/job-tracker.ts` — Zod schema (1-50 apps, 7 status enum), transformInput loads positioning_strategy + evidence_items
+- `server/src/lib/feature-flags.ts` — Added FF_JOB_TRACKER
+- `server/src/index.ts` — Mounted /api/job-tracker routes
+- `server/.env` — Added FF_JOB_TRACKER=true
+- `supabase/migrations/20260307050000_job_tracker_reports.sql` — Table with RLS, indexes, updated_at trigger
+- `app/src/hooks/useJobTracker.ts` — SSE hook with 8 event types, reconnect, activity messages
+- `app/src/components/career-iq/JobCommandCenterRoom.tsx` — TrackerGenerator component with form, activity feed, report display
+- `server/src/__tests__/job-tracker-agents.test.ts` — 52 tests (constants, rules, registration, tool tiers, ProductConfig)
+- `app/src/__tests__/hooks/useJobTracker.test.ts` — 12 tests (state, lifecycle, event shapes, auth/fetch failures)
+
+### Decisions Made
+- Writer max_rounds=12 (vs 8 for networking outreach) because it iterates over multiple applications
+- Analyst analyze_application does batch analysis in one call to reduce round count
+- 4-dimension fit scoring (keyword match, seniority alignment, industry relevance, positioning fit) — each 25%
+- Dynamic writer behavior: uses follow_up_priorities from Analyst to decide which apps get messages
+- No why_me_story loading (unlike networking outreach) — job tracker doesn't need it
+
+### Known Issues
+- None identified
+
+### Next Steps
+- Sprint 32: Salary Negotiation Agent (#15)
+
+---
+
 ## 2026-03-06 — Session 28
 **Sprint:** 26 | **Stories:** LinkedIn Optimizer Agent (Stories 1-7 + Audit Fixes)
 **Summary:** Built Agent #11 — LinkedIn Optimizer — as a 2-agent pipeline (Analyzer → Writer). Full backend (types, knowledge rules, analyzer tools, writer tools, ProductConfig, route, feature flag), frontend (SSE hook, LinkedInStudioRoom wired to real pipeline), and 48 tests (36 server + 12 app). Post-delivery audit found and fixed 4 issues. 1,087 server tests passing, 683 app tests passing, tsc clean.

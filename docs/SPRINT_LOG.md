@@ -2,6 +2,41 @@
 
 ---
 
+# Sprint 30 Retrospective — Networking Outreach Agent (#13)
+**Completed:** 2026-03-07
+
+## What was delivered
+- Story 1: NetworkingOutreachState, 5 message types (connection_request, follow_up_1, follow_up_2, value_offer, meeting_request), SSE event union
+- Story 2: 8 networking knowledge rules (philosophy, connection requests, follow-ups, value offers, meeting requests, personalization, tone, self-review)
+- Story 3: Researcher agent config + 4 tools (analyze_target with resume parsing, find_common_ground, assess_connection_path, plan_outreach_sequence)
+- Story 4: Writer agent config + 5 tools (write_connection_request, write_follow_up, write_value_offer, write_meeting_request, assemble_sequence)
+- Story 5: ProductConfig + FF_NETWORKING_OUTREACH + route + DB migration + cross-product context loading
+- Story 6: useNetworkingOutreach SSE hook + OutreachGenerator UI in NetworkingHubRoom
+- Story 7: 41 server tests + 11 app tests — all passing
+
+## What went well
+- All 7 stories completed across 2 sessions with full audit cycle
+- Content Calendar served as proven template — same 2-agent pipeline pattern
+- Two full audit passes caught: missing write_meeting_request tool, resume parsing gap, unsafe array access, missing writer validation, follow_up_number schema gap
+- Zero TypeScript errors on both app and server after all fixes
+
+## What went wrong
+- First audit found 3 critical + 3 warning issues — code was not production-ready before audit
+- Writer agent initially had only 4 tools (missing meeting_request) despite types.ts defining 5 message types
+- Resume data parsing was absent from researcher — would have caused empty personalization at runtime
+
+## What to improve next sprint
+- Run audit after each agent pair (researcher + writer) instead of waiting until the end
+- Cross-reference MESSAGE_SEQUENCE array against tool count early
+- Consider adding integration tests that mock LLM and validate cross-tool state flow
+
+## Technical debt identified
+- NETWORKING_OUTREACH_RULES injected in both agent system prompt AND each tool's LLM call (redundant tokens)
+- No integration tests for cross-tool state flow (unit tests cover structure only)
+- Content Calendar backlog stories still show unchecked boxes despite being delivered in Sprint 28
+
+---
+
 # Sprint 28 Retrospective — Content Calendar Agent (#12)
 **Completed:** 2026-03-06
 

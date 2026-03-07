@@ -64,6 +64,11 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
       current_stage: 'analysis',
       job_application_id: input.job_application_id as string | undefined,
       platform_context: input.platform_context as LinkedInOptimizerState['platform_context'],
+      target_context: {
+        target_role: (input.target_role as string) ?? '',
+        target_industry: (input.target_industry as string) ?? '',
+        target_seniority: (input.target_seniority as string) ?? '',
+      },
       sections: {} as LinkedInOptimizerState['sections'],
     }),
 
@@ -185,6 +190,11 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
           throw new Error('Analyzer did not parse resume data');
         }
         // Profile analysis and keyword analysis are optional — profile may not be provided
+      }
+      if (agentName === 'writer') {
+        if (!state.final_report) {
+          throw new Error('Writer did not produce a final report');
+        }
       }
     },
 

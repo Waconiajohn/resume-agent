@@ -333,9 +333,16 @@ describe('LinkedIn Optimizer ProductConfig', () => {
     expect(() => config.validateAfterAgent!('analyzer', state)).not.toThrow();
   });
 
-  it('validateAfterAgent does not throw for writer (no validation)', () => {
+  it('validateAfterAgent throws if writer produces no final_report', () => {
     const config = createLinkedInOptimizerProductConfig();
     const state = config.createInitialState('s', 'u', {});
+    expect(() => config.validateAfterAgent!('writer', state)).toThrow('final report');
+  });
+
+  it('validateAfterAgent passes if writer produces final_report', () => {
+    const config = createLinkedInOptimizerProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    state.final_report = '# Report';
     expect(() => config.validateAfterAgent!('writer', state)).not.toThrow();
   });
 

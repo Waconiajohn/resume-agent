@@ -36,6 +36,8 @@ export function useInterviewPrep() {
 
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const statusRef = useRef(state.status);
+  statusRef.current = state.status;
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -219,6 +221,7 @@ export function useInterviewPrep() {
       companyName: string;
       jobApplicationId?: string;
     }): Promise<boolean> => {
+      if (statusRef.current !== 'idle') return false;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token ?? null;
       if (!token) {
