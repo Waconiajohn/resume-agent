@@ -2,6 +2,36 @@
 
 ---
 
+# Sprint 35 Retrospective — Agents #18-#20 (Thank You Note, Personal Brand Audit, 90-Day Plan)
+**Completed:** 2026-03-07
+
+## What was delivered
+- Agent #18 — Thank You Note Writer: Single-agent pipeline, 4 tools, 7 rules, NoteFormat types, full route/hook/tests
+- Agent #19 — Personal Brand Audit: 2-agent pipeline (Auditor → Advisor), 8 tools, 8 rules, 6 finding categories, ConsistencyScores, full route/hook/tests
+- Agent #20 — 90-Day Plan Generator: 2-agent pipeline (Researcher → Planner), 8 tools, 8 rules, 30/60/90 phase structure, full route/hook/tests
+- 185 new tests (149 server + 36 app), all passing
+- 3 DB migrations with RLS, 3 feature flags, 3 SSE hooks with concurrency guard
+
+## What went well
+- Parallel agent builds (3 agents built concurrently via subagents) — massive speed improvement
+- Pattern consistency is very high at this point — each agent follows the established template closely
+- Manual audit caught zero critical issues — the subagent-built code matched patterns correctly
+- Test count growing healthily: server 1,364 → 1,513, app 754 → 790
+
+## What went wrong
+- Audit subagent hit rate limit — had to fall back to manual file-by-file review
+- Personal brand auditor's onComplete has an empty conditional (cosmetic, not a bug — score_consistency sets state directly)
+
+## What to improve next sprint
+- Consider extracting the SSE hook template into a generator — hooks are now 95% boilerplate
+- Consider a shared test helper for ProductConfig tests — same shape across all agents
+
+## Technical debt identified
+- 20 SSE hooks now exist, all with near-identical structure — ripe for a shared hook factory
+- ProductConfig test boilerplate is repetitive across all agent test files
+
+---
+
 # Sprint 34 Retrospective — Portfolio / Case Study Agent (#17)
 **Completed:** 2026-03-07
 

@@ -1,5 +1,38 @@
 # Changelog — Resume Agent
 
+## 2026-03-07 — Session 33
+**Sprint:** 35 | **Stories:** Agents #18-#20 (Thank You Note Writer, Personal Brand Audit, 90-Day Plan Generator)
+**Summary:** Built three new agents in one sprint. Agent #18 (Thank You Note Writer) — single-agent pipeline with 4 tools (analyze_interview_context, write_thank_you_note, personalize_per_interviewer, assemble_note_set), 7 knowledge rules, NoteFormat type (email/handwritten/linkedin_message). Agent #19 (Personal Brand Audit) — 2-agent pipeline (Auditor → Advisor), 8 tools total, 8 knowledge rules, 6 finding categories, ConsistencyScores interface, BrandSource types. Agent #20 (90-Day Plan Generator) — 2-agent pipeline (Researcher → Planner), 8 tools total, 8 knowledge rules, phased 30/60/90-day structure with Stakeholder/QuickWin/LearningPriority types. All three: ProductConfig, routes with platform context loading, feature flags (FF_THANK_YOU_NOTE, FF_PERSONAL_BRAND_AUDIT, FF_NINETY_DAY_PLAN), DB migrations with RLS, SSE hooks with statusRef concurrency guard, and 185 new tests (149 server + 36 app). Audited all code — no critical findings.
+
+### Changes Made
+- `server/src/agents/thank-you-note/` — 5 files: types, knowledge/rules, writer/agent, writer/tools, product
+- `server/src/agents/personal-brand/` — 7 files: types, knowledge/rules, auditor/agent, auditor/tools, advisor/agent, advisor/tools, product
+- `server/src/agents/ninety-day-plan/` — 7 files: types, knowledge/rules, researcher/agent, researcher/tools, planner/agent, planner/tools, product
+- `server/src/routes/thank-you-note.ts` — Route with Zod schema, platform context loading
+- `server/src/routes/personal-brand.ts` — Route with brand_sources construction from flat fields
+- `server/src/routes/ninety-day-plan.ts` — Route with role_context construction from flat fields
+- `server/src/lib/feature-flags.ts` — Added FF_THANK_YOU_NOTE, FF_PERSONAL_BRAND_AUDIT, FF_NINETY_DAY_PLAN
+- `server/src/index.ts` — Mounted 3 new routes
+- `app/src/hooks/useThankYouNote.ts` — SSE hook with statusRef concurrency guard
+- `app/src/hooks/usePersonalBrand.ts` — SSE hook with statusRef concurrency guard
+- `app/src/hooks/useNinetyDayPlan.ts` — SSE hook with statusRef concurrency guard
+- `supabase/migrations/20260307090000_thank_you_note_reports.sql` — Table + RLS
+- `supabase/migrations/20260307091000_personal_brand_reports.sql` — Table + RLS
+- `supabase/migrations/20260307092000_ninety_day_plan_reports.sql` — Table + RLS
+- `server/src/__tests__/thank-you-note-agents.test.ts` — 45 tests
+- `server/src/__tests__/personal-brand-agents.test.ts` — 53 tests
+- `server/src/__tests__/ninety-day-plan-agents.test.ts` — 51 tests
+- `app/src/__tests__/hooks/useThankYouNote.test.ts` — 12 tests
+- `app/src/__tests__/hooks/usePersonalBrand.test.ts` — 12 tests
+- `app/src/__tests__/hooks/useNinetyDayPlan.test.ts` — 12 tests
+- `docs/BACKLOG.md` — Added Epics 18-20 definitions
+
+### Quality Gate
+- Server: 1,513 tests passing (was 1,364 → +149)
+- App: 790 tests passing (was 754 → +36)
+- TypeScript: both server and app tsc clean
+- Audit: no critical or high findings
+
 ## 2026-03-07 — Session 32
 **Sprint:** 34 | **Stories:** Portfolio / Case Study Agent #17 (Stories 1-6)
 **Summary:** Built Agent #17 — Portfolio / Case Study — as a 2-agent pipeline (Achievement Analyst → Case Study Writer). 5 case study formats, 6 impact categories, 8 knowledge rules (STAR/CAR framework, metrics quantification, consulting-grade formatting), 8 tools across 2 agents, ProductConfig, route, FF_CASE_STUDY, DB migration, useCaseStudy SSE hook, and 61 tests (49 server + 12 app). 1,363 server tests passing, 754 app tests passing, tsc clean.

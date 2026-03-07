@@ -1,0 +1,218 @@
+/**
+ * 90-Day Plan Agent Product — ProductConfig implementation.
+ *
+ * Agent #20: 2-agent pipeline (Role Researcher -> Plan Writer) that
+ * analyzes the target role context, maps stakeholders, identifies quick
+ * wins, and produces a strategic 90-day onboarding plan.
+ * Autonomous — no user gates. Full plan delivered at once.
+ */
+
+import type { ProductConfig } from '../runtime/product-config.js';
+import { researcherConfig } from './researcher/agent.js';
+import { plannerConfig } from './planner/agent.js';
+import type { NinetyDayPlanState, NinetyDayPlanSSEEvent, PlanPhase, Stakeholder, QuickWin, LearningPriority } from './types.js';
+import { supabaseAdmin } from '../../lib/supabase.js';
+import logger from '../../lib/logger.js';
+
+export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanState, NinetyDayPlanSSEEvent> {
+  return {
+    domain: 'ninety-day-plan',
+
+    agents: [
+      {
+        name: 'researcher',
+        config: researcherConfig,
+        stageMessage: {
+          startStage: 'research',
+          start: 'Analyzing role context and mapping stakeholders...',
+          complete: 'Research complete — stakeholders mapped, quick wins identified, learning priorities assessed',
+        },
+        onComplete: (scratchpad, state) => {
+          if (scratchpad.resume_data && !state.resume_data) {
+            state.resume_data = scratchpad.resume_data as NinetyDayPlanState['resume_data'];
+          }
+          if (Array.isArray(scratchpad.stakeholder_map)) {
+            state.stakeholder_map = scratchpad.stakeholder_map as Stakeholder[];
+          }
+          if (Array.isArray(scratchpad.quick_wins)) {
+            state.quick_wins = scratchpad.quick_wins as QuickWin[];
+          }
+          if (Array.isArray(scratchpad.learning_priorities)) {
+            state.learning_priorities = scratchpad.learning_priorities as LearningPriority[];
+          }
+        },
+      },
+      {
+        name: 'planner',
+        config: plannerConfig,
+        stageMessage: {
+          startStage: 'planning',
+          start: 'Writing strategic 90-day onboarding plan...',
+          complete: '90-day plan complete',
+        },
+        onComplete: (scratchpad, state) => {
+          if (Array.isArray(scratchpad.phases)) {
+            state.phases = scratchpad.phases as PlanPhase[];
+          }
+          if (scratchpad.final_report && typeof scratchpad.final_report === 'string') {
+            state.final_report = scratchpad.final_report;
+          }
+          if (typeof scratchpad.quality_score === 'number') {
+            state.quality_score = scratchpad.quality_score;
+          }
+        },
+      },
+    ],
+
+    createInitialState: (sessionId, userId, input) => ({
+      session_id: sessionId,
+      user_id: userId,
+      current_stage: 'research',
+      role_context: input.role_context as NinetyDayPlanState['role_context'] ?? {
+        target_role: '',
+        target_company: '',
+        target_industry: '',
+      },
+      stakeholder_map: [] as Stakeholder[],
+      quick_wins: [] as QuickWin[],
+      learning_priorities: [] as LearningPriority[],
+      phases: [] as PlanPhase[],
+      platform_context: input.platform_context as NinetyDayPlanState['platform_context'],
+      target_context: input.target_context as NinetyDayPlanState['target_context'] ?? {
+        target_role: '',
+        target_industry: '',
+        target_seniority: '',
+      },
+    }),
+
+    buildAgentMessage: (agentName, state, input) => {
+      if (agentName === 'researcher') {
+        const parts = [
+          'Analyze this executive\'s target role and prepare research for the 90-day onboarding plan.',
+          '',
+          '## Resume',
+          String(input.resume_text ?? ''),
+          '',
+          '## Target Role',
+          `Role: ${state.role_context.target_role}`,
+          `Company: ${state.role_context.target_company}`,
+          `Industry: ${state.role_context.target_industry}`,
+        ];
+
+        if (state.role_context.reporting_to) parts.push(`Reporting To: ${state.role_context.reporting_to}`);
+        if (state.role_context.team_size) parts.push(`Team Size: ${state.role_context.team_size}`);
+
+        if (state.platform_context?.positioning_strategy) {
+          parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
+        }
+
+        parts.push(
+          '',
+          'Call tools in order: analyze_role_context, map_stakeholders, identify_quick_wins, assess_learning_priorities.',
+        );
+        return parts.join('\n');
+      }
+
+      if (agentName === 'planner') {
+        const stakeholderSummary = state.stakeholder_map.length > 0
+          ? state.stakeholder_map.map((s, i) => `${i + 1}. ${s.name_or_role} (${s.relationship_type}, ${s.priority})`).join('\n')
+          : '(no stakeholders mapped)';
+
+        const quickWinSummary = state.quick_wins.length > 0
+          ? state.quick_wins.map((qw, i) => `${i + 1}. ${qw.description} (impact: ${qw.impact}, effort: ${qw.effort})`).join('\n')
+          : '(no quick wins identified)';
+
+        const learningSummary = state.learning_priorities.length > 0
+          ? state.learning_priorities.map((lp, i) => `${i + 1}. ${lp.area} (${lp.importance})`).join('\n')
+          : '(no learning priorities assessed)';
+
+        return [
+          'Write a strategic 90-day onboarding plan using the research data below.',
+          '',
+          '## Stakeholder Map',
+          stakeholderSummary,
+          '',
+          '## Quick Wins',
+          quickWinSummary,
+          '',
+          '## Learning Priorities',
+          learningSummary,
+          '',
+          'Write the plan in order:',
+          '1. Call write_30_day_plan for Phase 1: Listen & Learn',
+          '2. Call write_60_day_plan for Phase 2: Contribute & Build',
+          '3. Call write_90_day_plan for Phase 3: Lead & Deliver',
+          '4. Call assemble_strategic_plan to produce the final plan document',
+          '',
+          'Do NOT skip any phase.',
+        ].join('\n');
+      }
+
+      return '';
+    },
+
+    finalizeResult: (state, _input, emit) => {
+      emit({
+        type: 'plan_complete',
+        session_id: state.session_id,
+        report: state.final_report ?? '',
+        quality_score: state.quality_score ?? 0,
+        phase_count: state.phases.length,
+      });
+
+      return {
+        report: state.final_report,
+        quality_score: state.quality_score,
+        phases: state.phases,
+        stakeholder_map: state.stakeholder_map,
+        quick_wins: state.quick_wins,
+      };
+    },
+
+    persistResult: async (state, result) => {
+      const data = result as {
+        report: string;
+        quality_score: number;
+        phases: unknown;
+        stakeholder_map: unknown;
+        quick_wins: unknown;
+      };
+
+      try {
+        await supabaseAdmin
+          .from('ninety_day_plan_reports')
+          .insert({
+            user_id: state.user_id,
+            report_markdown: data.report,
+            quality_score: data.quality_score,
+            phases: data.phases,
+            stakeholder_map: data.stakeholder_map,
+            quick_wins: data.quick_wins,
+            role_context: state.role_context,
+          });
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err), userId: state.user_id },
+          '90-day plan: failed to persist report (non-fatal)',
+        );
+      }
+    },
+
+    validateAfterAgent: (agentName, state) => {
+      if (agentName === 'researcher') {
+        if (!state.stakeholder_map || state.stakeholder_map.length === 0) {
+          throw new Error('Researcher did not produce a stakeholder map');
+        }
+      }
+      if (agentName === 'planner') {
+        if (!state.final_report) {
+          throw new Error('Planner did not produce a final report');
+        }
+      }
+    },
+
+    emitError: (stage, error, emit) => {
+      emit({ type: 'pipeline_error', stage, error });
+    },
+  };
+}

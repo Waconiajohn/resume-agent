@@ -20,6 +20,9 @@ import { jobTrackerRoutes } from './routes/job-tracker.js';
 import { salaryNegotiationRoutes } from './routes/salary-negotiation.js';
 import { executiveBioRoutes } from './routes/executive-bio.js';
 import { caseStudyRoutes } from './routes/case-study.js';
+import { thankYouNoteRoutes } from './routes/thank-you-note.js';
+import { personalBrandRoutes } from './routes/personal-brand.js';
+import { ninetyDayPlanRoutes } from './routes/ninety-day-plan.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -263,6 +266,9 @@ app.route('/api/job-tracker', jobTrackerRoutes);
 app.route('/api/salary-negotiation', salaryNegotiationRoutes);
 app.route('/api/executive-bio', executiveBioRoutes);
 app.route('/api/case-study', caseStudyRoutes);
+app.route('/api/thank-you-note', thankYouNoteRoutes);
+app.route('/api/personal-brand', personalBrandRoutes);
+app.route('/api/ninety-day-plan', ninetyDayPlanRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

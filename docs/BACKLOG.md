@@ -556,3 +556,229 @@ Transforms work history achievements into structured case studies for consulting
   - [ ] App tests: SSE event parsing, state transitions (target: 10+)
 - **Estimated complexity:** Medium
 - **Dependencies:** Story 5
+
+---
+
+## Epic 18: Thank You Note Writer Agent
+
+**Goal:** Single-agent pipeline that crafts personalized, professional thank-you notes after interviews — tailored per interviewer, referencing specific conversation points, and calibrated to executive communication standards.
+
+### Story 1: Types & Knowledge Rules
+- **As a** developer
+- **I want to** define state types, SSE events, and quality rules for thank-you note writing
+- **So that** the agent has a typed foundation and domain expertise
+- **Acceptance Criteria:**
+  - [ ] ThankYouNoteState extending BaseState with interview context, notes array, final report
+  - [ ] ThankYouNoteSSEEvent discriminated union (note_drafted, note_complete, collection_complete, pipeline_error)
+  - [ ] NoteFormat type (email, handwritten, linkedin_message)
+  - [ ] InterviewerContext interface (name, title, topics_discussed, rapport_notes)
+  - [ ] 6+ quality rules covering tone, personalization, timeliness, executive standards, anti-patterns
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story 2: Writer Agent & Tools
+- **As a** developer
+- **I want to** build the thank-you note writer agent with tools for analyzing interview context and writing personalized notes
+- **So that** the agent can produce tailored notes per interviewer
+- **Acceptance Criteria:**
+  - [ ] analyze_interview_context tool (mid tier) — extracts key themes, decision-makers, rapport signals
+  - [ ] write_thank_you_note tool (primary tier) — writes note for specific interviewer/format
+  - [ ] personalize_per_interviewer tool (mid tier) — adjusts tone and references per interviewer's role/seniority
+  - [ ] assemble_note_set tool (mid tier) — combines all notes into final collection with delivery guidance
+  - [ ] Agent config: max_rounds=10, overall_timeout=360s
+- **Estimated complexity:** Large
+- **Dependencies:** Story 1
+
+### Story 3: ProductConfig & Route
+- **As a** developer
+- **I want to** wire the thank-you note writer into the product pipeline and expose it via API
+- **So that** users can generate thank-you notes through the platform
+- **Acceptance Criteria:**
+  - [ ] ProductConfig with single-agent pipeline, buildAgentMessage, finalizeResult, persistResult
+  - [ ] Route with Zod schema (session_id, resume_text, interviewers array, company, role, interview_date)
+  - [ ] FF_THANK_YOU_NOTE feature flag
+  - [ ] Platform context loading (positioning strategy)
+  - [ ] Supabase migration for thank_you_note_reports table with RLS
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 2
+
+### Story 4: Frontend Hook
+- **As a** developer
+- **I want to** create the useThankYouNote SSE hook
+- **So that** the frontend can stream and display thank-you note generation progress
+- **Acceptance Criteria:**
+  - [ ] useThankYouNote hook with statusRef concurrency guard
+  - [ ] Handles note_drafted, note_complete, collection_complete events
+  - [ ] Supabase auth integration
+- **Estimated complexity:** Small
+- **Dependencies:** Story 3
+
+### Story 5: Tests
+- **As a** developer
+- **I want to** maintain test coverage for the thank-you note agent
+- **So that** regressions are caught early
+- **Acceptance Criteria:**
+  - [ ] Server tests: agent registration, tool model tiers, knowledge rules, ProductConfig (target: 30+)
+  - [ ] App tests: SSE event parsing, state transitions (target: 10+)
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 4
+
+---
+
+## Epic 19: Personal Brand Audit Agent
+
+**Goal:** 2-agent pipeline (Brand Auditor → Brand Advisor) that analyzes an executive's brand presence across resume, LinkedIn, and bios for consistency, identifies gaps and contradictions, scores brand coherence, and provides prioritized recommendations.
+
+### Story 1: Types & Knowledge Rules
+- **As a** developer
+- **I want to** define state types, SSE events, and quality rules for personal brand auditing
+- **So that** the agent has a typed foundation and domain expertise
+- **Acceptance Criteria:**
+  - [ ] PersonalBrandState extending BaseState with brand_sources, audit_findings, recommendations, final report
+  - [ ] PersonalBrandSSEEvent discriminated union (audit_progress, finding_identified, audit_complete, recommendations_ready, pipeline_error)
+  - [ ] BrandSource type (resume, linkedin, bio, website, portfolio)
+  - [ ] AuditFinding interface (category, severity, description, source, recommendation)
+  - [ ] ConsistencyScore interface (overall, messaging, visual_identity, value_proposition, audience_alignment)
+  - [ ] 7+ quality rules covering brand coherence, audience alignment, executive presence, authenticity, gap identification
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story 2: Auditor Agent & Tools
+- **As a** developer
+- **I want to** build the brand auditor agent that analyzes brand materials for consistency and gaps
+- **So that** executives get a comprehensive assessment of their personal brand
+- **Acceptance Criteria:**
+  - [ ] analyze_resume_brand tool (mid tier) — extracts positioning, tone, value propositions from resume
+  - [ ] analyze_linkedin_brand tool (mid tier) — analyzes LinkedIn profile content for brand alignment
+  - [ ] analyze_bio_brand tool (mid tier) — evaluates executive bios for brand consistency
+  - [ ] score_consistency tool (mid tier) — produces consistency scores across all sources
+  - [ ] Agent config: max_rounds=8, overall_timeout=360s
+- **Estimated complexity:** Large
+- **Dependencies:** Story 1
+
+### Story 3: Advisor Agent & Tools
+- **As a** developer
+- **I want to** build the brand advisor agent that generates actionable recommendations from audit findings
+- **So that** executives know exactly what to fix and in what order
+- **Acceptance Criteria:**
+  - [ ] identify_gaps tool (mid tier) — finds missing brand elements and contradictions
+  - [ ] write_recommendations tool (primary tier) — writes specific, actionable improvement recommendations
+  - [ ] prioritize_fixes tool (mid tier) — ranks recommendations by impact and effort
+  - [ ] assemble_audit_report tool (mid tier) — combines findings and recommendations into final report
+  - [ ] Agent config: max_rounds=10, overall_timeout=420s
+- **Estimated complexity:** Large
+- **Dependencies:** Story 2
+
+### Story 4: ProductConfig & Route
+- **As a** developer
+- **I want to** wire the brand audit pipeline and expose it via API
+- **So that** users can run personal brand audits through the platform
+- **Acceptance Criteria:**
+  - [ ] ProductConfig with 2-agent pipeline (auditor → advisor), buildAgentMessage, finalizeResult, persistResult
+  - [ ] Route with Zod schema (session_id, resume_text, linkedin_text optional, bio_text optional)
+  - [ ] FF_PERSONAL_BRAND_AUDIT feature flag
+  - [ ] Platform context loading (positioning strategy, bios)
+  - [ ] Supabase migration for personal_brand_reports table with RLS
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 3
+
+### Story 5: Frontend Hook
+- **As a** developer
+- **I want to** create the usePersonalBrand SSE hook
+- **So that** the frontend can stream and display brand audit progress
+- **Acceptance Criteria:**
+  - [ ] usePersonalBrand hook with statusRef concurrency guard
+  - [ ] Handles audit_progress, finding_identified, audit_complete, recommendations_ready events
+  - [ ] Supabase auth integration
+- **Estimated complexity:** Small
+- **Dependencies:** Story 4
+
+### Story 6: Tests
+- **As a** developer
+- **I want to** maintain test coverage for the personal brand audit agent
+- **So that** regressions are caught early
+- **Acceptance Criteria:**
+  - [ ] Server tests: agent registration, tool model tiers, knowledge rules, ProductConfig (target: 30+)
+  - [ ] App tests: SSE event parsing, state transitions (target: 10+)
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 5
+
+---
+
+## Epic 20: 90-Day Plan Generator Agent
+
+**Goal:** 2-agent pipeline (Role Researcher → Plan Writer) that creates a strategic 90-day onboarding plan for executives starting new roles — organized into 30/60/90-day phases with stakeholder mapping, quick wins, learning priorities, and measurable milestones.
+
+### Story 1: Types & Knowledge Rules
+- **As a** developer
+- **I want to** define state types, SSE events, and quality rules for 90-day plan generation
+- **So that** the agent has a typed foundation and domain expertise
+- **Acceptance Criteria:**
+  - [ ] NinetyDayPlanState extending BaseState with role_context, stakeholder_map, phases array, final report
+  - [ ] NinetyDayPlanSSEEvent discriminated union (research_complete, phase_drafted, phase_complete, plan_complete, pipeline_error)
+  - [ ] PlanPhase interface (phase: 30|60|90, objectives, key_activities, milestones, risks)
+  - [ ] Stakeholder interface (name/role, relationship_type, priority, engagement_strategy)
+  - [ ] QuickWin interface (description, impact, effort, timeline, stakeholder_benefit)
+  - [ ] 7+ quality rules covering executive onboarding best practices, stakeholder management, measurability, realistic pacing
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story 2: Researcher Agent & Tools
+- **As a** developer
+- **I want to** build the role researcher agent that analyzes the new role context and maps the organizational landscape
+- **So that** the plan is grounded in real role requirements
+- **Acceptance Criteria:**
+  - [ ] analyze_role_context tool (mid tier) — extracts role expectations, reporting structure, success criteria
+  - [ ] map_stakeholders tool (mid tier) — identifies key stakeholders and relationship dynamics
+  - [ ] identify_quick_wins tool (mid tier) — finds early impact opportunities based on role and candidate strengths
+  - [ ] assess_learning_priorities tool (light tier) — determines knowledge gaps and learning curve areas
+  - [ ] Agent config: max_rounds=6, overall_timeout=300s
+- **Estimated complexity:** Large
+- **Dependencies:** Story 1
+
+### Story 3: Planner Agent & Tools
+- **As a** developer
+- **I want to** build the plan writer agent that creates the phased 90-day strategic plan
+- **So that** executives have a concrete, actionable onboarding roadmap
+- **Acceptance Criteria:**
+  - [ ] write_30_day_plan tool (primary tier) — writes the "Learn & Listen" phase with specific activities and milestones
+  - [ ] write_60_day_plan tool (primary tier) — writes the "Contribute & Build" phase
+  - [ ] write_90_day_plan tool (primary tier) — writes the "Lead & Deliver" phase
+  - [ ] assemble_strategic_plan tool (mid tier) — combines phases into final plan with executive summary
+  - [ ] Agent config: max_rounds=10, overall_timeout=420s
+- **Estimated complexity:** Large
+- **Dependencies:** Story 2
+
+### Story 4: ProductConfig & Route
+- **As a** developer
+- **I want to** wire the 90-day plan pipeline and expose it via API
+- **So that** users can generate onboarding plans through the platform
+- **Acceptance Criteria:**
+  - [ ] ProductConfig with 2-agent pipeline (researcher → planner), buildAgentMessage, finalizeResult, persistResult
+  - [ ] Route with Zod schema (session_id, resume_text, target_role, target_company, target_industry, reporting_to optional)
+  - [ ] FF_NINETY_DAY_PLAN feature flag
+  - [ ] Platform context loading (positioning strategy)
+  - [ ] Supabase migration for ninety_day_plan_reports table with RLS
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 3
+
+### Story 5: Frontend Hook
+- **As a** developer
+- **I want to** create the useNinetyDayPlan SSE hook
+- **So that** the frontend can stream and display plan generation progress
+- **Acceptance Criteria:**
+  - [ ] useNinetyDayPlan hook with statusRef concurrency guard
+  - [ ] Handles research_complete, phase_drafted, phase_complete, plan_complete events
+  - [ ] Supabase auth integration
+- **Estimated complexity:** Small
+- **Dependencies:** Story 4
+
+### Story 6: Tests
+- **As a** developer
+- **I want to** maintain test coverage for the 90-day plan agent
+- **So that** regressions are caught early
+- **Acceptance Criteria:**
+  - [ ] Server tests: agent registration, tool model tiers, knowledge rules, ProductConfig (target: 30+)
+  - [ ] App tests: SSE event parsing, state transitions (target: 10+)
+- **Estimated complexity:** Medium
+- **Dependencies:** Story 5

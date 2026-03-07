@@ -134,3 +134,27 @@ export const FF_EXECUTIVE_BIO = envBool('FF_EXECUTIVE_BIO', false);
  * Set FF_CASE_STUDY=true in server/.env to activate.
  */
 export const FF_CASE_STUDY = envBool('FF_CASE_STUDY', false);
+
+/**
+ * FF_THANK_YOU_NOTE — Enable the Thank You Note Agent (#18) routes.
+ *
+ * When false (default), /api/thank-you-note/* returns 404.
+ * Set FF_THANK_YOU_NOTE=true in server/.env to activate.
+ */
+export const FF_THANK_YOU_NOTE = envBool('FF_THANK_YOU_NOTE', false);
+
+/**
+ * FF_PERSONAL_BRAND_AUDIT — Enable the Personal Brand Audit Agent (#19) routes.
+ *
+ * When false (default), /api/personal-brand/* returns 404.
+ * Set FF_PERSONAL_BRAND_AUDIT=true in server/.env to activate.
+ */
+export const FF_PERSONAL_BRAND_AUDIT = envBool('FF_PERSONAL_BRAND_AUDIT', false);
+
+/**
+ * FF_NINETY_DAY_PLAN — Enable the 90-Day Plan Agent (#20) routes.
+ *
+ * When false (default), /api/ninety-day-plan/* returns 404.
+ * Set FF_NINETY_DAY_PLAN=true in server/.env to activate.
+ */
+export const FF_NINETY_DAY_PLAN = envBool('FF_NINETY_DAY_PLAN', false);
