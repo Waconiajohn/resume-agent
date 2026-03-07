@@ -5,6 +5,7 @@ const ROOM_INFO: Record<CareerIQRoom, { title: string; description: string }> = 
   dashboard: { title: 'Dashboard', description: '' },
   resume: { title: 'Resume Workshop', description: 'Create targeted resumes, manage your master resume, generate cover letters, and check your Quick Score.' },
   linkedin: { title: 'LinkedIn Studio', description: 'Optimize your profile, plan your content strategy, and track your LinkedIn analytics.' },
+  'content-calendar': { title: 'Content Calendar', description: 'Generate a 30-day LinkedIn posting plan based on your expertise and positioning.' },
   jobs: { title: 'Job Command Center', description: 'Discover matching roles, manage Boolean searches, and track your application pipeline.' },
   networking: { title: 'Networking Hub', description: 'Identify target contacts, manage outreach, and track follow-ups.' },
   interview: { title: 'Interview Lab', description: 'Prepare for interviews, practice with mock sessions, and review your history.' },

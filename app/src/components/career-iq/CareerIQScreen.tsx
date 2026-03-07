@@ -18,6 +18,7 @@ const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then(m => (
 const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then(m => ({ default: m.JobCommandCenterRoom })));
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then(m => ({ default: m.InterviewLabRoom })));
 const NetworkingHubRoom = lazy(() => import('./NetworkingHubRoom').then(m => ({ default: m.NetworkingHubRoom })));
+const ContentCalendarRoom = lazy(() => import('./ContentCalendarRoom').then(m => ({ default: m.ContentCalendarRoom })));
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then(m => ({ default: m.RoomPlaceholder })));
 
 interface ResumeSession {
@@ -160,6 +161,11 @@ export function CareerIQScreen({
     // LinkedIn Studio room
     if (activeRoom === 'linkedin') {
       return <LinkedInStudioRoom signals={signals} whyMeClarity={story.colleaguesCameForWhat} />;
+    }
+
+    // Content Calendar room
+    if (activeRoom === 'content-calendar') {
+      return <ContentCalendarRoom />;
     }
 
     // Job Command Center room

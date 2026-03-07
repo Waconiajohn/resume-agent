@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   FileText,
   Linkedin,
+  Calendar,
   Search,
   Users,
   Mic,
@@ -19,6 +20,7 @@ export type CareerIQRoom =
   | 'dashboard'
   | 'resume'
   | 'linkedin'
+  | 'content-calendar'
   | 'jobs'
   | 'networking'
   | 'interview'
@@ -34,7 +36,8 @@ interface SidebarProps {
 const ROOMS: { id: CareerIQRoom; label: string; icon: typeof LayoutDashboard; description: string; gated: boolean }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Your daily briefing', gated: false },
   { id: 'resume', label: 'Resume Workshop', icon: FileText, description: 'Create & optimize resumes', gated: true },
-  { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile, content & analytics', gated: true },
+  { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile optimization & analytics', gated: true },
+  { id: 'content-calendar', label: 'Content Calendar', icon: Calendar, description: '30-day LinkedIn posting plan', gated: true },
   { id: 'jobs', label: 'Job Command Center', icon: Search, description: 'Matches, search & pipeline', gated: true },
   { id: 'networking', label: 'Networking Hub', icon: Users, description: 'Contacts & outreach', gated: true },
   { id: 'interview', label: 'Interview Lab', icon: Mic, description: 'Prep, mock & history', gated: true },

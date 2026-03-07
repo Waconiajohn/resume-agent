@@ -2,6 +2,65 @@
 
 ---
 
+# Sprint 28 Retrospective — Content Calendar Agent (#12)
+**Completed:** 2026-03-06
+
+## What was delivered
+- Story 1: ContentCalendarState, 7 content types with labels, ContentCalendarSSEEvent union type
+- Story 2: 8 content strategy knowledge rules (philosophy, content mix, hooks, structure, hashtags, schedule, engagement, self-review)
+- Story 3: Strategist agent config + 4 tools (analyze_expertise, identify_themes, map_audience_interests, plan_content_mix)
+- Story 4: Writer agent config + 5 tools (write_post, craft_hook, add_hashtags, schedule_post, assemble_calendar)
+- Story 5: ProductConfig + FF_CONTENT_CALENDAR + route + index.ts mounting with cross-product context loading (including LinkedIn optimizer analysis)
+- Story 6: useContentCalendar SSE hook + ContentCalendarRoom UI with week/month view, post cards with copy-to-clipboard
+- Story 7: 36 server tests + 12 app tests — all passing
+
+## What went well
+- All 7 stories completed in a single session — same sprint as Sprint 27 activation
+- Parallel subagent build (strategist, writer, product config) cut build time significantly
+- LinkedIn Optimizer served as a proven template — minimal adaptation needed
+- Zero TypeScript errors — both app and server tsc clean
+- Server tests: 1,123 passing (up from 1,087). App tests: 695 passing (up from 683)
+
+## What went wrong
+- One test assertion mismatch: buildAgentMessage('writer') didn't contain 'write_post' literally — the product config used prose instead of tool names. Quick fix.
+- ContentCalendarRoom not yet wired into CareerIQ sidebar/screen (deferred to activation sprint)
+
+## What to improve next sprint
+- Wire ContentCalendarRoom into the CareerIQ navigation
+- Create DB migration for content_calendar_reports table
+- E2E smoke test with FF_CONTENT_CALENDAR=true
+
+## Technical debt identified
+- content_calendar_reports table not yet created (persist silently fails)
+- parsePostsFromReport() in ContentCalendarRoom uses regex — brittle if report format changes
+- ContentCalendarRoom not yet accessible from CareerIQ navigation
+
+---
+
+# Sprint 27 Retrospective — LinkedIn Optimizer Activation + Tech Debt
+**Completed:** 2026-03-06
+
+## What was delivered
+- Sprint 26 retrospective logged, Sprint 27 planned
+- FF_LINKEDIN_OPTIMIZER enabled in server/.env, route verified live (401 auth gate)
+- linkedin_optimization_reports DB migration applied via Supabase MCP (12 columns, RLS, indexes)
+- Fixed 7 pre-existing BenchmarkProfile tsc errors in ResearchDashboardPanel.test.tsx (makeBenchmark helper)
+- Content Calendar epic scoped (6 stories), LinkedIn Optimizer v2 scoped (3 stories)
+- Next agent candidates prioritized (5 options)
+
+## What went well
+- All 6 stories completed rapidly — clean activation
+- App tsc fully clean for the first time (0 errors)
+- Supabase MCP tool worked well for applying migrations directly
+
+## What went wrong
+- update_updated_at_column() function didn't exist on remote DB — had to include CREATE OR REPLACE in the migration
+
+## Technical debt identified
+- None new — all items addressed
+
+---
+
 # Sprint 26 Retrospective — LinkedIn Optimizer Agent
 **Completed:** 2026-03-06
 
