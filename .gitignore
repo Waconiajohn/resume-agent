@@ -18,3 +18,4 @@ test-results/
 .mcp.json.backup
 .mcp.json.broken.*
 .playwright-mcp/
+app/docs/agentic-ai-planning/
