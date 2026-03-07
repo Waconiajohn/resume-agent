@@ -2,6 +2,33 @@
 
 ---
 
+# Sprint 34 Retrospective — Portfolio / Case Study Agent (#17)
+**Completed:** 2026-03-07
+
+## What was delivered
+- Story 1: Types (5 formats, 6 impact categories, SSE events) + 8 knowledge rules
+- Story 2: Achievement Analyst agent (4 tools: parse_achievements, score_impact, extract_narrative_elements, identify_metrics)
+- Story 3: Case Study Writer agent (4 tools: write_case_study, add_metrics_visualization, quality_review, assemble_portfolio)
+- Story 4: ProductConfig + FF_CASE_STUDY + route + DB migration
+- Story 5: useCaseStudy SSE hook with concurrency guard
+- Story 6: 61 tests (49 server + 12 app)
+
+## What went well
+- 4 sprints delivered in a single session (31-34)
+- Consistent pattern makes each agent faster to build
+- All tests passing: server 1,363, app 754
+
+## What went wrong
+- Minor tsc issue with array type inference (metrics `never[]`) — fixed with explicit cast
+
+## What to improve next sprint
+- Continue avoiding `findLastIndex` and other ES2023+ methods
+
+## Technical debt identified
+- None new
+
+---
+
 # Sprint 33 Retrospective — Executive Bio Agent (#16)
 **Completed:** 2026-03-07
 

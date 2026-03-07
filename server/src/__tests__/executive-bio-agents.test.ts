@@ -386,9 +386,16 @@ describe('Executive Bio ProductConfig', () => {
     expect(() => config.validateAfterAgent!('writer', state)).toThrow('final report');
   });
 
-  it('validateAfterAgent passes when writer produces final_report', () => {
+  it('validateAfterAgent throws when writer produces no bios', () => {
+    const state = config.createInitialState('sess-1', 'user-1', {});
+    state.final_report = '# Report';
+    expect(() => config.validateAfterAgent!('writer', state)).toThrow('bios');
+  });
+
+  it('validateAfterAgent passes when writer produces final_report and bios', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     state.final_report = '# Executive Bio Collection';
+    state.bios = [{ format: 'speaker' as const, length: 'standard' as const, target_words: 250, content: 'Bio', actual_words: 50, quality_score: 85, tone: 'third_person' as const, positioning_alignment: 80 }];
     expect(() => config.validateAfterAgent!('writer', state)).not.toThrow();
   });
 

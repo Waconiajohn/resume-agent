@@ -1,5 +1,27 @@
 # Changelog — Resume Agent
 
+## 2026-03-07 — Session 32
+**Sprint:** 34 | **Stories:** Portfolio / Case Study Agent #17 (Stories 1-6)
+**Summary:** Built Agent #17 — Portfolio / Case Study — as a 2-agent pipeline (Achievement Analyst → Case Study Writer). 5 case study formats, 6 impact categories, 8 knowledge rules (STAR/CAR framework, metrics quantification, consulting-grade formatting), 8 tools across 2 agents, ProductConfig, route, FF_CASE_STUDY, DB migration, useCaseStudy SSE hook, and 61 tests (49 server + 12 app). 1,363 server tests passing, 754 app tests passing, tsc clean.
+
+### Changes Made
+- `server/src/agents/case-study/types.ts` — CaseStudyState, SSE events, format/impact types
+- `server/src/agents/case-study/knowledge/rules.ts` — 8 rules (philosophy, STAR/CAR, metrics, narrative, consulting-grade, selection, transferability, self-review)
+- `server/src/agents/case-study/analyst/agent.ts` — Achievement Analyst config + registration
+- `server/src/agents/case-study/analyst/tools.ts` — 4 tools (parse_achievements, score_impact, extract_narrative_elements, identify_metrics)
+- `server/src/agents/case-study/writer/agent.ts` — Case Study Writer config + registration
+- `server/src/agents/case-study/writer/tools.ts` — 4 tools (write_case_study, add_metrics_visualization, quality_review, assemble_portfolio)
+- `server/src/agents/case-study/product.ts` — ProductConfig with 2-agent pipeline
+- `server/src/routes/case-study.ts` — Route with Zod validation + platform context loading
+- `server/src/lib/feature-flags.ts` — Added FF_CASE_STUDY
+- `server/src/index.ts` — Mounted case-study routes
+- `supabase/migrations/20260307080000_case_study_reports.sql` — Table + RLS
+- `app/src/hooks/useCaseStudy.ts` — SSE hook with statusRef concurrency guard
+- `server/src/__tests__/case-study-agents.test.ts` — 49 server tests
+- `app/src/__tests__/hooks/useCaseStudy.test.ts` — 12 app tests
+
+---
+
 ## 2026-03-07 — Session 31
 **Sprint:** 33 | **Stories:** Executive Bio Agent #16 (Stories 1-5)
 **Summary:** Built Agent #16 — Executive Bio — as a single-agent pipeline (Bio Writer). 5 bio formats (speaker, board, advisory, professional, linkedin_featured), 4 lengths (micro/short/standard/full), 8 knowledge rules, 4 tools, ProductConfig, route, FF_EXECUTIVE_BIO, DB migration, useExecutiveBio SSE hook, and 57 tests (45 server + 12 app). 1,314 server tests passing, 742 app tests passing, tsc clean.

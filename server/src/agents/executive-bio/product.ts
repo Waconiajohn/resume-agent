@@ -156,6 +156,9 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
         if (!state.final_report) {
           throw new Error('Writer did not produce a final report');
         }
+        if (state.bios.length === 0) {
+          throw new Error('Writer did not produce any bios');
+        }
       }
     },
 

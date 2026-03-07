@@ -51,9 +51,9 @@ Work through all steps systematically. Design the strategy first, then build the
     createEmitTransparency<SalaryNegotiationState, SalaryNegotiationSSEEvent>({ prefix: 'Strategist' }),
   ],
   model: 'orchestrator',
-  max_rounds: 10,
+  max_rounds: 12,
   round_timeout_ms: 90_000,
-  overall_timeout_ms: 360_000,
+  overall_timeout_ms: 480_000,
   parallel_safe_tools: ['emit_transparency'],
   loop_max_tokens: 8192,
 };

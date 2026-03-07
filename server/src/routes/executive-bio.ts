@@ -71,6 +71,15 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
       );
     }
 
+    // Build target_context from flat fields (same pattern as case-study route)
+    if (input.target_role || input.target_industry) {
+      transformed.target_context = {
+        target_role: String(input.target_role ?? ''),
+        target_industry: String(input.target_industry ?? ''),
+        target_seniority: '',
+      };
+    }
+
     return transformed;
   },
 });

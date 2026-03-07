@@ -19,6 +19,7 @@ import { networkingOutreachRoutes } from './routes/networking-outreach.js';
 import { jobTrackerRoutes } from './routes/job-tracker.js';
 import { salaryNegotiationRoutes } from './routes/salary-negotiation.js';
 import { executiveBioRoutes } from './routes/executive-bio.js';
+import { caseStudyRoutes } from './routes/case-study.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -261,6 +262,7 @@ app.route('/api/networking-outreach', networkingOutreachRoutes);
 app.route('/api/job-tracker', jobTrackerRoutes);
 app.route('/api/salary-negotiation', salaryNegotiationRoutes);
 app.route('/api/executive-bio', executiveBioRoutes);
+app.route('/api/case-study', caseStudyRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

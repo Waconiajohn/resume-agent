@@ -126,3 +126,11 @@ export const FF_SALARY_NEGOTIATION = envBool('FF_SALARY_NEGOTIATION', false);
  * Set FF_EXECUTIVE_BIO=true in server/.env to activate.
  */
 export const FF_EXECUTIVE_BIO = envBool('FF_EXECUTIVE_BIO', false);
+
+/**
+ * FF_CASE_STUDY — Enable the Case Study Agent (#17) routes.
+ *
+ * When false (default), /api/case-study/* returns 404.
+ * Set FF_CASE_STUDY=true in server/.env to activate.
+ */
+export const FF_CASE_STUDY = envBool('FF_CASE_STUDY', false);
