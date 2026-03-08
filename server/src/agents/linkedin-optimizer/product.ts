@@ -13,6 +13,7 @@ import { writerConfig } from './writer/agent.js';
 import type { LinkedInOptimizerState, LinkedInOptimizerSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOptimizerState, LinkedInOptimizerSSEEvent> {
   return {
@@ -115,11 +116,27 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
         }
 
         parts.push('', 'Call parse_inputs first, then analyze_current_profile, then identify_keyword_gaps.');
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
       if (agentName === 'writer') {
-        return [
+        const parts = [
           'Write the complete LinkedIn profile optimization using the analysis data gathered.',
           '',
           'Follow your workflow exactly:',
@@ -130,7 +147,15 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
           '5. assemble_report',
           '',
           'Do NOT skip any section.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

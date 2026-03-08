@@ -13,6 +13,7 @@ import { writerConfig } from './writer/agent.js';
 import type { CaseStudyState, CaseStudySSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, CaseStudySSEEvent> {
   return {
@@ -102,6 +103,22 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
           '',
           'Call tools in order: parse_achievements, score_impact, extract_narrative_elements, identify_metrics.',
         );
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
@@ -110,7 +127,7 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
           ? state.selected_achievements.map((a, i) => `${i + 1}. "${a.title}" (${a.company}, impact: ${a.impact_score})`).join('\n')
           : '(no achievements selected)';
 
-        return [
+        const parts = [
           'Write consulting-grade case studies for the following selected achievements:',
           '',
           selectedList,
@@ -123,7 +140,15 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
           'After all case studies are written, call assemble_portfolio to produce the final collection report.',
           '',
           'Do NOT skip any step.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

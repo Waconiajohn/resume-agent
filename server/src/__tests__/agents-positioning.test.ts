@@ -412,93 +412,108 @@ describe('evaluateFollowUp', () => {
     };
   }
 
-  it('returns follow-up for short answers on non-optional questions', () => {
+  beforeEach(() => {
+    // Make LLM calls throw so heuristic fallback is used for most tests
+    mockChat.mockRejectedValue(new Error('LLM unavailable'));
+  });
+
+  it('returns follow-up for very short answers without LLM call', async () => {
+    mockChat.mockClear();
     const question = makeQuestion({ category: 'scale_and_scope' });
-    const followUp = evaluateFollowUp(question, 'Small team');
+    const followUp = await evaluateFollowUp(question, 'Small team');
 
     expect(followUp).not.toBeNull();
-    expect(followUp?.id).toBe('scope_1_followup');
+    expect(followUp?.id).toMatch(/^scope_1_followup_\d+$/);
     expect(followUp?.question_text).toContain('specific situation');
+    // Under 20 chars — should not call LLM
+    expect(mockChat).not.toHaveBeenCalled();
   });
 
-  it('returns null for optional questions', () => {
+  it('returns null for optional questions', async () => {
     const question = makeQuestion({ optional: true });
-    const followUp = evaluateFollowUp(question, 'Small team');
+    const followUp = await evaluateFollowUp(question, 'Small team');
     expect(followUp).toBeNull();
   });
 
-  it('returns null for career_narrative even with short answers', () => {
+  it('returns null for career_narrative even with short answers', async () => {
     const question = makeQuestion({ category: 'career_narrative' });
-    const followUp = evaluateFollowUp(question, 'Small team');
+    const followUp = await evaluateFollowUp(question, 'Small team');
     expect(followUp).toBeNull();
   });
 
-  it('returns metrics follow-up for requirement_mapped answers without numbers', () => {
+  it('returns metrics follow-up for requirement_mapped answers without numbers (heuristic fallback)', async () => {
     const question = makeQuestion({ category: 'requirement_mapped' });
     const answer = 'I led a significant cloud migration project that improved our infrastructure considerably over several months.';
-    // No numbers — should trigger metrics follow-up
-    const followUp = evaluateFollowUp(question, answer);
+    const followUp = await evaluateFollowUp(question, answer);
 
     expect(followUp).not.toBeNull();
-    expect(followUp?.id).toBe('scope_1_metrics');
+    expect(followUp?.id).toMatch(/^scope_1_metrics_\d+$/);
     expect(followUp?.question_text).toContain('number');
   });
 
-  it('returns null for requirement_mapped answers with metrics', () => {
+  it('returns null for requirement_mapped answers with metrics (heuristic fallback)', async () => {
     const question = makeQuestion({ category: 'requirement_mapped' });
     const answer = 'I led a cloud migration that reduced costs by $2.4M and improved team velocity by 40% over 6 months.';
-    const followUp = evaluateFollowUp(question, answer);
+    const followUp = await evaluateFollowUp(question, answer);
     expect(followUp).toBeNull();
   });
 
-  it('returns ownership follow-up for vague language without strong verbs when metrics are present', () => {
-    // career_narrative category: skips metrics check, goes to vague language check
-    const question = makeQuestion({ category: 'career_narrative' });
-    // Long enough (>100 chars) to skip short-answer trigger
-    // Has no strong verbs but has vague language — and category is career_narrative so metrics check skipped
-    const answer = 'I was responsible for the cloud infrastructure and helped with several migration projects. I participated in planning and was involved in execution across multiple teams in the organization.';
-    const followUp = evaluateFollowUp(question, answer);
-
-    // career_narrative returns null for vague-language check because the category is excluded
-    // Actually per code: career_narrative is excluded from SHORT ANSWER trigger, not ownership trigger.
-    // Let's verify what happens with career_narrative + vague language:
-    // - Not optional → not skip
-    // - Not short (>100) AND category is career_narrative → skip short-answer trigger
-    // - Not requirement_mapped or scale_and_scope → skip metrics trigger
-    // - Has vague patterns AND no strong verbs → ownership trigger fires
-    expect(followUp).not.toBeNull();
-    expect(followUp?.id).toBe('scope_1_ownership');
-    expect(followUp?.question_text).toContain('YOUR specific contribution');
-  });
-
-  it('returns ownership follow-up for vague language without strong verbs on non-metrics categories', () => {
-    // hidden_accomplishments: not career_narrative, so short-answer check applies
-    // but the answer is long enough to skip that check.
-    // Not requirement_mapped/scale_and_scope so metrics check skipped.
-    // Has vague patterns + no strong verbs → ownership trigger.
+  it('returns ownership follow-up via LLM quality assessment', async () => {
     const question = makeQuestion({ category: 'hidden_accomplishments', id: 'hidden_1' });
     const answer = 'I was responsible for many things and worked on projects that helped the company grow. I was involved in strategic planning and participated in various cross-functional initiatives over the years.';
-    const followUp = evaluateFollowUp(question, answer);
 
+    // LLM returns ownership follow-up recommendation
+    mockChat.mockResolvedValueOnce({
+      text: JSON.stringify({ needs_followup: true, followup_type: 'ownership', specificity: 2, evidence: 2, differentiation: 1 }),
+    });
+
+    const followUp = await evaluateFollowUp(question, answer);
     expect(followUp).not.toBeNull();
-    expect(followUp?.id).toBe('hidden_1_ownership');
+    expect(followUp?.id).toMatch(/^hidden_1_ownership_\d+$/);
     expect(followUp?.question_text).toContain('YOUR specific contribution');
   });
 
-  it('returns null when strong verbs override vague language patterns', () => {
+  it('returns null when LLM says answer is adequate', async () => {
     const question = makeQuestion({ category: 'hidden_accomplishments', id: 'hidden_1' });
-    // Has both vague patterns AND strong verbs → no follow-up
     const answer = 'I was responsible for the initiative but I led the architecture and built the core platform from scratch over 18 months, which transformed our deployment reliability significantly across all teams.';
-    const followUp = evaluateFollowUp(question, answer);
-    // "led" and "built" and "transformed" are strong verbs → no follow-up
+
+    mockChat.mockResolvedValueOnce({
+      text: JSON.stringify({ needs_followup: false, followup_type: null, specificity: 4, evidence: 4, differentiation: 4 }),
+    });
+
+    const followUp = await evaluateFollowUp(question, answer);
     expect(followUp).toBeNull();
   });
 
-  it('returns null for long answers with metrics on scale_and_scope', () => {
+  it('falls back to heuristic when LLM fails', async () => {
+    const question = makeQuestion({ category: 'hidden_accomplishments', id: 'hidden_1' });
+    const answer = 'I was responsible for many things and worked on projects that helped the company grow. I was involved in strategic planning and participated in various cross-functional initiatives over the years.';
+    // mockChat already throws — heuristic fallback should trigger ownership check
+    const followUp = await evaluateFollowUp(question, answer);
+
+    expect(followUp).not.toBeNull();
+    expect(followUp?.id).toMatch(/^hidden_1_ownership_\d+$/);
+  });
+
+  it('returns null for long answers with metrics on scale_and_scope (heuristic fallback)', async () => {
     const question = makeQuestion({ category: 'scale_and_scope' });
     const answer = 'I managed a team of 45 engineers with an $8M annual budget, leading cloud migration that saved $2.4M annually and improved deployment frequency by 300% over 18 months.';
-    const followUp = evaluateFollowUp(question, answer);
+    const followUp = await evaluateFollowUp(question, answer);
     expect(followUp).toBeNull();
+  });
+
+  it('returns depth follow-up via LLM for low specificity', async () => {
+    const question = makeQuestion({ category: 'scale_and_scope' });
+    const answer = 'We had a fairly large team and a reasonable budget for the project, enough to get things done across the department.';
+
+    mockChat.mockResolvedValueOnce({
+      text: JSON.stringify({ needs_followup: true, followup_type: 'depth', specificity: 1, evidence: 2, differentiation: 2 }),
+    });
+
+    const followUp = await evaluateFollowUp(question, answer);
+    expect(followUp).not.toBeNull();
+    expect(followUp?.id).toMatch(/^scope_1_followup_\d+$/);
+    expect(followUp?.question_text).toContain('specific situation');
   });
 
   it('MAX_FOLLOW_UPS is 3', () => {

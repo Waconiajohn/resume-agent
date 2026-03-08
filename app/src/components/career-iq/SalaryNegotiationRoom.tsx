@@ -13,12 +13,15 @@ import {
   ChevronRight,
   Target,
   Shield,
+  Swords,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSalaryNegotiation } from '@/hooks/useSalaryNegotiation';
 import { supabase } from '@/lib/supabase';
 import { markdownToHtml } from '@/lib/markdown';
+import { CounterOfferView } from '@/components/career-iq/CounterOfferView';
 
 // --- Stage label map ---
 
@@ -242,6 +245,15 @@ function TextareaField({
   );
 }
 
+// --- Counter-offer sim config ---
+
+type CounterOfferMode = 'full' | 'single_round';
+
+interface CounterOfferConfig {
+  mode: CounterOfferMode;
+  roundType?: string;
+}
+
 // --- Main component ---
 
 export function SalaryNegotiationRoom() {
@@ -249,6 +261,7 @@ export function SalaryNegotiationRoom() {
   const [resumeText, setResumeText] = useState('');
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  const [counterOfferConfig, setCounterOfferConfig] = useState<CounterOfferConfig | null>(null);
 
   const {
     status,
@@ -322,6 +335,34 @@ export function SalaryNegotiationRoom() {
     reset();
     setForm(DEFAULT_FORM);
   }, [reset]);
+
+  const handleStartCounterOffer = useCallback((mode: CounterOfferMode, roundType?: string) => {
+    if (!resumeText || resumeText.length < 50) {
+      setResumeError('No resume found. Please complete the Resume Strategist first.');
+      return;
+    }
+    setCounterOfferConfig({ mode, roundType });
+  }, [resumeText]);
+
+  const handleBackFromCounterOffer = useCallback(() => {
+    setCounterOfferConfig(null);
+  }, []);
+
+  // Counter-offer simulation view
+  if (counterOfferConfig) {
+    return (
+      <CounterOfferView
+        mode={counterOfferConfig.mode}
+        roundType={counterOfferConfig.roundType}
+        resumeText={resumeText}
+        offerCompany={form.offerCompany}
+        offerRole={form.offerRole}
+        offerBaseSalary={form.offerBaseSalary ? Number(form.offerBaseSalary) : undefined}
+        offerTotalComp={form.offerTotalComp ? Number(form.offerTotalComp) : undefined}
+        onBack={handleBackFromCounterOffer}
+      />
+    );
+  }
 
   // Complete → report view
   if (status === 'complete' && report) {
@@ -605,6 +646,37 @@ export function SalaryNegotiationRoom() {
           Build Negotiation Strategy
         </GlassButton>
       </div>
+
+      {/* Counter-offer practice */}
+      {resumeText.length > 50 && (
+        <div className="border-t border-white/[0.06] pt-6 flex flex-col gap-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Swords size={14} className="text-[#dfc797]/70" />
+            <span className="text-[13px] font-medium text-white/60">Practice Counter-Offers</span>
+            <span className="text-[11px] text-white/30 ml-1">
+              Simulate employer pushback and get scored feedback
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <GlassButton
+              variant="ghost"
+              onClick={() => handleStartCounterOffer('full')}
+              className="text-[13px] border-[#dfc797]/20 hover:border-[#dfc797]/40"
+            >
+              <Swords size={14} className="mr-1.5 text-[#dfc797]/70" />
+              Practice Counter-Offer
+            </GlassButton>
+            <GlassButton
+              variant="ghost"
+              onClick={() => handleStartCounterOffer('single_round', 'budget_constraints')}
+              className="text-[13px]"
+            >
+              <Zap size={14} className="mr-1.5 text-[#98b3ff]/70" />
+              Quick Round
+            </GlassButton>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

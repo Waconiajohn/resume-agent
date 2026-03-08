@@ -57,7 +57,9 @@ export type QuestionCategory =
   | 'requirement_mapped'
   | 'career_narrative'
   | 'hidden_accomplishments'
-  | 'currency_and_adaptability';
+  | 'currency_and_adaptability'
+  | 'trophies'
+  | 'gaps';
 
 export interface PositioningCoachInput {
   parsed_resume: IntakeOutput;
@@ -180,12 +182,19 @@ export interface GapAnalystInput {
   benchmark: BenchmarkCandidate;
 }
 
+export interface WhyMeItem {
+  reason: string;
+  evidence: string;
+}
+
 export interface GapAnalystOutput {
   requirements: RequirementMapping[];
   coverage_score: number;
   critical_gaps: string[];
   addressable_gaps: string[];
   strength_summary: string;
+  why_me?: WhyMeItem[];
+  why_not_me?: WhyMeItem[];
 }
 
 export interface RequirementMapping {

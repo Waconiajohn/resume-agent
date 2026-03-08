@@ -782,3 +782,520 @@ Transforms work history achievements into structured case studies for consulting
   - [ ] App tests: SSE event parsing, state transitions (target: 10+)
 - **Estimated complexity:** Medium
 - **Dependencies:** Story 5
+
+---
+
+## CareerIQ Master Build Plan
+
+> Driven by the Coaching Methodology Bible (9 chapters, 19 years of expertise).
+> Phases 1-2 are sequential prerequisites. Phases 3-7 can partially parallelize.
+> Sprint 36 (Career IQ Rooms) deferred — those rooms will be built as part of each phase's frontend work.
+
+---
+
+## Epic: CareerIQ Phase 1A — The First Five Minutes
+Bible: Ch 1 (Positioning), Ch 2 (Initial Contact), Ch 8 (emotional baseline)
+
+### Story: 1A-1 Onboarding Assessment Agent — Types & Knowledge Rules
+- **As a** platform
+- **I want to** have an onboarding assessment agent with typed state and knowledge rules
+- **So that** new users get a personalized 3-5 question assessment on first login
+- **Acceptance Criteria:**
+  - [ ] OnboardingState, OnboardingSSEEvent types in types.ts
+  - [ ] 6+ knowledge rules covering question generation, financial segment detection, client profile structure
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: 1A-2 Onboarding Assessment Agent — Tools & Config
+- **As a** platform
+- **I want to** have the onboarding agent equipped with tools for assessment flow
+- **So that** the LLM can conduct a brief, high-signal intake
+- **Acceptance Criteria:**
+  - [ ] 4 tools: generate_questions, evaluate_responses, detect_financial_segment, build_client_profile
+  - [ ] AgentConfig with system prompt
+  - [ ] Agent registered in registry
+- **Estimated complexity:** Medium
+- **Dependencies:** 1A-1
+
+### Story: 1A-3 Onboarding Assessment — Product Config & Route
+- **As a** platform
+- **I want to** have the onboarding agent wired into the product pipeline
+- **So that** it runs via the standard ProductConfig/route factory pattern
+- **Acceptance Criteria:**
+  - [ ] onboardingProductConfig implements ProductConfig
+  - [ ] Route at /api/onboarding/*
+  - [ ] FF_ONBOARDING feature flag
+- **Estimated complexity:** Medium
+- **Dependencies:** 1A-2
+
+### Story: 1A-4 Financial Segment Detection
+- **As a** platform
+- **I want to** non-invasively detect the user's financial segment
+- **So that** downstream agents can adapt tone and urgency
+- **Acceptance Criteria:**
+  - [ ] 4 segments: Crisis, Stressed, Ideal, Comfortable
+  - [ ] Detection from indirect signals, not direct questions
+  - [ ] Segment stored in platform context as `financial_segment`
+- **Estimated complexity:** Medium
+- **Dependencies:** 1A-2
+
+### Story: 1A-5 Client Profile Persistence
+- **As a** platform
+- **I want to** have onboarding results stored in user_platform_context
+- **So that** every downstream agent can access the client profile
+- **Acceptance Criteria:**
+  - [ ] Context type `client_profile` in platform-context.ts
+  - [ ] Profile includes career_level, industry, financial_segment, emotional_state, goals
+  - [ ] Verified that resume pipeline reads it
+- **Estimated complexity:** Small
+- **Dependencies:** 1A-3, 1A-4
+
+### Story: 1A-6 Onboarding Frontend — Assessment UI
+- **As a** user
+- **I want to** have a clean onboarding assessment experience
+- **So that** I can answer 3-5 questions and see my personalized dashboard
+- **Acceptance Criteria:**
+  - [ ] OnboardingScreen component
+  - [ ] Question-by-question flow (not a form dump)
+  - [ ] Progress indication
+  - [ ] Completion redirects to dashboard with "start here" recommendation
+- **Estimated complexity:** Medium
+- **Dependencies:** 1A-3
+
+### Story: 1A-7 DB Migration for Onboarding
+- **As a** developer
+- **I want to** have a proper DB table for onboarding data
+- **So that** assessment results are persisted with RLS
+- **Acceptance Criteria:**
+  - [ ] `onboarding_assessments` table with user_id, session_id, questions, responses, client_profile JSONB, financial_segment
+  - [ ] RLS policies applied
+  - [ ] Migration file in supabase/migrations/
+- **Estimated complexity:** Small
+- **Dependencies:** None
+
+### Story: 1A-8 Onboarding Tests
+- **As a** developer
+- **I want to** have comprehensive tests for the onboarding agent
+- **So that** quality floor is maintained
+- **Acceptance Criteria:**
+  - [ ] 40+ server tests (agent tools, knowledge rules, product config)
+  - [ ] 12+ app tests (hook, UI)
+  - [ ] All pass with no regressions
+- **Estimated complexity:** Medium
+- **Dependencies:** 1A-1 through 1A-6
+
+---
+
+## ~~Epic: CareerIQ Phase 1B — WhyMe Engine Enhancement~~ COMPLETE (Sprint 38)
+
+### ~~Story: 1B-1 LLM-Based Quality Assessment~~ COMPLETE
+Replaced `trimmed.length < 100` with MODEL_LIGHT quality assessment (specificity/evidence/differentiation). Heuristic fallback on LLM failure.
+
+### ~~Story: 1B-2 Super Bowl Story Questions~~ COMPLETE
+Added `trophies` and `gaps` categories to both LLM prompt and fallback questions. Super Bowl Story: signature achievement. Gaps: honest self-assessment.
+
+### ~~Story: 1B-3 Positioning Foundation in Platform Context~~ COMPLETE
+Added `positioning_foundation` to ContextType. Persisted in resume product's `savePlatformContext()` with trophies, gaps, super_bowl_story, career arc, authentic phrases.
+
+---
+
+## ~~Epic: CareerIQ Phase 1C — Emotional Baseline~~ COMPLETE (Sprint 39)
+
+### ~~Story: 1C-1 Emotional Baseline Detection Middleware~~ COMPLETE
+`emotional-baseline.ts` reads Client Profile from platform context, extracts grief cycle + financial segment, derives coaching tone.
+
+### ~~Story: 1C-2 Agent Tone Adaptation~~ COMPLETE
+All 14 routes load baseline in transformInput. All 14 products inject tone guidance in buildAgentMessage. 3 registers: supportive/direct/motivational.
+
+### ~~Story: 1C-3 Escalation — Professional Referral~~ COMPLETE
+Distress threshold: depression/anger + crisis/urgency≥9. Surfaces NAMI, 988 Lifeline, career coaching referral. Never diagnoses.
+
+---
+
+## ~~Epic: CareerIQ Phase 2 — Core Positioning Loop~~ COMPLETE (Sprint 40)
+
+### ~~Story: 2A-1 Fix Bug 16 — Revision Loops~~ COMPLETE
+Producer message includes approved sections list. System prompt instructs never to revise immutable sections. Root cause: LLM didn't know which sections were user-approved.
+
+### ~~Story: 2A-2 Fix Bug 17 — Context Forgetfulness~~ COMPLETE
+Conversation compaction now includes scratchpad section status summary. Model sees which sections are completed when history is trimmed. Root cause: compaction dropped section completion info.
+
+### ~~Story: 2A-3 Structured Why Me / Why Not Me~~ COMPLETE
+`GapAnalystOutput` now includes `why_me[]` and `why_not_me[]` with `{reason, evidence}` items. LLM prompt updated. classify_fit returns the arrays.
+
+### ~~Story: 2B-1 Platform Context Enrichment~~ COMPLETE
+3 new context types: `benchmark_candidate`, `gap_analysis`, `industry_research`. Resume pipeline persists all three on completion via `savePlatformContext()`.
+
+---
+
+## Epic: CareerIQ Phase 3A — Job Command Center
+Bible: Ch 7 (Job Search Ops). Port from Always-On-Contracts.
+
+### Story: 3A-1 Port Job Search Engine
+- **As a** user
+- **I want to** search 50+ job sources from CareerIQ
+- **So that** I don't need a separate tool for job discovery
+- **Acceptance Criteria:**
+  - [ ] Port unified-job-search from Deno edge function to Hono route
+  - [ ] Swap LLM provider to project standard
+  - [ ] Boolean search support
+  - [ ] Route at /api/jobs/search
+- **Estimated complexity:** Large
+- **Dependencies:** None
+
+### Story: 3A-2 Port AI Job Matcher
+- **As a** user
+- **I want to** have AI-powered job fit scoring
+- **So that** I can see how well each job matches my positioning
+- **Acceptance Criteria:**
+  - [ ] Port ai-job-matcher logic
+  - [ ] Score against positioning strategy from platform context
+  - [ ] Route at /api/jobs/match
+- **Estimated complexity:** Medium
+- **Dependencies:** 3A-1
+
+### Story: 3A-3 Port Kanban Pipeline Board
+- **As a** user
+- **I want to** have a drag-drop pipeline for tracking applications
+- **So that** I can manage my job search campaign visually
+- **Acceptance Criteria:**
+  - [ ] Port PipelineBoard, PipelineColumn, OpportunityCard
+  - [ ] Adapt types to CareerIQ schema
+  - [ ] DB table for pipeline_opportunities
+- **Estimated complexity:** Large
+- **Dependencies:** 3A-1
+
+### Story: 3A-4 NI Integration with Job Command Center
+- **As a** user
+- **I want to** have my network connections surface relevant job matches
+- **So that** CSV-imported connections lead to referral opportunities
+- **Acceptance Criteria:**
+  - [ ] NI company data feeds into job search results
+  - [ ] Referral bonus cross-reference shown on matching jobs
+- **Estimated complexity:** Medium
+- **Dependencies:** 3A-1, NI module (already built)
+
+### Story: 3A-5 Port Radar/Watchlist
+- **As a** user
+- **I want to** have automated job discovery and watchlist monitoring
+- **So that** new matching jobs surface without manual searching
+- **Acceptance Criteria:**
+  - [ ] Port useRadarSearch, useWatchlist
+  - [ ] Scheduled scan capability
+  - [ ] Notification when new matches found
+- **Estimated complexity:** Medium
+- **Dependencies:** 3A-1, 3A-2
+
+### Story: 3A-6 Daily Ops View
+- **As a** user
+- **I want to** have a daily routine view with real action items
+- **So that** I know exactly what to do each day of my job search
+- **Acceptance Criteria:**
+  - [ ] Port DailyOpsSection, useNextActions
+  - [ ] Actions sourced from pipeline data, follow-up reminders, application deadlines
+- **Estimated complexity:** Medium
+- **Dependencies:** 3A-3
+
+---
+
+## Epic: CareerIQ Phase 3B — LinkedIn Studio
+Bible: Ch 4 (LinkedIn)
+
+### Story: 3B-1 Port LinkedIn Post Generator
+- **As a** user
+- **I want to** generate LinkedIn posts from CareerIQ
+- **So that** I can create quality content without switching tools
+- **Acceptance Criteria:**
+  - [ ] Port generate-linkedin-post edge function to Hono route/agent tool
+  - [ ] Swap LLM provider to project standard
+  - [ ] Connected to content calendar agent
+- **Estimated complexity:** Small
+- **Dependencies:** None
+
+### Story: 3B-2 Port Series Management
+- **As a** user
+- **I want to** plan and manage LinkedIn post series
+- **So that** I can maintain a coherent content narrative over time
+- **Acceptance Criteria:**
+  - [ ] Port SeriesDashboard, SeriesPlanner, useSeriesManagement
+  - [ ] Adapt to CareerIQ patterns
+- **Estimated complexity:** Medium
+- **Dependencies:** 3B-1
+
+### Story: 3B-3 Port LinkedIn Tools
+- **As a** user
+- **I want to** have recruiter search simulation and writing analysis
+- **So that** I can optimize my profile and content for recruiter visibility
+- **Acceptance Criteria:**
+  - [ ] Port RecruiterSearchSimulator, HumanWritingAnalyzer
+  - [ ] Merge into LinkedIn Studio tabbed experience
+- **Estimated complexity:** Small
+- **Dependencies:** None
+
+### Story: 3B-4 Unified LinkedIn Studio
+- **As a** user
+- **I want to** have one place for all LinkedIn activities
+- **So that** I can manage profile, content, and outreach from a single workspace
+- **Acceptance Criteria:**
+  - [ ] Tabbed experience combining LinkedIn Optimizer, Content Calendar, Post Composer, Series, Recruiter Sim, Writing Analyzer
+  - [ ] Section-by-section profile editing
+- **Estimated complexity:** Medium
+- **Dependencies:** 3B-1 through 3B-3
+
+---
+
+## Epic: CareerIQ Phase 3C — Networking Hub
+Bible: Ch 5 (Networking)
+
+### Story: 3C-1 Port Networking CRM
+- **As a** user
+- **I want to** have a CRM for managing networking contacts
+- **So that** I can track relationships and follow-up cadence in one place
+- **Acceptance Criteria:**
+  - [ ] Port NetworkingCRM, ContactsList, ContactDetailSheet, TouchpointLogger, FollowUpReminders
+  - [ ] Adapt to CareerIQ types
+  - [ ] DB tables with RLS
+- **Estimated complexity:** Large
+- **Dependencies:** None
+
+### Story: 3C-2 Port Message Generators
+- **As a** user
+- **I want to** have AI-generated outreach messages for 7 networking scenarios
+- **So that** every message is personalized and professional
+- **Acceptance Criteria:**
+  - [ ] Port generate-networking-email and linkedin-networking-messages
+  - [ ] Swap LLM provider to project standard
+  - [ ] Route at /api/networking/generate
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: 3C-3 NI + CRM Integration
+- **As a** user
+- **I want to** have CSV-imported connections appear in my CRM
+- **So that** NI connections flow directly into relationship management
+- **Acceptance Criteria:**
+  - [ ] NI connections feed into CRM contact list
+  - [ ] Company data enriches contacts
+  - [ ] No duplicate contacts created
+- **Estimated complexity:** Medium
+- **Dependencies:** 3C-1
+
+### Story: 3C-4 Rule of Four — Pipeline Integration
+- **As a** user
+- **I want to** have networking contacts linked to job applications
+- **So that** I can track relationship coverage per opportunity
+- **Acceptance Criteria:**
+  - [ ] Each pipeline application tracks associated contacts
+  - [ ] Rule of Four (4 contacts per application) tracking
+  - [ ] Referral pathway visualization
+- **Estimated complexity:** Medium
+- **Dependencies:** 3C-1, Phase 3A Kanban
+
+### Story: 3C-5 Follow-Up Cadence Tracking
+- **As a** user
+- **I want to** track sent/responded/due follow-ups
+- **So that** no relationship falls through the cracks
+- **Acceptance Criteria:**
+  - [ ] Touchpoint status tracking
+  - [ ] Overdue reminders
+  - [ ] Weekly touch counter
+- **Estimated complexity:** Small
+- **Dependencies:** 3C-1
+
+---
+
+## Epic: CareerIQ Phase 4A — Interview Prep Enhancement
+Bible: Ch 6 (Interview Mastery)
+
+### Story: 4A-1 Mock Interview Simulation
+- **As a** user
+- **I want to** practice interviews with AI simulation
+- **So that** I'm prepared for the real conversation before it happens
+- **Acceptance Criteria:**
+  - [ ] New sub-agent using gate pattern for rapid Q&A
+  - [ ] Supports behavioral, technical, situational question types
+  - [ ] Evaluates answers against STAR framework
+- **Estimated complexity:** Large
+- **Dependencies:** None
+
+### Story: 4A-2 Post-Interview Debrief
+- **As a** user
+- **I want to** have structured debrief capture after real interviews
+- **So that** my experience feeds into follow-up and future prep
+- **Acceptance Criteria:**
+  - [ ] Debrief form captures what went well/poorly, questions asked, company signals
+  - [ ] Feeds into thank-you note agent
+- **Estimated complexity:** Medium
+- **Dependencies:** Thank You Note agent (built)
+
+### Story: 4A-3 Practice Mode
+- **As a** user
+- **I want to** practice individual questions with AI evaluation
+- **So that** I can sharpen specific weak areas without a full simulation
+- **Acceptance Criteria:**
+  - [ ] Single question presentation
+  - [ ] AI scores answer on STAR completeness, relevance, impact
+  - [ ] Specific suggestions for improvement
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: 4A-4 Kanban Integration
+- **As a** user
+- **I want to** have interview prep linked to my pipeline
+- **So that** prep, debrief, and follow-up are all connected to the opportunity
+- **Acceptance Criteria:**
+  - [ ] Interview stage in Kanban triggers prep suggestion
+  - [ ] Debrief links to application
+  - [ ] Prep reports accessible from opportunity card
+- **Estimated complexity:** Small
+- **Dependencies:** Phase 3A Kanban
+
+---
+
+## Epic: CareerIQ Phase 4B — Salary Negotiation Enhancement
+
+### Story: 4B-1 Counter-Offer Simulation
+- **As a** user
+- **I want to** practice negotiation with AI role-playing employer
+- **So that** I'm ready for every pushback scenario before the real conversation
+- **Acceptance Criteria:**
+  - [ ] User inputs offer; agent simulates employer pushback
+  - [ ] Multiple negotiation rounds supported
+  - [ ] Coaching on tactics after each round
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: 4B-2 Kanban Trigger
+- **As a** user
+- **I want to** have salary negotiation prompted when pipeline reaches Offer stage
+- **So that** I'm reminded to prepare before accepting or countering
+- **Acceptance Criteria:**
+  - [ ] Kanban "Offer" stage triggers salary negotiation suggestion
+  - [ ] Pre-populated with company/role data from opportunity card
+- **Estimated complexity:** Small
+- **Dependencies:** Phase 3A Kanban
+
+---
+
+## Epic: CareerIQ Phase 5 — Emotional Intelligence Layer
+Bible: Ch 8
+
+### Story: 5A-1 Momentum System
+- **As a** user
+- **I want to** have activity streaks and win tracking
+- **So that** I stay motivated during a long job search
+- **Acceptance Criteria:**
+  - [ ] user_momentum table
+  - [ ] Streak tracking
+  - [ ] Pipeline progress metrics
+  - [ ] Wins celebrated in dashboard
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: 5A-2 Cognitive Reframing
+- **As a** user
+- **I want to** receive targeted coaching when my search stalls
+- **So that** I get past psychological blocks, not just tactical ones
+- **Acceptance Criteria:**
+  - [ ] Detect stalled pipeline or repeated rejections
+  - [ ] Coaching messages sourced from Ch 8 methodology
+  - [ ] Integrated into daily ops view
+- **Estimated complexity:** Medium
+- **Dependencies:** 5A-1, Phase 3A
+
+### Story: 5B-1 Resource Library
+- **As a** user
+- **I want to** have educational content organized by topic
+- **So that** I can deepen my skills in the areas that matter most
+- **Acceptance Criteria:**
+  - [ ] Content organized by Bible chapter topics
+  - [ ] Searchable
+  - [ ] Context-aware recommendations based on current pipeline stage
+- **Estimated complexity:** Medium
+- **Dependencies:** None
+
+### Story: 5B-2 Ask a Coach
+- **As a** user
+- **I want to** have a structured way to request human escalation
+- **So that** I can get expert help when AI isn't enough
+- **Acceptance Criteria:**
+  - [ ] Structured form for human coaching request
+  - [ ] Triaged by topic
+  - [ ] Stored for coach review
+- **Estimated complexity:** Small
+- **Dependencies:** None
+
+---
+
+## Epic: CareerIQ Phase 6 — Retirement Bridge
+Bible: Ch 9
+
+### Story: 6A-1 Retirement Readiness Assessment Agent
+- **As a** user
+- **I want to** receive a 7-dimension retirement readiness assessment
+- **So that** I understand my readiness without being given financial advice
+- **Acceptance Criteria:**
+  - [ ] New agent with 7 dimensions
+  - [ ] Surfaces questions, not advice
+  - [ ] Fiduciary guardrails in every prompt
+  - [ ] Shareable assessment summary
+- **Estimated complexity:** Large
+- **Dependencies:** None
+
+### Story: 6B-1 Financial Planner Warm Handoff
+- **As a** platform
+- **I want to** have a 5-step planner referral protocol
+- **So that** users who need financial guidance are connected to qualified professionals
+- **Acceptance Criteria:**
+  - [ ] Opt-in → match → handoff doc → warm intro → follow-up tracking
+  - [ ] Commission tracking (20-25% first year, 10% trailing)
+- **Estimated complexity:** Large
+- **Dependencies:** None
+
+### Story: 6B-2 Replace FinancialWellnessRoom Mock
+- **As a** user
+- **I want to** see real retirement assessment instead of mock data
+- **So that** the FinancialWellnessRoom reflects my actual situation
+- **Acceptance Criteria:**
+  - [ ] FinancialWellnessRoom connected to real agent
+  - [ ] All mock data removed
+- **Estimated complexity:** Small
+- **Dependencies:** 6A-1
+
+---
+
+## Epic: CareerIQ Phase 7 — B2B Outplacement
+Same product, different door.
+
+### Story: 7A-1 Admin Portal — Org Entity & Seat Management
+- **As a** B2B customer
+- **I want to** provision and manage employee seats from an admin portal
+- **So that** my organization can deploy CareerIQ at scale
+- **Acceptance Criteria:**
+  - [ ] Organization entity
+  - [ ] Seat provisioning
+  - [ ] SSO integration point
+  - [ ] Engagement metrics only (no individual content visible to admins)
+- **Estimated complexity:** Large
+- **Dependencies:** None
+
+### Story: 7B-1 Reporting Dashboard
+- **As a** B2B customer
+- **I want to** see aggregate placement outcomes and ROI
+- **So that** I can demonstrate the value of the outplacement investment
+- **Acceptance Criteria:**
+  - [ ] Aggregate outcomes dashboard
+  - [ ] ROI dashboard
+  - [ ] Time-to-placement metrics
+- **Estimated complexity:** Medium
+- **Dependencies:** 7A-1
+
+### Story: 7C-1 White-Label Branding
+- **As a** B2B customer
+- **I want to** customize the platform with my organization's branding
+- **So that** the tool feels like part of our employee support suite
+- **Acceptance Criteria:**
+  - [ ] Org branding support
+  - [ ] Custom resources (severance info, benefits contacts)
+- **Estimated complexity:** Medium
+- **Dependencies:** 7A-1

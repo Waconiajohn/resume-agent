@@ -13,6 +13,7 @@ import { writerConfig } from './writer/agent.js';
 import type { NetworkingOutreachState, NetworkingOutreachSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createNetworkingOutreachProductConfig(): ProductConfig<NetworkingOutreachState, NetworkingOutreachSSEEvent> {
   return {
@@ -110,11 +111,27 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
         }
 
         parts.push('', 'Call analyze_target first (pass the resume_text along with the target info), then find_common_ground, then assess_connection_path, then plan_outreach_sequence.');
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
       if (agentName === 'writer') {
-        return [
+        const parts = [
           'Write the complete outreach sequence using the research data gathered.',
           '',
           'Follow your workflow exactly:',
@@ -126,7 +143,15 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           '6. assemble_sequence',
           '',
           'Do NOT skip any message type in the sequence.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

@@ -294,9 +294,11 @@ export async function runAgentLoop<
           // Append tool results as user message
           messages.push({ role: 'user', content: resultBlocks });
 
-          // Compact conversation history to prevent context overflow on long sessions
+          // Compact conversation history to prevent context overflow on long sessions.
+          // Note: compaction fires only after tool-result append (not after assistant
+          // message append), so the exact message count at compaction may vary by ±1 per round.
           if (messages.length > MAX_HISTORY_MESSAGES) {
-            compactConversationHistory(messages, log);
+            compactConversationHistory(messages, log, ctx.scratchpad, (ctx.getState() as Record<string, unknown>).approved_sections as string[] | undefined);
           }
         }
       } finally {
@@ -336,6 +338,49 @@ export async function runAgentLoop<
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /**
+ * Build a scratchpad status summary for compaction messages.
+ * Lists completed sections and their status (written/reviewed/approved)
+ * so the model doesn't forget what's already done.
+ * @internal Exported for testing only.
+ */
+export function buildScratchpadSummary(scratchpad: Record<string, unknown>, approvedSections?: string[]): string {
+  const sectionEntries: string[] = [];
+  const otherKeys: string[] = [];
+
+  for (const [key, val] of Object.entries(scratchpad)) {
+    if (key.startsWith('section_') && val && typeof val === 'object') {
+      const section = key.replace('section_', '');
+      const hasContent = typeof (val as Record<string, unknown>).content === 'string';
+      if (hasContent) {
+        const presented = scratchpad[`presented_${section}`] === true;
+        const approved = approvedSections?.includes(section) === true;
+        let status: string;
+        if (approved) {
+          status = 'written + presented + approved (immutable)';
+        } else if (presented) {
+          status = 'written + presented';
+        } else {
+          status = 'written';
+        }
+        sectionEntries.push(`  - ${section}: ${status}`);
+      }
+    } else if (key === '_final_text' || key.startsWith('presented_')) {
+      // skip internal keys
+    } else if (val !== undefined && val !== null) {
+      otherKeys.push(key);
+    }
+  }
+
+  if (sectionEntries.length === 0) return '';
+
+  const parts = ['Completed sections in scratchpad:', ...sectionEntries];
+  if (otherKeys.length > 0) {
+    parts.push(`Other scratchpad data: ${otherKeys.slice(0, 10).join(', ')}`);
+  }
+  return parts.join('\n');
+}
+
+/**
  * Extract key evidence from dropped conversation messages to build
  * a richer compaction summary. Keeps the summary bounded (~500 tokens).
  */
@@ -357,7 +402,17 @@ function extractDroppedMessageSummary(dropped: ChatMessage[]): string {
   ];
 
   for (const msg of dropped) {
-    const content = typeof msg.content === 'string' ? msg.content : '';
+    let content: string;
+    if (typeof msg.content === 'string') {
+      content = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      content = (msg.content as unknown as Array<Record<string, unknown>>)
+        .filter(b => b['type'] === 'text' || b['type'] === 'tool_result')
+        .map(b => String(b['text'] ?? b['content'] ?? ''))
+        .join(' ');
+    } else {
+      content = '';
+    }
     if (!content) continue;
 
     // Detect section names mentioned
@@ -399,10 +454,13 @@ function extractDroppedMessageSummary(dropped: ChatMessage[]): string {
  * Compact the conversation history to stay within context window limits.
  * Keeps the initial instruction (first message) and the most recent messages,
  * replacing the middle with a structured summary of what was dropped.
+ * Includes scratchpad status so the model remembers completed work.
  */
 function compactConversationHistory(
   messages: ChatMessage[],
   log: Pick<ReturnType<typeof logger.child>, 'info'>,
+  scratchpad?: Record<string, unknown>,
+  approvedSections?: string[],
 ): void {
   if (messages.length <= MAX_HISTORY_MESSAGES) return;
 
@@ -418,18 +476,20 @@ function compactConversationHistory(
 
   // Extract key evidence from dropped messages for a richer summary
   const summaryParts = extractDroppedMessageSummary(droppedMessages);
+  const scratchpadStatus = scratchpad ? buildScratchpadSummary(scratchpad, approvedSections) : '';
 
   const summaryMessage: ChatMessage = {
     role: 'user',
     content: [
       `[System note: ${droppedCount} earlier messages (${Math.floor(droppedCount / 2)} tool rounds) were compacted to stay within context limits.`,
       summaryParts,
-      'Continue with the remaining work based on your initial instructions and recent context.]',
+      scratchpadStatus,
+      'Continue with the remaining work based on your initial instructions and recent context. Do NOT re-do sections that are already completed.]',
     ].filter(Boolean).join('\n'),
   };
 
-  // Ensure proper message alternation: if recent starts with user, we need an assistant between
-  const needsBridge = recentMessages[0]?.role === 'user';
+  // Bridge is always needed: initialMessage(user) + summaryMessage(user) creates
+  // consecutive user messages. The bridge ensures proper role alternation.
   const bridgeMessage: ChatMessage = {
     role: 'assistant',
     content: 'Understood. Continuing with the remaining work.',
@@ -437,11 +497,10 @@ function compactConversationHistory(
 
   // Mutate in place — splice out the middle and replace
   messages.length = 0;
-  messages.push(initialMessage, summaryMessage);
-  if (needsBridge) {
-    messages.push(bridgeMessage);
+  messages.push(initialMessage, summaryMessage, bridgeMessage);
+  for (const m of recentMessages) {
+    messages.push(m);
   }
-  messages.push(...recentMessages);
 }
 
 /**

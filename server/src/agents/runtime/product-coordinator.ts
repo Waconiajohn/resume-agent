@@ -240,7 +240,7 @@ export async function runProductPipeline<
             log.info({ gate: gate.name, agent: phase.name }, 'Product coordinator: waiting at gate');
             const response = await waitForUser<unknown>(gate.name);
             if (gate.onResponse) {
-              gate.onResponse(response, state);
+              gate.onResponse(response, state, emit as (event: BaseEvent) => void);
             }
             log.info({ gate: gate.name }, 'Product coordinator: gate passed');
           }

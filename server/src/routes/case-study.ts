@@ -15,6 +15,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createCaseStudyProductConfig } from '../agents/case-study/product.js';
 import { FF_CASE_STUDY } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import logger from '../lib/logger.js';
 import type { CaseStudyState, CaseStudySSEEvent } from '../agents/case-study/types.js';
 
@@ -37,9 +38,10 @@ export const caseStudyRoutes = createProductRoutes<CaseStudyState, CaseStudySSEE
 
     const transformed: Record<string, unknown> = { ...input };
 
-    // Load cross-product platform context
+    // Load cross-product platform context and emotional baseline
     try {
-      const [strategyRows, evidenceRows] = await Promise.all([
+      const [baseline, strategyRows, evidenceRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'evidence_item'),
       ]);
@@ -55,6 +57,9 @@ export const caseStudyRoutes = createProductRoutes<CaseStudyState, CaseStudySSEE
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
+      }
+      if (baseline) {
+        transformed.emotional_baseline = baseline;
       }
     } catch (err) {
       logger.warn(

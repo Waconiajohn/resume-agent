@@ -2,11 +2,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
-// Mock supabase client (used by ZoneYourPipeline)
+// Mock supabase client (used by ZoneYourPipeline and pipeline hooks)
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-token' } } }),
     },
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -23,6 +24,16 @@ vi.mock('@/lib/supabase', () => ({
       }),
     }),
   },
+}));
+
+// Mock fetch for CRUD pipeline hooks
+vi.mock('@/lib/api', () => ({
+  API_BASE: 'http://localhost:3001/api',
+}));
+
+// Mock SSE parser for useJobFinder
+vi.mock('@/lib/sse-parser', () => ({
+  parseSSEStream: vi.fn().mockReturnValue({ [Symbol.asyncIterator]: async function* () {} }),
 }));
 
 // Mock clipboard
@@ -60,39 +71,43 @@ describe('LinkedInStudioRoom', () => {
   const greenSignals: WhyMeSignals = { clarity: 'green', alignment: 'green', differentiation: 'green' };
   const yellowSignals: WhyMeSignals = { clarity: 'yellow', alignment: 'green', differentiation: 'green' };
 
-  it('renders profile optimizer with headline sections', () => {
+  it('renders tab navigation with all tabs', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    expect(screen.getByText('Profile Optimizer')).toBeInTheDocument();
-    expect(screen.getByText('Headline')).toBeInTheDocument();
-    expect(screen.getByText('About Section')).toBeInTheDocument();
+    expect(screen.getByText('Post Composer')).toBeInTheDocument();
+    expect(screen.getByText('Profile Editor')).toBeInTheDocument();
+    expect(screen.getByText('Calendar')).toBeInTheDocument();
+    expect(screen.getByText('Analytics')).toBeInTheDocument();
   });
 
-  it('renders content calendar section', () => {
+  it('renders content calendar when Calendar tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    fireEvent.click(screen.getByText('Calendar'));
     expect(screen.getByText('Content Calendar')).toBeInTheDocument();
-    expect(screen.getByText('4-week plan')).toBeInTheDocument();
   });
 
-  it('renders analytics overview with 3 metric cards', () => {
+  it('renders analytics when Analytics tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    fireEvent.click(screen.getByText('Analytics'));
     expect(screen.getByText('Profile Views')).toBeInTheDocument();
     expect(screen.getByText('Search Appearances')).toBeInTheDocument();
     expect(screen.getByText('Post Engagement')).toBeInTheDocument();
   });
 
-  it('shows agent suggestion banner when clarity is not green', () => {
-    render(<LinkedInStudioRoom signals={yellowSignals} whyMeClarity="test" />);
-    expect(screen.getByText(/Your LinkedIn Agent suggests/)).toBeInTheDocument();
+  it('renders LinkedIn Studio header', () => {
+    render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    expect(screen.getByText('LinkedIn Studio')).toBeInTheDocument();
   });
 
-  it('hides agent suggestion banner when clarity is green', () => {
+  it('renders post composer tab by default', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    expect(screen.queryByText(/Your LinkedIn Agent suggests/)).not.toBeInTheDocument();
+    // Post Composer shows a start button when idle
+    expect(screen.getByText(/Write a Post/i)).toBeInTheDocument();
   });
 
-  it('renders suggested headline text', () => {
+  it('renders profile editor tab content when clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    expect(screen.getByText(/I turn around underperforming supply chains/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Profile Editor'));
+    expect(screen.getByText(/Edit Profile/i)).toBeInTheDocument();
   });
 });
 
@@ -106,21 +121,28 @@ describe('JobCommandCenterRoom', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     localStorageMock.clear();
+    // Reset fetch mock for each test — pipeline hooks make fetch calls
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }));
   });
 
-  it('renders smart matches with match scores', () => {
+  it('renders smart matches section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getByText('Smart Matches')).toBeInTheDocument();
-    expect(screen.getByText('94')).toBeInTheDocument();
-    expect(screen.getByText('VP of Supply Chain Operations')).toBeInTheDocument();
   });
 
-  it('renders boolean search builder with platform names', () => {
+  it('renders "Run Job Finder" button when no matches exist', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    expect(screen.getByText('Run Job Finder')).toBeInTheDocument();
+  });
+
+  it('renders boolean search builder section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getByText('Boolean Search Builder')).toBeInTheDocument();
-    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
-    expect(screen.getByText('Indeed')).toBeInTheDocument();
-    expect(screen.getByText('Google')).toBeInTheDocument();
+  });
+
+  it('renders "Generate Searches" button when no searches exist', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    expect(screen.getByText('Generate Searches')).toBeInTheDocument();
   });
 
   it('renders search preferences section', () => {
@@ -128,23 +150,28 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('Search Preferences')).toBeInTheDocument();
   });
 
-  it('cover letter button triggers onNavigate', () => {
+  it('renders application pipeline kanban board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    const coverLetterButtons = screen.getAllByText('Cover Letter');
-    fireEvent.click(coverLetterButtons[0]);
-    expect(mockNavigate).toHaveBeenCalledWith('cover-letter');
+    expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
   });
 
-  it('renders company names for all matches', () => {
+  it('renders kanban stage columns', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Medtronic')).toBeInTheDocument();
-    expect(screen.getByText('Abbott Labs')).toBeInTheDocument();
-    expect(screen.getByText('Precision Castparts')).toBeInTheDocument();
+    // Use getAllByText because stage names appear in multiple places (kanban + PipelineSummary)
+    expect(screen.getAllByText('Saved').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Applied').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Offer').length).toBeGreaterThan(0);
   });
 
-  it('shows "Why this matches" explanation', () => {
+  it('renders daily ops section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText(/turnaround experience directly matches/)).toBeInTheDocument();
+    expect(screen.getByText('Daily Ops')).toBeInTheDocument();
+  });
+
+  it('renders application tracker section', () => {
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    expect(screen.getByText('Application Tracker')).toBeInTheDocument();
   });
 });
 

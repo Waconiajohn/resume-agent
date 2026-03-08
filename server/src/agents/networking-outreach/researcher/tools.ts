@@ -12,6 +12,8 @@ import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type { NetworkingOutreachState, NetworkingOutreachSSEEvent } from '../types.js';
 import { llm, MODEL_LIGHT, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { supabaseAdmin } from '../../../lib/supabase.js';
+import logger from '../../../lib/logger.js';
 
 type NetworkingOutreachTool = AgentTool<NetworkingOutreachState, NetworkingOutreachSSEEvent>;
 
@@ -565,6 +567,120 @@ Rules:
   },
 };
 
+// ─── Tool: read_contact_history ──────────────────────────────────────
+
+const readContactHistoryTool: NetworkingOutreachTool = {
+  name: 'read_contact_history',
+  description:
+    'Read the contact\'s CRM record including relationship history, past interactions, and touchpoints to personalize outreach. ' +
+    'Call this before writing outreach messages when a contact_id is available.',
+  model_tier: 'light',
+  input_schema: {
+    type: 'object',
+    properties: {
+      contact_name: {
+        type: 'string',
+        description: 'Full name of the contact to look up in the CRM',
+      },
+      contact_company: {
+        type: 'string',
+        description: 'Company of the contact (optional, used to narrow the match)',
+      },
+    },
+    required: ['contact_name'],
+  },
+  async execute(input, ctx) {
+    const contactName = String(input.contact_name ?? '').trim();
+    const contactCompany = input.contact_company ? String(input.contact_company).trim() : undefined;
+    const state = ctx.getState();
+    const userId = state.user_id;
+
+    ctx.emit({
+      type: 'transparency',
+      stage: 'read_contact_history',
+      message: `Looking up CRM record for ${contactName}${contactCompany ? ` at ${contactCompany}` : ''}...`,
+    });
+
+    try {
+      let query = supabaseAdmin
+        .from('networking_contacts')
+        .select('*')
+        .eq('user_id', userId)
+        .ilike('name', `%${contactName}%`);
+
+      if (contactCompany) {
+        query = query.ilike('company', `%${contactCompany}%`);
+      }
+
+      const { data: contacts, error: contactError } = await query.limit(1);
+
+      if (contactError) {
+        logger.warn(
+          { error: contactError.message, userId, contactName },
+          'read_contact_history: contacts query failed',
+        );
+        return JSON.stringify({ found: false, reason: 'Database query failed' });
+      }
+
+      if (!contacts || contacts.length === 0) {
+        ctx.emit({
+          type: 'transparency',
+          stage: 'read_contact_history',
+          message: `No CRM record found for ${contactName} — proceeding with fresh outreach`,
+        });
+        return JSON.stringify({ found: false });
+      }
+
+      const contact = contacts[0] as Record<string, unknown>;
+      const contactId = contact.id as string;
+
+      const { data: touchpoints, error: touchpointError } = await supabaseAdmin
+        .from('contact_touchpoints')
+        .select('*')
+        .eq('contact_id', contactId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (touchpointError) {
+        logger.warn(
+          { error: touchpointError.message, contactId, userId },
+          'read_contact_history: touchpoints query failed (non-fatal)',
+        );
+      }
+
+      const recentTouchpoints = (touchpoints ?? []).map((t: Record<string, unknown>) => ({
+        type: t.type,
+        notes: t.notes,
+        created_at: t.created_at,
+      }));
+
+      ctx.emit({
+        type: 'transparency',
+        stage: 'read_contact_history',
+        message: `Found CRM record for ${contactName} — ${contact.relationship_type} (strength: ${contact.relationship_strength}/5), ${recentTouchpoints.length} past interactions`,
+      });
+
+      return JSON.stringify({
+        found: true,
+        contact_id: contactId,
+        relationship_type: contact.relationship_type,
+        relationship_strength: contact.relationship_strength,
+        tags: contact.tags,
+        notes: contact.notes,
+        last_contact_date: contact.last_contact_date,
+        next_followup_at: contact.next_followup_at,
+        recent_touchpoints: recentTouchpoints,
+      });
+    } catch (err) {
+      logger.error(
+        { error: err instanceof Error ? err.message : String(err), userId, contactName },
+        'read_contact_history: unexpected error',
+      );
+      return JSON.stringify({ found: false, reason: 'Unexpected error during lookup' });
+    }
+  },
+};
+
 // ─── Exports ────────────────────────────────────────────────────────
 
 export const researcherTools: NetworkingOutreachTool[] = [
@@ -572,4 +688,5 @@ export const researcherTools: NetworkingOutreachTool[] = [
   findCommonGroundTool,
   assessConnectionPathTool,
   planOutreachSequenceTool,
+  readContactHistoryTool,
 ];

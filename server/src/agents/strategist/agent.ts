@@ -41,7 +41,7 @@ export const strategistConfig: ResumeAgentConfig = {
    *  1 round  — parse_resume + emit_transparency
    *  1 round  — analyze_jd + research_company (may be combined)
    *  1 round  — build_benchmark
-   *  5-8 rounds — interview_candidate (one per question)
+   *  5-8 rounds — interview_candidate_batch (batched question rounds)
    *  1 round  — classify_fit
    *  1 round  — design_blueprint
    * = ~12-15 rounds typical, 20 as safe ceiling

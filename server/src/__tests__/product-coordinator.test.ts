@@ -196,6 +196,7 @@ describe('runProductPipeline', () => {
     expect(onResponse).toHaveBeenCalledWith(
       { approved: true, edits: { angle: 'new' } },
       expect.objectContaining({ session_id: 'test-session' }),
+      expect.any(Function),
     );
     // agent-b should still run after gate
     expect(mockRunAgentLoop).toHaveBeenCalledTimes(2);

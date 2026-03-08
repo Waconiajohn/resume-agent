@@ -2,11 +2,21 @@ import { ZoneYourDay } from './ZoneYourDay';
 import { ZoneYourPipeline } from './ZoneYourPipeline';
 import { ZoneAgentFeed, type RealFeedEvent } from './ZoneAgentFeed';
 import { ZoneYourSignals } from './ZoneYourSignals';
+import { MomentumCard } from './MomentumCard';
+import { CoachingNudgeBar } from './CoachingNudgeBar';
 import { GlassCard } from '@/components/GlassCard';
 import { ArrowRight, FileText, Search, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import type { CareerIQRoom } from './Sidebar';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
+import type { MomentumSummary, CoachingNudge } from '@/hooks/useMomentum';
+
+interface CoverLetterSession {
+  id: string;
+  company_name: string | null;
+  created_at: string;
+  pipeline_status: string | null;
+}
 
 interface DashboardHomeProps {
   userName: string;
@@ -17,6 +27,11 @@ interface DashboardHomeProps {
   hasResumeSessions?: boolean;
   sessionCount?: number;
   recentSessions?: { id: string; company_name?: string | null; created_at: string; pipeline_stage?: string | null }[];
+  coverLetterSessions?: CoverLetterSession[];
+  momentum?: MomentumSummary | null;
+  momentumLoading?: boolean;
+  nudges?: CoachingNudge[];
+  onDismissNudge?: (nudgeId: string) => void;
 }
 
 const NUDGE_DISMISS_KEY = 'careeriq_nudge_dismissed';
@@ -33,7 +48,7 @@ function saveDismissed(dismissed: Record<string, boolean>) {
   try { localStorage.setItem(NUDGE_DISMISS_KEY, JSON.stringify(dismissed)); } catch { /* ignore */ }
 }
 
-export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions }: DashboardHomeProps) {
+export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
 
   const handleDismiss = (key: string) => {
@@ -47,21 +62,43 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
     onNavigateRoom?.(room);
   };
 
-  // Generate real feed events from session data
+  // Generate real feed events from session data (resume + cover letter, merged and sorted)
   const feedEvents = useMemo<RealFeedEvent[] | undefined>(() => {
-    if (!recentSessions || recentSessions.length === 0) return undefined;
-    return recentSessions.slice(0, 5).map((s) => {
-      const company = s.company_name || 'Untitled';
-      const isComplete = s.pipeline_stage === 'complete' || s.pipeline_stage === 'completed';
-      return {
-        type: isComplete ? 'session_completed' as const : 'session_created' as const,
-        timestamp: s.created_at,
-        detail: isComplete
-          ? `Completed resume for ${company} — ready for download`
-          : `Started resume session for ${company}`,
-      };
-    });
-  }, [recentSessions]);
+    const events: RealFeedEvent[] = [];
+
+    if (recentSessions) {
+      for (const s of recentSessions) {
+        const company = s.company_name || 'Untitled';
+        const isComplete = s.pipeline_stage === 'complete' || s.pipeline_stage === 'completed';
+        events.push({
+          type: isComplete ? 'session_completed' as const : 'session_created' as const,
+          timestamp: s.created_at,
+          detail: isComplete
+            ? `Completed resume for ${company} — ready for download`
+            : `Started resume session for ${company}`,
+        });
+      }
+    }
+
+    if (coverLetterSessions) {
+      for (const s of coverLetterSessions) {
+        const company = s.company_name || 'Untitled';
+        const isComplete = s.pipeline_status === 'complete';
+        events.push({
+          type: isComplete ? 'session_completed' as const : 'session_created' as const,
+          timestamp: s.created_at,
+          detail: isComplete
+            ? `Generated cover letter for ${company}`
+            : `Started cover letter for ${company}`,
+        });
+      }
+    }
+
+    if (events.length === 0) return undefined;
+
+    events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return events.slice(0, 5);
+  }, [recentSessions, coverLetterSessions]);
 
   // Determine which nudge to show
   const showResumeNudge = dashboardState !== 'new-user' && !hasResumeSessions && !dismissed['resume_nudge'];
@@ -122,6 +159,11 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
         </GlassCard>
       )}
 
+      {/* Coaching nudges from momentum engine */}
+      {nudges.length > 0 && (
+        <CoachingNudgeBar nudges={nudges} onDismiss={onDismissNudge ?? (() => {})} />
+      )}
+
       {/* Zone 1: Your Day — full width */}
       <ZoneYourDay
         userName={userName}
@@ -136,11 +178,18 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
         <ZoneAgentFeed onNavigateRoom={onNavigateRoom} realEvents={feedEvents} />
       </div>
 
-      {/* Zone 4: Your Signals — full width */}
-      <ZoneYourSignals
-        whyMeSignals={signals}
-        sessionCount={sessionCount}
-      />
+      {/* Zone 4: Your Signals + Momentum (50/50) */}
+      <div className="flex gap-6 flex-col lg:flex-row">
+        <div className="flex-1 min-w-0">
+          <ZoneYourSignals
+            whyMeSignals={signals}
+            sessionCount={sessionCount}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <MomentumCard summary={momentum ?? null} loading={momentumLoading} />
+        </div>
+      </div>
     </div>
   );
 }

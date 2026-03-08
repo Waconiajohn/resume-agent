@@ -13,6 +13,7 @@ import { writerConfig } from './writer/agent.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createContentCalendarProductConfig(): ProductConfig<ContentCalendarState, ContentCalendarSSEEvent> {
   return {
@@ -127,11 +128,27 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
           '',
           'Call analyze_expertise first, then identify_themes, then map_audience_interests, then plan_content_mix.',
         );
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
       if (agentName === 'writer') {
-        return [
+        const parts = [
           'Write the complete 30-day content calendar using the strategy data gathered.',
           '',
           'Follow your workflow exactly:',
@@ -139,7 +156,15 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
           '2. assemble_calendar',
           '',
           'Do NOT skip any post day.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

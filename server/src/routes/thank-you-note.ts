@@ -15,6 +15,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createThankYouNoteProductConfig } from '../agents/thank-you-note/product.js';
 import { FF_THANK_YOU_NOTE } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import logger from '../lib/logger.js';
 import type { ThankYouNoteState, ThankYouNoteSSEEvent } from '../agents/thank-you-note/types.js';
 
@@ -47,9 +48,10 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
     const transformed: Record<string, unknown> = { ...input };
 
-    // Load cross-product platform context
+    // Load cross-product platform context and emotional baseline
     try {
-      const [strategyRows] = await Promise.all([
+      const [baseline, strategyRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
       ]);
 
@@ -61,6 +63,9 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
+      }
+      if (baseline) {
+        transformed.emotional_baseline = baseline;
       }
     } catch (err) {
       logger.warn(

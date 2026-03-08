@@ -1016,3 +1016,80 @@ describe('runPipeline — pipeline_complete payload', () => {
     expect(typeof complete!.resume!.skills).toBe('object');
   });
 });
+
+// ─── Bug 16: Producer message includes approved sections ──────────────────────
+
+describe('runPipeline — Producer receives approved sections list (Bug 16)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRunAgentLoop.mockReset();
+  });
+
+  it('Producer initial message lists approved sections when present', async () => {
+    let callCount = 0;
+    let producerMessage = '';
+    mockRunAgentLoop.mockImplementation(
+      async ({ contextParams, initialMessage }: {
+        contextParams: { state: PipelineState };
+        initialMessage: string;
+      }) => {
+        const n = callCount++;
+        if (n === 0) {
+          contextParams.state.intake    = makeIntakeOutput();
+          contextParams.state.architect = makeArchitectOutput();
+          contextParams.state.research  = { jd_analysis: { role_title: 'VP', must_haves: [], nice_to_haves: [], implicit_requirements: [], keywords: [] }, benchmark_candidate: { ideal_profile: '' } } as any;
+          contextParams.state.positioning = { career_arc: { label: '', evidence: '', user_description: '' }, top_capabilities: [], evidence_library: [], signature_method: null, unconscious_competence: '', domain_insight: '', authentic_phrases: [], gaps_detected: [] };
+        }
+        if (n === 1) {
+          contextParams.state.approved_sections.push('summary', 'skills');
+          contextParams.state.sections = {
+            summary: makeSectionOutput('Approved summary'),
+            skills: makeSectionOutput('Approved skills'),
+          };
+        }
+        if (n === 2) {
+          producerMessage = initialMessage;
+        }
+        return makeAgentResult({});
+      },
+    );
+
+    await runPipeline(makeConfig());
+
+    expect(producerMessage).toContain('Approved Sections (DO NOT revise)');
+    expect(producerMessage).toContain('summary');
+    expect(producerMessage).toContain('skills');
+    expect(producerMessage).toContain('IMMUTABLE');
+  });
+
+  it('Producer initial message omits approved sections block when none are approved', async () => {
+    let callCount = 0;
+    let producerMessage = '';
+    mockRunAgentLoop.mockImplementation(
+      async ({ contextParams, initialMessage }: {
+        contextParams: { state: PipelineState };
+        initialMessage: string;
+      }) => {
+        const n = callCount++;
+        if (n === 0) {
+          contextParams.state.intake    = makeIntakeOutput();
+          contextParams.state.architect = makeArchitectOutput();
+        }
+        if (n === 1) {
+          contextParams.state.sections = {
+            summary: makeSectionOutput('Draft summary'),
+          };
+        }
+        if (n === 2) {
+          producerMessage = initialMessage;
+        }
+        return makeAgentResult({});
+      },
+    );
+
+    await runPipeline(makeConfig());
+
+    expect(producerMessage).not.toContain('Approved Sections');
+    expect(producerMessage).not.toContain('IMMUTABLE');
+  });
+});

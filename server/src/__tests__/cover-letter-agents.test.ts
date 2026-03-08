@@ -9,7 +9,13 @@
  * - Cover letter domain appears in registry
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+
+vi.mock('../lib/emotional-baseline.js', () => ({
+  getToneGuidanceFromInput: () => '',
+  getDistressFromInput: () => null,
+}));
+
 import { agentRegistry } from '../agents/runtime/agent-registry.js';
 
 // Import agent modules to trigger registration side effects

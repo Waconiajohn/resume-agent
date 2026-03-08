@@ -158,3 +158,92 @@ export const FF_PERSONAL_BRAND_AUDIT = envBool('FF_PERSONAL_BRAND_AUDIT', false)
  * Set FF_NINETY_DAY_PLAN=true in server/.env to activate.
  */
 export const FF_NINETY_DAY_PLAN = envBool('FF_NINETY_DAY_PLAN', false);
+
+/**
+ * FF_ONBOARDING — Enable the Onboarding Assessment Agent routes.
+ *
+ * When false (default), /api/onboarding/* returns 404.
+ * Set FF_ONBOARDING=true in server/.env to activate.
+ */
+export const FF_ONBOARDING = envBool('FF_ONBOARDING', false);
+
+// ─── Phase 4: CareerIQ Simulation Suite ──────────────────────────────
+
+/**
+ * FF_MOCK_INTERVIEW — Enable the Mock Interview Simulation routes.
+ *
+ * When false (default), /api/mock-interview/* returns 404.
+ * Set FF_MOCK_INTERVIEW=true in server/.env to activate.
+ */
+export const FF_MOCK_INTERVIEW = envBool('FF_MOCK_INTERVIEW', false);
+
+// ─── Phase 3: Active Campaign Suite ──────────────────────────────────
+
+/**
+ * FF_JOB_FINDER — Enable the Job Finder agent routes.
+ *
+ * When false (default), /api/job-finder/* returns 404.
+ * Set FF_JOB_FINDER=true in server/.env to activate.
+ */
+export const FF_JOB_FINDER = envBool('FF_JOB_FINDER', false);
+
+/**
+ * FF_APPLICATION_PIPELINE — Enable the Application Pipeline CRUD routes.
+ *
+ * When false (default), /api/applications/* returns 404.
+ * Set FF_APPLICATION_PIPELINE=true in server/.env to activate.
+ */
+export const FF_APPLICATION_PIPELINE = envBool('FF_APPLICATION_PIPELINE', false);
+
+/**
+ * FF_LINKEDIN_CONTENT — Enable the LinkedIn Content Writer agent routes.
+ *
+ * When false (default), /api/linkedin-content/* returns 404.
+ * Set FF_LINKEDIN_CONTENT=true in server/.env to activate.
+ */
+export const FF_LINKEDIN_CONTENT = envBool('FF_LINKEDIN_CONTENT', false);
+
+/**
+ * FF_LINKEDIN_EDITOR — Enable the LinkedIn Profile Editor agent routes.
+ *
+ * When false (default), /api/linkedin-editor/* returns 404.
+ * Set FF_LINKEDIN_EDITOR=true in server/.env to activate.
+ */
+export const FF_LINKEDIN_EDITOR = envBool('FF_LINKEDIN_EDITOR', false);
+
+/**
+ * FF_NETWORKING_CRM — Enable the Networking CRM CRUD routes.
+ *
+ * When false (default), /api/networking/* returns 404.
+ * Set FF_NETWORKING_CRM=true in server/.env to activate.
+ */
+export const FF_NETWORKING_CRM = envBool('FF_NETWORKING_CRM', false);
+
+// ─── Phase 4: Interview Prep Enhancement ──────────────────────────────────────
+
+/**
+ * FF_INTERVIEW_DEBRIEF — Enable the Interview Debrief CRUD routes.
+ *
+ * When false (default), /api/interview-debriefs/* returns 404.
+ * Set FF_INTERVIEW_DEBRIEF=true in server/.env to activate.
+ */
+export const FF_INTERVIEW_DEBRIEF = envBool('FF_INTERVIEW_DEBRIEF', false);
+
+/**
+ * FF_COUNTER_OFFER_SIM — Enable the Counter-Offer Simulation routes (Story 4B).
+ *
+ * When false (default), /api/counter-offer-sim/* returns 404.
+ * Set FF_COUNTER_OFFER_SIM=true in server/.env to activate.
+ */
+export const FF_COUNTER_OFFER_SIM = envBool('FF_COUNTER_OFFER_SIM', false);
+
+// ─── Phase 5: Emotional Intelligence Layer ────────────────────────────────────
+
+/**
+ * FF_MOMENTUM — Enable Momentum Tracking routes (Sprint 49, Stories 5-1 to 5-3).
+ *
+ * When false (default), /api/momentum/* returns 404.
+ * Set FF_MOMENTUM=true in server/.env to activate.
+ * Enables: activity logging, streak computation, coaching nudges, stall detection.
+ */
+export const FF_MOMENTUM = envBool('FF_MOMENTUM', false);

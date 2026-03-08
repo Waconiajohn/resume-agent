@@ -104,6 +104,10 @@ For EACH requirement, return:
 - strengthen: (for partial) how to make the match stronger
 - mitigation: (for gap) reframe strategy using adjacent evidence, or null if unaddressable
 
+Also produce a "Why Me" and "Why Not Me" summary:
+- why_me: 3-5 compelling reasons this candidate IS the right fit, each with specific evidence
+- why_not_me: 1-3 honest gaps or risks a hiring manager would notice, each with specific evidence of what's missing
+
 Return ONLY valid JSON:
 {
   "requirements": [
@@ -118,12 +122,18 @@ Return ONLY valid JSON:
       "unaddressable": false
     }
   ],
-  "strength_summary": "2-3 sentence honest assessment of overall candidate fit"
+  "strength_summary": "2-3 sentence honest assessment of overall candidate fit",
+  "why_me": [
+    { "reason": "Proven P&L ownership at scale", "evidence": "Managed $50M budget at Acme Corp with 23% YoY growth" }
+  ],
+  "why_not_me": [
+    { "reason": "No direct SaaS experience", "evidence": "All experience is in manufacturing and logistics sectors" }
+  ]
 }`,
     }],
   });
 
-  const parsed = repairJSON<Record<string, unknown>>(response.text);
+  let parsed = repairJSON<Record<string, unknown>>(response.text);
 
   let requirements: RequirementMapping[] = [];
   let strength_summary = '';
@@ -150,8 +160,8 @@ Return ONLY valid JSON:
   } else {
     // Fallback: mark all as gap
     logger.warn(
-      { rawSnippet: response.text.substring(0, 500), parsedKeys: parsed ? Object.keys(parsed) : null },
-      'Gap analysis JSON parse failed — falling back to all-gap',
+      { rawSnippet: response.text.substring(0, 500), parsedKeys: parsed ? Object.keys(parsed) : null, why_me_lost: true, why_not_me_lost: true },
+      'Gap analysis JSON parse failed — falling back to all-gap (why_me/why_not_me also lost)',
     );
     requirements = allRequirements.map(r => ({
       requirement: r.text,
@@ -160,12 +170,33 @@ Return ONLY valid JSON:
       unaddressable: false,
     }));
     strength_summary = 'Gap analysis failed — all requirements marked as gap for safety.';
+    // Clear parsed to prevent extracting why_me/why_not_me from a failed response
+    parsed = null;
   }
 
   const strong = requirements.filter(r => r.classification === 'strong').length;
   const partial = requirements.filter(r => r.classification === 'partial').length;
   const gaps = requirements.filter(r => r.classification === 'gap').length;
   const total = requirements.length;
+
+  // Extract Why Me / Why Not Me from LLM response (only when main parse succeeded)
+  const why_me = Array.isArray(parsed?.why_me)
+    ? (parsed.why_me as Array<Record<string, unknown>>)
+        .map(item => ({
+          reason: String(item.reason ?? ''),
+          evidence: String(item.evidence ?? ''),
+        }))
+        .filter(item => item.reason)
+    : undefined;
+
+  const why_not_me = Array.isArray(parsed?.why_not_me)
+    ? (parsed.why_not_me as Array<Record<string, unknown>>)
+        .map(item => ({
+          reason: String(item.reason ?? ''),
+          evidence: String(item.evidence ?? ''),
+        }))
+        .filter(item => item.reason)
+    : undefined;
 
   return {
     requirements,
@@ -177,6 +208,8 @@ Return ONLY valid JSON:
       .filter(r => r.classification === 'gap' && r.mitigation && !r.unaddressable)
       .map(r => `${r.requirement} → ${r.mitigation}`),
     strength_summary,
+    why_me,
+    why_not_me,
   };
 }
 

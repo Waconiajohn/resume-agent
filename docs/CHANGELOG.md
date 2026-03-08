@@ -1,5 +1,406 @@
 # Changelog — Resume Agent
 
+## 2026-03-08 — Session 43
+**Sprint:** 49 (post-sprint fix-up) | **Story:** Fixes 6/7/8 — atomic upsert RPC, deleteUserContext, getLatestUserContext
+**Summary:** Replaced the read-then-write `upsertUserContext` with an atomic Postgres RPC, added `deleteUserContext` and `getLatestUserContext` helpers, created the supporting migration, and updated the test suite from 20 tests (7 failing) to 33 tests (all passing).
+
+### Changes Made
+- `supabase/migrations/20260308230000_atomic_context_upsert.sql` — NEW: `upsert_platform_context` Postgres function using `INSERT ... ON CONFLICT DO UPDATE` with server-side `version + 1` and `updated_at = now()`, eliminating the read-then-write race condition
+- `server/src/lib/platform-context.ts` — Fix 6: Replaced `upsertUserContext` body with a single `supabaseAdmin.rpc('upsert_platform_context', ...)` call; handles both array and scalar RPC response shapes
+- `server/src/lib/platform-context.ts` — Fix 7: Added `deleteUserContext(userId, contextType, sourceProduct?)` — scoped delete with optional product filter, throws on error
+- `server/src/lib/platform-context.ts` — Fix 8: Added `getLatestUserContext(userId, contextType)` — convenience wrapper that calls `getUserContext` and returns `rows[0] ?? null`
+- `server/src/__tests__/platform-context.test.ts` — Full test rewrite: hoisted `mockRpc` added to supabase mock; all `upsertUserContext` tests now use `mockRpc`; added 4 `getLatestUserContext` tests; added 5 `deleteUserContext` tests (success, eq filters, source_product scoping, error throw); Phase 2/3 and concurrent tests updated to use `mockRpc`. Total: 20 → 33 tests.
+
+### Decisions Made
+- Postgres RPC for atomic upsert: `supabaseAdmin.rpc()` is the correct pattern when the operation requires a self-referencing column update (`version + 1`) that Supabase's `.upsert()` cannot express without a read-first
+- `deleteUserContext` throws (rather than returning null) because callers of delete should know about failure; the pattern is consistent with how Supabase errors are surfaced in other CRUD routes
+- `getLatestUserContext` is a thin wrapper — no duplicated query logic, just `getUserContext()[0] ?? null`
+
+### Known Issues
+- None introduced
+
+### Next Steps
+- Apply 6 pending DB migrations to production Supabase
+- Server: 1,909 tests passing | App: 1,004 tests passing | TypeScript: clean
+
+---
+
+## 2026-03-08 — Session 42
+**Sprint:** 49 (post-sprint fix-up) | **Story:** Fix 5 + test suite repair
+**Summary:** Added `distress_resources` SSE event to onboarding pipeline (Fix 5), then repaired 7 broken `platform-context` tests caused by a prior production refactor that switched `upsertUserContext` from a read-then-write `.from()` chain to an atomic `.rpc('upsert_platform_context')` call without updating the tests.
+
+### Changes Made
+- `server/src/agents/onboarding/types.ts` — Added `distress_resources` union member to `OnboardingSSEEvent` (message + resources array)
+- `server/src/agents/onboarding/product.ts` — Emit `distress_resources` SSE event in `finalizeResult` when emotional baseline detects distress
+- `server/src/agents/onboarding/types.ts` — Added `distress_resources` union member to `OnboardingSSEEvent` (message + resources array)
+- `server/src/__tests__/platform-context.test.ts` — Fixed 7 tests: all `upsertUserContext` test cases now mock `mockRpc` (the hoisted `supabaseAdmin.rpc` mock) instead of the old `mockFrom` + `.maybeSingle()`/`.single()` chain pattern. The insert-path, update-path, Phase 2, Phase 3, and concurrent upsert describe blocks all updated.
+
+### Root Cause (platform-context tests)
+`upsertUserContext` was previously a read-then-write operation using `.from('user_platform_context').select().maybeSingle()` then `.insert()` or `.update()`. It was refactored to use `supabaseAdmin.rpc('upsert_platform_context', ...)` for atomic version increment with no race condition. The test mocks were never updated to match — they still set up the old `from()` chain, which the production code no longer calls, so `rpc()` returned `undefined` and every upsert path returned `null`.
+
+### Known Issues
+- None introduced
+
+### Next Steps
+- Test suite is clean: 1,896 server + 1,004 app, 0 failures
+
+---
+
+## 2026-03-08 — Session 41
+**Sprint:** 49 (post-sprint fix-up) | **Story:** positioning-coach.ts fixes + test suite repair
+**Summary:** Applied three targeted fixes to positioning-coach.ts (Fix 2: research context passed to fallback padding, Fix 3: invalid-category warning log, Fix 4: follow-up ID collision prevention with Date.now suffix), then repaired 14 broken tests that the changes exposed.
+
+### Changes Made
+- `server/src/agents/positioning-coach.ts` — Fix 2: `normalizeQuestions` signature extended to accept optional `research?: ResearchOutput`; call site updated; `generateFallbackQuestions` now receives research context when padding below 8 questions
+- `server/src/agents/positioning-coach.ts` — Fix 3: `logger.warn` added before the `career_narrative` default in category validation, surfacing LLM category drift
+- `server/src/agents/positioning-coach.ts` — Fix 4: `buildFollowUpQuestion` ID now appends `_${Date.now()}` to prevent suffix collision when multiple follow-ups are generated for the same question
+- `server/src/__tests__/agents-positioning.test.ts` — 5 follow-up ID assertions changed from `.toBe('exact')` to `.toMatch(/^exact_\d+$/)` to match the new non-deterministic suffix
+- `server/src/__tests__/positioning-hardening.test.ts` — 2 follow-up ID assertions updated the same way
+- `server/src/__tests__/platform-context.test.ts` — Root cause: `upsertUserContext` was migrated to use `supabaseAdmin.rpc()` in a prior sprint but the tests still mocked `supabaseAdmin.from()`. Fixed by hoisting `mockRpc` into the module mock definition and rewriting all `upsertUserContext` tests (insert path, update path, Phase 2 context types, Phase 3 context types, concurrent upsert) to call `mockRpc` directly. Removed stale runtime-patching pattern from concurrent test.
+
+### Decisions Made
+- Follow-up ID uniqueness: `Date.now()` suffix chosen over a counter because it requires no shared state and is sufficient for the use case (IDs are ephemeral session state, not persisted keys)
+- Platform-context test mock alignment: hoisted `mockRpc` is cleaner than the old approach of patching the live import at runtime; all `upsertUserContext` tests now accurately reflect the RPC implementation
+
+### Known Issues
+- None introduced
+
+### Next Steps
+- Phase 6 (Retirement Bridge), Phase 7 (B2B Outplacement), or tech debt cleanup
+
+---
+
+## 2026-03-08 — Session 40
+**Sprint:** 49 | **Stories:** Phase 5 — Emotional Intelligence Layer (7/7 stories)
+**Summary:** Added momentum tracking (activity streaks, win celebrations), cognitive reframing engine (stall detection + LLM coaching messages), resource library (8 curated articles from coaching methodology), and Ask a Coach form (human escalation). +16 server tests, +29 app tests.
+
+### Changes Made
+- `supabase/migrations/20260308200000_user_momentum.sql` — NEW: 3 tables (user_momentum_activities, coaching_nudges, coaching_requests) with RLS
+- `server/src/routes/momentum.ts` — NEW: 8 CRUD endpoints (log activity, summary, activities, nudges, dismiss nudge, check-stalls, celebrate, coaching-requests)
+- `server/src/lib/cognitive-reframing.ts` — NEW: Stall detection heuristics (inactivity 5d, stalled pipeline 14d, rejection streak 3+, milestones) + MODEL_MID coaching message generation with static fallbacks
+- `server/src/lib/feature-flags.ts` — Added FF_MOMENTUM feature flag (Phase 5 section)
+- `server/src/index.ts` — Added momentum routes at /api/momentum
+- `app/src/hooks/useMomentum.ts` — NEW: Hook with summary fetch, nudge management, optimistic dismiss, stall checking
+- `app/src/components/career-iq/MomentumCard.tsx` — NEW: Streak display (flame icon, day count, amber/green), 3 mini-stats, recent wins
+- `app/src/components/career-iq/CoachingNudgeBar.tsx` — NEW: Dismissible coaching nudges with trigger-type-specific colors and icons
+- `app/src/components/career-iq/DashboardHome.tsx` — Added MomentumCard + CoachingNudgeBar integration, 50/50 bottom layout with ZoneYourSignals
+- `app/src/components/career-iq/CareerIQScreen.tsx` — Added useMomentum hook, checkStalls on mount (2s delay), pass momentum props to DashboardHome
+- `app/src/components/career-iq/LiveSessionsRoom.tsx` — Added Resource Library (8 articles, searchable, category-filterable) + Ask a Coach form (topic, description, urgency, coaching_requests submission)
+
+### Test Files
+- `server/src/__tests__/momentum.test.ts` — streak computation + route validation tests
+- `server/src/__tests__/cognitive-reframing.test.ts` — stall detection + message generation tests
+- `app/src/__tests__/hooks/useMomentum.test.ts` — 9 hook tests (fetch, log, dismiss, error states)
+
+### Decisions Made
+- Momentum tracking is deterministic CRUD — no LLM needed for activity logging and streak computation
+- Cognitive reframing uses MODEL_MID with static fallbacks (coaching methodology Bible Ch 8)
+- Resource library is static content (8 articles organized by coaching methodology topics) — future CMS deferred
+- Stall detection deduplicates by trigger_type within 3 days to prevent notification fatigue
+
+### Next Steps
+- Phase 6 (Retirement Bridge) or Phase 7 (B2B Outplacement) or tech debt
+
+---
+
+## 2026-03-08 — Session 39 (continued, part 2)
+**Sprint:** 48 | **Stories:** Quick Wins — Cover Letter DOCX Export + Dashboard Integration
+**Summary:** Added DOCX export for cover letters (Calibri 11pt, 1-inch margins) and merged cover letter sessions into the CareerIQ dashboard feed alongside resume sessions. +9 app tests.
+
+### Changes Made
+- `app/src/lib/export-cover-letter.ts` — Added `exportCoverLetterDocx()` using docx library
+- `app/src/components/cover-letter/CoverLetterScreen.tsx` — Added "Download DOCX" button
+- `app/src/components/career-iq/DashboardHome.tsx` — Added `coverLetterSessions` prop, merged into unified feed
+- `app/src/components/career-iq/CareerIQScreen.tsx` — Fetches cover letter sessions from coach_sessions table
+- `server/src/routes/cover-letter.ts` — Added `onBeforeStart` hook to persist product_type to coach_sessions
+- `app/src/__tests__/export-cover-letter.test.ts` — 9 new DOCX export tests
+
+---
+
+## 2026-03-08 — Session 39 (continued)
+**Sprint:** 47 | **Stories:** Phase 4B — Salary Negotiation Enhancement (6/6 stories)
+**Summary:** Built Counter-Offer Simulation (types, employer agent, 4 tools, ProductConfig, route, hook, UI) and Kanban "Negotiate Salary" trigger on offer-stage cards. +36 app tests.
+
+### Changes Made
+- `server/src/agents/salary-negotiation/simulation/types.ts` — NEW: CounterOfferSimState, EmployerPushback, UserResponseEvaluation, SSE events
+- `server/src/agents/salary-negotiation/simulation/employer/tools.ts` — NEW: 4 tools (generate_pushback, present_to_user_pushback, evaluate_response, emit_transparency)
+- `server/src/agents/salary-negotiation/simulation/employer/agent.ts` — NEW: EmployerConfig with 10-min timeout
+- `server/src/agents/salary-negotiation/simulation/product.ts` — NEW: ProductConfig (full + single_round modes)
+- `server/src/routes/counter-offer-sim.ts` — NEW: Route with FF_COUNTER_OFFER_SIM
+- `server/src/lib/feature-flags.ts` — Added FF_COUNTER_OFFER_SIM
+- `server/src/index.ts` — Mounted counter-offer-sim route
+- `app/src/hooks/useCounterOfferSim.ts` — NEW: SSE hook with gate response
+- `app/src/components/career-iq/CounterOfferView.tsx` — NEW: 5-state simulation UI
+- `app/src/components/career-iq/SalaryNegotiationRoom.tsx` — Added counter-offer simulation launch
+- `app/src/components/career-iq/JobCommandCenterRoom.tsx` — Added "Negotiate Salary" CTA on offer-stage Kanban cards
+- `app/src/__tests__/hooks/useCounterOfferSim.test.ts` — NEW: 14 tests
+
+### Decisions Made
+- Counter-Offer Sim is a separate ProductConfig — same rationale as Mock Interview
+- Tool `present_to_user_pushback` matches agent-loop.ts `present_to_user` timeout exemption
+- Market research platform context type deferred (not in ContextType union yet)
+
+---
+
+## 2026-03-08 — Session 39
+**Sprint:** 46 | **Stories:** Phase 4A — Interview Prep Enhancement (8/8 stories)
+**Summary:** Built full Mock Interview Simulation (types, agent, 4 tools, ProductConfig, route, hook, UI), Post-Interview Debrief CRUD (migration, routes, hook, form), Practice Mode, and Kanban Integration. +22 app tests.
+
+### Changes Made
+- `server/src/agents/interview-prep/simulation/types.ts` — NEW: MockInterviewState, InterviewQuestion, AnswerEvaluation, SSE events
+- `server/src/agents/interview-prep/simulation/interviewer/tools.ts` — NEW: 4 tools (generate_interview_question, present_question_to_user, evaluate_answer, emit_transparency)
+- `server/src/agents/interview-prep/simulation/interviewer/agent.ts` — NEW: InterviewerConfig with 15-min timeout, 25 max rounds
+- `server/src/agents/interview-prep/simulation/product.ts` — NEW: ProductConfig for mock interview (full + practice modes)
+- `server/src/routes/mock-interview.ts` — NEW: Route using createProductRoutes, loads platform context
+- `server/src/routes/interview-debrief.ts` — NEW: CRUD routes (POST/GET/PATCH/DELETE) for interview debriefs
+- `supabase/migrations/20260307120000_interview_debriefs.sql` — NEW: interview_debriefs table with RLS
+- `server/src/lib/feature-flags.ts` — Added FF_MOCK_INTERVIEW, FF_INTERVIEW_DEBRIEF in Phase 4 section
+- `server/src/index.ts` — Mounted mock-interview and interview-debrief routes
+- `app/src/hooks/useMockInterview.ts` — NEW: SSE hook with gate response for Q&A loop
+- `app/src/hooks/useInterviewDebriefs.ts` — NEW: CRUD hook for debriefs
+- `app/src/components/career-iq/MockInterviewView.tsx` — NEW: Full mock interview UI (5 view states, STAR scoring, practice mode)
+- `app/src/components/career-iq/DebriefForm.tsx` — NEW: Structured debrief capture form with Thank You Note CTA
+- `app/src/components/career-iq/InterviewLabRoom.tsx` — Added mock interview + practice mode + debrief view modes
+- `app/src/components/career-iq/JobCommandCenterRoom.tsx` — Added "Prep for Interview" CTA on interviewing-stage Kanban cards
+- `app/src/__tests__/hooks/useMockInterview.test.ts` — NEW: 13 tests
+- `app/src/__tests__/hooks/useInterviewDebriefs.test.ts` — NEW: 9 tests
+
+### Decisions Made
+- Mock Interview is a separate ProductConfig (ADR pending) — interactive gates incompatible with autonomous interview-prep pipeline
+- Post-Interview Debrief is CRUD, not an agent — no LLM needed for structured data capture
+- Practice Mode reuses simulation agent with mode='practice' (1 question)
+- Kanban integration is frontend-only — existing pipelineInterviews prop already feeds data
+
+### Known Issues
+- Thank You Note cross-room navigation not yet functional (debrief logs interviewer_notes but can't navigate to ThankYouNoteRoom with pre-filled data)
+- interview_debriefs migration not yet applied to production Supabase
+
+### Next Steps
+- Phase 4B (Salary Negotiation Enhancement) or Phase 5+
+- Apply pending DB migrations to production
+- Update platform catalog UI to show new products
+
+---
+
+## 2026-03-07 — Session 38 (continued)
+**Sprint:** 42/44 (parallel) | **Stories:** Phase 3 — Active Campaign Suite Frontend
+**Summary:** Built all Phase 3 frontend: Job Command Center (Sprint 42) and LinkedIn Studio (Sprint 44). Application Pipeline CRUD routes, 4 new hooks, updated 2 room components. +72 app tests.
+
+### Changes Made
+- `server/src/routes/application-pipeline.ts` — NEW: Application Pipeline CRUD routes (6 endpoints: create, list, get, update, delete, due-actions). Stage transition tracking via stage_history JSONB. Feature-flagged via FF_APPLICATION_PIPELINE.
+- `server/src/index.ts` — Mounted `/api/applications` route
+- `app/src/hooks/useApplicationPipeline.ts` — NEW: CRUD hook with optimistic stage moves, auth, pagination, due actions
+- `app/src/hooks/useJobFinder.ts` — NEW: SSE hook for Job Finder agent with gate handling (search_progress, results_ready, pipeline_gate)
+- `app/src/hooks/useLinkedInContent.ts` — NEW: SSE hook for LinkedIn Content Writer with 2 gates (topic_selection, post_review)
+- `app/src/hooks/useLinkedInEditor.ts` — NEW: SSE hook for LinkedIn Profile Editor with per-section gates
+- `app/src/components/career-iq/JobCommandCenterRoom.tsx` — UPDATED: Replaced mock data with real hooks. Added KanbanBoard (6-column stage dropdown), DailyOps (urgency color-coding), live SmartMatches from Job Finder
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — UPDATED: Added tab navigation (Post Composer, Profile Editor, Calendar, Analytics). Post Composer has topic selection + post review flow. Profile Editor has section-by-section review.
+- `app/src/__tests__/hooks/useApplicationPipeline.test.ts` — 15 tests
+- `app/src/__tests__/hooks/useJobFinder.test.ts` — 16 tests
+- `app/src/__tests__/hooks/useLinkedInContent.test.ts` — 18 tests
+- `app/src/__tests__/hooks/useLinkedInEditor.test.ts` — 20 tests
+- `app/src/__tests__/career-iq/Sprint4Rooms.test.tsx` — Updated LinkedInStudioRoom tests for new tabbed layout (6 tests)
+
+### Test Counts
+- Server: 1,855 passing (unchanged)
+- App: 930 passing (was 858, +72)
+- TypeScript: both server and app compile clean
+
+## 2026-03-07 — Session 38
+**Sprint:** 41/43/45 (parallel) | **Stories:** Phase 3 — Active Campaign Suite Backend
+**Summary:** Built all Phase 3 backend agents and infrastructure in parallel: Job Finder (Sprint 41), LinkedIn Content Writer + Profile Editor (Sprint 43), and Networking CRM (Sprint 45). 144 new server tests.
+
+### Changes Made
+- `server/src/agents/job-finder/` — New Job Finder agent with Searcher (5 tools wrapping NI module) and Ranker (4 tools for fit scoring + narration). 2-agent pipeline with review_results gate.
+- `server/src/agents/linkedin-content/` — New LinkedIn Content Writer agent with Strategist (4 tools: analyze_expertise, suggest_topics, present_topics) and Writer (5 tools: write_post, self_review_post, revise_post, present_post). 2 interactive gates (topic_selection, post_review).
+- `server/src/agents/linkedin-editor/` — New LinkedIn Profile Editor agent with Editor (5 tools: write_section, self_review_section, revise_section, present_section). Per-section gates for headline/about/experience/skills/education.
+- `server/src/routes/job-finder.ts` — Job Finder route with FF_JOB_FINDER, platform context loading
+- `server/src/routes/linkedin-content.ts` — LinkedIn Content route with FF_LINKEDIN_CONTENT
+- `server/src/routes/linkedin-editor.ts` — LinkedIn Editor route with FF_LINKEDIN_EDITOR
+- `server/src/routes/networking-contacts.ts` — Networking CRM CRUD routes (contacts + touchpoints) with FF_NETWORKING_CRM
+- `server/src/agents/networking-outreach/researcher/tools.ts` — Added `read_contact_history` tool for CRM-integrated outreach personalization
+- `server/src/lib/feature-flags.ts` — Added 5 Phase 3 feature flags (FF_JOB_FINDER, FF_APPLICATION_PIPELINE, FF_LINKEDIN_CONTENT, FF_LINKEDIN_EDITOR, FF_NETWORKING_CRM)
+- `server/src/lib/platform-context.ts` — Added `job_discovery_results` and `content_post` to ContextType union
+- `server/src/index.ts` — Wired all new routes into Hono app
+- `supabase/migrations/20260307200000_application_pipeline.sql` — application_pipeline table with stages, RLS, indexes
+- `supabase/migrations/20260307300000_content_posts.sql` — content_posts table with RLS
+- `supabase/migrations/20260307400000_networking_contacts.sql` — networking_contacts + contact_touchpoints tables with RLS
+- `server/src/__tests__/job-finder.test.ts` — Job Finder agent tests
+- `server/src/__tests__/linkedin-content.test.ts` — LinkedIn Content Writer tests
+- `server/src/__tests__/linkedin-editor.test.ts` — LinkedIn Editor tests
+- `server/src/__tests__/networking-crm.test.ts` — Networking CRM CRUD tests
+- `server/src/__tests__/platform-context.test.ts` — 2 new tests for new context types
+
+### Decisions Made
+- Architecture Option C (Hybrid): Keep existing agents (#4, #5, #13, #14) as quick-gen report tools, build new interactive agents for command-center experiences
+- Parallelized Sprints 41, 43, 45 since they share no dependencies (handled shared files centrally to avoid conflicts)
+- repairJSON pattern: `repairJSON<T>(raw) ?? {}` — never `JSON.parse(repairJSON(raw))` since repairJSON returns parsed object, not string
+
+### Known Issues
+- Frontend sprints (42, 44) not yet started — blocked by this session completing
+- DB migrations not yet applied to Supabase (local schema only)
+
+### Test Counts
+- Server: 1,855 passing (was 1,711, +144)
+- App: 858 passing (unchanged)
+- TypeScript: both server and app compile clean
+
+### Next Steps
+- Sprint 42: Application Pipeline CRUD routes + Job Command Center Frontend
+- Sprint 44: LinkedIn Studio Frontend (hooks, Post Composer, Profile Editor UI)
+
+## 2026-03-07 — Session 37
+**Sprint:** 40 | **Stories:** Phase 2 — Core Positioning Loop (Stories 2A-1, 2A-2, 2A-3, 2B-1)
+**Summary:** Fixed Bug 16 (revision loops) and Bug 17 (context forgetfulness), added structured Why Me / Why Not Me to classify_fit, and enriched platform context with 3 new context types.
+
+### Changes Made
+- `server/src/agents/resume/product.ts` — Producer message now includes approved sections list so the LLM knows not to propose revisions for immutable sections. Added persistence of benchmark_candidate, gap_analysis, and industry_research to platform context on pipeline completion.
+- `server/src/agents/producer/prompts.ts` — Added explicit instruction to never request revisions for approved sections.
+- `server/src/agents/runtime/agent-loop.ts` — Added `buildScratchpadSummary()` function that lists completed sections and their status when conversation history is compacted. Compaction summary now includes scratchpad status and instructs model not to re-do completed sections.
+- `server/src/agents/types.ts` — Added `WhyMeItem` interface and optional `why_me`/`why_not_me` arrays to `GapAnalystOutput`.
+- `server/src/agents/gap-analyst.ts` — Updated LLM prompt to request Why Me / Why Not Me arrays. Updated output processing to extract and return them.
+- `server/src/agents/strategist/tools.ts` — classify_fit tool now returns `why_me` and `why_not_me` in its output.
+- `server/src/agents/schemas/strategist-schemas.ts` — Added `WhyMeItemSchema` and optional `why_me`/`why_not_me` to `ClassifyFitOutputSchema`.
+- `server/src/lib/platform-context.ts` — Added `benchmark_candidate`, `gap_analysis`, and `industry_research` to `ContextType` union.
+
+### Tests Added (15 new tests, total 1,711)
+- `server/src/__tests__/coordinator.test.ts` — 2 tests: Producer message includes/omits approved sections list
+- `server/src/__tests__/context-compaction.test.ts` — 7 tests: buildScratchpadSummary section status, presented markers, other keys, edge cases
+- `server/src/__tests__/agents-gap-analyst.test.ts` — 3 tests: why_me/why_not_me extraction, omission, empty reason filtering
+- `server/src/__tests__/platform-context.test.ts` — 3 tests: new context types accepted by upsertUserContext
+
+### Decisions Made
+- Bug 16 root cause: Producer LLM didn't know which sections were approved, so it wasted rounds proposing revisions that got rejected. Fix: include approved sections in initial message + system prompt instruction.
+- Bug 17 root cause: Conversation compaction dropped information about completed sections. Fix: include scratchpad status summary in compaction message so model remembers what's done.
+
+### Next Steps
+- Phase 2 complete. Next: Phase 3 (Active Campaign Suite — port Always-On-Contracts code).
+
+## 2026-03-07 — Session 36
+**Sprint:** 39 | **Stories:** Phase 1C — Emotional Baseline (Stories 1-3)
+**Summary:** Built cross-cutting emotional baseline middleware that reads the Client Profile from onboarding, extracts grief cycle position and financial segment, and injects tone guidance into every agent's system prompt. Three coaching tone registers: supportive (crisis/stressed/negative emotions — empathy-first, "we" language, celebrate small wins), direct (ideal/acceptance — candor, strategic advice, challenge underselling), motivational (growth/comfortable — aspirational framing, push bigger thinking). High/low urgency pacing. Distress detection triggers when depression/anger + crisis/urgency≥9 — surfaces NAMI, 988 Lifeline, and career coaching referral resources alongside normal output. Never diagnoses, never labels emotional state to user. Updated all 14 route files to load emotional baseline in `transformInput` (parallel with existing context loads). Updated all 14 product files to inject tone guidance into `buildAgentMessage`. 28 new tests covering detection, tone generation, distress detection, and input helpers.
+
+### Changes Made
+- `server/src/lib/emotional-baseline.ts` — NEW: EmotionalBaseline type, getEmotionalBaseline(), buildToneGuidance() (3 tone registers), detectDistress() (3 resources), getToneGuidanceFromInput(), getDistressFromInput()
+- `server/src/routes/cover-letter.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/interview-prep.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/linkedin-optimizer.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/content-calendar.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/networking-outreach.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/job-tracker.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/salary-negotiation.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/case-study.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/executive-bio.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/thank-you-note.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/personal-brand.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/ninety-day-plan.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/routes/onboarding.ts` — Added getEmotionalBaseline to transformInput
+- `server/src/agents/resume/route-hooks.ts` — Added getEmotionalBaseline to resumeTransformInput
+- `server/src/agents/resume/product.ts` — Added tone guidance + distress to buildAgentMessage (strategist gets distress resources)
+- `server/src/agents/cover-letter/product.ts` — Added tone guidance + distress (analyst)
+- `server/src/agents/interview-prep/product.ts` — Added tone guidance + distress (researcher)
+- `server/src/agents/linkedin-optimizer/product.ts` — Added tone guidance + distress (analyzer)
+- `server/src/agents/content-calendar/product.ts` — Added tone guidance + distress (strategist)
+- `server/src/agents/networking-outreach/product.ts` — Added tone guidance + distress (researcher)
+- `server/src/agents/job-tracker/product.ts` — Added tone guidance + distress (analyst)
+- `server/src/agents/salary-negotiation/product.ts` — Added tone guidance + distress (researcher)
+- `server/src/agents/case-study/product.ts` — Added tone guidance + distress (analyst)
+- `server/src/agents/executive-bio/product.ts` — Added tone guidance + distress (writer)
+- `server/src/agents/thank-you-note/product.ts` — Added tone guidance + distress (writer)
+- `server/src/agents/personal-brand/product.ts` — Added tone guidance + distress (auditor)
+- `server/src/agents/ninety-day-plan/product.ts` — Added tone guidance + distress (researcher)
+- `server/src/agents/onboarding/product.ts` — Added tone guidance + distress (assessor)
+- `server/src/__tests__/emotional-baseline.test.ts` — 28 tests
+- `server/src/__tests__/cover-letter-agents.test.ts` — Added emotional-baseline mock
+- `server/src/__tests__/cover-letter-context.test.ts` — Added emotional-baseline mock
+
+### Decisions Made
+- Emotional baseline read from `client_profile` in platform context (already persisted by onboarding agent)
+- No separate `emotional_baseline` context type needed — derived from existing data
+- Distress threshold: depression/anger + (crisis OR urgency≥9) — conservative, avoids false positives
+- Referral resources are always optional and framed as "just in case" — never diagnostic
+- Tone guidance appended to ALL agents in pipeline, distress resources only to first agent
+
+### Quality Gate
+- Server: 1,696 tests passing (was 1,668 → +28)
+- App: 858 tests passing (unchanged)
+- TypeScript: both server and app tsc clean
+
+### Next Steps
+- Phase 1 complete (1A + 1B + 1C)
+- Phase 2: Core Positioning Loop (Bug 16/17 fixes, platform context enrichment)
+
+## 2026-03-07 — Session 35
+**Sprint:** 38 | **Stories:** Phase 1B — WhyMe Engine Enhancement (Stories 1-3)
+**Summary:** Enhanced the positioning interview engine with three improvements: (1) Replaced the hardcoded `trimmed.length < 100` follow-up threshold with LLM-based quality assessment using MODEL_LIGHT — evaluates specificity, evidence strength, and differentiation on a 1-5 scale. Falls back to heuristic evaluation when LLM fails. (2) Added "Super Bowl Story" questions — two new question categories (`trophies` for signature achievements and `gaps` for honest self-assessment) in both LLM-generated and fallback question sets. (3) Added `positioning_foundation` context type to platform context — persists trophies, gaps, super_bowl_story, career arc, and authentic phrases after resume pipeline completion for downstream agent consumption.
+
+### Changes Made
+- `server/src/agents/positioning-coach.ts` — `evaluateFollowUp()` now async with MODEL_LIGHT quality assessment (3 dimensions: specificity/evidence/differentiation), heuristic fallback, `buildFollowUpQuestion()` helper. Added trophies + gaps categories to LLM prompt and fallback questions. Updated `normalizeQuestions()` valid categories.
+- `server/src/agents/types.ts` — Added `'trophies' | 'gaps'` to `QuestionCategory` union
+- `server/src/agents/strategist/tools.ts` — Updated `interview_candidate_batch` to await async `evaluateFollowUp` via `Promise.all(followUpPromises)`. Updated category enums.
+- `server/src/agents/resume/product.ts` — Added `positioning_foundation` persistence in `savePlatformContext()` after positioning_strategy save
+- `server/src/lib/platform-context.ts` — Added `'positioning_foundation'` to `ContextType` union
+- `server/src/__tests__/agents-positioning.test.ts` — Updated evaluateFollowUp tests for async API, added LLM quality assessment tests
+- `server/src/__tests__/positioning-hardening.test.ts` — Added LLM mock, updated evaluateFollowUp calls to async
+- `server/src/__tests__/strategist-tools.test.ts` — Updated mock to `mockResolvedValue` for async evaluateFollowUp
+
+### Decisions Made
+- LLM quality assessment uses MODEL_LIGHT (cheapest tier: $0.05/$0.08 per M on Groq, FREE on Z.AI) with 256 max_tokens — cost per evaluation ~$0.001
+- Answers < 20 chars skip LLM entirely (guaranteed follow-up needed)
+- Heuristic fallback preserves all original follow-up logic as safety net
+- Super Bowl Story questions added to both LLM prompt (for dynamic generation) and fallback questions (for reliability)
+- Positioning foundation persisted only when at least one trophy or gap answer exists
+
+### Quality Gate
+- Server: 1,668 tests passing (was 1,667 → +1 net new)
+- App: 858 tests passing (unchanged)
+- TypeScript: both server and app tsc clean
+
+### Next Steps
+- Phase 1C: Emotional Baseline cross-cutting middleware
+- Phase 2: Core Positioning Loop (Bug 16/17 fixes, platform context enrichment)
+
+## 2026-03-07 — Session 34
+**Sprint:** 37 | **Stories:** Phase 1A — Onboarding Assessment Agent (Stories 1-6)
+**Summary:** Launched the CareerIQ Master Build Plan. Converted 7 phases (49 stories) into backlog. Retired Sprint 36 (Career IQ Rooms deferred). Built the Onboarding Assessment Agent — the platform's first interaction point. Single-agent pipeline (Assessor) with user gate: generates 3-5 assessment questions, pauses for user responses, evaluates answers to infer financial segment (crisis/stressed/ideal/comfortable) and emotional state (grief cycle), builds a Client Profile that persists to platform context for all downstream agents. 4 tools (generate_questions, evaluate_responses, detect_financial_segment, build_client_profile), 7 knowledge rules from Coaching Methodology Bible, gate-based interaction, ProductConfig with conditional gate, route at /api/onboarding/*, FF_ONBOARDING, DB migration with RLS, useOnboarding SSE hook, app-side types. Always-On-Contracts codebase researched for Phase 3 porting (see memory/always-on-porting.md).
+
+### Changes Made
+- `server/src/agents/onboarding/types.ts` — OnboardingState, SSE events, FinancialSegment, CareerLevel, EmotionalState, AssessmentQuestion, ClientProfile, AssessmentSummary
+- `server/src/agents/onboarding/knowledge/rules.ts` — 7 rules (philosophy, question design, financial detection, emotional baseline, profile construction, tone selection, self-review)
+- `server/src/agents/onboarding/assessor/tools.ts` — 4 tools with LLM calls (MODEL_MID for questions/evaluation/profile, MODEL_LIGHT for financial detection)
+- `server/src/agents/onboarding/assessor/agent.ts` — AgentConfig with system prompt, tools, registry
+- `server/src/agents/onboarding/product.ts` — ProductConfig with conditional gate (onboarding_assessment), persistResult to DB + platform context
+- `server/src/routes/onboarding.ts` — Route with Zod schema, platform context loading
+- `server/src/lib/feature-flags.ts` — Added FF_ONBOARDING
+- `server/src/lib/platform-context.ts` — Added 'client_profile' to ContextType union
+- `server/src/index.ts` — Mounted onboarding routes
+- `supabase/migrations/20260307100000_onboarding_assessments.sql` — Table + RLS + moddatetime trigger
+- `app/src/types/onboarding.ts` — Frontend types matching backend
+- `app/src/hooks/useOnboarding.ts` — SSE hook with statusRef concurrency guard
+- `server/src/__tests__/onboarding-agents.test.ts` — 129 server tests
+- `app/src/__tests__/hooks/useOnboarding.test.ts` — Hook tests
+- `docs/BACKLOG.md` — All 7 phases (49 stories) added as epics
+- `docs/CURRENT_SPRINT.md` — Sprint 37 with Phase 1A stories
+- `docs/SPRINT_LOG.md` — Sprint 36 deferred
+- `docs/obsidian/10_Resume Agent/Agents/Onboarding Assessment.md` — Agent documentation
+- `docs/obsidian/10_Resume Agent/Project Hub.md` — Updated agent table (14 agents)
+
+### Decisions Made
+- Sprint 36 deferred: Career IQ rooms will be built per-phase rather than as standalone sprint
+- Onboarding agent is gate-based (unlike report-generator agents) — the first interactive non-resume agent
+- Financial segment detection uses MODEL_LIGHT (cheap/fast) since it's a classification, not generation
+- Client Profile stored as `client_profile` type in user_platform_context — new ContextType added
+
+### Quality Gate
+- Server: 1,667 tests passing (was 1,513 → +154)
+- App: 846+ tests passing (was 790 → +56)
+- TypeScript: both server and app tsc clean
+
+### Next Steps
+- Phase 1B: WhyMe Engine Enhancement (LLM quality assessment, Super Bowl Story questions)
+- Phase 1C: Emotional Baseline cross-cutting middleware
+- Phase 2: Core Positioning Loop (Bug 16/17 fixes, platform context enrichment)
+
 ## 2026-03-07 — Session 33
 **Sprint:** 35 | **Stories:** Agents #18-#20 (Thank You Note Writer, Personal Brand Audit, 90-Day Plan Generator)
 **Summary:** Built three new agents in one sprint. Agent #18 (Thank You Note Writer) — single-agent pipeline with 4 tools (analyze_interview_context, write_thank_you_note, personalize_per_interviewer, assemble_note_set), 7 knowledge rules, NoteFormat type (email/handwritten/linkedin_message). Agent #19 (Personal Brand Audit) — 2-agent pipeline (Auditor → Advisor), 8 tools total, 8 knowledge rules, 6 finding categories, ConsistencyScores interface, BrandSource types. Agent #20 (90-Day Plan Generator) — 2-agent pipeline (Researcher → Planner), 8 tools total, 8 knowledge rules, phased 30/60/90-day structure with Stakeholder/QuickWin/LearningPriority types. All three: ProductConfig, routes with platform context loading, feature flags (FF_THANK_YOU_NOTE, FF_PERSONAL_BRAND_AUDIT, FF_NINETY_DAY_PLAN), DB migrations with RLS, SSE hooks with statusRef concurrency guard, and 185 new tests (149 server + 36 app). Audited all code — no critical findings.

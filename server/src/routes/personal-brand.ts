@@ -15,6 +15,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createPersonalBrandProductConfig } from '../agents/personal-brand/product.js';
 import { FF_PERSONAL_BRAND_AUDIT } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import logger from '../lib/logger.js';
 import type { PersonalBrandState, PersonalBrandSSEEvent, BrandSourceInput } from '../agents/personal-brand/types.js';
 
@@ -53,9 +54,10 @@ export const personalBrandRoutes = createProductRoutes<PersonalBrandState, Perso
 
     transformed.brand_sources = brandSources;
 
-    // Load cross-product platform context
+    // Load cross-product platform context and emotional baseline
     try {
-      const [strategyRows, bioRows] = await Promise.all([
+      const [baseline, strategyRows, bioRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'career_narrative'),
       ]);
@@ -71,6 +73,9 @@ export const personalBrandRoutes = createProductRoutes<PersonalBrandState, Perso
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
+      }
+      if (baseline) {
+        transformed.emotional_baseline = baseline;
       }
     } catch (err) {
       logger.warn(

@@ -18,11 +18,16 @@ import {
   Loader2,
   FileText,
   AlertCircle,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useInterviewPrep } from '@/hooks/useInterviewPrep';
 import { supabase } from '@/lib/supabase';
+import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
+import type { InterviewerNote } from '@/hooks/useInterviewDebriefs';
+import { DebriefForm } from '@/components/career-iq/DebriefForm';
+import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 
 // --- Mock data ---
 
@@ -238,7 +243,7 @@ function CompanyResearch() {
   );
 }
 
-function PracticeQuestions() {
+function PracticeQuestions({ onStartPractice }: { onStartPractice: () => void }) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const categoryColors: Record<string, string> = {
@@ -283,7 +288,7 @@ function PracticeQuestions() {
       </div>
 
       <div className="mt-4">
-        <GlassButton variant="ghost" className="w-full text-[13px]">
+        <GlassButton variant="ghost" onClick={onStartPractice} className="w-full text-[13px]">
           <Mic size={14} className="mr-1.5" />
           Start a Practice Session
         </GlassButton>
@@ -292,10 +297,12 @@ function PracticeQuestions() {
   );
 }
 
-function InterviewHistory({ history, onUpdateOutcome, onAdd }: {
+function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debriefCount }: {
   history: PastInterview[];
   onUpdateOutcome: (id: string, outcome: PastInterview['outcome']) => void;
   onAdd: (entry: Omit<PastInterview, 'id'>) => void;
+  onAddDebrief: () => void;
+  debriefCount: number;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCompany, setNewCompany] = useState('');
@@ -326,14 +333,29 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd }: {
       <div className="flex items-center gap-2 mb-4">
         <Clock size={18} className="text-[#98b3ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Interview History</h3>
-        <button
-          type="button"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="ml-auto flex items-center gap-1 text-[11px] text-white/35 hover:text-white/60 transition-colors"
-        >
-          <Plus size={12} />
-          Add Interview
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onAddDebrief}
+            className="flex items-center gap-1 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+          >
+            <ClipboardList size={12} />
+            Add Debrief
+            {debriefCount > 0 && (
+              <span className="ml-0.5 rounded-full bg-[#98b3ff]/15 px-1.5 py-0.5 text-[10px] text-[#98b3ff]/70">
+                {debriefCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="flex items-center gap-1 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+          >
+            <Plus size={12} />
+            Add Interview
+          </button>
+        </div>
       </div>
 
       {showAddForm && (
@@ -581,7 +603,15 @@ interface InterviewLabRoomProps {
   pipelineInterviews?: PipelineInterviewCard[];
 }
 
-type ViewMode = 'lab' | 'generating' | 'report';
+type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
+
+interface MockInterviewConfig {
+  resumeText: string;
+  jobDescription?: string;
+  companyName?: string;
+  mode: 'full' | 'practice';
+  questionType?: 'behavioral' | 'technical' | 'situational';
+}
 
 export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) {
   const [history, setHistory] = useState<PastInterview[]>(loadHistory);
@@ -591,6 +621,10 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
   const [loadingInputs, setLoadingInputs] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [jdWarning, setJdWarning] = useState(false);
+  const [mockInterviewConfig, setMockInterviewConfig] = useState<MockInterviewConfig | null>(null);
+  const [mockInterviewLoading, setMockInterviewLoading] = useState(false);
+
+  const { debriefs, createDebrief } = useInterviewDebriefs();
 
   const {
     status,
@@ -696,6 +730,107 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     });
   }, []);
 
+  const handleAddDebriefClick = useCallback(() => {
+    setViewMode('debrief');
+  }, []);
+
+  const handleDebriefSave = useCallback(
+    async (data: Parameters<typeof createDebrief>[0]) => {
+      return await createDebrief(data);
+    },
+    [createDebrief],
+  );
+
+  const handleDebriefCancel = useCallback(() => {
+    setViewMode('lab');
+  }, []);
+
+  const handleNavigateToThankYou = useCallback((interviewerNotes: InterviewerNote[]) => {
+    // Phase 4A-8 will wire cross-room navigation. For now, log the intent.
+    console.log('[InterviewLabRoom] Navigate to thank you notes with interviewers:', interviewerNotes);
+  }, []);
+
+  const fetchResumeText = useCallback(async (): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase
+      .from('master_resumes')
+      .select('raw_text')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+    return data?.raw_text ?? null;
+  }, []);
+
+  const handleStartMockInterview = useCallback(async () => {
+    setMockInterviewLoading(true);
+    try {
+      const resumeText = await fetchResumeText();
+      if (!resumeText || resumeText.length < 50) {
+        console.warn('[InterviewLab] No resume found — cannot start mock interview');
+        setMockInterviewLoading(false);
+        return;
+      }
+      setMockInterviewConfig({
+        resumeText,
+        mode: 'full',
+      });
+      setViewMode('mock_interview');
+    } catch (err) {
+      console.error('[InterviewLab] Failed to load resume for mock interview:', err);
+    } finally {
+      setMockInterviewLoading(false);
+    }
+  }, [fetchResumeText]);
+
+  const handleStartPracticeSession = useCallback(async () => {
+    setMockInterviewLoading(true);
+    try {
+      const resumeText = await fetchResumeText();
+      setMockInterviewConfig({
+        resumeText: resumeText ?? '',
+        mode: 'practice',
+        questionType: 'behavioral',
+      });
+      setViewMode('mock_interview');
+    } catch (err) {
+      console.error('[InterviewLab] Failed to load resume for practice session:', err);
+    } finally {
+      setMockInterviewLoading(false);
+    }
+  }, [fetchResumeText]);
+
+  const handleMockInterviewBack = useCallback(() => {
+    setViewMode('lab');
+    setMockInterviewConfig(null);
+  }, []);
+
+  // Debrief view
+  if (viewMode === 'debrief') {
+    return (
+      <DebriefForm
+        onSave={handleDebriefSave}
+        onCancel={handleDebriefCancel}
+        onNavigateToThankYou={handleNavigateToThankYou}
+      />
+    );
+  }
+
+  // Mock interview view
+  if (viewMode === 'mock_interview' && mockInterviewConfig) {
+    return (
+      <MockInterviewView
+        mode={mockInterviewConfig.mode}
+        questionType={mockInterviewConfig.questionType}
+        resumeText={mockInterviewConfig.resumeText}
+        jobDescription={mockInterviewConfig.jobDescription}
+        companyName={mockInterviewConfig.companyName}
+        onBack={handleMockInterviewBack}
+      />
+    );
+  }
+
   // Report view
   if (viewMode === 'report' && report) {
     return (
@@ -785,11 +920,26 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
   // Default lab view
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white/90">Interview Lab</h1>
-        <p className="text-[13px] text-white/40">
-          Prepare for every interview with AI-powered company research, predicted questions, and practice sessions.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-lg font-semibold text-white/90">Interview Lab</h1>
+          <p className="text-[13px] text-white/40">
+            Prepare for every interview with AI-powered company research, predicted questions, and practice sessions.
+          </p>
+        </div>
+        <GlassButton
+          variant="primary"
+          onClick={() => void handleStartMockInterview()}
+          disabled={mockInterviewLoading}
+          className="flex-shrink-0 text-[13px]"
+        >
+          {mockInterviewLoading ? (
+            <Loader2 size={14} className="mr-1.5 animate-spin" />
+          ) : (
+            <Mic size={14} className="mr-1.5" />
+          )}
+          Start Mock Interview
+        </GlassButton>
       </div>
 
       {/* Upcoming + Company Intel side-by-side */}
@@ -819,13 +969,15 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
       </div>
 
       {/* Practice Questions — full width */}
-      <PracticeQuestions />
+      <PracticeQuestions onStartPractice={() => void handleStartPracticeSession()} />
 
       {/* Interview History — full width */}
       <InterviewHistory
         history={history}
         onUpdateOutcome={handleUpdateOutcome}
         onAdd={handleAddInterview}
+        onAddDebrief={handleAddDebriefClick}
+        debriefCount={debriefs.length}
       />
     </div>
   );

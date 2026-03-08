@@ -14,6 +14,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createLinkedInOptimizerProductConfig } from '../agents/linkedin-optimizer/product.js';
 import { FF_LINKEDIN_OPTIMIZER } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { LinkedInOptimizerState, LinkedInOptimizerSSEEvent } from '../agents/linkedin-optimizer/types.js';
@@ -39,7 +40,8 @@ export const linkedInOptimizerRoutes = createProductRoutes<LinkedInOptimizerStat
     if (!userId) return input;
 
     try {
-      const [strategyRows, evidenceRows, whyMeRows] = await Promise.all([
+      const [baseline, strategyRows, evidenceRows, whyMeRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'evidence_item'),
         supabaseAdmin
@@ -68,9 +70,14 @@ export const linkedInOptimizerRoutes = createProductRoutes<LinkedInOptimizerStat
         };
       }
 
+      const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
-        return { ...input, platform_context: platformContext };
+        result.platform_context = platformContext;
       }
+      if (baseline) {
+        result.emotional_baseline = baseline;
+      }
+      return result;
     } catch (err) {
       logger.warn(
         {

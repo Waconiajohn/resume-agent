@@ -3,41 +3,49 @@
 > Updated every session by Claude. This is the living snapshot of where things stand.
 
 ## Last Updated
-2026-03-07 | Sprint 35 complete
+2026-03-08 | Post-sprint fix-up (Session 43)
 
 ## Current State
-- **Sprint 35 complete:** Agents #18-#20 (Thank You Note, Personal Brand Audit, 90-Day Plan) all built and tested
-- **No active sprint** -- next sprint not yet planned
-- **All systems green** -- tsc clean, no known regressions
+- **Phases 1A, 1B, 1C, 2, 3, 4A, 4B, 5 complete** per Master Build Plan
+- **Sprint 49 done:** Emotional Intelligence Layer — momentum tracking, cognitive reframing, resource library, ask a coach
+- **Session 41:** positioning-coach.ts fixes (research context threading, category warn log, follow-up ID collision) + 14 test repairs
+- **Session 42:** Fix 5 — `distress_resources` SSE event added to onboarding pipeline + 7 broken platform-context tests repaired
+- **Session 43:** Fixes 6/7/8 — atomic `upsert_platform_context` Postgres RPC + migration, `deleteUserContext`, `getLatestUserContext` + full test suite update (20 → 33 tests)
+- **Next:** Phase 6 (Retirement Bridge), Phase 7 (B2B Outplacement), or tech debt
+- **All systems green** -- tsc clean, 0 test failures
 
 ## Test Health
-- Server: 1,513 tests passing
-- App: 790 tests passing
+- Server: 1,909 tests passing
+- App: 1,004 tests passing
 - E2E: 2 tests passing
 - TypeScript: both server and app tsc clean
 
 ## Active Concerns
-- Agents #6-#12 numbering gap -- product directories exist for 13 agents but platform numbering implies 20. Need to reconcile which agents map to #6-#12.
-- Known bugs (from CLAUDE.md): revision loops (Bug 16), context forgetfulness on long sessions (Bug 17), 409 conflicts (Bug 18)
-- MaxListenersExceededWarning on long sessions still unresolved
+- Bug 18 (409 conflicts) still open
+- 6 DB migrations need to be applied to production Supabase (user_momentum + atomic_context_upsert)
+- Thank You Note cross-room navigation not yet functional
 
 ## Recent Decisions
-- Obsidian vault moved into repo at `docs/obsidian/` as Claude Code's extended memory (2026-03-07)
-- Sprint 35 delivered 3 agents in one sprint with 185 new tests
+- Momentum tracking is deterministic CRUD, not an agent -- streaks and wins computed from activity log
+- Cognitive reframing uses MODEL_MID for coaching message generation with static fallbacks
+- Resource library is static content organized by coaching methodology topics (not a DB-driven CMS)
+- Ask a Coach submits to coaching_requests table for human review
+- Stall detection heuristics: 5-day inactivity, 14-day pipeline stall, 3+ rejections in 7 days
 
 ## What's Working Well
-- ProductConfig pattern is proven and repeatable -- new agents follow a predictable 5-6 story arc
-- Agent runtime is stable -- no runtime bugs across 13 products
-- Test coverage floor is holding (was 1,014/586 at baseline, now 1,513/790)
+- Emotional intelligence layer adds warmth without being intrusive
+- CoachingNudgeBar integrates naturally into DashboardHome
+- MomentumCard provides at-a-glance engagement metrics
+- Streak computation handles edge cases well (gaps, today vs yesterday)
 
 ## What Needs Attention
-- Frontend for agents #3-#20 -- most have SSE hooks but no dedicated UI beyond the generic pipeline view
-- Platform catalog only shows 4 products in the UI (`/tools` route)
-- Agents #6-#12 need to be identified and built or removed from the numbering
+- 5 DB migrations need to be applied to Supabase
+- Platform catalog UI needs updating to show new products
+- Resource library content is static — future: pull from CMS or coaching methodology
 
 ## Key Metrics
-- Total agents built: 13 (of 33 planned)
-- Total tests: 2,303 (1,513 server + 790 app)
+- Total agents built: 17 (of 33 planned) + 2 simulation sub-agents (Mock Interview, Counter-Offer)
+- Total tests: 2,913 (1,909 server + 1,004 app)
 - Estimated pipeline cost: ~$0.08/run (Groq)
 - Pipeline time: ~1m42s (Groq)
 

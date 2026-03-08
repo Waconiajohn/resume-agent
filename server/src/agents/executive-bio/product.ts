@@ -17,6 +17,7 @@ import type {
 } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 const ALL_FORMATS: BioFormat[] = ['speaker', 'board', 'advisory', 'professional', 'linkedin_featured'];
 const DEFAULT_LENGTHS: BioLength[] = ['standard'];
@@ -104,6 +105,22 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
           '',
           'Call tools in order: analyze_positioning first, then write_bio + quality_check_bio for each format/length combination, then assemble_bio_collection.',
         );
+
+        // Distress resources — first (and only) agent
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 

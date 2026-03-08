@@ -223,6 +223,16 @@ export function CoverLetterScreen({ accessToken, onNavigate }: CoverLetterScreen
               <GlassButton
                 variant="ghost"
                 onClick={async () => {
+                  const { exportCoverLetterDocx } = await import('@/lib/export-cover-letter');
+                  await exportCoverLetterDocx(letterDraft, companyName);
+                }}
+              >
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                Download DOCX
+              </GlassButton>
+              <GlassButton
+                variant="ghost"
+                onClick={async () => {
                   const { downloadCoverLetterAsText } = await import('@/lib/export-cover-letter');
                   downloadCoverLetterAsText(letterDraft, companyName);
                 }}

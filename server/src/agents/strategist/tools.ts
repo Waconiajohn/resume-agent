@@ -27,7 +27,7 @@ import type {
 } from '../types.js';
 import { randomUUID } from 'node:crypto';
 import { positioningToQuestionnaire, extractInterviewAnswers, buildQuestionnaireEvent } from '../../lib/questionnaire-helpers.js';
-import { evaluateFollowUp } from '../positioning-coach.js';
+import { evaluateFollowUp, MAX_FOLLOW_UPS } from '../positioning-coach.js';
 import { createEmitTransparency } from '../runtime/shared-tools.js';
 
 // ─── Tool: parse_resume ───────────────────────────────────────────────
@@ -247,7 +247,7 @@ const buildBenchmarkTool: ResumeAgentTool = {
     const benchmarkRaw = cachedResearch.benchmark_candidate;
     const benchmarkValidation = BenchmarkCandidateSchema.safeParse(benchmarkRaw);
     if (!benchmarkValidation.success) {
-      logger.warn({ errors: benchmarkValidation.error }, 'Schema validation failed for build_benchmark, using raw data');
+      logger.warn({ errors: benchmarkValidation.error.issues }, 'Schema validation failed for build_benchmark, using raw data');
     }
 
     return {
@@ -277,162 +277,6 @@ function getInterviewQuestionCount(ctx: ResumeAgentContext): number {
   return Array.isArray(answers) ? answers.length : 0;
 }
 
-// ─── Tool: interview_candidate ────────────────────────────────────────
-
-const interviewCandidateTool: ResumeAgentTool = {
-  name: 'interview_candidate',
-  description: 'Ask the candidate a targeted question to surface hidden experience, metrics, or context not visible on the resume. Use this to probe partial matches and critical gaps. The question is presented in the UI and the candidate\'s answer is returned. Answers are accumulated in the evidence library. Respects the interview question budget — returns a budget_reached signal when the limit is hit.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      question_text: {
-        type: 'string',
-        description: 'The specific question to ask. Be targeted — reference the specific requirement, gap, or experience context. Open-ended questions work best.',
-      },
-      context: {
-        type: 'string',
-        description: 'Why you are asking this question. Shown to the candidate as context (e.g., "The role requires P&L ownership — your resume shows cost management but not full ownership").',
-      },
-      category: {
-        type: 'string',
-        enum: ['scale_and_scope', 'requirement_mapped', 'career_narrative', 'hidden_accomplishments', 'currency_and_adaptability'],
-        description: 'Category of question. scale_and_scope: team/budget/geo scope. requirement_mapped: directly tied to a JD gap. career_narrative: arc and trajectory. hidden_accomplishments: wins not on resume. currency_and_adaptability: modern skills and adaptation.',
-      },
-      suggestions: {
-        type: 'array',
-        description: 'Optional pre-built suggestions to show the candidate as starting points. Each has a label and description.',
-        items: {
-          type: 'object',
-          properties: {
-            label: { type: 'string', description: 'Short option label' },
-            description: { type: 'string', description: 'Longer description of this suggestion' },
-            source: {
-              type: 'string',
-              enum: ['resume', 'inferred', 'jd'],
-              description: 'Where this suggestion comes from: resume (already shown), inferred (reasonable to assume), jd (implied by role requirements)',
-            },
-          },
-          required: ['label', 'description', 'source'],
-        },
-      },
-    },
-    required: ['question_text', 'context', 'category'],
-  },
-  model_tier: 'orchestrator',
-  execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
-    const questionText = String(input.question_text ?? '');
-    const context = String(input.context ?? '');
-    const validCategories = ['scale_and_scope', 'requirement_mapped', 'career_narrative', 'hidden_accomplishments', 'currency_and_adaptability'] as const;
-    type ValidCategory = typeof validCategories[number];
-    const rawCategory = String(input.category ?? 'requirement_mapped');
-    const category: ValidCategory = validCategories.includes(rawCategory as ValidCategory) ? rawCategory as ValidCategory : 'requirement_mapped';
-
-    // ── Budget enforcement ──────────────────────────────────────────
-    const budget = getInterviewBudget(ctx);
-    const asked = getInterviewQuestionCount(ctx);
-    if (asked >= budget) {
-      const mode = ctx.getState().user_preferences?.workflow_mode ?? 'balanced';
-      ctx.emit({
-        type: 'transparency',
-        message: `Interview budget reached (${asked}/${budget} questions for ${mode} mode). Moving to gap analysis.`,
-        stage: ctx.getState().current_stage,
-      });
-      return {
-        budget_reached: true,
-        questions_asked: asked,
-        budget,
-        message: `Interview budget reached (${budget} questions for ${mode} mode). You have sufficient evidence — proceed to classify_fit now.`,
-      };
-    }
-
-    if (!questionText.trim()) {
-      throw new Error('interview_candidate: question_text is required.');
-    }
-
-    // Build the question number from existing answers
-    const existingAnswers = (ctx.scratchpad.interview_answers as Record<string, unknown>[] | undefined) ?? [];
-    const questionNumber = existingAnswers.length + 1;
-
-    // Build suggestions array
-    const rawSuggestions = Array.isArray(input.suggestions) ? input.suggestions as Record<string, unknown>[] : [];
-    const suggestions = rawSuggestions
-      .filter(s => typeof s.label === 'string' && s.label.trim())
-      .map(s => ({
-        label: String(s.label ?? ''),
-        description: String(s.description ?? ''),
-        source: (s.source as 'resume' | 'inferred' | 'jd') ?? 'inferred',
-      }));
-
-    const question: PositioningQuestion = {
-      id: randomUUID(),
-      question_number: questionNumber,
-      question_text: questionText,
-      context,
-      input_type: suggestions.length > 0 ? 'hybrid' : 'text',
-      category: category as PositioningQuestion['category'],
-      suggestions: suggestions.length > 0 ? suggestions : undefined,
-    };
-
-    // Emit the question via SSE so the frontend renders it
-    ctx.emit({
-      type: 'positioning_question',
-      question,
-      questions_total: questionNumber, // Will be updated as more questions come in
-    });
-
-    // Wait for the candidate's response
-    const answer = await ctx.waitForUser<string>(`positioning_q_${question.id}`);
-
-    // Accumulate the answer in scratchpad
-    const answerRecord = {
-      question_id: question.id,
-      question_text: questionText,
-      category,
-      answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
-      timestamp: new Date().toISOString(),
-    };
-
-    if (!ctx.scratchpad.interview_answers) {
-      ctx.scratchpad.interview_answers = [];
-    }
-    (ctx.scratchpad.interview_answers as typeof answerRecord[]).push(answerRecord);
-
-    // Persist raw Q&A to pipeline state so the Craftsman can hear the candidate's voice
-    const transcript = [...(ctx.getState().questionnaire_responses ?? [])];
-    transcript.push({
-      question_id: question.id,
-      question_text: questionText,
-      category,
-      answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
-    });
-    ctx.updateState({ questionnaire_responses: transcript });
-
-    // Also build a minimal evidence item from the answer so classify_fit can use it
-    const evidenceItem: EvidenceItem = {
-      id: `ev_interview_${questionNumber}`,
-      situation: `In response to: ${questionText}`,
-      action: typeof answer === 'string' ? answer : JSON.stringify(answer),
-      result: '(to be extracted from context)',
-      metrics_defensible: false,
-      user_validated: true,
-      source_question_id: question.id,
-    };
-
-    if (!ctx.scratchpad.evidence_library) {
-      ctx.scratchpad.evidence_library = [];
-    }
-    (ctx.scratchpad.evidence_library as EvidenceItem[]).push(evidenceItem);
-
-    return {
-      success: true,
-      question_id: question.id,
-      question_number: questionNumber,
-      answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
-      evidence_id: evidenceItem.id,
-    };
-  },
-};
-
 // ─── Tool: interview_candidate_batch ──────────────────────────────────
 
 const interviewCandidateBatchTool: ResumeAgentTool = {
@@ -459,7 +303,7 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
             },
             category: {
               type: 'string',
-              enum: ['scale_and_scope', 'requirement_mapped', 'career_narrative', 'hidden_accomplishments', 'currency_and_adaptability'],
+              enum: ['scale_and_scope', 'requirement_mapped', 'career_narrative', 'hidden_accomplishments', 'currency_and_adaptability', 'trophies', 'gaps'],
               description: 'Question category.',
             },
             suggestions: {
@@ -639,6 +483,7 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
     const evidenceLibrary = ctx.scratchpad.evidence_library as EvidenceItem[];
 
     const followUpRecommendations: Array<{ question_id: string; recommendation: string }> = [];
+    const followUpPromises: Promise<void>[] = [];
 
     for (const ans of answers) {
       scratchpadAnswers.push(ans);
@@ -662,20 +507,36 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
         source_question_id: ans.question_id,
       });
 
-      // Evaluate follow-up needs
+      // Evaluate follow-up needs (async LLM-based quality assessment)
+      // Enforce MAX_FOLLOW_UPS cap across the entire interview session
+      const followUpCount = (ctx.scratchpad.followup_count as number | undefined) ?? 0;
       const originalQuestion = positioningQuestions.find(q => q.id === ans.question_id);
-      if (originalQuestion) {
-        const followUp = evaluateFollowUp(originalQuestion, ans.answer);
-        if (followUp) {
-          followUpRecommendations.push({
-            question_id: ans.question_id,
-            recommendation: followUp.question_text,
-          });
-        }
+      if (originalQuestion && followUpCount < MAX_FOLLOW_UPS) {
+        followUpPromises.push(
+          evaluateFollowUp(originalQuestion, ans.answer)
+            .then(followUp => {
+              if (followUp) {
+                const currentCount = (ctx.scratchpad.followup_count as number | undefined) ?? 0;
+                if (currentCount < MAX_FOLLOW_UPS) {
+                  ctx.scratchpad.followup_count = currentCount + 1;
+                  followUpRecommendations.push({
+                    question_id: ans.question_id,
+                    recommendation: followUp.question_text,
+                  });
+                }
+              }
+            })
+            .catch(err => {
+              logger.warn({ error: err instanceof Error ? err.message : String(err), question_id: ans.question_id }, 'Follow-up evaluation failed');
+            }),
+        );
       }
     }
 
     ctx.updateState({ questionnaire_responses: transcript });
+
+    // Wait for all follow-up quality assessments to complete
+    await Promise.all(followUpPromises);
 
     return {
       success: true,
@@ -782,7 +643,7 @@ const classifyFitTool: ResumeAgentTool = {
     // Validate gap analyst output shape
     const gapValidation = ClassifyFitOutputSchema.safeParse(result);
     if (!gapValidation.success) {
-      logger.warn({ errors: gapValidation.error }, 'Schema validation failed for classify_fit, using raw data');
+      logger.warn({ errors: gapValidation.error.issues }, 'Schema validation failed for classify_fit, using raw data');
     }
 
     ctx.updateState({ gap_analysis: result });
@@ -798,6 +659,8 @@ const classifyFitTool: ResumeAgentTool = {
       critical_gaps: result.critical_gaps,
       addressable_gaps: result.addressable_gaps,
       strength_summary: result.strength_summary,
+      why_me: result.why_me ?? [],
+      why_not_me: result.why_not_me ?? [],
     };
   },
 };
@@ -875,7 +738,7 @@ const designBlueprintTool: ResumeAgentTool = {
     // Validate blueprint output shape
     const blueprintValidation = DesignBlueprintOutputSchema.safeParse(blueprint);
     if (!blueprintValidation.success) {
-      logger.warn({ errors: blueprintValidation.error }, 'Schema validation failed for design_blueprint, using raw data');
+      logger.warn({ errors: blueprintValidation.error.issues }, 'Schema validation failed for design_blueprint, using raw data');
     }
 
     ctx.updateState({ architect: blueprint });

@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { buildResumeFilename } from '@/lib/export-filename';
 import { saveBlobWithFilename } from '@/lib/download';
 
@@ -72,4 +73,82 @@ export function exportCoverLetterPdf(
 
   const blob = doc.output('blob');
   return saveBlobWithFilename(blob, filename, 'pdf');
+}
+
+/**
+ * Export the cover letter as a DOCX file.
+ *
+ * Calibri 11pt, 1-inch margins, each double-newline-separated block becomes
+ * a Paragraph. Single newlines within a block become line breaks.
+ */
+export async function exportCoverLetterDocx(
+  letter: string,
+  companyName?: string,
+  contactName?: string,
+): Promise<string> {
+  const FONT = 'Calibri';
+  const FONT_SIZE = 22; // half-points: 22 = 11pt
+
+  const paragraphs: Paragraph[] = letter.split(/\n{2,}/).flatMap((block) => {
+    const trimmed = block.trim();
+    if (!trimmed) return [];
+
+    // Split on single newlines to produce TextRun children with breaks
+    const lines = trimmed.split('\n');
+    const children: TextRun[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        children.push(new TextRun({ break: 1 }));
+      }
+      children.push(new TextRun({ text: lines[i], font: FONT, size: FONT_SIZE }));
+    }
+
+    return [
+      new Paragraph({
+        spacing: { after: 240 },
+        children,
+      }),
+    ];
+  });
+
+  // Emit at least one empty paragraph for an empty letter
+  if (paragraphs.length === 0) {
+    paragraphs.push(new Paragraph({ children: [] }));
+  }
+
+  const doc = new Document({
+    creator: 'Resume Agent',
+    styles: {
+      default: {
+        document: {
+          run: { font: FONT, size: FONT_SIZE },
+        },
+      },
+    },
+    sections: [
+      {
+        properties: {
+          page: {
+            // 1440 twips = 1 inch
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+          },
+        },
+        children: paragraphs,
+      },
+    ],
+  });
+
+  const rawBlob = await Packer.toBlob(doc);
+  const blob = new Blob([rawBlob], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
+
+  const filename = buildResumeFilename(
+    contactName ? { name: contactName } : undefined,
+    companyName,
+    'Cover_Letter',
+    'docx',
+  );
+
+  return saveBlobWithFilename(blob, filename, 'docx');
 }

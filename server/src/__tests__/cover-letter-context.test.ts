@@ -10,7 +10,13 @@
  * 6. createInitialState works when platform_context is absent from input
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../lib/emotional-baseline.js', () => ({
+  getToneGuidanceFromInput: () => '',
+  getDistressFromInput: () => null,
+}));
+
 import { createCoverLetterProductConfig } from '../agents/cover-letter/product.js';
 import type { CoverLetterState } from '../agents/cover-letter/types.js';
 

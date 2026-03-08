@@ -15,6 +15,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createSalaryNegotiationProductConfig } from '../agents/salary-negotiation/product.js';
 import { FF_SALARY_NEGOTIATION } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import logger from '../lib/logger.js';
 import type { SalaryNegotiationState, SalaryNegotiationSSEEvent } from '../agents/salary-negotiation/types.js';
 
@@ -32,6 +33,7 @@ const startSchema = z.object({
   current_equity: z.string().max(2000).optional(),
   target_role: z.string().max(200).optional(),
   target_industry: z.string().max(200).optional(),
+  target_seniority: z.string().max(200).optional(),
 });
 
 export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationState, SalaryNegotiationSSEEvent>({
@@ -65,9 +67,10 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
       current_compensation,
     };
 
-    // Load cross-product platform context
+    // Load cross-product platform context and emotional baseline
     try {
-      const [strategyRows, narrativeRows] = await Promise.all([
+      const [baseline, strategyRows, narrativeRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'career_narrative'),
       ]);
@@ -86,6 +89,9 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
+      }
+      if (baseline) {
+        transformed.emotional_baseline = baseline;
       }
     } catch (err) {
       logger.warn(

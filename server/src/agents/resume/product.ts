@@ -11,6 +11,7 @@
 import { createSessionLogger } from '../../lib/logger.js';
 import { FF_BLUEPRINT_APPROVAL } from '../../lib/feature-flags.js';
 import { upsertUserContext } from '../../lib/platform-context.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import { runAtsComplianceCheck } from '../ats-rules.js';
 import { mergeMasterResume } from '../master-resume-merge.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
@@ -245,7 +246,13 @@ function buildProducerMessage(state: PipelineState): string {
       JSON.stringify(positioning.evidence_library, null, 2),
       '',
     ] : []),
-    'Perform full quality review: template selection, cross-section consistency, blueprint compliance, ATS compliance, humanize check, and adversarial review. Route targeted revision requests to the Craftsman if needed.',
+    ...(state.approved_sections.length > 0 ? [
+      '## Approved Sections (DO NOT revise)',
+      `The following sections have been approved by the user and are IMMUTABLE: ${state.approved_sections.join(', ')}`,
+      'Do NOT call request_content_revision for any of these sections. Note issues in your final report instead.',
+      '',
+    ] : []),
+    'Perform full quality review: template selection, cross-section consistency, blueprint compliance, ATS compliance, humanize check, and adversarial review. Route targeted revision requests to the Craftsman only for non-approved sections with high-priority issues.',
   ].join('\n');
 }
 
@@ -788,6 +795,41 @@ async function savePlatformContext(
     }
   }
 
+  // Persist positioning foundation (trophies, gaps, super bowl story)
+  if (state.questionnaire_responses && state.questionnaire_responses.length > 0) {
+    try {
+      const trophyAnswer = state.questionnaire_responses.find(r => r.category === 'trophies');
+      const gapAnswer = state.questionnaire_responses.find(r => r.category === 'gaps');
+      const careerArc = state.positioning?.career_arc;
+
+      const positioningFoundation: Record<string, unknown> = {
+        trophies: trophyAnswer ? { answer: trophyAnswer.answer, question: trophyAnswer.question_text } : null,
+        gaps: gapAnswer ? { answer: gapAnswer.answer, question: gapAnswer.question_text } : null,
+        super_bowl_story: trophyAnswer?.answer ?? null,
+        career_arc_label: careerArc?.label ?? null,
+        career_arc_evidence: careerArc?.evidence ?? null,
+        authentic_phrases: state.positioning?.authentic_phrases ?? [],
+        session_id: state.session_id,
+      };
+
+      if (trophyAnswer || gapAnswer) {
+        await upsertUserContext(
+          state.user_id,
+          'positioning_foundation',
+          positioningFoundation,
+          'resume',
+          state.session_id,
+        );
+        log.info({ session_id: state.session_id }, 'Platform context: positioning_foundation saved');
+      }
+    } catch (err) {
+      log.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'savePlatformContext: positioning_foundation save failed',
+      );
+    }
+  }
+
   // Persist evidence items extracted from this session
   const evidenceItems = extractEvidenceItems(state, state.session_id);
   if (evidenceItems.length > 0) {
@@ -807,6 +849,78 @@ async function savePlatformContext(
       log.warn(
         { error: err instanceof Error ? err.message : String(err) },
         'savePlatformContext: evidence_item save failed',
+      );
+    }
+  }
+
+  // Persist benchmark candidate
+  if (state.research?.benchmark_candidate) {
+    try {
+      await upsertUserContext(
+        state.user_id,
+        'benchmark_candidate',
+        state.research.benchmark_candidate as unknown as Record<string, unknown>,
+        'resume',
+        state.session_id,
+      );
+      log.info({ session_id: state.session_id }, 'Platform context: benchmark_candidate saved');
+    } catch (err) {
+      log.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'savePlatformContext: benchmark_candidate save failed',
+      );
+    }
+  }
+
+  // Persist gap analysis (including why_me / why_not_me)
+  if (state.gap_analysis) {
+    try {
+      await upsertUserContext(
+        state.user_id,
+        'gap_analysis',
+        {
+          coverage_score: state.gap_analysis.coverage_score,
+          strength_summary: state.gap_analysis.strength_summary,
+          critical_gaps: state.gap_analysis.critical_gaps,
+          addressable_gaps: state.gap_analysis.addressable_gaps,
+          why_me: state.gap_analysis.why_me ?? [],
+          why_not_me: state.gap_analysis.why_not_me ?? [],
+          session_id: state.session_id,
+        },
+        'resume',
+        state.session_id,
+      );
+      log.info({ session_id: state.session_id }, 'Platform context: gap_analysis saved');
+    } catch (err) {
+      log.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'savePlatformContext: gap_analysis save failed',
+      );
+    }
+  }
+
+  // Persist industry research (JD analysis + company info)
+  if (state.research?.jd_analysis) {
+    try {
+      await upsertUserContext(
+        state.user_id,
+        'industry_research',
+        {
+          role_title: state.research.jd_analysis.role_title,
+          company: state.research.jd_analysis.company,
+          must_haves: state.research.jd_analysis.must_haves,
+          nice_to_haves: state.research.jd_analysis.nice_to_haves,
+          language_keywords: state.research.jd_analysis.language_keywords,
+          session_id: state.session_id,
+        },
+        'resume',
+        state.session_id,
+      );
+      log.info({ session_id: state.session_id }, 'Platform context: industry_research saved');
+    } catch (err) {
+      log.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'savePlatformContext: industry_research save failed',
       );
     }
   }
@@ -1081,12 +1195,30 @@ export function createResumeProductConfig(input: Record<string, unknown>): Produ
     },
 
     buildAgentMessage: (agentName, state, input) => {
+      let message: string;
       switch (agentName) {
-        case 'strategist': return buildStrategistMessage(input);
-        case 'craftsman':  return buildCraftsmanMessage(state);
-        case 'producer':   return buildProducerMessage(state);
-        default:           return '';
+        case 'strategist': message = buildStrategistMessage(input); break;
+        case 'craftsman':  message = buildCraftsmanMessage(state); break;
+        case 'producer':   message = buildProducerMessage(state); break;
+        default:           message = ''; break;
       }
+
+      // Emotional baseline tone adaptation (all agents)
+      const toneGuidance = getToneGuidanceFromInput(input);
+      if (toneGuidance) message += toneGuidance;
+
+      // Distress resources (strategist only — first agent in pipeline)
+      if (agentName === 'strategist') {
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          message += '\n\n## Support Resources\n' + distress.message;
+          for (const r of distress.resources) {
+            message += `\n- **${r.name}**: ${r.description} (${r.contact})`;
+          }
+        }
+      }
+
+      return message;
     },
 
     finalizeResult: (state, input, emit) => {

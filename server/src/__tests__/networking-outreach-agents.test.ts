@@ -172,8 +172,8 @@ describe('Networking Outreach — Agent Registration', () => {
       expect(researcherConfig.model).toBe('orchestrator');
     });
 
-    it('has 6 max rounds', () => {
-      expect(researcherConfig.max_rounds).toBe(6);
+    it('has 7 max rounds', () => {
+      expect(researcherConfig.max_rounds).toBe(7);
     });
 
     it('has tools including emit_transparency', () => {

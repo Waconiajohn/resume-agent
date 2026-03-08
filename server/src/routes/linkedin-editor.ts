@@ -1,0 +1,72 @@
+/**
+ * LinkedIn Profile Editor Routes — Agent #22 using the generic route factory.
+ *
+ * Mounted at /api/linkedin-editor/*. Feature-flagged via FF_LINKEDIN_EDITOR.
+ * Runs a single-agent pipeline with per-section gates to write and optimize
+ * each LinkedIn profile section in the user's authentic voice.
+ *
+ * Cross-product context: Loads positioning strategy and evidence items
+ * from prior resume sessions if available.
+ */
+
+import { z } from 'zod';
+import { createProductRoutes } from './product-route-factory.js';
+import { createLinkedInEditorProductConfig } from '../agents/linkedin-editor/product.js';
+import { FF_LINKEDIN_EDITOR } from '../lib/feature-flags.js';
+import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import logger from '../lib/logger.js';
+import type { LinkedInEditorState, LinkedInEditorSSEEvent } from '../agents/linkedin-editor/types.js';
+
+const startSchema = z.object({
+  session_id: z.string().uuid(),
+  current_profile: z.string().max(50_000).optional().describe('Existing LinkedIn profile text for reference and improvement'),
+});
+
+export const linkedInEditorRoutes = createProductRoutes<LinkedInEditorState, LinkedInEditorSSEEvent>({
+  startSchema,
+  buildProductConfig: () => createLinkedInEditorProductConfig(),
+  isEnabled: () => FF_LINKEDIN_EDITOR,
+
+  transformInput: async (input, session) => {
+    const userId = session.user_id as string | undefined;
+    if (!userId) return input;
+
+    try {
+      const [baseline, strategyRows, evidenceRows] = await Promise.all([
+        getEmotionalBaseline(userId),
+        getUserContext(userId, 'positioning_strategy'),
+        getUserContext(userId, 'evidence_item'),
+      ]);
+
+      const platformContext: Record<string, unknown> = {};
+
+      if (strategyRows.length > 0) {
+        platformContext.positioning_strategy = strategyRows[0].content;
+      }
+
+      if (evidenceRows.length > 0) {
+        platformContext.evidence_items = evidenceRows.map((r) => r.content);
+      }
+
+      const result: Record<string, unknown> = { ...input };
+      if (Object.keys(platformContext).length > 0) {
+        result.platform_context = platformContext;
+      }
+      if (baseline) {
+        result.emotional_baseline = baseline;
+      }
+      return result;
+    } catch (err) {
+      logger.warn(
+        {
+          error: err instanceof Error ? err.message : String(err),
+          userId,
+        },
+        'LinkedIn editor: failed to load platform context (continuing without it)',
+      );
+    }
+
+    return input;
+  },
+});

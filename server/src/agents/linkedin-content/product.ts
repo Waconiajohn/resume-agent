@@ -1,0 +1,235 @@
+/**
+ * LinkedIn Content Writer Product — ProductConfig implementation.
+ *
+ * Agent #21 in the 33-agent platform. 2-agent pipeline:
+ * 1. Strategist: Analyzes expertise + generates topic suggestions (topic_selection gate)
+ * 2. Writer: Drafts post in user's authentic voice (post_review gate)
+ *
+ * Cross-product context: Loads positioning strategy, evidence items, and
+ * career narrative from prior sessions.
+ */
+
+import type { ProductConfig } from '../runtime/product-config.js';
+import { strategistConfig } from './strategist/agent.js';
+import { writerConfig } from './writer/agent.js';
+import type { LinkedInContentState, LinkedInContentSSEEvent, TopicSuggestion, PostQualityScores } from './types.js';
+import { supabaseAdmin } from '../../lib/supabase.js';
+import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+
+export function createLinkedInContentProductConfig(): ProductConfig<LinkedInContentState, LinkedInContentSSEEvent> {
+  return {
+    domain: 'linkedin-content',
+
+    agents: [
+      {
+        name: 'strategist',
+        config: strategistConfig,
+        stageMessage: {
+          startStage: 'strategy',
+          start: 'Analyzing your expertise areas and generating topic ideas...',
+          complete: 'Topics ready — choose one to write about',
+        },
+        gates: [
+          {
+            name: 'topic_selection',
+            condition: (state) => Array.isArray(state.suggested_topics) && state.suggested_topics.length > 0 && !state.selected_topic,
+            onResponse: (response, state) => {
+              // User selects a topic — could be a TopicSuggestion id or custom topic text
+              if (typeof response === 'string') {
+                // Check if it matches a suggested topic id
+                const matched = state.suggested_topics?.find((t: TopicSuggestion) => t.id === response);
+                state.selected_topic = matched ? matched.topic : response;
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                state.selected_topic = typeof resp.topic === 'string' ? resp.topic : String(resp.topic_id ?? resp.id ?? '');
+              }
+            },
+          },
+        ],
+        onComplete: (scratchpad, state) => {
+          if (Array.isArray(scratchpad.suggested_topics) && !state.suggested_topics) {
+            state.suggested_topics = scratchpad.suggested_topics as TopicSuggestion[];
+          }
+        },
+      },
+      {
+        name: 'writer',
+        config: writerConfig,
+        stageMessage: {
+          startStage: 'writing',
+          start: 'Writing your LinkedIn post...',
+          complete: 'Post ready for review',
+        },
+        gates: [
+          {
+            name: 'post_review',
+            onResponse: (response, state) => {
+              // Response: true (approved), or { feedback: string } (revision requested)
+              if (response === true || response === 'approved') {
+                // Approved — state already has the final draft
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+              }
+            },
+          },
+        ],
+        onComplete: (scratchpad, state) => {
+          if (typeof scratchpad.post_draft === 'string') {
+            state.post_draft = scratchpad.post_draft;
+          }
+          if (Array.isArray(scratchpad.post_hashtags)) {
+            state.post_hashtags = (scratchpad.post_hashtags as unknown[]).map(String);
+          }
+          if (scratchpad.quality_scores && typeof scratchpad.quality_scores === 'object') {
+            state.quality_scores = scratchpad.quality_scores as PostQualityScores;
+          }
+        },
+      },
+    ],
+
+    createInitialState: (sessionId, userId, input) => ({
+      session_id: sessionId,
+      user_id: userId,
+      current_stage: 'strategy',
+      platform_context: input.platform_context as LinkedInContentState['platform_context'],
+    }),
+
+    buildAgentMessage: (agentName, state, input) => {
+      if (agentName === 'strategist') {
+        const parts = [
+          'Analyze this professional\'s positioning and generate compelling LinkedIn post topic suggestions.',
+          '',
+        ];
+
+        if (state.platform_context?.positioning_strategy) {
+          parts.push(
+            '## Prior Positioning Strategy',
+            JSON.stringify(state.platform_context.positioning_strategy, null, 2),
+            '',
+          );
+        }
+
+        if (state.platform_context?.evidence_items && state.platform_context.evidence_items.length > 0) {
+          parts.push(
+            '## Evidence Items',
+            JSON.stringify(state.platform_context.evidence_items.slice(0, 8), null, 2),
+            '',
+          );
+        }
+
+        parts.push('Call analyze_expertise first, then suggest_topics, then present_topics.');
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
+      }
+
+      if (agentName === 'writer') {
+        const selectedTopic = state.selected_topic ?? 'professional insight';
+
+        const parts = [
+          `Write a LinkedIn post on this topic: "${selectedTopic}"`,
+          '',
+          'Follow your workflow: write_post → self_review_post → present_post',
+          '',
+        ];
+
+        if (state.platform_context?.career_narrative) {
+          parts.push(
+            '## Career Narrative (match this authentic voice)',
+            JSON.stringify(state.platform_context.career_narrative, null, 2),
+            '',
+          );
+        }
+
+        // If revision is needed, include the feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '## Revision Requested',
+            `The user reviewed the post and requested changes: "${state.revision_feedback}"`,
+            'Call revise_post with this feedback, then self_review_post, then present_post.',
+            '',
+          );
+        }
+
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
+      }
+
+      return '';
+    },
+
+    finalizeResult: (state, _input, emit) => {
+      const post = state.post_draft ?? '';
+      const hashtags = state.post_hashtags ?? [];
+      const qualityScores = state.quality_scores ?? {
+        authenticity: 0,
+        engagement_potential: 0,
+        keyword_density: 0,
+      };
+
+      emit({
+        type: 'content_complete',
+        session_id: state.session_id,
+        post,
+        hashtags,
+        quality_scores: qualityScores,
+      });
+
+      return { post, hashtags, quality_scores: qualityScores };
+    },
+
+    persistResult: async (state, result) => {
+      const data = result as {
+        post: string;
+        hashtags: string[];
+        quality_scores: PostQualityScores;
+      };
+
+      try {
+        await supabaseAdmin
+          .from('content_posts')
+          .insert({
+            user_id: state.user_id,
+            platform: 'linkedin',
+            post_type: 'thought_leadership',
+            topic: state.selected_topic ?? null,
+            content: data.post,
+            hashtags: data.hashtags,
+            status: 'draft',
+            quality_scores: data.quality_scores,
+            source_session_id: state.session_id,
+          });
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err), userId: state.user_id },
+          'LinkedIn content: failed to persist post (non-fatal)',
+        );
+      }
+    },
+
+    emitError: (stage, error, emit) => {
+      emit({ type: 'pipeline_error', stage, error });
+    },
+  };
+}

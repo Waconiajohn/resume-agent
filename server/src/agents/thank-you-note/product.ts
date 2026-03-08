@@ -16,6 +16,7 @@ import type {
 } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteState, ThankYouNoteSSEEvent> {
   return {
@@ -109,6 +110,22 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
         parts.push(
           'Call tools in order: analyze_interview_context first, then write_thank_you_note + personalize_per_interviewer for each interviewer, then assemble_note_set.',
         );
+
+        // Distress resources — first (and only) agent
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 

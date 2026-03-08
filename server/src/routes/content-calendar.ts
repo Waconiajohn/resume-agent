@@ -15,6 +15,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createContentCalendarProductConfig } from '../agents/content-calendar/product.js';
 import { FF_CONTENT_CALENDAR } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from '../agents/content-calendar/types.js';
@@ -37,7 +38,8 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
     if (!userId) return input;
 
     try {
-      const [strategyRows, evidenceRows, whyMeRows, linkedinReport] = await Promise.all([
+      const [baseline, strategyRows, evidenceRows, whyMeRows, linkedinReport] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'evidence_item'),
         supabaseAdmin
@@ -81,9 +83,14 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
         };
       }
 
+      const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
-        return { ...input, platform_context: platformContext };
+        result.platform_context = platformContext;
       }
+      if (baseline) {
+        result.emotional_baseline = baseline;
+      }
+      return result;
     } catch (err) {
       logger.warn(
         {

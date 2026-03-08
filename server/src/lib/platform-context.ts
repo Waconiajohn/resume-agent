@@ -17,7 +17,14 @@ export type ContextType =
   | 'positioning_strategy'
   | 'evidence_item'
   | 'career_narrative'
-  | 'target_role';
+  | 'target_role'
+  | 'client_profile'
+  | 'positioning_foundation'
+  | 'benchmark_candidate'
+  | 'gap_analysis'
+  | 'industry_research'
+  | 'job_discovery_results'
+  | 'content_post';
 
 export interface PlatformContextRow {
   id: string;
@@ -63,12 +70,29 @@ export async function getUserContext(
   }
 }
 
+// ─── getLatestUserContext ──────────────────────────────────────────────────────
+
+/**
+ * Convenience wrapper: returns the single most recent platform context row
+ * for a user and context type, or null if none exists.
+ */
+export async function getLatestUserContext(
+  userId: string,
+  contextType: ContextType,
+): Promise<PlatformContextRow | null> {
+  const rows = await getUserContext(userId, contextType);
+  return rows[0] ?? null;
+}
+
 // ─── upsertUserContext ────────────────────────────────────────────────────────
 
 /**
  * Upserts a platform context row keyed by (user_id, context_type, source_product).
  * If a row with that combination already exists it will be updated (version incremented).
  * If not, a new row is inserted.
+ *
+ * Uses the `upsert_platform_context` Postgres function for an atomic version
+ * increment — no read-then-write race condition.
  *
  * Returns the upserted row, or null on failure.
  */
@@ -80,62 +104,55 @@ export async function upsertUserContext(
   sourceSessionId?: string,
 ): Promise<PlatformContextRow | null> {
   try {
-    // Check for an existing row to increment version
-    const { data: existing } = await supabaseAdmin
-      .from('user_platform_context')
-      .select('id, version')
-      .eq('user_id', userId)
-      .eq('context_type', contextType)
-      .eq('source_product', sourceProduct)
-      .maybeSingle();
-
-    if (existing) {
-      const existingRow = existing as { id: string; version: number };
-      const { data, error } = await supabaseAdmin
-        .from('user_platform_context')
-        .update({
-          content,
-          source_session_id: sourceSessionId ?? null,
-          version: existingRow.version + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingRow.id)
-        .select('*')
-        .single();
-
-      if (error) {
-        logger.error({ error: error.message, userId, contextType }, 'upsertUserContext: update failed');
-        return null;
-      }
-
-      return data as PlatformContextRow;
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('user_platform_context')
-      .insert({
-        user_id: userId,
-        context_type: contextType,
-        content,
-        source_product: sourceProduct,
-        source_session_id: sourceSessionId ?? null,
-        version: 1,
-      })
-      .select('*')
-      .single();
+    const { data, error } = await supabaseAdmin.rpc('upsert_platform_context', {
+      p_user_id: userId,
+      p_context_type: contextType,
+      p_source_product: sourceProduct,
+      p_content: content,
+      p_source_session_id: sourceSessionId ?? null,
+    });
 
     if (error) {
-      logger.error({ error: error.message, userId, contextType }, 'upsertUserContext: insert failed');
+      logger.error({ error: error.message, userId, contextType }, 'upsertUserContext: RPC failed');
       return null;
     }
 
-    return data as PlatformContextRow;
+    // RPC returns an array (RETURNS SETOF); take the first row
+    const row = Array.isArray(data) ? data[0] : data;
+    return (row as PlatformContextRow) ?? null;
   } catch (err) {
     logger.error(
       { error: err instanceof Error ? err.message : String(err), userId, contextType },
       'upsertUserContext: unexpected error',
     );
     return null;
+  }
+}
+
+// ─── deleteUserContext ──────────────────────────────────────────────────────
+
+/**
+ * Deletes platform context rows for a given user and context type.
+ * Optionally scoped to a specific source product.
+ */
+export async function deleteUserContext(
+  userId: string,
+  contextType: ContextType,
+  sourceProduct?: string,
+): Promise<void> {
+  let query = supabaseAdmin
+    .from('user_platform_context')
+    .delete()
+    .eq('user_id', userId)
+    .eq('context_type', contextType);
+
+  if (sourceProduct) {
+    query = query.eq('source_product', sourceProduct);
+  }
+
+  const { error } = await query;
+  if (error) {
+    throw new Error(`Failed to delete context: ${error.message}`);
   }
 }
 
@@ -152,6 +169,9 @@ export async function listUserContextByType(
   types?: ContextType[],
 ): Promise<PlatformContextRow[]> {
   try {
+    // Empty array means "no types of interest" — return nothing
+    if (types !== undefined && types.length === 0) return [];
+
     let query = supabaseAdmin
       .from('user_platform_context')
       .select('*')

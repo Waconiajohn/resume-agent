@@ -13,6 +13,7 @@ import { strategistConfig } from './strategist/agent.js';
 import type { SalaryNegotiationState, SalaryNegotiationSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNegotiationState, SalaryNegotiationSSEEvent> {
   return {
@@ -143,11 +144,27 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
           '',
           'Call tools in order: research_compensation, analyze_market_position, identify_leverage_points, assess_total_comp.',
         );
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
       if (agentName === 'strategist') {
-        return [
+        const parts = [
           'Design a comprehensive negotiation strategy and build the full preparation package.',
           '',
           'Follow this workflow exactly:',
@@ -161,7 +178,15 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
           '5. Call assemble_negotiation_prep to produce the final report',
           '',
           'Do NOT skip any step or scenario type.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

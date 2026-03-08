@@ -1,0 +1,86 @@
+/**
+ * Mock Interview Simulation Routes — using the generic route factory.
+ *
+ * Mounted at /api/mock-interview/*. Feature-flagged via FF_MOCK_INTERVIEW.
+ * Runs a single-agent interactive pipeline (Interviewer) that pauses once
+ * per question for the user's answer.
+ *
+ * Cross-product context: Loads positioning strategy, Why-Me story, and
+ * evidence items from prior CareerIQ sessions if available.
+ */
+
+import { z } from 'zod';
+import { createProductRoutes } from './product-route-factory.js';
+import { createMockInterviewProductConfig } from '../agents/interview-prep/simulation/product.js';
+import { FF_MOCK_INTERVIEW } from '../lib/feature-flags.js';
+import { getUserContext } from '../lib/platform-context.js';
+import { supabaseAdmin } from '../lib/supabase.js';
+import logger from '../lib/logger.js';
+import type { MockInterviewState, MockInterviewSSEEvent } from '../agents/interview-prep/simulation/types.js';
+
+const startSchema = z.object({
+  session_id: z.string().uuid(),
+  resume_text: z.string().min(50).max(100_000),
+  job_description: z.string().max(50_000).optional(),
+  company_name: z.string().max(200).optional(),
+  mode: z.enum(['full', 'practice']),
+  question_type: z.enum(['behavioral', 'technical', 'situational']).optional(),
+});
+
+export const mockInterviewRoutes = createProductRoutes<MockInterviewState, MockInterviewSSEEvent>({
+  startSchema,
+  buildProductConfig: () => createMockInterviewProductConfig(),
+  isEnabled: () => FF_MOCK_INTERVIEW,
+
+  transformInput: async (input, session) => {
+    const userId = session.user_id as string | undefined;
+    if (!userId) return input;
+
+    try {
+      const [strategyRows, evidenceRows, whyMeRows] = await Promise.all([
+        getUserContext(userId, 'positioning_strategy'),
+        getUserContext(userId, 'evidence_item'),
+        supabaseAdmin
+          .from('why_me_stories')
+          .select('colleagues_came_for_what, known_for_what, why_not_me')
+          .eq('user_id', userId)
+          .maybeSingle()
+          .then((r) => r.data),
+      ]);
+
+      const platformContext: Record<string, unknown> = {};
+
+      if (strategyRows.length > 0) {
+        platformContext.positioning_strategy = strategyRows[0].content;
+      }
+
+      if (evidenceRows.length > 0) {
+        platformContext.evidence_items = evidenceRows.map((r) => r.content);
+      }
+
+      if (whyMeRows) {
+        platformContext.why_me_story = {
+          colleaguesCameForWhat: whyMeRows.colleagues_came_for_what ?? '',
+          knownForWhat: whyMeRows.known_for_what ?? '',
+          whyNotMe: whyMeRows.why_not_me ?? '',
+        };
+      }
+
+      const result: Record<string, unknown> = { ...input };
+      if (Object.keys(platformContext).length > 0) {
+        result.platform_context = platformContext;
+      }
+      return result;
+    } catch (err) {
+      logger.warn(
+        {
+          error: err instanceof Error ? err.message : String(err),
+          userId,
+        },
+        'Mock interview: failed to load platform context (continuing without it)',
+      );
+    }
+
+    return input;
+  },
+});

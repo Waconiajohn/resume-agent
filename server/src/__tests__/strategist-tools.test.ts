@@ -32,7 +32,7 @@ vi.mock('../lib/questionnaire-helpers.js', () => ({
 }));
 
 vi.mock('../agents/positioning-coach.js', () => ({
-  evaluateFollowUp: vi.fn().mockReturnValue(null),
+  evaluateFollowUp: vi.fn().mockResolvedValue(null),
 }));
 
 // ─── Import after mocks ───────────────────────────────────────────────

@@ -16,6 +16,8 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createCoverLetterProductConfig } from '../agents/cover-letter/product.js';
 import { FF_COVER_LETTER } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../agents/cover-letter/types.js';
 
@@ -31,12 +33,28 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
   buildProductConfig: (input) => createCoverLetterProductConfig(),
   isEnabled: () => FF_COVER_LETTER,
 
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const companyName = typeof input.company_name === 'string' ? input.company_name : '';
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ last_panel_data: { product_type: 'cover_letter', company_name: companyName } })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn(
+        { session_id: sessionId, error: error.message },
+        'Cover letter: failed to persist company_name to session (continuing)',
+      );
+    }
+  },
+
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;
     if (!userId) return input;
 
     try {
-      const [strategyRows, evidenceRows] = await Promise.all([
+      const [baseline, strategyRows, evidenceRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'evidence_item'),
       ]);
@@ -51,9 +69,14 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
         platformContext.evidence_items = evidenceRows.map((r) => r.content);
       }
 
+      const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
-        return { ...input, platform_context: platformContext };
+        result.platform_context = platformContext;
       }
+      if (baseline) {
+        result.emotional_baseline = baseline;
+      }
+      return result;
     } catch (err) {
       logger.warn(
         {

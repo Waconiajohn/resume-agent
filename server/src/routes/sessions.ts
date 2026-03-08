@@ -917,4 +917,4 @@ export function getSessionRouteStats() {
   };
 }
 
-export { sessions, sseConnections };
+export { sessions, sseConnections, addSSEConnection, removeSSEConnection };

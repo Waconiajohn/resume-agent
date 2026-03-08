@@ -13,6 +13,7 @@ import { writerConfig } from './writer/agent.js';
 import type { JobTrackerState, JobTrackerSSEEvent } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, JobTrackerSSEEvent> {
   return {
@@ -96,13 +97,29 @@ export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, 
           '',
           'Call analyze_application first (pass the resume_text), then score_fit, then assess_follow_up_timing, then generate_portfolio_analytics.',
         );
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
       if (agentName === 'writer') {
         const priorities = state.follow_up_priorities ?? [];
         const actionable = priorities.filter((p) => p.urgency !== 'no_action');
-        return [
+        const parts = [
           `Write follow-up messages for ${actionable.length} application(s) that need attention.`,
           '',
           'Review follow_up_priorities in state and write the appropriate message for each:',
@@ -114,7 +131,15 @@ export function createJobTrackerProductConfig(): ProductConfig<JobTrackerState, 
           'Then call assess_status, then assemble_tracker_report.',
           '',
           'Do NOT write messages for applications with urgency "no_action".',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

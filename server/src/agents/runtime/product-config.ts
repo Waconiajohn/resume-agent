@@ -27,9 +27,10 @@ export interface GateDef<TState extends BaseState = BaseState> {
   condition?: (state: TState) => boolean;
   /**
    * Optional handler to process the gate response before the next agent runs.
-   * Receives the raw user response and the current state.
+   * Receives the raw user response, the current state, and an optional emit
+   * function for sending SSE events to the frontend.
    */
-  onResponse?: (response: unknown, state: TState) => void;
+  onResponse?: (response: unknown, state: TState, emit?: (event: BaseEvent) => void) => void;
 }
 
 // ─── Agent Phase ─────────────────────────────────────────────────────

@@ -39,12 +39,19 @@ export const RequirementMappingSchema = z.object({
   unaddressable: z.boolean().optional(),
 }).passthrough();
 
+export const WhyMeItemSchema = z.object({
+  reason: z.string().optional().default(''),
+  evidence: z.string().optional().default(''),
+});
+
 export const ClassifyFitOutputSchema = z.object({
   requirements: z.array(RequirementMappingSchema).optional().default([]),
   coverage_score: z.number().optional().default(0),
   critical_gaps: z.array(z.string()).optional().default([]),
   addressable_gaps: z.array(z.string()).optional().default([]),
   strength_summary: z.string().optional().default(''),
+  why_me: z.array(WhyMeItemSchema).optional(),
+  why_not_me: z.array(WhyMeItemSchema).optional(),
 }).passthrough();
 
 export type ClassifyFitOutput = z.infer<typeof ClassifyFitOutputSchema>;

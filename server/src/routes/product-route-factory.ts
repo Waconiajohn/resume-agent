@@ -22,7 +22,8 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
-import { sseConnections } from './sessions.js';
+import { sseConnections, addSSEConnection, removeSSEConnection } from './sessions.js';
+import { streamSSE } from 'hono/streaming';
 import { sleep } from '../lib/sleep.js';
 import logger from '../lib/logger.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
@@ -607,6 +608,73 @@ export function createProductRoutes<
     }
 
     return c.json({ error: 'No pending gate for this session' }, 404);
+  });
+
+  // ── GET /:sessionId/stream ─────────────────────────────────────
+  router.get('/:sessionId/stream', async (c) => {
+    if (config.isEnabled && !config.isEnabled()) {
+      return c.json({ error: 'This product is not available' }, 404);
+    }
+
+    const sessionId = c.req.param('sessionId');
+    const user = c.get('user');
+
+    // Verify session belongs to user
+    const { data: session, error } = await supabaseAdmin
+      .from('coach_sessions')
+      .select('id, user_id')
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (error || !session) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
+
+    return streamSSE(c, async (stream) => {
+      let connectionClosed = false;
+      const emitter = (event: BaseEvent) => {
+        if (connectionClosed) return;
+        void stream.writeSSE({
+          event: (event as Record<string, unknown>).type as string,
+          data: JSON.stringify(event),
+        }).catch(() => {
+          connectionClosed = true;
+          removeSSEConnection(sessionId, user.id, emitter as never);
+        });
+      };
+
+      addSSEConnection(sessionId, user.id, emitter as never);
+
+      await stream.writeSSE({
+        event: 'connected',
+        data: JSON.stringify({ session_id: sessionId }),
+      });
+
+      // Heartbeat every 30s to keep connection alive
+      const heartbeat = setInterval(() => {
+        if (connectionClosed) {
+          clearInterval(heartbeat);
+          return;
+        }
+        void stream.writeSSE({ event: 'heartbeat', data: '' }).catch(() => {
+          connectionClosed = true;
+          clearInterval(heartbeat);
+          removeSSEConnection(sessionId, user.id, emitter as never);
+        });
+      }, 30_000);
+
+      stream.onAbort(() => {
+        connectionClosed = true;
+        clearInterval(heartbeat);
+        removeSSEConnection(sessionId, user.id, emitter as never);
+      });
+
+      // Keep stream open until aborted
+      await new Promise<void>((resolve) => {
+        stream.onAbort(() => resolve());
+      });
+    });
   });
 
   return router;

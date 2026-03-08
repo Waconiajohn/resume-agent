@@ -9,6 +9,20 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock LLM module — evaluateFollowUp now uses MODEL_LIGHT for quality assessment
+vi.mock('../lib/llm.js', () => ({
+  llm: { chat: vi.fn().mockRejectedValue(new Error('LLM unavailable')) },
+  MODEL_LIGHT: 'mock-light',
+  MODEL_PRIMARY: 'mock-primary',
+  MODEL_MID: 'mock-mid',
+  MODEL_ORCHESTRATOR: 'mock-orchestrator',
+  MODEL_PRICING: {},
+}));
+
+vi.mock('../lib/retry.js', () => ({
+  withRetry: vi.fn((fn: () => Promise<unknown>) => fn()),
+}));
+
 // ─── Feature flag tests ──────────────────────────────────────────────
 
 describe('feature-flags', () => {
@@ -66,9 +80,9 @@ describe('evaluateFollowUp + MAX_FOLLOW_UPS', () => {
       input_type: 'hybrid' as const,
       category: 'requirement_mapped' as const,
     };
-    const result = evaluateFollowUp(question, 'Yes, I did that.');
+    const result = await evaluateFollowUp(question, 'Yes, I did that.');
     expect(result).not.toBeNull();
-    expect(result!.id).toBe('test_q_followup');
+    expect(result!.id).toMatch(/^test_q_followup_\d+$/);
     expect(result!.is_follow_up).toBeUndefined(); // parent sets this
   });
 
@@ -83,11 +97,11 @@ describe('evaluateFollowUp + MAX_FOLLOW_UPS', () => {
       category: 'currency_and_adaptability' as const,
       optional: true,
     };
-    const result = evaluateFollowUp(question, 'Short answer.');
+    const result = await evaluateFollowUp(question, 'Short answer.');
     expect(result).toBeNull();
   });
 
-  it('evaluateFollowUp triggers metrics probe when no numbers present', async () => {
+  it('evaluateFollowUp triggers metrics probe when no numbers present (heuristic fallback)', async () => {
     const { evaluateFollowUp } = await import('../agents/positioning-coach.js');
     const question = {
       id: 'scope_q',
@@ -97,14 +111,14 @@ describe('evaluateFollowUp + MAX_FOLLOW_UPS', () => {
       input_type: 'hybrid' as const,
       category: 'scale_and_scope' as const,
     };
-    // Answer has enough length (>100) but no metrics
+    // Answer has enough length (>100) but no metrics — LLM throws so heuristic fallback runs
     const longAnswer = 'I led the engineering organization through a major cloud migration initiative that transformed our infrastructure from on-premises to cloud-native services across multiple regions.';
-    const result = evaluateFollowUp(question, longAnswer);
+    const result = await evaluateFollowUp(question, longAnswer);
     expect(result).not.toBeNull();
-    expect(result!.id).toBe('scope_q_metrics');
+    expect(result!.id).toMatch(/^scope_q_metrics_\d+$/);
   });
 
-  it('evaluateFollowUp returns null when metrics are present', async () => {
+  it('evaluateFollowUp returns null when metrics are present (heuristic fallback)', async () => {
     const { evaluateFollowUp } = await import('../agents/positioning-coach.js');
     const question = {
       id: 'scope_q',
@@ -117,7 +131,7 @@ describe('evaluateFollowUp + MAX_FOLLOW_UPS', () => {
     // Answer must be >100 chars AND contain metrics to avoid both follow-up triggers
     const answer = 'I managed a team of 45 engineers across three regions, delivering $2.3M in annual cost savings by migrating our infrastructure to cloud-native services and reducing cloud spend by 30%.';
     expect(answer.length).toBeGreaterThan(100);
-    const result = evaluateFollowUp(question, answer);
+    const result = await evaluateFollowUp(question, answer);
     expect(result).toBeNull();
   });
 });

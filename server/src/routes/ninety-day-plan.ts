@@ -15,6 +15,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createNinetyDayPlanProductConfig } from '../agents/ninety-day-plan/product.js';
 import { FF_NINETY_DAY_PLAN } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import logger from '../lib/logger.js';
 import type { NinetyDayPlanState, NinetyDayPlanSSEEvent } from '../agents/ninety-day-plan/types.js';
 
@@ -39,9 +40,10 @@ export const ninetyDayPlanRoutes = createProductRoutes<NinetyDayPlanState, Ninet
 
     const transformed: Record<string, unknown> = { ...input };
 
-    // Load cross-product platform context
+    // Load cross-product platform context and emotional baseline
     try {
-      const [strategyRows] = await Promise.all([
+      const [baseline, strategyRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
       ]);
 
@@ -53,6 +55,9 @@ export const ninetyDayPlanRoutes = createProductRoutes<NinetyDayPlanState, Ninet
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
+      }
+      if (baseline) {
+        transformed.emotional_baseline = baseline;
       }
     } catch (err) {
       logger.warn(

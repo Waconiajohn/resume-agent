@@ -20,6 +20,7 @@ import type {
 } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandState, PersonalBrandSSEEvent> {
   return {
@@ -131,6 +132,22 @@ export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandS
         toolOrder.push('score_consistency');
 
         parts.push(`Call tools in order: ${toolOrder.join(', ')}.`);
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
@@ -143,7 +160,7 @@ export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandS
           ? `Overall: ${state.consistency_scores.overall}/100, Messaging: ${state.consistency_scores.messaging}/100, Value Prop: ${state.consistency_scores.value_proposition}/100`
           : '(no scores available)';
 
-        return [
+        const parts = [
           'Produce a comprehensive brand improvement plan based on the following audit results:',
           '',
           '## Audit Findings',
@@ -162,7 +179,15 @@ export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandS
           '4. Call assemble_audit_report to produce the final report',
           '',
           'Do NOT skip any step.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

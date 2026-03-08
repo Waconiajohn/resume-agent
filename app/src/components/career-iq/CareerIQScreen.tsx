@@ -7,6 +7,7 @@ import { LivePulseStrip } from './LivePulseStrip';
 import { MobileBriefing } from './MobileBriefing';
 import { useWhyMeStory } from './useWhyMeStory';
 import { useMediaQuery } from './useMediaQuery';
+import { useMomentum } from '@/hooks/useMomentum';
 import { supabase } from '@/lib/supabase';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
 
@@ -33,6 +34,13 @@ interface ResumeSession {
   company_name?: string | null;
   created_at: string;
   pipeline_stage?: string | null;
+}
+
+interface CoverLetterSession {
+  id: string;
+  company_name: string | null;
+  created_at: string;
+  pipeline_status: string | null;
 }
 
 interface SavedResume {
@@ -76,6 +84,16 @@ export function CareerIQScreen({
   const { story, updateField, signals, dashboardState } = useWhyMeStory();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
+  const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
+  const { summary: momentum, nudges, loading: momentumLoading, dismissNudge, checkStalls } = useMomentum();
+
+  // Check for stalled activity after initial load (non-blocking, 2s delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void checkStalls();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [checkStalls]);
 
   // Load pipeline cards in "Interviewing" stage for Interview Lab
   useEffect(() => {
@@ -95,6 +113,43 @@ export function CareerIQScreen({
       } catch { /* fallback to empty */ }
     }
     loadInterviewing();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Load recent cover letter sessions
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCoverLetterSessions() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await supabase
+          .from('coach_sessions')
+          .select('id, last_panel_data, pipeline_status, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        if (data && !cancelled) {
+          const clSessions = data
+            .filter((row) => {
+              const panelData = row.last_panel_data as Record<string, unknown> | null;
+              return panelData?.product_type === 'cover_letter';
+            })
+            .slice(0, 5)
+            .map((row) => {
+              const panelData = row.last_panel_data as Record<string, unknown>;
+              return {
+                id: row.id as string,
+                company_name: typeof panelData.company_name === 'string' ? panelData.company_name : null,
+                created_at: row.created_at as string,
+                pipeline_status: typeof row.pipeline_status === 'string' ? row.pipeline_status : null,
+              };
+            });
+          setCoverLetterSessions(clSessions);
+        }
+      } catch { /* fallback to empty */ }
+    }
+    loadCoverLetterSessions();
     return () => { cancelled = true; };
   }, []);
 
@@ -137,6 +192,11 @@ export function CareerIQScreen({
           hasResumeSessions={sessions.length > 0}
           sessionCount={sessions.length}
           recentSessions={sessions}
+          coverLetterSessions={coverLetterSessions}
+          momentum={momentum}
+          momentumLoading={momentumLoading}
+          nudges={nudges}
+          onDismissNudge={dismissNudge}
         />
       );
     }

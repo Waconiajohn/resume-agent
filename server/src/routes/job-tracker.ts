@@ -14,6 +14,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createJobTrackerProductConfig } from '../agents/job-tracker/product.js';
 import { FF_JOB_TRACKER } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import logger from '../lib/logger.js';
 import type { JobTrackerState, JobTrackerSSEEvent } from '../agents/job-tracker/types.js';
 
@@ -44,7 +45,8 @@ export const jobTrackerRoutes = createProductRoutes<JobTrackerState, JobTrackerS
     if (!userId) return input;
 
     try {
-      const [strategyRows, evidenceRows] = await Promise.all([
+      const [baseline, strategyRows, evidenceRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'evidence_item'),
       ]);
@@ -58,9 +60,14 @@ export const jobTrackerRoutes = createProductRoutes<JobTrackerState, JobTrackerS
         platformContext.evidence_items = evidenceRows.map((r) => r.content);
       }
 
+      const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
-        return { ...input, platform_context: platformContext };
+        result.platform_context = platformContext;
       }
+      if (baseline) {
+        result.emotional_baseline = baseline;
+      }
+      return result;
     } catch (err) {
       logger.warn(
         { error: err instanceof Error ? err.message : String(err), userId },

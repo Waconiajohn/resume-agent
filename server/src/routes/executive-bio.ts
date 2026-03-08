@@ -15,6 +15,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createExecutiveBioProductConfig } from '../agents/executive-bio/product.js';
 import { FF_EXECUTIVE_BIO } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import logger from '../lib/logger.js';
 import type { ExecutiveBioState, ExecutiveBioSSEEvent } from '../agents/executive-bio/types.js';
 
@@ -42,9 +43,10 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
 
     const transformed: Record<string, unknown> = { ...input };
 
-    // Load cross-product platform context
+    // Load cross-product platform context and emotional baseline
     try {
-      const [strategyRows, narrativeRows] = await Promise.all([
+      const [baseline, strategyRows, narrativeRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'career_narrative'),
       ]);
@@ -63,6 +65,9 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
+      }
+      if (baseline) {
+        transformed.emotional_baseline = baseline;
       }
     } catch (err) {
       logger.warn(

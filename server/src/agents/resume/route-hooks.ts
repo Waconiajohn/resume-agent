@@ -18,6 +18,7 @@ import { isIP } from 'node:net';
 import type { Context } from 'hono';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getEmotionalBaseline } from '../../lib/emotional-baseline.js';
 import { parsePositiveInt } from '../../lib/http-body-guard.js';
 import { sseConnections } from '../../routes/sessions.js';
 import { STALE_PIPELINE_MS } from '../../routes/product-route-factory.js';
@@ -809,6 +810,22 @@ export async function resumeTransformInput(
       { error: err instanceof Error ? err.message : String(err), master_resume_id: masterResumeId },
       'Failed to load master resume — continuing without it',
     );
+  }
+
+  // Load emotional baseline for tone adaptation
+  const userId = typeof session.user_id === 'string' ? session.user_id : undefined;
+  if (userId) {
+    try {
+      const baseline = await getEmotionalBaseline(userId);
+      if (baseline) {
+        enriched.emotional_baseline = baseline;
+      }
+    } catch (err) {
+      logger.warn(
+        { error: err instanceof Error ? err.message : String(err), userId },
+        'Resume: failed to load emotional baseline (continuing without it)',
+      );
+    }
   }
 
   return enriched;

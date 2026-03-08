@@ -575,3 +575,59 @@ describe('enrichGapAnalysis', () => {
     expect(enriched.coverage_score).toBe(100);
   });
 });
+
+// ─── Why Me / Why Not Me ──────────────────────────────────────────────────────
+
+describe('runGapAnalyst — Why Me / Why Not Me', () => {
+  beforeEach(() => mockChat.mockReset());
+
+  it('returns why_me and why_not_me when LLM provides them', async () => {
+    const output = {
+      ...makeValidGapLLMOutput(),
+      why_me: [
+        { reason: 'Proven cloud leadership', evidence: 'Led $2.4M cost reduction via cloud migration' },
+        { reason: 'Scales engineering orgs', evidence: 'Grew team from 2 to 45 engineers' },
+      ],
+      why_not_me: [
+        { reason: 'No P&L ownership', evidence: 'Budget implied but not directly stated' },
+      ],
+    };
+    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+
+    const result = await runGapAnalyst(makeGapAnalystInput());
+
+    expect(result.why_me).toBeDefined();
+    expect(result.why_me).toHaveLength(2);
+    expect(result.why_me![0].reason).toBe('Proven cloud leadership');
+    expect(result.why_me![0].evidence).toContain('$2.4M');
+
+    expect(result.why_not_me).toBeDefined();
+    expect(result.why_not_me).toHaveLength(1);
+    expect(result.why_not_me![0].reason).toBe('No P&L ownership');
+  });
+
+  it('returns undefined why_me/why_not_me when LLM omits them', async () => {
+    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+
+    const result = await runGapAnalyst(makeGapAnalystInput());
+
+    expect(result.why_me).toBeUndefined();
+    expect(result.why_not_me).toBeUndefined();
+  });
+
+  it('filters out why_me items with empty reason', async () => {
+    const output = {
+      ...makeValidGapLLMOutput(),
+      why_me: [
+        { reason: '', evidence: 'some evidence' },
+        { reason: 'Valid reason', evidence: 'Valid evidence' },
+      ],
+    };
+    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+
+    const result = await runGapAnalyst(makeGapAnalystInput());
+
+    expect(result.why_me).toHaveLength(1);
+    expect(result.why_me![0].reason).toBe('Valid reason');
+  });
+});

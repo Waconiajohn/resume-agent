@@ -1,32 +1,54 @@
-# Sprint 36: Frontend Build-Out + Network Intelligence Completion
-**Goal:** Make all 13 agents user-accessible through Career IQ rooms, complete the Network Intelligence module with boolean search generation and career page scraping, and update the product catalog to reflect the full platform.
-**Started:** 2026-03-07
+# Sprint 49: Phase 5 — Emotional Intelligence Layer
+**Goal:** Add momentum tracking (activity streaks, win celebrations), cognitive reframing (stall detection + coaching nudges), resource library, and "Ask a Coach" human escalation.
+**Started:** 2026-03-08
 
-## Stories This Sprint
+## Context
+Phases 1-4 complete. The platform has 17 agents + 2 simulation sub-agents, a fully interactive interview lab and salary negotiation room, and a Kanban command center. Phase 5 adds the emotional intelligence layer from Bible Ch 8 — keeping users motivated during long job searches, detecting when they're stuck, and providing proactive coaching.
 
-### Block 1: Career IQ Rooms for Hook-Only Agents (6 rooms)
-1. [ ] Story 1: Salary Negotiation Room — **Status: not started**
-2. [ ] Story 2: Executive Bio Room — **Status: not started**
-3. [ ] Story 3: Case Study Room — **Status: not started**
-4. [ ] Story 4: Thank You Note Room — **Status: not started**
-5. [ ] Story 5: Personal Brand Audit Room — **Status: not started**
-6. [ ] Story 6: 90-Day Plan Room — **Status: not started**
+The existing emotional baseline infrastructure (Phase 1C, `server/src/lib/emotional-baseline.ts`) provides tone adaptation and distress detection. Phase 5 builds on this with *active* momentum tracking and *proactive* coaching interventions.
 
-### Block 2: Network Intelligence Completion
-7. [ ] Story 7: NI Career IQ Room — **Status: not started**
-8. [ ] Story 8: Boolean Search String Generator (Backend) — **Status: not started**
-9. [ ] Story 9: Boolean Search String Generator (Frontend) — **Status: not started**
-10. [ ] Story 10: Career Page Scraper Agent (Backend) — **Status: not started**
-11. [ ] Story 11: Career Page Scraper (Frontend Integration) — **Status: not started**
+## Architecture Decision
+- Momentum tracking is **deterministic CRUD** — no LLM needed for activity logging and streak computation
+- Cognitive reframing uses **LLM-generated coaching messages** (MODEL_MID) triggered by stall detection heuristics
+- Resource library is **static content** organized by coaching methodology topics — no agent needed
+- Ask a Coach is **simple CRUD** — structured form stored for human review
 
-### Block 3: Platform Polish
-12. [ ] Story 12: Update Product Catalog — **Status: not started**
-13. [ ] Story 13: Career IQ Navigation Update — **Status: not started**
-14. [ ] Story 14: Tests for New Rooms — **Status: not started**
+## Stories
+
+1. [x] Story 5-1: `user_momentum` DB migration (activities, streaks, wins) — **Status: done**
+2. [x] Story 5-2: Momentum CRUD routes + streak computation logic — **Status: done**
+3. [x] Story 5-3: Cognitive Reframing engine (stall detection + LLM coaching messages) — **Status: done**
+4. [x] Story 5-4: `useMomentum` hook + MomentumCard dashboard component — **Status: done**
+5. [x] Story 5-5: Cognitive Reframing nudges in DashboardHome — **Status: done**
+6. [x] Story 5-6: Resource Library (static content + searchable + filterable) — **Status: done**
+7. [x] Story 5-7: Ask a Coach (form + coaching_requests CRUD) — **Status: done**
 
 ## Out of Scope (Explicitly)
-- SSE hook consolidation / hook factory (tech debt — separate sprint)
-- Agents #21+ backend builds
-- Redis bus adapter
-- Agent hot-reload
-- DOCX/PDF export for non-resume agents
+- Emotional Wellness Agent (#15 in catalog) — full agent deferred, this sprint adds the infrastructure layer
+- Skills Gap & Career Pivot Agent (#16) — Phase 6
+- Retirement Planning Agent (#14) — Phase 6
+- Gamification beyond streaks/wins (badges, leaderboards, etc.)
+
+---
+
+# Sprint 48: Quick Wins
+**Goal:** Cover Letter DOCX export + Dashboard cover-letter integration
+**Started:** 2026-03-08 | **Completed:** 2026-03-08
+
+## Stories
+1. [x] Story QW-1: Cover Letter DOCX export — **Status: done**
+2. [x] Story QW-2: Dashboard cover-letter feed integration — **Status: done**
+
+---
+
+# Sprint 47: Phase 4B — Salary Negotiation Enhancement
+**Goal:** Add interactive Counter-Offer Simulation to the Salary Negotiation room and Kanban "Offer" stage trigger.
+**Started:** 2026-03-08 | **Completed:** 2026-03-08
+
+## Stories
+1. [x] Story 4B-1: Counter-Offer Simulation types + state — **Status: done**
+2. [x] Story 4B-2: Employer agent + tools (pushback, coach, evaluate) — **Status: done**
+3. [x] Story 4B-3: ProductConfig + route + feature flag — **Status: done**
+4. [x] Story 4B-4: `useCounterOfferSim` frontend hook — **Status: done**
+5. [x] Story 4B-5: CounterOfferView component — **Status: done**
+6. [x] Story 4B-6: Wire into SalaryNegotiationRoom + Kanban trigger — **Status: done**

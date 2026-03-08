@@ -13,6 +13,7 @@ import { plannerConfig } from './planner/agent.js';
 import type { NinetyDayPlanState, NinetyDayPlanSSEEvent, PlanPhase, Stakeholder, QuickWin, LearningPriority } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanState, NinetyDayPlanSSEEvent> {
   return {
@@ -110,6 +111,22 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           '',
           'Call tools in order: analyze_role_context, map_stakeholders, identify_quick_wins, assess_learning_priorities.',
         );
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
@@ -126,7 +143,7 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           ? state.learning_priorities.map((lp, i) => `${i + 1}. ${lp.area} (${lp.importance})`).join('\n')
           : '(no learning priorities assessed)';
 
-        return [
+        const parts = [
           'Write a strategic 90-day onboarding plan using the research data below.',
           '',
           '## Stakeholder Map',
@@ -145,7 +162,15 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           '4. Call assemble_strategic_plan to produce the final plan document',
           '',
           'Do NOT skip any phase.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';

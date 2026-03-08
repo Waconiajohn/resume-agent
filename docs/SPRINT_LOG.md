@@ -2,6 +2,13 @@
 
 ---
 
+# Sprint 36 — Deferred
+**Status:** Deferred to future sprints
+**Reason:** CareerIQ Master Build Plan supersedes Sprint 36 scope. Career IQ rooms (6 hook-only agent rooms + NI room) and product catalog updates will be built as part of each phase's frontend work rather than as standalone rooms. This avoids building rooms for agents that will be significantly enhanced by the master plan.
+**Stories moved to:** BACKLOG.md (existing Epic: Platform Expansion)
+
+---
+
 # Sprint 35 Retrospective — Agents #18-#20 (Thank You Note, Personal Brand Audit, 90-Day Plan)
 **Completed:** 2026-03-07
 

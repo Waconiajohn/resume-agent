@@ -10,6 +10,7 @@ import type { ProductConfig } from '../runtime/product-config.js';
 import { analystConfig } from './analyst/agent.js';
 import { writerConfig } from './writer/agent.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from './types.js';
+import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
 export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState, CoverLetterSSEEvent> {
   return {
@@ -105,18 +106,42 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
         }
 
         parts.push('', 'Call parse_inputs first, then match_requirements, then plan_letter.');
+
+        // Distress resources — first agent only
+        const distress = getDistressFromInput(input);
+        if (distress) {
+          parts.push('', '## Support Resources', distress.message);
+          for (const r of distress.resources) {
+            parts.push(`- **${r.name}**: ${r.description} (${r.contact})`);
+          }
+        }
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
         return parts.join('\n');
       }
 
       if (agentName === 'writer') {
         const plan = state.letter_plan;
-        return [
+        const parts = [
           'Write a professional cover letter based on the analysis plan.',
           '',
           plan ? `## Letter Plan\n${JSON.stringify(plan, null, 2)}` : '',
           '',
           'Call write_letter to generate the letter, then review_letter to check quality.',
-        ].join('\n');
+        ];
+
+        // Emotional baseline tone adaptation
+        const toneGuidance = getToneGuidanceFromInput(input);
+        if (toneGuidance) {
+          parts.push(toneGuidance);
+        }
+
+        return parts.join('\n');
       }
 
       return '';
