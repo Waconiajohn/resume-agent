@@ -38,7 +38,10 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
     const companyName = typeof input.company_name === 'string' ? input.company_name : '';
     const { error } = await supabaseAdmin
       .from('coach_sessions')
-      .update({ last_panel_data: { product_type: 'cover_letter', company_name: companyName } })
+      .update({
+        product_type: 'cover_letter',
+        last_panel_data: { product_type: 'cover_letter', company_name: companyName },
+      })
       .eq('id', sessionId);
     if (error) {
       logger.warn(

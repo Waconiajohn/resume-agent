@@ -1,4 +1,6 @@
+// Uses shared test helpers from __tests__/helpers/
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { makeMockLLMResponse } from './helpers/index.js';
 
 const mockChat = vi.hoisted(() => vi.fn());
 vi.mock('../lib/llm.js', () => ({
@@ -17,16 +19,6 @@ import type {
   JDAnalysis,
   EvidenceItem,
 } from '../agents/types.js';
-
-// ─── Fixture Factories ────────────────────────────────────────────────────────
-
-function makeLLMResponse(data: Record<string, unknown>) {
-  return {
-    text: JSON.stringify(data),
-    tool_calls: [],
-    usage: { input_tokens: 0, output_tokens: 0 },
-  };
-}
 
 function makeJDAnalysis(overrides?: Partial<JDAnalysis>): JDAnalysis {
   return {
@@ -196,7 +188,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('returns QualityReviewerOutput with required fields', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput()));
 
     const result = await runQualityReviewer(makeReviewerInput());
 
@@ -207,7 +199,7 @@ describe('runQualityReviewer', () => {
 
   it('returns approve decision when all scores meet thresholds', async () => {
     // All scores above pass thresholds: impact>=4, coverage>=80, ats>=80, authenticity>=75, integrity>=90, compliance>=85
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput({
       hiring_manager_impact: 4,
       requirement_coverage: 85,
       ats_score: 88,
@@ -223,7 +215,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('returns revise decision when scores are below thresholds', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput({
       hiring_manager_impact: 3,
       requirement_coverage: 70,
       ats_score: 75,
@@ -239,7 +231,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('returns redesign decision when requirement_coverage is below 60%', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput({
       hiring_manager_impact: 3,
       requirement_coverage: 50, // Below 60% → redesign
     })));
@@ -252,7 +244,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('returns redesign decision when hiring_manager_impact is 2 or lower', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput({
       hiring_manager_impact: 2,
       requirement_coverage: 75,
     })));
@@ -264,7 +256,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('returns valid QualityScores with proper types', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput()));
 
     const result = await runQualityReviewer(makeReviewerInput());
 
@@ -277,7 +269,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('clamps scores within valid ranges', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput({
       hiring_manager_impact: 10, // Out of range (1-5)
       requirement_coverage: 150, // Out of range (0-100)
       ats_score: -5, // Out of range (0-100)
@@ -291,7 +283,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('handles NaN scores by defaulting to minimum', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse({
       scores: {
         hiring_manager_impact: 'not-a-number',
         requirement_coverage: null,
@@ -343,7 +335,7 @@ describe('runQualityReviewer', () => {
         priority: 'medium',
       },
     ];
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runQualityReviewer(makeReviewerInput());
 
@@ -372,7 +364,7 @@ describe('runQualityReviewer', () => {
         priority: 'low',
       },
     ];
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runQualityReviewer(makeReviewerInput());
 
@@ -390,7 +382,7 @@ describe('runQualityReviewer', () => {
         priority: 'urgent', // Invalid priority
       },
     ];
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runQualityReviewer(makeReviewerInput());
 
@@ -421,7 +413,7 @@ describe('runQualityReviewer', () => {
         priority: 'medium',
       },
     ];
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runQualityReviewer(makeReviewerInput());
 
@@ -435,7 +427,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('uses MODEL_MID for quality review', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput()));
 
     await runQualityReviewer(makeReviewerInput());
 
@@ -446,7 +438,7 @@ describe('runQualityReviewer', () => {
 
   it('revision_instructions is undefined when decision is approve', async () => {
     // All scores pass, no revision_instructions
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput({
       hiring_manager_impact: 4,
       requirement_coverage: 85,
       ats_score: 88,
@@ -463,7 +455,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('does not include redesign_reason for revise decisions', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidReviewLLMOutput({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidReviewLLMOutput({
       hiring_manager_impact: 3,
       requirement_coverage: 70,
     })));
@@ -475,7 +467,7 @@ describe('runQualityReviewer', () => {
   });
 
   it('uses default score of 3 for hiring_manager_impact when missing', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse({
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse({
       scores: {
         // hiring_manager_impact missing
         requirement_coverage: 80,

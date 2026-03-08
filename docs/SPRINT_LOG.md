@@ -2,6 +2,34 @@
 
 ---
 
+# Sprint 54 Retrospective — Post-Deploy Cleanup & Quality
+**Completed:** 2026-03-08
+
+## What was delivered
+- Story 54-1: Clean Orphaned Props (verified already clean — WorkflowStatsRail was removed in Sprint 16, all ChatPanel props are actively used)
+- Story 54-2: IntelligenceActivityFeed message deduplication (+13 app tests)
+- Story 54-3: Cover Letter DOCX Export (verified already implemented — `exportCoverLetterDocx()` and UI button both exist from Sprint 47)
+- Story 54-4: Extract shared test utilities (mock-factories.ts, mock-modules.ts, migrated 5 test files)
+- Story 54-5: ADR-039 Post-Deploy Stabilization Period
+
+## What went well
+- Two stories (54-1, 54-3) were verified as already complete — proper audit before writing code
+- Shared test helpers reduce boilerplate across 5+ test files
+- Zero regressions during cleanup sprint
+
+## What went wrong
+- Stories 54-1 and 54-3 could have been caught during backlog grooming before sprint planning
+
+## What to improve next sprint
+- Pre-verify story scope before sprint commitment to avoid "already done" discoveries
+- Continue migrating remaining test files to shared helpers
+
+## Technical debt identified
+- ~15 more test files could benefit from shared mock helpers
+- Backlog had ~20 stale stories needing cleanup (addressed in Sprint 55)
+
+---
+
 # Sprint 36 — Deferred
 **Status:** Deferred to future sprints
 **Reason:** CareerIQ Master Build Plan supersedes Sprint 36 scope. Career IQ rooms (6 hook-only agent rooms + NI room) and product catalog updates will be built as part of each phase's frontend work rather than as standalone rooms. This avoids building rooms for agents that will be significantly enhanced by the master plan.

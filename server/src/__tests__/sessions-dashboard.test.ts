@@ -412,3 +412,190 @@ describe('GET /api/sessions/:id/resume', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ─── Tests: product_type field ────────────────────────────────────────────────
+
+describe('product_type field', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('GET /api/sessions — product_type in list', () => {
+    it('includes product_type in enriched session list', async () => {
+      const rawRow = {
+        id: VALID_SESSION_ID,
+        status: 'active',
+        current_phase: 'onboarding',
+        pipeline_status: null,
+        pipeline_stage: null,
+        input_tokens_used: 0,
+        output_tokens_used: 0,
+        estimated_cost_usd: 0,
+        last_panel_type: null,
+        last_panel_data: null,
+        product_type: 'resume',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      mockFrom.mockReturnValue(makeChain({ data: [rawRow], error: null }));
+
+      const app = makeApp();
+      const res = await callApp(app, '/api/sessions');
+      expect(res.status).toBe(200);
+      const body = await res.json() as { sessions: unknown[] };
+      const s = body.sessions[0] as Record<string, unknown>;
+      expect(s.product_type).toBe('resume');
+    });
+
+    it('includes product_type cover_letter for cover letter sessions', async () => {
+      const rawRow = {
+        id: VALID_SESSION_ID,
+        status: 'active',
+        current_phase: 'onboarding',
+        pipeline_status: 'complete',
+        pipeline_stage: 'complete',
+        input_tokens_used: 0,
+        output_tokens_used: 0,
+        estimated_cost_usd: 0,
+        last_panel_type: null,
+        last_panel_data: null,
+        product_type: 'cover_letter',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      mockFrom.mockReturnValue(makeChain({ data: [rawRow], error: null }));
+
+      const app = makeApp();
+      const res = await callApp(app, '/api/sessions');
+      expect(res.status).toBe(200);
+      const body = await res.json() as { sessions: unknown[] };
+      const s = body.sessions[0] as Record<string, unknown>;
+      expect(s.product_type).toBe('cover_letter');
+    });
+
+    it('defaults product_type to resume when column is absent from row', async () => {
+      const rawRow = {
+        id: VALID_SESSION_ID,
+        status: 'active',
+        current_phase: 'onboarding',
+        pipeline_status: null,
+        pipeline_stage: null,
+        input_tokens_used: 0,
+        output_tokens_used: 0,
+        estimated_cost_usd: 0,
+        last_panel_type: null,
+        last_panel_data: null,
+        // product_type intentionally absent (simulates pre-migration row)
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      mockFrom.mockReturnValue(makeChain({ data: [rawRow], error: null }));
+
+      const app = makeApp();
+      const res = await callApp(app, '/api/sessions');
+      expect(res.status).toBe(200);
+      const body = await res.json() as { sessions: unknown[] };
+      const s = body.sessions[0] as Record<string, unknown>;
+      expect(s.product_type).toBe('resume');
+    });
+  });
+
+  describe('POST /api/sessions — product_type on creation', () => {
+    function makeInsertChain(insertedRow: Record<string, unknown>) {
+      const single = vi.fn().mockResolvedValue({ data: insertedRow, error: null });
+      const select = vi.fn().mockReturnValue({ single });
+      const insert = vi.fn().mockReturnValue({ select });
+      return { insert, select, single };
+    }
+
+    function makeDefaultResumeChain() {
+      return makeChain({ data: null, error: null });
+    }
+
+    it('creates session with default product_type of resume when not provided', async () => {
+      let capturedInsertPayload: Record<string, unknown> | undefined;
+      const sessionRow = {
+        id: VALID_SESSION_ID,
+        status: 'active',
+        current_phase: 'onboarding',
+        product_type: 'resume',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      const single = vi.fn().mockResolvedValue({ data: sessionRow, error: null });
+      const selectFn = vi.fn().mockReturnValue({ single });
+      const insertFn = vi.fn().mockImplementation((payload: Record<string, unknown>) => {
+        capturedInsertPayload = payload;
+        return { select: selectFn };
+      });
+      const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'master_resumes') {
+          return makeChain({ data: null, error: null });
+        }
+        if (table === 'coach_sessions') {
+          return { insert: insertFn };
+        }
+        return makeDefaultResumeChain();
+      });
+
+      mockRpc.mockResolvedValue({ data: { allowed: true }, error: null });
+
+      const app = makeApp();
+      const req = new Request('http://localhost/api/sessions', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const res = await app.fetch(req);
+      expect(res.status).toBe(200);
+      expect(capturedInsertPayload?.product_type).toBe('resume');
+    });
+
+    it('creates session with provided product_type when supplied', async () => {
+      let capturedInsertPayload: Record<string, unknown> | undefined;
+      const sessionRow = {
+        id: VALID_SESSION_ID,
+        status: 'active',
+        current_phase: 'onboarding',
+        product_type: 'cover_letter',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      const single = vi.fn().mockResolvedValue({ data: sessionRow, error: null });
+      const selectFn = vi.fn().mockReturnValue({ single });
+      const insertFn = vi.fn().mockImplementation((payload: Record<string, unknown>) => {
+        capturedInsertPayload = payload;
+        return { select: selectFn };
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'master_resumes') {
+          return makeChain({ data: null, error: null });
+        }
+        if (table === 'coach_sessions') {
+          return { insert: insertFn };
+        }
+        return makeChain({ data: null, error: null });
+      });
+
+      mockRpc.mockResolvedValue({ data: { allowed: true }, error: null });
+
+      const app = makeApp();
+      const req = new Request('http://localhost/api/sessions', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_type: 'cover_letter' }),
+      });
+      const res = await app.fetch(req);
+      expect(res.status).toBe(200);
+      expect(capturedInsertPayload?.product_type).toBe('cover_letter');
+    });
+  });
+});

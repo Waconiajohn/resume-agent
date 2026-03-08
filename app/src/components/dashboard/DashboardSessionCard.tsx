@@ -25,6 +25,34 @@ interface StatusBadgeProps {
   status: string | null | undefined;
 }
 
+function humanizeProductType(productType: string | null | undefined): string {
+  if (!productType || productType === 'resume') return 'Resume';
+  return productType
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+interface ProductBadgeProps {
+  productType: string | null | undefined;
+}
+
+function ProductBadge({ productType }: ProductBadgeProps) {
+  const label = humanizeProductType(productType);
+  const isCoverLetter = productType === 'cover_letter';
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+        isCoverLetter
+          ? 'bg-[#d4b8e0]/15 text-[#d4b8e0]'
+          : 'bg-[#afc4ff]/15 text-[#afc4ff]'
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 function StatusBadge({ status }: StatusBadgeProps) {
   const normalized = status ?? 'unknown';
   const config: Record<string, { dot: string; label: string; text: string }> = {
@@ -103,6 +131,7 @@ export function DashboardSessionCard({
               />
             )}
             <span className="text-sm font-medium text-white/90 truncate">{title}</span>
+            <ProductBadge productType={session.product_type} />
             <StatusBadge status={session.pipeline_status} />
           </div>
 

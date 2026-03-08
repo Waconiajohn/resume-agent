@@ -569,6 +569,7 @@ export default function App() {
         <CoverLetterScreen
           accessToken={accessToken}
           onNavigate={navigateTo}
+          onGetDefaultResume={getDefaultResume}
         />
       )}
 

@@ -525,9 +525,10 @@ sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
   const user = c.get('user');
   const body = parsedBody.data as Record<string, unknown>;
 
-  const { master_resume_id, job_application_id } = body as {
+  const { master_resume_id, job_application_id, product_type } = body as {
     master_resume_id?: string;
     job_application_id?: string;
+    product_type?: string;
   };
 
   let resolvedMasterResumeId = master_resume_id ?? null;
@@ -581,6 +582,7 @@ sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
       status: 'active',
       current_phase: 'onboarding',
       messages: [],
+      product_type: product_type ?? 'resume',
     })
     .select()
     .single();
@@ -862,7 +864,7 @@ sessions.get('/', async (c) => {
 
   let query = supabaseAdmin
     .from('coach_sessions')
-    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, created_at, updated_at')
+    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, product_type, created_at, updated_at')
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
     .limit(limit);
@@ -893,6 +895,7 @@ sessions.get('/', async (c) => {
       last_panel_type: row.last_panel_type ?? null,
       company_name: (resume?.company_name as string) ?? (panelData?.company_name as string) ?? null,
       job_title: (resume?.job_title as string) ?? (panelData?.job_title as string) ?? null,
+      product_type: (row.product_type as string) ?? 'resume',
       created_at: row.created_at,
       updated_at: row.updated_at,
     };

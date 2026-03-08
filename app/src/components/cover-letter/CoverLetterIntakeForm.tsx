@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassTextarea } from '@/components/GlassInput';
@@ -14,6 +14,8 @@ interface CoverLetterIntakeFormProps {
   onBack: () => void;
   loading?: boolean;
   error?: string | null;
+  defaultResumeText?: string;
+  resumeLoading?: boolean;
 }
 
 export function CoverLetterIntakeForm({
@@ -21,10 +23,21 @@ export function CoverLetterIntakeForm({
   onBack,
   loading = false,
   error = null,
+  defaultResumeText,
+  resumeLoading = false,
 }: CoverLetterIntakeFormProps) {
-  const [resumeText, setResumeText] = useState('');
+  const [resumeText, setResumeText] = useState(defaultResumeText ?? '');
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
+
+  // Sync pre-filled text when it arrives asynchronously (e.g. after API fetch completes)
+  useEffect(() => {
+    if (defaultResumeText && resumeText === '') {
+      setResumeText(defaultResumeText);
+    }
+  // resumeText intentionally excluded: only apply the default when the field is still empty
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultResumeText]);
 
   const isValid =
     resumeText.trim().length >= 50 &&
@@ -67,9 +80,22 @@ export function CoverLetterIntakeForm({
         <form onSubmit={handleSubmit}>
           <GlassCard className="space-y-5 p-5">
             <div>
-              <label htmlFor="cl-resume" className="mb-1.5 block text-xs font-medium text-white/70">
-                Resume Text
-              </label>
+              <div className="mb-1.5 flex items-center gap-2">
+                <label htmlFor="cl-resume" className="block text-xs font-medium text-white/70">
+                  Resume Text
+                </label>
+                {resumeLoading && (
+                  <span
+                    data-testid="resume-loading-indicator"
+                    className="flex items-center gap-1 text-xs text-white/40"
+                    aria-live="polite"
+                    aria-label="Loading resume"
+                  >
+                    <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
+                    Loading resume...
+                  </span>
+                )}
+              </div>
               <GlassTextarea
                 id="cl-resume"
                 value={resumeText}

@@ -1,3 +1,4 @@
+// Uses shared test helpers from __tests__/helpers/
 /**
  * Strategist Agent — Tool Unit Tests
  *
@@ -6,6 +7,14 @@
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import {
+  makeMockAgentContext,
+  makeMockPipelineState,
+  makeMockIntakeOutput,
+  makeMockResearchOutput,
+  makeMockGapAnalystOutput,
+  makeMockArchitectOutput,
+} from './helpers/index.js';
 
 // ─── Module mocks (must be hoisted before any imports that touch mocked modules) ─
 
@@ -42,46 +51,9 @@ import { runResearchAgent } from '../agents/research.js';
 import { runGapAnalyst } from '../agents/gap-analyst.js';
 import { runArchitect } from '../agents/architect.js';
 import { strategistTools } from '../agents/strategist/tools.js';
-import type { PipelineState, ResumeAgentContext } from '../agents/types.js';
+import type { PipelineState } from '../agents/types.js';
 
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function makePipelineState(overrides?: Partial<PipelineState>): PipelineState {
-  return {
-    session_id: 'test-session',
-    user_id: 'test-user',
-    current_stage: 'intake',
-    approved_sections: [],
-    revision_count: 0,
-    revision_counts: {},
-    token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
-    ...overrides,
-  };
-}
-
-function makeCtx(stateOverrides?: Partial<PipelineState>): ResumeAgentContext & {
-  _state: PipelineState;
-  emitSpy: ReturnType<typeof vi.fn>;
-} {
-  let state = makePipelineState(stateOverrides);
-  const emitSpy = vi.fn();
-
-  return {
-    sessionId: 'test-session',
-    userId: 'test-user',
-    scratchpad: {},
-    signal: new AbortController().signal,
-    emit: emitSpy,
-    waitForUser: vi.fn().mockResolvedValue('Test answer from candidate'),
-    getState: () => state,
-    updateState: (patch: Partial<PipelineState>) => {
-      state = { ...state, ...patch };
-    },
-    sendMessage: vi.fn(),
-    _state: state,
-    emitSpy,
-  };
-}
+// ─── Local helpers ────────────────────────────────────────────────────
 
 function getTool(name: string) {
   const tool = strategistTools.find((t) => t.name === name);
@@ -89,86 +61,9 @@ function getTool(name: string) {
   return tool;
 }
 
-function makeIntakeOutput() {
-  return {
-    contact: { name: 'Jane Doe', email: 'jane@example.com', phone: '555-1234', location: 'New York' },
-    summary: 'Senior engineering executive with 15 years of cloud platform experience.',
-    experience: [
-      { company: 'Acme Corp', title: 'VP Engineering', start_date: 'Jan 2018', end_date: 'Present', bullets: ['Led 45-person org'] },
-    ],
-    skills: ['Cloud Architecture', 'P&L Ownership', 'Team Leadership'],
-    education: [{ degree: 'BS', institution: 'MIT' }],
-    certifications: ['AWS Solutions Architect'],
-    career_span_years: 15,
-    raw_text: 'Jane Doe VP Engineering...',
-  };
-}
-
-function makeResearchOutput() {
-  return {
-    jd_analysis: {
-      role_title: 'CTO',
-      company: 'TechCorp',
-      seniority_level: 'executive' as const,
-      must_haves: ['engineering leadership', 'cloud architecture'],
-      nice_to_haves: ['kubernetes'],
-      implicit_requirements: ['executive presence'],
-      language_keywords: ['cloud-native', 'P&L'],
-    },
-    company_research: {
-      company_name: 'TechCorp',
-      industry: 'technology',
-      size: '500-1000',
-      culture_signals: ['innovation', 'fast-paced'],
-    },
-    benchmark_candidate: {
-      ideal_profile: 'Seasoned engineering leader with P&L experience',
-      language_keywords: ['cloud-native', 'P&L', 'platform'],
-      section_expectations: { summary: '3-4 sentences', skills: '4-6 categories' },
-    },
-  };
-}
-
-function makeGapAnalystOutput() {
-  return {
-    requirements: [
-      { requirement: 'engineering leadership', classification: 'strong' as const, evidence: ['Led 45-person org'] },
-      { requirement: 'cloud architecture', classification: 'partial' as const, evidence: ['Cloud platform work'] },
-    ],
-    coverage_score: 82,
-    critical_gaps: [],
-    addressable_gaps: ['cloud architecture depth'],
-    strength_summary: 'Strong leadership background with partial cloud coverage',
-  };
-}
-
-function makeArchitectOutput() {
-  return {
-    blueprint_version: '2.0',
-    target_role: 'CTO at TechCorp',
-    positioning_angle: 'Platform-first engineering executive',
-    section_plan: { order: ['header', 'summary', 'experience', 'skills'], rationale: 'Executive order' },
-    summary_blueprint: {
-      positioning_angle: 'Cloud-first engineering executive',
-      must_include: ['cloud architecture'],
-      gap_reframe: {},
-      tone_guidance: 'Executive, direct',
-      keywords_to_embed: ['cloud-native'],
-      authentic_phrases_to_echo: [],
-      length: '3-4 sentences',
-    },
-    evidence_allocation: { selected_accomplishments: [], experience_section: {}, unallocated_requirements: [] },
-    skills_blueprint: { format: 'categorized' as const, categories: [], keywords_still_missing: [], age_protection_removals: [] },
-    experience_blueprint: { roles: [] },
-    age_protection: { flags: [], clean: true },
-    keyword_map: { 'cloud-native': { target_density: 2, placements: ['summary'], current_count: 0, action: 'add' as const } },
-    global_rules: {
-      voice: 'Executive, direct',
-      bullet_format: 'Action → scope → result',
-      length_target: '2 pages',
-      ats_rules: 'No tables',
-    },
-  };
+/** makeCtx wraps makeMockAgentContext with the waitForUser value expected by interview tests */
+function makeCtx(stateOverrides?: Partial<PipelineState>) {
+  return makeMockAgentContext(stateOverrides, 'Test answer from candidate');
 }
 
 // ─── parse_resume ─────────────────────────────────────────────────────
@@ -181,7 +76,7 @@ describe('parse_resume', () => {
   });
 
   it('happy path: parses resume from explicit input and persists to scratchpad', async () => {
-    vi.mocked(runIntakeAgent).mockResolvedValueOnce(makeIntakeOutput());
+    vi.mocked(runIntakeAgent).mockResolvedValueOnce(makeMockIntakeOutput());
     const ctx = makeCtx();
 
     const result = await tool.execute({ raw_resume_text: 'Jane Doe VP Engineering...' }, ctx) as Record<string, unknown>;
@@ -195,7 +90,7 @@ describe('parse_resume', () => {
   });
 
   it('falls back to pipeline state raw_text when no input provided', async () => {
-    const intake = makeIntakeOutput();
+    const intake = makeMockIntakeOutput();
     vi.mocked(runIntakeAgent).mockResolvedValueOnce(intake);
     const ctx = makeCtx({
       intake: { ...intake, raw_text: 'Existing resume text from state' },
@@ -228,7 +123,7 @@ describe('parse_resume', () => {
   it('truncates summary to 200 characters in return value', async () => {
     const longSummary = 'A'.repeat(300);
     vi.mocked(runIntakeAgent).mockResolvedValueOnce({
-      ...makeIntakeOutput(),
+      ...makeMockIntakeOutput(),
       summary: longSummary,
     });
     const ctx = makeCtx();
@@ -250,9 +145,9 @@ describe('analyze_jd', () => {
   });
 
   it('happy path: runs research agent and returns jd_analysis fields', async () => {
-    vi.mocked(runResearchAgent).mockResolvedValueOnce(makeResearchOutput());
+    vi.mocked(runResearchAgent).mockResolvedValueOnce(makeMockResearchOutput());
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
 
     const result = await tool.execute(
       { job_description: 'CTO role at TechCorp requiring cloud expertise', company_name: 'TechCorp' },
@@ -267,7 +162,7 @@ describe('analyze_jd', () => {
 
   it('throws when job_description is missing', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
 
     await expect(
       tool.execute({ company_name: 'TechCorp' }, ctx),
@@ -283,10 +178,10 @@ describe('analyze_jd', () => {
   });
 
   it('caches research output for subsequent tools', async () => {
-    const research = makeResearchOutput();
+    const research = makeMockResearchOutput();
     vi.mocked(runResearchAgent).mockResolvedValueOnce(research);
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
 
     await tool.execute({ job_description: 'CTO role at TechCorp', company_name: 'TechCorp' }, ctx);
 
@@ -306,7 +201,7 @@ describe('research_company', () => {
 
   it('returns cached company research when analyze_jd was already called', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
 
     const result = await tool.execute({ company_name: 'TechCorp' }, ctx) as Record<string, unknown>;
 
@@ -316,9 +211,9 @@ describe('research_company', () => {
   });
 
   it('calls research agent when no cached research exists', async () => {
-    vi.mocked(runResearchAgent).mockResolvedValueOnce(makeResearchOutput());
+    vi.mocked(runResearchAgent).mockResolvedValueOnce(makeMockResearchOutput());
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
 
     const result = await tool.execute(
       { company_name: 'TechCorp', job_description: 'CTO role' },
@@ -354,7 +249,7 @@ describe('build_benchmark', () => {
 
   it('returns benchmark from cached research output', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
 
     const result = await tool.execute({}, ctx) as Record<string, unknown>;
 
@@ -386,23 +281,23 @@ describe('classify_fit', () => {
 
   it('throws when parse_resume has not been called', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
 
     await expect(tool.execute({}, ctx)).rejects.toThrow('parse_resume must be called first');
   });
 
   it('throws when analyze_jd has not been called', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
 
     await expect(tool.execute({}, ctx)).rejects.toThrow('analyze_jd must be called first');
   });
 
   it('happy path: returns coverage score and gap classification', async () => {
-    vi.mocked(runGapAnalyst).mockResolvedValueOnce(makeGapAnalystOutput());
+    vi.mocked(runGapAnalyst).mockResolvedValueOnce(makeMockGapAnalystOutput());
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
 
     const result = await tool.execute({}, ctx) as Record<string, unknown>;
 
@@ -415,10 +310,10 @@ describe('classify_fit', () => {
   });
 
   it('uses positioning_summary input when provided', async () => {
-    vi.mocked(runGapAnalyst).mockResolvedValueOnce(makeGapAnalystOutput());
+    vi.mocked(runGapAnalyst).mockResolvedValueOnce(makeMockGapAnalystOutput());
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
 
     await tool.execute({ positioning_summary: 'Cloud-first VP Engineering targeting CTO' }, ctx);
 
@@ -438,29 +333,29 @@ describe('design_blueprint', () => {
 
   it('throws when parse_resume has not been called', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
     ctx.scratchpad.positioning = {};
-    ctx.scratchpad.gap_analysis = makeGapAnalystOutput();
+    ctx.scratchpad.gap_analysis = makeMockGapAnalystOutput();
 
     await expect(tool.execute({}, ctx)).rejects.toThrow('parse_resume must be called first');
   });
 
   it('throws when classify_fit has not been called', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
     // No positioning or gap_analysis in scratchpad
 
     await expect(tool.execute({}, ctx)).rejects.toThrow('classify_fit must be called first');
   });
 
   it('happy path: runs architect and emits blueprint_ready event', async () => {
-    vi.mocked(runArchitect).mockResolvedValueOnce(makeArchitectOutput());
+    vi.mocked(runArchitect).mockResolvedValueOnce(makeMockArchitectOutput());
     const ctx = makeCtx();
-    ctx.scratchpad.intake = makeIntakeOutput();
-    ctx.scratchpad.research = makeResearchOutput();
+    ctx.scratchpad.intake = makeMockIntakeOutput();
+    ctx.scratchpad.research = makeMockResearchOutput();
     ctx.scratchpad.positioning = { career_arc: { label: 'CTO', evidence: '', user_description: '' }, top_capabilities: [], evidence_library: [], signature_method: null, unconscious_competence: '', domain_insight: '', authentic_phrases: [], gaps_detected: [] };
-    ctx.scratchpad.gap_analysis = makeGapAnalystOutput();
+    ctx.scratchpad.gap_analysis = makeMockGapAnalystOutput();
 
     const result = await tool.execute({}, ctx) as Record<string, unknown>;
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Loader2, CheckCircle, AlertCircle, Download, FileText, RotateCcw, ArrowLeft } from 'lucide-react';
 import { CoverLetterIntakeForm } from './CoverLetterIntakeForm';
 import { GlassCard } from '@/components/GlassCard';
@@ -6,19 +6,45 @@ import { GlassButton } from '@/components/GlassButton';
 import { useCoverLetter } from '@/hooks/useCoverLetter';
 import { API_BASE } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import type { MasterResume } from '@/types/resume';
 
 interface CoverLetterScreenProps {
   accessToken: string | null;
   onNavigate: (route: string) => void;
+  onGetDefaultResume?: () => Promise<MasterResume | null>;
 }
 
 type Phase = 'intake' | 'running' | 'complete' | 'error';
 
-export function CoverLetterScreen({ accessToken, onNavigate }: CoverLetterScreenProps) {
+export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume }: CoverLetterScreenProps) {
   const [phase, setPhase] = useState<Phase>('intake');
   const [intakeLoading, setIntakeLoading] = useState(false);
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('');
+  const [defaultResumeText, setDefaultResumeText] = useState<string | undefined>(undefined);
+  const [resumeLoading, setResumeLoading] = useState(false);
+
+  // Fetch the master resume on mount and pre-fill the intake form
+  useEffect(() => {
+    if (!onGetDefaultResume) return;
+    let cancelled = false;
+    setResumeLoading(true);
+    onGetDefaultResume()
+      .then((resume) => {
+        if (!cancelled && resume?.raw_text?.trim()) {
+          setDefaultResumeText(resume.raw_text);
+        }
+      })
+      .catch(() => {
+        // Non-blocking: pre-fill is best-effort
+      })
+      .finally(() => {
+        if (!cancelled) setResumeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [onGetDefaultResume]);
 
   const {
     status,
@@ -107,6 +133,8 @@ export function CoverLetterScreen({ accessToken, onNavigate }: CoverLetterScreen
         onBack={() => onNavigate('/tools')}
         loading={intakeLoading}
         error={intakeError}
+        defaultResumeText={defaultResumeText}
+        resumeLoading={resumeLoading}
       />
     );
   }

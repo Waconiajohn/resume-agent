@@ -20,9 +20,55 @@ export interface ActivityMessage {
   isSummary?: boolean;
 }
 
+export interface DedupedMessage extends ActivityMessage {
+  count: number;
+}
+
 export interface IntelligenceActivityFeedProps {
   messages: ActivityMessage[];
   isProcessing: boolean;
+}
+
+// ─── Deduplication ────────────────────────────────────────────────────────────
+
+const DEDUP_WINDOW_MS = 5_000;
+
+/**
+ * Collapses adjacent duplicate messages within a 5-second window into a single
+ * entry with a `count` field. Summary messages (stage boundaries) are never
+ * collapsed. The collapsed entry adopts the id and timestamp of the last
+ * occurrence so that downstream key and opacity logic reflects the most recent
+ * event.
+ */
+export function deduplicateMessages(messages: ActivityMessage[]): DedupedMessage[] {
+  if (messages.length === 0) return [];
+
+  const result: DedupedMessage[] = [];
+
+  for (const msg of messages) {
+    const prev = result[result.length - 1];
+
+    const canMerge =
+      prev !== undefined &&
+      !msg.isSummary &&
+      !prev.isSummary &&
+      prev.message === msg.message &&
+      msg.timestamp - prev.timestamp <= DEDUP_WINDOW_MS;
+
+    if (canMerge) {
+      // Update the accumulated entry in-place: absorb the newer timestamp/id
+      result[result.length - 1] = {
+        ...prev,
+        id: msg.id,
+        timestamp: msg.timestamp,
+        count: prev.count + 1,
+      };
+    } else {
+      result.push({ ...msg, count: 1 });
+    }
+  }
+
+  return result;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -90,7 +136,7 @@ export function IntelligenceActivityFeed({
     }
   }, [messages]);
 
-  const visible = messages.slice(-MAX_VISIBLE_MESSAGES);
+  const visible = deduplicateMessages(messages).slice(-MAX_VISIBLE_MESSAGES);
   const total = visible.length;
 
   return (
@@ -126,6 +172,11 @@ export function IntelligenceActivityFeed({
                 <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                   {translateMessage(msg.message)}
                 </span>
+                {msg.count > 1 && (
+                  <span className="ml-1.5 shrink-0 rounded-full bg-white/[0.08] px-1.5 py-0 text-[10px] text-white/45">
+                    x{msg.count}
+                  </span>
+                )}
               </li>
             );
           })}

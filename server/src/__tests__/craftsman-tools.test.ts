@@ -1,3 +1,4 @@
+// Uses shared test helpers from __tests__/helpers/
 /**
  * Craftsman Agent — Tool Unit Tests
  *
@@ -7,6 +8,12 @@
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import {
+  makeMockAgentContext,
+  makeMockLLMResponse,
+  makeMockSectionWriterOutput,
+  makeMockGlobalRules,
+} from './helpers/index.js';
 
 // ─── Module mocks ─────────────────────────────────────────────────────
 
@@ -30,76 +37,17 @@ vi.mock('../agents/section-writer.js', () => ({
 
 import { runSectionWriter, runSectionRevision } from '../agents/section-writer.js';
 import { craftsmanTools } from '../agents/craftsman/tools.js';
-import type { PipelineState, SectionWriterOutput, ResumeAgentContext } from '../agents/types.js';
+import type { PipelineState, SectionWriterOutput } from '../agents/types.js';
 
-// ─── Helpers ──────────────────────────────────────────────────────────
+// ─── Local helpers ─────────────────────────────────────────────────────
 
-function makePipelineState(overrides?: Partial<PipelineState>): PipelineState {
-  return {
-    session_id: 'test-session',
-    user_id: 'test-user',
-    current_stage: 'section_writing',
-    approved_sections: [],
-    revision_count: 0,
-    revision_counts: {},
-    token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
-    ...overrides,
-  };
-}
-
-function makeCtx(stateOverrides?: Partial<PipelineState>): ResumeAgentContext & {
-  emitSpy: ReturnType<typeof vi.fn>;
-} {
-  let state = makePipelineState(stateOverrides);
-  const emitSpy = vi.fn();
-
-  return {
-    sessionId: 'test-session',
-    userId: 'test-user',
-    scratchpad: {},
-    signal: new AbortController().signal,
-    emit: emitSpy,
-    waitForUser: vi.fn().mockResolvedValue(true),
-    getState: () => state,
-    updateState: (patch: Partial<PipelineState>) => {
-      state = { ...state, ...patch };
-    },
-    sendMessage: vi.fn(),
-    emitSpy,
-  };
-}
+const makeCtx = (stateOverrides?: Partial<PipelineState>) =>
+  makeMockAgentContext({ current_stage: 'section_writing', ...stateOverrides });
 
 function getTool(name: string) {
   const tool = craftsmanTools.find((t) => t.name === name);
   if (!tool) throw new Error(`Tool not found: ${name}`);
   return tool;
-}
-
-function makeGlobalRules() {
-  return {
-    voice: 'Executive, direct, metrics-forward.',
-    bullet_format: 'Action verb → scope → method → measurable result',
-    length_target: '2 pages maximum',
-    ats_rules: 'No tables, no columns, standard section headers only',
-  };
-}
-
-function makeSectionWriterOutput(section = 'summary'): SectionWriterOutput {
-  return {
-    section,
-    content: 'Engineering executive with 15 years building cloud-native platforms. Led $2.4M cost reduction through cloud migration.',
-    keywords_used: ['cloud-native', 'P&L'],
-    requirements_addressed: ['engineering leadership'],
-    evidence_ids_used: ['ev_001'],
-  };
-}
-
-function makeLLMResponse(data: Record<string, unknown>) {
-  return {
-    text: JSON.stringify(data),
-    tool_calls: [],
-    usage: { input_tokens: 0, output_tokens: 0 },
-  };
 }
 
 // ─── write_section ────────────────────────────────────────────────────
@@ -112,7 +60,7 @@ describe('write_section', () => {
   });
 
   it('happy path: runs section writer and emits section_draft event', async () => {
-    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeSectionWriterOutput('summary'));
+    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeMockSectionWriterOutput('summary'));
     const ctx = makeCtx();
 
     const result = await tool.execute(
@@ -120,7 +68,7 @@ describe('write_section', () => {
         section: 'summary',
         blueprint_slice: { positioning_angle: 'Cloud-first executive' },
         evidence_sources: { evidence_library: [] },
-        global_rules: makeGlobalRules(),
+        global_rules: makeMockGlobalRules(),
       },
       ctx,
     ) as Record<string, unknown>;
@@ -134,7 +82,7 @@ describe('write_section', () => {
   });
 
   it('stores result in scratchpad keyed by section name', async () => {
-    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeSectionWriterOutput('skills'));
+    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeMockSectionWriterOutput('skills'));
     const ctx = makeCtx();
 
     await tool.execute(
@@ -142,7 +90,7 @@ describe('write_section', () => {
         section: 'skills',
         blueprint_slice: {},
         evidence_sources: {},
-        global_rules: makeGlobalRules(),
+        global_rules: makeMockGlobalRules(),
       },
       ctx,
     );
@@ -161,14 +109,14 @@ describe('write_section', () => {
       evidence_ids_used: [],
     };
 
-    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeSectionWriterOutput('skills'));
+    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeMockSectionWriterOutput('skills'));
 
     await tool.execute(
       {
         section: 'skills',
         blueprint_slice: {},
         evidence_sources: {},
-        global_rules: makeGlobalRules(),
+        global_rules: makeMockGlobalRules(),
       },
       ctx,
     );
@@ -180,7 +128,7 @@ describe('write_section', () => {
   });
 
   it('passes undefined cross_section_context when no prior sections exist', async () => {
-    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeSectionWriterOutput('summary'));
+    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeMockSectionWriterOutput('summary'));
     const ctx = makeCtx(); // empty scratchpad
 
     await tool.execute(
@@ -188,7 +136,7 @@ describe('write_section', () => {
         section: 'summary',
         blueprint_slice: {},
         evidence_sources: {},
-        global_rules: makeGlobalRules(),
+        global_rules: makeMockGlobalRules(),
       },
       ctx,
     );
@@ -202,10 +150,10 @@ describe('write_section', () => {
     const longContent = 'A'.repeat(900);
     ctx.scratchpad['section_summary'] = { section: 'summary', content: longContent, keywords_used: [], requirements_addressed: [], evidence_ids_used: [] };
 
-    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeSectionWriterOutput('skills'));
+    vi.mocked(runSectionWriter).mockResolvedValueOnce(makeMockSectionWriterOutput('skills'));
 
     await tool.execute(
-      { section: 'skills', blueprint_slice: {}, evidence_sources: {}, global_rules: makeGlobalRules() },
+      { section: 'skills', blueprint_slice: {}, evidence_sources: {}, global_rules: makeMockGlobalRules() },
       ctx,
     );
 
@@ -227,7 +175,7 @@ describe('self_review_section', () => {
 
   it('happy path: returns passed=true when score >= 7 and issues <= 2', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({
+      makeMockLLMResponse({
         evaluations: [{ criterion: 'Quantified?', result: 'PASS', note: 'Has metrics' }],
         score: 8,
         passed: true,
@@ -248,7 +196,7 @@ describe('self_review_section', () => {
 
   it('returns passed=false when score is below 7', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({
+      makeMockLLMResponse({
         evaluations: [],
         score: 5,
         passed: false,
@@ -309,7 +257,7 @@ describe('self_review_section', () => {
     // The guard `typeof parsed.score !== 'number'` triggers the malformed fallback
     // which returns score: 0 — this is intentional conservative behaviour.
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({
+      makeMockLLMResponse({
         evaluations: [],
         score: '9', // Z.AI string — fails the 'number' type guard
         passed: true,
@@ -331,7 +279,7 @@ describe('self_review_section', () => {
 
   it('forces passed=false when issues array has more than 2 entries even with high score', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({
+      makeMockLLMResponse({
         evaluations: [],
         score: 8,
         passed: true,
@@ -360,7 +308,7 @@ describe('revise_section', () => {
   });
 
   it('happy path: calls runSectionRevision and emits section_revised', async () => {
-    const revised = makeSectionWriterOutput('summary');
+    const revised = makeMockSectionWriterOutput('summary');
     revised.content = 'Revised: Engineering executive who built $2.4M cloud platform at scale.';
     vi.mocked(runSectionRevision).mockResolvedValueOnce(revised);
     const ctx = makeCtx();
@@ -383,7 +331,7 @@ describe('revise_section', () => {
   });
 
   it('joins issues array into a single revision instruction string', async () => {
-    vi.mocked(runSectionRevision).mockResolvedValueOnce(makeSectionWriterOutput('skills'));
+    vi.mocked(runSectionRevision).mockResolvedValueOnce(makeMockSectionWriterOutput('skills'));
     const ctx = makeCtx();
 
     await tool.execute(
@@ -402,7 +350,7 @@ describe('revise_section', () => {
   });
 
   it('uses fallback global_rules when not found in scratchpad', async () => {
-    vi.mocked(runSectionRevision).mockResolvedValueOnce(makeSectionWriterOutput('summary'));
+    vi.mocked(runSectionRevision).mockResolvedValueOnce(makeMockSectionWriterOutput('summary'));
     const ctx = makeCtx();
     // No global_rules in scratchpad — tool should use fallback defaults
 
@@ -583,7 +531,7 @@ describe('check_evidence_integrity', () => {
 
   it('happy path: returns verified claims and empty flagged list', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ claims_verified: 4, claims_flagged: [] }),
+      makeMockLLMResponse({ claims_verified: 4, claims_flagged: [] }),
     );
     const ctx = makeCtx();
 
@@ -604,7 +552,7 @@ describe('check_evidence_integrity', () => {
 
   it('returns flagged claims when LLM detects fabricated specifics', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({
+      makeMockLLMResponse({
         claims_verified: 2,
         claims_flagged: ['200-person team mentioned but evidence only shows 45'],
       }),
@@ -646,7 +594,7 @@ describe('check_evidence_integrity', () => {
 
   it('handles empty evidence_library by flagging all specific metrics', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({
+      makeMockLLMResponse({
         claims_verified: 0,
         claims_flagged: ['$2.4M figure unverifiable — evidence library is empty'],
       }),
@@ -674,7 +622,7 @@ describe('present_to_user', () => {
   it('emits section_draft on first presentation, section_revised on second', async () => {
     const ctx = makeCtx();
     ctx.waitForUser = vi.fn().mockResolvedValue(true);
-    ctx.scratchpad['section_summary'] = makeSectionWriterOutput('summary');
+    ctx.scratchpad['section_summary'] = makeMockSectionWriterOutput('summary');
 
     // First call — should emit section_draft
     await tool.execute({ section: 'summary', content: 'Draft content' }, ctx);
@@ -725,7 +673,7 @@ describe('present_to_user', () => {
 
   it('updates scratchpad content when user directly edits the section', async () => {
     const ctx = makeCtx();
-    ctx.scratchpad['section_summary'] = makeSectionWriterOutput('summary');
+    ctx.scratchpad['section_summary'] = makeMockSectionWriterOutput('summary');
     ctx.waitForUser = vi.fn().mockResolvedValue({
       approved: false,
       edited_content: 'User-edited content with their own words',

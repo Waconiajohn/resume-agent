@@ -16,6 +16,22 @@ const FILTER_OPTIONS: Array<{ id: StatusFilter; label: string }> = [
   { id: 'error', label: 'Error' },
 ];
 
+type ProductFilter = 'all' | string;
+
+function getUniqueProductTypes(sessions: CoachSession[]): string[] {
+  const types = new Set<string>();
+  for (const s of sessions) {
+    types.add(s.product_type ?? 'resume');
+  }
+  return Array.from(types).sort();
+}
+
+function humanizeProductType(type: string): string {
+  return type
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 interface SessionHistoryTabProps {
   sessions: CoachSession[];
   loading: boolean;
@@ -34,6 +50,7 @@ export function SessionHistoryTab({
   onGetSessionResume,
 }: SessionHistoryTabProps) {
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [viewingResumeSessionId, setViewingResumeSessionId] = useState<string | null>(null);
   const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
   const [showComparison, setShowComparison] = useState(false);
@@ -43,9 +60,13 @@ export function SessionHistoryTab({
     onLoadSessions(filters);
   }, [filter, onLoadSessions]);
 
-  const filteredSessions = filter === 'all'
-    ? sessions
-    : sessions.filter((s) => s.pipeline_status === filter);
+  const productTypes = getUniqueProductTypes(sessions);
+
+  const filteredSessions = sessions.filter((s) => {
+    const matchesStatus = filter === 'all' || s.pipeline_status === filter;
+    const matchesProduct = productFilter === 'all' || (s.product_type ?? 'resume') === productFilter;
+    return matchesStatus && matchesProduct;
+  });
 
   const handleDeleteSession = async (id: string) => {
     await onDeleteSession(id);
@@ -75,20 +96,37 @@ export function SessionHistoryTab({
     <div>
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1">
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => setFilter(opt.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                filter === opt.id
-                  ? 'bg-white/[0.1] text-white'
-                  : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80'
-              }`}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-1">
+            {FILTER_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setFilter(opt.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  filter === opt.id
+                    ? 'bg-white/[0.1] text-white'
+                    : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {productTypes.length > 1 && (
+            <select
+              value={productFilter}
+              onChange={(e) => setProductFilter(e.target.value)}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-white/80 outline-none transition-colors hover:bg-white/[0.08]"
+              aria-label="Filter by product"
             >
-              {opt.label}
-            </button>
-          ))}
+              <option value="all">All Products</option>
+              {productTypes.map((type) => (
+                <option key={type} value={type}>
+                  {humanizeProductType(type)}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         {canCompare && (
           <GlassButton

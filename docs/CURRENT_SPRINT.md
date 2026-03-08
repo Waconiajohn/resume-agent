@@ -1,19 +1,16 @@
-# Sprint 53: Observability and Deployment Verification
-**Goal:** Enrich Sentry alerts, add pipeline business metrics, create smoke test suite, sync product catalog, prepare for production deploy.
+# Sprint 55: Session History + Cover Letter Polish
+**Goal:** Make the session dashboard work for all products, polish cover letter UX, clean up stale backlog entries.
 **Started:** 2026-03-08
 
-## Context
-Sprint 52 (Production Foundation) complete — all 5 stories done. Sprint 53 focuses on observability, metrics, smoke testing, and catalog completeness. Zero new features — hardening only.
-
 ## Stories
-
-1. [x] Story 53-1: Sentry Alert Enrichment — **Status: done**
-2. [x] Story 53-2: Pipeline Business Metrics — **Status: done**
-3. [x] Story 53-3: Production Smoke Test Suite — **Status: done**
-4. [x] Story 53-4: Platform Catalog UI Update — **Status: done**
-5. [x] Story 53-5: Production Deployment and Verification — **Status: done**
+1. [x] Story 55-1: Add `product_type` Column to `coach_sessions` — **Status: done**
+2. [x] Story 55-2: Dashboard Session Filtering by Product — **Status: done**
+3. [x] Story 55-3: Cover Letter Master Resume Pre-fill — **Status: done**
+4. [x] Story 55-4: Backlog Hygiene — **Status: done**
+5. [x] Story 55-5: Sprint 54 Retrospective — **Status: done**
 
 ## Out of Scope (Explicitly)
+- Server-side product filtering on `GET /api/sessions` (client-side sufficient)
+- Setting `product_type` for all 25 CareerIQ agent routes (future story)
+- CareerIQ Phases 3-5
 - New agents or features
-- Horizontal scaling (Redis bus, Redis rate limit)
-- Sentry dashboard alert rule configuration (done in Sentry UI, not code)

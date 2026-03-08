@@ -1,4 +1,6 @@
+// Uses shared test helpers from __tests__/helpers/
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { makeMockLLMResponse } from './helpers/index.js';
 
 const mockChat = vi.hoisted(() => vi.fn());
 vi.mock('../lib/llm.js', () => ({
@@ -20,16 +22,6 @@ import type {
   BenchmarkCandidate,
   QuestionnaireResponse,
 } from '../agents/types.js';
-
-// ─── Fixture Factories ────────────────────────────────────────────────────────
-
-function makeLLMResponse(data: Record<string, unknown>) {
-  return {
-    text: JSON.stringify(data),
-    tool_calls: [],
-    usage: { input_tokens: 0, output_tokens: 0 },
-  };
-}
 
 function makeIntakeOutput(): IntakeOutput {
   return {
@@ -194,7 +186,7 @@ describe('runGapAnalyst - normalizeClassification', () => {
   it('maps "Strong Match" to strong', async () => {
     const output = makeValidGapLLMOutput();
     output.requirements[0].classification = 'Strong Match';
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
     expect(result.requirements[0].classification).toBe('strong');
@@ -203,7 +195,7 @@ describe('runGapAnalyst - normalizeClassification', () => {
   it('maps "partial match" to partial', async () => {
     const output = makeValidGapLLMOutput();
     output.requirements[0].classification = 'partial match';
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
     expect(result.requirements[0].classification).toBe('partial');
@@ -212,7 +204,7 @@ describe('runGapAnalyst - normalizeClassification', () => {
   it('maps "missing" to gap', async () => {
     const output = makeValidGapLLMOutput();
     output.requirements[0].classification = 'missing';
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
     expect(result.requirements[0].classification).toBe('gap');
@@ -221,7 +213,7 @@ describe('runGapAnalyst - normalizeClassification', () => {
   it('defaults unknown classification to gap', async () => {
     const output = makeValidGapLLMOutput();
     output.requirements[0].classification = 'somewhat_okay';
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
     expect(result.requirements[0].classification).toBe('gap');
@@ -230,7 +222,7 @@ describe('runGapAnalyst - normalizeClassification', () => {
   it('maps "does not meet" to gap (not partial)', async () => {
     const output = makeValidGapLLMOutput();
     output.requirements[0].classification = 'does not meet requirements';
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
     expect(result.requirements[0].classification).toBe('gap');
@@ -243,7 +235,7 @@ describe('runGapAnalyst', () => {
   beforeEach(() => mockChat.mockReset());
 
   it('maps requirements to correct classifications', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidGapLLMOutput()));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -257,7 +249,7 @@ describe('runGapAnalyst', () => {
   });
 
   it('calculates coverage_score correctly', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidGapLLMOutput()));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -267,7 +259,7 @@ describe('runGapAnalyst', () => {
   });
 
   it('identifies critical gaps (gap classification, not unaddressable)', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidGapLLMOutput()));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -278,7 +270,7 @@ describe('runGapAnalyst', () => {
   });
 
   it('identifies addressable gaps (gap classification with mitigation, not unaddressable)', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidGapLLMOutput()));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -289,7 +281,7 @@ describe('runGapAnalyst', () => {
   });
 
   it('returns strength_summary from LLM', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidGapLLMOutput()));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
     expect(result.strength_summary).toContain('Strong technical leader');
@@ -299,7 +291,7 @@ describe('runGapAnalyst', () => {
     const output = makeValidGapLLMOutput();
     // LLM may return evidence as a string instead of array
     (output.requirements[0] as Record<string, unknown>).evidence = 'Led team of 45 engineers';
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
     expect(Array.isArray(result.requirements[0].evidence)).toBe(true);
@@ -319,7 +311,7 @@ describe('runGapAnalyst', () => {
   });
 
   it('falls back to all-gap when LLM returns object without requirements array', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse({ no_requirements_key: true }));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse({ no_requirements_key: true }));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -329,7 +321,7 @@ describe('runGapAnalyst', () => {
   });
 
   it('sets unaddressable flag correctly', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidGapLLMOutput()));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -592,7 +584,7 @@ describe('runGapAnalyst — Why Me / Why Not Me', () => {
         { reason: 'No P&L ownership', evidence: 'Budget implied but not directly stated' },
       ],
     };
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -607,7 +599,7 @@ describe('runGapAnalyst — Why Me / Why Not Me', () => {
   });
 
   it('returns undefined why_me/why_not_me when LLM omits them', async () => {
-    mockChat.mockResolvedValueOnce(makeLLMResponse(makeValidGapLLMOutput()));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(makeValidGapLLMOutput()));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 
@@ -623,7 +615,7 @@ describe('runGapAnalyst — Why Me / Why Not Me', () => {
         { reason: 'Valid reason', evidence: 'Valid evidence' },
       ],
     };
-    mockChat.mockResolvedValueOnce(makeLLMResponse(output));
+    mockChat.mockResolvedValueOnce(makeMockLLMResponse(output));
 
     const result = await runGapAnalyst(makeGapAnalystInput());
 

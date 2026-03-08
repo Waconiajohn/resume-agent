@@ -476,3 +476,28 @@ CareerIQScreen acts as the data orchestration layer — it loads pipeline "Inter
 
 *Neutral:*
 - This pattern is consistent with the existing approach (App.tsx passes sessions/resumes to CareerIQScreen the same way)
+
+## ADR-039: Post-Deploy Stabilization Period
+
+**Date:** 2026-03-08
+**Status:** accepted
+
+**Context:**
+Sprints 50-53 shipped a large volume of work: Retirement Bridge agent (Sprint 50), B2B Outplacement with admin portal and white-label (Sprint 51), production foundation with all 39 DB migrations applied and environment configuration (Sprint 52), and observability with Sentry enrichment, pipeline metrics, and smoke tests (Sprint 53). The production deployment on 2026-03-08 was the first time many of these features ran against real infrastructure. The codebase had 2,103 server tests and 1,018 app tests, both tsc clean, but accumulated tech debt from rapid feature development needed attention.
+
+**Decision:**
+Run Sprint 54 as a dedicated cleanup sprint with zero new agents or large features. Focus on: removing orphaned code from earlier sprints, deduplicating UI messages, extracting shared test infrastructure, and filling small feature gaps (cover letter DOCX export). Let production stabilize while monitoring Sentry alerts and pipeline metrics.
+
+**Reasoning:**
+Post-deploy is when real usage patterns expose issues that tests miss. Shipping new features during this window compounds risk — a new bug could be confused with a deploy regression, and investigation becomes harder when the codebase is changing. A cleanup sprint also pays down tech debt while the context from recent sprints is still fresh, and shared test utilities established now reduce boilerplate for all future sprints.
+
+**Consequences:**
+
+*Positive:*
+- One sprint of zero feature velocity, but production stability is preserved
+- Tech debt from Sprints 50-53 is addressed while context is fresh
+- Shared test infrastructure reduces per-test boilerplate going forward
+- Sets a precedent: major deploys should be followed by a stabilization sprint
+
+*Negative:*
+- One sprint of zero feature velocity delays the next batch of platform agents

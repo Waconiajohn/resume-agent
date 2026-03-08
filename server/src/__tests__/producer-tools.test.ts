@@ -1,3 +1,4 @@
+// Uses shared test helpers from __tests__/helpers/
 /**
  * Producer Agent — Tool Unit Tests
  *
@@ -7,6 +8,10 @@
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import {
+  makeMockAgentContext,
+  makeMockLLMResponse,
+} from './helpers/index.js';
 
 // ─── Module mocks ─────────────────────────────────────────────────────
 
@@ -34,57 +39,17 @@ vi.mock('../agents/ats-rules.js', () => ({
 import { runQualityReviewer } from '../agents/quality-reviewer.js';
 import { runAtsComplianceCheck } from '../agents/ats-rules.js';
 import { producerTools } from '../agents/producer/tools.js';
-import type { PipelineState, ResumeAgentContext } from '../agents/types.js';
+import type { PipelineState } from '../agents/types.js';
 
-// ─── Helpers ──────────────────────────────────────────────────────────
+// ─── Local helpers ─────────────────────────────────────────────────────
 
-function makePipelineState(overrides?: Partial<PipelineState>): PipelineState {
-  return {
-    session_id: 'test-session',
-    user_id: 'test-user',
-    current_stage: 'quality_review',
-    approved_sections: [],
-    revision_count: 0,
-    revision_counts: {},
-    token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
-    ...overrides,
-  };
-}
-
-function makeCtx(stateOverrides?: Partial<PipelineState>): ResumeAgentContext & {
-  emitSpy: ReturnType<typeof vi.fn>;
-} {
-  let state = makePipelineState(stateOverrides);
-  const emitSpy = vi.fn();
-
-  return {
-    sessionId: 'test-session',
-    userId: 'test-user',
-    scratchpad: {},
-    signal: new AbortController().signal,
-    emit: emitSpy,
-    waitForUser: vi.fn().mockResolvedValue(true),
-    getState: () => state,
-    updateState: (patch: Partial<PipelineState>) => {
-      state = { ...state, ...patch };
-    },
-    sendMessage: vi.fn(),
-    emitSpy,
-  };
-}
+const makeCtx = (stateOverrides?: Partial<PipelineState>) =>
+  makeMockAgentContext({ current_stage: 'quality_review', ...stateOverrides });
 
 function getTool(name: string) {
   const tool = producerTools.find((t) => t.name === name);
   if (!tool) throw new Error(`Tool not found: ${name}`);
   return tool;
-}
-
-function makeLLMResponse(data: Record<string, unknown>) {
-  return {
-    text: JSON.stringify(data),
-    tool_calls: [],
-    usage: { input_tokens: 0, output_tokens: 0 },
-  };
 }
 
 function makeQualityReviewOutput() {
@@ -350,7 +315,7 @@ describe('humanize_check', () => {
 
   it('happy path: returns score and issues from LLM response', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ score: 82, issues: ['Uniform bullet structure throughout experience section'] }),
+      makeMockLLMResponse({ score: 82, issues: ['Uniform bullet structure throughout experience section'] }),
     );
     const ctx = makeCtx();
 
@@ -381,7 +346,7 @@ describe('humanize_check', () => {
 
   it('clamps score to 0-100 range when LLM returns out-of-bounds value', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ score: 150, issues: [] }),
+      makeMockLLMResponse({ score: 150, issues: [] }),
     );
     const ctx = makeCtx();
 
@@ -392,7 +357,7 @@ describe('humanize_check', () => {
 
   it('coerces string score from Z.AI to number', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ score: '75', issues: [] }),
+      makeMockLLMResponse({ score: '75', issues: [] }),
     );
     const ctx = makeCtx();
 
@@ -404,7 +369,7 @@ describe('humanize_check', () => {
 
   it('handles non-array issues field from LLM gracefully', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ score: 80, issues: 'A single issue as a string, not array' }),
+      makeMockLLMResponse({ score: 80, issues: 'A single issue as a string, not array' }),
     );
     const ctx = makeCtx();
 
@@ -584,7 +549,7 @@ describe('check_narrative_coherence', () => {
 
   it('happy path: returns coherence_score and issues from LLM', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ coherence_score: 85, issues: ['Minor tonal shift between summary and skills section'] }),
+      makeMockLLMResponse({ coherence_score: 85, issues: ['Minor tonal shift between summary and skills section'] }),
     );
     const ctx = makeCtx();
 
@@ -622,7 +587,7 @@ describe('check_narrative_coherence', () => {
 
   it('clamps coherence_score to 0-100 range', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ coherence_score: -10, issues: [] }),
+      makeMockLLMResponse({ coherence_score: -10, issues: [] }),
     );
     const ctx = makeCtx();
 
@@ -636,7 +601,7 @@ describe('check_narrative_coherence', () => {
 
   it('coerces string coherence_score from Z.AI to number', async () => {
     mockChat.mockResolvedValueOnce(
-      makeLLMResponse({ coherence_score: '88', issues: [] }),
+      makeMockLLMResponse({ coherence_score: '88', issues: [] }),
     );
     const ctx = makeCtx();
 

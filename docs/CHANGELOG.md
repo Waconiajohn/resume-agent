@@ -1,5 +1,82 @@
 # Changelog — Resume Agent
 
+## 2026-03-08 — Session 56
+**Sprint:** 55 | **Stories:** 55-1 through 55-5 — Session History + Cover Letter Polish
+**Summary:** Added product_type column to coach_sessions, dashboard product filtering with badges, cover letter master resume pre-fill, backlog hygiene, Sprint 54 retrospective.
+
+### Changes Made
+
+**Story 55-1: product_type column**
+- `supabase/migrations/20260308280000_add_product_type_to_sessions.sql` — New: adds `product_type TEXT DEFAULT 'resume'`, backfills from `last_panel_data`, adds index
+- `app/src/types/session.ts` — Added `product_type?: string` to `CoachSession` interface
+- `server/src/routes/sessions.ts` — POST accepts `product_type`; GET returns it in enriched response
+- `server/src/routes/cover-letter.ts` — Sets `product_type: 'cover_letter'` on session start
+- `server/src/__tests__/sessions-dashboard.test.ts` — 7 new tests
+
+**Story 55-2: Dashboard product filtering**
+- `app/src/components/dashboard/DashboardSessionCard.tsx` — Added `ProductBadge` component (purple for cover letter, blue for resume), renders next to `StatusBadge`
+- `app/src/components/dashboard/SessionHistoryTab.tsx` — Added product filter dropdown (only shown when multiple product types exist), chains with existing status filter
+- `app/src/components/dashboard/__tests__/SessionHistoryTab.test.tsx` — 6 new tests (dropdown visibility, filtering, chaining, humanization, null handling)
+
+**Story 55-3: Cover letter master resume pre-fill**
+- `app/src/components/cover-letter/CoverLetterIntakeForm.tsx` — Added `defaultResumeText` and `resumeLoading` props, `useEffect` for async pre-fill (won't overwrite user edits)
+- `app/src/components/cover-letter/CoverLetterScreen.tsx` — Added `onGetDefaultResume` prop, fetches on mount, passes result to intake form
+- `app/src/App.tsx` — Threaded `onGetDefaultResume={getDefaultResume}` to CoverLetterScreen
+- `app/src/components/cover-letter/__tests__/CoverLetterIntakeForm.test.tsx` — New: 11 tests
+- `app/src/components/cover-letter/__tests__/CoverLetterScreen.test.tsx` — New: 7 tests
+
+**Story 55-4: Backlog hygiene**
+- `docs/BACKLOG.md` — Marked 14 completed epics/stories with strikethrough and sprint references (Agents #12-#20, CareerIQ Phases 1A/6/7, Sprint 54 tech debt)
+
+**Story 55-5: Sprint 54 retrospective**
+- `docs/SPRINT_LOG.md` — Added Sprint 54 retrospective
+- `docs/CURRENT_SPRINT.md` — Rotated to Sprint 55 (5/5 stories done)
+
+### Decisions Made
+- Product filter is client-side only — server-side filtering deferred to future story
+- ProductBadge uses purple for cover_letter, blue for resume — extensible for future products via humanization
+- Cover letter pre-fill won't overwrite user-edited text (only applies when field is empty)
+
+### Test Health
+- Server: 2,108 tests passing (+5 from baseline)
+- App: 1,055 tests passing (+24 from baseline: 6 product filter + 18 cover letter pre-fill)
+- TypeScript: both server and app tsc clean
+
+### Next Steps
+- Apply migration to production Supabase
+- Sprint 55 complete (5/5 stories done)
+
+---
+
+## 2026-03-08 — Session 55
+**Sprint:** 54 | **Stories:** 54-1 through 54-5 — Post-Deploy Cleanup & Quality
+**Summary:** Cleanup sprint after production deploy. Added activity feed deduplication, extracted shared test utilities, wrote ADR-039. Two stories (orphaned props, CL DOCX export) were already complete from prior sprints.
+
+### Changes Made
+- `app/src/components/IntelligenceActivityFeed.tsx` — Added `deduplicateMessages()` function and `DedupedMessage` interface. Adjacent identical messages within 5s are collapsed with count badge. Summary messages are never collapsed.
+- `app/src/__tests__/IntelligenceActivityFeed.dedup.test.ts` — New: 13 tests covering all dedup cases (adjacent duplicates, time window, non-adjacent, summaries, boundary conditions)
+- `server/src/__tests__/helpers/mock-factories.ts` — New: typed factory functions (`makeMockAgentContext`, `makeMockPipelineState`, `makeMockEmit`, `makeMockSupabase`, `makeMockLLMResponse`, and 6 pipeline fixture factories)
+- `server/src/__tests__/helpers/mock-modules.ts` — New: centralized `vi.mock()` helpers for 9 commonly mocked modules (LLM, Supabase, Sentry, logger, platform-context, etc.)
+- `server/src/__tests__/helpers/index.ts` — New: barrel re-export for shared helpers
+- 5 server test files migrated to use shared helpers (strategist-tools, craftsman-tools, producer-tools, quality-reviewer, gap-analyst)
+- `docs/DECISIONS.md` — Added ADR-039: Post-Deploy Stabilization Period
+- `docs/CURRENT_SPRINT.md` — Updated to Sprint 54 complete
+
+### Decisions Made
+- ADR-039: Post-deploy stabilization sprint — zero new features, focus on tech debt and monitoring
+
+### Test Health
+- Server: 2,103 tests passing (unchanged — refactored, not added)
+- App: 1,031 tests passing (+13 dedup tests)
+- TypeScript: both server and app tsc clean
+
+### Next Steps
+- Sprint 54 complete (5/5 stories done)
+- Monitor production Sentry alerts and pipeline metrics
+- Plan Sprint 55
+
+---
+
 ## 2026-03-08 — Session 54
 **Sprint:** 53 | **Stories:** 53-1 through 53-5 — Observability and Deployment Verification
 **Summary:** Enriched Sentry error context, added pipeline business metrics, created smoke test suite, synced product catalog to 25 entries.

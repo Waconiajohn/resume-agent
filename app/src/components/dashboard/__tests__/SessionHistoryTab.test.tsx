@@ -64,6 +64,7 @@ function makeSession(overrides: Partial<CoachSession> = {}): CoachSession {
     master_resume_id: null,
     job_application_id: null,
     pipeline_status: 'complete',
+    product_type: 'resume',
     company_name: 'Acme Corp',
     job_title: 'VP Engineering',
     created_at: '2026-01-01T00:00:00Z',
@@ -177,6 +178,86 @@ describe('SessionHistoryTab', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /compare selected/i })).toBeInTheDocument();
     });
+  });
+
+  // ─── Product filter tests ──────────────────────────────────────────────────
+
+  it('shows product filter dropdown when sessions have multiple product types', () => {
+    const sessions = [
+      makeSession({ id: 'session-1', product_type: 'resume' }),
+      makeSession({ id: 'session-2', product_type: 'cover_letter', company_name: 'Beta' }),
+    ];
+    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+    expect(screen.getByRole('combobox', { name: /filter by product/i })).toBeInTheDocument();
+  });
+
+  it('hides product filter dropdown when all sessions have same product type', () => {
+    const sessions = [
+      makeSession({ id: 'session-1', product_type: 'resume' }),
+      makeSession({ id: 'session-2', product_type: 'resume', company_name: 'Beta' }),
+    ];
+    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+    expect(screen.queryByRole('combobox', { name: /filter by product/i })).not.toBeInTheDocument();
+  });
+
+  it('filters sessions by product type when product filter is changed', () => {
+    const sessions = [
+      makeSession({ id: 'session-1', product_type: 'resume' }),
+      makeSession({ id: 'session-2', product_type: 'cover_letter', company_name: 'Beta' }),
+    ];
+    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: /filter by product/i }), {
+      target: { value: 'cover_letter' },
+    });
+
+    expect(screen.queryByTestId('session-card-session-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('session-card-session-2')).toBeInTheDocument();
+  });
+
+  it('chains product filter with status filter', () => {
+    const sessions = [
+      makeSession({ id: 's1', product_type: 'resume', pipeline_status: 'complete' }),
+      makeSession({ id: 's2', product_type: 'cover_letter', pipeline_status: 'complete', company_name: 'Beta' }),
+      makeSession({ id: 's3', product_type: 'resume', pipeline_status: 'running', company_name: 'Gamma' }),
+    ];
+    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+
+    // Filter to "Completed" status
+    fireEvent.click(screen.getByRole('button', { name: /completed/i }));
+    // Filter to "resume" product
+    fireEvent.change(screen.getByRole('combobox', { name: /filter by product/i }), {
+      target: { value: 'resume' },
+    });
+
+    expect(screen.getByTestId('session-card-s1')).toBeInTheDocument();
+    expect(screen.queryByTestId('session-card-s2')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('session-card-s3')).not.toBeInTheDocument();
+  });
+
+  it('treats sessions without product_type as resume', () => {
+    const sessions = [
+      makeSession({ id: 'session-1' }), // no product_type
+      makeSession({ id: 'session-2', product_type: 'cover_letter', company_name: 'Beta' }),
+    ];
+    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: /filter by product/i }), {
+      target: { value: 'resume' },
+    });
+
+    expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('session-card-session-2')).not.toBeInTheDocument();
+  });
+
+  it('humanizes unknown product_type values in dropdown', () => {
+    const sessions = [
+      makeSession({ id: 'session-1', product_type: 'resume' }),
+      makeSession({ id: 'session-2', product_type: 'linkedin_optimizer', company_name: 'Beta' }),
+    ];
+    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+    const dropdown = screen.getByRole('combobox', { name: /filter by product/i });
+    expect(dropdown).toHaveTextContent('Linkedin Optimizer');
   });
 
   it('shows comparison modal when Compare Selected is clicked', async () => {
