@@ -623,6 +623,35 @@ sessions.get('/:id/resume', async (c) => {
   return c.json({ resume });
 });
 
+// GET /sessions/:id/cover-letter — Get the final cover letter from a completed session
+sessions.get('/:id/cover-letter', async (c) => {
+  const user = c.get('user');
+  const sessionId = c.req.param('id');
+  if (!isValidUuid(sessionId)) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('last_panel_data')
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (error || !data) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const panelData = data.last_panel_data as Record<string, unknown> | null;
+  const letter = (panelData?.letter ?? panelData?.cover_letter ?? null) as string | null;
+  if (!letter) {
+    return c.json({ error: 'No cover letter data available for this session' }, 404);
+  }
+
+  const qualityScore = (panelData?.quality_score ?? null) as number | null;
+  return c.json({ letter, quality_score: qualityScore });
+});
+
 // GET /sessions/:id — Get session state
 sessions.get('/:id', async (c) => {
   const user = c.get('user');

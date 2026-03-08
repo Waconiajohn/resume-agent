@@ -25,6 +25,7 @@ export interface DashboardScreenProps {
   onResumeSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => Promise<boolean>;
   onGetSessionResume: (sessionId: string) => Promise<FinalResume | null>;
+  onGetSessionCoverLetter: (sessionId: string) => Promise<{ letter: string; quality_score?: number | null } | null>;
   onGetDefaultResume: () => Promise<MasterResume | null>;
   onGetResumeById: (resumeId: string) => Promise<MasterResume | null>;
   onUpdateMasterResume: (resumeId: string, changes: Record<string, unknown>) => Promise<MasterResume | null>;
@@ -44,6 +45,7 @@ export function DashboardScreen({
   onResumeSession,
   onDeleteSession,
   onGetSessionResume,
+  onGetSessionCoverLetter,
   onGetDefaultResume,
   onGetResumeById,
   onUpdateMasterResume,
@@ -86,6 +88,7 @@ export function DashboardScreen({
               onResumeSession={onResumeSession}
               onDeleteSession={onDeleteSession}
               onGetSessionResume={onGetSessionResume}
+              onGetSessionCoverLetter={onGetSessionCoverLetter}
             />
           )}
 

@@ -15,6 +15,7 @@ import { createLinkedInContentProductConfig } from '../agents/linkedin-content/p
 import { FF_LINKEDIN_CONTENT } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../agents/linkedin-content/types.js';
 
@@ -26,6 +27,17 @@ export const linkedInContentRoutes = createProductRoutes<LinkedInContentState, L
   startSchema,
   buildProductConfig: () => createLinkedInContentProductConfig(),
   isEnabled: () => FF_LINKEDIN_CONTENT,
+
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'linkedin_content' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'LinkedIn content: failed to set product_type');
+    }
+  },
 
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;

@@ -24,6 +24,7 @@ import { useLinkedInOptimizer } from '@/hooks/useLinkedInOptimizer';
 import { useLinkedInContent } from '@/hooks/useLinkedInContent';
 import { useLinkedInEditor } from '@/hooks/useLinkedInEditor';
 import { supabase } from '@/lib/supabase';
+import { ExperienceEntryCard } from './ExperienceEntryCard';
 import type { WhyMeSignals } from './useWhyMeStory';
 import type { TopicSuggestion } from '@/hooks/useLinkedInContent';
 import type { ProfileSection } from '@/hooks/useLinkedInEditor';
@@ -1000,6 +1001,22 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         {activeTab === 'analytics' && (
           <div className="flex flex-col gap-6">
             <AnalyticsOverview />
+            {optimizer.experienceEntries.length > 0 && (
+              <GlassCard className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Linkedin size={18} className="text-[#98b3ff]" />
+                  <h3 className="text-[15px] font-semibold text-white/85">Optimized Experience Entries</h3>
+                  <span className="ml-auto text-[11px] text-white/30">
+                    {optimizer.experienceEntries.length} role{optimizer.experienceEntries.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {optimizer.experienceEntries.map((entry) => (
+                    <ExperienceEntryCard key={entry.role_id} entry={entry} />
+                  ))}
+                </div>
+              </GlassCard>
+            )}
             {!isOptimizerRunning && !optimizer.report && (
               <ProfileOptimizer signals={signals} report={optimizer.report} />
             )}

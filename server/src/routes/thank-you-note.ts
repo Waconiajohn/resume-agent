@@ -16,6 +16,7 @@ import { createThankYouNoteProductConfig } from '../agents/thank-you-note/produc
 import { FF_THANK_YOU_NOTE } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { ThankYouNoteState, ThankYouNoteSSEEvent } from '../agents/thank-you-note/types.js';
 
@@ -41,6 +42,17 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
   startSchema,
   buildProductConfig: () => createThankYouNoteProductConfig(),
   isEnabled: () => FF_THANK_YOU_NOTE,
+
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'thank_you_note' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Thank-you note: failed to set product_type');
+    }
+  },
 
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;

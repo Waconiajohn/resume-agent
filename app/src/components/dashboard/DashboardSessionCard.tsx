@@ -75,6 +75,7 @@ interface DashboardSessionCardProps {
   onResume: (id: string) => void;
   onDelete: (id: string) => void;
   onViewResume: (id: string) => void;
+  onViewCoverLetter?: (id: string) => void;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
   showSelectCheckbox?: boolean;
@@ -85,6 +86,7 @@ export function DashboardSessionCard({
   onResume,
   onDelete,
   onViewResume,
+  onViewCoverLetter,
   isSelected,
   onToggleSelect,
   showSelectCheckbox,
@@ -103,7 +105,11 @@ export function DashboardSessionCard({
 
   const handleViewResumeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onViewResume(session.id);
+    if (session.product_type === 'cover_letter' && onViewCoverLetter) {
+      onViewCoverLetter(session.id);
+    } else {
+      onViewResume(session.id);
+    }
   };
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
@@ -154,8 +160,8 @@ export function DashboardSessionCard({
               type="button"
               onClick={handleViewResumeClick}
               className="inline-flex items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white/85"
-              aria-label="View resume"
-              title="View resume"
+              aria-label={session.product_type === 'cover_letter' ? 'View cover letter' : 'View resume'}
+              title={session.product_type === 'cover_letter' ? 'View cover letter' : 'View resume'}
             >
               <Eye className="h-4 w-4" />
             </button>

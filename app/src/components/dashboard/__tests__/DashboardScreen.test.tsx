@@ -62,6 +62,7 @@ function makeProps(overrides: Record<string, unknown> = {}) {
     onResumeSession: vi.fn(),
     onDeleteSession: vi.fn().mockResolvedValue(true),
     onGetSessionResume: vi.fn().mockResolvedValue(null),
+    onGetSessionCoverLetter: vi.fn().mockResolvedValue(null),
     onGetDefaultResume: vi.fn().mockResolvedValue(null),
     onGetResumeById: vi.fn().mockResolvedValue(null),
     onUpdateMasterResume: vi.fn().mockResolvedValue(null),

@@ -36,6 +36,17 @@ export const counterOfferSimRoutes = createProductRoutes<CounterOfferSimState, C
   buildProductConfig: () => createCounterOfferSimProductConfig(),
   isEnabled: () => FF_COUNTER_OFFER_SIM,
 
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'counter_offer_sim' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Counter-offer sim: failed to set product_type');
+    }
+  },
+
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;
     if (!userId) return input;

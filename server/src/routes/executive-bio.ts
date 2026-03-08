@@ -16,6 +16,7 @@ import { createExecutiveBioProductConfig } from '../agents/executive-bio/product
 import { FF_EXECUTIVE_BIO } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { ExecutiveBioState, ExecutiveBioSSEEvent } from '../agents/executive-bio/types.js';
 
@@ -36,6 +37,17 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
   startSchema,
   buildProductConfig: () => createExecutiveBioProductConfig(),
   isEnabled: () => FF_EXECUTIVE_BIO,
+
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'executive_bio' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Executive bio: failed to set product_type');
+    }
+  },
 
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;

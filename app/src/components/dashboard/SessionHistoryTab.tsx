@@ -3,6 +3,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { DashboardSessionCard } from '@/components/dashboard/DashboardSessionCard';
 import { SessionResumeModal } from '@/components/dashboard/SessionResumeModal';
+import { SessionCoverLetterModal } from '@/components/dashboard/SessionCoverLetterModal';
 import { ResumeComparisonModal } from '@/components/dashboard/ResumeComparisonModal';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
@@ -39,6 +40,7 @@ interface SessionHistoryTabProps {
   onResumeSession: (id: string) => void;
   onDeleteSession: (id: string) => Promise<boolean>;
   onGetSessionResume: (id: string) => Promise<FinalResume | null>;
+  onGetSessionCoverLetter: (id: string) => Promise<{ letter: string; quality_score?: number | null } | null>;
 }
 
 export function SessionHistoryTab({
@@ -48,10 +50,12 @@ export function SessionHistoryTab({
   onResumeSession,
   onDeleteSession,
   onGetSessionResume,
+  onGetSessionCoverLetter,
 }: SessionHistoryTabProps) {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [viewingResumeSessionId, setViewingResumeSessionId] = useState<string | null>(null);
+  const [viewingCoverLetterSessionId, setViewingCoverLetterSessionId] = useState<string | null>(null);
   const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
   const [showComparison, setShowComparison] = useState(false);
 
@@ -163,6 +167,7 @@ export function SessionHistoryTab({
               onResume={onResumeSession}
               onDelete={handleDeleteSession}
               onViewResume={setViewingResumeSessionId}
+              onViewCoverLetter={setViewingCoverLetterSessionId}
               isSelected={selectedForCompare.has(session.id)}
               onToggleSelect={handleToggleSelect}
               showSelectCheckbox={session.pipeline_status === 'complete'}
@@ -182,6 +187,14 @@ export function SessionHistoryTab({
           sessionId={viewingResumeSessionId}
           onClose={() => setViewingResumeSessionId(null)}
           onGetSessionResume={onGetSessionResume}
+        />
+      )}
+
+      {viewingCoverLetterSessionId && (
+        <SessionCoverLetterModal
+          sessionId={viewingCoverLetterSessionId}
+          onClose={() => setViewingCoverLetterSessionId(null)}
+          onGetSessionCoverLetter={onGetSessionCoverLetter}
         />
       )}
 

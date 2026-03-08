@@ -40,6 +40,31 @@ export interface OptimizedSection {
   word_count: number;
 }
 
+// ─── Experience Entries ──────────────────────────────────────────────
+
+/** Per-role structured experience entry produced by write_experience_entries */
+export interface ExperienceEntry {
+  /** Stable identifier, e.g. 'role_0', 'role_1' */
+  role_id: string;
+  company: string;
+  title: string;
+  duration: string;
+  /** Original text from user's LinkedIn for this role (if available) */
+  original: string;
+  /** Optimized bullet points in markdown */
+  optimized: string;
+  quality_scores: {
+    /** Impact strength: does the entry lead with what changed? (0-100) */
+    impact: number;
+    /** Metric density: are numbers used appropriately? (0-100) */
+    metrics: number;
+    /** Context richness: team size, budget, scope present? (0-100) */
+    context: number;
+    /** Keyword coverage: relevant search terms woven in? (0-100) */
+    keywords: number;
+  };
+}
+
 // ─── Analysis Data ───────────────────────────────────────────────────
 
 export interface KeywordAnalysis {
@@ -126,6 +151,9 @@ export interface LinkedInOptimizerState extends BaseState {
   /** Optimized sections (populated by Writer agent) */
   sections: Record<LinkedInSection, OptimizedSection | undefined>;
 
+  /** Per-role structured experience data (populated by write_experience_entries) */
+  experience_entries?: ExperienceEntry[];
+
   /** Final assembled report (markdown) */
   final_report?: string;
 
@@ -140,5 +168,5 @@ export type LinkedInOptimizerSSEEvent =
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'section_progress'; section: LinkedInSection; status: 'writing' | 'reviewing' | 'complete' }
-  | { type: 'report_complete'; session_id: string; report: string; quality_score: number }
+  | { type: 'report_complete'; session_id: string; report: string; quality_score: number; experience_entries?: ExperienceEntry[] }
   | { type: 'pipeline_error'; stage: string; error: string };

@@ -599,3 +599,90 @@ describe('product_type field', () => {
     });
   });
 });
+
+// ─── Tests: GET /api/sessions/:id/cover-letter ────────────────────────────────
+
+describe('GET /api/sessions/:id/cover-letter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns letter and quality_score from completed cover letter session', async () => {
+    const letterText = 'Dear Hiring Manager,\n\nI am writing to express my interest...';
+    mockFrom.mockReturnValue(
+      makeChain({
+        data: { last_panel_data: { letter: letterText, quality_score: 92 } },
+        error: null,
+      }),
+    );
+
+    const app = makeApp();
+    const res = await callApp(app, `/api/sessions/${VALID_SESSION_ID}/cover-letter`);
+    expect(res.status).toBe(200);
+    const body = await res.json() as { letter: string; quality_score: number | null };
+    expect(body.letter).toBe(letterText);
+    expect(body.quality_score).toBe(92);
+  });
+
+  it('returns letter from cover_letter key when letter key is absent', async () => {
+    const letterText = 'Dear Hiring Manager,\n\nThank you for the opportunity...';
+    mockFrom.mockReturnValue(
+      makeChain({
+        data: { last_panel_data: { cover_letter: letterText } },
+        error: null,
+      }),
+    );
+
+    const app = makeApp();
+    const res = await callApp(app, `/api/sessions/${VALID_SESSION_ID}/cover-letter`);
+    expect(res.status).toBe(200);
+    const body = await res.json() as { letter: string; quality_score: number | null };
+    expect(body.letter).toBe(letterText);
+    expect(body.quality_score).toBeNull();
+  });
+
+  it('returns 404 when session not found', async () => {
+    mockFrom.mockReturnValue(makeChain({ data: null, error: { message: 'not found', code: 'PGRST116' } }));
+
+    const app = makeApp();
+    const res = await callApp(app, `/api/sessions/${VALID_SESSION_ID}/cover-letter`);
+    expect(res.status).toBe(404);
+    const body = await res.json() as { error: string };
+    expect(body.error).toMatch(/not found/i);
+  });
+
+  it('returns 404 when session has no cover letter data', async () => {
+    mockFrom.mockReturnValue(makeChain({ data: { last_panel_data: null }, error: null }));
+
+    const app = makeApp();
+    const res = await callApp(app, `/api/sessions/${VALID_SESSION_ID}/cover-letter`);
+    expect(res.status).toBe(404);
+    const body = await res.json() as { error: string };
+    expect(body.error).toMatch(/no cover letter/i);
+  });
+
+  it('returns 404 when last_panel_data has no letter key', async () => {
+    mockFrom.mockReturnValue(makeChain({ data: { last_panel_data: { resume: {} } }, error: null }));
+
+    const app = makeApp();
+    const res = await callApp(app, `/api/sessions/${VALID_SESSION_ID}/cover-letter`);
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 for invalid session UUID', async () => {
+    const app = makeApp();
+    const res = await callApp(app, '/api/sessions/not-a-valid-uuid/cover-letter');
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toMatch(/invalid/i);
+  });
+
+  it('only returns cover letter for session owner', async () => {
+    // The query uses .eq('user_id', user.id) — if ownership fails, supabase returns null
+    mockFrom.mockReturnValue(makeChain({ data: null, error: null }));
+
+    const app = makeApp();
+    const res = await callApp(app, `/api/sessions/${VALID_SESSION_ID}/cover-letter`);
+    expect(res.status).toBe(404);
+  });
+});

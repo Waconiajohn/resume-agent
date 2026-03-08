@@ -47,6 +47,7 @@ export default function App() {
     startPipeline,
     respondToGate,
     getSessionResume,
+    getSessionCoverLetter,
     updateMasterResume,
     getResumeHistory,
   } = useSession(accessToken);
@@ -595,6 +596,7 @@ export default function App() {
           onResumeSession={handleResumeSession}
           onDeleteSession={handleDeleteSession}
           onGetSessionResume={getSessionResume}
+          onGetSessionCoverLetter={getSessionCoverLetter}
           onGetDefaultResume={getDefaultResume}
           onGetResumeById={getResumeById}
           onUpdateMasterResume={updateMasterResume}

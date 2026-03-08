@@ -30,6 +30,7 @@ vi.mock('../DashboardSessionCard', () => ({
     onResume,
     onDelete,
     onViewResume,
+    onViewCoverLetter,
     isSelected,
     onToggleSelect,
     showSelectCheckbox,
@@ -38,6 +39,7 @@ vi.mock('../DashboardSessionCard', () => ({
     onResume: (id: string) => void;
     onDelete: (id: string) => void;
     onViewResume: (id: string) => void;
+    onViewCoverLetter?: (id: string) => void;
     isSelected?: boolean;
     onToggleSelect?: (id: string) => void;
     showSelectCheckbox?: boolean;
@@ -47,9 +49,18 @@ vi.mock('../DashboardSessionCard', () => ({
       <button onClick={() => onResume(session.id)}>Resume</button>
       <button onClick={() => onDelete(session.id)}>Delete</button>
       <button onClick={() => onViewResume(session.id)}>View Resume</button>
+      <button onClick={() => onViewCoverLetter?.(session.id)}>View Cover Letter</button>
       {showSelectCheckbox && (
         <button onClick={() => onToggleSelect?.(session.id)}>Select</button>
       )}
+    </div>
+  ),
+}));
+
+vi.mock('../SessionCoverLetterModal', () => ({
+  SessionCoverLetterModal: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="session-cover-letter-modal">
+      <button onClick={onClose}>Close Cover Letter Modal</button>
     </div>
   ),
 }));
@@ -92,6 +103,7 @@ function makeProps(overrides: Record<string, unknown> = {}) {
     onResumeSession: vi.fn(),
     onDeleteSession: vi.fn().mockResolvedValue(true),
     onGetSessionResume: vi.fn().mockResolvedValue(makeFinalResume()),
+    onGetSessionCoverLetter: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }

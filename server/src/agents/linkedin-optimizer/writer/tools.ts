@@ -15,6 +15,7 @@ import type {
   LinkedInOptimizerSSEEvent,
   LinkedInSection,
   OptimizedSection,
+  ExperienceEntry,
 } from '../types.js';
 import { LINKEDIN_OPTIMIZER_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
@@ -353,15 +354,22 @@ Requirements:
 - Use keywords naturally — experience section is heavily indexed
 - Never contradict the resume — dates, titles, companies must match exactly
 - Complement the resume, don't duplicate it — tell the story behind the title
+- For each entry, score it on 4 dimensions (0-100): impact (led with what changed?), metrics (numbers present?), context (scope/size/structure given?), keywords (search terms woven in?)
 
-Return JSON:
+Return a JSON object with this exact shape:
 {
   "entries": [
     {
       "company": "Company Name",
       "title": "Job Title",
       "duration": "Start - End",
-      "content": "The optimized experience entry text (markdown)"
+      "optimized": "The optimized experience entry text as markdown bullets",
+      "quality_scores": {
+        "impact": 0-100,
+        "metrics": 0-100,
+        "context": 0-100,
+        "keywords": 0-100
+      }
     }
   ],
   "rationale": "overall approach and how entries complement the resume"
@@ -369,9 +377,24 @@ Return JSON:
       }],
     });
 
-    let result;
+    interface RawEntry {
+      company?: string;
+      title?: string;
+      duration?: string;
+      optimized?: string;
+      /** Legacy field — some LLM responses use 'content' instead of 'optimized' */
+      content?: string;
+      quality_scores?: {
+        impact?: number;
+        metrics?: number;
+        context?: number;
+        keywords?: number;
+      };
+    }
+
+    let result: { entries?: RawEntry[]; rationale?: string };
     try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
+      result = repairJSON<typeof result>(response.text) ?? JSON.parse(response.text);
     } catch {
       result = {
         entries: [],
@@ -379,19 +402,41 @@ Return JSON:
       };
     }
 
-    // Combine all entries into a single text block
-    const entries = Array.isArray(result.entries) ? result.entries : [];
-    const combinedText = entries
-      .map((e: { company?: string; title?: string; duration?: string; content?: string }) =>
-        `### ${e.title ?? 'Role'} at ${e.company ?? 'Company'} (${e.duration ?? ''})\n\n${e.content ?? ''}`
-      )
+    const rawEntries: RawEntry[] = Array.isArray(result?.entries) ? result.entries : [];
+
+    // Build per-role structured entries
+    const experienceEntries: ExperienceEntry[] = rawEntries.map((e, idx) => {
+      const entryText = String(e.optimized ?? e.content ?? '');
+      const scores = e.quality_scores ?? {};
+      return {
+        role_id: `role_${idx}`,
+        company: String(e.company ?? ''),
+        title: String(e.title ?? ''),
+        duration: String(e.duration ?? ''),
+        original: '',  // Per-role originals are not parsed from the raw experience_text blob
+        optimized: entryText,
+        quality_scores: {
+          impact: Number(scores.impact ?? 70),
+          metrics: Number(scores.metrics ?? 70),
+          context: Number(scores.context ?? 70),
+          keywords: Number(scores.keywords ?? 70),
+        },
+      };
+    });
+
+    // Persist structured entries to state
+    state.experience_entries = experienceEntries;
+
+    // Assemble combined markdown for backward compatibility with assemble_report
+    const combinedText = experienceEntries
+      .map(e => `### ${e.title || 'Role'} at ${e.company || 'Company'} (${e.duration})\n\n${e.optimized}`)
       .join('\n\n');
 
     const optimized: OptimizedSection = {
       section: 'experience',
       original: state.current_profile?.experience_text ?? '',
       optimized: combinedText,
-      rationale: String(result.rationale ?? ''),
+      rationale: String(result?.rationale ?? ''),
       word_count: wordCount(combinedText),
     };
 
@@ -405,7 +450,7 @@ Return JSON:
     return JSON.stringify({
       success: true,
       section: 'experience',
-      entries_count: entries.length,
+      entries_count: experienceEntries.length,
       word_count: optimized.word_count,
     });
   },

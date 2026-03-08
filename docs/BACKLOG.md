@@ -98,16 +98,8 @@ Intake form, SSE streaming hook, CoverLetterScreen workspace, text + PDF export.
 - **Estimated complexity:** Medium
 - **Dependencies:** None
 
-### Story: Cover Letter Master Resume Pre-population
-- **As a** user
-- **I want to** have my default resume auto-filled in the cover letter intake
-- **So that** I don't have to paste my resume each time
-- **Acceptance Criteria:**
-  - [ ] Load default master resume on mount
-  - [ ] Pre-fill resume_text field
-  - [ ] Allow override by pasting different resume
-- **Estimated complexity:** Small
-- **Dependencies:** None
+### ~~Story: Cover Letter Master Resume Pre-population~~ COMPLETE (Sprint 55, Story 55-3)
+~~Master resume raw_text pre-fills the cover letter intake form on mount. Loading indicator, no-overwrite of user edits, 18 app tests.~~
 
 ### Story: Full Waitlist Backend
 - **As a** product owner

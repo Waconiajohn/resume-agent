@@ -16,6 +16,7 @@ import { createPersonalBrandProductConfig } from '../agents/personal-brand/produ
 import { FF_PERSONAL_BRAND_AUDIT } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { PersonalBrandState, PersonalBrandSSEEvent, BrandSourceInput } from '../agents/personal-brand/types.js';
 
@@ -32,6 +33,17 @@ export const personalBrandRoutes = createProductRoutes<PersonalBrandState, Perso
   startSchema,
   buildProductConfig: () => createPersonalBrandProductConfig(),
   isEnabled: () => FF_PERSONAL_BRAND_AUDIT,
+
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'personal_brand' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Personal brand: failed to set product_type');
+    }
+  },
 
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;

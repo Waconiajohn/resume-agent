@@ -19,6 +19,7 @@ import { createRetirementBridgeProductConfig } from '../agents/retirement-bridge
 import { FF_RETIREMENT_BRIDGE } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { RetirementBridgeState, RetirementBridgeSSEEvent } from '../agents/retirement-bridge/types.js';
 
@@ -30,6 +31,17 @@ export const retirementBridgeRoutes = createProductRoutes<RetirementBridgeState,
   startSchema,
   buildProductConfig: () => createRetirementBridgeProductConfig(),
   isEnabled: () => FF_RETIREMENT_BRIDGE,
+
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'retirement_bridge' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Retirement bridge: failed to set product_type');
+    }
+  },
 
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;

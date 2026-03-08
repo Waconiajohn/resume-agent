@@ -36,6 +36,17 @@ export const networkingOutreachRoutes = createProductRoutes<NetworkingOutreachSt
   buildProductConfig: () => createNetworkingOutreachProductConfig(),
   isEnabled: () => FF_NETWORKING_OUTREACH,
 
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'networking_outreach' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Networking outreach: failed to set product_type');
+    }
+  },
+
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;
     if (!userId) return input;

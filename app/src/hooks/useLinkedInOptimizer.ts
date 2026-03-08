@@ -12,10 +12,26 @@ export interface ActivityMessage {
   timestamp: number;
 }
 
+export interface ExperienceEntry {
+  role_id: string;
+  company: string;
+  title: string;
+  duration: string;
+  original: string;
+  optimized: string;
+  quality_scores: {
+    impact: number;
+    metrics: number;
+    context: number;
+    keywords: number;
+  };
+}
+
 interface LinkedInOptimizerState {
   status: LinkedInOptimizerStatus;
   report: string | null;
   qualityScore: number | null;
+  experienceEntries: ExperienceEntry[];
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
@@ -39,6 +55,7 @@ export function useLinkedInOptimizer() {
     status: 'idle',
     report: null,
     qualityScore: null,
+    experienceEntries: [],
     activityMessages: [],
     error: null,
     currentStage: null,
@@ -119,6 +136,9 @@ export function useLinkedInOptimizer() {
             status: 'complete',
             report: data.report as string,
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
+            experienceEntries: Array.isArray(data.experience_entries)
+              ? (data.experience_entries as ExperienceEntry[])
+              : prev.experienceEntries,
           }));
           abortRef.current?.abort();
           break;
@@ -243,6 +263,7 @@ export function useLinkedInOptimizer() {
         status: 'connecting',
         report: null,
         qualityScore: null,
+        experienceEntries: [],
         activityMessages: [],
         error: null,
         currentStage: null,
@@ -301,6 +322,7 @@ export function useLinkedInOptimizer() {
       status: 'idle',
       report: null,
       qualityScore: null,
+      experienceEntries: [],
       activityMessages: [],
       error: null,
       currentStage: null,

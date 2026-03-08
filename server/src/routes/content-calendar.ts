@@ -33,6 +33,17 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
   buildProductConfig: () => createContentCalendarProductConfig(),
   isEnabled: () => FF_CONTENT_CALENDAR,
 
+  onBeforeStart: async (input, _c, _session) => {
+    const sessionId = input.session_id as string;
+    const { error } = await supabaseAdmin
+      .from('coach_sessions')
+      .update({ product_type: 'content_calendar' })
+      .eq('id', sessionId);
+    if (error) {
+      logger.warn({ session_id: sessionId, error: error.message }, 'Content calendar: failed to set product_type');
+    }
+  },
+
   transformInput: async (input, session) => {
     const userId = session.user_id as string | undefined;
     if (!userId) return input;

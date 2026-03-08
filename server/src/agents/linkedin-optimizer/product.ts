@@ -167,6 +167,7 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
         session_id: state.session_id,
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
+        experience_entries: state.experience_entries,
       });
 
       return {

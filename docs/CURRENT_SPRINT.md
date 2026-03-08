@@ -1,16 +1,15 @@
-# Sprint 55: Session History + Cover Letter Polish
-**Goal:** Make the session dashboard work for all products, polish cover letter UX, clean up stale backlog entries.
+# Sprint 56: Cover Letter Dashboard + Agent Route product_type + LinkedIn Optimizer v2
+**Goal:** Complete cover letter dashboard integration, wire product_type across all agent routes, and enhance LinkedIn Optimizer with experience section rewriting.
 **Started:** 2026-03-08
 
 ## Stories
-1. [x] Story 55-1: Add `product_type` Column to `coach_sessions` — **Status: done**
-2. [x] Story 55-2: Dashboard Session Filtering by Product — **Status: done**
-3. [x] Story 55-3: Cover Letter Master Resume Pre-fill — **Status: done**
-4. [x] Story 55-4: Backlog Hygiene — **Status: done**
-5. [x] Story 55-5: Sprint 54 Retrospective — **Status: done**
+1. [x] Story 56-1: Cover Letter Dashboard Integration — **Status: done**
+2. [x] Story 56-2: Wire product_type Across All Agent Routes — **Status: done**
+3. [x] Story 56-3: LinkedIn Optimizer v2 — Experience Writer Tool Enhancement — **Status: done**
+4. [x] Story 56-4: LinkedIn Optimizer v2 — Experience Section in Report — **Status: done**
+5. [x] Story 56-5: LinkedIn Optimizer v2 — Experience Section Tests — **Status: done**
 
 ## Out of Scope (Explicitly)
-- Server-side product filtering on `GET /api/sessions` (client-side sufficient)
-- Setting `product_type` for all 25 CareerIQ agent routes (future story)
-- CareerIQ Phases 3-5
-- New agents or features
+- CareerIQ Phases 3-5 (Phase 3A Job Command Center is next after this sprint)
+- Server-side session filtering
+- New agents

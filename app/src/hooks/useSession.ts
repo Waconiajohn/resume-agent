@@ -580,6 +580,31 @@ export function useSession(accessToken: string | null) {
     }
   }, [headers, buildErrorMessage, fetchWithOneRetry]);
 
+  const getSessionCoverLetter = useCallback(
+    async (sessionId: string): Promise<{ letter: string; quality_score?: number | null } | null> => {
+      if (!accessTokenRef.current) return null;
+      setError(null);
+      try {
+        const res = await fetchWithOneRetry(
+          `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/cover-letter`,
+          { headers: headers() },
+        );
+        if (!res.ok) {
+          if (res.status === 404) return null;
+          const message = await buildErrorMessage(res, `Failed to load session cover letter (${res.status})`);
+          setError(message);
+          return null;
+        }
+        const data = await res.json() as { letter: string; quality_score?: number | null };
+        return data;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Network error loading session cover letter');
+        return null;
+      }
+    },
+    [headers, buildErrorMessage, fetchWithOneRetry],
+  );
+
   const updateMasterResume = useCallback(async (
     resumeId: string,
     changes: Record<string, unknown>,
@@ -699,6 +724,7 @@ export function useSession(accessToken: string | null) {
     restartPipelineWithCachedInputs,
     respondToGate,
     getSessionResume,
+    getSessionCoverLetter,
     updateMasterResume,
     getResumeHistory,
   };

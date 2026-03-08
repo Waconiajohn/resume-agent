@@ -1,5 +1,55 @@
 # Changelog — Resume Agent
 
+## 2026-03-08 — Session 57
+**Sprint:** 56 | **Stories:** 56-1 through 56-5 — Cover Letter Dashboard + Agent Route product_type + LinkedIn Optimizer v2
+**Summary:** Cover letter dashboard viewing/re-export, product_type wired across all 20 agent routes, LinkedIn Optimizer v2 with per-role experience entries and quality scores.
+
+### Changes Made
+
+**Story 56-1: Cover Letter Dashboard Integration**
+- `server/src/routes/sessions.ts` — Added `GET /:id/cover-letter` endpoint with ownership validation
+- `app/src/components/dashboard/SessionCoverLetterModal.tsx` — New: modal with loading/error/empty states, Copy + Download TXT
+- `app/src/components/dashboard/DashboardSessionCard.tsx` — Eye button routes to cover letter or resume based on `product_type`
+- `app/src/components/dashboard/SessionHistoryTab.tsx` — Added `onGetSessionCoverLetter`, cover letter modal state
+- `app/src/components/dashboard/DashboardScreen.tsx` — Threaded `onGetSessionCoverLetter` prop
+- `app/src/hooks/useSession.ts` — Added `getSessionCoverLetter` callback
+- `app/src/App.tsx` — Wired `getSessionCoverLetter` to DashboardScreen
+
+**Story 56-2: product_type Across All Agent Routes**
+- 18 route files updated with `onBeforeStart` hooks setting `product_type` (case_study, content_calendar, counter_offer_sim, executive_bio, interview_prep, job_finder, job_tracker, linkedin_content, linkedin_editor, linkedin_optimizer, mock_interview, networking_outreach, ninety_day_plan, onboarding, personal_brand, retirement_bridge, salary_negotiation, thank_you_note)
+- `server/src/__tests__/product-type-wiring.test.ts` — New: 57 static source-scan tests
+
+**Story 56-3: LinkedIn Optimizer v2 — Per-Role Experience Entries**
+- `server/src/agents/linkedin-optimizer/types.ts` — Added `ExperienceEntry` interface + `experience_entries` on state
+- `server/src/agents/linkedin-optimizer/writer/tools.ts` — `write_experience_entries` now outputs structured per-role array with quality scores, plus combined markdown for backward compat
+- `server/src/__tests__/linkedin-optimizer-writer-tools.test.ts` — New: 13 tests
+
+**Story 56-4: LinkedIn v2 Experience Section UI**
+- `server/src/agents/linkedin-optimizer/product.ts` — Added `experience_entries` to `report_complete` SSE emission
+- `server/src/agents/linkedin-optimizer/types.ts` — Added `experience_entries` to `report_complete` SSE event type
+- `app/src/hooks/useLinkedInOptimizer.ts` — Added `ExperienceEntry` type, `experienceEntries` state, SSE extraction
+- `app/src/components/career-iq/ExperienceEntryCard.tsx` — New: per-role card with quality score badges (green/yellow/red), copy button
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — Renders ExperienceEntryCard list in analytics tab
+
+**Story 56-5: LinkedIn v2 Tests**
+- `app/src/components/career-iq/__tests__/ExperienceEntryCard.test.tsx` — New: 20 tests (header, content, score colors, copy)
+- `app/src/hooks/__tests__/useLinkedInOptimizer.test.tsx` — New: 31 tests (initial state, reset, SSE events, guards)
+
+### Decisions Made
+- product_type updates are fire-and-forget in `onBeforeStart` (warn on error, never block pipeline)
+- ExperienceEntry.original is empty string for now (raw experience_text can't be reliably split per-role)
+- Per-role cards render above combined report for forward compatibility
+
+### Test Health
+- Server: 2,185 tests passing (+77 from Sprint 55)
+- App: 1,123 tests passing (+68 from Sprint 55)
+- TypeScript: both server and app tsc clean
+
+### Next Steps
+- Sprint 56 complete (5/5 stories done)
+
+---
+
 ## 2026-03-08 — Session 56
 **Sprint:** 55 | **Stories:** 55-1 through 55-5 — Session History + Cover Letter Polish
 **Summary:** Added product_type column to coach_sessions, dashboard product filtering with badges, cover letter master resume pre-fill, backlog hygiene, Sprint 54 retrospective.
