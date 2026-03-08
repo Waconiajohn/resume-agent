@@ -19,7 +19,12 @@ import {
 } from '../../lib/llm-provider.js';
 import { createSessionLogger } from '../../lib/logger.js';
 import { MODEL_PRICING } from '../../lib/llm.js';
-import { captureError } from '../../lib/sentry.js';
+import { captureErrorWithContext } from '../../lib/sentry.js';
+import {
+  recordPipelineCompletion,
+  recordPipelineError,
+  recordActiveUser,
+} from '../../lib/pipeline-metrics.js';
 import { runAgentLoop } from './agent-loop.js';
 import { AgentBus } from './agent-bus.js';
 import type { AgentMessage, BaseState, BaseEvent } from './agent-protocol.js';
@@ -132,10 +137,12 @@ export async function runProductPipeline<
 ): Promise<ProductPipelineResult<TState>> {
   const { sessionId, userId, emit, waitForUser, input } = params;
   const log = createSessionLogger(sessionId);
+  const pipelineStartTime = Date.now();
 
   // ── Usage tracking ──────────────────────────────────────────────
   const usageAcc = startUsageTracking(sessionId, userId);
   setUsageTrackingContext(sessionId);
+  recordActiveUser(userId);
 
   // ── Initial pipeline state ──────────────────────────────────────
   const state = productConfig.createInitialState(sessionId, userId, input);
@@ -265,6 +272,12 @@ export async function runProductPipeline<
       await productConfig.persistResult(state, result, input);
     }
 
+    recordPipelineCompletion(
+      productConfig.domain,
+      Date.now() - pipelineStartTime,
+      usage.estimated_cost_usd,
+    );
+
     log.info(
       {
         domain: productConfig.domain,
@@ -283,7 +296,14 @@ export async function runProductPipeline<
 
     const errorMsg = error instanceof Error ? error.message : String(error);
     const currentStage = (state as Record<string, unknown>)['current_stage'] as string ?? 'unknown';
-    captureError(error, { sessionId, stage: currentStage });
+    recordPipelineError(productConfig.domain);
+    captureErrorWithContext(error, {
+      severity: 'P0',
+      category: 'pipeline_error',
+      sessionId,
+      stage: currentStage,
+      fingerprint: ['pipeline_error', productConfig.domain, currentStage],
+    });
     log.error({ error: errorMsg, stage: currentStage, domain: productConfig.domain }, 'Product coordinator: pipeline error');
 
     // Emit error event

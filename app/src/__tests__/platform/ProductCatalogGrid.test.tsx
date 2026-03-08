@@ -69,4 +69,13 @@ describe('ProductCatalogGrid', () => {
     fireEvent.keyDown(card, { key: 'Enter' });
     expect(onNavigate).toHaveBeenCalledWith(`/tools/${activeProduct.slug}`);
   });
+
+  it('catalog has at least 22 entries', () => {
+    expect(PRODUCT_CATALOG.length).toBeGreaterThanOrEqual(22);
+  });
+
+  it('includes financial category products', () => {
+    const financial = PRODUCT_CATALOG.filter((p) => p.category === 'financial');
+    expect(financial.length).toBeGreaterThanOrEqual(1);
+  });
 });

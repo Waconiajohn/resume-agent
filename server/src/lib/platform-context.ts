@@ -24,7 +24,9 @@ export type ContextType =
   | 'gap_analysis'
   | 'industry_research'
   | 'job_discovery_results'
-  | 'content_post';
+  | 'content_post'
+  | 'retirement_readiness'
+  | 'emotional_baseline';
 
 export interface PlatformContextRow {
   id: string;

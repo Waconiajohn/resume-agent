@@ -634,8 +634,9 @@ export function useSession(accessToken: string | null) {
   ): Promise<boolean> => {
     if (!accessTokenRef.current) return false;
     setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/pipeline/respond`, {
+
+    const attemptRespond = async (): Promise<Response> => {
+      return fetch(`${API_BASE}/pipeline/respond`, {
         method: 'POST',
         headers: headers(),
         body: JSON.stringify({
@@ -644,6 +645,18 @@ export function useSession(accessToken: string | null) {
           response,
         }),
       });
+    };
+
+    try {
+      let res = await attemptRespond();
+
+      // Auto-retry once on 429 (timing race: pipeline not yet at gate, or status not yet 'running')
+      if (res.status === 429) {
+        const retryDelayMs = retryDelayMsFromHeaders(res.headers, 2000);
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        res = await attemptRespond();
+      }
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({} as { code?: string; error?: string }));
         if (data.code === 'STALE_PIPELINE') {

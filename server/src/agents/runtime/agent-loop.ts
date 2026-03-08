@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import { llm } from '../../lib/llm.js';
 import { withRetry } from '../../lib/retry.js';
 import { createCombinedAbortSignal } from '../../lib/llm-provider.js';
+import { captureErrorWithContext } from '../../lib/sentry.js';
 import type { ChatMessage, ContentBlock } from '../../lib/llm-provider.js';
 import type {
   AgentConfig,
@@ -150,8 +151,10 @@ export async function runAgentLoop<
           // Transparency emit is non-critical — swallow errors
         }
 
-        // Call LLM with retry, using the per-round signal
-        const response = await withRetry(
+        let response: Awaited<ReturnType<typeof llm.chat>>;
+        try {
+          // Call LLM with retry, using the per-round signal
+          response = await withRetry(
           () => llm.chat({
             model: config.model,
             system: config.system_prompt,
@@ -300,6 +303,25 @@ export async function runAgentLoop<
           if (messages.length > MAX_HISTORY_MESSAGES) {
             compactConversationHistory(messages, log, ctx.scratchpad, (ctx.getState() as Record<string, unknown>).approved_sections as string[] | undefined);
           }
+        }
+        } catch (err) {
+          // Capture LLM timeout/abort errors to Sentry for observability
+          const isTimeout = (err instanceof Error) && (
+            err.name === 'AbortError' ||
+            err.message.includes('timeout') ||
+            err.message.includes('aborted')
+          );
+          if (isTimeout) {
+            const state = ctx.getState() as Record<string, unknown>;
+            const stage = typeof state['current_stage'] === 'string' ? state['current_stage'] : 'unknown';
+            captureErrorWithContext(err, {
+              severity: 'P2',
+              category: 'llm_timeout',
+              sessionId: ctx.sessionId,
+              stage,
+            });
+          }
+          throw err;
         }
       } finally {
         // Always release per-round listeners, regardless of normal/error/abort exit.

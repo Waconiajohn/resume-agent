@@ -258,9 +258,9 @@ describe('pipeline /respond route', () => {
     expect(body.error).toMatch(/invalid request/i);
   });
 
-  // ── 3. Returns 409 when pipeline is not running (stale pipeline) ──────────
+  // ── 3. Returns 429 when pipeline is not running (timing race — not yet started) ──
 
-  it('returns 409 when pipeline_status is not running', async () => {
+  it('returns 429 with Retry-After header when pipeline_status is not running', async () => {
     makeSupabaseMock({
       pipelineStateRow: {
         pipeline_status: 'error',
@@ -278,7 +278,8 @@ describe('pipeline /respond route', () => {
       body: JSON.stringify({ session_id: VALID_SESSION_ID, gate: 'section_review', response: true }),
     });
 
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('2');
     const body = await res.json() as Record<string, unknown>;
     expect(body.error).toMatch(/not running/i);
   });
@@ -428,9 +429,9 @@ describe('pipeline /respond route', () => {
     expect(res.status).toBe(404);
   });
 
-  // ── 10. Returns 404 when no gate is pending and no gate name supplied ──────
+  // ── 10. Returns 429 when no gate is pending and no gate name supplied ──────
 
-  it('returns 404 when no pending gate exists and no gate name is provided', async () => {
+  it('returns 429 with Retry-After header when no pending gate and no gate name supplied', async () => {
     makeSupabaseMock({
       pipelineStateRow: {
         pipeline_status: 'running',
@@ -442,16 +443,17 @@ describe('pipeline /respond route', () => {
     });
 
     const app = makeApp();
-    // Supply response but no gate name — route cannot buffer without a gate name
+    // Supply response but no gate name — pipeline is running but hasn't set a gate yet (timing race)
     const res = await app.request('/api/pipeline/respond', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: VALID_SESSION_ID, response: { answer: 'yes' } }),
     });
 
-    // When no explicit response and normalizedResponse falls to undefined (non-architect gate),
-    // the route returns 400 Missing response payload
-    expect([400, 404]).toContain(res.status);
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('1');
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toMatch(/no pending gate/i);
   });
 });
 

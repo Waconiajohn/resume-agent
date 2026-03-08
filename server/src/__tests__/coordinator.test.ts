@@ -85,6 +85,13 @@ vi.mock('../lib/llm-provider.js', () => ({
 
 vi.mock('../lib/sentry.js', () => ({
   captureError: vi.fn(),
+  captureErrorWithContext: vi.fn(),
+}));
+
+vi.mock('../lib/pipeline-metrics.js', () => ({
+  recordActiveUser: vi.fn(),
+  recordPipelineCompletion: vi.fn(),
+  recordPipelineError: vi.fn(),
 }));
 
 vi.mock('../lib/feature-flags.js', () => ({

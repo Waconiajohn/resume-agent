@@ -33,13 +33,17 @@ import { mockInterviewRoutes } from './routes/mock-interview.js';
 import { interviewDebriefRoutes } from './routes/interview-debrief.js';
 import { counterOfferSimRoutes } from './routes/counter-offer-sim.js';
 import { momentumRoutes } from './routes/momentum.js';
+import { retirementBridgeRoutes } from './routes/retirement-bridge.js';
+import { plannerHandoffRoutes } from './routes/planner-handoff.js';
+import { b2bAdminRoutes } from './routes/b2b-admin.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
 import { getAuthCacheStats } from './middleware/auth.js';
 import { getRequestMetrics, recordRequestMetric } from './lib/request-metrics.js';
+import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
-import { initSentry, captureError, flushSentry } from './lib/sentry.js';
+import { initSentry, captureError, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 
 const app = new Hono();
 let shuttingDown = false;
@@ -74,6 +78,25 @@ function isHeapOverloaded() {
 if (isProduction && !process.env.ALLOWED_ORIGINS) {
   logger.error('ALLOWED_ORIGINS not set in production — all cross-origin requests will be blocked');
 }
+
+// Build CSP once at startup — values are static for the lifetime of the process.
+const cspConnectSrc = [
+  "'self'",
+  ...allowedOrigins,
+  ...(process.env.SENTRY_DSN ? ['https://*.ingest.sentry.io'] : []),
+].join(' ');
+
+const cspHeader = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self'",
+  `connect-src ${cspConnectSrc}`,
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
 
 app.use('*', requestIdMiddleware);
 
@@ -112,6 +135,8 @@ app.use('*', async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
   c.header('Referrer-Policy', 'no-referrer');
+  c.header('Content-Security-Policy', cspHeader);
+  c.header('X-Permitted-Cross-Domain-Policies', 'none');
   const forwardedProto = c.req.header('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
   const directProto = (() => {
     try {
@@ -231,6 +256,7 @@ app.get('/metrics', (c) => {
   const rateLimitStats = getRateLimitStats();
   const authCacheStats = getAuthCacheStats();
   const requestStats = getRequestMetrics();
+  const pipelineBusinessStats = getPipelineMetrics();
   return c.json({
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     shutting_down: shuttingDown,
@@ -242,6 +268,7 @@ app.get('/metrics', (c) => {
     rate_limit_runtime: rateLimitStats,
     auth_cache_runtime: authCacheStats,
     http_runtime: requestStats,
+    pipeline_business: pipelineBusinessStats,
     load_shedding: {
       max_heap_used_mb: maxHeapUsedMb,
       active: maxHeapUsedMb > 0,
@@ -289,6 +316,9 @@ app.route('/api/mock-interview', mockInterviewRoutes);
 app.route('/api/interview-debriefs', interviewDebriefRoutes);
 app.route('/api/counter-offer-sim', counterOfferSimRoutes);
 app.route('/api/momentum', momentumRoutes);
+app.route('/api/retirement-bridge', retirementBridgeRoutes);
+app.route('/api/planner-handoff', plannerHandoffRoutes);
+app.route('/api/b2b', b2bAdminRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);
@@ -296,7 +326,11 @@ app.notFound((c) => {
 
 app.onError((err, c) => {
   const requestId = c.get('requestId');
-  captureError(err, { path: c.req.path, method: c.req.method, requestId });
+  captureErrorWithContext(err, {
+    severity: 'P0',
+    category: 'unhandled_request_error',
+    extra: { path: c.req.path, method: c.req.method, requestId },
+  });
   logger.error({ err, requestId }, 'Unhandled error');
   return c.json({ error: 'Internal server error', request_id: requestId }, 500);
 });
@@ -357,11 +391,12 @@ export function startServer() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('unhandledRejection', (reason) => {
-    captureError(reason, { source: 'unhandledRejection' });
+    captureErrorWithContext(reason, { severity: 'P1', category: 'unhandled_rejection' });
     logger.error({ reason }, 'Unhandled promise rejection');
     shutdown('UNHANDLED_REJECTION');
   });
   process.on('uncaughtException', (err) => {
+    captureErrorWithContext(err, { severity: 'P0', category: 'uncaught_exception' });
     logger.error({ err }, 'Uncaught exception');
     shutdown('UNCAUGHT_EXCEPTION');
   });

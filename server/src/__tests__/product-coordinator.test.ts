@@ -43,6 +43,13 @@ vi.mock('../lib/llm.js', () => ({
 
 vi.mock('../lib/sentry.js', () => ({
   captureError: vi.fn(),
+  captureErrorWithContext: vi.fn(),
+}));
+
+vi.mock('../lib/pipeline-metrics.js', () => ({
+  recordActiveUser: vi.fn(),
+  recordPipelineCompletion: vi.fn(),
+  recordPipelineError: vi.fn(),
 }));
 
 // Mock runAgentLoop

@@ -1,3 +1,7 @@
+# NOTE: Branch protection rules should require all CI checks to pass before merging.
+# In GitHub Settings → Branches → Branch protection rules, enable:
+#   "Require status checks to pass before merging" and add:
+#   app-verify, server-verify, migration-drift, secrets-scan
 name: Production Gates
 
 on:
@@ -53,11 +57,9 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=critical
-        continue-on-error: true
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Verify app
         run: npm run verify
@@ -88,11 +90,9 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=critical
-        continue-on-error: true
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Verify server
         run: npm run verify
@@ -207,3 +207,17 @@ jobs:
             exit 1
           fi
           echo "App loads successfully (HTTP 200)"
+
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

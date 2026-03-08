@@ -1,155 +1,570 @@
+import { useState, useCallback } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import {
-  Heart,
   TrendingDown,
   Shield,
   BookOpen,
   ArrowRight,
   Clock,
-  DollarSign,
   Users,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Clipboard,
+  ClipboardCheck,
+  Loader2,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  useRetirementBridge,
+  type ReadinessSignal,
+  type ReadinessDimension,
+  type RetirementReadinessSummary,
+} from '@/hooks/useRetirementBridge';
+import { usePlannerHandoff } from '@/hooks/usePlannerHandoff';
 
-// --- Types ---
+// ─── Static content ───────────────────────────────────────────────────────────
 
-type FinancialHealth = 'comfortable' | 'needs-attention' | 'at-risk';
-
-interface BridgeAnalysis {
-  monthlySavings: number;
-  monthlyBurn: number;
-  runwayMonths: number;
-  healthLevel: FinancialHealth;
-}
-
-// --- Mock data ---
-
-const MOCK_BRIDGE: BridgeAnalysis = {
-  monthlySavings: 85000,
-  monthlyBurn: 8200,
-  runwayMonths: 10,
-  healthLevel: 'needs-attention',
-};
-
-const MOCK_RESOURCES = [
+const RESOURCES = [
   {
     id: '1',
     title: 'Understanding Your Retirement Bridge',
-    description: 'What displaced executives need to know about protecting their retirement savings during a career transition.',
+    description:
+      'What displaced executives need to know about protecting their retirement savings during a career transition.',
     readTime: '6 min read',
     category: 'Planning',
   },
   {
     id: '2',
     title: 'COBRA vs. Marketplace: Making the Right Health Insurance Decision',
-    description: 'A practical comparison for executives between jobs, including often-overlooked tax implications.',
+    description:
+      'A practical comparison for executives between jobs, including often-overlooked tax implications.',
     readTime: '8 min read',
     category: 'Insurance',
   },
   {
     id: '3',
-    title: 'Should You Touch Your 401(k)? A Framework for the Decision',
-    description: 'When early withdrawal makes sense, when it doesn\'t, and the questions to ask a fiduciary planner.',
+    title: "Should You Touch Your 401(k)? A Framework for the Decision",
+    description:
+      "When early withdrawal makes sense, when it doesn't, and the questions to ask a fiduciary planner.",
     readTime: '5 min read',
     category: 'Retirement',
   },
   {
     id: '4',
     title: 'Negotiating Severance: What Most Executives Leave on the Table',
-    description: 'The five components of severance most people don\'t negotiate — and how to approach the conversation.',
+    description:
+      "The five components of severance most people don't negotiate — and how to approach the conversation.",
     readTime: '7 min read',
     category: 'Negotiation',
   },
 ];
 
-// --- Components ---
+// ─── Signal config ────────────────────────────────────────────────────────────
 
-const HEALTH_CONFIG: Record<FinancialHealth, { label: string; color: string; bgColor: string; description: string }> = {
-  comfortable: {
-    label: 'Comfortable',
+const SIGNAL_CONFIG: Record<
+  ReadinessSignal,
+  { label: string; color: string; bgColor: string; Icon: typeof CheckCircle2 }
+> = {
+  green: {
+    label: 'Well Positioned',
     color: 'text-[#b5dec2]',
     bgColor: 'bg-[#b5dec2]',
-    description: 'Your savings runway gives you time to be strategic about your next move.',
+    Icon: CheckCircle2,
   },
-  'needs-attention': {
-    label: 'Needs Attention',
+  yellow: {
+    label: 'Worth Exploring',
     color: 'text-[#dfc797]',
     bgColor: 'bg-[#dfc797]',
-    description: 'Your runway is manageable, but a conversation with a planner could help you extend it and reduce stress.',
+    Icon: AlertCircle,
   },
-  'at-risk': {
-    label: 'At Risk',
+  red: {
+    label: 'Priority Conversation',
     color: 'text-[#e8a0a0]',
     bgColor: 'bg-[#e8a0a0]',
-    description: 'Your timeline is tight. A fiduciary planner can help you identify options you may not have considered.',
+    Icon: XCircle,
   },
 };
 
-function RetirementBridgeCard({ bridge }: { bridge: BridgeAnalysis }) {
-  const health = HEALTH_CONFIG[bridge.healthLevel];
-  const runwayPercent = Math.min(100, (bridge.runwayMonths / 18) * 100);
+const DIMENSION_LABELS: Record<ReadinessDimension, string> = {
+  income_replacement: 'Income Replacement',
+  healthcare_bridge: 'Healthcare Bridge',
+  debt_profile: 'Debt Profile',
+  retirement_savings_impact: 'Retirement Savings',
+  insurance_gaps: 'Insurance Gaps',
+  tax_implications: 'Tax Implications',
+  lifestyle_adjustment: 'Lifestyle Adjustment',
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function EmptyStateCard({ onStart, loading }: { onStart: () => void; loading: boolean }) {
+  return (
+    <GlassCard className="p-8 flex flex-col items-center text-center gap-5">
+      <div className="h-14 w-14 rounded-2xl bg-[#98b3ff]/10 flex items-center justify-center">
+        <TrendingDown size={26} className="text-[#98b3ff]" />
+      </div>
+
+      <div className="max-w-sm">
+        <h3 className="text-[16px] font-semibold text-white/85 mb-2">
+          Retirement Readiness Assessment
+        </h3>
+        <p className="text-[13px] text-white/45 leading-relaxed">
+          Answer a short set of questions across 7 financial dimensions. The assessment surfaces
+          the right questions to bring to a fiduciary planner — it does not give financial advice.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 w-full max-w-sm text-[12px] text-white/35">
+        {['~5 minutes', '7 dimensions', 'No financial advice'].map((label) => (
+          <div
+            key={label}
+            className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2"
+          >
+            {label}
+          </div>
+        ))}
+      </div>
+
+      <GlassButton
+        variant="primary"
+        className="text-[14px] px-6"
+        onClick={onStart}
+        disabled={loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 size={15} className="mr-2 animate-spin" />
+            Preparing questions...
+          </>
+        ) : (
+          <>
+            Start Assessment
+            <ChevronRight size={16} className="ml-2" />
+          </>
+        )}
+      </GlassButton>
+
+      <p className="text-[11px] text-white/20">
+        We surface questions — your planner provides advice.
+      </p>
+    </GlassCard>
+  );
+}
+
+function AssessmentQuestionsView({
+  questions,
+  onSubmit,
+  loading,
+}: {
+  questions: { id: string; question: string; dimension: ReadinessDimension }[];
+  onSubmit: (responses: Record<string, string>) => void;
+  loading: boolean;
+}) {
+  const [responses, setResponses] = useState<Record<string, string>>(() =>
+    Object.fromEntries(questions.map((q) => [q.id, ''])),
+  );
+
+  const allAnswered = questions.every((q) => (responses[q.id] ?? '').trim().length > 0);
+
+  const handleChange = useCallback((id: string, value: string) => {
+    setResponses((prev) => ({ ...prev, [id]: value }));
+  }, []);
+
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <TrendingDown size={18} className="text-[#98b3ff]" />
+        <h3 className="text-[15px] font-semibold text-white/85">Assessment Questions</h3>
+        <span className="ml-auto text-[12px] text-white/30">{questions.length} questions</span>
+      </div>
+
+      <p className="text-[13px] text-white/40 leading-relaxed mb-6">
+        Answer honestly — there are no right or wrong answers. The goal is to surface the
+        right topics for your planner conversation.
+      </p>
+
+      <div className="space-y-5">
+        {questions.map((q, idx) => {
+          const dimLabel = DIMENSION_LABELS[q.dimension];
+          return (
+            <div key={q.id}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
+                  {dimLabel}
+                </span>
+              </div>
+              <p className="text-[13px] text-white/70 font-medium mb-2">
+                {idx + 1}. {q.question}
+              </p>
+              <textarea
+                value={responses[q.id] ?? ''}
+                onChange={(e) => handleChange(q.id, e.target.value)}
+                rows={3}
+                placeholder="Your answer..."
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 resize-none focus:outline-none focus:border-[#98b3ff]/40 transition-colors"
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-[12px] text-white/25">
+          {questions.filter((q) => (responses[q.id] ?? '').trim()).length} of {questions.length}{' '}
+          answered
+        </p>
+        <GlassButton
+          variant="primary"
+          className="text-[14px]"
+          onClick={() => onSubmit(responses)}
+          disabled={!allAnswered || loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 size={15} className="mr-2 animate-spin" />
+              Evaluating...
+            </>
+          ) : (
+            <>
+              Submit Responses
+              <ArrowRight size={16} className="ml-2" />
+            </>
+          )}
+        </GlassButton>
+      </div>
+    </GlassCard>
+  );
+}
+
+function RetirementBridgeCard({ summary }: { summary: RetirementReadinessSummary }) {
+  const [copied, setCopied] = useState(false);
+  const overallConfig = SIGNAL_CONFIG[summary.overall_readiness];
+  const OverallIcon = overallConfig.Icon;
+
+  const handleCopyShare = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(summary.shareable_summary);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard write failed — ignore silently
+    }
+  }, [summary.shareable_summary]);
 
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
         <TrendingDown size={18} className="text-[#98b3ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Retirement Bridge Analysis</h3>
+        <button
+          onClick={handleCopyShare}
+          className="ml-auto flex items-center gap-1.5 text-[12px] text-white/35 hover:text-white/60 transition-colors"
+          title="Copy shareable summary"
+        >
+          {copied ? (
+            <>
+              <ClipboardCheck size={13} className="text-[#b5dec2]" />
+              <span className="text-[#b5dec2]">Copied</span>
+            </>
+          ) : (
+            <>
+              <Clipboard size={13} />
+              Share Summary
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Runway visualization */}
-      <div className="mb-5">
-        <div className="flex items-baseline justify-between mb-2">
-          <span className="text-[28px] font-bold text-white/90 tabular-nums">
-            {bridge.runwayMonths}
-          </span>
-          <span className="text-[13px] text-white/40">months at current burn rate</span>
-        </div>
-        <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
-          <div
-            className={cn('h-full rounded-full transition-all duration-700', health.bgColor)}
-            style={{ width: `${runwayPercent}%`, opacity: 0.6 }}
-          />
-        </div>
-      </div>
-
-      {/* Key figures */}
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <DollarSign size={12} className="text-white/30" />
-            <span className="text-[11px] text-white/35 uppercase tracking-wider">Monthly Burn</span>
-          </div>
-          <span className="text-[16px] font-semibold text-white/75 tabular-nums">
-            ${bridge.monthlyBurn.toLocaleString()}
-          </span>
-        </div>
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Shield size={12} className="text-white/30" />
-            <span className="text-[11px] text-white/35 uppercase tracking-wider">Liquid Savings</span>
-          </div>
-          <span className="text-[16px] font-semibold text-white/75 tabular-nums">
-            ${bridge.monthlySavings.toLocaleString()}k
-          </span>
-        </div>
-      </div>
-
-      {/* Health indicator */}
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      {/* Overall readiness */}
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-5">
         <div className="flex items-center gap-2 mb-2">
-          <div className={cn('h-2.5 w-2.5 rounded-full', health.bgColor)} />
-          <span className={cn('text-[13px] font-semibold', health.color)}>{health.label}</span>
+          <OverallIcon size={15} className={overallConfig.color} />
+          <span className={cn('text-[13px] font-semibold', overallConfig.color)}>
+            Overall: {overallConfig.label}
+          </span>
         </div>
-        <p className="text-[13px] text-white/45 leading-relaxed">
-          {health.description}
-        </p>
+        <div className="space-y-1.5">
+          {summary.key_observations.map((obs, i) => (
+            <p key={i} className="text-[12px] text-white/45 leading-relaxed pl-1">
+              {obs}
+            </p>
+          ))}
+        </div>
       </div>
+
+      {/* Dimensions */}
+      <div className="space-y-3 mb-5">
+        {summary.dimensions.map((dim) => {
+          const config = SIGNAL_CONFIG[dim.signal];
+          const DimIcon = config.Icon;
+          return (
+            <div
+              key={dim.dimension}
+              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={cn('h-2 w-2 rounded-full flex-shrink-0', config.bgColor)} />
+                <span className="text-[12px] font-semibold text-white/70">
+                  {DIMENSION_LABELS[dim.dimension]}
+                </span>
+                <span className={cn('ml-auto text-[11px] font-medium', config.color)}>
+                  {config.label}
+                </span>
+                <DimIcon size={12} className={config.color} />
+              </div>
+              {dim.observations.length > 0 && (
+                <div className="pl-4 space-y-0.5">
+                  {dim.observations.map((obs, i) => (
+                    <p key={i} className="text-[11px] text-white/35 leading-relaxed">
+                      {obs}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Planner topics */}
+      {summary.recommended_planner_topics.length > 0 && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
+            Bring these to your planner conversation
+          </p>
+          <div className="space-y-1">
+            {summary.recommended_planner_topics.map((topic, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <ChevronRight size={11} className="text-[#98b3ff]/50 mt-0.5 flex-shrink-0" />
+                <span className="text-[12px] text-white/50">{topic}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </GlassCard>
   );
 }
 
 function PlannerConnectionCard() {
+  const { phase, qualify, planners, referral, selectPlanner, reset } = usePlannerHandoff();
+
+  const [showForm, setShowForm] = useState(false);
+  const [assetRange, setAssetRange] = useState('');
+  const [geography, setGeography] = useState('');
+
+  const handleSchedule = useCallback(() => {
+    setShowForm(true);
+  }, []);
+
+  const handleQualify = useCallback(async () => {
+    await qualify(true, assetRange, geography);
+  }, [qualify, assetRange, geography]);
+
+  if (phase === 'complete' && referral) {
+    return (
+      <GlassCard className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={18} className="text-[#98b3ff]" />
+          <h3 className="text-[15px] font-semibold text-white/85">Introduction Scheduled</h3>
+        </div>
+        <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/5 p-4 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle2 size={15} className="text-[#b5dec2]" />
+            <span className="text-[13px] font-semibold text-[#b5dec2]">Referral confirmed</span>
+          </div>
+          <p className="text-[12px] text-white/45">
+            A fiduciary planner will reach out within 1-2 business days to schedule your free
+            30-minute introduction.
+          </p>
+        </div>
+        <button
+          onClick={reset}
+          className="text-[12px] text-white/25 hover:text-white/45 transition-colors"
+        >
+          Start over
+        </button>
+      </GlassCard>
+    );
+  }
+
+  if (phase === 'disqualified') {
+    return (
+      <GlassCard className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={18} className="text-[#98b3ff]" />
+          <h3 className="text-[15px] font-semibold text-white/85">Connect with a Planner</h3>
+        </div>
+        <p className="text-[13px] text-white/45 leading-relaxed mb-4">
+          Based on your profile, a fiduciary planner referral may not be the right fit right now.
+          The educational resources below are a great starting point.
+        </p>
+        <button
+          onClick={reset}
+          className="text-[12px] text-white/35 hover:text-white/55 transition-colors"
+        >
+          Try again
+        </button>
+      </GlassCard>
+    );
+  }
+
+  if (phase === 'matching' && planners.length === 0) {
+    return (
+      <GlassCard className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={18} className="text-[#98b3ff]" />
+          <h3 className="text-[15px] font-semibold text-white/85">No Planners Available</h3>
+        </div>
+        <p className="text-[13px] text-white/45 leading-relaxed mb-4">
+          No fiduciary planners currently serve your area. Try a different geographic region or
+          check back later as our network continues to grow.
+        </p>
+        <button
+          onClick={reset}
+          className="text-[12px] text-white/35 hover:text-white/55 transition-colors"
+        >
+          Try a different location
+        </button>
+      </GlassCard>
+    );
+  }
+
+  if (phase === 'matching' && planners.length > 0) {
+    return (
+      <GlassCard className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={18} className="text-[#98b3ff]" />
+          <h3 className="text-[15px] font-semibold text-white/85">Select a Planner</h3>
+        </div>
+        <div className="space-y-3 mb-4">
+          {planners.map((planner) => (
+            <div
+              key={planner.id}
+              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+            >
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-[13px] font-semibold text-white/80">{planner.name}</p>
+                  <p className="text-[11px] text-white/40">{planner.firm}</p>
+                </div>
+                <GlassButton
+                  variant="primary"
+                  className="text-[12px] px-3 py-1.5 flex-shrink-0"
+                  onClick={() => void selectPlanner(planner.id)}
+                  disabled={phase === 'referring' as typeof phase}
+                >
+                  Select
+                </GlassButton>
+              </div>
+              {planner.specializations.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {planner.specializations.map((s) => (
+                    <span
+                      key={s}
+                      className="text-[10px] text-[#98b3ff]/60 bg-[#98b3ff]/8 border border-[#98b3ff]/15 rounded-full px-2 py-0.5"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {planner.bio && (
+                <p className="mt-2 text-[11px] text-white/35 leading-relaxed line-clamp-2">
+                  {planner.bio}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={reset}
+          className="text-[12px] text-white/25 hover:text-white/45 transition-colors"
+        >
+          Start over
+        </button>
+      </GlassCard>
+    );
+  }
+
+  if (showForm) {
+    const isLoading = phase === 'qualifying' || phase === 'matching';
+    return (
+      <GlassCard className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={18} className="text-[#98b3ff]" />
+          <h3 className="text-[15px] font-semibold text-white/85">Connect with a Planner</h3>
+        </div>
+
+        <p className="text-[13px] text-white/40 leading-relaxed mb-5">
+          A few quick details help us match you with the right fiduciary planner.
+        </p>
+
+        <div className="space-y-4 mb-5">
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1.5">
+              Approximate investable assets
+            </label>
+            <select
+              value={assetRange}
+              onChange={(e) => setAssetRange(e.target.value)}
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 focus:outline-none focus:border-[#98b3ff]/40 transition-colors"
+            >
+              <option value="">Select a range</option>
+              <option value="under_100k">Under $100k</option>
+              <option value="100k_250k">$100k – $250k</option>
+              <option value="250k_500k">$250k – $500k</option>
+              <option value="500k_1m">$500k – $1M</option>
+              <option value="over_1m">Over $1M</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1.5">
+              Geographic region (city or state)
+            </label>
+            <input
+              type="text"
+              value={geography}
+              onChange={(e) => setGeography(e.target.value)}
+              placeholder="e.g. Chicago, IL"
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 focus:outline-none focus:border-[#98b3ff]/40 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowForm(false)}
+            className="text-[13px] text-white/30 hover:text-white/50 transition-colors"
+          >
+            Cancel
+          </button>
+          <GlassButton
+            variant="primary"
+            className="flex-1 text-[14px]"
+            onClick={() => void handleQualify()}
+            disabled={!assetRange || !geography || isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={15} className="mr-2 animate-spin" />
+                Finding planners...
+              </>
+            ) : (
+              <>
+                Find My Match
+                <ArrowRight size={16} className="ml-2" />
+              </>
+            )}
+          </GlassButton>
+        </div>
+      </GlassCard>
+    );
+  }
+
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -158,10 +573,12 @@ function PlannerConnectionCard() {
       </div>
 
       <p className="text-[14px] text-white/50 leading-relaxed mb-2">
-        Our network includes only fiduciary financial planners — professionals legally required to act in your best interest, not sell you products.
+        Our network includes only fiduciary financial planners — professionals legally required to
+        act in your best interest, not sell you products.
       </p>
       <p className="text-[13px] text-white/35 leading-relaxed mb-5">
-        A 30-minute introductory conversation is free and comes with no obligation. Most executives in transition find that one conversation changes how they think about their timeline.
+        A 30-minute introductory conversation is free and comes with no obligation. Most executives
+        in transition find that one conversation changes how they think about their timeline.
       </p>
 
       <div className="space-y-3 mb-5">
@@ -177,7 +594,11 @@ function PlannerConnectionCard() {
         ))}
       </div>
 
-      <GlassButton variant="primary" className="w-full text-[14px]">
+      <GlassButton
+        variant="primary"
+        className="w-full text-[14px]"
+        onClick={handleSchedule}
+      >
         Schedule a Free Introduction
         <ArrowRight size={16} className="ml-2" />
       </GlassButton>
@@ -198,7 +619,7 @@ function EducationalResources() {
       </div>
 
       <div className="space-y-3">
-        {MOCK_RESOURCES.map((resource) => (
+        {RESOURCES.map((resource) => (
           <div
             key={resource.id}
             className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-white/[0.1] transition-all cursor-pointer"
@@ -222,7 +643,10 @@ function EducationalResources() {
                   {resource.description}
                 </p>
               </div>
-              <ArrowRight size={14} className="text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0 mt-1" />
+              <ArrowRight
+                size={14}
+                className="text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0 mt-1"
+              />
             </div>
           </div>
         ))}
@@ -231,23 +655,106 @@ function EducationalResources() {
   );
 }
 
-// --- Main component ---
+// ─── Loading / error helpers ──────────────────────────────────────────────────
+
+function EvaluatingState() {
+  return (
+    <GlassCard className="p-8 flex flex-col items-center gap-4">
+      <Loader2 size={28} className="text-[#98b3ff] animate-spin" />
+      <div className="text-center">
+        <p className="text-[14px] font-medium text-white/70 mb-1">Evaluating your responses</p>
+        <p className="text-[12px] text-white/35">
+          Reviewing each dimension and identifying planner conversation topics...
+        </p>
+      </div>
+    </GlassCard>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <GlassCard className="p-6 flex flex-col items-center gap-4 text-center">
+      <AlertCircle size={24} className="text-[#e8a0a0]" />
+      <div>
+        <p className="text-[13px] font-medium text-white/70 mb-1">Something went wrong</p>
+        <p className="text-[12px] text-white/35">{message}</p>
+      </div>
+      <GlassButton variant="ghost" className="text-[13px]" onClick={onRetry}>
+        Try Again
+      </GlassButton>
+    </GlassCard>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function FinancialWellnessRoom() {
+  const { phase, questions, summary, error, startAssessment, submitResponses, reset } =
+    useRetirementBridge();
+
+  const handleStart = useCallback(() => {
+    void startAssessment();
+  }, [startAssessment]);
+
+  const handleSubmit = useCallback(
+    (responses: Record<string, string>) => {
+      void submitResponses(responses);
+    },
+    [submitResponses],
+  );
+
+  const renderLeftPanel = () => {
+    if (phase === 'idle') {
+      return <EmptyStateCard onStart={handleStart} loading={false} />;
+    }
+
+    if (phase === 'generating_questions') {
+      return <EmptyStateCard onStart={handleStart} loading={true} />;
+    }
+
+    if (phase === 'awaiting_responses') {
+      return (
+        <AssessmentQuestionsView
+          questions={questions}
+          onSubmit={handleSubmit}
+          loading={false}
+        />
+      );
+    }
+
+    if (phase === 'evaluating') {
+      return <EvaluatingState />;
+    }
+
+    if (phase === 'complete' && summary) {
+      return <RetirementBridgeCard summary={summary} />;
+    }
+
+    if (phase === 'error') {
+      return (
+        <ErrorState
+          message={error ?? 'An unexpected error occurred.'}
+          onRetry={reset}
+        />
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Financial Wellness</h1>
         <p className="text-[13px] text-white/40">
-          Understand your financial position and connect with fiduciary planners who specialize in career transitions.
+          Understand your financial position and connect with fiduciary planners who specialize
+          in career transitions.
         </p>
       </div>
 
       {/* Bridge Analysis + Planner side-by-side */}
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-[3] min-w-0">
-          <RetirementBridgeCard bridge={MOCK_BRIDGE} />
-        </div>
+        <div className="flex-[3] min-w-0">{renderLeftPanel()}</div>
         <div className="flex-[2]">
           <PlannerConnectionCard />
         </div>

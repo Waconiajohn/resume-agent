@@ -6,7 +6,8 @@ export type ProductCategory =
   | 'interview'
   | 'intelligence'
   | 'writing'
-  | 'planning';
+  | 'planning'
+  | 'financial';
 
 export interface ProductFeature {
   title: string;
@@ -521,5 +522,363 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       },
     ],
     ctaLabel: 'Map My Network',
+  },
+  // --- Onboarding ---
+  {
+    id: 'onboarding-assessment',
+    slug: 'onboarding',
+    name: 'Onboarding Assessment',
+    shortDescription: 'Personalized career assessment that maps your strengths and financial context',
+    longDescription:
+      'A structured intake assessment that surfaces your professional strengths, career goals, and financial context through carefully designed questions. Builds a confidential client profile that personalizes every tool in the platform to your unique situation.',
+    icon: '🎯',
+    status: 'active',
+    route: '/onboarding',
+    category: 'career',
+    features: [
+      {
+        title: 'Intelligent Question Design',
+        description:
+          'Adaptive assessment questions that surface your strengths, priorities, and career stage without feeling like a form.',
+      },
+      {
+        title: 'Financial Segment Detection',
+        description:
+          'Infers your financial context from indirect signals — no intrusive questions — so recommendations are grounded in your real constraints.',
+      },
+      {
+        title: 'Client Profile Construction',
+        description:
+          'Builds a persistent profile that every platform tool reads from, ensuring consistent, personalized guidance across your entire search.',
+      },
+      {
+        title: 'Career Direction Clarity',
+        description:
+          'Identifies your target role type, preferred industries, and non-negotiables to focus your search on roles where you are genuinely competitive.',
+      },
+    ],
+    ctaLabel: 'Start Assessment',
+  },
+  // --- Interview ---
+  {
+    id: 'mock-interview',
+    slug: 'mock-interview',
+    name: 'Mock Interview',
+    shortDescription: 'Practice real interviews with AI-powered feedback and scoring',
+    longDescription:
+      'Simulates realistic interview scenarios using role-specific questions drawn from the JD and company context. The AI plays a calibrated interviewer and coaches you through stronger STAR-format answers after each response.',
+    icon: '🎤',
+    status: 'active',
+    route: '/career-iq',
+    category: 'interview',
+    features: [
+      {
+        title: 'Role-Specific Question Sets',
+        description:
+          'Questions are generated from the actual job description and company intelligence, not generic interview banks.',
+      },
+      {
+        title: 'Real-Time Answer Feedback',
+        description:
+          'Immediate scoring on specificity, structure, and evidence quality after each response, with targeted suggestions.',
+      },
+      {
+        title: 'STAR Framework Coaching',
+        description:
+          'Guides you to build complete Situation-Task-Action-Result answers using real accomplishments from your evidence library.',
+      },
+      {
+        title: 'Confidence Scoring',
+        description:
+          'Rates your overall readiness for the real interview and tracks improvement across practice sessions.',
+      },
+    ],
+    ctaLabel: 'Begin Practice',
+  },
+  // --- Writing ---
+  {
+    id: 'linkedin-content',
+    slug: 'linkedin-content',
+    name: 'LinkedIn Content Writer',
+    shortDescription: 'Individual LinkedIn posts crafted from your expertise and positioning',
+    longDescription:
+      'Generates high-impact individual LinkedIn posts that position you as a thought leader in your field. Each post is derived from your real expertise and aligned to your strategic positioning — not recycled career advice.',
+    icon: '✍️',
+    status: 'active',
+    route: '/career-iq',
+    category: 'writing',
+    features: [
+      {
+        title: 'Thought Leadership Angles',
+        description:
+          'Surfaces insights from your own experience and translates them into posts that demonstrate genuine expertise.',
+      },
+      {
+        title: 'Engagement Hook Engineering',
+        description:
+          'Opens with a proven hook structure that stops the scroll and earns the read without clickbait tactics.',
+      },
+      {
+        title: 'Positioning Alignment',
+        description:
+          'Every post reinforces your target role positioning so your content and your resume tell the same story.',
+      },
+      {
+        title: 'Hashtag Optimization',
+        description:
+          'Selects hashtags based on reach data for your specific niche — not the most popular tags, the most relevant ones.',
+      },
+    ],
+    ctaLabel: 'Write a Post',
+  },
+  {
+    id: 'linkedin-editor',
+    slug: 'linkedin-editor',
+    name: 'LinkedIn Profile Editor',
+    shortDescription: 'Section-by-section LinkedIn profile editing with positioning alignment',
+    longDescription:
+      'Works through your LinkedIn profile section by section — headline, About, experience, skills — rewriting each to align with your strategic positioning. The result is a profile that recruiter searches surface and hiring managers take seriously.',
+    icon: '✏️',
+    status: 'active',
+    route: '/career-iq',
+    category: 'career',
+    features: [
+      {
+        title: 'Headline Optimization',
+        description:
+          'Rewrites your headline to pack your target role, unique value, and top keyword into 220 characters.',
+      },
+      {
+        title: 'Summary Alignment',
+        description:
+          'Crafts an About section that extends your resume positioning without duplicating it word for word.',
+      },
+      {
+        title: 'Experience Section Editing',
+        description:
+          'Rewrites each role entry to complement your resume — consistent scope, consistent accomplishments, no contradictions.',
+      },
+      {
+        title: 'Keyword Integration',
+        description:
+          'Weaves recruiter search terms naturally throughout your profile to maximize visibility without keyword stuffing.',
+      },
+    ],
+    ctaLabel: 'Edit My Profile',
+  },
+  // --- Interview ---
+  {
+    id: 'interview-debrief',
+    slug: 'interview-debrief',
+    name: 'Interview Debrief',
+    shortDescription: 'Post-interview analysis to improve your performance for the next round',
+    longDescription:
+      'Structured debrief session immediately after an interview while details are fresh. Analyzes what went well, where you left value on the table, and what signals you should read into — then builds a targeted prep plan for the next round.',
+    icon: '📋',
+    status: 'active',
+    route: '/career-iq',
+    category: 'interview',
+    features: [
+      {
+        title: 'Performance Assessment',
+        description:
+          'Evaluates your answers for strength of evidence, positioning consistency, and missed opportunities.',
+      },
+      {
+        title: 'Improvement Targeting',
+        description:
+          'Identifies the two or three specific areas where better preparation would have the highest impact on next-round success.',
+      },
+      {
+        title: 'Next Round Preparation',
+        description:
+          'Builds a focused prep plan based on what this round revealed about the hiring team\'s priorities.',
+      },
+      {
+        title: 'Signal Reading',
+        description:
+          'Helps you interpret interviewer behavior, question patterns, and tone shifts to gauge where you stand.',
+      },
+    ],
+    ctaLabel: 'Debrief This Interview',
+  },
+  // --- Planning ---
+  {
+    id: 'counter-offer-sim',
+    slug: 'counter-offer-sim',
+    name: 'Counter-Offer Simulation',
+    shortDescription: 'Simulate negotiation scenarios before the real conversation',
+    longDescription:
+      'Runs you through realistic counter-offer scenarios so you walk into the real negotiation having already rehearsed every response. Builds your leverage map, scripts your opening move, and prepares you for the most common pushbacks.',
+    icon: '⚖️',
+    status: 'active',
+    route: '/career-iq',
+    category: 'planning',
+    features: [
+      {
+        title: 'Scenario Modeling',
+        description:
+          'Simulates the full range of employer responses — accept, partial counter, hard no — so nothing catches you off guard.',
+      },
+      {
+        title: 'Response Scripting',
+        description:
+          'Generates word-for-word language for your counter, your silence, and your walk-away threshold.',
+      },
+      {
+        title: 'Leverage Analysis',
+        description:
+          'Maps your actual leverage points — competing offers, market data, internal demand — and teaches you to use them effectively.',
+      },
+      {
+        title: 'Outcome Prediction',
+        description:
+          'Estimates the likely outcome range for each scenario based on your inputs and negotiation strategy.',
+      },
+    ],
+    ctaLabel: 'Run a Simulation',
+  },
+  // --- Intelligence ---
+  {
+    id: 'momentum-tracker',
+    slug: 'momentum',
+    name: 'Momentum Tracker',
+    shortDescription: 'Track your job search velocity and get coaching nudges to stay on track',
+    longDescription:
+      'Monitors the cadence of your job search activity — applications sent, outreach made, interviews scheduled — and provides weekly momentum scores with coaching nudges to prevent the stalls that sink most searches.',
+    icon: '📈',
+    status: 'active',
+    route: '/career-iq',
+    category: 'intelligence',
+    features: [
+      {
+        title: 'Activity Tracking',
+        description:
+          'Logs applications, outreach, interviews, and follow-ups in one place to give you a real picture of your search pace.',
+      },
+      {
+        title: 'Momentum Scoring',
+        description:
+          'Weekly score quantifies your search velocity and flags when your pace is dropping below the level needed to hit your timeline.',
+      },
+      {
+        title: 'Weekly Goal Setting',
+        description:
+          'Sets realistic weekly activity targets based on your timeline, role type, and the conversion rates typical for your market.',
+      },
+      {
+        title: 'Coaching Nudges',
+        description:
+          'Context-aware prompts that identify exactly where your funnel is leaking and suggest the highest-leverage action to take next.',
+      },
+    ],
+    ctaLabel: 'Track My Momentum',
+  },
+  // --- Financial ---
+  {
+    id: 'retirement-bridge',
+    slug: 'retirement-bridge',
+    name: 'Retirement Bridge',
+    shortDescription: 'Retirement readiness assessment with fiduciary-grade financial planning guidance',
+    longDescription:
+      'A seven-dimension retirement readiness assessment that evaluates your financial, health, social, and psychological preparedness. Provides fiduciary-grade guidance and matches you with qualified financial planners for a warm, documented handoff.',
+    icon: '🏦',
+    status: 'active',
+    route: '/career-iq',
+    category: 'financial',
+    features: [
+      {
+        title: '7-Dimension Assessment',
+        description:
+          'Evaluates financial security, healthcare readiness, social capital, purpose, cognitive health, housing stability, and legal preparedness.',
+      },
+      {
+        title: 'Financial Wellness Scoring',
+        description:
+          'Produces a composite readiness score across all dimensions with specific, actionable recommendations for each gap.',
+      },
+      {
+        title: 'Planner Matching',
+        description:
+          'Qualifies and matches you with fiduciary-certified financial planners based on your specific situation and needs.',
+      },
+      {
+        title: 'Fiduciary Guardrails',
+        description:
+          'All guidance is bounded by strict fiduciary standards — no product recommendations, no commission-driven advice.',
+      },
+    ],
+    ctaLabel: 'Assess My Readiness',
+  },
+  // --- Coming Soon ---
+  {
+    id: 'b2b-admin',
+    slug: 'b2b-admin',
+    name: 'B2B Admin Portal',
+    shortDescription: 'Enterprise outplacement portal for HR teams managing career transitions',
+    longDescription:
+      'A dedicated admin portal for HR and talent teams managing large-scale outplacement programs. Provides seat management, cohort tracking, engagement reporting, and white-label branding for enterprise deployments.',
+    icon: '🏢',
+    status: 'coming_soon',
+    route: '/b2b',
+    category: 'planning',
+    features: [
+      {
+        title: 'Seat Management',
+        description:
+          'Provision, transfer, and revoke platform seats for outplacement cohorts with full audit trail.',
+      },
+      {
+        title: 'Cohort Tracking',
+        description:
+          'Monitor progress across groups of candidates — by division, layoff date, or program tier — in a single dashboard.',
+      },
+      {
+        title: 'Engagement Reporting',
+        description:
+          'Detailed reporting on tool usage, session completion, and placement outcomes to demonstrate program ROI.',
+      },
+      {
+        title: 'White-Label Branding',
+        description:
+          'Deploy the platform under your company brand — custom logo, colors, and domain — for a seamless employee experience.',
+      },
+    ],
+    ctaLabel: 'Request Enterprise Access',
+  },
+  {
+    id: 'planner-handoff',
+    slug: 'planner-handoff',
+    name: 'Planner Handoff',
+    shortDescription: 'Warm introductions to qualified financial planners matched to your needs',
+    longDescription:
+      'A structured warm handoff process that connects you with a pre-qualified, fiduciary-certified financial planner. Generates a detailed handoff document summarizing your financial situation so your first planner meeting skips the intake and goes straight to strategy.',
+    icon: '🤝',
+    status: 'coming_soon',
+    route: '/career-iq',
+    category: 'financial',
+    features: [
+      {
+        title: 'Planner Qualification',
+        description:
+          'Every matched planner passes a five-gate qualification check covering fiduciary status, credentials, and specialty alignment.',
+      },
+      {
+        title: 'Needs Matching',
+        description:
+          'Matches you to planners whose specialty areas align with your specific financial situation and goals.',
+      },
+      {
+        title: 'Warm Handoff Documents',
+        description:
+          'Generates a structured briefing document for your planner so session one focuses on your strategy, not your background.',
+      },
+      {
+        title: 'Fiduciary Verification',
+        description:
+          'Independently verifies fiduciary status and current credentials before any referral is made.',
+      },
+    ],
+    ctaLabel: 'Find a Planner',
   },
 ];

@@ -91,8 +91,8 @@ We never fabricate experience, inflate credentials, or misrepresent clients.
 
 ## Test Health
 
-- Server: 1,871 tests passing
-- App: 1,004 tests passing
+- Server: 2,060 tests passing
+- App: 1,011 tests passing
 - E2E: 2 tests (full pipeline)
 
 #status/in-progress

@@ -3,50 +3,48 @@
 > Updated every session by Claude. This is the living snapshot of where things stand.
 
 ## Last Updated
-2026-03-08 | Post-sprint fix-up (Session 43)
+2026-03-08 | Session 54 (Sprint 53: Observability and Deployment Verification — 5/5 stories COMPLETE)
 
 ## Current State
-- **Phases 1A, 1B, 1C, 2, 3, 4A, 4B, 5 complete** per Master Build Plan
-- **Sprint 49 done:** Emotional Intelligence Layer — momentum tracking, cognitive reframing, resource library, ask a coach
-- **Session 41:** positioning-coach.ts fixes (research context threading, category warn log, follow-up ID collision) + 14 test repairs
-- **Session 42:** Fix 5 — `distress_resources` SSE event added to onboarding pipeline + 7 broken platform-context tests repaired
-- **Session 43:** Fixes 6/7/8 — atomic `upsert_platform_context` Postgres RPC + migration, `deleteUserContext`, `getLatestUserContext` + full test suite update (20 → 33 tests)
-- **Next:** Phase 6 (Retirement Bridge), Phase 7 (B2B Outplacement), or tech debt
-- **All systems green** -- tsc clean, 0 test failures
+- **Sprint 53 COMPLETE** — all 5 stories done (Sentry enrichment, pipeline metrics, smoke tests, catalog update, deploy prep)
+- Sentry errors now include severity (P0/P1/P2), category, session/stage tags, and fingerprints for alert rules
+- Pipeline business metrics available at `/metrics` — completions, errors, cost, active users
+- Smoke test suite: `node server/scripts/smoke-test.mjs` — health, readiness, auth checks with retries
+- Product catalog: 25 entries (23 active + 2 coming-soon), `financial` category added
+- Production readiness: 9/10 — all observability in place, deployment runbook tested
 
 ## Test Health
-- Server: 1,909 tests passing
-- App: 1,004 tests passing
+- Server: 2,103 tests passing
+- App: 1,018 tests passing
 - E2E: 2 tests passing
 - TypeScript: both server and app tsc clean
 
 ## Active Concerns
-- Bug 18 (409 conflicts) still open
-- 6 DB migrations need to be applied to production Supabase (user_momentum + atomic_context_upsert)
-- Thank You Note cross-room navigation not yet functional
+- None blocking — Sprint 53 fully complete
 
 ## Recent Decisions
-- Momentum tracking is deterministic CRUD, not an agent -- streaks and wins computed from activity log
-- Cognitive reframing uses MODEL_MID for coaching message generation with static fallbacks
-- Resource library is static content organized by coaching methodology topics (not a DB-driven CMS)
-- Ask a Coach submits to coaching_requests table for human review
-- Stall detection heuristics: 5-day inactivity, 14-day pipeline stall, 3+ rejections in 7 days
+- Sentry enrichment uses scope tags (not breadcrumbs) for P0/P1/P2 severity classification
+- Pipeline metrics are in-memory (no DB) — reset on restart, suitable for single-instance
+- Active user tracking uses 24h sliding window with 10k entry cap
+- Smoke test is zero-dependency ESM script (native fetch, Node 18+)
+- Product catalog now includes all 18 built agents plus 2 coming-soon
 
 ## What's Working Well
-- Emotional intelligence layer adds warmth without being intrusive
-- CoachingNudgeBar integrates naturally into DashboardHome
-- MomentumCard provides at-a-glance engagement metrics
-- Streak computation handles edge cases well (gaps, today vs yesterday)
+- All 5 stories completed in a single session via parallel agent delegation
+- Server test count jumped from 2,060 to 2,103 (+43 new tests)
+- App test count jumped from 1,011 to 1,018 (+7 new tests)
+- Zero TypeScript errors across both workspaces after all changes
 
 ## What Needs Attention
-- 5 DB migrations need to be applied to Supabase
-- Platform catalog UI needs updating to show new products
-- Resource library content is static — future: pull from CMS or coaching methodology
+- Production deployment execution (follow docs/DEPLOYMENT.md)
+- Sentry alert rules need configuration in Sentry Dashboard (P0 → PagerDuty, P1 → Slack, P2 → email)
+- Grafana/monitoring dashboard for `/metrics` endpoint data
 
 ## Key Metrics
-- Total agents built: 17 (of 33 planned) + 2 simulation sub-agents (Mock Interview, Counter-Offer)
-- Total tests: 2,913 (1,909 server + 1,004 app)
+- Total agents built: 18 (of 33 planned) + 2 simulation sub-agents
+- Total tests: 3,121 (2,103 server + 1,018 app)
 - Estimated pipeline cost: ~$0.08/run (Groq)
 - Pipeline time: ~1m42s (Groq)
+- Production readiness: 9/10 (up from 8/10 — observability complete)
 
-#status/in-progress
+#status/done

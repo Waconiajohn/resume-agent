@@ -526,7 +526,16 @@ export function createProductRoutes<
     }
 
     if (dbState.pipeline_status !== 'running') {
-      return c.json({ error: 'Pipeline is not running for this session' }, 409);
+      return new Response(
+        JSON.stringify({ error: 'Pipeline is not running for this session' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '2',
+          },
+        },
+      );
     }
 
     // Hook: onBeforeRespond — domain-specific pre-respond validation (stale detection, etc.)
@@ -607,7 +616,16 @@ export function createProductRoutes<
       return c.json({ status: 'buffered', gate });
     }
 
-    return c.json({ error: 'No pending gate for this session' }, 404);
+    return new Response(
+      JSON.stringify({ error: 'No pending gate for this session — pipeline may not have reached a gate yet' }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '1',
+        },
+      },
+    );
   });
 
   // ── GET /:sessionId/stream ─────────────────────────────────────

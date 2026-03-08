@@ -1,3 +1,57 @@
+// ─── Production Feature Flag Reference ───────────────────────────────────────
+//
+// All flags default to false (or their dev-appropriate value) in this file.
+// In production, set the following env vars to "true" via Railway dashboard
+// or your deployment environment. Do NOT change the defaults here — defaults
+// are intentionally conservative to protect local dev and staging environments.
+//
+// BUILT AGENTS — set these to true in production:
+//
+//   FF_COVER_LETTER=true          Cover Letter Writer (Agent #8)
+//   FF_NETWORK_INTELLIGENCE=true  Network Intelligence (Agent #9)
+//   FF_INTERVIEW_PREP=true        Interview Prep Agent (Agent #10)
+//   FF_LINKEDIN_OPTIMIZER=true    LinkedIn Optimizer (Agent #11)
+//   FF_CONTENT_CALENDAR=true      Content Calendar (Agent #12)
+//   FF_NETWORKING_OUTREACH=true   Networking Outreach (Agent #13)
+//   FF_JOB_TRACKER=true           Job Application Tracker (Agent #14)
+//   FF_SALARY_NEGOTIATION=true    Salary Negotiation (Agent #15)
+//   FF_EXECUTIVE_BIO=true         Executive Bio (Agent #16)
+//   FF_CASE_STUDY=true            Portfolio / Case Study (Agent #17)
+//   FF_THANK_YOU_NOTE=true        Thank You Note Writer (Agent #18)
+//   FF_PERSONAL_BRAND_AUDIT=true  Personal Brand Audit (Agent #19)
+//   FF_NINETY_DAY_PLAN=true       90-Day Plan Generator (Agent #20)
+//   FF_ONBOARDING=true            Onboarding Assessment Agent (Phase 1A)
+//   FF_MOCK_INTERVIEW=true        Mock Interview Simulation
+//   FF_JOB_FINDER=true            Job Finder
+//   FF_APPLICATION_PIPELINE=true  Application Pipeline CRUD
+//   FF_LINKEDIN_CONTENT=true      LinkedIn Content Writer
+//   FF_LINKEDIN_EDITOR=true       LinkedIn Profile Editor
+//   FF_NETWORKING_CRM=true        Networking CRM
+//   FF_INTERVIEW_DEBRIEF=true     Interview Debrief
+//   FF_COUNTER_OFFER_SIM=true     Counter-Offer Simulation
+//   FF_MOMENTUM=true              Momentum Tracking (Phase 5)
+//   FF_RETIREMENT_BRIDGE=true     Retirement Bridge Assessment (Phase 6)
+//   FF_B2B_OUTPLACEMENT=true      B2B Outplacement Admin Portal (Phase 7)
+//
+// PIPELINE GATES — recommended true in production (already default true in dev):
+//
+//   FF_BLUEPRINT_APPROVAL=true
+//   FF_INTAKE_QUIZ=true
+//   FF_GAP_ANALYSIS_QUIZ=true
+//   FF_QUALITY_REVIEW_APPROVAL=true
+//   FF_POSITIONING_BATCH=true
+//
+// INFRASTRUCTURE FLAGS — leave false unless scaling requires it:
+//
+//   FF_REDIS_BUS=false            Requires REDIS_URL; do not enable until agent
+//                                 loops are resumable and horizontal scaling needed
+//   FF_REDIS_RATE_LIMIT=false     Requires REDIS_URL; falls back to in-memory if
+//                                 Redis is unavailable
+//   FF_SELF_REVIEW_LIGHT=false    Routes self-review to MODEL_LIGHT; A/B only
+//
+// Full deployment instructions: docs/DEPLOYMENT.md
+// ─────────────────────────────────────────────────────────────────────────────
+
 function envBool(key: string, fallback: boolean): boolean {
   const val = process.env[key];
   if (val === undefined) return fallback;
@@ -247,3 +301,26 @@ export const FF_COUNTER_OFFER_SIM = envBool('FF_COUNTER_OFFER_SIM', false);
  * Enables: activity logging, streak computation, coaching nudges, stall detection.
  */
 export const FF_MOMENTUM = envBool('FF_MOMENTUM', false);
+
+// ─── Phase 6: Retirement Bridge ───────────────────────────────────────────────
+
+/**
+ * FF_RETIREMENT_BRIDGE — Enable the Retirement Bridge Assessment Agent routes.
+ *
+ * When false (default), /api/retirement-bridge/* returns 404.
+ * Set FF_RETIREMENT_BRIDGE=true in server/.env to activate.
+ * Assesses retirement readiness across 7 dimensions. Never gives financial advice.
+ */
+export const FF_RETIREMENT_BRIDGE = envBool('FF_RETIREMENT_BRIDGE', false);
+
+// ─── Phase 7: B2B Outplacement ────────────────────────────────────────────────
+
+/**
+ * FF_B2B_OUTPLACEMENT — Enable the B2B Outplacement admin portal routes.
+ *
+ * When false (default), /api/b2b/* returns 404.
+ * Set FF_B2B_OUTPLACEMENT=true in server/.env to activate.
+ * Governs: organization CRUD, contract management, seat provisioning/activation,
+ * cohort management, and aggregate engagement metrics endpoints.
+ */
+export const FF_B2B_OUTPLACEMENT = envBool('FF_B2B_OUTPLACEMENT', false);

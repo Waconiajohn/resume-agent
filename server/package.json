@@ -19,6 +19,7 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build",
+    "smoke-test": "node scripts/smoke-test.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
