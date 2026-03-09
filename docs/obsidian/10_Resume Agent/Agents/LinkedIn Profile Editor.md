@@ -63,7 +63,7 @@ Three dimensions (0-100) in `SectionQualityScores`:
 
 Key fields in `LinkedInEditorState`:
 - `current_profile` — user's existing LinkedIn profile text (optional, used as reference)
-- `analysis` — profile analysis (strengths, gaps, keyword_opportunities, tone_observations)
+- `analysis` — profile analysis (current_strengths, gaps, keyword_opportunities, tone_observations)
 - `sections_completed` — array of approved `ProfileSection` values
 - `section_drafts` — `Partial<Record<ProfileSection, string>>` — approved content per section
 - `section_feedback` — `Partial<Record<ProfileSection, string>>` — user feedback per section

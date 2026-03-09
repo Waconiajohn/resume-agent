@@ -15,7 +15,7 @@ We never fabricate experience, inflate credentials, or misrepresent clients.
 
 ## Platform Status
 
-19 of 33 agents built as of Sprints 60-63. See [[Platform Blueprint]] for the full 33-agent catalog.
+18 of 33 agents built as of Sprints 60-63. See [[Platform Blueprint]] for the full 33-agent catalog.
 
 ### Built Agents (Codebase)
 
@@ -92,7 +92,7 @@ We never fabricate experience, inflate credentials, or misrepresent clients.
 
 ## Test Health
 
-- Server: 2,417 tests passing
+- Server: 2,421 tests passing
 - App: 1,433 tests passing
 - E2E: 2 tests (full pipeline)
 

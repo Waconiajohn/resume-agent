@@ -20,12 +20,12 @@ export type ResponseStatus = 'answered' | 'skipped' | 'deferred';
 export type ImpactBucket = 'high' | 'medium' | 'low' | 'untagged';
 
 export interface QuestionResponseRow {
-  question_id: unknown;
-  stage: unknown;
-  status: unknown;
-  impact_tag: unknown;
-  response: unknown;
-  updated_at: unknown;
+  question_id: string | null;
+  stage: string | null;
+  status: string | null;
+  impact_tag: string | null;
+  response: string | null;
+  updated_at: string | null;
 }
 
 export interface QuestionReuseSummaryRow {
@@ -115,7 +115,7 @@ export function questionnaireAnalytics(questionResponseRows: QuestionResponseRow
     baseCounts[status] += 1;
     byImpact[impactKey].total += 1;
     byImpact[impactKey][status] += 1;
-    if (!latestActivityAt && typeof row.updated_at === 'string') latestActivityAt = row.updated_at;
+    if (typeof row.updated_at === 'string' && (!latestActivityAt || row.updated_at > latestActivityAt)) latestActivityAt = row.updated_at;
   }
 
   return {
@@ -445,7 +445,7 @@ export function normalizeDraftPathDecision(
       })
     : (typeof payload.message === 'string' ? payload.message : '');
   return {
-    stage: payload.stage === 'gap_analysis' ? 'gap_analysis' : 'gap_analysis',
+    stage: typeof payload.stage === 'string' ? payload.stage : 'gap_analysis',
     workflow_mode: normalizedWorkflowMode,
     ready: pathDecisionCompat.ready,
     proceeding_reason: pathDecisionCompat.proceedingReason,
@@ -565,8 +565,8 @@ export function normalizeWorkflowPreferences(
  * or buffers it in the response queue (if no gate is currently pending or the
  * gate names don't match).
  *
- * Used by both workflow.ts (generate-draft-now) and product-route-factory.ts
- * (/respond handler).
+ * Used by workflow.ts (generate-draft-now). Note: product-route-factory.ts
+ * has its own inline gate-persistence logic.
  */
 export async function persistPendingOrBufferedGateResponse(
   sessionId: string,

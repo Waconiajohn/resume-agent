@@ -47,7 +47,7 @@ const writeLetterTool: CoverLetterTool = {
     const letter = [
       `Dear Hiring Manager,`,
       ``,
-      `${plan.opening_hook}. As a ${resume.title} with expertise in ${resume.key_skills.slice(0, 3).join(', ')}, I am excited to bring my experience to ${jd.company_name}.`,
+      `${plan.opening_hook}. As a ${resume.current_title} with expertise in ${resume.key_skills.slice(0, 3).join(', ')}, I am excited to bring my experience to ${jd.company_name}.`,
       ``,
       ...plan.body_points.map(point =>
         `${point}. This experience directly aligns with your team's needs and demonstrates my ability to deliver measurable results.`

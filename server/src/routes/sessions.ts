@@ -7,13 +7,7 @@ import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import { parsePositiveInt, parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import type { PipelineSSEEvent } from '../agents/types.js';
-import {
-  formatPipelineStageLabel,
-  formatPendingGateLabel,
-  buildGroundedWorkflowExplanation,
-  buildGroundedWorkflowSuggestion,
-  buildGroundedPipelineChatReply,
-} from '../lib/session-status-service.js';
+import { buildGroundedPipelineChatReply } from '../lib/session-status-service.js';
 
 const sessions = new Hono();
 

@@ -570,9 +570,10 @@ async function executeToolWithTimeout<
   // Tools that wait for user interaction should not be time-limited by the
   // per-round timeout — the user may take minutes to respond. These tools are
   // still bounded by the overall pipeline timeout via ctx.signal.
-  const isInteractive = tool.name.includes('interview') ||
+  const isInteractive = tool.isInteractive ??
+                        (tool.name.includes('interview') ||
                         tool.name.includes('present_to_user') ||
-                        tool.name.includes('questionnaire');
+                        tool.name.includes('questionnaire'));
 
   if (isInteractive) {
     return await tool.execute(input, ctx);

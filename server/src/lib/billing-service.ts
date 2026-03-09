@@ -32,7 +32,9 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session):
     if (firstDiscount.promotion_code) {
       promoCodeStr = typeof firstDiscount.promotion_code === 'string'
         ? firstDiscount.promotion_code
-        : ((firstDiscount.promotion_code as Stripe.PromotionCode).code ?? null);
+        : (firstDiscount.promotion_code != null
+            ? (firstDiscount.promotion_code as Stripe.PromotionCode).code ?? null
+            : null);
     }
   }
 

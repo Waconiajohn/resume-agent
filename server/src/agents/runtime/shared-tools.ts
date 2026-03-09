@@ -770,6 +770,7 @@ export function createPresentForReview<
     name: config.name,
     description: config.description,
     model_tier: 'orchestrator',
+    isInteractive: true,
     input_schema: {
       type: 'object',
       properties: {},

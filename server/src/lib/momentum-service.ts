@@ -40,7 +40,7 @@ export interface CelebrationResult {
  * Returns true if `earlier` is exactly one calendar day before `later`.
  * Both inputs are UTC date strings (YYYY-MM-DD).
  */
-export function isConsecutiveDay(earlier: string, later: string): boolean {
+function isConsecutiveDay(earlier: string, later: string): boolean {
   const e = new Date(earlier + 'T00:00:00Z');
   const l = new Date(later + 'T00:00:00Z');
   const diffMs = l.getTime() - e.getTime();

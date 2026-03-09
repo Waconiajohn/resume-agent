@@ -146,8 +146,9 @@ export function buildGroundedPipelineChatReply(sessionRow: Record<string, unknow
   const panelLine = lastPanelType
     ? `Last confirmed workspace panel: ${lastPanelType.replace(/_/g, ' ')}.`
     : null;
-  const updatedLine = updatedAt
-    ? `Last confirmed backend update: ${new Date(updatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}.`
+  const parsedDate = updatedAt ? new Date(updatedAt) : null;
+  const updatedLine = parsedDate && !isNaN(parsedDate.getTime())
+    ? `Last confirmed backend update: ${parsedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}.`
     : null;
   const explanationLine = buildGroundedWorkflowExplanation(pipelineStage, pendingGate, pipelineStatus);
   const suggestionLine = buildGroundedWorkflowSuggestion(pipelineStage, pendingGate, pipelineStatus);

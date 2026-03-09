@@ -206,7 +206,12 @@ jobSearchRoutes.get(
     }
 
     // Enrich with NI contacts (best-effort, never blocks)
-    const enrichedRows = await enrichRowsWithContacts(user.id, rows);
+    let enrichedRows = rows;
+    try {
+      enrichedRows = await enrichRowsWithContacts(user.id, rows);
+    } catch (err) {
+      logger.warn({ err, userId: user.id, scanId: scan.id }, 'enrichRowsWithContacts failed — returning unenriched results');
+    }
 
     return c.json({ scan, results: enrichedRows });
   },

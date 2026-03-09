@@ -24,7 +24,7 @@ const searchCareerPagesTool: JobFinderTool = {
   name: 'search_career_pages',
   description:
     'Scrape career pages for companies in the user\'s Network Intelligence watchlist. ' +
-    'Fetches target titles from ni_client_target_titles and companies from ni_company_directory. ' +
+    'Fetches target titles from ni_client_target_titles and companies from company_directory. ' +
     'Rate-limited to 50 companies per run. Results are stored in scratchpad as career_page_results.',
   model_tier: 'light',
   input_schema: {

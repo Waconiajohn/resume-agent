@@ -40,7 +40,7 @@ Three delivery methods with different character constraints and coaching guidanc
 |--------|-----------|-------------|
 | `group_message` | 8,000 | Free messaging via shared LinkedIn groups (preferred — no credits) |
 | `connection_request` | 300 | Direct connection request with note |
-| `inmail` | 1,900 | LinkedIn InMail (uses ~5 credits/week) |
+| `inmail` | 1,900 | LinkedIn InMail (you get ~5/week on most plans) |
 
 The selected `MessagingMethod` is stored in `state.messaging_method` and injected into the writer's context to enforce character limits and framing.
 

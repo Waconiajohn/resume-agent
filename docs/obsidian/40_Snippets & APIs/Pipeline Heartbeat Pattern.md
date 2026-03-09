@@ -1,7 +1,7 @@
 # Pipeline Heartbeat Pattern
 
 **Date documented:** 2026-03-09
-**Sprint introduced:** Sprint 8 (pipeline.ts) / Sprint 13 (product-route-factory.ts)
+**Sprint introduced:** Sprint 13 (product-route-factory.ts)
 **Files:** `server/src/routes/product-route-factory.ts`
 
 ## Problem
@@ -50,7 +50,7 @@ heartbeatTimer.unref();                       // don't block Node.js process exi
 - `.eq('pipeline_status', 'running')` guard — prevents accidental touches to sessions that have already completed or errored during the heartbeat interval
 - Non-blocking `.then()` — heartbeat failure is logged as a warning but never propagates
 - `runningProductPipelines.has(sessionId)` guard — self-terminates if the pipeline finishes between heartbeats
-- Timer is NOT cleared in `.finally()` — the `runningProductPipelines` guard handles cleanup because `.finally()` runs before the timer fires again
+- Timer IS cleared in `.finally()` via `clearInterval(heartbeatTimer)` — the `runningProductPipelines` guard also handles cleanup as a belt-and-suspenders safety measure
 
 ## Thresholds
 

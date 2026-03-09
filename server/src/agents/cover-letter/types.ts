@@ -23,7 +23,7 @@ export interface CoverLetterState extends BaseState {
   /** Parsed resume key points */
   resume_data?: {
     name: string;
-    title: string;
+    current_title: string;
     key_skills: string[];
     key_achievements: string[];
   };

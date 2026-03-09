@@ -64,7 +64,7 @@ export interface ProcessNewTouchpointResult {
  *   total <= 3  →  +6 days  (second or third touch)
  *   total >= 4  →  null     (sequence complete)
  */
-export function computeNextFollowupDate(totalTouchpoints: number): string | null {
+function computeNextFollowupDate(totalTouchpoints: number): string | null {
   if (totalTouchpoints <= 1) {
     return new Date(Date.now() + FIRST_TOUCH_FOLLOWUP_DAYS * 24 * 60 * 60 * 1000).toISOString();
   }
@@ -119,7 +119,8 @@ export async function processNewTouchpoint(
   const { count: touchpointCount } = await supabaseAdmin
     .from('contact_touchpoints')
     .select('id', { count: 'exact', head: true })
-    .eq('contact_id', contactId);
+    .eq('contact_id', contactId)
+    .eq('user_id', userId);
 
   const total = touchpointCount ?? 0;
 

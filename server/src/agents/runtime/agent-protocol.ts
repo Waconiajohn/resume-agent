@@ -47,6 +47,13 @@ export interface AgentTool<
   input_schema: ToolInputSchema;
   /** Which model tier to use for this tool's LLM calls (if any) */
   model_tier?: 'primary' | 'mid' | 'orchestrator' | 'light';
+  /**
+   * When true, the agent loop skips the per-round timeout for this tool.
+   * Use for tools that pause the loop waiting for user input (e.g. interview,
+   * present_to_user, questionnaire). Falls back to name-based heuristics when
+   * not set.
+   */
+  isInteractive?: boolean;
   execute: (input: Record<string, unknown>, ctx: AgentContext<TState, TEvent>) => Promise<unknown>;
 }
 
