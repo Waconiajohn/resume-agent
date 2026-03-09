@@ -129,7 +129,7 @@ test.describe.serial('Quality Validation', () => {
       results.push({ label: fixture.label, capture, durationMs });
 
       // Verify completion
-      await expect(page.getByText('Your Resume Is Ready!')).toBeVisible({
+      await expect(page.getByText('Your Resume Is Ready!').first()).toBeVisible({
         timeout: 10_000,
       });
 

@@ -23,12 +23,12 @@ import type { Page, Locator } from '@playwright/test';
 import type { PipelineCaptureData } from './pipeline-capture';
 import { captureQualityScores, captureSectionContent } from './pipeline-capture';
 
-// Groq pipelines complete in ~2-3 min total. Timeouts calibrated accordingly.
-const POLL_INTERVAL_MS = 2_000;          // Groq responds sub-second — poll faster
-const MAX_WAIT_MS = 12 * 60 * 1_000;    // 12 min safety (was 55 min for Z.AI)
-const STAGE_TIMEOUT_MS = 3 * 60 * 1_000; // 3 min per stage (was 10 min)
-const RESPONSE_COOLDOWN_MS = 10_000;     // Don't re-respond to same panel for 10s
-const POST_RESPONSE_DELAY_MS = 3_000;    // Wait 3s after API-triggering actions (was 5s)
+// Groq pipelines complete in ~2-3 min total. Timeouts calibrated for sub-second LLM responses.
+const POLL_INTERVAL_MS = 1_000;          // Groq responds sub-second — poll every 1s
+const MAX_WAIT_MS = 8 * 60 * 1_000;     // 8 min safety (Groq pipelines ~2-3 min)
+const STAGE_TIMEOUT_MS = 2 * 60 * 1_000; // 2 min per stage (Groq writes sections in <10s)
+const RESPONSE_COOLDOWN_MS = 5_000;      // Don't re-respond to same panel for 5s
+const POST_RESPONSE_DELAY_MS = 1_500;    // Wait 1.5s after API-triggering actions
 const MAX_CONSECUTIVE_409 = 3;           // Fail fast after 3 consecutive 409 errors
 
 type PanelType =
@@ -118,19 +118,19 @@ async function detectCurrentPanel(page: Page): Promise<PanelType> {
     const text = panel.textContent || '';
     const buttons = btnTexts(panel);
 
-    // 3. Positioning interview — "Why Me Interview" header
-    if (text.includes('Why Me Interview')) return 'positioning_interview';
-
-    // 4. Section review — has "Looks Good" button
+    // 3. Section review — has "Looks Good" button
     if (buttons.some((b) => /Looks Good/i.test(b))) return 'section_review';
 
-    // 5. Questionnaire — has Back + Continue/Submit/Finish Batch, no Looks Good
-    const hasBack = buttons.some((b) => /^Back$/i.test(b));
+    // 4. Questionnaire — has Continue/Submit/Finish Batch (Back may not exist on first question)
+    //    Check BEFORE positioning_interview because batch interviews render as questionnaires
     const hasContinue = buttons.some(
-      (b) => /Continue|Submit|Finish Batch/i.test(b),
+      (b) => /Continue|Submit|Finish Batch|^Next$/i.test(b),
     );
     const hasLooksGood = buttons.some((b) => /Looks Good/i.test(b));
-    if (hasBack && hasContinue && !hasLooksGood) return 'questionnaire';
+    if (hasContinue && !hasLooksGood) return 'questionnaire';
+
+    // 5. Positioning interview — legacy single-question path (rarely fires with batch mode)
+    if (text.includes('Why Me Interview') || text.includes('Positioning Interview')) return 'positioning_interview';
 
     // 6. Blueprint review — both header text AND approve button
     if (text.includes('Resume Blueprint')) {
@@ -243,7 +243,7 @@ async function respondToPositioningQuestion(page: Page): Promise<void> {
     else ta.value = text;
     ta.dispatchEvent(new Event('input', { bubbles: true }));
   }, { sel: PANEL_SEL, text: ANSWER_TEXT });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(300);
 
   // Step 2: Click Continue button (triggers API call)
   const clicked = await page.evaluate((sel) => {
@@ -278,14 +278,14 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
   const MAX_QUESTIONS = 20;
 
   for (let i = 0; i < MAX_QUESTIONS; i++) {
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // Step 1: Check if we're still on a questionnaire (DOM check)
     const hasActionBtn = await page.evaluate((sel) => {
       const panel = document.querySelector(sel);
       if (!panel) return false;
       return Array.from(panel.querySelectorAll('button')).some(
-        (b) => /Continue|Submit|Finish Batch/i.test(b.textContent?.trim() || ''),
+        (b) => /Continue|Submit|Finish Batch|^Next$/i.test(b.textContent?.trim() || ''),
       );
     }, PANEL_SEL);
     if (!hasActionBtn) break;
@@ -311,20 +311,23 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
         (ratings[mid] as HTMLElement).click();
       }
     }, PANEL_SEL);
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(200);
 
-    // Step 3: Fill custom textarea if present (Playwright fill with force)
-    const customTextarea = page
-      .locator(`${PANEL_SEL} textarea[aria-label="Custom answer"]`)
-      .first();
-    if ((await customTextarea.count().catch(() => 0)) > 0) {
-      await customTextarea
-        .fill('This aligns well with my experience and career goals.', {
-          force: true,
-        })
-        .catch(() => {});
-      await page.waitForTimeout(300);
-    }
+    // Step 3: Fill custom textarea if present via native setter (bypasses zero-height layout)
+    await page.evaluate((sel) => {
+      const panel = document.querySelector(sel);
+      if (!panel) return;
+      const ta = panel.querySelector('textarea[aria-label="Custom answer"]') as HTMLTextAreaElement | null;
+      if (!ta) return;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, 'value',
+      )?.set;
+      const text = 'This aligns well with my experience and career goals.';
+      if (nativeSetter) nativeSetter.call(ta, text);
+      else ta.value = text;
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }, PANEL_SEL);
+    await page.waitForTimeout(200);
 
     // Step 4: Click action button (Continue/Submit/Finish Batch) via DOM
     const clickResult = await page.evaluate((sel) => {
@@ -334,7 +337,7 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
 
       const actionBtn = buttons.find(
         (b) =>
-          /Continue|Submit|Finish Batch/i.test(b.textContent?.trim() || ''),
+          /Continue|Submit|Finish Batch|^Next$/i.test(b.textContent?.trim() || ''),
       );
       if (!actionBtn) return 'break';
 
@@ -360,7 +363,7 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
 
     if (clickResult === 'break' || clickResult === 'disabled') break;
     if (clickResult === 'skipped') {
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
       continue;
     }
 
@@ -373,8 +376,8 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
         '[pipeline-responder] Questionnaire submitted, waiting for pipeline to advance...',
       );
 
-      const QUESTIONNAIRE_ADVANCE_TIMEOUT_MS = 2 * 60 * 1_000; // 2 min (was 5 min for Z.AI)
-      const QUESTIONNAIRE_POLL_MS = 3_000;
+      const QUESTIONNAIRE_ADVANCE_TIMEOUT_MS = 90 * 1_000; // 90s (Groq processes fast)
+      const QUESTIONNAIRE_POLL_MS = 1_500;
       const advanceStart = Date.now();
 
       while (Date.now() - advanceStart < QUESTIONNAIRE_ADVANCE_TIMEOUT_MS) {
@@ -423,7 +426,7 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
     }
 
     // Continue is client-side only — brief pause for UI transition
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(400);
   }
 }
 
@@ -440,7 +443,7 @@ async function approveBlueprint(page: Page): Promise<void> {
     const scrollContainer = panel.querySelector('[data-panel-scroll]');
     if (scrollContainer) scrollContainer.scrollTo(0, scrollContainer.scrollHeight);
   }, PANEL_SEL);
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(300);
 
   // Find and click approve button via DOM
   const clicked = await page.evaluate((sel) => {
@@ -493,8 +496,8 @@ async function getSectionTitle(page: Page): Promise<string | null> {
  */
 async function approveSectionReview(page: Page): Promise<void> {
   // Poll for the "Looks Good" button to exist in DOM (section may still be writing)
-  const WAIT_FOR_BUTTON_MS = 30_000;
-  const BUTTON_POLL_MS = 2_000;
+  const WAIT_FOR_BUTTON_MS = 20_000;
+  const BUTTON_POLL_MS = 1_000;
   const btnStart = Date.now();
   let btnFound = false;
 
@@ -521,20 +524,21 @@ async function approveSectionReview(page: Page): Promise<void> {
   // Capture the current section title before clicking
   const currentTitle = await getSectionTitle(page);
 
-  // Brief wait for any pending action locks to clear
-  await page.waitForTimeout(1_000);
+  // Helper: click "Looks Good" via DOM, returns true if clicked
+  async function clickLooksGood(): Promise<boolean> {
+    await page.waitForTimeout(500); // Wait for action locks to clear
+    return page.evaluate((sel) => {
+      const panel = document.querySelector(sel);
+      if (!panel) return false;
+      const btn = Array.from(panel.querySelectorAll('button')).find(
+        (b) => /Looks Good/i.test(b.textContent?.trim() || '') && !b.disabled,
+      );
+      if (btn) { (btn as HTMLElement).click(); return true; }
+      return false;
+    }, PANEL_SEL);
+  }
 
-  // Click "Looks Good" via DOM
-  const clicked = await page.evaluate((sel) => {
-    const panel = document.querySelector(sel);
-    if (!panel) return false;
-    const btn = Array.from(panel.querySelectorAll('button')).find(
-      (b) => /Looks Good/i.test(b.textContent?.trim() || '') && !b.disabled,
-    );
-    if (btn) { (btn as HTMLElement).click(); return true; }
-    return false;
-  }, PANEL_SEL);
-
+  const clicked = await clickLooksGood();
   if (!clicked) {
     // eslint-disable-next-line no-console
     console.warn('[pipeline-responder] Section review: "Looks Good" button disabled or gone');
@@ -543,18 +547,15 @@ async function approveSectionReview(page: Page): Promise<void> {
 
   // eslint-disable-next-line no-console
   console.log(
-    `[pipeline-responder] Section review: clicking "Looks Good" for "${currentTitle}"`,
+    `[pipeline-responder] Section review: clicked "Looks Good" for "${currentTitle}"`,
   );
 
-  // Wait for the panel to advance. Groq writes sections in <10s typically.
-  const SECTION_ADVANCE_TIMEOUT_MS = 2 * 60 * 1_000; // 2 min (was 5 min for Z.AI)
-  const SECTION_POLL_MS = 3_000;
+  // Wait for the panel to advance. Re-click every 15s if stuck (click may not have registered).
+  const SECTION_ADVANCE_TIMEOUT_MS = 60 * 1_000; // 60s total (Groq writes fast)
+  const SECTION_POLL_MS = 1_500;
+  const RECLICK_INTERVAL_MS = 15_000; // Re-click if no progress after 15s
   const advanceStart = Date.now();
-
-  // eslint-disable-next-line no-console
-  console.log(
-    '[pipeline-responder] Section review: waiting for panel to advance...',
-  );
+  let lastClickAt = Date.now();
 
   while (Date.now() - advanceStart < SECTION_ADVANCE_TIMEOUT_MS) {
     await page.waitForTimeout(SECTION_POLL_MS);
@@ -579,6 +580,18 @@ async function approveSectionReview(page: Page): Promise<void> {
       return;
     }
 
+    // Re-click "Looks Good" if stuck for 15s (the previous click may not have registered)
+    if (Date.now() - lastClickAt > RECLICK_INTERVAL_MS) {
+      const reclicked = await clickLooksGood();
+      if (reclicked) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[pipeline-responder] Section review: re-clicked "Looks Good" for "${currentTitle}" (${Math.round((Date.now() - advanceStart) / 1000)}s)`,
+        );
+        lastClickAt = Date.now();
+      }
+    }
+
     // Heartbeat log every ~30s
     const waitSec = Math.round((Date.now() - advanceStart) / 1000);
     if (waitSec > 0 && waitSec % 30 < SECTION_POLL_MS / 1000 + 1) {
@@ -592,7 +605,7 @@ async function approveSectionReview(page: Page): Promise<void> {
   // eslint-disable-next-line no-console
   console.warn(
     `[pipeline-responder] Section review: timed out waiting for advance after ` +
-      `${Math.round(SECTION_ADVANCE_TIMEOUT_MS / 60_000)} min (section: "${currentTitle}")`,
+      `${Math.round(SECTION_ADVANCE_TIMEOUT_MS / 1000)}s (section: "${currentTitle}")`,
   );
 }
 
@@ -792,9 +805,9 @@ export async function runPipelineToCompletion(
           (Date.now() - lastActivityAt) / 1000,
         );
 
-        // Recovery: when stuck 2+ min with no interactive panel, try "Generate Draft Now"
+        // Recovery: when stuck 60s+ with no interactive panel, try "Generate Draft Now"
         // This button bypasses the coverage threshold and forces momentum mode.
-        if (sinceActivity > 120 && !lastResponded.has('generate_draft_now')) {
+        if (sinceActivity > 60 && !lastResponded.has('generate_draft_now')) {
           const hasDraftBtn = await domButtonExists(
             page,
             /Generate Draft Now/i,
