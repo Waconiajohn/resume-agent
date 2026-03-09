@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -97,15 +98,15 @@ export function useJobFinder() {
 
       switch (eventType) {
         case 'stage_start':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'search_progress': {
@@ -113,7 +114,7 @@ export function useJobFinder() {
           if (Array.isArray(searches)) {
             setState((prev) => ({ ...prev, booleanSearches: searches }));
           }
-          const message = data.message as string | undefined;
+          const message = typeof data.message === 'string' ? data.message : undefined;
           if (message) {
             addActivity(message, 'search');
           }
@@ -152,7 +153,7 @@ export function useJobFinder() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

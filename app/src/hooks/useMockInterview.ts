@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString } from '@/lib/safe-cast';
 
 export type MockInterviewStatus =
   | 'idle'
@@ -127,15 +128,15 @@ export function useMockInterview() {
 
       switch (eventType) {
         case 'stage_start':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'question_presented': {
@@ -197,7 +198,7 @@ export function useMockInterview() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString, safeNumber } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -82,36 +83,36 @@ export function useCaseStudy() {
 
       switch (eventType) {
         case 'stage_start':
-          setState((prev) => ({ ...prev, currentStage: data.stage as string }));
-          addActivity(data.message as string, data.stage as string);
+          setState((prev) => ({ ...prev, currentStage: safeString(data.stage) }));
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'achievement_selected': {
-          const title = data.title as string;
-          const company = data.company as string;
-          const impactScore = data.impact_score as number;
+          const title = safeString(data.title);
+          const company = safeString(data.company);
+          const impactScore = safeNumber(data.impact_score);
           addActivity(`Selected: ${title} at ${company} (impact: ${impactScore})`, 'selection');
           break;
         }
 
         case 'case_study_drafted': {
-          const title = data.title as string;
-          const wordCount = data.word_count as number;
+          const title = safeString(data.title);
+          const wordCount = safeNumber(data.word_count);
           addActivity(`Drafted: ${title} (${wordCount} words)`, 'drafting');
           break;
         }
 
         case 'case_study_complete': {
-          const title = data.title as string;
-          const qualityScore = data.quality_score as number;
+          const title = safeString(data.title);
+          const qualityScore = safeNumber(data.quality_score);
           addActivity(`Reviewed: ${title} — quality: ${qualityScore}`, 'quality');
           break;
         }
@@ -120,7 +121,7 @@ export function useCaseStudy() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: data.report as string,
+            report: safeString(data.report),
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
           }));
           abortRef.current?.abort();
@@ -130,7 +131,7 @@ export function useCaseStudy() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

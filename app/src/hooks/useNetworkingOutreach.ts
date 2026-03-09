@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -88,21 +89,21 @@ export function useNetworkingOutreach() {
 
       switch (eventType) {
         case 'stage_start':
-          setState((prev) => ({ ...prev, currentStage: data.stage as string }));
-          addActivity(data.message as string, data.stage as string);
+          setState((prev) => ({ ...prev, currentStage: safeString(data.stage) }));
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'message_progress': {
-          const messageType = data.message_type as string;
-          const status = data.status as string;
+          const messageType = safeString(data.message_type);
+          const status = safeString(data.status);
           const label = messageType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
           if (status === 'drafting') {
             addActivity(`Drafting ${label}...`, 'writing');
@@ -116,7 +117,7 @@ export function useNetworkingOutreach() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: data.report as string,
+            report: safeString(data.report),
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
             messageCount: typeof data.message_count === 'number' ? data.message_count : prev.messageCount,
           }));
@@ -127,7 +128,7 @@ export function useNetworkingOutreach() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

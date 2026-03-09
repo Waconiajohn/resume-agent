@@ -22,6 +22,7 @@ import { requestNotificationPermission, sendGateNotification } from '@/lib/notif
 import { sanitizeSectionContextPayload, asReplanStaleNodes, safeParse } from '@/hooks/useSSEDataValidation';
 import type { PipelineStateManager } from '@/hooks/usePipelineStateManager';
 import type { ActivityMessage } from '@/types/activity';
+import { safeString } from '@/lib/safe-cast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -93,9 +94,9 @@ export function handleSessionRestore(data: Record<string, unknown>, state: Pipel
   const pendingGate = typeof data.pending_gate === 'string' ? data.pending_gate : null;
   if (data.pipeline_stage && typeof data.pipeline_stage === 'string') {
     state.setPipelineStage(data.pipeline_stage as PipelineStage);
-    state.setCurrentPhase(data.pipeline_stage as string);
+    state.setCurrentPhase(safeString(data.pipeline_stage));
   } else if (data.current_phase) {
-    state.setCurrentPhase(data.current_phase as string);
+    state.setCurrentPhase(safeString(data.current_phase));
   }
   if (Array.isArray(data.messages) && data.messages.length) {
     try {
@@ -153,15 +154,13 @@ export function handleSessionRestore(data: Record<string, unknown>, state: Pipel
       : null,
   });
   if (data.pending_phase_transition && data.pending_tool_call_id) {
-    const restorePhase = (
-      typeof data.pipeline_stage === 'string'
-        ? data.pipeline_stage
-        : data.current_phase
-    ) as string;
+    const restorePhase = safeString(
+      typeof data.pipeline_stage === 'string' ? data.pipeline_stage : data.current_phase,
+    );
     state.setPhaseGate({
-      toolCallId: data.pending_tool_call_id as string,
+      toolCallId: safeString(data.pending_tool_call_id),
       currentPhase: restorePhase,
-      nextPhase: data.pending_phase_transition as string,
+      nextPhase: safeString(data.pending_phase_transition),
       phaseSummary: 'Phase complete (restored after reconnect)',
       nextPhasePreview: '',
     });
@@ -436,9 +435,9 @@ export function handleComplete(
   state.setPanelType('completion');
   state.setPanelData({
     type: 'completion',
-    ats_score: (data?.ats_score as number) ?? undefined,
-    requirements_addressed: (data?.requirements_addressed as number) ?? undefined,
-    sections_rewritten: (data?.sections_rewritten as number) ?? undefined,
+    ats_score: typeof data?.ats_score === 'number' ? data.ats_score : undefined,
+    requirements_addressed: typeof data?.requirements_addressed === 'number' ? data.requirements_addressed : undefined,
+    sections_rewritten: typeof data?.sections_rewritten === 'number' ? data.sections_rewritten : undefined,
   });
   abortCurrentConnection();
 }
@@ -459,7 +458,7 @@ export function handleError(
     { expectedNextAction: 'Reconnect or refresh the workspace before retrying' },
   );
   state.setIsPipelineGateActive(false);
-  state.setError(errorMsg as string);
+  state.setError(typeof errorMsg === 'string' ? errorMsg : String(errorMsg));
   state.setIsProcessing(false);
 }
 
@@ -497,7 +496,7 @@ export function handleStageStart(
   );
   state.setIsPipelineGateActive(false);
   state.setPipelineStage(data.stage as PipelineStage);
-  state.setCurrentPhase(data.stage as string);
+  state.setCurrentPhase(safeString(data.stage));
   state.setIsProcessing(true);
   state.setPipelineActivityMeta((prev) => ({
     ...prev,
@@ -533,14 +532,14 @@ export function handleStageComplete(
   state.setIsProcessing(false);
   state.setPipelineActivityMeta((prev) => ({
     ...prev,
-    last_stage_duration_ms: Number.isFinite(data.duration_ms as number)
-      ? Math.max(0, Number(data.duration_ms))
+    last_stage_duration_ms: typeof data.duration_ms === 'number' && Number.isFinite(data.duration_ms)
+      ? Math.max(0, data.duration_ms)
       : prev.last_stage_duration_ms ?? null,
   }));
   pushActivityMessage(state, message, typeof data.stage === 'string' ? data.stage : undefined, true);
   if (data.duration_ms && import.meta.env.DEV) {
     console.log(
-      `[pipeline] ${data.stage} completed in ${((data.duration_ms as number) / 1000).toFixed(1)}s`,
+      `[pipeline] ${safeString(data.stage)} completed in ${(Number(data.duration_ms) / 1000).toFixed(1)}s`,
     );
   }
 }
@@ -566,7 +565,7 @@ export function handlePositioningQuestion(
   state.setPanelData({
     type: 'positioning_interview',
     current_question: q,
-    questions_total: (data.questions_total as number) ?? q.question_number,
+    questions_total: typeof data.questions_total === 'number' ? data.questions_total : q.question_number,
     questions_answered: q.question_number - 1,
     category_progress: data.category_progress as CategoryProgress[] | undefined,
     encouraging_text: q.encouraging_text,
@@ -643,8 +642,8 @@ export function handleBlueprintReady(
   state.setPanelType('blueprint_review');
   state.setPanelData({
     type: 'blueprint_review',
-    target_role: (bp.target_role as string) ?? '',
-    positioning_angle: (bp.positioning_angle as string) ?? '',
+    target_role: safeString(bp.target_role),
+    positioning_angle: safeString(bp.positioning_angle),
     section_plan: bp.section_plan as { order: string[]; rationale: string },
     age_protection: bp.age_protection as {
       flags: Array<{ item: string; risk: string; action: string }>;
@@ -698,8 +697,8 @@ export function handleSectionDraft(
   );
   state.setIsProcessing(false);
   state.setIsPipelineGateActive(true);
-  const section = data.section as string;
-  const content = data.content as string;
+  const section = safeString(data.section);
+  const content = safeString(data.content);
   state.setSectionDraft({ section, content });
   state.sectionsMapRef.current[section] = content;
   state.setSectionDraftEntry(section, content);
@@ -712,7 +711,7 @@ export function handleSectionDraft(
     type: 'section_review',
     section,
     content,
-    review_token: (data.review_token as string | undefined) ?? undefined,
+    review_token: typeof data.review_token === 'string' ? data.review_token : undefined,
     ...(contextForSection ? { context: contextForSection } : {}),
   } as PanelData);
   sendGateNotification('Section is ready for review');
@@ -730,8 +729,8 @@ export function handleSectionRevised(
     'system',
     { stage: 'revision' },
   );
-  const section = data.section as string;
-  const content = data.content as string;
+  const section = safeString(data.section);
+  const content = safeString(data.content);
   state.setSectionDraft({ section, content });
   state.sectionsMapRef.current[section] = content;
   state.setSectionDraftEntry(section, content);
@@ -741,7 +740,7 @@ export function handleSectionApproved(
   data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
-  const section = data.section as string | undefined;
+  const section = typeof data.section === 'string' ? data.section : undefined;
   if (!section) return;
 
   // Use sectionsMapRef content, fall back to event payload content
@@ -837,8 +836,8 @@ export function handleDraftReadiness(
                 ? 'partial'
                 : 'gap') as 'partial' | 'gap',
               priority,
-              evidence_count: Number.isFinite(item.evidence_count as number)
-                ? Math.max(0, Number(item.evidence_count))
+              evidence_count: typeof item.evidence_count === 'number' && Number.isFinite(item.evidence_count)
+                ? Math.max(0, item.evidence_count)
                 : 0,
             };
           })
@@ -856,64 +855,58 @@ export function handleDraftReadiness(
       data.workflow_mode === 'fast_draft' || data.workflow_mode === 'deep_dive'
         ? data.workflow_mode
         : 'balanced',
-    evidence_count: Number.isFinite(data.evidence_count as number)
-      ? Number(data.evidence_count)
+    evidence_count: typeof data.evidence_count === 'number' && Number.isFinite(data.evidence_count)
+      ? data.evidence_count
       : 0,
-    minimum_evidence_target: Number.isFinite(data.minimum_evidence_target as number)
-      ? Number(data.minimum_evidence_target)
+    minimum_evidence_target: typeof data.minimum_evidence_target === 'number' && Number.isFinite(data.minimum_evidence_target)
+      ? data.minimum_evidence_target
       : 0,
-    coverage_score: Number.isFinite(data.coverage_score as number)
-      ? Number(data.coverage_score)
+    coverage_score: typeof data.coverage_score === 'number' && Number.isFinite(data.coverage_score)
+      ? data.coverage_score
       : 0,
-    coverage_threshold: Number.isFinite(data.coverage_threshold as number)
-      ? Number(data.coverage_threshold)
+    coverage_threshold: typeof data.coverage_threshold === 'number' && Number.isFinite(data.coverage_threshold)
+      ? data.coverage_threshold
       : 0,
     ready: data.ready === true,
-    remaining_evidence_needed: Number.isFinite(data.remaining_evidence_needed as number)
-      ? Math.max(0, Number(data.remaining_evidence_needed))
+    remaining_evidence_needed: typeof data.remaining_evidence_needed === 'number' && Number.isFinite(data.remaining_evidence_needed)
+      ? Math.max(0, data.remaining_evidence_needed)
       : undefined,
-    remaining_coverage_needed: Number.isFinite(data.remaining_coverage_needed as number)
-      ? Math.max(0, Number(data.remaining_coverage_needed))
+    remaining_coverage_needed: typeof data.remaining_coverage_needed === 'number' && Number.isFinite(data.remaining_coverage_needed)
+      ? Math.max(0, data.remaining_coverage_needed)
       : undefined,
     blocking_reasons: blockingReasons,
     gap_breakdown: gapBreakdownRaw
       ? {
-          total: Number.isFinite(gapBreakdownRaw.total as number)
-            ? Math.max(0, Number(gapBreakdownRaw.total))
+          total: typeof gapBreakdownRaw.total === 'number' && Number.isFinite(gapBreakdownRaw.total)
+            ? Math.max(0, gapBreakdownRaw.total)
             : 0,
-          strong: Number.isFinite(gapBreakdownRaw.strong as number)
-            ? Math.max(0, Number(gapBreakdownRaw.strong))
+          strong: typeof gapBreakdownRaw.strong === 'number' && Number.isFinite(gapBreakdownRaw.strong)
+            ? Math.max(0, gapBreakdownRaw.strong)
             : 0,
-          partial: Number.isFinite(gapBreakdownRaw.partial as number)
-            ? Math.max(0, Number(gapBreakdownRaw.partial))
+          partial: typeof gapBreakdownRaw.partial === 'number' && Number.isFinite(gapBreakdownRaw.partial)
+            ? Math.max(0, gapBreakdownRaw.partial)
             : 0,
-          gap: Number.isFinite(gapBreakdownRaw.gap as number)
-            ? Math.max(0, Number(gapBreakdownRaw.gap))
+          gap: typeof gapBreakdownRaw.gap === 'number' && Number.isFinite(gapBreakdownRaw.gap)
+            ? Math.max(0, gapBreakdownRaw.gap)
             : 0,
         }
       : undefined,
     evidence_quality: evidenceQualityRaw
       ? {
-          user_validated_count: Number.isFinite(
-            evidenceQualityRaw.user_validated_count as number,
-          )
-            ? Math.max(0, Number(evidenceQualityRaw.user_validated_count))
+          user_validated_count: typeof evidenceQualityRaw.user_validated_count === 'number' && Number.isFinite(evidenceQualityRaw.user_validated_count)
+            ? Math.max(0, evidenceQualityRaw.user_validated_count)
             : 0,
-          metrics_defensible_count: Number.isFinite(
-            evidenceQualityRaw.metrics_defensible_count as number,
-          )
-            ? Math.max(0, Number(evidenceQualityRaw.metrics_defensible_count))
+          metrics_defensible_count: typeof evidenceQualityRaw.metrics_defensible_count === 'number' && Number.isFinite(evidenceQualityRaw.metrics_defensible_count)
+            ? Math.max(0, evidenceQualityRaw.metrics_defensible_count)
             : 0,
-          mapped_requirement_evidence_count: Number.isFinite(
-            evidenceQualityRaw.mapped_requirement_evidence_count as number,
-          )
-            ? Math.max(0, Number(evidenceQualityRaw.mapped_requirement_evidence_count))
+          mapped_requirement_evidence_count: typeof evidenceQualityRaw.mapped_requirement_evidence_count === 'number' && Number.isFinite(evidenceQualityRaw.mapped_requirement_evidence_count)
+            ? Math.max(0, evidenceQualityRaw.mapped_requirement_evidence_count)
             : 0,
         }
       : undefined,
     high_impact_remaining: highImpactRemaining,
-    suggested_question_count: Number.isFinite(data.suggested_question_count as number)
-      ? Math.max(0, Number(data.suggested_question_count))
+    suggested_question_count: typeof data.suggested_question_count === 'number' && Number.isFinite(data.suggested_question_count)
+      ? Math.max(0, data.suggested_question_count)
       : undefined,
     note: typeof data.note === 'string' ? data.note : undefined,
   });
@@ -940,8 +933,8 @@ export function handleWorkflowReplanRequested(
   state.setWorkflowReplan({
     state: 'requested',
     reason: 'benchmark_assumptions_updated',
-    benchmark_edit_version: Number.isFinite(data.benchmark_edit_version as number)
-      ? Number(data.benchmark_edit_version)
+    benchmark_edit_version: typeof data.benchmark_edit_version === 'number' && Number.isFinite(data.benchmark_edit_version)
+      ? data.benchmark_edit_version
       : 0,
     rebuild_from_stage: 'gap_analysis',
     requires_restart: data.requires_restart === true,
@@ -967,8 +960,8 @@ export function handleWorkflowReplanStarted(
   state.setWorkflowReplan((prev) => ({
     state: 'in_progress',
     reason: 'benchmark_assumptions_updated',
-    benchmark_edit_version: Number.isFinite(data.benchmark_edit_version as number)
-      ? Number(data.benchmark_edit_version)
+    benchmark_edit_version: typeof data.benchmark_edit_version === 'number' && Number.isFinite(data.benchmark_edit_version)
+      ? data.benchmark_edit_version
       : (prev?.benchmark_edit_version ?? 0),
     rebuild_from_stage: 'gap_analysis',
     requires_restart: prev?.requires_restart,
@@ -1003,8 +996,8 @@ export function handleWorkflowReplanCompleted(
   state.setWorkflowReplan((prev) => ({
     state: 'completed',
     reason: 'benchmark_assumptions_updated',
-    benchmark_edit_version: Number.isFinite(data.benchmark_edit_version as number)
-      ? Number(data.benchmark_edit_version)
+    benchmark_edit_version: typeof data.benchmark_edit_version === 'number' && Number.isFinite(data.benchmark_edit_version)
+      ? data.benchmark_edit_version
       : (prev?.benchmark_edit_version ?? 0),
     rebuild_from_stage: 'gap_analysis',
     requires_restart: false,
@@ -1052,7 +1045,7 @@ export function handleSystemMessage(
   data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
-  const content = (data.content as string | undefined)?.trim();
+  const content = (typeof data.content === 'string' ? data.content : undefined)?.trim();
   if (!content) return;
   state.setMessages((prev) => [
     ...prev,
@@ -1069,8 +1062,8 @@ export function handleSectionError(
   data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
-  const section = (data.section as string | undefined) ?? 'section';
-  const err = (data.error as string | undefined) ?? 'Unknown error';
+  const section = (typeof data.section === 'string' ? data.section : undefined) ?? 'section';
+  const err = (typeof data.error === 'string' ? data.error : undefined) ?? 'Unknown error';
   state.setMessages((prev) => [
     ...prev,
     {
@@ -1105,7 +1098,7 @@ export function handlePipelineComplete(
   } else {
     const sections = state.sectionsMapRef.current;
     const contactInfo = data?.contact_info as FinalResume['contact_info'] | undefined;
-    const companyName = data?.company_name as string | undefined;
+    const companyName = typeof data?.company_name === 'string' ? data.company_name : undefined;
     const builtResume: FinalResume = {
       contact_info: contactInfo ?? undefined,
       company_name: companyName ?? undefined,
@@ -1160,7 +1153,7 @@ export function handlePipelineError(
   );
   state.setIsPipelineGateActive(false);
   state.setIsProcessing(false);
-  state.setError((data?.error as string) ?? 'Pipeline error');
+  state.setError(typeof data?.error === 'string' ? data.error : 'Pipeline error');
 }
 
 // ─── markPipelineProgress type ───────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString } from '@/lib/safe-cast';
 
 export type LinkedInContentStatus =
   | 'idle'
@@ -105,15 +106,15 @@ export function useLinkedInContent() {
 
       switch (eventType) {
         case 'stage_start':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'topics_ready':
@@ -128,7 +129,7 @@ export function useLinkedInContent() {
           setState((prev) => ({
             ...prev,
             status: 'post_review',
-            postDraft: data.post as string,
+            postDraft: safeString(data.post),
             postHashtags: (data.hashtags as string[]) ?? [],
             qualityScores: (data.quality_scores as PostQualityScores) ?? null,
             hookScore: typeof data.hook_score === 'number' ? data.hook_score : null,
@@ -140,7 +141,7 @@ export function useLinkedInContent() {
         case 'post_revised':
           setState((prev) => ({
             ...prev,
-            postDraft: data.post as string,
+            postDraft: safeString(data.post),
             postHashtags: (data.hashtags as string[]) ?? prev.postHashtags,
             qualityScores: (data.quality_scores as PostQualityScores) ?? prev.qualityScores,
             hookScore: typeof data.hook_score === 'number' ? data.hook_score : prev.hookScore,
@@ -150,7 +151,7 @@ export function useLinkedInContent() {
           break;
 
         case 'pipeline_gate': {
-          const gateName = data.gate as string | undefined;
+          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
           if (gateName === 'topic_selection') {
             setState((prev) => ({ ...prev, status: 'topic_selection' }));
           } else if (gateName === 'post_review') {
@@ -163,7 +164,7 @@ export function useLinkedInContent() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            postDraft: (data.post as string) ?? prev.postDraft,
+            postDraft: typeof data.post === 'string' ? data.post : prev.postDraft,
             postHashtags: (data.hashtags as string[]) ?? prev.postHashtags,
             qualityScores: (data.quality_scores as PostQualityScores) ?? prev.qualityScores,
           }));
@@ -174,7 +175,7 @@ export function useLinkedInContent() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

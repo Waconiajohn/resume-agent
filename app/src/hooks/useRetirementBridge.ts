@@ -119,7 +119,7 @@ export function useRetirementBridge() {
               setPhase('complete');
               controller.abort();
             } else if (msg.event === 'pipeline_error') {
-              setError((data.error as string) ?? 'Assessment failed');
+              setError(typeof data.error === 'string' ? data.error : 'Assessment failed');
               setPhase('error');
               controller.abort();
             } else if (msg.event === 'pipeline_complete') {

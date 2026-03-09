@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString, safeNumber } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -82,29 +83,29 @@ export function useExecutiveBio() {
 
       switch (eventType) {
         case 'stage_start':
-          setState((prev) => ({ ...prev, currentStage: data.stage as string }));
-          addActivity(data.message as string, data.stage as string);
+          setState((prev) => ({ ...prev, currentStage: safeString(data.stage) }));
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'bio_drafted': {
-          const format = data.format as string;
-          const length = data.length as string;
-          const wordCount = data.word_count as number;
+          const format = safeString(data.format);
+          const length = safeString(data.length);
+          const wordCount = safeNumber(data.word_count);
           addActivity(`Drafted ${format} bio (${length}, ${wordCount} words)`, 'drafting');
           break;
         }
 
         case 'bio_complete': {
-          const format = data.format as string;
-          const qualityScore = data.quality_score as number;
+          const format = safeString(data.format);
+          const qualityScore = safeNumber(data.quality_score);
           addActivity(`Quality checked ${format} bio — score: ${qualityScore}`, 'quality');
           break;
         }
@@ -113,7 +114,7 @@ export function useExecutiveBio() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: data.report as string,
+            report: safeString(data.report),
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
           }));
           abortRef.current?.abort();
@@ -123,7 +124,7 @@ export function useExecutiveBio() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

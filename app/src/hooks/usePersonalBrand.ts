@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString, safeNumber } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -82,42 +83,42 @@ export function usePersonalBrand() {
 
       switch (eventType) {
         case 'stage_start':
-          setState((prev) => ({ ...prev, currentStage: data.stage as string }));
-          addActivity(data.message as string, data.stage as string);
+          setState((prev) => ({ ...prev, currentStage: safeString(data.stage) }));
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'audit_progress': {
-          const message = data.message as string;
-          const analyzed = data.sources_analyzed as number;
-          const total = data.total_sources as number;
-          addActivity(`${message} (${analyzed}/${total} sources)`, data.stage as string);
+          const message = safeString(data.message);
+          const analyzed = safeNumber(data.sources_analyzed);
+          const total = safeNumber(data.total_sources);
+          addActivity(`${message} (${analyzed}/${total} sources)`, safeString(data.stage));
           break;
         }
 
         case 'finding_identified': {
-          const title = data.title as string;
-          const severity = data.severity as string;
+          const title = safeString(data.title);
+          const severity = safeString(data.severity);
           addActivity(`Finding: ${title} [${severity}]`, 'audit');
           break;
         }
 
         case 'audit_complete': {
-          const findingCount = data.finding_count as number;
+          const findingCount = safeNumber(data.finding_count);
           addActivity(`Audit complete — ${findingCount} findings identified`, 'audit');
           break;
         }
 
         case 'recommendations_ready': {
-          const recCount = data.recommendation_count as number;
-          const topPriority = data.top_priority as string;
+          const recCount = safeNumber(data.recommendation_count);
+          const topPriority = safeString(data.top_priority);
           addActivity(`${recCount} recommendations ready — top: ${topPriority}`, 'advising');
           break;
         }
@@ -126,7 +127,7 @@ export function usePersonalBrand() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: data.report as string,
+            report: safeString(data.report),
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
           }));
           abortRef.current?.abort();
@@ -136,7 +137,7 @@ export function usePersonalBrand() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

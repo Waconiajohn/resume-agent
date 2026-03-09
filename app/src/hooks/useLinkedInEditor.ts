@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString } from '@/lib/safe-cast';
 
 export type LinkedInEditorStatus =
   | 'idle'
@@ -92,15 +93,15 @@ export function useLinkedInEditor() {
 
       switch (eventType) {
         case 'stage_start':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'section_draft_ready':
@@ -108,10 +109,10 @@ export function useLinkedInEditor() {
             ...prev,
             status: 'section_review',
             currentSection: data.section as ProfileSection,
-            currentDraft: data.content as string,
+            currentDraft: safeString(data.content),
             sectionScores: {
               ...prev.sectionScores,
-              [data.section as string]: data.quality_scores as SectionQualityScores,
+              [safeString(data.section)]: data.quality_scores as SectionQualityScores,
             },
           }));
           break;
@@ -119,18 +120,18 @@ export function useLinkedInEditor() {
         case 'section_revised':
           setState((prev) => ({
             ...prev,
-            currentDraft: data.content as string,
+            currentDraft: safeString(data.content),
             sectionScores: {
               ...prev.sectionScores,
-              [data.section as string]: data.quality_scores as SectionQualityScores,
+              [safeString(data.section)]: data.quality_scores as SectionQualityScores,
             },
           }));
           break;
 
         case 'section_approved': {
-          const approvedSection = data.section as string;
+          const approvedSection = safeString(data.section);
           // Prefer content from the SSE event payload if available, fall back to currentDraft
-          const approvedContent = (data.content as string | undefined) ?? null;
+          const approvedContent = typeof data.content === 'string' ? data.content : null;
           setState((prev) => ({
             ...prev,
             status: 'running',
@@ -164,7 +165,7 @@ export function useLinkedInEditor() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString, safeNumber } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -83,22 +84,22 @@ export function useNinetyDayPlan() {
 
       switch (eventType) {
         case 'stage_start':
-          setState((prev) => ({ ...prev, currentStage: data.stage as string }));
-          addActivity(data.message as string, data.stage as string);
+          setState((prev) => ({ ...prev, currentStage: safeString(data.stage) }));
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'research_complete': {
-          const stakeholders = data.stakeholder_count as number;
-          const quickWins = data.quick_win_count as number;
-          const learningPriorities = data.learning_priority_count as number;
+          const stakeholders = safeNumber(data.stakeholder_count);
+          const quickWins = safeNumber(data.quick_win_count);
+          const learningPriorities = safeNumber(data.learning_priority_count);
           addActivity(
             `Research complete: ${stakeholders} stakeholders, ${quickWins} quick wins, ${learningPriorities} learning priorities`,
             'research',
@@ -107,17 +108,17 @@ export function useNinetyDayPlan() {
         }
 
         case 'phase_drafted': {
-          const phase = data.phase as number;
-          const title = data.title as string;
-          const activityCount = data.activity_count as number;
+          const phase = safeNumber(data.phase);
+          const title = safeString(data.title);
+          const activityCount = safeNumber(data.activity_count);
           addActivity(`Phase ${phase / 30} drafted: ${title} (${activityCount} activities)`, 'planning');
           break;
         }
 
         case 'phase_complete': {
-          const phase = data.phase as number;
-          const title = data.title as string;
-          const milestoneCount = data.milestone_count as number;
+          const phase = safeNumber(data.phase);
+          const title = safeString(data.title);
+          const milestoneCount = safeNumber(data.milestone_count);
           addActivity(`Phase ${phase / 30} complete: ${title} (${milestoneCount} milestones)`, 'planning');
           break;
         }
@@ -126,7 +127,7 @@ export function useNinetyDayPlan() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: data.report as string,
+            report: safeString(data.report),
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
           }));
           abortRef.current?.abort();
@@ -136,7 +137,7 @@ export function useNinetyDayPlan() {
           setState((prev) => ({
             ...prev,
             status: 'error',
-            error: data.error as string,
+            error: safeString(data.error, 'Pipeline error'),
           }));
           abortRef.current?.abort();
           break;

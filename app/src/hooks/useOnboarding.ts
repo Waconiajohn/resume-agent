@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString } from '@/lib/safe-cast';
 import type {
   AssessmentQuestion,
   ClientProfile,
@@ -97,16 +98,16 @@ export function useOnboarding(options?: {
 
       switch (eventType) {
         case 'stage_start':
-          setState((prev) => ({ ...prev, currentStage: data.stage as string }));
-          addActivity(data.message as string, data.stage as string);
+          setState((prev) => ({ ...prev, currentStage: safeString(data.stage) }));
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'stage_complete':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'transparency':
-          addActivity(data.message as string, data.stage as string);
+          addActivity(safeString(data.message), safeString(data.stage));
           break;
 
         case 'questions_ready': {
@@ -139,7 +140,7 @@ export function useOnboarding(options?: {
         }
 
         case 'pipeline_error': {
-          const errorMsg = data.error as string;
+          const errorMsg = safeString(data.error, 'Pipeline error');
           setState((prev) => ({
             ...prev,
             status: 'error',

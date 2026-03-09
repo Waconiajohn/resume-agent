@@ -262,7 +262,9 @@ The frontend supports two modes for reaching the backend:
 Set `VITE_API_BASE_URL` to the Railway server URL. The frontend calls the backend directly. The server must include the Vercel domain in `ALLOWED_ORIGINS` for CORS. SSE connections go directly to the backend with no proxy intermediary.
 
 **Mode 2: Vercel rewrite proxy**
-`app/vercel.json` contains a rewrite rule `/api/*` → backend URL. No CORS needed because requests appear same-origin from the browser's perspective. Limitation: the destination URL is hardcoded in `vercel.json` — Vercel does not support env var interpolation in rewrite rules. Edit `vercel.json` directly if the backend URL changes.
+`app/vercel.json` contains a rewrite rule `/api/*` → backend URL. No CORS needed because requests appear same-origin from the browser's perspective.
+
+> **Manual management required.** The destination URL in `app/vercel.json` is currently hardcoded to `https://resume-agent-server.up.railway.app`. Vercel does not support env var interpolation in rewrite destination URLs. If the Railway backend URL ever changes (e.g., service renamed, project moved, custom domain added), you must edit `app/vercel.json` directly and redeploy the frontend. There is no automatic sync between Railway and this file.
 
 For staging/production differentiation, use Mode 1 with different `VITE_API_BASE_URL` values per Vercel environment (Preview vs Production).
 
@@ -323,6 +325,112 @@ Events to enable:
 Copy the signing secret (`whsec_...`) and set it as `STRIPE_WEBHOOK_SECRET` in Railway.
 
 After configuring, seed the `pricing_plans` table with `stripe_price_id` values matching your Stripe product prices. This wires plan selection in the frontend to the correct Stripe Checkout price.
+
+---
+
+## Feature Flag Enablement Strategy
+
+Feature flags default to `false` in `server/src/lib/feature-flags.ts`. Enable them by setting the corresponding env var to `true` in the Railway dashboard. Use this tiered rollout order — lower tiers are safer and should be validated before moving to higher tiers.
+
+---
+
+### Tier 0 — Core Pipeline Gates (default `true`, no action required)
+
+These flags are already `true` by default in code. They are included here for visibility — confirm they are not being overridden to `false` in Railway.
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `FF_BLUEPRINT_APPROVAL` | `true` | Blueprint review gate between Strategist and Craftsman |
+| `FF_GAP_ANALYSIS_QUIZ` | `true` | Gap analysis questionnaire gate |
+| `FF_QUALITY_REVIEW_APPROVAL` | `true` | Quality review approval gate |
+| `FF_POSITIONING_BATCH` | `true` | Batch positioning question generation |
+
+**Verification:** Call `GET /health` and confirm `status: ok`. If any gate flag was accidentally set to `false` in Railway, pipelines will skip user approval steps silently.
+
+---
+
+### Tier 1 — Standalone Agents (enable first)
+
+These agents have no cross-agent dependencies and no financial or B2B implications. Each can be enabled independently. Start here.
+
+| Flag | Agent |
+|------|-------|
+| `FF_ONBOARDING` | Onboarding Assessment Agent — client profiling and financial segment detection |
+| `FF_COVER_LETTER` | Cover Letter Writer — requires a completed resume pipeline session |
+| `FF_INTERVIEW_PREP` | Interview Prep Agent |
+| `FF_EXECUTIVE_BIO` | Executive Bio Writer |
+| `FF_THANK_YOU_NOTE` | Thank You Note Writer |
+| `FF_NINETY_DAY_PLAN` | 90-Day Plan Generator |
+| `FF_PERSONAL_BRAND_AUDIT` | Personal Brand Audit |
+| `FF_CASE_STUDY` | Portfolio / Case Study Generator |
+
+**Enablement:** In Railway dashboard → Variables, set each flag to `true`. No additional infrastructure required. Redeploy is not needed — flags are read at startup via `process.env`.
+
+**Verification after each:** Hit the corresponding `/api/<route>/health` or start a session and confirm the UI surface for that agent appears and routes correctly.
+
+---
+
+### Tier 2 — Cross-Agent and Data-Dependent Features (enable second)
+
+These features depend on platform context produced by Tier 1 agents (primarily positioning strategy from completed resume pipelines) or require external API credentials.
+
+| Flag | Feature | Prerequisites |
+|------|---------|---------------|
+| `FF_NETWORK_INTELLIGENCE` | Network Intelligence — contact discovery and NI scoring | Completed resume pipelines producing `positioning_strategy` in `user_platform_context` |
+| `FF_NETWORKING_OUTREACH` | Networking Outreach — personalized outreach message generation | `FF_NETWORK_INTELLIGENCE` enabled and populated data |
+| `FF_NETWORKING_CRM` | Networking CRM — contact and relationship tracking | None (standalone CRUD), but most useful alongside `FF_NETWORK_INTELLIGENCE` |
+| `FF_JOB_FINDER` | Job Finder — multi-source job search (JSearch + Adzuna) | `JSEARCH_API_KEY` (RapidAPI) and/or `ADZUNA_APP_ID` + `ADZUNA_API_KEY` set in Railway |
+| `FF_JOB_SEARCH` | Job Search API — underlying search adapter routes | Same as `FF_JOB_FINDER`; both flags should be enabled together |
+| `FF_APPLICATION_PIPELINE` | Application Pipeline — Kanban job tracking CRUD | None (standalone), but pairs with `FF_JOB_FINDER` |
+| `FF_JOB_TRACKER` | Job Application Tracker (Agent #14) | None |
+| `FF_LINKEDIN_OPTIMIZER` | LinkedIn Optimizer | Completed resume pipeline for positioning input |
+| `FF_LINKEDIN_CONTENT` | LinkedIn Content Writer | `FF_LINKEDIN_OPTIMIZER` recommended first |
+| `FF_LINKEDIN_EDITOR` | LinkedIn Profile Editor | `FF_LINKEDIN_OPTIMIZER` recommended first |
+| `FF_CONTENT_CALENDAR` | Content Calendar | `FF_LINKEDIN_CONTENT` recommended first |
+| `FF_INTERVIEW_DEBRIEF` | Interview Debrief | `FF_INTERVIEW_PREP` enabled |
+
+**Enablement:** Set each flag to `true` in Railway. For job search flags, confirm the relevant API keys are present first:
+
+```bash
+# Verify job search keys are set before enabling FF_JOB_FINDER / FF_JOB_SEARCH
+curl -H "Authorization: Bearer <METRICS_KEY>" https://api.careeragent.ai/metrics | jq '.env_keys'
+```
+
+**Verification after each:** Run a representative user flow for the feature. For job search, confirm results return from at least one adapter. For LinkedIn flags, confirm the optimizer produces output when given a completed resume session.
+
+---
+
+### Tier 3 — Advanced, High-Touch, and B2B Features (enable last)
+
+These features have complex dependencies, financial implications, regulatory considerations, or require B2B contract setup. Do not enable in production without completing the listed prerequisites.
+
+| Flag | Feature | Prerequisites and Notes |
+|------|---------|------------------------|
+| `FF_SALARY_NEGOTIATION` | Salary Negotiation Agent | Review output quality manually before enabling broadly — negotiation advice has reputational risk if poor |
+| `FF_MOCK_INTERVIEW` | Mock Interview Simulation | Computationally expensive; monitor Railway CPU/memory after enabling |
+| `FF_COUNTER_OFFER_SIM` | Counter-Offer Simulation | Financial scenario modeling — review outputs for accuracy before enabling |
+| `FF_INTERVIEW_DEBRIEF` | Interview Debrief (advanced mode) | Pairs with `FF_INTERVIEW_PREP`; requires completed interview sessions in DB |
+| `FF_MOMENTUM` | Momentum Tracking — activity streaks, coaching nudges, stall detection | Requires `momentum_events` table migration applied; verify with `supabase db diff --linked` |
+| `FF_RETIREMENT_BRIDGE` | Retirement Bridge Assessment Agent | Never provides financial advice (fiduciary guardrails built in); requires `retirement_readiness_assessments` and `planner_referrals` migrations applied. Review planner handoff configuration in `server/src/lib/planner-handoff.ts` before enabling. |
+| `FF_B2B_OUTPLACEMENT` | B2B Outplacement Admin Portal | Requires `b2b_organizations`, `b2b_contracts`, `b2b_seats`, `b2b_cohorts` migrations applied. Requires at least one organization record seeded in DB before any employer-facing flows work. Coordinate with sales/ops before enabling. |
+
+**Enablement:** Set the flag to `true` in Railway after completing all prerequisites. For `FF_RETIREMENT_BRIDGE` and `FF_B2B_OUTPLACEMENT`, verify DB migrations are current before enabling:
+
+```bash
+supabase db diff --linked   # Should show no diff if all migrations are applied
+```
+
+**Post-enable verification for `FF_B2B_OUTPLACEMENT`:** Confirm `GET /api/b2b/organizations` returns 200 (not 404) and that at least one organization record exists in the `b2b_organizations` table before directing employer users to the admin portal.
+
+---
+
+### Infrastructure Flags (do not enable without ops review)
+
+| Flag | Default | When to enable |
+|------|---------|---------------|
+| `FF_REDIS_BUS` | `false` | Only when running multiple Railway replicas AND agent loops have been made resumable. Requires `REDIS_URL`. See ADR-007. |
+| `FF_REDIS_RATE_LIMIT` | `false` | Only when horizontal scaling requires shared rate limit counters. Requires `REDIS_URL`. Falls back to in-memory if Redis is unavailable. |
+| `FF_SELF_REVIEW_LIGHT` | `false` | A/B testing only — routes Craftsman self-review to MODEL_LIGHT. Monitor output quality before enabling broadly. |
 
 ---
 
@@ -411,6 +519,6 @@ cd app && npx tsc --noEmit
 Test suites:
 
 ```bash
-cd server && npx vitest run   # 2,060 tests
-cd app && npx vitest run      # 1,011 tests
+cd server && npx vitest run   # 2,421 tests
+cd app && npx vitest run      # 1,433 tests
 ```

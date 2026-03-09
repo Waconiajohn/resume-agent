@@ -254,7 +254,7 @@ export function useSession(accessToken: string | null) {
         return { success: false, error: message };
       }
       const data = await res.json();
-      return { success: true, resumeId: data.resume?.id as string | undefined };
+      return { success: true, resumeId: typeof data.resume?.id === 'string' ? data.resume.id : undefined };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Network error saving resume';
       setError(message);
@@ -321,7 +321,7 @@ export function useSession(accessToken: string | null) {
         return false;
       }
       const data = await res.json().catch(() => ({}));
-      const newDefaultId = (data.resume_id as string | undefined) ?? resumeId;
+      const newDefaultId = (typeof data.resume_id === 'string' ? data.resume_id : undefined) ?? resumeId;
       setResumes((prev) =>
         prev.map((r) => ({
           ...r,
@@ -349,10 +349,10 @@ export function useSession(accessToken: string | null) {
         return false;
       }
       const data = await res.json().catch(() => ({}));
-      const newDefaultId = (data.new_default_resume_id as string | null | undefined);
+      const newDefaultId = (typeof data.new_default_resume_id === 'string' ? data.new_default_resume_id : null);
       setResumes((prev) => {
         const filtered = prev.filter((r) => r.id !== resumeId);
-        if (typeof newDefaultId === 'undefined') {
+        if (newDefaultId === null) {
           return filtered;
         }
         return filtered.map((r) => ({
