@@ -4,6 +4,23 @@ import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { safeString, safeNumber } from '@/lib/safe-cast';
 
+export interface SavedCalendarReport {
+  id: string;
+  target_role: string;
+  target_industry: string;
+  quality_score: number;
+  coherence_score: number;
+  post_count: number;
+  created_at: string;
+}
+
+export interface SavedCalendarReportFull extends SavedCalendarReport {
+  report_markdown: string;
+  themes: unknown[];
+  content_mix: Record<string, unknown>;
+  posts: unknown[];
+}
+
 import type { ActivityMessage } from '@/types/activity';
 
 export type { ActivityMessage };
@@ -17,6 +34,8 @@ interface ContentCalendarState {
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
+  savedReports: SavedCalendarReport[];
+  reportsLoading: boolean;
 }
 
 export interface ContentCalendarInput {
@@ -38,6 +57,8 @@ export function useContentCalendar() {
     activityMessages: [],
     error: null,
     currentStage: null,
+    savedReports: [],
+    reportsLoading: false,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -51,6 +72,7 @@ export function useContentCalendar() {
 
   useEffect(() => {
     mountedRef.current = true;
+    void fetchReports();
     return () => {
       mountedRef.current = false;
       abortRef.current?.abort();
@@ -58,6 +80,65 @@ export function useContentCalendar() {
         clearTimeout(reconnectTimerRef.current);
       }
     };
+  // fetchReports is stable (useCallback with no deps that change), safe to omit
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchReports = useCallback(async (): Promise<void> => {
+    if (!mountedRef.current) return;
+    setState((prev) => ({ ...prev, reportsLoading: true }));
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? null;
+      if (!token) {
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, reportsLoading: false }));
+        }
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/content-calendar/reports`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, reportsLoading: false }));
+        }
+        return;
+      }
+
+      const data = (await res.json()) as { reports: SavedCalendarReport[] };
+      if (mountedRef.current) {
+        setState((prev) => ({ ...prev, savedReports: data.reports, reportsLoading: false }));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[useContentCalendar] fetchReports error:', message);
+      if (mountedRef.current) {
+        setState((prev) => ({ ...prev, reportsLoading: false }));
+      }
+    }
+  }, []);
+
+  const fetchReportById = useCallback(async (id: string): Promise<SavedCalendarReportFull | null> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? null;
+      if (!token) return null;
+
+      const res = await fetch(`${API_BASE}/content-calendar/reports/${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as { report: SavedCalendarReportFull };
+      return data.report;
+    } catch {
+      return null;
+    }
   }, []);
 
   const addActivity = useCallback((text: string, stage: string) => {
@@ -121,6 +202,8 @@ export function useContentCalendar() {
             postCount: typeof data.post_count === 'number' ? data.post_count : prev.postCount,
           }));
           abortRef.current?.abort();
+          // Refresh the saved reports list so the new one shows in Previous Calendars
+          void fetchReports();
           break;
 
         case 'pipeline_error':
@@ -239,7 +322,7 @@ export function useContentCalendar() {
       sessionIdRef.current = sessionId;
       reconnectAttemptsRef.current = 0;
 
-      setState({
+      setState((prev) => ({
         status: 'connecting',
         report: null,
         qualityScore: null,
@@ -247,7 +330,9 @@ export function useContentCalendar() {
         activityMessages: [],
         error: null,
         currentStage: null,
-      });
+        savedReports: prev.savedReports,
+        reportsLoading: false,
+      }));
 
       try {
         const res = await fetch(`${API_BASE}/content-calendar/start`, {
@@ -295,7 +380,7 @@ export function useContentCalendar() {
     sessionIdRef.current = null;
     accessTokenRef.current = null;
     reconnectAttemptsRef.current = 0;
-    setState({
+    setState((prev) => ({
       status: 'idle',
       report: null,
       qualityScore: null,
@@ -303,12 +388,16 @@ export function useContentCalendar() {
       activityMessages: [],
       error: null,
       currentStage: null,
-    });
+      savedReports: prev.savedReports,
+      reportsLoading: false,
+    }));
   }, []);
 
   return {
     ...state,
     startPipeline,
     reset,
+    fetchReports,
+    fetchReportById,
   };
 }

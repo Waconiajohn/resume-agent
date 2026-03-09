@@ -3,8 +3,8 @@
 **Started:** 2026-03-08
 
 ## Sprint 60: LinkedIn Studio — Live Data & Content Pipeline
-1. [ ] Story 60-1: Content Post Persistence Hook — **Status: in progress**
-2. [ ] Story 60-2: Content Calendar Agent Wiring — **Status: not started**
+1. [x] Story 60-1: Content Post Persistence Hook — **Status: done**
+2. [x] Story 60-2: Content Calendar Agent Wiring — **Status: done**
 3. [ ] Story 60-3: Post History Library Tab — **Status: not started**
 4. [ ] Story 60-4: Keyword Multiplier Coaching Nudge — **Status: not started**
 5. [ ] Story 60-5: Analytics Tab — Real Content Metrics — **Status: not started**

@@ -340,3 +340,83 @@ describe('LinkedInStudioRoom — Analytics/Nudge tab (50 Groups Guide)', () => {
     });
   });
 });
+
+// ─── FiftyGroupsGuide (Sprint 63-5) ──────────────────────────────────────────
+// FiftyGroupsGuide renders inside the "Profile Editor" tab (activeTab === 'editor').
+
+describe('FiftyGroupsGuide — Profile Editor tab', () => {
+  it('renders a <details> element in the editor tab', async () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByText('Profile Editor'));
+    await waitFor(() => {
+      const details = document.querySelector('details');
+      expect(details).not.toBeNull();
+    });
+  });
+
+  it('contains "50 Groups Strategy" text in the editor tab', async () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByText('Profile Editor'));
+    await waitFor(() => {
+      expect(screen.getByText(/50 Groups Strategy/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Coaching Guide" label in the summary', async () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByText('Profile Editor'));
+    await waitFor(() => {
+      expect(screen.getByText(/Coaching Guide/i)).toBeInTheDocument();
+    });
+  });
+
+  it('contains LinkedIn group strategy coaching content', async () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByText('Profile Editor'));
+    await waitFor(() => {
+      // The guide explains the free-messaging benefit of shared groups.
+      expect(screen.getByText(/Why 50 groups/i)).toBeInTheDocument();
+    });
+  });
+
+  it('the <details> element is closed by default (progressive disclosure)', async () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByText('Profile Editor'));
+    await waitFor(() => {
+      const details = document.querySelector('details');
+      expect(details).not.toBeNull();
+      // HTML <details> without the `open` attribute is collapsed by default.
+      expect(details!.hasAttribute('open')).toBe(false);
+    });
+  });
+
+  it('the <details> element gains the open attribute after the summary is clicked', async () => {
+    render(<LinkedInStudioRoom signals={makeSignals()} />);
+    fireEvent.click(screen.getByText('Profile Editor'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/50 Groups Strategy/i)).toBeInTheDocument();
+    });
+
+    const details = document.querySelector('details');
+    expect(details).not.toBeNull();
+    expect(details!.hasAttribute('open')).toBe(false);
+
+    // Click the summary — jsdom toggles the `open` attribute.
+    const summary = document.querySelector('summary');
+    expect(summary).not.toBeNull();
+    fireEvent.click(summary!);
+
+    expect(details!.hasAttribute('open')).toBe(true);
+  });
+
+  it('renders the guide without crashing when signals have non-green values', async () => {
+    render(
+      <LinkedInStudioRoom signals={makeSignals({ clarity: 'red', alignment: 'yellow' })} />,
+    );
+    fireEvent.click(screen.getByText('Profile Editor'));
+    await waitFor(() => {
+      expect(screen.getByText(/50 Groups Strategy/i)).toBeInTheDocument();
+    });
+  });
+});

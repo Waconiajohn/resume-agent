@@ -1,5 +1,27 @@
 # Changelog — Resume Agent
 
+## 2026-03-09 — Session 66
+**Sprint:** 60 | **Stories:** 60-1 (Content Post Persistence Feedback), 60-2 (Calendar History Hook)
+**Summary:** Added "Saved to Library" confirmation badge to Post Composer complete state, and added a Previous Calendars collapsible section to the Content Calendar tab backed by a new GET /api/content-calendar/reports route.
+
+### Changes Made
+- `app/src/hooks/useLinkedInContent.ts` — Added `postSaved: boolean` field to state; set to `true` on `content_complete` SSE event; reset to `false` in `startContentPipeline` and `reset`
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — PostComposer complete state now renders a "Saved to Library" confirmation banner when `content.postSaved` is true; ContentCalendar component gained `selectedReport` and `loadingReportId` state, `handleLoadReport` callback, a selected-report display, and a `<details>/<summary>` Previous Calendars collapsible; added `Clock` icon import; added `SavedCalendarReportFull` type import
+- `app/src/hooks/useContentCalendar.ts` — Added `SavedCalendarReport` and `SavedCalendarReportFull` interfaces; added `savedReports` and `reportsLoading` state fields; added `fetchReports()` (auto-fetches on mount, refreshes after `calendar_complete`); added `fetchReportById(id)` for loading a full report on demand; both exposed from hook return; start and reset preserve `savedReports` across pipeline runs
+- `server/src/routes/content-calendar.ts` — Added `GET /reports` route returning up to 10 user calendar reports (summary fields, newest first); added `GET /reports/:id` route returning full report with `report_markdown`; both are feature-flagged, auth-protected, rate-limited
+
+### Decisions Made
+- Previous Calendars uses progressive disclosure (`<details>/<summary>`) matching the established pattern in FiftyGroupsGuide — no new state management needed
+- `GET /reports` returns only summary columns (no `report_markdown`) to keep the list response small; full markdown is fetched on-demand via `GET /reports/:id`
+- `postSaved` flag lives in `useLinkedInContent` state (not a ref) so the component re-renders when the SSE arrives
+
+### Known Issues
+- None introduced
+
+### Next Steps
+- Story 60-3: Post History Library Tab (verify PostLibrary auto-refetches when navigating to Library tab after a post is saved)
+- Story 60-4 and beyond per sprint plan
+
 ## 2026-03-09 — Session 65
 **Sprint:** E1 | **Stories:** E1-1 through E1-6 — Documentation Remediation
 **Summary:** Created 4 missing Obsidian agent notes (Retirement Bridge, Job Finder, LinkedIn Content Writer, LinkedIn Profile Editor), updated Project Hub agent count and test counts, updated Status.md to reflect sprints 60-63 state, expanded SSE Event System.md with product-specific events for LinkedIn Content/Editor/Networking/Retirement/Job Finder, updated 4 stale agent notes (LinkedIn Optimizer, Networking Outreach, Interview Prep, Salary Negotiation) with Sprint 62-63 additions and simulation sub-products, and seeded vault subdirectories with 5 new reference notes.

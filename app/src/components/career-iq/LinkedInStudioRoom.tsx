@@ -16,6 +16,7 @@ import {
   RotateCcw,
   BookOpen,
   Users,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
@@ -23,6 +24,7 @@ import { useLinkedInOptimizer } from '@/hooks/useLinkedInOptimizer';
 import { useLinkedInContent } from '@/hooks/useLinkedInContent';
 import { useLinkedInEditor } from '@/hooks/useLinkedInEditor';
 import { useContentCalendar } from '@/hooks/useContentCalendar';
+import type { SavedCalendarReportFull } from '@/hooks/useContentCalendar';
 import { useContentPosts } from '@/hooks/useContentPosts';
 import { supabase } from '@/lib/supabase';
 import { ExperienceEntryCard } from './ExperienceEntryCard';
@@ -310,6 +312,13 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
   if (content.status === 'complete' && content.postDraft) {
     return (
       <div className="flex flex-col gap-4">
+        {content.postSaved && (
+          <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-2.5 flex items-center gap-2">
+            <Check size={13} className="text-[#b5dec2] flex-shrink-0" />
+            <span className="text-[12px] text-[#b5dec2]/80 font-medium">Saved to Library</span>
+            <span className="text-[11px] text-white/30 ml-1">— find it in the Post Library tab</span>
+          </div>
+        )}
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Check size={16} className="text-[#b5dec2]" />
@@ -828,9 +837,12 @@ function FiftyGroupsGuide() {
 function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
   const calendar = useContentCalendar();
   const [inputError, setInputError] = useState<string | null>(null);
+  const [selectedReport, setSelectedReport] = useState<SavedCalendarReportFull | null>(null);
+  const [loadingReportId, setLoadingReportId] = useState<string | null>(null);
 
   const handleGenerate = useCallback(async () => {
     setInputError(null);
+    setSelectedReport(null);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) {
       setInputError('Please sign in.');
@@ -852,9 +864,18 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
     await calendar.startPipeline({ resumeText: resumeData.raw_text });
   }, [calendar]);
 
+  const handleLoadReport = useCallback(async (id: string) => {
+    setLoadingReportId(id);
+    const report = await calendar.fetchReportById(id);
+    setLoadingReportId(null);
+    if (report) {
+      setSelectedReport(report);
+    }
+  }, [calendar]);
+
   const isRunning = calendar.status === 'connecting' || calendar.status === 'running';
 
-  // Idle state — show generate button
+  // Idle state — show generate button + previous calendars
   if (calendar.status === 'idle') {
     return (
       <div className="flex flex-col gap-4">
@@ -864,19 +885,118 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <p className="text-[13px] text-red-300/80">{inputError}</p>
           </div>
         )}
-        <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
-          <Calendar size={32} className="text-white/20" />
-          <div>
-            <p className="text-[15px] font-semibold text-white/80 mb-1">Generate Content Calendar</p>
-            <p className="text-[13px] text-white/40 max-w-[380px]">
-              Create a 30-day content plan with 4 posts per week, tailored to your positioning.
-            </p>
-          </div>
-          <GlassButton onClick={handleGenerate} className="flex items-center gap-2">
-            <Sparkles size={14} />
-            Generate Calendar
-          </GlassButton>
-        </GlassCard>
+
+        {/* Selected historical report */}
+        {selectedReport && (
+          <GlassCard className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock size={16} className="text-[#98b3ff]" />
+              <h3 className="text-[15px] font-semibold text-white/85">
+                {selectedReport.target_role || 'Content Calendar'}
+              </h3>
+              <span className="ml-auto text-[11px] text-white/30">
+                {new Date(selectedReport.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedReport(null)}
+                className="text-[11px] text-white/30 hover:text-white/60 transition-colors ml-2"
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex items-center gap-3 mb-4">
+              {selectedReport.quality_score > 0 && (
+                <span className={cn(
+                  'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                  selectedReport.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                )}>
+                  Quality {selectedReport.quality_score}
+                </span>
+              )}
+              {selectedReport.post_count > 0 && (
+                <span className="text-[11px] text-white/30">{selectedReport.post_count} posts</span>
+              )}
+            </div>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 max-h-[500px] overflow-y-auto">
+              <pre className="text-[13px] text-white/60 leading-relaxed whitespace-pre-wrap font-sans">
+                {selectedReport.report_markdown}
+              </pre>
+            </div>
+            <div className="mt-4">
+              <GlassButton onClick={onWritePost} className="flex items-center gap-2">
+                <PenLine size={14} />
+                Write a Post from This Calendar
+              </GlassButton>
+            </div>
+          </GlassCard>
+        )}
+
+        {!selectedReport && (
+          <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
+            <Calendar size={32} className="text-white/20" />
+            <div>
+              <p className="text-[15px] font-semibold text-white/80 mb-1">Generate Content Calendar</p>
+              <p className="text-[13px] text-white/40 max-w-[380px]">
+                Create a 30-day content plan with 4 posts per week, tailored to your positioning.
+              </p>
+            </div>
+            <GlassButton onClick={handleGenerate} className="flex items-center gap-2">
+              <Sparkles size={14} />
+              Generate Calendar
+            </GlassButton>
+          </GlassCard>
+        )}
+
+        {/* Previous Calendars — progressive disclosure */}
+        {calendar.savedReports.length > 0 && (
+          <GlassCard className="p-4">
+            <details>
+              <summary className="cursor-pointer flex items-center gap-2 text-[13px] font-medium text-white/55 hover:text-white/80 transition-colors list-none">
+                <Clock size={14} className="text-white/30 flex-shrink-0" />
+                Previous Calendars
+                <span className="ml-auto text-[11px] text-white/25 font-normal">
+                  {calendar.savedReports.length} saved
+                </span>
+              </summary>
+              <div className="mt-3 space-y-2">
+                {calendar.savedReports.map((saved) => (
+                  <button
+                    key={saved.id}
+                    type="button"
+                    onClick={() => void handleLoadReport(saved.id)}
+                    disabled={loadingReportId === saved.id}
+                    className="w-full text-left rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-[#98b3ff]/25 hover:bg-[#98b3ff]/[0.03] px-4 py-3 transition-all flex items-center gap-3 disabled:opacity-50"
+                  >
+                    <Calendar size={13} className="text-white/30 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-white/65 truncate">
+                        {saved.target_role || 'Content Calendar'}
+                      </p>
+                      <p className="text-[11px] text-white/30 mt-0.5">
+                        {new Date(saved.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {saved.post_count > 0 && ` · ${saved.post_count} posts`}
+                      </p>
+                    </div>
+                    {saved.quality_score > 0 && (
+                      <span className={cn(
+                        'text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0',
+                        saved.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                      )}>
+                        {saved.quality_score}
+                      </span>
+                    )}
+                    {loadingReportId === saved.id ? (
+                      <Loader2 size={12} className="text-white/30 animate-spin flex-shrink-0" />
+                    ) : (
+                      <ChevronRight size={13} className="text-white/20 flex-shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </details>
+          </GlassCard>
+        )}
       </div>
     );
   }

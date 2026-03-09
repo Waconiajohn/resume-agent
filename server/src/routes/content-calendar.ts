@@ -18,6 +18,7 @@ import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import type { ContentCalendarState, ContentCalendarSSEEvent } from '../agents/content-calendar/types.js';
 
 const startSchema = z.object({
@@ -115,3 +116,79 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
     return input;
   },
 });
+
+// ─── GET /reports — List user's saved calendar reports ────────────────────────
+//
+// Returns up to 10 calendar reports, newest first. Auth is handled by the
+// authMiddleware applied to all routes in createProductRoutes (via '*').
+// RLS policies on content_calendar_reports enforce user isolation.
+
+contentCalendarRoutes.get(
+  '/reports',
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    if (!FF_CONTENT_CALENDAR) {
+      return c.json({ error: 'Not found' }, 404);
+    }
+
+    const user = c.get('user');
+
+    try {
+      const { data: reports, error } = await supabaseAdmin
+        .from('content_calendar_reports')
+        .select('id, target_role, target_industry, quality_score, coherence_score, post_count, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        logger.error({ error: error.message, userId: user.id }, 'GET /content-calendar/reports: query failed');
+        return c.json({ error: 'Failed to fetch reports' }, 500);
+      }
+
+      return c.json({ reports: reports ?? [] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error({ error: message, userId: user.id }, 'GET /content-calendar/reports: unexpected error');
+      return c.json({ error: 'Internal server error' }, 500);
+    }
+  },
+);
+
+// ─── GET /reports/:id — Fetch a single report with full markdown ──────────────
+
+contentCalendarRoutes.get(
+  '/reports/:id',
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    if (!FF_CONTENT_CALENDAR) {
+      return c.json({ error: 'Not found' }, 404);
+    }
+
+    const user = c.get('user');
+    const reportId = c.req.param('id');
+
+    if (!reportId || !/^[0-9a-f-]{36}$/i.test(reportId)) {
+      return c.json({ error: 'Invalid report ID' }, 400);
+    }
+
+    try {
+      const { data: report, error } = await supabaseAdmin
+        .from('content_calendar_reports')
+        .select('*')
+        .eq('id', reportId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (error || !report) {
+        return c.json({ error: 'Report not found' }, 404);
+      }
+
+      return c.json({ report });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error({ error: message, reportId, userId: user.id }, 'GET /content-calendar/reports/:id: unexpected error');
+      return c.json({ error: 'Internal server error' }, 500);
+    }
+  },
+);

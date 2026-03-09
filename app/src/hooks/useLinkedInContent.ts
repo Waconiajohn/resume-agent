@@ -42,6 +42,7 @@ interface LinkedInContentState {
   hookType: string | null;
   hookAssessment: string | null;
   activityMessages: ActivityMessage[];
+  postSaved: boolean;
   error: string | null;
 }
 
@@ -59,6 +60,7 @@ export function useLinkedInContent() {
     hookType: null,
     hookAssessment: null,
     activityMessages: [],
+    postSaved: false,
     error: null,
   });
 
@@ -167,6 +169,7 @@ export function useLinkedInContent() {
             postDraft: typeof data.post === 'string' ? data.post : prev.postDraft,
             postHashtags: (data.hashtags as string[]) ?? prev.postHashtags,
             qualityScores: (data.quality_scores as PostQualityScores) ?? prev.qualityScores,
+            postSaved: true,
           }));
           abortRef.current?.abort();
           break;
@@ -296,6 +299,7 @@ export function useLinkedInContent() {
       hookType: null,
       hookAssessment: null,
       activityMessages: [],
+      postSaved: false,
       error: null,
     });
 
@@ -419,6 +423,7 @@ export function useLinkedInContent() {
       hookType: null,
       hookAssessment: null,
       activityMessages: [],
+      postSaved: false,
       error: null,
     });
   }, []);
