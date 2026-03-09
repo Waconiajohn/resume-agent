@@ -172,7 +172,7 @@ test.describe('Workbench Suggestions', () => {
   test('"Looks Good" button sends approve gate with review_token', async ({ page }) => {
     const { captured } = await navigateToWorkbench(page, workbenchSSEEvents());
 
-    await page.getByRole('button', { name: /Next Section/i }).click();
+    await page.getByRole('button', { name: /Looks Good/i }).click();
     await page.waitForTimeout(500);
 
     const respondReq = captured.find(
@@ -189,12 +189,12 @@ test.describe('Workbench Suggestions', () => {
   test('bundled review banner renders and one-click bundle approval sends flag', async ({ page }) => {
     const { captured } = await navigateToWorkbench(page, workbenchSSEEvents({ bundledReview: true }));
 
-    await expect(page.getByText('Bundled Review').first()).toBeVisible();
-    await expect(page.getByText(/Reviewing.*high-impact section/i)).toBeVisible();
-    await expect(page.getByText(/Current bundle: Headline/i).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Approve Remaining Review Set/i })).toBeVisible();
+    await expect(page.getByText('Grouped Sections').first()).toBeVisible();
+    await expect(page.getByText(/grouped.*section.*for your review/i)).toBeVisible();
+    await expect(page.getByText(/Current group: Headline/i).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Approve Remaining in This Group/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /Approve Remaining Review Set/i }).click();
+    await page.getByRole('button', { name: /Approve Remaining in This Group/i }).click();
     await page.waitForTimeout(500);
 
     const respondReq = captured.find((r) => r.url.includes('/pipeline/respond'));
@@ -210,8 +210,8 @@ test.describe('Workbench Suggestions', () => {
   test('current bundle approval sends approve_remaining_current_bundle flag', async ({ page }) => {
     const { captured } = await navigateToWorkbench(page, workbenchSSEEvents({ bundledReview: true }));
 
-    await expect(page.getByRole('button', { name: /Finish Headline Bundle/i })).toBeVisible();
-    await page.getByRole('button', { name: /Finish Headline Bundle/i }).click();
+    await expect(page.getByRole('button', { name: /Approve Remaining in This Group/i })).toBeVisible();
+    await page.getByRole('button', { name: /Approve Remaining in This Group/i }).click();
     await page.waitForTimeout(500);
 
     const respondReq = captured.find((r) => r.url.includes('/pipeline/respond'));

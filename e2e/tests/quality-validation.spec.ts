@@ -86,7 +86,7 @@ test.describe.serial('Quality Validation', () => {
       await page.locator('#company-name').fill(fixture.companyName);
 
       const submitBtn = page.getByRole('button', {
-        name: /Start Resume Session/i,
+        name: /Let's Get Started|Start Resume Session/i,
       });
       await expect(submitBtn).toBeEnabled({ timeout: 2_000 });
       await submitBtn.click();
@@ -129,7 +129,7 @@ test.describe.serial('Quality Validation', () => {
       results.push({ label: fixture.label, capture, durationMs });
 
       // Verify completion
-      await expect(page.getByText('Session Complete')).toBeVisible({
+      await expect(page.getByText('Your Resume Is Ready!')).toBeVisible({
         timeout: 10_000,
       });
 

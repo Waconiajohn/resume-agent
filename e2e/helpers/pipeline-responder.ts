@@ -98,7 +98,7 @@ async function detectCurrentPanel(page: Page): Promise<PanelType> {
 
     // 1. Completion (terminal state) — check full page
     const main = document.querySelector('main');
-    if (main?.textContent?.includes('Session Complete')) return 'completion';
+    if (main?.textContent?.includes('Your Resume Is Ready')) return 'completion';
 
     // 2. Positioning profile choice — rendered OUTSIDE [data-panel-root]
     if (

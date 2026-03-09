@@ -39,7 +39,7 @@ export async function navigateToWorkbench(
   await page.locator('#company-name').fill(SAMPLE_COMPANY);
 
   // Submit the form
-  await page.getByRole('button', { name: /Start Resume Session/i }).click();
+  await page.getByRole('button', { name: /Let's Get Started|Start Resume Session/i }).click();
 
   // Wait for workbench to render (h2 with section title)
   await page.locator('h2').first().waitFor({ timeout: 15_000 });

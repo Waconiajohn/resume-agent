@@ -74,7 +74,7 @@ test.describe('Full Pipeline E2E', () => {
       await page.locator('#company-name').fill(REAL_COMPANY_NAME);
 
       const submitBtn = page.getByRole('button', {
-        name: /Start Resume Session/i,
+        name: /Let's Get Started|Start Resume Session/i,
       });
       await expect(submitBtn).toBeEnabled({ timeout: 2_000 });
       await submitBtn.click();
@@ -130,7 +130,7 @@ test.describe('Full Pipeline E2E', () => {
 
     // Step 6: Verify completion panel and pipeline timing
     await test.step('Verify completion panel', async () => {
-      await expect(page.getByText('Session Complete')).toBeVisible({
+      await expect(page.getByText('Your Resume Is Ready!')).toBeVisible({
         timeout: 10_000,
       });
 

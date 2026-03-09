@@ -93,7 +93,7 @@ test.describe('ChatDrawer', () => {
     // aria-label contains status like "Waiting for input", "Working", etc.
     await expect(openBtn).toHaveAttribute(
       'aria-label',
-      /Open coach – (Waiting for input|Working|Idle|Connected)/,
+      /Open coach – (Waiting for your input|Waiting for input|Working|Idle|Connected)/,
     );
   });
 
