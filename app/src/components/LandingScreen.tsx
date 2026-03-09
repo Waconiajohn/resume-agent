@@ -183,7 +183,7 @@ export function LandingScreen({
           </div>
         )}
 
-        <GlassButton onClick={onNewSession} className="mb-4 px-8 py-3 text-base">
+        <GlassButton onClick={onNewSession} size="lg" className="mb-4 px-8">
           <Plus className="h-5 w-5" />
           Start New Session
         </GlassButton>

@@ -206,9 +206,9 @@ export function PipelineIntakeForm({
                   <GlassButton
                     type="button"
                     variant="ghost"
+                    size="sm"
                     onClick={handleFileClick}
                     disabled={loading || fileLoading}
-                    className="h-auto px-3 py-2 text-xs"
                   >
                     {fileLoading ? 'Reading Resume File...' : 'Upload Resume File'}
                   </GlassButton>
@@ -220,13 +220,13 @@ export function PipelineIntakeForm({
                         <GlassButton
                           type="button"
                           variant="ghost"
+                          size="sm"
                           onClick={() => {
                             if (!initialResumeText?.trim()) return;
                             setResumeText(initialResumeText);
                             setSavedResumeLoadError(null);
                           }}
                           disabled={loading || fileLoading}
-                          className="h-auto px-3 py-2 text-xs"
                         >
                           Use Default Resume
                         </GlassButton>
@@ -250,12 +250,12 @@ export function PipelineIntakeForm({
                         <GlassButton
                           type="button"
                           variant="ghost"
+                          size="sm"
                           onClick={() => {
                             if (!selectedSavedResumeId) return;
                             void loadSavedResume(selectedSavedResumeId);
                           }}
                           disabled={loading || savedResumeLoadLoading || !selectedSavedResumeId}
-                          className="h-auto px-3 py-2 text-xs"
                         >
                           {savedResumeLoadLoading ? 'Loading...' : 'Load Selected'}
                         </GlassButton>
@@ -269,9 +269,9 @@ export function PipelineIntakeForm({
                     <GlassButton
                       type="button"
                       variant="ghost"
+                      size="sm"
                       onClick={handleFileClick}
                       disabled={loading || fileLoading}
-                      className="h-auto px-3 py-2 text-xs"
                     >
                       {fileLoading ? 'Reading Resume File...' : 'Upload Resume File'}
                     </GlassButton>
@@ -389,8 +389,9 @@ export function PipelineIntakeForm({
             {/* Submit button */}
             <GlassButton
               type="submit"
+              size="lg"
               disabled={!isValid || loading || fileLoading || jobFileLoading || savedResumeLoadLoading}
-              className="w-full py-3 text-base"
+              className="w-full"
               aria-busy={loading}
             >
               {loading ? (

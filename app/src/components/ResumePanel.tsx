@@ -103,13 +103,13 @@ export function ResumePanel({ resume }: ResumePanelProps) {
               ATS {resume.ats_score}%
             </span>
           )}
-          <GlassButton variant="ghost" onClick={handleDownloadText} className="h-8 px-2" aria-label="Download as text" disabled={isExporting}>
+          <GlassButton variant="ghost" size="sm" onClick={handleDownloadText} className="h-8 px-2" aria-label="Download as text" disabled={isExporting}>
             <Download className="h-4 w-4" />
           </GlassButton>
-          <GlassButton variant="ghost" onClick={handleDownloadDocx} className="h-8 px-2" aria-label="Download as DOCX" disabled={isExporting}>
+          <GlassButton variant="ghost" size="sm" onClick={handleDownloadDocx} className="h-8 px-2" aria-label="Download as DOCX" disabled={isExporting}>
             {exportingDocx ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <FileType2 className="h-4 w-4" />}
           </GlassButton>
-          <GlassButton variant="ghost" onClick={handleDownloadPdf} className="h-8 px-2" aria-label="Print or save as PDF" disabled={isExporting}>
+          <GlassButton variant="ghost" size="sm" onClick={handleDownloadPdf} className="h-8 px-2" aria-label="Print or save as PDF" disabled={isExporting}>
             {exportingPdf ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Printer className="h-4 w-4" />}
           </GlassButton>
         </div>

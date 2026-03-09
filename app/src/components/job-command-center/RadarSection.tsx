@@ -189,7 +189,7 @@ export function RadarSection({
 
         <div className="flex gap-2 ml-auto">
           {lastScanId && jobs.length > 0 && (
-            <GlassButton onClick={onScoreResults} disabled={scoring} className="text-[12px]">
+            <GlassButton onClick={onScoreResults} disabled={scoring} size="sm">
               {scoring ? (
                 <>
                   <Loader2 size={13} className="animate-spin" /> Scoring...
@@ -201,7 +201,7 @@ export function RadarSection({
               )}
             </GlassButton>
           )}
-          <GlassButton onClick={handleSearch} disabled={loading || !query.trim()} className="text-[12px]">
+          <GlassButton onClick={handleSearch} disabled={loading || !query.trim()} size="sm">
             {loading ? (
               <>
                 <Loader2 size={13} className="animate-spin" /> Searching...

@@ -387,7 +387,7 @@ function OfficeHours() {
       <p className="text-[12px] text-white/40 mb-4">
         Book a private 30-minute session with a career coach for personalized guidance on your search strategy.
       </p>
-      <GlassButton variant="ghost" className="w-full text-[13px]">
+      <GlassButton variant="ghost" className="w-full">
         <Lock size={14} className="mr-1.5 text-white/30" />
         Upgrade to Book Office Hours
       </GlassButton>

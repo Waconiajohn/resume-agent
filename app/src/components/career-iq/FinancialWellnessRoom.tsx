@@ -679,7 +679,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         <p className="text-[13px] font-medium text-white/70 mb-1">Something went wrong</p>
         <p className="text-[12px] text-white/35">{message}</p>
       </div>
-      <GlassButton variant="ghost" className="text-[13px]" onClick={onRetry}>
+      <GlassButton variant="ghost" size="sm" onClick={onRetry}>
         Try Again
       </GlassButton>
     </GlassCard>

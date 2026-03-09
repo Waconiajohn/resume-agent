@@ -35,7 +35,7 @@ export function WelcomeState({ userName, onStartWhyMe }: WelcomeStateProps) {
           Three steps to a career platform that works as hard as you do.
         </p>
 
-        <GlassButton variant="primary" onClick={onStartWhyMe} className="text-[15px] px-6 py-3">
+        <GlassButton variant="primary" size="lg" onClick={onStartWhyMe} className="px-6">
           Define Your Why-Me Story
           <ArrowRight size={18} className="ml-2" />
         </GlassButton>

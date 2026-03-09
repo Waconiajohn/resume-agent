@@ -166,11 +166,11 @@ function ReportView({
               Quality {qualityScore}%
             </div>
           )}
-          <GlassButton variant="ghost" onClick={handleCopy} className="text-[13px] px-3 py-2">
+          <GlassButton variant="ghost" onClick={handleCopy} size="sm">
             {copied ? <Check size={14} className="mr-1.5 text-[#57CDA4]" /> : <Copy size={14} className="mr-1.5" />}
             {copied ? 'Copied' : 'Copy All'}
           </GlassButton>
-          <GlassButton variant="ghost" onClick={onReset} className="text-[13px] px-3 py-2">
+          <GlassButton variant="ghost" onClick={onReset} size="sm">
             <RotateCcw size={14} className="mr-1.5" />
             New Case Studies
           </GlassButton>
@@ -351,7 +351,7 @@ export function CaseStudyRoom() {
               <p className="text-[12px] text-white/40 mt-0.5">{error}</p>
             </div>
           </div>
-          <GlassButton variant="ghost" onClick={handleReset} className="text-[13px]">
+          <GlassButton variant="ghost" onClick={handleReset} size="sm">
             Try Again
           </GlassButton>
         </GlassCard>

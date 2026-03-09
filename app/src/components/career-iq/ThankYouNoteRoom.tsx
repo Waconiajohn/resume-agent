@@ -290,7 +290,7 @@ function ReportView({
             Quality {qualityScore}%
           </div>
         )}
-        <GlassButton variant="ghost" onClick={handleCopy} className="text-[12px]">
+        <GlassButton variant="ghost" onClick={handleCopy} size="sm">
           {copied ? <Check size={13} className="mr-1.5 text-[#57CDA4]" /> : <Copy size={13} className="mr-1.5" />}
           {copied ? 'Copied!' : 'Copy'}
         </GlassButton>
@@ -489,7 +489,7 @@ export function ThankYouNoteRoom() {
             <AlertCircle size={18} className="text-[#f87171]" />
             <span className="text-[13px] text-[#f87171]">{error}</span>
           </div>
-          <GlassButton variant="ghost" onClick={handleReset} className="text-[12px]">
+          <GlassButton variant="ghost" onClick={handleReset} size="sm">
             <ArrowLeft size={14} className="mr-1.5" />
             Try again
           </GlassButton>

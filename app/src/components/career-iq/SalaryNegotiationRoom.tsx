@@ -118,11 +118,11 @@ function ReportView({
               Quality {qualityScore}%
             </div>
           )}
-          <GlassButton variant="ghost" onClick={handleCopy} className="text-[13px] px-3 py-2">
+          <GlassButton variant="ghost" onClick={handleCopy} size="sm">
             {copied ? <Check size={14} className="mr-1.5 text-[#57CDA4]" /> : <Copy size={14} className="mr-1.5" />}
             {copied ? 'Copied' : 'Copy'}
           </GlassButton>
-          <GlassButton variant="ghost" onClick={onReset} className="text-[13px] px-3 py-2">
+          <GlassButton variant="ghost" onClick={onReset} size="sm">
             <RotateCcw size={14} className="mr-1.5" />
             New Analysis
           </GlassButton>
@@ -451,7 +451,7 @@ export function SalaryNegotiationRoom() {
               <p className="text-[12px] text-white/40 mt-0.5">{error}</p>
             </div>
           </div>
-          <GlassButton variant="ghost" onClick={handleReset} className="text-[13px]">
+          <GlassButton variant="ghost" onClick={handleReset} size="sm">
             <ArrowLeft size={14} className="mr-1.5" />
             Try Again
           </GlassButton>
@@ -669,7 +669,7 @@ export function SalaryNegotiationRoom() {
             <GlassButton
               variant="ghost"
               onClick={() => handleStartCounterOffer('single_round', 'budget_constraints')}
-              className="text-[13px]"
+              size="sm"
             >
               <Zap size={14} className="mr-1.5 text-[#98b3ff]/70" />
               Quick Round

@@ -535,7 +535,8 @@ export function SectionWorkbench({
                         variant="ghost"
                         onClick={onApproveCurrentBundle}
                         disabled={isRefining || hasLocalEdits}
-                        className="h-8 px-3 text-[11px]"
+                        size="sm"
+                      className="h-8"
                       >
                         Approve Remaining in This Group
                       </GlassButton>
@@ -550,7 +551,8 @@ export function SectionWorkbench({
                         variant="ghost"
                         onClick={onApproveRemainingBundle}
                         disabled={isRefining || hasLocalEdits}
-                        className="h-8 px-3 text-[11px]"
+                        size="sm"
+                      className="h-8"
                       >
                         Approve All Remaining ({remainingReviewSections.length})
                       </GlassButton>
@@ -684,7 +686,7 @@ export function SectionWorkbench({
                     variant="ghost"
                     onClick={handleUndo}
                     disabled={undoStack.length === 0 || isRefining}
-                    className="px-2.5"
+                    size="sm"
                     aria-label="Undo last inline edit"
                   >
                     <Undo2 className="h-3.5 w-3.5" />
@@ -693,7 +695,7 @@ export function SectionWorkbench({
                     variant="ghost"
                     onClick={handleRedo}
                     disabled={redoStack.length === 0 || isRefining}
-                    className="px-2.5"
+                    size="sm"
                     aria-label="Redo inline edit"
                   >
                     <Redo2 className="h-3.5 w-3.5" />
@@ -727,7 +729,7 @@ export function SectionWorkbench({
                     variant="ghost"
                     onClick={handleUndo}
                     disabled={undoStack.length === 0 || isRefining}
-                    className="px-2.5"
+                    size="sm"
                     aria-label="Undo last inline edit"
                   >
                     <Undo2 className="h-3.5 w-3.5" />
@@ -736,7 +738,7 @@ export function SectionWorkbench({
                     variant="ghost"
                     onClick={handleRedo}
                     disabled={redoStack.length === 0 || isRefining}
-                    className="px-2.5"
+                    size="sm"
                     aria-label="Redo inline edit"
                   >
                     <Redo2 className="h-3.5 w-3.5" />

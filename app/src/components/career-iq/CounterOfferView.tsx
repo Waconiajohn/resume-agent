@@ -360,11 +360,11 @@ function SummaryView({
 
       {/* Actions */}
       <div className="flex gap-3">
-        <GlassButton variant="ghost" onClick={onBack} className="flex-1 text-[13px]">
+        <GlassButton variant="ghost" onClick={onBack} className="flex-1">
           <ArrowLeft size={14} className="mr-1.5" />
           Back to Salary Negotiation
         </GlassButton>
-        <GlassButton variant="primary" onClick={onTryAgain} className="flex-1 text-[13px]">
+        <GlassButton variant="primary" onClick={onTryAgain} className="flex-1">
           Try Again
         </GlassButton>
       </div>
@@ -516,11 +516,11 @@ export function CounterOfferView({
             </div>
           </div>
           <div className="flex gap-3">
-            <GlassButton variant="ghost" onClick={onBack} className="text-[12px]">
+            <GlassButton variant="ghost" onClick={onBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
               Back
             </GlassButton>
-            <GlassButton variant="primary" onClick={handleTryAgain} className="text-[12px]">
+            <GlassButton variant="primary" onClick={handleTryAgain} size="sm">
               Try Again
             </GlassButton>
           </div>

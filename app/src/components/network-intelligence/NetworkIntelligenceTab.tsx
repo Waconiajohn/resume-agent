@@ -112,7 +112,7 @@ export function NetworkIntelligenceTab({ accessToken }: NetworkIntelligenceTabPr
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white/90">Network Intelligence</h2>
-        <GlassButton variant="ghost" className="text-xs" onClick={handleReimport}>
+        <GlassButton variant="ghost" size="sm" onClick={handleReimport}>
           Re-import
         </GlassButton>
       </div>

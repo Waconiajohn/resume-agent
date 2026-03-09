@@ -187,7 +187,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
           </p>
         </div>
         {onNavigate && (
-          <GlassButton variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate('landing')}>
+          <GlassButton variant="ghost" size="sm" className="h-8" onClick={() => onNavigate('landing')}>
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
           </GlassButton>

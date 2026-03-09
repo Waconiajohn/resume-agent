@@ -71,11 +71,11 @@ export function SessionCoverLetterModal({
           <div className="flex items-center gap-2">
             {letter && (
               <>
-                <GlassButton variant="ghost" onClick={handleCopy} className="h-8 px-3 text-xs gap-1.5">
+                <GlassButton variant="ghost" size="sm" onClick={handleCopy} className="h-8 gap-1.5">
                   <Copy className="h-3.5 w-3.5" />
                   {copied ? 'Copied!' : 'Copy'}
                 </GlassButton>
-                <GlassButton variant="ghost" onClick={handleDownload} className="h-8 px-3 text-xs gap-1.5">
+                <GlassButton variant="ghost" size="sm" onClick={handleDownload} className="h-8 gap-1.5">
                   <Download className="h-3.5 w-3.5" />
                   Download TXT
                 </GlassButton>

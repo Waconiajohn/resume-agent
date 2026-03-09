@@ -288,7 +288,7 @@ function PracticeQuestions({ onStartPractice }: { onStartPractice: () => void })
       </div>
 
       <div className="mt-4">
-        <GlassButton variant="ghost" onClick={onStartPractice} className="w-full text-[13px]">
+        <GlassButton variant="ghost" onClick={onStartPractice} className="w-full">
           <Mic size={14} className="mr-1.5" />
           Start a Practice Session
         </GlassButton>
@@ -384,10 +384,10 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
             className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
           />
           <div className="flex gap-2">
-            <GlassButton variant="primary" onClick={handleSubmit} className="text-[12px] px-3 py-1.5">
+            <GlassButton variant="primary" onClick={handleSubmit} size="sm">
               Save
             </GlassButton>
-            <GlassButton variant="ghost" onClick={() => setShowAddForm(false)} className="text-[12px] px-3 py-1.5">
+            <GlassButton variant="ghost" onClick={() => setShowAddForm(false)} size="sm">
               Cancel
             </GlassButton>
           </div>
@@ -863,7 +863,7 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
               <AlertCircle size={18} className="text-[#e8a0a0]" />
               <span className="text-[13px] text-[#e8a0a0]">{inputError}</span>
             </div>
-            <GlassButton variant="ghost" onClick={handleBack} className="text-[12px]">
+            <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
               Back to Interview Lab
             </GlassButton>
@@ -881,7 +881,7 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
               <AlertCircle size={18} className="text-[#e8a0a0]" />
               <span className="text-[13px] text-[#e8a0a0]">{error}</span>
             </div>
-            <GlassButton variant="ghost" onClick={handleBack} className="text-[12px]">
+            <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
               Back to Interview Lab
             </GlassButton>

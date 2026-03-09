@@ -245,7 +245,7 @@ export function QuestionsNodeSummary({
             )}
             {onOpenQuestions && (
               <div className="mt-3">
-                <GlassButton type="button" variant="ghost" className="h-8 px-3 text-xs" onClick={onOpenQuestions}>
+                <GlassButton type="button" variant="ghost" size="sm" className="h-8" onClick={onOpenQuestions}>
                   Refresh Questions
                 </GlassButton>
               </div>

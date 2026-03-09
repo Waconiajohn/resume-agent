@@ -194,15 +194,15 @@ export function MasterResumeTab({
         <div className="flex items-center gap-2">
           {isEditing ? (
             <>
-              <GlassButton variant="ghost" className="h-8 px-3 text-xs" onClick={handleCancel} disabled={saving}>
+              <GlassButton variant="ghost" size="sm" className="h-8" onClick={handleCancel} disabled={saving}>
                 Cancel
               </GlassButton>
-              <GlassButton className="h-8 px-3 text-xs" onClick={handleSave} loading={saving}>
+              <GlassButton size="sm" className="h-8" onClick={handleSave} loading={saving}>
                 Save Changes
               </GlassButton>
             </>
           ) : (
-            <GlassButton variant="ghost" className="h-8 px-3 text-xs" onClick={() => setIsEditing(true)}>
+            <GlassButton variant="ghost" size="sm" className="h-8" onClick={() => setIsEditing(true)}>
               Edit
             </GlassButton>
           )}
