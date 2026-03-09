@@ -42,6 +42,10 @@ Gap identification, recommendation generation, fix prioritization.
 
 Brand audit report with consistency scores, gap analysis across resume/LinkedIn/bio, and prioritized improvement recommendations.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

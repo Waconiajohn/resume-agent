@@ -526,3 +526,25 @@ Use `@dnd-kit/core` + `@dnd-kit/utilities` for Kanban drag-drop. Chose @dnd-kit 
 - Stage dropdown kept as fallback for accessibility and precision
 - Cards use `onPointerDown` stopPropagation for buttons to prevent drag interference
 - Future: may add @dnd-kit/sortable if we need intra-column card reordering
+
+## ADR-041: JSON Schema for Tool input_schema, Zod Optional for LLM Output Validation
+**Date:** 2026-03-09
+**Status:** accepted
+
+**Context:**
+The `agent-tool-scaffold` skill generates plain JSON Schema objects for `input_schema` on every tool. Examining the codebase confirms this is the consistent pattern across all 16+ non-resume agents (interview-prep, linkedin-content, linkedin-optimizer, networking-outreach, cover-letter, etc.). The Resume Builder's strategist/tools.ts imports `BenchmarkCandidateSchema`, `ClassifyFitOutputSchema`, and `DesignBlueprintOutputSchema` from `agents/schemas/strategist-schemas.ts` — these are Zod schemas used to validate and parse LLM *responses* (structured JSON output), not the `input_schema` field that the LLM reads. The two concerns are distinct.
+
+**Decision:**
+Plain JSON Schema objects (`{ type: 'object', properties: {...}, required: [...] }`) are the accepted platform standard for tool `input_schema`. This is what the LLM provider receives and uses to validate tool call arguments. Zod schemas are recommended but optional for validating LLM *output* (parsing structured JSON responses from non-tool-call LLM requests). New agents should use JSON Schema for `input_schema` and may use Zod + `parseAndValidateLLMOutput` / `repairJSON` for output parsing.
+
+**Reasoning:**
+- LLM providers (OpenAI-compatible APIs) accept JSON Schema directly for tool definitions — there is no benefit to wrapping `input_schema` in Zod since it must be serialized to plain JSON anyway.
+- Zod adds value for output validation (type safety, runtime coercion, fallback handling) but is not required — `repairJSON` + manual coercion is an equally valid pattern already used by most agents.
+- The `agent-tool-scaffold` skill generates correct plain JSON Schema without Zod, matching all existing agents.
+- Introducing Zod for `input_schema` across 16+ agents would be pure churn with no runtime benefit.
+
+**Consequences:**
+- No migration needed for existing agents.
+- When CLAUDE.md or agent notes mention "Zod schemas," this refers to output validation only.
+- The `agents/schemas/` directory in the Resume Builder stores output-validation schemas — this is the correct placement for any new Zod schemas added to other agents.
+- The scaffold skill remains the authoritative generator for new tools — it produces JSON Schema for `input_schema` by design.

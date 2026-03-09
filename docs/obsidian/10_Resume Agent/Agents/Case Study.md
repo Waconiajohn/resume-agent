@@ -41,6 +41,10 @@ Case study drafting with consulting-grade formatting.
 
 Portfolio of consulting-grade case studies with before/after metrics, selected from top-impact achievements.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

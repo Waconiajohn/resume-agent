@@ -105,6 +105,10 @@ Final report (markdown) includes:
 | `sequence_complete` | session_id, report: string, quality_score: number, message_count: number |
 | `pipeline_error` | stage, error |
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

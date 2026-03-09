@@ -55,7 +55,7 @@ describe('Cover Letter Agent Registration', () => {
     const desc = agentRegistry.describe('cover-letter', 'analyst');
     expect(desc).toBeDefined();
     expect(desc!.tools).toHaveLength(4);
-    expect(desc!.tools).toContain('parse_inputs');
+    expect(desc!.tools).toContain('parse_resume_inputs');
     expect(desc!.tools).toContain('match_requirements');
     expect(desc!.tools).toContain('plan_letter');
     expect(desc!.tools).toContain('emit_transparency');

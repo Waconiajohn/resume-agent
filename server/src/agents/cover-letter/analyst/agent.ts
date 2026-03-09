@@ -19,7 +19,7 @@ export const analystConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> =
   capabilities: ['content_analysis', 'requirement_mapping'],
   system_prompt: `You are the Cover Letter Analyst agent. Your job is to:
 
-1. Parse the candidate's resume and job description using parse_inputs
+1. Parse the candidate's resume and job description using parse_resume_inputs
 2. Map candidate strengths to JD requirements using match_requirements
 3. Create a structured letter plan using plan_letter
 

@@ -92,6 +92,10 @@ Reads from prior sessions:
 - `evidence_items` — source for specific metrics and stories in experience bullets (up to 6 items)
 - `career_narrative` — tone reference for authentic voice
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

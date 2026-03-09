@@ -46,6 +46,10 @@ Strategic 90-day plan with 3 phases:
 
 Includes stakeholder map, quick wins, learning priorities, and success metrics.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

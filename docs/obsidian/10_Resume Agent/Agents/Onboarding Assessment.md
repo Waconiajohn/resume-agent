@@ -58,6 +58,10 @@ The Client Profile is the foundation for all downstream agents. Every agent's `b
 - **Pacing**: faster for high-urgency, more exploratory for low-urgency
 - **Starting point**: determines which product to recommend first
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

@@ -58,6 +58,10 @@ Optimized LinkedIn sections (headline, about, experience) with:
 - Quality scores per section
 - Final assembled optimization report
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

@@ -35,6 +35,10 @@ Resume analysis, expertise mapping, audience analysis, content mix planning.
 
 30-day LinkedIn content calendar with themes, hooks, hashtags, and scheduling guidance. Content mix: thought leadership, industry insights, personal narrative.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

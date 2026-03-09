@@ -3,6 +3,11 @@
  *
  * Uses MODEL_MID to extract skills, titles, and industries from resume text,
  * then generates LinkedIn, Indeed, and Google boolean search strings.
+ *
+ * TODO: The LLM extraction step should become a `generate_boolean_search` agent
+ * tool in the Network Intelligence agent, following the same pattern as other
+ * agent tools in server/src/agents/. See ADR-034 and the agent-tool-scaffold
+ * skill for the 5-file sequence (tool def, schema, model routing, registration, test).
  */
 
 import { llm, getModelForTier } from '../llm.js';
@@ -12,20 +17,53 @@ import type { BooleanSearchResult } from './types.js';
 
 // ─── In-memory search store (keyed by generated ID, LRU-capped) ─────────────
 
-const MAX_STORE_SIZE = 500;
-const searchStore = new Map<string, BooleanSearchResult>();
+// TODO: When migrated to agent tool, replace this in-memory store with a
+// Supabase-backed table so results survive process restarts and scale across
+// multiple server instances.
 
-/** Evict oldest entries when store exceeds cap. */
-function pruneStore(): void {
-  if (searchStore.size <= MAX_STORE_SIZE) return;
-  const excess = searchStore.size - MAX_STORE_SIZE;
-  const keys = searchStore.keys();
-  for (let i = 0; i < excess; i++) {
-    const next = keys.next();
-    if (next.done) break;
-    searchStore.delete(next.value);
+const MAX_STORE_SIZE = 500;
+
+/**
+ * LRU-capped in-memory store for generated boolean search results.
+ * Encapsulated in a class to give the store a clear lifecycle and make
+ * it straightforward to swap out in tests or future agent migration.
+ */
+class BooleanSearchStore {
+  private readonly store = new Map<string, BooleanSearchResult>();
+  private readonly maxSize: number;
+
+  constructor(maxSize: number) {
+    this.maxSize = maxSize;
+  }
+
+  set(id: string, result: BooleanSearchResult): void {
+    this.store.set(id, result);
+    this.prune();
+  }
+
+  get(id: string): BooleanSearchResult | undefined {
+    return this.store.get(id);
+  }
+
+  /** Evict oldest entries when store exceeds cap. */
+  private prune(): void {
+    if (this.store.size <= this.maxSize) return;
+    const excess = this.store.size - this.maxSize;
+    const keys = this.store.keys();
+    for (let i = 0; i < excess; i++) {
+      const next = keys.next();
+      if (next.done) break;
+      this.store.delete(next.value);
+    }
+  }
+
+  /** Expose size for testing. */
+  get size(): number {
+    return this.store.size;
   }
 }
+
+const searchStore = new BooleanSearchStore(MAX_STORE_SIZE);
 
 // ─── LLM extraction ───────────────────────────────────────────────────────────
 
@@ -35,7 +73,12 @@ interface ExtractedTerms {
   industries: string[];
 }
 
-const EXTRACT_SYSTEM_PROMPT = `You are a resume analyst. Extract key professional terms from the provided resume text.
+/**
+ * Build the system prompt for resume term extraction.
+ * Separated from the LLM call to improve testability and future agent migration.
+ */
+export function buildExtractTermsSystemPrompt(): string {
+  return `You are a resume analyst. Extract key professional terms from the provided resume text.
 
 Return ONLY a valid JSON object with these fields:
 - skills: array of up to 15 specific technical/functional skills (e.g. "P&L management", "supply chain optimization", "SaaS")
@@ -43,17 +86,26 @@ Return ONLY a valid JSON object with these fields:
 - industries: array of up to 5 industries the candidate has experience in (e.g. "manufacturing", "logistics", "retail")
 
 Be specific and professional. No generic terms like "leadership" or "communication".`;
+}
+
+/**
+ * Build the user prompt for resume term extraction.
+ * Separated from the LLM call to improve testability and future agent migration.
+ */
+export function buildExtractTermsUserPrompt(resumeText: string): string {
+  return `Extract professional terms from this resume:\n\n${resumeText.slice(0, 8000)}`;
+}
 
 async function extractTermsFromResume(resumeText: string): Promise<ExtractedTerms> {
   const model = getModelForTier('mid');
 
   const response = await llm.chat({
     model,
-    system: EXTRACT_SYSTEM_PROMPT,
+    system: buildExtractTermsSystemPrompt(),
     messages: [
       {
         role: 'user',
-        content: `Extract professional terms from this resume:\n\n${resumeText.slice(0, 8000)}`,
+        content: buildExtractTermsUserPrompt(resumeText),
       },
     ],
     max_tokens: 1024,
@@ -219,10 +271,9 @@ export async function generateBooleanSearch(
     generatedAt: new Date().toISOString(),
   };
 
-  // Store with a timestamped ID (prune oldest if over cap)
+  // Store with a timestamped ID (LRU eviction handled by BooleanSearchStore)
   const id = `bs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   searchStore.set(id, result);
-  pruneStore();
 
   logger.info(
     { id, skillCount: skills.length, titleCount: titles.length },
@@ -238,3 +289,4 @@ export async function generateBooleanSearch(
 export function getBooleanSearch(id: string): BooleanSearchResult | null {
   return searchStore.get(id) ?? null;
 }
+

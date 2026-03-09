@@ -35,6 +35,10 @@ Follow-up message generation and tracker report assembly.
 
 Batch analysis of multiple applications with fit scores, personalized follow-up messages, and portfolio-level insights.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

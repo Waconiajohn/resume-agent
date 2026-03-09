@@ -86,6 +86,10 @@ Seniority note: executives applying 1-2 levels down is treated as a valid strate
 
 **Platform context → `job_discovery_results`** — top 5 matches with fit scores, for cross-product use.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

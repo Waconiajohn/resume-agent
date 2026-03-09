@@ -33,6 +33,10 @@ Personalized thank-you notes per interviewer in multiple formats:
 - Handwritten
 - LinkedIn message
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

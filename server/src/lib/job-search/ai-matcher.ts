@@ -171,28 +171,17 @@ function buildProfileSummary(
   return summary.slice(0, 600);
 }
 
-/**
- * Send a batch of jobs plus the profile to MODEL_MID and parse match scores.
- * Throws if the LLM call fails. Individual jobs that fail to map are skipped.
- */
-async function scoreBatch(
-  profileSummary: string,
-  batch: JobResult[],
-): Promise<MatchResult[]> {
-  const jobList = batch.map((job, idx) => {
-    const descriptionSnippet = job.description
-      ? job.description.slice(0, 500)
-      : 'No description available';
-    return [
-      `Job ${idx + 1} (external_id: ${job.external_id}):`,
-      `  Title: ${job.title}`,
-      `  Company: ${job.company}`,
-      `  Location: ${job.location ?? 'Not specified'}`,
-      `  Description: ${descriptionSnippet}`,
-    ].join('\n');
-  }).join('\n\n');
+// TODO: This scoring logic should become a `score_jobs_against_profile` agent tool
+// in the Job Finder agent, following the same pattern as other agent tools in
+// server/src/agents/. See ADR-034 and the agent-tool-scaffold skill for the
+// 5-file sequence (tool def, schema, model routing, registration, test).
 
-  const systemPrompt = [
+/**
+ * Build the system prompt for job match scoring.
+ * Separated from the LLM call to improve testability and future agent migration.
+ */
+export function buildJobMatchingSystemPrompt(): string {
+  return [
     'You are a job matching analyst for senior executives.',
     'Score each job listing 0-100 for fit against the candidate profile.',
     '',
@@ -216,14 +205,45 @@ async function scoreBatch(
     '  ]',
     '}',
   ].join('\n');
+}
 
-  const userPrompt = [
+/**
+ * Build the user prompt for a batch of job listings against a profile summary.
+ * Separated from the LLM call to improve testability and future agent migration.
+ */
+export function buildJobMatchingPrompt(profileSummary: string, batch: JobResult[]): string {
+  const jobList = batch.map((job, idx) => {
+    const descriptionSnippet = job.description
+      ? job.description.slice(0, 500)
+      : 'No description available';
+    return [
+      `Job ${idx + 1} (external_id: ${job.external_id}):`,
+      `  Title: ${job.title}`,
+      `  Company: ${job.company}`,
+      `  Location: ${job.location ?? 'Not specified'}`,
+      `  Description: ${descriptionSnippet}`,
+    ].join('\n');
+  }).join('\n\n');
+
+  return [
     `CANDIDATE PROFILE:\n${profileSummary}`,
     '',
     `JOB LISTINGS TO SCORE:\n${jobList}`,
     '',
     'Return scores for all jobs listed above.',
   ].join('\n');
+}
+
+/**
+ * Send a batch of jobs plus the profile to MODEL_MID and parse match scores.
+ * Throws if the LLM call fails. Individual jobs that fail to map are skipped.
+ */
+async function scoreBatch(
+  profileSummary: string,
+  batch: JobResult[],
+): Promise<MatchResult[]> {
+  const systemPrompt = buildJobMatchingSystemPrompt();
+  const userPrompt = buildJobMatchingPrompt(profileSummary, batch);
 
   const response = await llm.chat({
     model: MODEL_MID,

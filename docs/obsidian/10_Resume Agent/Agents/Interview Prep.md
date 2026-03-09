@@ -67,6 +67,10 @@ Single agent (`interviewer`) with gate-per-question pattern. State is preserved 
 ### Cross-Product Context
 Reads `positioning_strategy`, `why_me_story`, and `evidence_items` from platform context to generate JD-targeted questions that draw on the user's proven experience.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

@@ -71,6 +71,10 @@ Owns document production and quality assurance. Selects template, verifies ATS c
 - **Inter-agent revision:** Producer can request Craftsman revisions via message bus
 - **Evidence flow:** Interview transcript passed to Craftsman with "authentic voice" instructions
 
+## Inter-Agent Communication
+
+Producer sends `REQUEST_REVISION` messages to the Craftsman via `AgentBus` when quality checks fail. The Coordinator subscribes to these bus messages and re-runs the Craftsman loop with the revision request as context.
+
 ## Related
 
 - [[Project Hub]]

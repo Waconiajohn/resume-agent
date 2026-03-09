@@ -11,15 +11,11 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { FF_NETWORK_INTELLIGENCE } from '../lib/feature-flags.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
-import { parseCsv } from '../lib/ni/csv-parser.js';
 import {
-  deleteConnectionsByUser,
-  insertConnections,
   getEnrichedConnectionsByUser,
   getConnectionCount,
   getCompanySummary,
   createScrapeLogEntry,
-  completeScrapeLogEntry,
 } from '../lib/ni/connections-store.js';
 import {
   insertTargetTitle,
@@ -31,9 +27,8 @@ import {
   getJobMatchesByUser,
   updateJobMatchStatus,
 } from '../lib/ni/job-matches-store.js';
-import { normalizeCompanyBatch } from '../lib/ni/company-normalizer.js';
 import { generateBooleanSearch, getBooleanSearch } from '../lib/ni/boolean-search.js';
-import { scrapeCareerPages } from '../lib/ni/career-scraper.js';
+import { runCsvImportPipeline, runCareerScrape } from '../lib/ni/import-service.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { CsvUploadResponse } from '../lib/ni/types.js';
@@ -108,78 +103,13 @@ ni.post('/csv/parse', rateLimitMiddleware(5, 60_000), async (c) => {
   const userId = c.get('user').id;
   const { csv_text, file_name } = parsed.data;
 
-  // Parse CSV
-  const result = parseCsv(csv_text);
-
-  if (result.connections.length === 0) {
-    const response: CsvUploadResponse = {
-      success: false,
-      totalRows: result.totalRows,
-      validRows: 0,
-      skippedRows: result.skippedRows,
-      duplicatesRemoved: result.duplicatesRemoved,
-      uniqueCompanies: 0,
-      errors: result.errors,
-    };
-    return c.json(response, 400);
-  }
-
-  // Create scrape log entry
-  const logId = await createScrapeLogEntry(userId, 'csv_import', {
-    file_name: file_name ?? 'unknown',
-    total_rows: result.totalRows,
-    valid_rows: result.validRows,
-  });
-
   try {
-    // Wipe previous upload, then insert new connections
-    await deleteConnectionsByUser(userId);
-    const batchId = file_name ?? new Date().toISOString();
-    const inserted = await insertConnections(userId, result.connections, batchId);
-
-    if (logId) {
-      await completeScrapeLogEntry(logId, 'completed', {
-        inserted,
-        unique_companies: result.uniqueCompanies,
-        duplicates_removed: result.duplicatesRemoved,
-      });
+    const response: CsvUploadResponse = await runCsvImportPipeline(userId, csv_text, file_name);
+    if (!response.success) {
+      return c.json(response, 400);
     }
-
-    logger.info(
-      { userId, inserted, uniqueCompanies: result.uniqueCompanies },
-      'CSV import completed',
-    );
-
-    // Fire-and-forget: normalize company names in background
-    const uniqueCompanyNames = [...new Set(result.connections.map((c) => c.companyRaw))];
-    void normalizeCompanyBatch(userId, uniqueCompanyNames).catch((normErr) => {
-      logger.error(
-        { error: normErr instanceof Error ? normErr.message : String(normErr), userId },
-        'Background company normalization failed',
-      );
-    });
-
-    const response: CsvUploadResponse = {
-      success: true,
-      totalRows: result.totalRows,
-      validRows: result.validRows,
-      skippedRows: result.skippedRows,
-      duplicatesRemoved: result.duplicatesRemoved,
-      uniqueCompanies: result.uniqueCompanies,
-      errors: result.errors,
-    };
-
     return c.json(response);
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'CSV import failed',
-    );
-
-    if (logId) {
-      await completeScrapeLogEntry(logId, 'failed', {}, err instanceof Error ? err.message : 'Unknown error');
-    }
-
+  } catch {
     return c.json({ error: 'Failed to store connections' }, 500);
   }
 });
@@ -359,44 +289,8 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
     return c.json({ error: 'Failed to start scrape' }, 500);
   }
 
-  // Fire and forget — scrape runs in background
-  void (async () => {
-    try {
-      // Fetch company info for the requested IDs
-      // supabaseAdmin imported statically at top of file
-      const { data: companies, error } = await supabaseAdmin
-        .from('company_directory')
-        .select('id, name_display, domain')
-        .in('id', company_ids);
-
-      if (error || !companies) {
-        await completeScrapeLogEntry(logId, 'failed', {}, 'Failed to fetch company records');
-        return;
-      }
-
-      const companyInfos = companies.map((row: { id: string; name_display: string; domain: string | null }) => ({
-        id: row.id,
-        name: row.name_display,
-        domain: row.domain,
-      }));
-
-      const result = await scrapeCareerPages(companyInfos, target_titles, userId);
-
-      await completeScrapeLogEntry(logId, 'completed', {
-        companies_scanned: result.companiesScanned,
-        jobs_found: result.jobsFound,
-        matching_jobs: result.matchingJobs,
-        referral_available: result.referralAvailable,
-        error_count: result.errors.length,
-      });
-
-      logger.info({ userId, logId, ...result }, 'career-scraper: scrape completed');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error({ error: msg, userId, logId }, 'career-scraper: scrape failed');
-      await completeScrapeLogEntry(logId, 'failed', {}, msg);
-    }
-  })();
+  // Fire-and-forget — scrape runs in background via import-service
+  void runCareerScrape(userId, logId, company_ids, target_titles);
 
   return c.json({ scrape_log_id: logId }, 202);
 });

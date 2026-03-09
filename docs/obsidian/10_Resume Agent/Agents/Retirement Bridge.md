@@ -117,6 +117,10 @@ Reads from prior sessions:
 
 Emotional baseline middleware (`emotional-baseline.ts`) is applied to both phases — distress resources included in agent messages if distress signals detected.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

@@ -103,6 +103,10 @@ Completed posts are persisted to the `content_posts` table:
 - Hashtags: 3-5, mix of broad and niche
 - Total length: 250-400 words
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

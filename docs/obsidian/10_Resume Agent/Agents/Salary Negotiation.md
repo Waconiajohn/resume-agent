@@ -73,6 +73,10 @@ Single agent (`employer`) with gate-per-round pattern. `CounterOfferSimState` tr
 ### Cross-Product Context
 Reads `positioning_strategy`, `why_me_story`, and `market_research` (from a prior salary negotiation report, if available) from platform context. Coaching_hint surfaces relevant anchoring strategies from the market data.
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

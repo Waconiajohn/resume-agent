@@ -19,6 +19,10 @@ Writes the cover letter using analyst findings and platform context.
 - Validates that the generic runtime works for products beyond resume
 - Loads platform context from resume pipeline (positioning strategy, evidence)
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]

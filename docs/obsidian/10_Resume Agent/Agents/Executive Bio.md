@@ -28,6 +28,10 @@ Bio analysis and multi-format generation.
 - Professional bio
 - LinkedIn featured bio
 
+## Inter-Agent Communication
+
+None — autonomous pipeline.
+
 ## Related
 
 - [[Project Hub]]
