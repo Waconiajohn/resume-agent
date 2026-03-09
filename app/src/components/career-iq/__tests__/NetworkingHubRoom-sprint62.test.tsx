@@ -452,7 +452,7 @@ describe('GeneratedMessages quality score color thresholds (logic tests)', () =>
    */
   function qualityColorClass(score: number): string {
     if (score >= 80) return 'text-[#b5dec2] bg-[#b5dec2]/10';   // green
-    if (score >= 60) return 'text-[#dfc797] bg-[#dfc797]/10';   // yellow
+    if (score >= 60) return 'text-[#f0d99f] bg-[#f0d99f]/10';   // yellow
     return 'text-red-400 bg-red-400/10';                         // red
   }
 
@@ -465,11 +465,11 @@ describe('GeneratedMessages quality score color thresholds (logic tests)', () =>
   });
 
   it('score of 79 maps to the yellow class', () => {
-    expect(qualityColorClass(79)).toBe('text-[#dfc797] bg-[#dfc797]/10');
+    expect(qualityColorClass(79)).toBe('text-[#f0d99f] bg-[#f0d99f]/10');
   });
 
   it('score of 60 maps to the yellow class', () => {
-    expect(qualityColorClass(60)).toBe('text-[#dfc797] bg-[#dfc797]/10');
+    expect(qualityColorClass(60)).toBe('text-[#f0d99f] bg-[#f0d99f]/10');
   });
 
   it('score of 59 maps to the red class', () => {

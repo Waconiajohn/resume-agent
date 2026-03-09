@@ -146,7 +146,7 @@ function ChangeBlock({
           <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-white/56">
             Original
           </span>
-          <p className="text-xs text-white/60 leading-relaxed line-through decoration-[#e0abab]/30 break-words">
+          <p className="text-xs text-white/60 leading-relaxed line-through decoration-[#f0b8b8]/30 break-words">
             {cleanText(change.original)}
           </p>
         </div>

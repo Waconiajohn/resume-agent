@@ -57,7 +57,7 @@ const STEPS: PromptStep[] = [
 function SignalIndicator({ level }: { level: SignalLevel }) {
   const config: Record<SignalLevel, { color: string; label: string }> = {
     green: { color: 'bg-[#b5dec2]', label: 'Strong' },
-    yellow: { color: 'bg-[#dfc797]', label: 'Getting there' },
+    yellow: { color: 'bg-[#f0d99f]', label: 'Getting there' },
     red: { color: 'bg-white/20', label: 'Not started' },
   };
   const c = config[level];
@@ -162,7 +162,7 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
                 : 'Take your time — there are no wrong answers'}
             </span>
             {story[step.field].trim().length > 0 && story[step.field].trim().length < 50 && (
-              <span className="text-[11px] text-[#dfc797]">
+              <span className="text-[11px] text-[#f0d99f]">
                 A few more sentences will strengthen this
               </span>
             )}

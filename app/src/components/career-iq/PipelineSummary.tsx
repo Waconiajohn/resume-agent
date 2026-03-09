@@ -18,7 +18,7 @@ const STAGE_DB_MAP: Record<string, string> = {
 const STAGE_COLORS: Record<string, string> = {
   Discovered: 'bg-white/20',
   Applied: 'bg-[#98b3ff]/50',
-  Interviewing: 'bg-[#dfc797]/50',
+  Interviewing: 'bg-[#f0d99f]/50',
   Offer: 'bg-[#b5dec2]/50',
   Accepted: 'bg-[#b5dec2]/70',
 };

@@ -62,7 +62,7 @@ function toCard(row: { id: string; company: string; title: string; pipeline_stag
 const STAGE_COLORS: Record<PipelineStage, string> = {
   Discovered: 'border-t-white/20',
   Applied: 'border-t-[#98b3ff]/40',
-  Interviewing: 'border-t-[#dfc797]/40',
+  Interviewing: 'border-t-[#f0d99f]/40',
   Offer: 'border-t-[#b5dec2]/40',
   Accepted: 'border-t-[#b5dec2]/60',
 };
@@ -142,7 +142,7 @@ function PipelineCardItem({
         <Clock size={11} />
         <span>{card.daysSinceMovement === 0 ? 'Today' : `${card.daysSinceMovement}d ago`}</span>
         {isStale && (
-          <span className="flex items-center gap-1 text-[#dfc797] ml-auto">
+          <span className="flex items-center gap-1 text-[#f0d99f] ml-auto">
             <MessageCircle size={11} />
             Follow up?
           </span>

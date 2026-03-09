@@ -189,10 +189,10 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
 
         {/* Error Phase */}
         {effectivePhase === 'error' && (
-          <GlassCard className="mb-6 border-[#e0abab]/20 p-5">
+          <GlassCard className="mb-6 border-[#f0b8b8]/20 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-[#e0abab]" />
-              <span className="text-sm font-medium text-[#e0abab]">Something went wrong</span>
+              <AlertCircle className="h-4 w-4 text-[#f0b8b8]" />
+              <span className="text-sm font-medium text-[#f0b8b8]">Something went wrong</span>
             </div>
             <p className="mb-4 text-xs text-white/60">
               {pipelineError ?? 'An unexpected error occurred.'}
@@ -222,8 +222,8 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
                     qualityScore >= 80
                       ? 'bg-[#b5dec2]/15 text-[#b5dec2]'
                       : qualityScore >= 60
-                        ? 'bg-[#dfc797]/15 text-[#dfc797]'
-                        : 'bg-[#e0abab]/15 text-[#e0abab]',
+                        ? 'bg-[#f0d99f]/15 text-[#f0d99f]'
+                        : 'bg-[#f0b8b8]/15 text-[#f0b8b8]',
                   )}
                 >
                   Quality: {qualityScore}/100

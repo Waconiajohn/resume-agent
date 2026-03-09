@@ -20,22 +20,22 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TACTIC_COLORS: Record<string, string> = {
-  budget_constraints: 'text-[#dfc797] bg-[#dfc797]/10',
+  budget_constraints: 'text-[#f0d99f] bg-[#f0d99f]/10',
   market_rate: 'text-[#98b3ff] bg-[#98b3ff]/10',
   counter_offer: 'text-[#b5dec2] bg-[#b5dec2]/10',
-  delay_tactics: 'text-[#dfc797] bg-[#dfc797]/10',
+  delay_tactics: 'text-[#f0d99f] bg-[#f0d99f]/10',
   lowball: 'text-[#e8a0a0] bg-[#e8a0a0]/10',
 };
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-[#b5dec2]';
-  if (score >= 60) return 'text-[#dfc797]';
+  if (score >= 60) return 'text-[#f0d99f]';
   return 'text-[#e8a0a0]';
 }
 
 function scoreBg(score: number): string {
   if (score >= 80) return 'bg-[#b5dec2]';
-  if (score >= 60) return 'bg-[#dfc797]';
+  if (score >= 60) return 'bg-[#f0d99f]';
   return 'bg-[#e8a0a0]';
 }
 
@@ -133,8 +133,8 @@ function EvaluationCard({
               <ul className="space-y-1">
                 {evaluation.what_to_improve.map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-[#dfc797]/50 mt-1.5 flex-shrink-0" />
-                    <span className="text-[12px] text-[#dfc797]/70 leading-relaxed">{item}</span>
+                    <div className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                    <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -187,8 +187,8 @@ function PushbackCard({ pushback }: { pushback: EmployerPushback }) {
       </div>
 
       {/* Employer statement — warm "other person talking" styling */}
-      <GlassCard className="p-5 border-[#dfc797]/20 bg-[#dfc797]/[0.03]">
-        <div className="text-[11px] font-medium text-[#dfc797]/50 uppercase tracking-wider mb-3">
+      <GlassCard className="p-5 border-[#f0d99f]/20 bg-[#f0d99f]/[0.03]">
+        <div className="text-[11px] font-medium text-[#f0d99f]/50 uppercase tracking-wider mb-3">
           Employer says
         </div>
         <blockquote className="text-[15px] text-white/80 leading-relaxed font-medium">
@@ -225,8 +225,8 @@ function ConnectingView({
   return (
     <GlassCard className="p-8 flex flex-col items-center gap-6">
       <div className="flex flex-col items-center gap-3">
-        <div className="rounded-xl bg-[#dfc797]/10 p-4">
-          <Loader2 size={28} className="text-[#dfc797] animate-spin" />
+        <div className="rounded-xl bg-[#f0d99f]/10 p-4">
+          <Loader2 size={28} className="text-[#f0d99f] animate-spin" />
         </div>
         <h3 className="text-[16px] font-semibold text-white/85">Setting up negotiation scenario...</h3>
         <p className="text-[13px] text-white/40 text-center">
@@ -240,7 +240,7 @@ function ConnectingView({
         <div className="w-full space-y-1.5 max-h-[200px] overflow-y-auto">
           {activityMessages.map((msg) => (
             <div key={msg.id} className="flex items-start gap-2 py-0.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#dfc797]/40 mt-1.5 flex-shrink-0" />
+              <div className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/40 mt-1.5 flex-shrink-0" />
               <span className="text-[12px] text-white/45 leading-relaxed">{msg.message}</span>
             </div>
           ))}
@@ -288,7 +288,7 @@ function SummaryView({
               summary.overall_score >= 80
                 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
                 : summary.overall_score >= 60
-                  ? 'text-[#dfc797] bg-[#dfc797]/10'
+                  ? 'text-[#f0d99f] bg-[#f0d99f]/10'
                   : 'text-[#e8a0a0] bg-[#e8a0a0]/10',
             )}
           >
@@ -324,8 +324,8 @@ function SummaryView({
             <ul className="space-y-1.5">
               {summary.areas_for_improvement.map((area, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#dfc797]/50 mt-1.5 flex-shrink-0" />
-                  <span className="text-[12px] text-[#dfc797]/70 leading-relaxed">{area}</span>
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                  <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{area}</span>
                 </li>
               ))}
             </ul>
@@ -589,7 +589,7 @@ export function CounterOfferView({
           {status === 'evaluating' ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <Loader2 size={16} className="text-[#dfc797] animate-spin" />
+                <Loader2 size={16} className="text-[#f0d99f] animate-spin" />
                 <span className="text-[13px] text-white/50">Evaluating your response...</span>
               </div>
               <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
@@ -612,7 +612,7 @@ export function CounterOfferView({
                   className={cn(
                     'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3',
                     'text-[13px] text-white/75 placeholder:text-white/20 leading-relaxed',
-                    'focus:outline-none focus:border-[#dfc797]/30 resize-y',
+                    'focus:outline-none focus:border-[#f0d99f]/30 resize-y',
                   )}
                 />
                 <div className="flex items-center justify-between mt-1.5">

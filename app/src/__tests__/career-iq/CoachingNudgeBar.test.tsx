@@ -103,7 +103,7 @@ describe('CoachingNudgeBar', () => {
       <CoachingNudgeBar nudges={[NUDGE_INACTIVITY]} onDismiss={vi.fn()} />,
     );
     // The GlassCard wrapper should have the amber border class
-    const card = container.querySelector('.border-\\[\\#dfc797\\]\\/20');
+    const card = container.querySelector('.border-\\[\\#f0d99f\\]\\/20');
     expect(card).not.toBeNull();
   });
 

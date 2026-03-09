@@ -14,8 +14,8 @@ const STATUS_COLORS: Record<JobMatchStatus, string> = {
   new: 'bg-[#afc4ff]/20 text-[#afc4ff]/80',
   applied: 'bg-purple-400/20 text-purple-300/80',
   referred: 'bg-[#b5dec2]/20 text-[#b5dec2]/80',
-  interviewing: 'bg-[#dfc797]/20 text-[#dfc797]/80',
-  rejected: 'bg-[#e0abab]/20 text-[#e0abab]/80',
+  interviewing: 'bg-[#f0d99f]/20 text-[#f0d99f]/80',
+  rejected: 'bg-[#f0b8b8]/20 text-[#f0b8b8]/80',
   archived: 'bg-white/10 text-white/40',
 };
 

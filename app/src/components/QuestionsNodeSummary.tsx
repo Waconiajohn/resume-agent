@@ -97,14 +97,14 @@ export function QuestionsNodeSummary({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
                       item.priority === 'must_have'
-                        ? 'border-[#e0abab]/20 bg-[#e0abab]/[0.08] text-[#e0abab]/85'
+                        ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
                         : item.priority === 'implicit'
-                          ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/85'
+                          ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
                           : 'border-white/[0.1] bg-white/[0.03] text-white/60'
                     }`}>
                       {item.priority === 'must_have' ? 'Must-have' : item.priority === 'implicit' ? 'Implicit' : 'Nice-to-have'}
                     </span>
-                    <span className={item.classification === 'gap' ? 'text-[#e0abab]/80' : 'text-[#dfc797]/80'}>
+                    <span className={item.classification === 'gap' ? 'text-[#f0b8b8]/80' : 'text-[#f0d99f]/80'}>
                       {item.classification === 'gap' ? 'Gap' : 'Partial'}
                     </span>
                   </div>
@@ -145,7 +145,7 @@ export function QuestionsNodeSummary({
                       <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                         <span className={`rounded-full border px-1.5 py-0.5 ${
                           item.impact_tag === 'high'
-                            ? 'border-[#e0abab]/20 bg-[#e0abab]/[0.08] text-[#e0abab]/85'
+                            ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
                             : item.impact_tag === 'medium'
                               ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.08] text-[#afc4ff]/85'
                               : 'border-white/[0.1] bg-white/[0.03] text-white/60'
@@ -156,7 +156,7 @@ export function QuestionsNodeSummary({
                           item.status === 'answered'
                             ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.08] text-[#b5dec2]/85'
                             : item.status === 'deferred'
-                              ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/85'
+                              ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
                               : 'border-white/[0.1] bg-white/[0.03] text-white/60'
                         }`}>
                           {item.status}

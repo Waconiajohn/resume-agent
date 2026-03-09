@@ -118,7 +118,7 @@ function SmartMatches({
     return (
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Star size={18} className="text-[#dfc797]" />
+          <Star size={18} className="text-[#f0d99f]" />
           <h3 className="text-[15px] font-semibold text-white/85">Review Results</h3>
           <span className="ml-auto text-[11px] text-white/30">Action required</span>
         </div>
@@ -847,7 +847,7 @@ export function JobCommandCenterRoom({ onNavigate, onNavigateRoom }: JobCommandC
           <span
             className={cn(
               'font-semibold',
-              dailyOps.dueActions.length > 0 ? 'text-[#dfc797]' : 'text-white/75',
+              dailyOps.dueActions.length > 0 ? 'text-[#f0d99f]' : 'text-white/75',
             )}
           >
             {dailyOps.dueActions.length}

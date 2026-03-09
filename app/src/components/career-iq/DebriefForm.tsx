@@ -334,8 +334,8 @@ export function DebriefForm({
             current={overallImpression}
             icon={<Minus size={16} />}
             label="Neutral"
-            color="text-[#dfc797]"
-            activeClass="border-[#dfc797]/30 bg-[#dfc797]/[0.06] text-[#dfc797]"
+            color="text-[#f0d99f]"
+            activeClass="border-[#f0d99f]/30 bg-[#f0d99f]/[0.06] text-[#f0d99f]"
             onClick={setOverallImpression}
           />
           <ImpressionButton

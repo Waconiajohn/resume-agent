@@ -116,7 +116,7 @@ export function ResumePanel({ resume }: ResumePanelProps) {
       </div>
 
       {exportError && (
-        <div className="mx-4 mt-3 rounded-lg border border-[#e0abab]/28 bg-[#e0abab]/[0.08] px-3 py-2 text-xs text-[#e0abab]/90">
+        <div className="mx-4 mt-3 rounded-lg border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-3 py-2 text-xs text-[#f0b8b8]/90">
           {exportError}
         </div>
       )}

@@ -113,8 +113,8 @@ describe('ExperienceEntryCard — quality score badges', () => {
     });
     render(<ExperienceEntryCard entry={entry} />);
     const impactBadge = screen.getByText(/Impact 60/);
-    expect(impactBadge.className).toContain('text-[#dfc797]');
-    expect(impactBadge.className).toContain('bg-[#dfc797]/10');
+    expect(impactBadge.className).toContain('text-[#f0d99f]');
+    expect(impactBadge.className).toContain('bg-[#f0d99f]/10');
   });
 
   it('applies red color class for scores < 60', () => {
@@ -142,7 +142,7 @@ describe('ExperienceEntryCard — quality score badges', () => {
     });
     render(<ExperienceEntryCard entry={entry} />);
     const badge = screen.getByText(/Impact 60/);
-    expect(badge.className).toContain('text-[#dfc797]');
+    expect(badge.className).toContain('text-[#f0d99f]');
   });
 
   it('applies red at 59 (one below yellow boundary)', () => {
@@ -160,7 +160,7 @@ describe('ExperienceEntryCard — quality score badges', () => {
     });
     render(<ExperienceEntryCard entry={entry} />);
     expect(screen.getByText(/Impact 90/).className).toContain('text-[#b5dec2]');
-    expect(screen.getByText(/Metrics 70/).className).toContain('text-[#dfc797]');
+    expect(screen.getByText(/Metrics 70/).className).toContain('text-[#f0d99f]');
     expect(screen.getByText(/Context 40/).className).toContain('text-red-400');
     expect(screen.getByText(/Keywords 80/).className).toContain('text-[#b5dec2]');
   });

@@ -76,8 +76,8 @@ const SIGNAL_CONFIG: Record<
   },
   yellow: {
     label: 'Worth Exploring',
-    color: 'text-[#dfc797]',
-    bgColor: 'bg-[#dfc797]',
+    color: 'text-[#f0d99f]',
+    bgColor: 'bg-[#f0d99f]',
     Icon: AlertCircle,
   },
   red: {

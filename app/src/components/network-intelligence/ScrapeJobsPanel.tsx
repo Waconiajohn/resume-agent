@@ -289,7 +289,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
             </p>
 
             {eligibleCompanyCount === 0 && !running && (
-              <p className="mt-2 text-xs text-[#dfc797]/70">
+              <p className="mt-2 text-xs text-[#f0d99f]/70">
                 Import LinkedIn connections first — companies need to be normalized before scanning.
               </p>
             )}

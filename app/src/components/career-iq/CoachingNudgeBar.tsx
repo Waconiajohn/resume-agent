@@ -21,9 +21,9 @@ interface NudgeStyle {
 
 const NUDGE_STYLES: Record<string, NudgeStyle> = {
   inactivity: {
-    border: 'border-[#dfc797]/20',
-    bg: 'bg-[#dfc797]/[0.04]',
-    iconColor: 'text-[#dfc797]',
+    border: 'border-[#f0d99f]/20',
+    bg: 'bg-[#f0d99f]/[0.04]',
+    iconColor: 'text-[#f0d99f]',
     Icon: Clock,
   },
   rejection_streak: {
@@ -33,9 +33,9 @@ const NUDGE_STYLES: Record<string, NudgeStyle> = {
     Icon: Heart,
   },
   stalled_pipeline: {
-    border: 'border-[#dfc797]/20',
-    bg: 'bg-[#dfc797]/[0.04]',
-    iconColor: 'text-[#dfc797]',
+    border: 'border-[#f0d99f]/20',
+    bg: 'bg-[#f0d99f]/[0.04]',
+    iconColor: 'text-[#f0d99f]',
     Icon: AlertCircle,
   },
   milestone: {
@@ -74,9 +74,9 @@ function NudgeCard({ nudge, onDismiss }: { nudge: CoachingNudge; onDismiss: (id:
       <div
         className={cn(
           'rounded-lg p-2 flex-shrink-0',
-          nudge.trigger_type === 'inactivity' && 'bg-[#dfc797]/10',
+          nudge.trigger_type === 'inactivity' && 'bg-[#f0d99f]/10',
           nudge.trigger_type === 'rejection_streak' && 'bg-[#98b3ff]/10',
-          nudge.trigger_type === 'stalled_pipeline' && 'bg-[#dfc797]/10',
+          nudge.trigger_type === 'stalled_pipeline' && 'bg-[#f0d99f]/10',
           nudge.trigger_type === 'milestone' && 'bg-[#b5dec2]/10',
           !NUDGE_STYLES[nudge.trigger_type] && 'bg-white/[0.06]',
         )}

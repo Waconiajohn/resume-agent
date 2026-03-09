@@ -6,7 +6,7 @@ import type { MasterResumeEvidenceItem } from '@/types/resume';
 const SOURCE_CONFIG: Record<MasterResumeEvidenceItem['source'], { label: string; classes: string }> = {
   crafted: { label: 'Crafted', classes: 'bg-[#afc4ff]/20 text-[#afc4ff] border-[#afc4ff]/30' },
   upgraded: { label: 'Upgraded', classes: 'bg-[#b5dec2]/20 text-[#b5dec2] border-[#b5dec2]/30' },
-  interview: { label: 'Interview', classes: 'bg-[#dfc797]/20 text-[#dfc797] border-[#dfc797]/30' },
+  interview: { label: 'Interview', classes: 'bg-[#f0d99f]/20 text-[#f0d99f] border-[#f0d99f]/30' },
 };
 
 interface EvidenceItemCardProps {
@@ -37,7 +37,7 @@ export function EvidenceItemCard({ item, onDelete }: EvidenceItemCardProps) {
           <button
             type="button"
             onClick={onDelete}
-            className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-[#e0abab]"
+            className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/30 transition-colors hover:text-[#f0b8b8]"
             aria-label="Delete evidence item"
           >
             <Trash2 className="h-3.5 w-3.5" />

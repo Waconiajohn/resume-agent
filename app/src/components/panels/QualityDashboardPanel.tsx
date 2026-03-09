@@ -23,14 +23,14 @@ interface QualityDashboardPanelProps {
 
 function scoreColor(score: number): string {
   if (score >= 70) return 'text-[#b5dec2]';
-  if (score >= 50) return 'text-[#dfc797]';
-  return 'text-[#e0abab]';
+  if (score >= 50) return 'text-[#f0d99f]';
+  return 'text-[#f0b8b8]';
 }
 
 function secondaryScoreColor(score: number): string {
   if (score >= 80) return 'text-[#b5dec2]';
-  if (score >= 60) return 'text-[#dfc797]';
-  return 'text-[#e0abab]';
+  if (score >= 60) return 'text-[#f0d99f]';
+  return 'text-[#f0b8b8]';
 }
 
 interface CollapsibleSectionProps {
@@ -104,7 +104,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
           score: hiring_manager.checklist_total ?? 0,
           max: hiring_manager.checklist_max ?? 50,
           label: 'Hiring Manager',
-          color: hiring_manager.pass ? 'text-[#b5dec2]' : 'text-[#e0abab]',
+          color: hiring_manager.pass ? 'text-[#b5dec2]' : 'text-[#f0b8b8]',
         }
       : null,
     ats_score != null
@@ -214,7 +214,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
                     {needsWork.map(([key, score]) => (
                       <div key={key} className="flex items-center justify-between rounded border border-white/[0.1] bg-white/[0.03] px-2 py-1">
                         <span className="text-xs text-white/70 capitalize">{key.replace(/_/g, ' ')}</span>
-                        <span className="text-xs font-medium text-[#e0abab]">{score}/5</span>
+                        <span className="text-xs font-medium text-[#f0b8b8]">{score}/5</span>
                       </div>
                     ))}
                   </div>
@@ -266,8 +266,8 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="space-y-1.5">
               {ats_findings!.map((finding, i) => {
                 const priorityStyles: Record<string, string> = {
-                  high: 'border-[#e0abab]/25 bg-[#e0abab]/10 text-[#e0abab]/90',
-                  medium: 'border-[#dfc797]/25 bg-[#dfc797]/10 text-[#dfc797]/90',
+                  high: 'border-[#f0b8b8]/25 bg-[#f0b8b8]/10 text-[#f0b8b8]/90',
+                  medium: 'border-[#f0d99f]/25 bg-[#f0d99f]/10 text-[#f0d99f]/90',
                   low: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#b5dec2]/90',
                 };
                 const badgeStyle =
@@ -339,7 +339,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             <div className="flex items-center gap-2 mb-3">
               <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
                 highRiskCount > 0
-                  ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.08] text-[#dfc797]/85'
+                  ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] text-[#f0d99f]/85'
                   : 'border-white/[0.08] bg-white/[0.02] text-white/48'
               }`}>
                 {highRiskCount > 0 ? 'Action required' : 'Review'}
@@ -353,8 +353,8 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
               {risk_flags.map((rf, i) => {
                 const severityColor = ({
                   low: 'border-[#b5dec2]/20 bg-[#b5dec2]/10',
-                  medium: 'border-[#dfc797]/20 bg-[#dfc797]/10',
-                  high: 'border-[#e0abab]/20 bg-[#e0abab]/10',
+                  medium: 'border-[#f0d99f]/20 bg-[#f0d99f]/10',
+                  high: 'border-[#f0b8b8]/20 bg-[#f0b8b8]/10',
                 } as Record<string, string>)[rf.severity] ?? 'border-white/[0.1] bg-white/[0.04]';
                 return (
                   <div key={`risk-flag-${rf.flag.slice(0, 30)}-${i}`} className={`rounded-lg border p-2.5 ${severityColor}`}>
@@ -371,7 +371,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
         {age_bias_risks && age_bias_risks.length > 0 && (
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="rounded-full border border-[#dfc797]/20 bg-[#dfc797]/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#dfc797]/85">
+              <span className="rounded-full border border-[#f0d99f]/20 bg-[#f0d99f]/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#f0d99f]/85">
                 Action required
               </span>
               <AlertTriangle className="h-3.5 w-3.5 text-white/62" />

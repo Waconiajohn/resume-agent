@@ -45,7 +45,7 @@ const MOCK_STREAK = 3;
 function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
   const colors: Record<SignalLevel, string> = {
     green: 'bg-[#b5dec2]',
-    yellow: 'bg-[#dfc797]',
+    yellow: 'bg-[#f0d99f]',
     red: 'bg-white/20',
   };
   return (
@@ -111,7 +111,7 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe }
           {/* Streak */}
           {dashboardState !== 'new-user' && (
             <div className="flex items-center gap-2 text-[13px] text-white/40">
-              <Flame size={16} className="text-[#dfc797]" />
+              <Flame size={16} className="text-[#f0d99f]" />
               <span>{MOCK_STREAK}-day streak</span>
             </div>
           )}

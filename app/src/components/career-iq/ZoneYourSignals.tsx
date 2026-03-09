@@ -80,8 +80,8 @@ const MOCK_SIGNALS: Signal[] = [
 
 const LEVEL_CONFIG: Record<SignalLevel, { color: string; bg: string; border: string; label: string; barWidth: string }> = {
   strong: { color: 'text-[#b5dec2]', bg: 'bg-[#b5dec2]/10', border: 'border-[#b5dec2]/20', label: 'Strong', barWidth: 'w-[85%]' },
-  building: { color: 'text-[#dfc797]', bg: 'bg-[#dfc797]/10', border: 'border-[#dfc797]/20', label: 'Building', barWidth: 'w-[55%]' },
-  'needs-work': { color: 'text-[#e0abab]', bg: 'bg-[#e0abab]/10', border: 'border-[#e0abab]/20', label: 'Needs work', barWidth: 'w-[30%]' },
+  building: { color: 'text-[#f0d99f]', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', label: 'Building', barWidth: 'w-[55%]' },
+  'needs-work': { color: 'text-[#f0b8b8]', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', label: 'Needs work', barWidth: 'w-[30%]' },
 };
 
 function SignalCard({ signal }: { signal: Signal }) {
@@ -116,8 +116,8 @@ function SignalCard({ signal }: { signal: Signal }) {
           className={cn(
             'h-full rounded-full transition-all duration-700',
             signal.level === 'strong' && 'bg-[#b5dec2]/60',
-            signal.level === 'building' && 'bg-[#dfc797]/60',
-            signal.level === 'needs-work' && 'bg-[#e0abab]/60',
+            signal.level === 'building' && 'bg-[#f0d99f]/60',
+            signal.level === 'needs-work' && 'bg-[#f0b8b8]/60',
             config.barWidth,
           )}
         />

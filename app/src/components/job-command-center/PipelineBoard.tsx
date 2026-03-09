@@ -14,8 +14,8 @@ import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline'
 const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string }[] = [
   { key: 'saved', label: 'Saved', color: 'text-white/50' },
   { key: 'researching', label: 'Researching', color: 'text-[#98b3ff]' },
-  { key: 'applied', label: 'Applied', color: 'text-[#dfc797]' },
-  { key: 'screening', label: 'Screening', color: 'text-[#dfc797]' },
+  { key: 'applied', label: 'Applied', color: 'text-[#f0d99f]' },
+  { key: 'screening', label: 'Screening', color: 'text-[#f0d99f]' },
   { key: 'interviewing', label: 'Interviewing', color: 'text-[#b5dec2]' },
   { key: 'offer', label: 'Offer', color: 'text-[#b5dec2]' },
   { key: 'closed_won', label: 'Won', color: 'text-[#b5dec2]' },

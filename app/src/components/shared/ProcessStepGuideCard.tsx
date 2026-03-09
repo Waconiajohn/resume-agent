@@ -20,7 +20,7 @@ function toneBorderClass(tone: GuideTone): string {
     case 'action':
       return 'border-l-[#afc4ff]/60';
     case 'review':
-      return 'border-l-[#dfc797]/60';
+      return 'border-l-[#f0d99f]/60';
     case 'export':
       return 'border-l-[#b5dec2]/60';
     case 'info':

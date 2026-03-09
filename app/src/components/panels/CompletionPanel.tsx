@@ -33,9 +33,9 @@ function StatBadge({ label, value }: { label: string; value: string | number }) 
 function toneClass(tone: 'error' | 'warning' | 'success' | 'info'): string {
   switch (tone) {
     case 'error':
-      return 'border-[#e0abab]/28 bg-[#e0abab]/[0.08] text-[#e0abab]/90';
+      return 'border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/90';
     case 'warning':
-      return 'border-[#dfc797]/28 bg-[#dfc797]/[0.08] text-[#dfc797]/90';
+      return 'border-[#f0d99f]/28 bg-[#f0d99f]/[0.08] text-[#f0d99f]/90';
     case 'success':
       return 'border-[#b5dec2]/28 bg-[#b5dec2]/[0.08] text-[#b5dec2]/90';
     case 'info':
@@ -270,7 +270,7 @@ export function CompletionPanel({
                 )}
                 Download Word (.docx)
                 {docxBlocked && (
-                  <span className="ml-2 rounded-full border border-[#dfc797]/30 bg-[#dfc797]/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-[#dfc797]/80">
+                  <span className="ml-2 rounded-full border border-[#f0d99f]/30 bg-[#f0d99f]/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-[#f0d99f]/80">
                     Upgrade
                   </span>
                 )}

@@ -111,7 +111,7 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
       className={cn(
         'relative cursor-pointer border-2 border-dashed p-8 text-center transition-colors',
         state === 'dragging' && 'border-[#afc4ff]/50 bg-[#afc4ff]/[0.05]',
-        state === 'error' && 'border-[#e0abab]/30',
+        state === 'error' && 'border-[#f0b8b8]/30',
         state === 'complete' && 'border-[#b5dec2]/30',
         state !== 'dragging' && state !== 'error' && state !== 'complete' && 'border-white/10',
       )}
@@ -169,7 +169,7 @@ export function CsvUploader({ accessToken, onUploadComplete }: CsvUploaderProps)
 
       {state === 'error' && (
         <div className="space-y-2">
-          <p className="text-sm text-[#e0abab]/80">{errorMessage}</p>
+          <p className="text-sm text-[#f0b8b8]/80">{errorMessage}</p>
           <GlassButton
             variant="ghost"
             className="text-xs"

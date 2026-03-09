@@ -178,7 +178,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
       </div>
 
       {errorMessage && (
-        <div className="w-full max-w-md rounded-xl border border-[#e0abab]/30 bg-[#e0abab]/10 px-4 py-3 text-sm text-[#e0abab]/70">
+        <div className="w-full max-w-md rounded-xl border border-[#f0b8b8]/30 bg-[#f0b8b8]/10 px-4 py-3 text-sm text-[#f0b8b8]/70">
           {errorMessage}
         </div>
       )}
@@ -284,7 +284,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
               'w-full rounded-xl border px-4 py-3 text-sm',
               promoResult.valid
                 ? 'border-[#b5dec2]/30 bg-[#b5dec2]/10 text-[#b5dec2]'
-                : 'border-[#e0abab]/30 bg-[#e0abab]/10 text-[#e0abab]/70',
+                : 'border-[#f0b8b8]/30 bg-[#f0b8b8]/10 text-[#f0b8b8]/70',
             )}
           >
             {promoResult.valid

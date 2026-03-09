@@ -164,7 +164,7 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
           <p className="mt-2 text-[11px] text-white/60">
             <span className="text-[#b5dec2] font-medium">{strong_count} strong</span>
             {', '}
-            <span className="text-[#dfc797] font-medium">{partial_count} partial</span>
+            <span className="text-[#f0d99f] font-medium">{partial_count} partial</span>
             {', '}
             <span className="text-[#dfa9a9] font-medium">{gap_count} gaps</span>
           </p>

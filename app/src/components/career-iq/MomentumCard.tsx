@@ -78,7 +78,7 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
   }
 
   const streak = summary?.current_streak ?? 0;
-  const streakColor = streak >= 3 ? 'text-[#b5dec2]' : 'text-[#dfc797]';
+  const streakColor = streak >= 3 ? 'text-[#b5dec2]' : 'text-[#f0d99f]';
   const recentWins = summary?.recent_wins?.slice(0, 3) ?? [];
 
   return (
@@ -93,12 +93,12 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
         <div
           className={cn(
             'rounded-lg p-2 flex-shrink-0',
-            streak >= 3 ? 'bg-[#b5dec2]/10' : 'bg-[#dfc797]/10',
+            streak >= 3 ? 'bg-[#b5dec2]/10' : 'bg-[#f0d99f]/10',
           )}
         >
           <Flame
             size={20}
-            className={cn(streak >= 3 ? 'text-[#b5dec2]' : 'text-[#dfc797]')}
+            className={cn(streak >= 3 ? 'text-[#b5dec2]' : 'text-[#f0d99f]')}
           />
         </div>
         {streak > 0 ? (
@@ -109,7 +109,7 @@ export function MomentumCard({ summary, loading }: MomentumCardProps) {
             <span className="text-[13px] text-white/45">day streak</span>
           </div>
         ) : (
-          <span className="text-[13px] text-[#dfc797]">Start your streak!</span>
+          <span className="text-[13px] text-[#f0d99f]">Start your streak!</span>
         )}
       </div>
 

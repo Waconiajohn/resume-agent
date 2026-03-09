@@ -18,7 +18,7 @@ function urgencyClass(dueDateStr: string): string {
   const diffMs = due.getTime() - now.getTime();
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
   if (diffDays < 0) return 'text-red-400/70 border-red-400/20 bg-red-400/[0.04]';
-  if (diffDays < 1) return 'text-[#dfc797]/70 border-[#dfc797]/20 bg-[#dfc797]/[0.04]';
+  if (diffDays < 1) return 'text-[#f0d99f]/70 border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]';
   return 'text-white/50 border-white/[0.06] bg-white/[0.02]';
 }
 
@@ -91,7 +91,7 @@ export function DailyOpsSection({
       {/* Due actions */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Clock size={14} className="text-[#dfc797]" />
+          <Clock size={14} className="text-[#f0d99f]" />
           <span className="text-[12px] font-semibold text-white/60 uppercase tracking-wider">
             Due Actions
           </span>
@@ -112,7 +112,7 @@ export function DailyOpsSection({
               const dueLabelClass = isPast
                 ? 'text-red-400/70'
                 : isDueToday
-                  ? 'text-[#dfc797]/70'
+                  ? 'text-[#f0d99f]/70'
                   : 'text-white/30';
 
               return (
@@ -154,10 +154,10 @@ export function DailyOpsSection({
 
       {/* Stale applications callout */}
       {staleApplications.length > 0 && (
-        <div className="rounded-xl border border-[#dfc797]/15 bg-[#dfc797]/[0.03] p-4">
+        <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.03] p-4">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={14} className="text-[#dfc797]/60" />
-            <span className="text-[12px] font-semibold text-[#dfc797]/60">
+            <AlertTriangle size={14} className="text-[#f0d99f]/60" />
+            <span className="text-[12px] font-semibold text-[#f0d99f]/60">
               {staleApplications.length} application
               {staleApplications.length !== 1 ? 's' : ''} haven&apos;t been touched in 7+ days
             </span>
@@ -193,7 +193,7 @@ function StatPill({
     ? accent === 'green'
       ? 'text-[#b5dec2]'
       : accent === 'amber'
-        ? 'text-[#dfc797]'
+        ? 'text-[#f0d99f]'
         : 'text-[#98b3ff]'
     : 'text-white/70';
 

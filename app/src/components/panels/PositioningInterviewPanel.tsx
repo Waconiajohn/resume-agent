@@ -396,7 +396,7 @@ function QuestionBody({ question, encouragingText, onSubmit }: QuestionBodyProps
 
       {/* Elaboration hint for inferred/JD suggestions */}
       {needsElaboration && (
-        <p className="text-xs text-[#dfc797]/70">
+        <p className="text-xs text-[#f0d99f]/70">
           Please edit the selected suggestion or add a specific example below to confirm this applies to your experience.
         </p>
       )}

@@ -76,9 +76,9 @@ function Hero() {
 /* ================================================================== */
 
 const PROBLEMS = [
-  { title: 'Generic', desc: 'Same resume, different name', accent: 'bg-[#e0abab]' },
-  { title: 'No Strategy', desc: "It writes what you tell it, not what they need to hear", accent: 'bg-[#dfc797]' },
-  { title: 'Age Blind', desc: "It doesn't know what gets you screened out", accent: 'bg-[#e0abab]' },
+  { title: 'Generic', desc: 'Same resume, different name', accent: 'bg-[#f0b8b8]' },
+  { title: 'No Strategy', desc: "It writes what you tell it, not what they need to hear", accent: 'bg-[#f0d99f]' },
+  { title: 'Age Blind', desc: "It doesn't know what gets you screened out", accent: 'bg-[#f0b8b8]' },
 ];
 
 function ProblemSection() {
@@ -218,14 +218,14 @@ function AgeSmartSection() {
         <div className="mt-14 grid gap-6 md:grid-cols-2">
           {/* Before */}
           <GlassCard className="overflow-hidden">
-            <div className="border-b border-[#e0abab]/20 bg-[#e0abab]/10 px-6 py-3">
-              <span className="text-sm font-semibold uppercase tracking-wider text-[#e0abab]">
+            <div className="border-b border-[#f0b8b8]/20 bg-[#f0b8b8]/10 px-6 py-3">
+              <span className="text-sm font-semibold uppercase tracking-wider text-[#f0b8b8]">
                 Before
               </span>
             </div>
             <div className="space-y-3 p-6">
               {BEFORE_ITEMS.map((text) => (
-                <p key={text} className="rounded-lg bg-[#e0abab]/10 px-3 py-2 text-sm text-[#e0abab]/80">
+                <p key={text} className="rounded-lg bg-[#f0b8b8]/10 px-3 py-2 text-sm text-[#f0b8b8]/80">
                   {text}
                 </p>
               ))}
@@ -264,7 +264,7 @@ function AgeSmartSection() {
 const QUALITY_METRICS = [
   { score: 85, max: 100, label: 'ATS Compliance', color: 'text-[#b5dec2]', desc: 'Passes automated screening systems' },
   { score: 92, max: 100, label: 'Humanization', color: 'text-[#afc4ff]', desc: 'Reads like you wrote it, not a robot' },
-  { score: 88, max: 100, label: 'Impact Score', color: 'text-[#dfc797]', desc: 'Every bullet quantified and compelling' },
+  { score: 88, max: 100, label: 'Impact Score', color: 'text-[#f0d99f]', desc: 'Every bullet quantified and compelling' },
 ];
 
 function QualitySection() {

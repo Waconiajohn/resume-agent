@@ -269,7 +269,7 @@ function ReportView({
     qualityScore !== null && qualityScore >= 80
       ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
       : qualityScore !== null && qualityScore >= 60
-      ? 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/20'
+      ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
       : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20';
 
   return (
@@ -526,7 +526,7 @@ export function ThankYouNoteRoom() {
           Resume loaded from your profile
         </div>
       ) : (
-        <div className="flex items-center gap-2 text-[12px] text-[#dfc797]/70">
+        <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70">
           <AlertCircle size={12} />
           No resume found — complete the Resume Strategist first for best results
         </div>

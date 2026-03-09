@@ -249,7 +249,7 @@ function PracticeQuestions({ onStartPractice }: { onStartPractice: () => void })
   const categoryColors: Record<string, string> = {
     behavioral: 'text-[#98b3ff] bg-[#98b3ff]/10',
     technical: 'text-[#b5dec2] bg-[#b5dec2]/10',
-    situational: 'text-[#dfc797] bg-[#dfc797]/10',
+    situational: 'text-[#f0d99f] bg-[#f0d99f]/10',
     strategic: 'text-[#e8a0a0] bg-[#e8a0a0]/10',
   };
 
@@ -312,7 +312,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
   const outcomeConfig: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
     advanced: { icon: CheckCircle2, color: 'text-[#b5dec2]', label: 'Advanced' },
     rejected: { icon: XCircle, color: 'text-[#e8a0a0]', label: 'Not Selected' },
-    pending: { icon: Clock, color: 'text-[#dfc797]', label: 'Pending' },
+    pending: { icon: Clock, color: 'text-[#f0d99f]', label: 'Pending' },
   };
 
   const outcomes: PastInterview['outcome'][] = ['pending', 'advanced', 'rejected'];
@@ -527,7 +527,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
             <div className={cn(
               'text-[12px] font-medium px-3 py-1 rounded-full',
               qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
-                : qualityScore >= 60 ? 'text-[#dfc797] bg-[#dfc797]/10'
+                : qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10'
                 : 'text-[#e8a0a0] bg-[#e8a0a0]/10',
             )}>
               Quality: {qualityScore}%
@@ -889,10 +889,10 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         ) : (
           <>
             {jdWarning && (
-              <GlassCard className="p-4 mb-0 border-[#dfc797]/20">
+              <GlassCard className="p-4 mb-0 border-[#f0d99f]/20">
                 <div className="flex items-center gap-2">
-                  <AlertCircle size={14} className="text-[#dfc797] flex-shrink-0" />
-                  <span className="text-[12px] text-[#dfc797]/80">
+                  <AlertCircle size={14} className="text-[#f0d99f] flex-shrink-0" />
+                  <span className="text-[12px] text-[#f0d99f]/80">
                     No job description found — the report will be based on the role title and company name only. For best results, add a JD to the job application.
                   </span>
                 </div>

@@ -22,18 +22,18 @@ import {
 const CATEGORY_COLORS: Record<string, string> = {
   behavioral: 'text-[#98b3ff] bg-[#98b3ff]/10',
   technical: 'text-[#b5dec2] bg-[#b5dec2]/10',
-  situational: 'text-[#dfc797] bg-[#dfc797]/10',
+  situational: 'text-[#f0d99f] bg-[#f0d99f]/10',
 };
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-[#b5dec2]';
-  if (score >= 60) return 'text-[#dfc797]';
+  if (score >= 60) return 'text-[#f0d99f]';
   return 'text-[#e8a0a0]';
 }
 
 function scoreBg(score: number): string {
   if (score >= 80) return 'bg-[#b5dec2]';
-  if (score >= 60) return 'bg-[#dfc797]';
+  if (score >= 60) return 'bg-[#f0d99f]';
   return 'bg-[#e8a0a0]';
 }
 
@@ -127,8 +127,8 @@ function EvaluationCard({
               <ul className="space-y-1">
                 {evaluation.improvements.map((imp, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-[#dfc797]/50 mt-1.5 flex-shrink-0" />
-                    <span className="text-[12px] text-[#dfc797]/70 leading-relaxed">{imp}</span>
+                    <div className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                    <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{imp}</span>
                   </li>
                 ))}
               </ul>
@@ -268,7 +268,7 @@ function SummaryView({
               summary.overall_score >= 80
                 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
                 : summary.overall_score >= 60
-                  ? 'text-[#dfc797] bg-[#dfc797]/10'
+                  ? 'text-[#f0d99f] bg-[#f0d99f]/10'
                   : 'text-[#e8a0a0] bg-[#e8a0a0]/10',
             )}
           >
@@ -304,8 +304,8 @@ function SummaryView({
             <ul className="space-y-1.5">
               {summary.areas_for_improvement.map((area, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#dfc797]/50 mt-1.5 flex-shrink-0" />
-                  <span className="text-[12px] text-[#dfc797]/70 leading-relaxed">{area}</span>
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#f0d99f]/50 mt-1.5 flex-shrink-0" />
+                  <span className="text-[12px] text-[#f0d99f]/70 leading-relaxed">{area}</span>
                 </li>
               ))}
             </ul>

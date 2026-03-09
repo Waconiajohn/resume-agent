@@ -16,8 +16,8 @@ export function RuleOfFourCoachingBar({ groups, onFixGap }: RuleOfFourCoachingBa
   return (
     <GlassCard className="p-4">
       <div className="flex items-center gap-2 mb-3">
-        <AlertCircle size={14} className="text-[#dfc797]" />
-        <span className="text-[12px] font-medium text-[#dfc797]/80">
+        <AlertCircle size={14} className="text-[#f0d99f]" />
+        <span className="text-[12px] font-medium text-[#f0d99f]/80">
           {incomplete.length} application{incomplete.length !== 1 ? 's' : ''} need
           {incomplete.length === 1 ? 's' : ''} more contacts
         </span>

@@ -42,8 +42,8 @@ const DEFAULT_DURATIONS: Record<Toast['type'], number> = {
 // ---------------------------------------------------------------------------
 
 const ACCENT_STYLES: Record<Toast['type'], { border: string; text: string }> = {
-  error:   { border: 'border-[#e0abab]/30',  text: 'text-[#e0abab]'  },
-  warning: { border: 'border-[#dfc797]/30',  text: 'text-[#dfc797]'  },
+  error:   { border: 'border-[#f0b8b8]/30',  text: 'text-[#f0b8b8]'  },
+  warning: { border: 'border-[#f0d99f]/30',  text: 'text-[#f0d99f]'  },
   info:    { border: 'border-[#afc4ff]/30',  text: 'text-[#afc4ff]'  },
   success: { border: 'border-[#b5dec2]/30',  text: 'text-[#b5dec2]'  },
 };
@@ -139,7 +139,7 @@ function ToastItem({
     <div
       className={[
         // Layout
-        'pointer-events-auto flex w-80 items-start gap-3 rounded-xl border px-4 py-3 shadow-lg',
+        'pointer-events-auto flex w-[calc(100vw-2rem)] sm:w-80 items-start gap-3 rounded-xl border px-4 py-3 shadow-lg',
         // Glass morphism
         'bg-[#0d1117]/95 backdrop-blur-xl',
         'border-white/[0.1]',

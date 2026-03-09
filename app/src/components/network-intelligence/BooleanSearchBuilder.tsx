@@ -57,10 +57,10 @@ function HighlightedString({ value }: { value: string }) {
           return <span key={i} className="text-[#98b3ff] font-semibold">{token}</span>;
         }
         if (/^\bNOT\b$/.test(token)) {
-          return <span key={i} className="text-[#dfc797] font-semibold">{token}</span>;
+          return <span key={i} className="text-[#f0d99f] font-semibold">{token}</span>;
         }
         if (/^-"/.test(token)) {
-          return <span key={i} className="text-[#dfc797]">{token}</span>;
+          return <span key={i} className="text-[#f0d99f]">{token}</span>;
         }
         if (/^[()]$/.test(token)) {
           return <span key={i} className="text-white/35">{token}</span>;
@@ -83,7 +83,7 @@ interface Platform {
 const PLATFORMS: Platform[] = [
   { key: 'linkedin', label: 'LinkedIn', icon: Linkedin, accent: '#98b3ff' },
   { key: 'indeed', label: 'Indeed', icon: Search, accent: '#57CDA4' },
-  { key: 'google', label: 'Google X-Ray', icon: Globe, accent: '#dfc797' },
+  { key: 'google', label: 'Google X-Ray', icon: Globe, accent: '#f0d99f' },
 ];
 
 interface PlatformCardProps {
@@ -257,7 +257,7 @@ function ExtractedTerms({ terms }: ExtractedTermsProps) {
           <div>
             <span className="text-[11px] text-white/30 uppercase tracking-wider">Industries</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {terms.industries.map((ind) => <TermPill key={ind} label={ind} color="#dfc797" />)}
+              {terms.industries.map((ind) => <TermPill key={ind} label={ind} color="#f0d99f" />)}
             </div>
           </div>
         )}
@@ -453,7 +453,7 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
           <div className="flex items-center gap-4 px-1">
             <span className="text-[11px] text-white/25 uppercase tracking-wider">Syntax</span>
             <span className="text-[11px] text-[#98b3ff]">AND / OR</span>
-            <span className="text-[11px] text-[#dfc797]">NOT</span>
+            <span className="text-[11px] text-[#f0d99f]">NOT</span>
             <span className="text-[11px] text-[#57CDA4]">"quoted phrase"</span>
           </div>
 

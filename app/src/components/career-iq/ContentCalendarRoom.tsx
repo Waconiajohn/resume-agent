@@ -22,10 +22,10 @@ import { supabase } from '@/lib/supabase';
 
 const CONTENT_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   thought_leadership: { label: 'Thought Leadership', color: 'text-[#98b3ff] bg-[#98b3ff]/10' },
-  storytelling: { label: 'Storytelling', color: 'text-[#dfc797] bg-[#dfc797]/10' },
+  storytelling: { label: 'Storytelling', color: 'text-[#f0d99f] bg-[#f0d99f]/10' },
   engagement: { label: 'Engagement', color: 'text-[#b5dec2] bg-[#b5dec2]/10' },
   industry_insight: { label: 'Industry Insight', color: 'text-[#c4a8e0] bg-[#c4a8e0]/10' },
-  how_to: { label: 'How-To', color: 'text-[#e0abab] bg-[#e0abab]/10' },
+  how_to: { label: 'How-To', color: 'text-[#f0b8b8] bg-[#f0b8b8]/10' },
   case_study: { label: 'Case Study', color: 'text-[#98d4e8] bg-[#98d4e8]/10' },
   career_lesson: { label: 'Career Lesson', color: 'text-[#d4c098] bg-[#d4c098]/10' },
 };
@@ -89,8 +89,8 @@ function PostCard({ day, dayOfWeek, contentType, hook, body, hashtags, postingTi
           <span className={cn(
             'text-[10px] px-1.5 py-0.5 rounded-full',
             qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
-            qualityScore >= 60 ? 'text-[#dfc797] bg-[#dfc797]/10' :
-            'text-[#e0abab] bg-[#e0abab]/10',
+            qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
+            'text-[#f0b8b8] bg-[#f0b8b8]/10',
           )}>
             {qualityScore}%
           </span>
@@ -251,8 +251,8 @@ export function ContentCalendarRoom() {
           <div className={cn(
             'text-[12px] font-medium px-2.5 py-1 rounded-full',
             calendar.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
-            calendar.qualityScore >= 60 ? 'text-[#dfc797] bg-[#dfc797]/10' :
-            'text-[#e0abab] bg-[#e0abab]/10',
+            calendar.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
+            'text-[#f0b8b8] bg-[#f0b8b8]/10',
           )}>
             Quality: {calendar.qualityScore}%
           </div>

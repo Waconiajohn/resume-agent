@@ -27,7 +27,7 @@ import { markdownToHtml } from '@/lib/markdown';
 const PHASES = [
   { days: 'Days 1–30', label: 'Listen & Learn', color: 'text-[#98b3ff] bg-[#98b3ff]/10 border-[#98b3ff]/20' },
   { days: 'Days 31–60', label: 'Align & Plan', color: 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20' },
-  { days: 'Days 61–90', label: 'Execute & Win', color: 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/20' },
+  { days: 'Days 61–90', label: 'Execute & Win', color: 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20' },
 ];
 
 // --- Activity feed ---
@@ -154,7 +154,7 @@ function ReportView({
     qualityScore !== null && qualityScore >= 80
       ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
       : qualityScore !== null && qualityScore >= 60
-      ? 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/20'
+      ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
       : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20';
 
   return (
@@ -420,7 +420,7 @@ export function NinetyDayPlanRoom() {
       {/* Resume status */}
       <div className={cn(
         'flex items-center gap-2 text-[12px]',
-        loadingResume ? 'text-white/30' : resumeLoaded ? 'text-[#57CDA4]/70' : 'text-[#dfc797]/70',
+        loadingResume ? 'text-white/30' : resumeLoaded ? 'text-[#57CDA4]/70' : 'text-[#f0d99f]/70',
       )}>
         {loadingResume ? (
           <><Loader2 size={12} className="animate-spin" /> Loading resume from your profile...</>
@@ -526,7 +526,7 @@ export function NinetyDayPlanRoom() {
             { icon: Users, text: 'Stakeholder map with engagement priorities', color: 'text-[#A396E2]' },
             { icon: Target, text: 'Quick wins for the first 30 days', color: 'text-[#57CDA4]' },
             { icon: Calendar, text: 'Three-phase milestone roadmap', color: 'text-[#98b3ff]' },
-            { icon: Building2, text: 'Culture and relationship-building tactics', color: 'text-[#dfc797]' },
+            { icon: Building2, text: 'Culture and relationship-building tactics', color: 'text-[#f0d99f]' },
           ].map(({ icon: Icon, text, color }) => (
             <div key={text} className="flex items-start gap-2">
               <Icon size={13} className={cn(color, 'mt-0.5 flex-shrink-0')} />

@@ -452,9 +452,9 @@ export default function App() {
         )}
         {checkoutStatus === 'cancelled' && (
           <div className="mx-auto max-w-6xl px-4 pt-3">
-            <div role="status" aria-live="polite" className="rounded-xl border border-[#dfc797]/30 bg-[#dfc797]/10 px-4 py-3 text-sm text-[#dfc797] flex items-center justify-between">
+            <div role="status" aria-live="polite" className="rounded-xl border border-[#f0d99f]/30 bg-[#f0d99f]/10 px-4 py-3 text-sm text-[#f0d99f] flex items-center justify-between">
               <span>Checkout cancelled. You can try again anytime from the pricing page.</span>
-              <button type="button" onClick={() => setCheckoutStatus(null)} className="text-[#dfc797] hover:text-white/90 text-xs ml-4">Dismiss</button>
+              <button type="button" onClick={() => setCheckoutStatus(null)} className="text-[#f0d99f] hover:text-white/90 text-xs ml-4">Dismiss</button>
             </div>
           </div>
         )}

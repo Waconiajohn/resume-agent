@@ -116,7 +116,7 @@ function ReportView({
     qualityScore !== null && qualityScore >= 80
       ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
       : qualityScore !== null && qualityScore >= 60
-      ? 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/20'
+      ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
       : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20';
 
   return (
@@ -371,7 +371,7 @@ export function PersonalBrandRoom() {
           onClick={() => setShowAdvanced((v) => !v)}
           className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
         >
-          <Target size={15} className="text-[#dfc797]" />
+          <Target size={15} className="text-[#f0d99f]" />
           <span className="text-[14px] font-medium text-white/60">Additional Sources &amp; Targeting</span>
           <span className="text-[11px] text-white/25 ml-1">bio, target role, industry</span>
           <div className="flex-1" />

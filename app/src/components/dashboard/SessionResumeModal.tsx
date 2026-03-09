@@ -99,7 +99,7 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
           )}
 
           {!loading && error && (
-            <div className="rounded-lg border border-[#e0abab]/28 bg-[#e0abab]/[0.08] px-4 py-3 text-xs text-[#e0abab]/90">
+            <div className="rounded-lg border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-xs text-[#f0b8b8]/90">
               Failed to load resume: {error}
             </div>
           )}

@@ -114,16 +114,16 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
   if (followUps.length === 0) return null;
 
   return (
-    <details className="rounded-xl border border-[#dfc797]/20 bg-[#dfc797]/[0.04] overflow-hidden">
+    <details className="rounded-xl border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04] overflow-hidden">
       <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer list-none hover:bg-white/[0.02] transition-colors">
-        <Bell size={14} className="text-[#dfc797] flex-shrink-0" />
-        <span className="text-[13px] font-medium text-[#dfc797]">
+        <Bell size={14} className="text-[#f0d99f] flex-shrink-0" />
+        <span className="text-[13px] font-medium text-[#f0d99f]">
           {followUps.length} contact{followUps.length !== 1 ? 's' : ''} need follow-up
         </span>
-        <ChevronDown size={13} className="text-[#dfc797]/50 ml-auto" />
+        <ChevronDown size={13} className="text-[#f0d99f]/50 ml-auto" />
       </summary>
 
-      <div className="border-t border-[#dfc797]/10 px-4 py-3 space-y-2">
+      <div className="border-t border-[#f0d99f]/10 px-4 py-3 space-y-2">
         {followUps.map((contact) => {
           const days = daysUntil(contact.next_followup_at);
           const overdue = days < 0;
@@ -137,7 +137,7 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
                 <span
                   className={cn(
                     'text-[11px] ml-2',
-                    overdue ? 'text-red-400' : 'text-[#dfc797]',
+                    overdue ? 'text-red-400' : 'text-[#f0d99f]',
                   )}
                 >
                   {overdue
@@ -236,7 +236,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
                       group.progress === 4
                         ? 'text-[#b5dec2]'
                         : group.progress > 0
-                        ? 'text-[#dfc797]'
+                        ? 'text-[#f0d99f]'
                         : 'text-white/30',
                     )}
                   >
@@ -352,7 +352,7 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
         {qualityScore != null && (
           <span className={cn(
             'ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full',
-            qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : qualityScore >= 60 ? 'text-[#dfc797] bg-[#dfc797]/10' : 'text-red-400 bg-red-400/10',
+            qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' : 'text-red-400 bg-red-400/10',
           )}>
             Quality: {qualityScore}%
           </span>
@@ -460,7 +460,7 @@ interface RecruiterTrackerProps {
 function RecruiterTracker({ contacts, onAddRecruiter }: RecruiterTrackerProps) {
   const statusColors: Record<string, string> = {
     active: 'text-[#b5dec2] bg-[#b5dec2]/10',
-    cold: 'text-[#dfc797] bg-[#dfc797]/10',
+    cold: 'text-[#f0d99f] bg-[#f0d99f]/10',
     dormant: 'text-white/30 bg-white/[0.04]',
   };
 
@@ -791,7 +791,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                   outreach.qualityScore >= 80
                     ? 'text-[#b5dec2] bg-[#b5dec2]/10'
                     : outreach.qualityScore >= 60
-                    ? 'text-[#dfc797] bg-[#dfc797]/10'
+                    ? 'text-[#f0d99f] bg-[#f0d99f]/10'
                     : 'text-red-400 bg-red-400/10',
                 )}
               >

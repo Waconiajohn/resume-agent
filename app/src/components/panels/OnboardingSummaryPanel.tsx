@@ -76,8 +76,8 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
   const confidenceTone = parseConfidence === 'high'
     ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90'
     : parseConfidence === 'medium'
-      ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.06] text-[#dfc797]/90'
-      : 'border-[#e0abab]/20 bg-[#e0abab]/[0.06] text-[#e0abab]/90';
+      ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] text-[#f0d99f]/90'
+      : 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] text-[#f0b8b8]/90';
   const confidenceLabel = parseConfidence === 'high'
     ? 'Resume read successfully'
     : parseConfidence === 'medium'

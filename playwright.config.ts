@@ -16,9 +16,13 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: '.auth/user.json' },
       dependencies: ['setup'],
-      testIgnore: [/auth\.spec\.ts/, /full-pipeline\.spec\.ts/, /quality-validation\.spec\.ts/],
+      testIgnore: [/auth\.spec\.ts/, /auth-errors\.spec\.ts/, /full-pipeline\.spec\.ts/, /quality-validation\.spec\.ts/],
     },
-    { name: 'auth-smoke', testMatch: /auth\.spec\.ts/, use: devices['Desktop Chrome'] },
+    {
+      name: 'auth-smoke',
+      testMatch: [/auth\.spec\.ts/, /auth-errors\.spec\.ts/],
+      use: devices['Desktop Chrome'],
+    },
     {
       name: 'full-pipeline',
       testMatch: /full-pipeline\.spec\.ts/,

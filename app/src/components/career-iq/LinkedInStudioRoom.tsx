@@ -212,20 +212,20 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
               <div className="ml-auto flex items-center gap-2">
                 <span className={cn(
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                  scores.authenticity >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                  scores.authenticity >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Auth {scores.authenticity}
                 </span>
                 <span className={cn(
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                  scores.engagement_potential >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                  scores.engagement_potential >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Engage {scores.engagement_potential}
                 </span>
                 {content.hookScore != null && (
                   <span className={cn(
                     'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                    content.hookScore >= 60 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                    content.hookScore >= 60 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                   )}>
                     Hook {content.hookScore}
                   </span>
@@ -246,11 +246,11 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
           </div>
 
           {content.hookScore != null && content.hookScore < 60 && (
-            <div className="mb-4 rounded-xl border border-[#dfc797]/20 bg-[#dfc797]/[0.04] px-4 py-3 flex items-start gap-2">
-              <TrendingUp size={14} className="text-[#dfc797] flex-shrink-0 mt-0.5" />
+            <div className="mb-4 rounded-xl border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04] px-4 py-3 flex items-start gap-2">
+              <TrendingUp size={14} className="text-[#f0d99f] flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-medium text-[#dfc797]">Your opening could be stronger.</p>
-                <p className="text-[11px] text-[#dfc797]/70 mt-0.5 leading-relaxed">
+                <p className="text-[12px] font-medium text-[#f0d99f]">Your opening could be stronger.</p>
+                <p className="text-[11px] text-[#f0d99f]/70 mt-0.5 leading-relaxed">
                   {content.hookAssessment ?? 'The first 210 characters need to earn the click — that\'s what shows before "see more".'}
                 </p>
               </div>
@@ -550,13 +550,13 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
               <div className="ml-auto flex items-center gap-2">
                 <span className={cn(
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                  scores.keyword_coverage >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                  scores.keyword_coverage >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Keywords {scores.keyword_coverage}
                 </span>
                 <span className={cn(
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                  scores.positioning_alignment >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                  scores.positioning_alignment >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Positioning {scores.positioning_alignment}
                 </span>
@@ -716,7 +716,7 @@ function ProfileOptimizer({ signals, report }: { signals: WhyMeSignals; report: 
         <PenLine size={18} className="text-[#98b3ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Optimizer</h3>
         {!report && signals.clarity !== 'green' && (
-          <span className="ml-auto text-[11px] text-[#dfc797]/70 flex items-center gap-1">
+          <span className="ml-auto text-[11px] text-[#f0d99f]/70 flex items-center gap-1">
             <Sparkles size={11} />
             Strengthen your Clarity signal for better suggestions
           </span>
@@ -909,7 +909,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
               {selectedReport.quality_score > 0 && (
                 <span className={cn(
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',
-                  selectedReport.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                  selectedReport.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
                   Quality {selectedReport.quality_score}
                 </span>
@@ -981,7 +981,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
                     {saved.quality_score > 0 && (
                       <span className={cn(
                         'text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0',
-                        saved.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                        saved.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                       )}>
                         {saved.quality_score}
                       </span>
@@ -1177,7 +1177,7 @@ function PostLibrary() {
   const STATUS_COLORS: Record<string, string> = {
     published: 'text-[#b5dec2] bg-[#b5dec2]/10',
     approved: 'text-[#98b3ff] bg-[#98b3ff]/10',
-    draft: 'text-[#dfc797] bg-[#dfc797]/10',
+    draft: 'text-[#f0d99f] bg-[#f0d99f]/10',
   };
 
   return (
@@ -1264,7 +1264,7 @@ function KeywordMultiplierNudge() {
     postedThisWeek >= 4
       ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/15'
       : postedThisWeek >= 2
-      ? 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/15'
+      ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/15'
       : 'text-red-400 bg-red-400/10 border-red-400/15';
 
   return (
@@ -1404,7 +1404,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           <div className={cn(
             'text-[12px] font-medium px-2.5 py-1 rounded-full',
             optimizer.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
-            optimizer.qualityScore >= 60 ? 'text-[#dfc797] bg-[#dfc797]/10' :
+            optimizer.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
             'text-red-400 bg-red-400/10',
           )}>
             Profile Quality: {optimizer.qualityScore}%

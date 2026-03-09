@@ -51,8 +51,8 @@ function statusStyles(status: WorkflowNodeStatus) {
       };
     case 'blocked':
       return {
-        dot: 'h-1.5 w-1.5 rounded-[2px] bg-[#dfc797] motion-safe:animate-node-pulse',
-        pill: 'text-[#dfc797]/90 border-[#dfc797]/20 bg-[#dfc797]/[0.08]',
+        dot: 'h-1.5 w-1.5 rounded-[2px] bg-[#f0d99f] motion-safe:animate-node-pulse',
+        pill: 'text-[#f0d99f]/90 border-[#f0d99f]/20 bg-[#f0d99f]/[0.08]',
         label: 'Your turn',
       };
     case 'in_progress':
@@ -63,8 +63,8 @@ function statusStyles(status: WorkflowNodeStatus) {
       };
     case 'stale':
       return {
-        dot: 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-[#dfc797]',
-        pill: 'text-[#dfc797]/90 border-[#dfc797]/20 bg-[#dfc797]/[0.08]',
+        dot: 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-[#f0d99f]',
+        pill: 'text-[#f0d99f]/90 border-[#f0d99f]/20 bg-[#f0d99f]/[0.08]',
         label: '',
       };
     case 'ready':
@@ -132,9 +132,9 @@ export function WorkspaceShell({
       </a>
       {activeGate?.active && (
         <div className="border-b border-white/[0.08] bg-white/[0.02] px-3 py-2 backdrop-blur-xl">
-          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-[#dfc797]/18 bg-[#dfc797]/[0.06] px-3 py-2">
-            <Sparkles className="h-3.5 w-3.5 text-[#dfc797]/90" />
-            <p className="min-w-0 flex-1 truncate text-xs text-[#dfc797]/85">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.06] px-3 py-2">
+            <Sparkles className="h-3.5 w-3.5 text-[#f0d99f]/90" />
+            <p className="min-w-0 flex-1 truncate text-xs text-[#f0d99f]/85">
               {selectedNode === activeGate.activeNode
                 ? `Your input is needed${activeGate.label ? `: ${activeGate.label}` : ''}`
                 : `Your input is needed on a different step${activeGate.label ? `: ${activeGate.label}` : ''}`}

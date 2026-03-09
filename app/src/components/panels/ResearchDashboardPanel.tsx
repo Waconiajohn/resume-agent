@@ -52,7 +52,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
   const researchStatusTone = data.loading_state === 'running'
     ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]/90'
     : data.loading_state === 'background_running'
-      ? 'border-[#dfc797]/20 bg-[#dfc797]/[0.06] text-[#dfc797]/90'
+      ? 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] text-[#f0d99f]/90'
       : 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90';
 
   return (

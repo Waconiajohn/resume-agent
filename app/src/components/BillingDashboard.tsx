@@ -44,8 +44,8 @@ function StatusBadge({ status }: { status: string }) {
   const classes: Record<string, string> = {
     active: 'border-[#b5dec2]/30 bg-[#b5dec2]/10 text-[#b5dec2]',
     trialing: 'border-[#afc4ff]/30 bg-[#afc4ff]/10 text-[#afc4ff]',
-    past_due: 'border-[#dfc797]/30 bg-[#dfc797]/10 text-[#dfc797]',
-    cancelled: 'border-[#e0abab]/30 bg-[#e0abab]/10 text-[#e0abab]/80',
+    past_due: 'border-[#f0d99f]/30 bg-[#f0d99f]/10 text-[#f0d99f]',
+    cancelled: 'border-[#f0b8b8]/30 bg-[#f0b8b8]/10 text-[#f0b8b8]/80',
   };
 
   const label: Record<string, string> = {
@@ -179,7 +179,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
   if (error) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <AlertCircle className="h-8 w-8 text-[#e0abab]" />
+        <AlertCircle className="h-8 w-8 text-[#f0b8b8]" />
         <p className="text-sm text-white/60">{error}</p>
         <GlassButton variant="ghost" onClick={() => void fetchSubscription()}>
           <RefreshCw className="h-4 w-4" />
@@ -266,7 +266,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         {/* Progress bar */}
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[#e0abab]' : usagePercent >= 70 ? 'bg-[#dfc797]' : 'bg-[#9eb8ff]'}`}
+            className={`h-full rounded-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[#f0b8b8]' : usagePercent >= 70 ? 'bg-[#f0d99f]' : 'bg-[#9eb8ff]'}`}
             style={{ width: `${usagePercent}%` }}
           />
         </div>
@@ -279,7 +279,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
       </GlassCard>
 
       {actionError && (
-        <div className="rounded-xl border border-[#e0abab]/30 bg-[#e0abab]/10 px-4 py-3 text-sm text-[#e0abab]/70">
+        <div className="rounded-xl border border-[#f0b8b8]/30 bg-[#f0b8b8]/10 px-4 py-3 text-sm text-[#f0b8b8]/70">
           {actionError}
         </div>
       )}

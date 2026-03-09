@@ -9,7 +9,7 @@ interface ExperienceEntryCardProps {
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-[#b5dec2] bg-[#b5dec2]/10';
-  if (score >= 60) return 'text-[#dfc797] bg-[#dfc797]/10';
+  if (score >= 60) return 'text-[#f0d99f] bg-[#f0d99f]/10';
   return 'text-red-400 bg-red-400/10';
 }
 

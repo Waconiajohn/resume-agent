@@ -112,7 +112,7 @@ function ReportView({
               qualityScore >= 80
                 ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
                 : qualityScore >= 60
-                ? 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/20'
+                ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
                 : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20',
             )}>
               Quality {qualityScore}%
@@ -140,7 +140,7 @@ function ReportView({
             prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
             prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
             prose-strong:text-white/80
-            prose-em:text-[#dfc797]/80
+            prose-em:text-[#f0d99f]/80
             prose-blockquote:border-[#98b3ff]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#98b3ff]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
             prose-hr:border-white/[0.06] prose-hr:my-6"
           dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
@@ -489,7 +489,7 @@ export function SalaryNegotiationRoom() {
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 text-[12px] text-[#dfc797]/70 mb-1">
+          <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70 mb-1">
             <AlertCircle size={12} />
             No master resume found — paste your resume below
           </div>
@@ -651,7 +651,7 @@ export function SalaryNegotiationRoom() {
       {resumeText.length > 50 && (
         <div className="border-t border-white/[0.06] pt-6 flex flex-col gap-3">
           <div className="flex items-center gap-2 mb-1">
-            <Swords size={14} className="text-[#dfc797]/70" />
+            <Swords size={14} className="text-[#f0d99f]/70" />
             <span className="text-[13px] font-medium text-white/60">Practice Counter-Offers</span>
             <span className="text-[11px] text-white/30 ml-1">
               Simulate employer pushback and get scored feedback
@@ -661,9 +661,9 @@ export function SalaryNegotiationRoom() {
             <GlassButton
               variant="ghost"
               onClick={() => handleStartCounterOffer('full')}
-              className="text-[13px] border-[#dfc797]/20 hover:border-[#dfc797]/40"
+              className="text-[13px] border-[#f0d99f]/20 hover:border-[#f0d99f]/40"
             >
-              <Swords size={14} className="mr-1.5 text-[#dfc797]/70" />
+              <Swords size={14} className="mr-1.5 text-[#f0d99f]/70" />
               Practice Counter-Offer
             </GlassButton>
             <GlassButton

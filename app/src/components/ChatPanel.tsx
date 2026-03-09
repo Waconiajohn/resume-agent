@@ -106,21 +106,21 @@ export function ChatPanel({
                 : (connected ? (pipelinePhaseActive ? 'Ready' : 'Connected') : 'Reconnecting');
   const statusDotColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
-      ? 'bg-[#e0abab]'
+      ? 'bg-[#f0b8b8]'
       : runtimeState === 'processing'
         ? 'bg-[#afc4ff]'
         : runtimeState === 'waiting_for_input'
-          ? 'bg-[#dfc797]'
+          ? 'bg-[#f0d99f]'
           : runtimeState === 'complete'
             ? 'bg-[#b5dec2]'
             : (connected ? 'bg-[#b5dec2]' : 'bg-white/40');
   const statusTextColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
-      ? 'text-[#e0abab]/90'
+      ? 'text-[#f0b8b8]/90'
       : runtimeState === 'processing'
         ? 'text-[#afc4ff]/90'
         : runtimeState === 'waiting_for_input'
-          ? 'text-[#dfc797]/90'
+          ? 'text-[#f0d99f]/90'
           : runtimeState === 'complete'
             ? 'text-[#b5dec2]/90'
             : (connected ? 'text-[#b5dec2]/90' : 'text-white/70');

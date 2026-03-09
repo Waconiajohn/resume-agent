@@ -287,7 +287,7 @@ function ReplayCard({ replay }: { replay: Replay }) {
           {/* Key takeaways */}
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <Lightbulb size={12} className="text-[#dfc797]" />
+              <Lightbulb size={12} className="text-[#f0d99f]" />
               <span className="text-[11px] font-medium text-white/45 uppercase tracking-wider">Key Takeaways</span>
             </div>
             <ul className="space-y-2">
@@ -359,7 +359,7 @@ function LatestSessionSummary() {
       <div className="space-y-2 mb-4">
         {latestWithSummary.summary.keyPoints.slice(0, 2).map((point, i) => (
           <div key={i} className="flex items-start gap-2">
-            <Lightbulb size={11} className="text-[#dfc797] mt-0.5 flex-shrink-0" />
+            <Lightbulb size={11} className="text-[#f0d99f] mt-0.5 flex-shrink-0" />
             <span className="text-[12px] text-white/50 leading-relaxed">{point}</span>
           </div>
         ))}
@@ -378,9 +378,9 @@ function OfficeHours() {
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-3">
-        <Star size={16} className="text-[#dfc797]" />
+        <Star size={16} className="text-[#f0d99f]" />
         <h3 className="text-[14px] font-semibold text-white/80">1:1 Office Hours</h3>
-        <span className="ml-auto rounded-full border border-[#dfc797]/20 bg-[#dfc797]/[0.06] px-2 py-0.5 text-[10px] font-medium text-[#dfc797]/70 uppercase tracking-wider">
+        <span className="ml-auto rounded-full border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] px-2 py-0.5 text-[10px] font-medium text-[#f0d99f]/70 uppercase tracking-wider">
           Premium
         </span>
       </div>
@@ -668,7 +668,7 @@ function AskACoach() {
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2 mb-3">
-        <HelpCircle size={16} className="text-[#dfc797]" />
+        <HelpCircle size={16} className="text-[#f0d99f]" />
         <h3 className="text-[14px] font-semibold text-white/80">Ask a Coach</h3>
       </div>
       <p className="text-[12px] text-white/40 mb-4">

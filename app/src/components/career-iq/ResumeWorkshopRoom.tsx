@@ -55,7 +55,7 @@ function stageLabel(stage?: string | null): { label: string; color: string } {
       return { label: 'In Progress', color: 'text-[#98b3ff]' };
     case 'reviewing':
     case 'quality_review':
-      return { label: 'Reviewing', color: 'text-[#dfc797]' };
+      return { label: 'Reviewing', color: 'text-[#f0d99f]' };
     default:
       return { label: 'In Progress', color: 'text-[#98b3ff]' };
   }
@@ -180,7 +180,7 @@ export function ResumeWorkshopRoom({ sessions, resumes, loading, onNewSession, o
               </div>
             ) : (
               <div className="flex items-start gap-3">
-                <AlertCircle size={16} className="text-[#dfc797] mt-0.5 flex-shrink-0" />
+                <AlertCircle size={16} className="text-[#f0d99f] mt-0.5 flex-shrink-0" />
                 <div>
                   <div className="text-[13px] text-white/60">No base resume uploaded</div>
                   <p className="text-[11px] text-white/35 mt-1 leading-relaxed">

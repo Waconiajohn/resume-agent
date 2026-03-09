@@ -70,7 +70,7 @@ export function WorkbenchKeywordBar({ keywords, content, onKeywordAction }: Work
                 status === 'met' &&
                   'border-[#a8d7b8]/35 bg-[#a8d7b8]/[0.08] text-[#a8d7b8]/80 cursor-default',
                 status === 'partial' &&
-                  'border-[#dfc797]/30 bg-[#dfc797]/[0.07] text-[#dfc797]/70 cursor-default',
+                  'border-[#f0d99f]/30 bg-[#f0d99f]/[0.07] text-[#f0d99f]/70 cursor-default',
                 status === 'missing' &&
                   'border-white/[0.1] bg-white/[0.02] text-white/45 hover:border-white/[0.2] hover:text-white/70 cursor-pointer',
               )}
@@ -82,7 +82,7 @@ export function WorkbenchKeywordBar({ keywords, content, onKeywordAction }: Work
                 <span
                   className={cn(
                     'ml-1 text-[9px]',
-                    status === 'met' ? 'text-[#a8d7b8]/60' : 'text-[#dfc797]/50',
+                    status === 'met' ? 'text-[#a8d7b8]/60' : 'text-[#f0d99f]/50',
                   )}
                 >
                   {kw.liveCount}/{kw.target_density}

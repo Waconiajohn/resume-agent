@@ -115,11 +115,11 @@ export function ChatDrawer({
                 : 'Ready';
   const statusDotColor =
     runtimeState === 'stalled_suspected' || runtimeState === 'error'
-      ? 'bg-[#e0abab]'
+      ? 'bg-[#f0b8b8]'
       : runtimeState === 'processing'
         ? 'bg-[#afc4ff] motion-safe:animate-pulse'
         : runtimeState === 'waiting_for_input'
-          ? 'bg-[#dfc797]'
+          ? 'bg-[#f0d99f]'
           : 'bg-[#b5dec2]';
 
   return (

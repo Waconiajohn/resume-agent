@@ -271,7 +271,7 @@ describe('LinkedInStudioRoom — hook score badge color coding', () => {
   /**
    * The component applies:
    *   score >= 60  → green  (text-[#b5dec2] bg-[#b5dec2]/10)
-   *   score < 60   → yellow (text-[#dfc797] bg-[#dfc797]/10)
+   *   score < 60   → yellow (text-[#f0d99f] bg-[#f0d99f]/10)
    *
    * We verify by checking that the badge element carries the correct class.
    */
@@ -294,14 +294,14 @@ describe('LinkedInStudioRoom — hook score badge color coding', () => {
     setPostReviewState({ hookScore: 59 });
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     const badge = screen.getByText('Hook 59');
-    expect(badge.className).toContain('text-[#dfc797]');
+    expect(badge.className).toContain('text-[#f0d99f]');
   });
 
   it('hook score badge has yellow class when score is 0', () => {
     setPostReviewState({ hookScore: 0 });
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     const badge = screen.getByText('Hook 0');
-    expect(badge.className).toContain('text-[#dfc797]');
+    expect(badge.className).toContain('text-[#f0d99f]');
   });
 });
 
@@ -413,7 +413,7 @@ describe('Hook score color threshold logic (unit tests)', () => {
   function hookScoreClass(score: number): string {
     return score >= 60
       ? 'text-[#b5dec2] bg-[#b5dec2]/10'
-      : 'text-[#dfc797] bg-[#dfc797]/10';
+      : 'text-[#f0d99f] bg-[#f0d99f]/10';
   }
 
   it('score 60 → green', () => {
@@ -425,10 +425,10 @@ describe('Hook score color threshold logic (unit tests)', () => {
   });
 
   it('score 59 → yellow', () => {
-    expect(hookScoreClass(59)).toBe('text-[#dfc797] bg-[#dfc797]/10');
+    expect(hookScoreClass(59)).toBe('text-[#f0d99f] bg-[#f0d99f]/10');
   });
 
   it('score 0 → yellow', () => {
-    expect(hookScoreClass(0)).toBe('text-[#dfc797] bg-[#dfc797]/10');
+    expect(hookScoreClass(0)).toBe('text-[#f0d99f] bg-[#f0d99f]/10');
   });
 });

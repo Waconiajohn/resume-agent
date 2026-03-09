@@ -104,13 +104,13 @@ describe('QualityDashboardPanel', () => {
   it('applies yellow color for secondary metric score 60-79', () => {
     render(<QualityDashboardPanel data={makeData({ narrative_coherence: 74 })} />);
     const scoreEl = screen.getByText('74%');
-    expect(scoreEl.className).toContain('text-[#dfc797]');
+    expect(scoreEl.className).toContain('text-[#f0d99f]');
   });
 
   it('applies red color for secondary metric score < 60', () => {
     render(<QualityDashboardPanel data={makeData({ blueprint_compliance: 55 })} />);
     const scoreEl = screen.getByText('55%');
-    expect(scoreEl.className).toContain('text-[#e0abab]');
+    expect(scoreEl.className).toContain('text-[#f0b8b8]');
   });
 
   // 3. Renders overall assessment text

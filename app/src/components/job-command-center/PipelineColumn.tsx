@@ -5,8 +5,8 @@ import type { PipelineStage } from '@/hooks/useApplicationPipeline';
 const STAGE_DOT: Record<PipelineStage, string> = {
   saved: 'bg-white/30',
   researching: 'bg-[#98b3ff]/60',
-  applied: 'bg-[#dfc797]/60',
-  screening: 'bg-[#dfc797]/80',
+  applied: 'bg-[#f0d99f]/60',
+  screening: 'bg-[#f0d99f]/80',
   interviewing: 'bg-[#b5dec2]/60',
   offer: 'bg-[#b5dec2]/80',
   closed_won: 'bg-[#b5dec2]',

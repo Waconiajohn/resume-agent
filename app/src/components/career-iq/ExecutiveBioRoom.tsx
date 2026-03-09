@@ -131,7 +131,7 @@ function ReportView({
               qualityScore >= 80
                 ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
                 : qualityScore >= 60
-                ? 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/20'
+                ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
                 : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20',
             )}>
               Quality {qualityScore}%
@@ -159,7 +159,7 @@ function ReportView({
             prose-p:text-white/65 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
             prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
             prose-strong:text-white/80
-            prose-em:text-[#dfc797]/80
+            prose-em:text-[#f0d99f]/80
             prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#A396E2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
             prose-hr:border-white/[0.06] prose-hr:my-6"
           dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
@@ -384,7 +384,7 @@ export function ExecutiveBioRoom() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-[12px] text-[#dfc797]/70 mb-1">
+            <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70 mb-1">
               <AlertCircle size={12} />
               No master resume found — paste below
             </div>

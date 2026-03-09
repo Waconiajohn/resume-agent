@@ -294,7 +294,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
                   className={cn(
                     'rounded-full border px-2 py-0.5 text-[10px] font-medium',
                     currentQuestion.impact_tier === 'high'
-                      ? 'border-[#e0abab]/20 bg-[#e0abab]/[0.08] text-[#e0abab]/85'
+                      ? 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.08] text-[#f0b8b8]/85'
                       : currentQuestion.impact_tier === 'medium'
                         ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.07] text-[#afc4ff]/85'
                         : 'border-white/[0.1] bg-white/[0.03] text-white/60',
@@ -403,7 +403,7 @@ export function QuestionnairePanel({ data, onComplete, onDraftNow }: Questionnai
               }
             }}
             aria-label="Skip remaining questions and start writing resume"
-            className="gap-1.5 px-3 text-[#dfc797]/70 hover:text-[#dfc797]/90"
+            className="gap-1.5 px-3 text-[#f0d99f]/70 hover:text-[#f0d99f]/90"
           >
             I'm Ready — Start Writing
           </GlassButton>
