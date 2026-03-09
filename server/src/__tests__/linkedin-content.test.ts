@@ -219,7 +219,7 @@ describe('createLinkedInContentProductConfig().buildAgentMessage', () => {
 
   it('returns a message for the strategist agent', () => {
     const state = makeState();
-    const msg = config.buildAgentMessage('strategist', state, {});
+    const msg = config.buildAgentMessage('strategist', state, {}) as string;
     expect(typeof msg).toBe('string');
     expect(msg.length).toBeGreaterThan(0);
   });

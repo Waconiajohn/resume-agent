@@ -156,12 +156,13 @@ export interface ProductConfig<
   /**
    * Build the initial message for a specific agent.
    * Called before each agent loop starts.
+   * May return a Promise to support async data fetching (e.g. DB lookups for cross-product context).
    */
   buildAgentMessage: (
     agentName: string,
     state: TState,
     input: Record<string, unknown>,
-  ) => string;
+  ) => string | Promise<string>;
 
   /**
    * Build the final result from the completed pipeline state.

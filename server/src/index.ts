@@ -38,6 +38,7 @@ import { plannerHandoffRoutes } from './routes/planner-handoff.js';
 import { b2bAdminRoutes } from './routes/b2b-admin.js';
 import { jobSearchRoutes } from './routes/job-search.js';
 import { watchlistRoutes } from './routes/watchlist.js';
+import { contentPostsRoutes } from './routes/content-posts.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -323,6 +324,7 @@ app.route('/api/planner-handoff', plannerHandoffRoutes);
 app.route('/api/b2b', b2bAdminRoutes);
 app.route('/api/job-search', jobSearchRoutes);
 app.route('/api/watchlist', watchlistRoutes);
+app.route('/api/content-posts', contentPostsRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

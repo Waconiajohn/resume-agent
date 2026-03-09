@@ -10,7 +10,8 @@
 import type { ProductConfig } from '../runtime/product-config.js';
 import { researcherConfig } from './researcher/agent.js';
 import { writerConfig } from './writer/agent.js';
-import type { NetworkingOutreachState, NetworkingOutreachSSEEvent } from './types.js';
+import type { NetworkingOutreachState, NetworkingOutreachSSEEvent, MessagingMethod } from './types.js';
+import { MESSAGING_METHOD_CONFIG } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
@@ -78,10 +79,11 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
       current_stage: 'research',
       platform_context: input.platform_context as NetworkingOutreachState['platform_context'],
       target_input: input.target_input as NetworkingOutreachState['target_input'],
+      messaging_method: (input.messaging_method as MessagingMethod | undefined) ?? 'group_message',
       messages: [],
     }),
 
-    buildAgentMessage: (agentName, state, input) => {
+    buildAgentMessage: async (agentName, state, input) => {
       if (agentName === 'researcher') {
         const ti = input.target_input as NetworkingOutreachState['target_input'];
         const parts = [
@@ -131,8 +133,19 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
       }
 
       if (agentName === 'writer') {
+        const method = (state.messaging_method ?? 'group_message') as MessagingMethod;
+        const methodConfig = MESSAGING_METHOD_CONFIG[method];
         const parts = [
           'Write the complete outreach sequence using the research data gathered.',
+          '',
+          `## Messaging Method: ${methodConfig.label}`,
+          `Message format: ${
+            method === 'connection_request'
+              ? 'STRICT 300 character limit. Be extremely concise.'
+              : method === 'group_message'
+              ? 'Group message format. Can be up to 8000 characters but keep it professional and concise.'
+              : 'InMail format. Up to 1900 characters.'
+          }`,
           '',
           'Follow your workflow exactly:',
           '1. write_connection_request',
@@ -144,6 +157,33 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           '',
           'Do NOT skip any message type in the sequence.',
         ];
+
+        // Cross-reference recent LinkedIn posts for genuine personalization
+        try {
+          const { data: recentPosts } = await supabaseAdmin
+            .from('content_posts')
+            .select('topic, content, status, created_at')
+            .eq('user_id', state.user_id)
+            .in('status', ['approved', 'published'])
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          if (recentPosts && recentPosts.length > 0) {
+            parts.push('');
+            parts.push('## Recent LinkedIn Posts (use these for genuine personalization)');
+            for (const p of recentPosts) {
+              const postDate = new Date(p.created_at as string).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
+              parts.push(`- "${p.topic as string}" (${p.status as string}, ${postDate})`);
+            }
+            parts.push('Reference these naturally when they strengthen the outreach message.');
+          }
+        } catch {
+          // Non-fatal — outreach works without post context
+        }
 
         // Emotional baseline tone adaptation
         const toneGuidance = getToneGuidanceFromInput(input);

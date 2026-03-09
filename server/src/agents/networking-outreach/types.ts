@@ -11,6 +11,36 @@
 
 import type { BaseState } from '../runtime/agent-protocol.js';
 
+// ─── Messaging Methods ───────────────────────────────────────────────
+
+export type MessagingMethod = 'group_message' | 'connection_request' | 'inmail';
+
+export const MESSAGING_METHOD_CONFIG: Record<MessagingMethod, {
+  label: string;
+  maxChars: number;
+  description: string;
+  coaching: string;
+}> = {
+  group_message: {
+    label: 'Group Message',
+    maxChars: 8000,
+    description: 'Free messaging via shared LinkedIn groups',
+    coaching: 'Best option — join shared groups for free messaging access. No InMail credits needed.',
+  },
+  connection_request: {
+    label: 'Connection Request',
+    maxChars: 300,
+    description: 'Direct connection request with note',
+    coaching: 'Limited to 300 characters. Make every word count — lead with shared context.',
+  },
+  inmail: {
+    label: 'InMail',
+    maxChars: 1900,
+    description: 'LinkedIn InMail (uses credits)',
+    coaching: 'Reserve for high-value targets with no shared groups. You get ~5/week on most plans.',
+  },
+};
+
 // ─── Message Types ──────────────────────────────────────────────────
 
 /** Types of outreach messages in a sequence */
@@ -131,6 +161,9 @@ export interface NetworkingOutreachState extends BaseState {
   session_id: string;
   user_id: string;
   current_stage: string;
+
+  /** Messaging method selected by the user */
+  messaging_method?: MessagingMethod;
 
   /** Target contact information (user-provided) */
   target_input?: {

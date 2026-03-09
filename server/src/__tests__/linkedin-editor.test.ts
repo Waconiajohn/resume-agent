@@ -241,7 +241,7 @@ describe('createLinkedInEditorProductConfig().buildAgentMessage', () => {
 
   it('returns a message for the editor agent', () => {
     const state = makeState();
-    const msg = config.buildAgentMessage('editor', state, {});
+    const msg = config.buildAgentMessage('editor', state, {}) as string;
     expect(typeof msg).toBe('string');
     expect(msg.length).toBeGreaterThan(0);
   });

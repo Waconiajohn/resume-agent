@@ -197,8 +197,8 @@ export async function runProductPipeline<
         identity: phase.config.identity,
       };
 
-      // Build the initial message for this agent
-      const initialMessage = productConfig.buildAgentMessage(phase.name, state, input);
+      // Build the initial message for this agent (may be async for cross-product DB lookups)
+      const initialMessage = await productConfig.buildAgentMessage(phase.name, state, input);
 
       try {
         // Run the agent loop

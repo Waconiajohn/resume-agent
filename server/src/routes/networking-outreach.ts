@@ -22,6 +22,7 @@ import type { NetworkingOutreachState, NetworkingOutreachSSEEvent } from '../age
 const startSchema = z.object({
   session_id: z.string().uuid(),
   resume_text: z.string().min(50).max(100_000),
+  messaging_method: z.enum(['group_message', 'connection_request', 'inmail']).optional(),
   target_input: z.object({
     target_name: z.string().min(1).max(200),
     target_title: z.string().min(1).max(200),

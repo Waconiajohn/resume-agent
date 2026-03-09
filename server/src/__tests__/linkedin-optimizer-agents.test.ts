@@ -95,13 +95,14 @@ describe('LinkedIn Optimizer Agent Registration', () => {
     expect(desc!.capabilities).toContain('self_review');
   });
 
-  it('analyzer has 4 tools (3 + emit_transparency)', () => {
+  it('analyzer has 5 tools (4 + emit_transparency)', () => {
     const desc = agentRegistry.describe('linkedin-optimizer', 'analyzer');
     expect(desc).toBeDefined();
-    expect(desc!.tools).toHaveLength(4);
+    expect(desc!.tools).toHaveLength(5);
     expect(desc!.tools).toContain('parse_inputs');
     expect(desc!.tools).toContain('analyze_current_profile');
     expect(desc!.tools).toContain('identify_keyword_gaps');
+    expect(desc!.tools).toContain('simulate_recruiter_search');
     expect(desc!.tools).toContain('emit_transparency');
   });
 
@@ -138,6 +139,7 @@ describe('LinkedIn Optimizer Tool Model Tiers', () => {
       parse_inputs: 'light',
       analyze_current_profile: 'mid',
       identify_keyword_gaps: 'mid',
+      simulate_recruiter_search: 'mid',
     };
     for (const tool of analyzerTools) {
       expect(tool.model_tier).toBe(tierMap[tool.name]);

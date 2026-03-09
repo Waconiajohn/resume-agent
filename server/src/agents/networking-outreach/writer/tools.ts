@@ -903,6 +903,138 @@ const assembleSequenceTool: NetworkingOutreachTool = {
   },
 };
 
+// ─── Tool: generate_three_ways ──────────────────────────────────────
+
+const generateThreeWaysTool: NetworkingOutreachTool = {
+  name: 'generate_three_ways',
+  description:
+    'Generate the Three Ways Power Move — 3 specific strategic recommendations for a hiring manager ' +
+    'based on company research and user positioning. Each recommendation addresses a specific company ' +
+    'challenge and draws on the user\'s proven experience to demonstrate genuine expertise.',
+  model_tier: 'mid',
+  input_schema: {
+    type: 'object',
+    properties: {
+      company_name: {
+        type: 'string',
+        description: 'Target company name',
+      },
+      hiring_manager_name: {
+        type: 'string',
+        description: 'Name of the hiring manager',
+      },
+      company_challenges: {
+        type: 'string',
+        description: 'Known company challenges or priorities from research',
+      },
+      user_positioning: {
+        type: 'string',
+        description: 'User positioning strategy summary',
+      },
+    },
+    required: ['company_name', 'hiring_manager_name', 'company_challenges', 'user_positioning'],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const companyName = String(input.company_name ?? '');
+    const hiringManagerName = String(input.hiring_manager_name ?? '');
+    const companyChallenges = String(input.company_challenges ?? '');
+    const userPositioning = String(input.user_positioning ?? '');
+
+    ctx.emit({
+      type: 'transparency',
+      stage: 'three_ways',
+      message: `Generating Three Ways Power Move for ${hiringManagerName} at ${companyName}...`,
+    });
+
+    const resumeContext = state.resume_data
+      ? [
+          `Candidate: ${state.resume_data.name}`,
+          `Title: ${state.resume_data.current_title}`,
+          `Key Achievements: ${state.resume_data.key_achievements?.join(' | ') ?? ''}`,
+          `Key Skills: ${state.resume_data.key_skills?.join(', ') ?? ''}`,
+        ].join('\n')
+      : 'Resume data not available — base recommendations on positioning strategy provided.';
+
+    const response = await llm.chat({
+      model: MODEL_MID,
+      max_tokens: 2048,
+      system:
+        'You are a senior executive advisor who prepares executives for high-stakes hiring manager conversations. ' +
+        'You produce specific, evidence-based strategic recommendations — not generic advice. ' +
+        'Return ONLY valid JSON.',
+      messages: [{
+        role: 'user',
+        content: `Generate exactly 3 specific strategic recommendations that the candidate can present to ${hiringManagerName} at ${companyName}.
+
+## Company Challenges
+${companyChallenges}
+
+## Candidate Positioning
+${userPositioning}
+
+## Candidate Background
+${resumeContext}
+
+Each recommendation must:
+1. Address a SPECIFIC challenge the company faces (not generic)
+2. Draw on the candidate\'s PROVEN experience (cite specific role/achievement)
+3. Be specific enough to demonstrate real expertise — not generic advice
+4. Show the candidate as someone who solves this TYPE of problem
+
+Return JSON:
+{
+  "three_ways": [
+    {
+      "title": "Short title for this recommendation (5-8 words)",
+      "challenge_addressed": "The specific company challenge this tackles",
+      "recommendation": "2-3 sentences of specific, actionable guidance",
+      "candidate_proof": "The specific experience/achievement from the candidate\'s background that backs this up"
+    },
+    { ... },
+    { ... }
+  ],
+  "opening_line": "One sentence to open the conversation naturally — positions the candidate as a peer, not a supplicant"
+}`,
+      }],
+    });
+
+    let result;
+    try {
+      result = JSON.parse(repairJSON(response.text) ?? response.text);
+    } catch {
+      result = {
+        three_ways: [
+          {
+            title: 'Strategic Recommendation',
+            challenge_addressed: companyChallenges.slice(0, 100),
+            recommendation: 'Based on the company challenges provided, I can offer specific guidance from my experience.',
+            candidate_proof: userPositioning.slice(0, 100),
+          },
+        ],
+        opening_line: `I\'ve been researching ${companyName} and see some areas where my experience could add immediate value.`,
+      };
+    }
+
+    ctx.scratchpad.three_ways_document = result;
+
+    ctx.emit({
+      type: 'transparency',
+      stage: 'three_ways',
+      message: `Three Ways Power Move complete — ${Array.isArray(result.three_ways) ? result.three_ways.length : 0} strategic recommendations generated`,
+    });
+
+    return JSON.stringify({
+      success: true,
+      company_name: companyName,
+      hiring_manager_name: hiringManagerName,
+      recommendations_count: Array.isArray(result.three_ways) ? result.three_ways.length : 0,
+      three_ways: result.three_ways,
+      opening_line: result.opening_line,
+    });
+  },
+};
+
 // ─── Exports ────────────────────────────────────────────────────────
 
 export const writerTools: NetworkingOutreachTool[] = [
@@ -911,4 +1043,5 @@ export const writerTools: NetworkingOutreachTool[] = [
   writeValueOfferTool,
   writeMeetingRequestTool,
   assembleSequenceTool,
+  generateThreeWaysTool,
 ];

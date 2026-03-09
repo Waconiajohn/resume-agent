@@ -1,5 +1,53 @@
 # Changelog — Resume Agent
 
+## 2026-03-08 — Session 64
+**Sprint:** 62 | **Stories:** 62-1 through 62-5 — Cross-Agent Intelligence & Power Moves
+**Summary:** Added `generate_three_ways` and `simulate_recruiter_search` agent tools, cross-referenced LinkedIn posts in outreach writer context, enriched hook formula analysis into `self_review_post`, wired Rule of Four "Message" button to prefill OutreachGenerator, and replaced mock OutreachTemplates with live GeneratedMessages component.
+
+### Changes Made
+- `server/src/agents/networking-outreach/writer/tools.ts` — Added `generate_three_ways` tool (MODEL_MID): generates 3 strategic recommendations for hiring manager outreach; stores in `ctx.scratchpad.three_ways_document`; appended to `writerTools` array
+- `server/src/agents/linkedin-optimizer/analyzer/tools.ts` — Added `simulate_recruiter_search` tool (MODEL_MID): LLM-powered keyword search simulation with section-weighted scoring (headline 40%, about 25%, experience 25%, skills 10%); stores in `state.recruiter_search_result`; appended to `analyzerTools` array
+- `server/src/agents/linkedin-optimizer/types.ts` — Added `recruiter_search_result` optional field to `LinkedInOptimizerState` with full typed shape
+- `server/src/agents/runtime/product-config.ts` — Changed `buildAgentMessage` return type from `string` to `string | Promise<string>` to support async DB lookups in product implementations
+- `server/src/agents/runtime/product-coordinator.ts` — Added `await` to `buildAgentMessage` call to handle async implementations
+- `server/src/agents/networking-outreach/product.ts` — Made `buildAgentMessage` async; added Supabase cross-reference query in writer context (last 5 approved/published `content_posts`); non-fatal try/catch
+- `server/src/agents/linkedin-content/types.ts` — Extended `post_draft_ready`, `post_revised`, `content_complete` SSE event types with optional `hook_score`, `hook_type`, `hook_assessment` fields
+- `server/src/agents/linkedin-content/writer/tools.ts` — Enriched `self_review_post` tool: extracts first 210 chars as hook text, adds hook formula analysis fields to LLM prompt (hook_score 0-100, hook_type enum, hook_assessment string); emits hook fields in `post_draft_ready` event via `present_post`
+- `app/src/hooks/useLinkedInContent.ts` — Added `hookScore`, `hookType`, `hookAssessment` to state; updated `post_draft_ready` and `post_revised` SSE handlers to capture hook data; updated `reset` and `startContentPipeline` to include new fields
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — In post review: added "Hook {score}" badge; added coaching nudge block when `hookScore < 60` showing `hookAssessment` text with `TrendingUp` icon
+- `app/src/components/career-iq/NetworkingHubRoom.tsx` — Story 62-1: deleted `MOCK_TEMPLATES` and `OutreachTemplates`; added `OutreachPrefill` interface; added `onGenerateMessage` prop to `RuleOfFourSection`; added "Message" button per Rule of Four contact; added `GeneratedMessages` component (shows agent report or empty state); updated `OutreachGenerator` to accept `prefill` and `onReady` props with useEffect sync; added `outreachPrefill`/`outreachState` state in `NetworkingHubRoom`; wired all props in render JSX
+- `server/src/__tests__/linkedin-content.test.ts` — Added `as string` cast on `buildAgentMessage` result to satisfy updated `string | Promise<string>` return type
+- `server/src/__tests__/linkedin-editor.test.ts` — Added `as string` cast on `buildAgentMessage` result for same reason
+
+### Decisions Made
+- `buildAgentMessage` type widened to `string | Promise<string>` rather than adding a separate async hook, preserving backward compatibility with all synchronous product implementations.
+- `GeneratedMessages` reads from `outreachState` (a ref to the live `useNetworkingOutreach` hook state captured via `onReady` callback) rather than duplicating hook state in the parent.
+- Hook formula coaching nudge threshold set at 60 — scores below show the `hookAssessment` message from the LLM; scores 60+ trust the user.
+
+### Next Steps
+- Story 62-6: Tests (handled by separate agent)
+
+## 2026-03-08 — Session 63
+**Sprint:** 63 | **Stories:** 63-1 through 63-5 — Coaching Discipline & Polish
+**Summary:** Added three messaging methods (group/connection/InMail) to outreach generator, Rule of Four coaching nudges bar, auto follow-up scheduling on touchpoints, calendar-to-composer tab promotion, and 50 Groups Strategy coaching guide.
+
+### Changes Made
+- `server/src/agents/networking-outreach/types.ts` — Added `MessagingMethod` type and `MESSAGING_METHOD_CONFIG` constant; added `messaging_method` field to `NetworkingOutreachState`
+- `server/src/agents/networking-outreach/product.ts` — Accept `messaging_method` in `createInitialState`; include method format guidance in writer agent message; import `MessagingMethod` and `MESSAGING_METHOD_CONFIG`
+- `server/src/routes/networking-outreach.ts` — Added optional `messaging_method` enum field to `startSchema` Zod validation
+- `server/src/routes/networking-contacts.ts` — Story 63-3: replaced simple `last_contact_date` parallel update with sequential touchpoint-count-aware logic that auto-schedules next follow-up (+4 days after touch 1, +6 days after touches 2-3, null after touch 4+) and bumps `relationship_strength` at milestones 2 and 4
+- `app/src/hooks/useNetworkingOutreach.ts` — Added `messagingMethod` optional field to `NetworkingOutreachInput`; passes `messaging_method` in POST body
+- `app/src/components/career-iq/NetworkingHubRoom.tsx` — Story 63-1: added `MESSAGING_METHOD_CONFIG` constant and `messagingMethod` state; added 3-column method selector with coaching nudge text before generate button. Story 63-2: imported and rendered `RuleOfFourCoachingBar` between FollowUpBar and OutreachGenerator
+- `app/src/components/career-iq/RuleOfFourCoachingBar.tsx` — NEW: coaching bar showing applications with fewer than 4 contacts; each missing role is a clickable chip that opens the contact modal pre-filled
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — Story 63-4: added `onWritePost` prop to `ContentCalendar`, "Write Next Post" button in complete state switches to composer tab. Story 63-5: added `FiftyGroupsGuide` component (progressive disclosure via `<details>`) rendered below ProfileEditor on editor tab; added `Users` to lucide-react imports
+
+### Decisions Made
+- `buildAgentMessage` in product-config.ts is synchronous — any async work for the writer context must happen in `transformInput`. Kept 63-1 changes to pure string building only.
+- `RuleOfFourCoachingBar` lives in `career-iq/` directory alongside `NetworkingHubRoom` to match the co-location pattern for room-specific sub-components.
+
+### Next Steps
+- Story 63-6: Tests (handled by separate agent)
+
 ## 2026-03-08 — Session 59
 **Sprint:** 57-59 | **Stories:** All 18 stories — Phase 3A Job Command Center Complete
 **Summary:** Implemented the complete Job Command Center across 3 sprints: multi-source job search API, AI matching, Kanban drag-drop pipeline, radar search with NI cross-referencing, watchlist, and daily ops — 228 new tests.

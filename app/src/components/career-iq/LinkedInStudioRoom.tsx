@@ -3,9 +3,6 @@ import { GlassButton } from '@/components/GlassButton';
 import {
   Linkedin,
   TrendingUp,
-  Eye,
-  Search,
-  MessageSquare,
   Sparkles,
   Calendar,
   PenLine,
@@ -17,12 +14,16 @@ import {
   FileText,
   ChevronRight,
   RotateCcw,
+  BookOpen,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
 import { useLinkedInOptimizer } from '@/hooks/useLinkedInOptimizer';
 import { useLinkedInContent } from '@/hooks/useLinkedInContent';
 import { useLinkedInEditor } from '@/hooks/useLinkedInEditor';
+import { useContentCalendar } from '@/hooks/useContentCalendar';
+import { useContentPosts } from '@/hooks/useContentPosts';
 import { supabase } from '@/lib/supabase';
 import { ExperienceEntryCard } from './ExperienceEntryCard';
 import type { WhyMeSignals } from './useWhyMeStory';
@@ -34,26 +35,7 @@ interface LinkedInStudioRoomProps {
   whyMeClarity?: string;
 }
 
-type StudioTab = 'composer' | 'editor' | 'calendar' | 'analytics';
-
-// ─── Mock data (calendar + analytics remain mocked) ───────────────────────
-
-const MOCK_CONTENT_PLAN = [
-  { week: 1, day: 'Mon', type: 'Article', topic: 'Why supply chain leaders should stop optimizing and start redesigning', status: 'published' as const },
-  { week: 1, day: 'Wed', type: 'Poll', topic: 'What\'s the #1 reason supply chain transformations fail?', status: 'published' as const },
-  { week: 1, day: 'Fri', type: 'Comment', topic: 'Engage with 3 posts from target company leaders', status: 'published' as const },
-  { week: 2, day: 'Mon', type: 'Article', topic: 'The hidden cost of "good enough" inventory management', status: 'draft' as const },
-  { week: 2, day: 'Wed', type: 'Story', topic: 'Behind the scenes: How I reduced a 45-day cycle to 12', status: 'draft' as const },
-  { week: 2, day: 'Fri', type: 'Comment', topic: 'Engage with industry thought leaders', status: 'scheduled' as const },
-  { week: 3, day: 'Mon', type: 'Article', topic: 'What executives get wrong about operational efficiency', status: 'scheduled' as const },
-  { week: 3, day: 'Wed', type: 'Poll', topic: 'Is AI actually improving your supply chain, or just your reports?', status: 'scheduled' as const },
-];
-
-const MOCK_ANALYTICS = [
-  { label: 'Profile Views', value: '147', change: '+23%', trend: 'up' as const, period: 'vs. last week' },
-  { label: 'Search Appearances', value: '89', change: '+41%', trend: 'up' as const, period: 'vs. last week' },
-  { label: 'Post Engagement', value: '3.2%', change: '+0.8%', trend: 'up' as const, period: 'avg. rate' },
-];
+type StudioTab = 'composer' | 'editor' | 'calendar' | 'analytics' | 'library';
 
 const PROFILE_SECTION_LABELS: Record<ProfileSection, string> = {
   headline: 'Headline',
@@ -238,6 +220,14 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
                 )}>
                   Engage {scores.engagement_potential}
                 </span>
+                {content.hookScore != null && (
+                  <span className={cn(
+                    'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                    content.hookScore >= 60 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#dfc797] bg-[#dfc797]/10',
+                  )}>
+                    Hook {content.hookScore}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -252,6 +242,18 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
               </p>
             )}
           </div>
+
+          {content.hookScore != null && content.hookScore < 60 && (
+            <div className="mb-4 rounded-xl border border-[#dfc797]/20 bg-[#dfc797]/[0.04] px-4 py-3 flex items-start gap-2">
+              <TrendingUp size={14} className="text-[#dfc797] flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-medium text-[#dfc797]">Your opening could be stronger.</p>
+                <p className="text-[11px] text-[#dfc797]/70 mt-0.5 leading-relaxed">
+                  {content.hookAssessment ?? 'The first 210 characters need to earn the click — that\'s what shows before "see more".'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {content.status === 'post_review' && (
             <div className="flex flex-col gap-3">
@@ -767,81 +769,396 @@ function ProfileOptimizer({ signals, report }: { signals: WhyMeSignals; report: 
   );
 }
 
-// ─── Content Calendar ──────────────────────────────────────────────────────
+// ─── Fifty Groups Guide ────────────────────────────────────────────────────
 
-function ContentCalendar() {
-  const statusColors: Record<string, string> = {
-    published: 'text-[#b5dec2] bg-[#b5dec2]/10',
-    draft: 'text-[#dfc797] bg-[#dfc797]/10',
-    scheduled: 'text-[#98b3ff] bg-[#98b3ff]/10',
-  };
-
+function FiftyGroupsGuide() {
   return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Calendar size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Content Calendar</h3>
-        <span className="ml-auto text-[11px] text-white/30">4-week plan</span>
-      </div>
+    <GlassCard className="p-6 mt-6">
+      <details>
+        <summary className="cursor-pointer flex items-center gap-2 text-[14px] font-semibold text-white/70 hover:text-white/90 transition-colors list-none">
+          <Users size={16} className="text-[#98b3ff]" />
+          The 50 Groups Strategy
+          <span className="ml-auto text-[11px] text-white/25 font-normal">Coaching Guide</span>
+        </summary>
+        <div className="mt-4 space-y-4 text-[13px] text-white/55 leading-relaxed">
+          <p>
+            <strong className="text-white/70">Why 50 groups?</strong> LinkedIn lets you message any
+            member of a shared group for free — no InMail credits needed. By joining 50 relevant
+            groups, you unlock free messaging to thousands of potential contacts.
+          </p>
 
-      <div className="space-y-1.5">
-        {MOCK_CONTENT_PLAN.map((item, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-white/[0.03] transition-colors"
-          >
-            <div className="w-[48px] flex-shrink-0">
-              <div className="text-[11px] font-medium text-white/40">W{item.week}</div>
-              <div className="text-[10px] text-white/25">{item.day}</div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] text-white/60 truncate">{item.topic}</div>
-            </div>
-            <span className="text-[10px] text-white/30 flex-shrink-0 w-[52px]">{item.type}</span>
-            <span className={cn(
-              'text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 capitalize',
-              statusColors[item.status],
-            )}>
-              {item.status}
-            </span>
+          <div>
+            <p className="text-white/70 font-medium mb-2">How to find the right groups:</p>
+            <ul className="space-y-1.5 list-disc list-inside text-white/50">
+              <li>Search for groups in your target industry (e.g., "Supply Chain Leaders")</li>
+              <li>Join groups your target companies' employees belong to</li>
+              <li>Look for professional associations in your field</li>
+              <li>Find alumni groups from your schools and past employers</li>
+              <li>Join groups for your target role titles</li>
+            </ul>
           </div>
-        ))}
-      </div>
+
+          <div>
+            <p className="text-white/70 font-medium mb-2">The free messaging advantage:</p>
+            <ul className="space-y-1.5 list-disc list-inside text-white/50">
+              <li>Most professionals have only 5 InMail credits per week</li>
+              <li>Group messages bypass this limit entirely</li>
+              <li>Group members see you as a peer, not a cold contact</li>
+              <li>Your message arrives in their primary inbox, not "Other"</li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-white/70 font-medium mb-2">How to participate (without being spammy):</p>
+            <ul className="space-y-1.5 list-disc list-inside text-white/50">
+              <li>Comment thoughtfully on 2-3 discussions per week</li>
+              <li>Share relevant insights from your experience</li>
+              <li>Wait at least a week after joining before messaging members</li>
+              <li>Reference group content when reaching out ("I saw your comment about...")</li>
+            </ul>
+          </div>
+        </div>
+      </details>
     </GlassCard>
   );
+}
+
+// ─── Content Calendar ──────────────────────────────────────────────────────
+
+function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
+  const calendar = useContentCalendar();
+  const [inputError, setInputError] = useState<string | null>(null);
+
+  const handleGenerate = useCallback(async () => {
+    setInputError(null);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      setInputError('Please sign in.');
+      return;
+    }
+    const { data: resumeData } = await supabase
+      .from('master_resumes')
+      .select('raw_text')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!resumeData?.raw_text || resumeData.raw_text.length < 50) {
+      setInputError('Upload a resume first.');
+      return;
+    }
+
+    await calendar.startPipeline({ resumeText: resumeData.raw_text });
+  }, [calendar]);
+
+  const isRunning = calendar.status === 'connecting' || calendar.status === 'running';
+
+  // Idle state — show generate button
+  if (calendar.status === 'idle') {
+    return (
+      <div className="flex flex-col gap-4">
+        {inputError && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
+            <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
+            <p className="text-[13px] text-red-300/80">{inputError}</p>
+          </div>
+        )}
+        <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
+          <Calendar size={32} className="text-white/20" />
+          <div>
+            <p className="text-[15px] font-semibold text-white/80 mb-1">Generate Content Calendar</p>
+            <p className="text-[13px] text-white/40 max-w-[380px]">
+              Create a 30-day content plan with 4 posts per week, tailored to your positioning.
+            </p>
+          </div>
+          <GlassButton onClick={handleGenerate} className="flex items-center gap-2">
+            <Sparkles size={14} />
+            Generate Calendar
+          </GlassButton>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // Running state
+  if (isRunning) {
+    return (
+      <div className="flex flex-col gap-4">
+        <ActivityFeed messages={calendar.activityMessages} label="Generating content calendar..." />
+      </div>
+    );
+  }
+
+  // Complete state — show report
+  if (calendar.status === 'complete' && calendar.report) {
+    return (
+      <div className="flex flex-col gap-4">
+        <GlassCard className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar size={18} className="text-[#98b3ff]" />
+            <h3 className="text-[15px] font-semibold text-white/85">Content Calendar</h3>
+            {calendar.postCount !== null && (
+              <span className="ml-auto text-[11px] text-white/30">{calendar.postCount} posts planned</span>
+            )}
+          </div>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 max-h-[500px] overflow-y-auto">
+            <pre className="text-[13px] text-white/60 leading-relaxed whitespace-pre-wrap font-sans">
+              {calendar.report}
+            </pre>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <GlassButton onClick={onWritePost} className="flex items-center gap-2">
+              <PenLine size={14} />
+              Write Next Post
+            </GlassButton>
+            <GlassButton onClick={calendar.reset} className="flex items-center gap-2">
+              <RotateCcw size={14} />
+              Generate New Calendar
+            </GlassButton>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // Error state
+  if (calendar.status === 'error') {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
+          <p className="text-[13px] text-red-300/80">{calendar.error}</p>
+        </div>
+        <GlassButton onClick={calendar.reset} className="self-start flex items-center gap-2">
+          <RotateCcw size={14} />
+          Try Again
+        </GlassButton>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ─── Analytics Overview ───────────────────────────────────────────────────
 
 function AnalyticsOverview() {
+  const { posts } = useContentPosts();
+
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+
+  const postsThisWeek = posts.filter((p) => new Date(p.created_at) >= weekStart).length;
+  const approvedOrPublished = posts.filter((p) => p.status === 'approved' || p.status === 'published').length;
+  const approvalRate = posts.length > 0 ? Math.round((approvedOrPublished / posts.length) * 100) : 0;
+
+  const avgQuality = (() => {
+    const scored = posts.filter((p) => p.quality_scores?.authenticity !== undefined);
+    if (scored.length === 0) return 0;
+    return Math.round(
+      scored.reduce((sum, p) => sum + (p.quality_scores?.authenticity ?? 0), 0) / scored.length,
+    );
+  })();
+
+  const metrics = [
+    { label: 'Total Posts', value: String(posts.length), icon: FileText },
+    { label: 'This Week', value: String(postsThisWeek), icon: Calendar },
+    { label: 'Avg Quality', value: avgQuality > 0 ? `${avgQuality}%` : '—', icon: TrendingUp },
+  ];
+
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <BarChart3 size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Analytics</h3>
-        <span className="ml-auto text-[11px] text-white/30">Last 7 days</span>
+        <h3 className="text-[15px] font-semibold text-white/85">Platform Metrics</h3>
+        <span className="ml-auto text-[11px] text-white/30">From your generated content</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {MOCK_ANALYTICS.map((metric) => {
-          const IconComp = metric.label === 'Profile Views' ? Eye
-            : metric.label === 'Search Appearances' ? Search
-            : MessageSquare;
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
           return (
             <div key={metric.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
-              <IconComp size={16} className="text-white/30 mx-auto mb-2" />
+              <Icon size={16} className="text-white/30 mx-auto mb-2" />
               <div className="text-[22px] font-bold text-white/85 tabular-nums">{metric.value}</div>
               <div className="text-[11px] text-white/35 mt-0.5">{metric.label}</div>
-              <div className="flex items-center justify-center gap-1 mt-2">
-                <TrendingUp size={11} className="text-[#b5dec2]" />
-                <span className="text-[11px] text-[#b5dec2]">{metric.change}</span>
-                <span className="text-[10px] text-white/20">{metric.period}</span>
-              </div>
             </div>
           );
         })}
       </div>
+
+      {posts.length > 0 && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 flex items-center gap-3">
+          <Check size={14} className="text-[#b5dec2] flex-shrink-0" />
+          <span className="text-[12px] text-white/50">
+            Approval rate: <span className="text-white/70 font-medium">{approvalRate}%</span>
+            <span className="text-white/30 ml-1">({approvedOrPublished} of {posts.length} posts approved or published)</span>
+          </span>
+        </div>
+      )}
     </GlassCard>
+  );
+}
+
+// ─── Post Library ────────────────────────────────────────────────────────
+
+function PostLibrary() {
+  const { posts, loading, error, updatePostStatus, deletePost } = useContentPosts();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = useCallback((post: { id: string; content: string; hashtags: string[] | null }) => {
+    const text = [post.content, '', ...(post.hashtags ?? []).map((h) => `#${h}`)].join('\n');
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopiedId(post.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }, []);
+
+  const handleMarkPublished = useCallback(async (id: string) => {
+    await updatePostStatus(id, 'published');
+  }, [updatePostStatus]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    await deletePost(id);
+  }, [deletePost]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-[13px] text-white/40 py-8 justify-center">
+        <Loader2 size={14} className="animate-spin" />
+        Loading posts...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
+        <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
+        <p className="text-[13px] text-red-300/80">{error}</p>
+      </div>
+    );
+  }
+
+  if (posts.length === 0) {
+    return (
+      <GlassCard className="p-8 flex flex-col items-center gap-3 text-center">
+        <BookOpen size={32} className="text-white/20" />
+        <p className="text-[14px] font-medium text-white/60">No posts yet</p>
+        <p className="text-[13px] text-white/35 max-w-[320px]">
+          Write your first post in the Composer tab. Approved posts will appear here.
+        </p>
+      </GlassCard>
+    );
+  }
+
+  const STATUS_COLORS: Record<string, string> = {
+    published: 'text-[#b5dec2] bg-[#b5dec2]/10',
+    approved: 'text-[#98b3ff] bg-[#98b3ff]/10',
+    draft: 'text-[#dfc797] bg-[#dfc797]/10',
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {posts.map((post) => (
+        <GlassCard key={post.id} className="p-4">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-white/75 truncate">{post.topic || 'Untitled Post'}</p>
+              <p className="text-[11px] text-white/35 mt-0.5">
+                {new Date(post.created_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
+            <span className={cn(
+              'text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 capitalize',
+              STATUS_COLORS[post.status] ?? 'text-white/40 bg-white/[0.06]',
+            )}>
+              {post.status}
+            </span>
+          </div>
+
+          <p className="text-[12px] text-white/50 leading-relaxed line-clamp-2 mb-3">
+            {post.content.slice(0, 160)}{post.content.length > 160 ? '…' : ''}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleCopy(post)}
+              className="flex items-center gap-1.5 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+            >
+              {copiedId === post.id ? (
+                <Check size={12} className="text-[#b5dec2]" />
+              ) : (
+                <Copy size={12} />
+              )}
+              {copiedId === post.id ? 'Copied!' : 'Copy'}
+            </button>
+
+            {post.status !== 'published' && (
+              <button
+                type="button"
+                onClick={() => handleMarkPublished(post.id)}
+                className="flex items-center gap-1.5 text-[11px] text-white/40 hover:text-[#b5dec2] transition-colors ml-2"
+              >
+                <Check size={12} />
+                Mark Published
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => handleDelete(post.id)}
+              className="flex items-center gap-1.5 text-[11px] text-white/25 hover:text-red-400 transition-colors ml-auto"
+            >
+              Delete
+            </button>
+          </div>
+        </GlassCard>
+      ))}
+    </div>
+  );
+}
+
+// ─── Keyword Multiplier Nudge ──────────────────────────────────────────────
+
+function KeywordMultiplierNudge() {
+  const { posts } = useContentPosts();
+
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+
+  const postedThisWeek = posts.filter(
+    (p) => p.status === 'published' && new Date(p.created_at) >= weekStart,
+  ).length;
+
+  const colorClass =
+    postedThisWeek >= 4
+      ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/15'
+      : postedThisWeek >= 2
+      ? 'text-[#dfc797] bg-[#dfc797]/10 border-[#dfc797]/15'
+      : 'text-red-400 bg-red-400/10 border-red-400/15';
+
+  return (
+    <div className={cn('rounded-xl border px-4 py-3 flex items-start gap-3', colorClass)}>
+      <TrendingUp size={15} className="flex-shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium">
+          {postedThisWeek} of 4 posts this week
+        </p>
+        <p className="text-[11px] opacity-70 mt-0.5 leading-relaxed">
+          LinkedIn amplifies search visibility for active users. 4+ posts per week significantly increases recruiter discovery.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -881,6 +1198,10 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   const [activeTab, setActiveTab] = useState<StudioTab>('composer');
   const [inputError, setInputError] = useState<string | null>(null);
 
+  const handleWritePostFromCalendar = useCallback(() => {
+    setActiveTab('composer');
+  }, []);
+
   const handleOptimize = useCallback(async () => {
     setInputError(null);
 
@@ -915,6 +1236,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
     { id: 'editor', label: 'Profile Editor', icon: PenLine },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'library', label: 'Post Library', icon: BookOpen },
   ];
 
   return (
@@ -970,6 +1292,9 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         </div>
       )}
 
+      {/* Keyword multiplier coaching nudge */}
+      <KeywordMultiplierNudge />
+
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-white/[0.06] pb-0">
         {tabs.map((tab) => {
@@ -996,8 +1321,14 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
       {/* Tab content */}
       <div>
         {activeTab === 'composer' && <PostComposer signals={signals} />}
-        {activeTab === 'editor' && <ProfileEditor signals={signals} />}
-        {activeTab === 'calendar' && <ContentCalendar />}
+        {activeTab === 'editor' && (
+          <div className="flex flex-col gap-6">
+            <ProfileEditor signals={signals} />
+            <FiftyGroupsGuide />
+          </div>
+        )}
+        {activeTab === 'calendar' && <ContentCalendar onWritePost={handleWritePostFromCalendar} />}
+        {activeTab === 'library' && <PostLibrary />}
         {activeTab === 'analytics' && (
           <div className="flex flex-col gap-6">
             <AnalyticsOverview />

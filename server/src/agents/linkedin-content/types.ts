@@ -81,9 +81,9 @@ export type LinkedInContentSSEEvent =
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'topics_ready'; session_id: string; topics: TopicSuggestion[] }
-  | { type: 'post_draft_ready'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores }
-  | { type: 'post_revised'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores }
-  | { type: 'content_complete'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores }
+  | { type: 'post_draft_ready'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null }
+  | { type: 'post_revised'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null }
+  | { type: 'content_complete'; session_id: string; post: string; hashtags: string[]; quality_scores: PostQualityScores; hook_score?: number | null; hook_type?: string | null; hook_assessment?: string | null }
   | { type: 'pipeline_error'; stage: string; error: string };
 
 // ─── Tool type alias ───────────────────────────────────────────────────

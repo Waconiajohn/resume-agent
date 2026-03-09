@@ -159,6 +159,22 @@ export interface LinkedInOptimizerState extends BaseState {
 
   /** Quality score from self-review (0-100) */
   quality_score?: number;
+
+  /** Recruiter search simulation result (from simulate_recruiter_search) */
+  recruiter_search_result?: {
+    overall_score: number;
+    section_analysis: Array<{
+      section: string;
+      weight: number;
+      keywords_found: string[];
+      keywords_missing: string[];
+      section_score: number;
+      note: string;
+    }>;
+    missing_keywords: string[];
+    recommendations: string[];
+    verdict: string;
+  };
 }
 
 // ─── SSE Events ──────────────────────────────────────────────────────

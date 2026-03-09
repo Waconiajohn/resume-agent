@@ -40,6 +40,9 @@ interface LinkedInContentState {
   postDraft: string | null;
   postHashtags: string[];
   qualityScores: PostQualityScores | null;
+  hookScore: number | null;
+  hookType: string | null;
+  hookAssessment: string | null;
   activityMessages: ActivityMessage[];
   error: string | null;
 }
@@ -54,6 +57,9 @@ export function useLinkedInContent() {
     postDraft: null,
     postHashtags: [],
     qualityScores: null,
+    hookScore: null,
+    hookType: null,
+    hookAssessment: null,
     activityMessages: [],
     error: null,
   });
@@ -128,6 +134,9 @@ export function useLinkedInContent() {
             postDraft: data.post as string,
             postHashtags: (data.hashtags as string[]) ?? [],
             qualityScores: (data.quality_scores as PostQualityScores) ?? null,
+            hookScore: typeof data.hook_score === 'number' ? data.hook_score : null,
+            hookType: typeof data.hook_type === 'string' ? data.hook_type : null,
+            hookAssessment: typeof data.hook_assessment === 'string' ? data.hook_assessment : null,
           }));
           break;
 
@@ -137,6 +146,9 @@ export function useLinkedInContent() {
             postDraft: data.post as string,
             postHashtags: (data.hashtags as string[]) ?? prev.postHashtags,
             qualityScores: (data.quality_scores as PostQualityScores) ?? prev.qualityScores,
+            hookScore: typeof data.hook_score === 'number' ? data.hook_score : prev.hookScore,
+            hookType: typeof data.hook_type === 'string' ? data.hook_type : prev.hookType,
+            hookAssessment: typeof data.hook_assessment === 'string' ? data.hook_assessment : prev.hookAssessment,
           }));
           break;
 
@@ -282,6 +294,9 @@ export function useLinkedInContent() {
       postDraft: null,
       postHashtags: [],
       qualityScores: null,
+      hookScore: null,
+      hookType: null,
+      hookAssessment: null,
       activityMessages: [],
       error: null,
     });
@@ -402,6 +417,9 @@ export function useLinkedInContent() {
       postDraft: null,
       postHashtags: [],
       qualityScores: null,
+      hookScore: null,
+      hookType: null,
+      hookAssessment: null,
       activityMessages: [],
       error: null,
     });

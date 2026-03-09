@@ -24,6 +24,7 @@ interface NetworkingOutreachState {
 
 export interface NetworkingOutreachInput {
   resumeText: string;
+  messagingMethod?: 'group_message' | 'connection_request' | 'inmail';
   targetInput: {
     target_name: string;
     target_title: string;
@@ -262,6 +263,7 @@ export function useNetworkingOutreach() {
           body: JSON.stringify({
             session_id: sessionId,
             resume_text: input.resumeText,
+            messaging_method: input.messagingMethod ?? 'group_message',
             target_input: input.targetInput,
           }),
         });

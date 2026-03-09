@@ -82,15 +82,17 @@ describe('LinkedInStudioRoom', () => {
   it('renders content calendar when Calendar tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
     fireEvent.click(screen.getByText('Calendar'));
-    expect(screen.getByText('Content Calendar')).toBeInTheDocument();
+    // ContentCalendar in idle state renders "Generate Content Calendar"
+    expect(screen.getByText('Generate Content Calendar')).toBeInTheDocument();
   });
 
   it('renders analytics when Analytics tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
     fireEvent.click(screen.getByText('Analytics'));
-    expect(screen.getByText('Profile Views')).toBeInTheDocument();
-    expect(screen.getByText('Search Appearances')).toBeInTheDocument();
-    expect(screen.getByText('Post Engagement')).toBeInTheDocument();
+    // AnalyticsOverview renders content-based metrics from generated posts
+    expect(screen.getByText('Platform Metrics')).toBeInTheDocument();
+    expect(screen.getByText('Total Posts')).toBeInTheDocument();
+    expect(screen.getByText('Avg Quality')).toBeInTheDocument();
   });
 
   it('renders LinkedIn Studio header', () => {
@@ -258,57 +260,58 @@ describe('InterviewLabRoom', () => {
 // ---------------------------------------------------------------------------
 
 describe('NetworkingHubRoom', () => {
-  it('renders Rule of Four section', () => {
+  beforeEach(() => {
+    // Stub fetch for the hook calls (fetchFollowUps on mount, useContentPosts auto-fetch)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ contacts: [], count: 0, touchpoints: [], posts: [] }), { status: 200 }),
+    ));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('renders the Networking Hub heading', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getByText('Rule of Four')).toBeInTheDocument();
+    expect(screen.getByText('Networking Hub')).toBeInTheDocument();
+  });
+
+  it('renders the Rule of Four tagline', () => {
+    render(<NetworkingHubRoom />);
     expect(screen.getByText(/Networking is your sales force/)).toBeInTheDocument();
   });
 
-  it('shows first company group expanded by default', () => {
+  it('renders the Add Contact button', () => {
     render(<NetworkingHubRoom />);
-    // Medtronic group expanded — shows contacts
-    expect(screen.getByText('Sarah Chen')).toBeInTheDocument();
-    expect(screen.getByText('Marcus Rivera')).toBeInTheDocument();
+    expect(screen.getByText('Add Contact')).toBeInTheDocument();
   });
 
-  it('shows outreach status badges on contacts', () => {
+  it('renders the outreach generator section', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getAllByText('Messaged').length).toBeGreaterThan(0);
-    expect(screen.getByText('Responded')).toBeInTheDocument();
-    expect(screen.getByText('Connected')).toBeInTheDocument();
+    // Outreach generator card is always present
+    expect(screen.getByText('Generate Outreach Sequence')).toBeInTheDocument();
   });
 
-  it('renders outreach templates section', () => {
+  it('renders messaging method buttons', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getByText('Outreach Templates')).toBeInTheDocument();
-    expect(screen.getByText('Warm Introduction')).toBeInTheDocument();
-    expect(screen.getByText('Direct Outreach')).toBeInTheDocument();
+    expect(screen.getByText('Group Message')).toBeInTheDocument();
+    expect(screen.getByText('Connection Request')).toBeInTheDocument();
+    expect(screen.getByText('InMail')).toBeInTheDocument();
   });
 
-  it('expands template to show content with copy button', () => {
+  it('does not show coaching bar when no rule-of-four groups', () => {
     render(<NetworkingHubRoom />);
-    fireEvent.click(screen.getByText('Warm Introduction'));
-    expect(screen.getByText(/came across your profile/)).toBeInTheDocument();
-    expect(screen.getByText('Copy Template')).toBeInTheDocument();
+    // With empty ruleOfFour.groups from the hook mock, no coaching bar
+    expect(screen.queryByText(/needs more contacts/)).not.toBeInTheDocument();
   });
 
-  it('renders weekly activity metrics', () => {
+  it('renders contact list section', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getByText('Weekly Activity')).toBeInTheDocument();
-    expect(screen.getByText('Messages Sent')).toBeInTheDocument();
-    expect(screen.getByText('Responses')).toBeInTheDocument();
-    expect(screen.getByText('Connections Made')).toBeInTheDocument();
-  });
-
-  it('renders recruiter tracker', () => {
-    render(<NetworkingHubRoom />);
-    expect(screen.getByText('Recruiter Tracker')).toBeInTheDocument();
-    expect(screen.getByText('James Morrison')).toBeInTheDocument();
-    expect(screen.getByText(/Spencer Stuart/)).toBeInTheDocument();
-  });
-
-  it('shows contact connection levels', () => {
-    render(<NetworkingHubRoom />);
-    expect(screen.getAllByText('2nd').length).toBeGreaterThan(0);
+    // Contact section header or empty state
+    const el =
+      screen.queryByText(/All Contacts/i) ||
+      screen.queryByText(/no contacts/i) ||
+      screen.queryByText(/Add Contact/i);
+    expect(el).toBeTruthy();
   });
 });

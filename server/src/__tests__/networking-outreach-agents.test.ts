@@ -282,7 +282,7 @@ describe('Networking Outreach — ProductConfig', () => {
     expect(state.messages).toEqual([]);
   });
 
-  it('buildAgentMessage for researcher includes target info', () => {
+  it('buildAgentMessage for researcher includes target info', async () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       target_input: {
         target_name: 'Jane Doe',
@@ -290,7 +290,7 @@ describe('Networking Outreach — ProductConfig', () => {
         target_company: 'Acme',
       },
     });
-    const msg = config.buildAgentMessage('researcher', state, {
+    const msg = await config.buildAgentMessage('researcher', state, {
       resume_text: 'John Doe, 20 years experience...',
       target_input: {
         target_name: 'Jane Doe',
@@ -304,17 +304,17 @@ describe('Networking Outreach — ProductConfig', () => {
     expect(msg).toContain('analyze_target');
   });
 
-  it('buildAgentMessage for writer includes workflow steps', () => {
+  it('buildAgentMessage for writer includes workflow steps', async () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
-    const msg = config.buildAgentMessage('writer', state, {});
+    const msg = await config.buildAgentMessage('writer', state, {});
     expect(msg).toContain('write_connection_request');
     expect(msg).toContain('write_meeting_request');
     expect(msg).toContain('assemble_sequence');
   });
 
-  it('buildAgentMessage for unknown agent returns empty', () => {
+  it('buildAgentMessage for unknown agent returns empty', async () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
-    expect(config.buildAgentMessage('unknown', state, {})).toBe('');
+    expect(await config.buildAgentMessage('unknown', state, {})).toBe('');
   });
 
   it('finalizeResult emits sequence_complete event', () => {

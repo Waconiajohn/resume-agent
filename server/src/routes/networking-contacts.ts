@@ -34,6 +34,8 @@ const RELATIONSHIP_TYPES = ['recruiter', 'hiring_manager', 'peer', 'referral', '
 const TOUCHPOINT_TYPES = ['call', 'email', 'inmail', 'meeting', 'event', 'other'] as const;
 const SORT_FIELDS = ['name', 'company', 'last_contact_date', 'next_followup_at'] as const;
 
+const CONTACT_ROLES = ['hiring_manager', 'team_leader', 'peer', 'hr_recruiter'] as const;
+
 const createContactSchema = z.object({
   name: z.string().min(1).max(300),
   title: z.string().max(300).optional(),
@@ -46,6 +48,8 @@ const createContactSchema = z.object({
   tags: z.array(z.string().max(100)).max(20).optional(),
   notes: z.string().max(5000).optional(),
   next_followup_at: z.string().datetime().optional(),
+  application_id: z.string().uuid().optional(),
+  contact_role: z.enum(CONTACT_ROLES).optional(),
 });
 
 const updateContactSchema = createContactSchema.partial();
@@ -100,6 +104,8 @@ networkingContacts.post(
           tags: data.tags ?? [],
           notes: data.notes ?? null,
           next_followup_at: data.next_followup_at ?? null,
+          application_id: data.application_id ?? null,
+          contact_role: data.contact_role ?? null,
         })
         .select('*')
         .single();
@@ -279,6 +285,8 @@ networkingContacts.patch(
       if (d.tags !== undefined) updateData.tags = d.tags;
       if (d.notes !== undefined) updateData.notes = d.notes;
       if (d.next_followup_at !== undefined) updateData.next_followup_at = d.next_followup_at;
+      if (d.application_id !== undefined) updateData.application_id = d.application_id;
+      if (d.contact_role !== undefined) updateData.contact_role = d.contact_role;
 
       const { data: contact, error } = await supabaseAdmin
         .from('networking_contacts')
@@ -377,41 +385,70 @@ networkingContacts.post(
 
       const now = new Date().toISOString();
 
-      // Insert touchpoint and update last_contact_date in parallel
-      const [touchpointResult, updateResult] = await Promise.all([
-        supabaseAdmin
-          .from('contact_touchpoints')
-          .insert({
-            user_id: user.id,
-            contact_id: contactId,
-            type: parsed.data.type,
-            notes: parsed.data.notes ?? null,
-          })
-          .select('*')
-          .single(),
-        supabaseAdmin
-          .from('networking_contacts')
-          .update({ last_contact_date: now })
-          .eq('id', contactId)
-          .eq('user_id', user.id),
-      ]);
+      // Insert touchpoint
+      const { data: touchpoint, error: touchpointError } = await supabaseAdmin
+        .from('contact_touchpoints')
+        .insert({
+          user_id: user.id,
+          contact_id: contactId,
+          type: parsed.data.type,
+          notes: parsed.data.notes ?? null,
+        })
+        .select('*')
+        .single();
 
-      if (touchpointResult.error) {
+      if (touchpointError) {
         logger.error(
-          { error: touchpointResult.error.message, contactId, userId: user.id },
+          { error: touchpointError.message, contactId, userId: user.id },
           'POST /contacts/:id/touchpoints: insert failed',
         );
         return c.json({ error: 'Failed to create touchpoint' }, 500);
       }
 
-      if (updateResult.error) {
+      // Count total touchpoints after insert to determine follow-up schedule
+      const { count: touchpointCount } = await supabaseAdmin
+        .from('contact_touchpoints')
+        .select('id', { count: 'exact', head: true })
+        .eq('contact_id', contactId);
+
+      const total = touchpointCount ?? 0;
+
+      // Four-Touch Follow-Up Discipline:
+      // 1st touch → +4 days, 2nd-3rd → +6 days, 4th+ → clear (sequence complete)
+      let nextFollowup: string | null;
+      if (total <= 1) {
+        nextFollowup = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (total <= 3) {
+        nextFollowup = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
+      } else {
+        nextFollowup = null; // Sequence complete
+      }
+
+      // Bump relationship_strength at milestones
+      const contactUpdate: Record<string, unknown> = {
+        last_contact_date: now,
+        next_followup_at: nextFollowup,
+      };
+      if (total === 2) {
+        contactUpdate.relationship_strength = 2;
+      } else if (total === 4) {
+        contactUpdate.relationship_strength = 3;
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from('networking_contacts')
+        .update(contactUpdate)
+        .eq('id', contactId)
+        .eq('user_id', user.id);
+
+      if (updateError) {
         logger.warn(
-          { error: updateResult.error.message, contactId, userId: user.id },
-          'POST /contacts/:id/touchpoints: last_contact_date update failed (non-fatal)',
+          { error: updateError.message, contactId, userId: user.id },
+          'POST /contacts/:id/touchpoints: contact update failed (non-fatal)',
         );
       }
 
-      return c.json({ touchpoint: touchpointResult.data }, 201);
+      return c.json({ touchpoint }, 201);
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },

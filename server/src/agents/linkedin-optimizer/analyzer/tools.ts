@@ -1,10 +1,11 @@
 /**
  * LinkedIn Optimizer Analyzer — Tool definitions.
  *
- * 3 tools:
+ * 4 tools:
  * - parse_inputs: Extract structured data from resume + current LinkedIn profile
  * - analyze_current_profile: Assess headline, about, experience against optimization rules
  * - identify_keyword_gaps: Compare resume/strategy keywords vs LinkedIn profile keywords
+ * - simulate_recruiter_search: LLM-powered recruiter search simulation with section weighting
  */
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
@@ -370,10 +371,174 @@ Rules for keyword analysis:
   },
 };
 
+// ─── Tool: simulate_recruiter_search ────────────────────────────────
+
+const simulateRecruiterSearchTool: LinkedInOptimizerTool = {
+  name: 'simulate_recruiter_search',
+  description:
+    'Simulate how a recruiter would find this profile through LinkedIn Recruiter search. ' +
+    'Uses LLM-powered analysis to evaluate keyword presence by section with weighted scoring. ' +
+    'Section weights: headline (40%), about (25%), experience (25%), skills (10%). ' +
+    'Returns overall score, section analysis, missing keywords, and placement recommendations.',
+  model_tier: 'mid',
+  input_schema: {
+    type: 'object',
+    properties: {
+      profile_text: {
+        type: 'string',
+        description: 'Full LinkedIn profile text (headline + about + experience combined)',
+      },
+      target_keywords: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Keywords a recruiter would search for',
+      },
+      target_role: {
+        type: 'string',
+        description: 'The type of role being targeted',
+      },
+    },
+    required: ['profile_text', 'target_keywords'],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const profileText = String(input.profile_text ?? '');
+    const targetKeywords = Array.isArray(input.target_keywords)
+      ? (input.target_keywords as unknown[]).map(String)
+      : [];
+    const targetRole = String(input.target_role ?? state.target_context?.target_role ?? '');
+
+    if (!profileText) {
+      return JSON.stringify({
+        success: false,
+        error: 'profile_text is required. Provide the full LinkedIn profile text to analyze.',
+      });
+    }
+
+    if (targetKeywords.length === 0) {
+      return JSON.stringify({
+        success: false,
+        error: 'target_keywords array is required. Provide at least 3 keywords recruiters would search for.',
+      });
+    }
+
+    ctx.emit({
+      type: 'transparency',
+      stage: 'recruiter_search',
+      message: `Simulating recruiter search for ${targetKeywords.length} keywords...`,
+    });
+
+    const response = await llm.chat({
+      model: MODEL_MID,
+      max_tokens: 4096,
+      system:
+        'You are a LinkedIn Recruiter power user who knows exactly how recruiters filter and score candidates. ' +
+        'You analyze profiles for keyword presence with surgical precision. Return ONLY valid JSON.',
+      messages: [{
+        role: 'user',
+        content: `Simulate a LinkedIn Recruiter search for this profile.
+
+## Target Keywords (what a recruiter is searching for)
+${targetKeywords.map((k, i) => `${i + 1}. ${k}`).join('\n')}
+
+## Target Role
+${targetRole || 'Not specified'}
+
+## Profile Text to Analyze
+${profileText}
+
+LinkedIn Recruiter weights keyword presence by section:
+- Headline: 40% weight (most important — search algorithm prioritizes this heavily)
+- About section: 25% weight
+- Experience section: 25% weight
+- Skills section: 10% weight
+
+For each keyword, determine which section(s) it appears in. Score accordingly.
+
+Return JSON:
+{
+  "overall_score": 0-100,
+  "section_analysis": [
+    {
+      "section": "headline",
+      "weight": 40,
+      "keywords_found": ["keyword1", "keyword2"],
+      "keywords_missing": ["keyword3"],
+      "section_score": 0-100,
+      "note": "Brief assessment of this section's keyword coverage"
+    },
+    {
+      "section": "about",
+      "weight": 25,
+      "keywords_found": [],
+      "keywords_missing": [],
+      "section_score": 0-100,
+      "note": "..."
+    },
+    {
+      "section": "experience",
+      "weight": 25,
+      "keywords_found": [],
+      "keywords_missing": [],
+      "section_score": 0-100,
+      "note": "..."
+    },
+    {
+      "section": "skills",
+      "weight": 10,
+      "keywords_found": [],
+      "keywords_missing": [],
+      "section_score": 0-100,
+      "note": "..."
+    }
+  ],
+  "missing_keywords": ["keywords from target list not found anywhere in profile"],
+  "recommendations": [
+    "Specific, actionable placement recommendation with which section to add which keyword"
+  ],
+  "verdict": "One sentence summary of how a recruiter would rate this profile's searchability"
+}`,
+      }],
+    });
+
+    let result;
+    try {
+      result = JSON.parse(repairJSON(response.text) ?? response.text);
+    } catch {
+      result = {
+        overall_score: 0,
+        section_analysis: [],
+        missing_keywords: targetKeywords,
+        recommendations: ['Unable to analyze profile — please ensure profile text is provided'],
+        verdict: 'Analysis unavailable',
+      };
+    }
+
+    state.recruiter_search_result = result;
+
+    ctx.emit({
+      type: 'stage_complete',
+      stage: 'recruiter_search',
+      message: `Recruiter search simulation complete — ${result.overall_score ?? 0}% searchability score`,
+    });
+
+    return JSON.stringify({
+      success: true,
+      overall_score: result.overall_score,
+      missing_count: Array.isArray(result.missing_keywords) ? result.missing_keywords.length : 0,
+      section_analysis: result.section_analysis,
+      missing_keywords: result.missing_keywords,
+      recommendations: result.recommendations,
+      verdict: result.verdict,
+    });
+  },
+};
+
 // ─── Exports ────────────────────────────────────────────────────────
 
 export const analyzerTools: LinkedInOptimizerTool[] = [
   parseInputsTool,
   analyzeCurrentProfileTool,
   identifyKeywordGapsTool,
+  simulateRecruiterSearchTool,
 ];
