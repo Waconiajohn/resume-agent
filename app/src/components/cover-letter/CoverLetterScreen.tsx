@@ -175,7 +175,7 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
                         : 'text-white/40',
                     )}
                   >
-                    {msg.text}
+                    {msg.message}
                   </p>
                 ))}
               </div>

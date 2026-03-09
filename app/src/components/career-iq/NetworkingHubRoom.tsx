@@ -28,6 +28,12 @@ import { ContactFormModal, type CreateContactData } from '@/components/career-iq
 import { ContactDetailSheet } from '@/components/career-iq/ContactDetailSheet';
 import { RuleOfFourCoachingBar } from '@/components/career-iq/RuleOfFourCoachingBar';
 
+// --- Business Rules ---
+
+const FOLLOWUP_DAYS = 4;
+const SNOOZE_DAYS = 3;
+const RESPONSE_STRENGTH_THRESHOLD = 1;
+
 // --- Messaging Method Config ---
 
 type MessagingMethod = 'group_message' | 'connection_request' | 'inmail';
@@ -152,7 +158,7 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
                   onClick={() => onSnooze(contact.id)}
                   className="text-[11px] text-white/30 hover:text-white/50 transition-colors px-2 py-1 rounded border border-white/[0.06] hover:bg-white/[0.03]"
                 >
-                  Snooze 3d
+                  Snooze {SNOOZE_DAYS}d
                 </button>
               </div>
             </div>
@@ -408,7 +414,7 @@ function WeeklyActivity({ contacts }: WeeklyActivityProps) {
       (c) =>
         c.last_contact_date &&
         new Date(c.last_contact_date) >= weekStart &&
-        c.relationship_strength > 1,
+        c.relationship_strength > RESPONSE_STRENGTH_THRESHOLD,
     );
 
     return [
@@ -758,7 +764,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
                       second: '2-digit',
                     })}
                   </span>
-                  <span className="text-white/40">{msg.text}</span>
+                  <span className="text-white/40">{msg.message}</span>
                 </div>
               ))}
             </div>
@@ -921,7 +927,7 @@ export function NetworkingHubRoom() {
   const handleDone = useCallback(
     async (id: string) => {
       await networkingContacts.logTouchpoint(id, 'email');
-      const nextFollowup = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
+      const nextFollowup = new Date(Date.now() + FOLLOWUP_DAYS * 24 * 60 * 60 * 1000).toISOString();
       await networkingContacts.updateContact(id, { next_followup_at: nextFollowup });
       // Remove from follow-ups list
       setFollowUps((prev) => prev.filter((c) => c.id !== id));
@@ -931,7 +937,7 @@ export function NetworkingHubRoom() {
 
   const handleSnooze = useCallback(
     async (id: string) => {
-      const nextFollowup = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+      const nextFollowup = new Date(Date.now() + SNOOZE_DAYS * 24 * 60 * 60 * 1000).toISOString();
       await networkingContacts.updateContact(id, { next_followup_at: nextFollowup });
       setFollowUps((prev) => prev.filter((c) => c.id !== id));
     },

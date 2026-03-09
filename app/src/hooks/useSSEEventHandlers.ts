@@ -21,7 +21,7 @@ import type { PanelType, PanelData } from '@/types/panels';
 import { requestNotificationPermission, sendGateNotification } from '@/lib/notifications';
 import { sanitizeSectionContextPayload, asReplanStaleNodes, safeParse } from '@/hooks/useSSEDataValidation';
 import type { PipelineStateManager } from '@/hooks/usePipelineStateManager';
-import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
+import type { ActivityMessage } from '@/types/activity';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,8 +88,7 @@ export function handleConnected(state: PipelineStateManager): void {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleSessionRestore(data: Record<string, any>, state: PipelineStateManager): void {
+export function handleSessionRestore(data: Record<string, unknown>, state: PipelineStateManager): void {
   const pipelineRunning = data.pipeline_status === 'running';
   const pendingGate = typeof data.pending_gate === 'string' ? data.pending_gate : null;
   if (data.pipeline_stage && typeof data.pipeline_stage === 'string') {
@@ -171,21 +170,19 @@ export function handleSessionRestore(data: Record<string, any>, state: PipelineS
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleTextDelta(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   flushDeltaBuffer: () => void,
 ): void {
-  state.deltaBufferRef.current += data.content;
+  state.deltaBufferRef.current += typeof data.content === 'string' ? data.content : '';
   if (state.rafIdRef.current === null) {
     state.rafIdRef.current = requestAnimationFrame(flushDeltaBuffer);
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleTextComplete(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   // Deduplicate: prefer server sequence number, fall back to content equality
@@ -195,7 +192,7 @@ export function handleTextComplete(
   } else {
     if (data.content === state.lastTextCompleteRef.current) return;
   }
-  state.lastTextCompleteRef.current = data.content;
+  state.lastTextCompleteRef.current = typeof data.content === 'string' ? data.content : '';
 
   // Flush any remaining buffered deltas before completing
   if (state.deltaBufferRef.current) {
@@ -211,7 +208,7 @@ export function handleTextComplete(
     {
       id: state.nextId(),
       role: 'assistant',
-      content: data.content,
+      content: typeof data.content === 'string' ? data.content : '',
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -219,14 +216,13 @@ export function handleTextComplete(
   state.setIsProcessing(false);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleToolStart(data: Record<string, any>, state: PipelineStateManager): void {
+export function handleToolStart(data: Record<string, unknown>, state: PipelineStateManager): void {
   state.setTools((prev) => {
     const next = [
       ...prev,
       {
-        name: data.tool_name,
-        description: data.description,
+        name: typeof data.tool_name === 'string' ? data.tool_name : '',
+        description: typeof data.description === 'string' ? data.description : '',
         status: 'running' as const,
       },
     ];
@@ -234,16 +230,15 @@ export function handleToolStart(data: Record<string, any>, state: PipelineStateM
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleToolComplete(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
-  const toolName = data.tool_name as string;
+  const toolName = typeof data.tool_name === 'string' ? data.tool_name : '';
   state.setTools((prev) =>
     prev.map((t) =>
       t.name === toolName && t.status === 'running'
-        ? { ...t, status: 'complete' as const, summary: data.summary as string }
+        ? { ...t, status: 'complete' as const, summary: typeof data.summary === 'string' ? data.summary : undefined }
         : t,
     ),
   );
@@ -257,8 +252,7 @@ export function handleToolComplete(
   state.toolCleanupTimersRef.current.add(timer);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleAskUser(data: Record<string, any>, state: PipelineStateManager): void {
+export function handleAskUser(data: Record<string, unknown>, state: PipelineStateManager): void {
   state.patchPipelineActivityMeta({
     processing_state: 'waiting_for_input',
     current_activity_message:
@@ -268,17 +262,20 @@ export function handleAskUser(data: Record<string, any>, state: PipelineStateMan
   });
   state.setIsProcessing(false);
   state.setAskPrompt({
-    toolCallId: data.tool_call_id,
-    question: data.question,
-    context: data.context,
-    inputType: data.input_type,
-    choices: data.choices,
-    skipAllowed: data.skip_allowed,
+    toolCallId: typeof data.tool_call_id === 'string' ? data.tool_call_id : '',
+    question: typeof data.question === 'string' ? data.question : '',
+    context: typeof data.context === 'string' ? data.context : '',
+    inputType: (data.input_type === 'text' || data.input_type === 'voice' || data.input_type === 'multiple_choice')
+      ? data.input_type
+      : 'text',
+    choices: Array.isArray(data.choices)
+      ? (data.choices as Array<{ label: string; description?: string }>)
+      : undefined,
+    skipAllowed: data.skip_allowed === true,
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handlePhaseGate(data: Record<string, any>, state: PipelineStateManager): void {
+export function handlePhaseGate(data: Record<string, unknown>, state: PipelineStateManager): void {
   state.patchPipelineActivityMeta({
     processing_state: 'waiting_for_input',
     current_activity_message:
@@ -288,24 +285,24 @@ export function handlePhaseGate(data: Record<string, any>, state: PipelineStateM
   });
   state.setIsProcessing(false);
   state.setPhaseGate({
-    toolCallId: data.tool_call_id,
-    currentPhase: data.current_phase,
-    nextPhase: data.next_phase,
-    phaseSummary: data.phase_summary,
-    nextPhasePreview: data.next_phase_preview,
+    toolCallId: typeof data.tool_call_id === 'string' ? data.tool_call_id : '',
+    currentPhase: typeof data.current_phase === 'string' ? data.current_phase : '',
+    nextPhase: typeof data.next_phase === 'string' ? data.next_phase : '',
+    phaseSummary: typeof data.phase_summary === 'string' ? data.phase_summary : '',
+    nextPhasePreview: typeof data.next_phase_preview === 'string' ? data.next_phase_preview : '',
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleRightPanelUpdate(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   const incomingType = data.panel_type as PanelType;
   state.setPanelType(incomingType);
 
   state.setPanelData((prev) => {
-    const incoming = { type: incomingType, ...data.data } as PanelData;
+    const panelPayload = typeof data.data === 'object' && data.data !== null ? data.data : {};
+  const incoming = { type: incomingType, ...panelPayload } as PanelData;
 
     // Merge onboarding_summary to preserve stat cards
     if (incomingType === 'onboarding_summary' && prev?.type === 'onboarding_summary') {
@@ -347,23 +344,22 @@ export function handleRightPanelUpdate(
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handlePhaseChange(data: Record<string, any>, state: PipelineStateManager): void {
+export function handlePhaseChange(data: Record<string, unknown>, state: PipelineStateManager): void {
+  const toPhase = typeof data.to_phase === 'string' ? data.to_phase : '';
   state.patchPipelineActivityMeta({
-    processing_state: data.to_phase === 'complete' ? 'complete' : 'processing',
-    current_activity_message: `Phase changed to ${String(data.to_phase).replace(/_/g, ' ')}.`,
+    processing_state: toPhase === 'complete' ? 'complete' : 'processing',
+    current_activity_message: `Phase changed to ${toPhase.replace(/_/g, ' ')}.`,
     current_activity_source: 'system',
     expected_next_action: null,
   });
-  state.setCurrentPhase(data.to_phase);
+  state.setCurrentPhase(toPhase);
   state.setPhaseGate(null);
   state.setAskPrompt(null);
   state.setTools([]);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleTransparency(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -388,15 +384,17 @@ export function handleTransparency(
   ]);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleResumeUpdate(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   const content =
     typeof data.content === 'object' && data.content !== null
       ? JSON.stringify(data.content)
-      : data.content;
+      : typeof data.content === 'string'
+      ? data.content
+      : '';
+  const section = typeof data.section === 'string' ? data.section : '';
   state.setResume((prev) => {
     const base = prev ?? {
       summary: '',
@@ -406,21 +404,19 @@ export function handleResumeUpdate(
       certifications: [],
       ats_score: 0,
     };
-    return { ...base, [data.section]: content };
+    return { ...base, [section]: content };
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleExportReady(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
-  state.setResume(data.resume);
+  state.setResume(data.resume as FinalResume);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleComplete(
-  data: Record<string, any> | null,
+  data: Record<string, unknown> | null,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
   abortCurrentConnection: () => void,
@@ -447,13 +443,13 @@ export function handleComplete(
   abortCurrentConnection();
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleError(
-  data: Record<string, any> | null,
+  data: Record<string, unknown> | null,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
-  let errorMsg = data?.message ?? data?.error?.message ?? 'Something went wrong';
+  const errorData = data?.error && typeof data.error === 'object' ? data.error as Record<string, unknown> : null;
+  let errorMsg = data?.message ?? errorData?.message ?? 'Something went wrong';
   if (typeof errorMsg === 'string' && errorMsg.startsWith('{')) {
     errorMsg = 'Something went wrong processing your message. Please try again.';
   }
@@ -484,9 +480,8 @@ export function handleHeartbeat(state: PipelineStateManager): void {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleStageStart(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -517,15 +512,14 @@ export function handleStageStart(
     {
       id: state.nextId(),
       role: 'system',
-      content: data.message,
+      content: message,
       timestamp: new Date().toISOString(),
     },
   ]);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleStageComplete(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -551,9 +545,8 @@ export function handleStageComplete(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handlePositioningQuestion(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -581,9 +574,8 @@ export function handlePositioningQuestion(
   sendGateNotification('Interview question is ready');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleQuestionnaire(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -610,9 +602,8 @@ export function handleQuestionnaire(
   sendGateNotification('A questionnaire is ready for you');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handlePositioningProfileFound(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -628,13 +619,12 @@ export function handlePositioningProfileFound(
   state.setIsProcessing(false);
   state.setPositioningProfileFound({
     profile: data.profile,
-    updated_at: data.updated_at,
+    updated_at: typeof data.updated_at === 'string' ? data.updated_at : '',
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleBlueprintReady(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -669,9 +659,8 @@ export function handleBlueprintReady(
   sendGateNotification('Blueprint is ready for your review');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleSectionContext(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   const sanitized = sanitizeSectionContextPayload(data);
@@ -692,9 +681,8 @@ export function handleSectionContext(
   state.sectionContextRef.current = sanitized;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleSectionDraft(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -730,9 +718,8 @@ export function handleSectionDraft(
   sendGateNotification('Section is ready for review');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleSectionRevised(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -750,9 +737,8 @@ export function handleSectionRevised(
   state.setSectionDraftEntry(section, content);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleSectionApproved(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   const section = data.section as string | undefined;
@@ -771,9 +757,8 @@ export function handleSectionApproved(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleQualityScores(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -784,9 +769,7 @@ export function handleQualityScores(
   state.setQualityScores(scores);
   state.qualityScoresRef.current = scores;
   // Expose on window for E2E test capture (quality_dashboard panel is transient)
-  // Expose on window for E2E test capture (quality_dashboard panel is transient)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (typeof window !== 'undefined') (window as any).__qualityScores__ = scores;
+  if (import.meta.env.DEV && typeof window !== 'undefined') (window as any).__qualityScores__ = scores;
   const details = (data.details ?? {}) as Record<string, unknown>;
   state.setPanelType('quality_dashboard');
   state.setPanelData({
@@ -817,9 +800,8 @@ export function handleQualityScores(
   } as PanelData);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleDraftReadiness(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   const gapBreakdownRaw =
@@ -937,9 +919,8 @@ export function handleDraftReadiness(
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleWorkflowReplanRequested(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -971,9 +952,8 @@ export function handleWorkflowReplanRequested(
   } as WorkflowReplanUpdate);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleWorkflowReplanStarted(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -1008,9 +988,8 @@ export function handleWorkflowReplanStarted(
   } as WorkflowReplanUpdate));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleWorkflowReplanCompleted(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -1046,9 +1025,8 @@ export function handleWorkflowReplanCompleted(
   } as WorkflowReplanUpdate));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleRevisionStart(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -1070,9 +1048,8 @@ export function handleRevisionStart(
   ]);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleSystemMessage(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   const content = (data.content as string | undefined)?.trim();
@@ -1088,9 +1065,8 @@ export function handleSystemMessage(
   ]);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleSectionError(
-  data: Record<string, any>,
+  data: Record<string, unknown>,
   state: PipelineStateManager,
 ): void {
   const section = (data.section as string | undefined) ?? 'section';
@@ -1106,9 +1082,8 @@ export function handleSectionError(
   ]);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handlePipelineComplete(
-  data: Record<string, any> | null,
+  data: Record<string, unknown> | null,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
@@ -1167,9 +1142,8 @@ export function handlePipelineComplete(
   } as PanelData);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handlePipelineError(
-  data: Record<string, any> | null,
+  data: Record<string, unknown> | null,
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {

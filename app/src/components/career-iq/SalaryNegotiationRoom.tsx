@@ -38,7 +38,7 @@ function ActivityFeed({
   messages,
   currentStage,
 }: {
-  messages: { id: string; text: string; stage: string; timestamp: number }[];
+  messages: { id: string; message: string; stage?: string; timestamp: number }[];
   currentStage: string | null;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -61,7 +61,7 @@ function ActivityFeed({
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
               <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#98b3ff]' : 'bg-white/20')} />
-              <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.text}</span>
+              <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
         })

@@ -18,6 +18,7 @@ import type { ResumeAgentConfig } from '../types.js';
 import { registerAgent } from '../runtime/agent-registry.js';
 import { CRAFTSMAN_SYSTEM_PROMPT } from './prompts.js';
 import { craftsmanTools } from './tools.js';
+import { RESUME_COMPACTION_HINTS, buildResumeScratchpadSummary } from '../resume/compaction.js';
 
 export const craftsmanConfig: ResumeAgentConfig = {
   identity: {
@@ -72,6 +73,12 @@ export const craftsmanConfig: ResumeAgentConfig = {
    * 8192 prevents output truncation on Groq.
    */
   loop_max_tokens: 8192,
+
+  /** Resume-specific entity names and patterns for compaction summarisation. */
+  compactionHints: RESUME_COMPACTION_HINTS,
+
+  /** Resume-aware scratchpad status summary (sections + approved state). */
+  scratchpadSummaryHook: buildResumeScratchpadSummary,
 };
 
 registerAgent(craftsmanConfig);

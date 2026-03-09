@@ -12,12 +12,9 @@ export type MockInterviewStatus =
   | 'complete'
   | 'error';
 
-export interface ActivityMessage {
-  id: string;
-  text: string;
-  stage: string;
-  timestamp: number;
-}
+import type { ActivityMessage } from '@/types/activity';
+
+export type { ActivityMessage };
 
 export interface InterviewQuestion {
   index: number;
@@ -109,7 +106,7 @@ export function useMockInterview() {
         ...prev.activityMessages.slice(-(MAX_ACTIVITY_MESSAGES - 1)),
         {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          text,
+          message: text,
           stage,
           timestamp: Date.now(),
         },

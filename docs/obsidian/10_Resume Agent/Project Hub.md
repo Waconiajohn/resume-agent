@@ -15,7 +15,7 @@ We never fabricate experience, inflate credentials, or misrepresent clients.
 
 ## Platform Status
 
-17 of 33 agents built as of Sprint 41/43/45. See [[Platform Blueprint]] for the full 33-agent catalog.
+19 of 33 agents built as of Sprints 60-63. See [[Platform Blueprint]] for the full 33-agent catalog.
 
 ### Built Agents (Codebase)
 
@@ -35,6 +35,7 @@ We never fabricate experience, inflate credentials, or misrepresent clients.
 | 18 | [[Thank You Note]] | 1-agent | Writer | `FF_THANK_YOU_NOTE` |
 | 19 | [[Personal Brand Audit]] | 2-agent | Auditor, Advisor | `FF_PERSONAL_BRAND_AUDIT` |
 | 20 | [[90-Day Plan]] | 2-agent | Researcher, Planner | `FF_NINETY_DAY_PLAN` |
+| -- | [[Retirement Bridge]] | 1-agent (gated) | Assessor | `FF_RETIREMENT_BRIDGE` |
 | -- | [[Job Finder]] | 2-agent | Searcher, Ranker | `FF_JOB_FINDER` |
 | -- | [[LinkedIn Content Writer]] | 2-agent | Strategist, Writer | `FF_LINKEDIN_CONTENT` |
 | -- | [[LinkedIn Profile Editor]] | 1-agent | Editor | `FF_LINKEDIN_EDITOR` |
@@ -91,8 +92,8 @@ We never fabricate experience, inflate credentials, or misrepresent clients.
 
 ## Test Health
 
-- Server: 2,288 tests passing
-- App: 1,248 tests passing
+- Server: 2,417 tests passing
+- App: 1,433 tests passing
 - E2E: 2 tests (full pipeline)
 
 #status/in-progress

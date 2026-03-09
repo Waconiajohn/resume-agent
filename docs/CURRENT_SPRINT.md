@@ -35,6 +35,14 @@
 5. [x] Story 63-5: 50 Groups Strategy Guide — **Status: done**
 6. [ ] Story 63-6: Sprint 63 Tests — **Status: not started**
 
+## Sprint E1: Documentation Remediation (documentation-only)
+1. [x] Story E1-1: Create 4 missing Obsidian agent notes — **Status: done**
+2. [x] Story E1-2: Fix Project Hub (agent count, Retirement Bridge, test counts) — **Status: done**
+3. [x] Story E1-3: Update Status.md — **Status: done**
+4. [x] Story E1-4: Update SSE Event System.md — **Status: done**
+5. [x] Story E1-5: Update stale agent notes — **Status: done**
+6. [x] Story E1-6: Seed vault subdirectories — **Status: done**
+
 ## Out of Scope (Explicitly)
 - LinkedIn API OAuth integration
 - Automated LinkedIn posting

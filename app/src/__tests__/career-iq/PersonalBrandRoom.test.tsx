@@ -45,8 +45,8 @@ const runningState = {
   ...idleState,
   status: 'running' as const,
   activityMessages: [
-    { id: '1', text: 'Auditing your brand presence (1/3 sources)', stage: 'audit', timestamp: Date.now() },
-    { id: '2', text: 'Finding: Inconsistent headline messaging [high]', stage: 'audit', timestamp: Date.now() },
+    { id: '1', message: 'Auditing your brand presence (1/3 sources)', stage: 'audit', timestamp: Date.now() },
+    { id: '2', message: 'Finding: Inconsistent headline messaging [high]', stage: 'audit', timestamp: Date.now() },
   ],
   currentStage: 'audit',
 };

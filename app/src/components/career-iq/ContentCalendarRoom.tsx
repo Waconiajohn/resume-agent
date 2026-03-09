@@ -32,7 +32,7 @@ const CONTENT_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 
 // --- Components ---
 
-function ActivityFeed({ messages }: { messages: Array<{ id: string; text: string; timestamp: number }> }) {
+function ActivityFeed({ messages }: { messages: Array<{ id: string; message: string; timestamp: number }> }) {
   if (messages.length === 0) return null;
   return (
     <GlassCard className="p-4">
@@ -43,7 +43,7 @@ function ActivityFeed({ messages }: { messages: Array<{ id: string; text: string
       <div className="space-y-1 max-h-[200px] overflow-y-auto">
         {messages.slice(-10).map((msg) => (
           <div key={msg.id} className="text-[11px] text-white/40 leading-relaxed">
-            {msg.text}
+            {msg.message}
           </div>
         ))}
       </div>

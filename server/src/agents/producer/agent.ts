@@ -22,6 +22,7 @@ import { PRODUCER_SYSTEM_PROMPT } from './prompts.js';
 import { producerTools } from './tools.js';
 import type { ResumeAgentConfig } from '../types.js';
 import { registerAgent } from '../runtime/agent-registry.js';
+import { RESUME_COMPACTION_HINTS, buildResumeScratchpadSummary } from '../resume/compaction.js';
 
 export const producerConfig: ResumeAgentConfig = {
   identity: {
@@ -69,6 +70,12 @@ export const producerConfig: ResumeAgentConfig = {
    * as parameters. adversarial_review alone can be 3-4K tokens. 8192 prevents truncation.
    */
   loop_max_tokens: 8192,
+
+  /** Resume-specific entity names and patterns for compaction summarisation. */
+  compactionHints: RESUME_COMPACTION_HINTS,
+
+  /** Resume-aware scratchpad status summary (sections + approved state). */
+  scratchpadSummaryHook: buildResumeScratchpadSummary,
 };
 
 registerAgent(producerConfig);

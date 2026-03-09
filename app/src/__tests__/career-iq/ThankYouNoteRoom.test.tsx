@@ -45,8 +45,8 @@ const runningState = {
   ...idleState,
   status: 'running' as const,
   activityMessages: [
-    { id: '1', text: 'Drafting email note for Sarah Chen', stage: 'drafting', timestamp: Date.now() },
-    { id: '2', text: 'Quality checked note for Sarah Chen — score: 91', stage: 'quality', timestamp: Date.now() },
+    { id: '1', message: 'Drafting email note for Sarah Chen', stage: 'drafting', timestamp: Date.now() },
+    { id: '2', message: 'Quality checked note for Sarah Chen — score: 91', stage: 'quality', timestamp: Date.now() },
   ],
   currentStage: 'drafting',
 };

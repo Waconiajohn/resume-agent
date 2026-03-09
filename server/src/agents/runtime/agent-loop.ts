@@ -301,7 +301,13 @@ export async function runAgentLoop<
           // Note: compaction fires only after tool-result append (not after assistant
           // message append), so the exact message count at compaction may vary by ±1 per round.
           if (messages.length > MAX_HISTORY_MESSAGES) {
-            compactConversationHistory(messages, log, ctx.scratchpad, (ctx.getState() as Record<string, unknown>).approved_sections as string[] | undefined);
+            compactConversationHistory(
+              messages,
+              log,
+              ctx.scratchpad,
+              config.scratchpadSummaryHook,
+              config.compactionHints,
+            );
           }
         }
         } catch (err) {
@@ -360,68 +366,39 @@ export async function runAgentLoop<
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /**
- * Build a scratchpad status summary for compaction messages.
- * Lists completed sections and their status (written/reviewed/approved)
- * so the model doesn't forget what's already done.
+ * Build a generic scratchpad status summary for compaction messages.
+ * Lists scratchpad keys so the model knows what data is available.
+ * Products can override this via AgentConfig.scratchpadSummaryHook.
  * @internal Exported for testing only.
  */
-export function buildScratchpadSummary(scratchpad: Record<string, unknown>, approvedSections?: string[]): string {
-  const sectionEntries: string[] = [];
-  const otherKeys: string[] = [];
-
-  for (const [key, val] of Object.entries(scratchpad)) {
-    if (key.startsWith('section_') && val && typeof val === 'object') {
-      const section = key.replace('section_', '');
-      const hasContent = typeof (val as Record<string, unknown>).content === 'string';
-      if (hasContent) {
-        const presented = scratchpad[`presented_${section}`] === true;
-        const approved = approvedSections?.includes(section) === true;
-        let status: string;
-        if (approved) {
-          status = 'written + presented + approved (immutable)';
-        } else if (presented) {
-          status = 'written + presented';
-        } else {
-          status = 'written';
-        }
-        sectionEntries.push(`  - ${section}: ${status}`);
-      }
-    } else if (key === '_final_text' || key.startsWith('presented_')) {
-      // skip internal keys
-    } else if (val !== undefined && val !== null) {
-      otherKeys.push(key);
-    }
-  }
-
-  if (sectionEntries.length === 0) return '';
-
-  const parts = ['Completed sections in scratchpad:', ...sectionEntries];
-  if (otherKeys.length > 0) {
-    parts.push(`Other scratchpad data: ${otherKeys.slice(0, 10).join(', ')}`);
-  }
-  return parts.join('\n');
+export function buildScratchpadSummary(scratchpad: Record<string, unknown>): string {
+  const keys = Object.keys(scratchpad).filter(k => k !== '_final_text' && scratchpad[k] != null);
+  if (keys.length === 0) return '';
+  return `Scratchpad data available: ${keys.slice(0, 20).join(', ')}`;
 }
 
 /**
  * Extract key evidence from dropped conversation messages to build
  * a richer compaction summary. Keeps the summary bounded (~500 tokens).
+ *
+ * @param dropped - Messages that were dropped during compaction
+ * @param hints - Optional product-specific entity names and outcome patterns.
+ *   If not provided, skips entity detection and returns a minimal summary.
  */
-function extractDroppedMessageSummary(dropped: ChatMessage[]): string {
+function extractDroppedMessageSummary(
+  dropped: ChatMessage[],
+  hints?: { sectionNames?: string[]; outcomePatterns?: RegExp[] },
+): string {
+  const sectionNames = hints?.sectionNames ?? [];
+  const outcomePatterns = hints?.outcomePatterns ?? [];
+
+  // If no hints provided, skip entity detection entirely
+  if (sectionNames.length === 0 && outcomePatterns.length === 0) {
+    return 'Their results are preserved in the scratchpad.';
+  }
+
   const sections = new Set<string>();
   const outcomes: string[] = [];
-
-  // Common section names to look for
-  const SECTION_NAMES = [
-    'summary', 'professional_summary', 'experience', 'skills',
-    'education', 'education_and_certifications', 'certifications',
-    'selected_accomplishments', 'header',
-  ];
-
-  const OUTCOME_PATTERNS = [
-    /(?:wrote|completed|approved|revised|presented)\s+(?:the\s+)?["']?(\w[\w_\s]*?)["']?\s+section/i,
-    /section[_\s]+(?:draft|revised|approved).*?["'](\w[\w_\s]*?)["']/i,
-    /self.review.*?score.*?(\d+)/i,
-  ];
 
   for (const msg of dropped) {
     let content: string;
@@ -437,16 +414,16 @@ function extractDroppedMessageSummary(dropped: ChatMessage[]): string {
     }
     if (!content) continue;
 
-    // Detect section names mentioned
-    for (const name of SECTION_NAMES) {
+    // Detect domain entity names mentioned
+    for (const name of sectionNames) {
       if (content.toLowerCase().includes(name.replace(/_/g, ' ')) ||
           content.toLowerCase().includes(name)) {
         sections.add(name.replace(/_/g, ' '));
       }
     }
 
-    // Detect outcomes
-    for (const pattern of OUTCOME_PATTERNS) {
+    // Detect outcomes using product-provided patterns
+    for (const pattern of outcomePatterns) {
       const match = content.match(pattern);
       if (match) {
         outcomes.push(match[0].slice(0, 80));
@@ -477,12 +454,18 @@ function extractDroppedMessageSummary(dropped: ChatMessage[]): string {
  * Keeps the initial instruction (first message) and the most recent messages,
  * replacing the middle with a structured summary of what was dropped.
  * Includes scratchpad status so the model remembers completed work.
+ *
+ * @param scratchpadSummaryHook - Optional product hook to build a rich scratchpad summary.
+ *   Falls back to the generic buildScratchpadSummary() if not provided.
+ * @param compactionHints - Optional product-specific entity names and outcome patterns
+ *   for richer dropped-message summarisation.
  */
 function compactConversationHistory(
   messages: ChatMessage[],
   log: Pick<ReturnType<typeof logger.child>, 'info'>,
   scratchpad?: Record<string, unknown>,
-  approvedSections?: string[],
+  scratchpadSummaryHook?: (scratchpad: Record<string, unknown>) => string,
+  compactionHints?: { sectionNames?: string[]; outcomePatterns?: RegExp[] },
 ): void {
   if (messages.length <= MAX_HISTORY_MESSAGES) return;
 
@@ -497,8 +480,12 @@ function compactConversationHistory(
   );
 
   // Extract key evidence from dropped messages for a richer summary
-  const summaryParts = extractDroppedMessageSummary(droppedMessages);
-  const scratchpadStatus = scratchpad ? buildScratchpadSummary(scratchpad, approvedSections) : '';
+  const summaryParts = extractDroppedMessageSummary(droppedMessages, compactionHints);
+
+  // Use product hook if provided, otherwise fall back to generic key listing
+  const scratchpadStatus = scratchpad
+    ? (scratchpadSummaryHook ? scratchpadSummaryHook(scratchpad) : buildScratchpadSummary(scratchpad))
+    : '';
 
   const summaryMessage: ChatMessage = {
     role: 'user',

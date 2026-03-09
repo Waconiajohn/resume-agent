@@ -30,8 +30,7 @@ export const VALID_INTENTS = new Set([
 
 // ─── Parsing ─────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function safeParse(data: string): Record<string, any> | null {
+export function safeParse(data: string): Record<string, unknown> | null {
   try {
     return JSON.parse(data);
   } catch {

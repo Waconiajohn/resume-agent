@@ -269,7 +269,7 @@ describe('useOnboarding', () => {
 
     expect(result.current.currentStage).toBe('generating_questions');
     expect(result.current.activityMessages).toHaveLength(1);
-    expect(result.current.activityMessages[0].text).toContain('Generating personalized');
+    expect(result.current.activityMessages[0].message).toContain('Generating personalized');
   });
 
   it('SSE: transparency event adds to activityMessages', async () => {
@@ -301,7 +301,7 @@ describe('useOnboarding', () => {
     });
 
     expect(result.current.activityMessages).toHaveLength(1);
-    expect(result.current.activityMessages[0].text).toBe(
+    expect(result.current.activityMessages[0].message).toBe(
       'Analyzing resume context to tailor questions...',
     );
     expect(result.current.activityMessages[0].stage).toBe('analysis');

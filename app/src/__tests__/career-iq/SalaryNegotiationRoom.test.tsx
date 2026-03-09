@@ -45,8 +45,8 @@ const runningState = {
   ...idleState,
   status: 'running' as const,
   activityMessages: [
-    { id: '1', text: 'Researching market rates for your role', stage: 'research', timestamp: Date.now() },
-    { id: '2', text: 'Analyzing comparable compensation data', stage: 'research', timestamp: Date.now() },
+    { id: '1', message: 'Researching market rates for your role', stage: 'research', timestamp: Date.now() },
+    { id: '2', message: 'Analyzing comparable compensation data', stage: 'research', timestamp: Date.now() },
   ],
   currentStage: 'research',
 };

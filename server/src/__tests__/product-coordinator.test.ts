@@ -34,6 +34,9 @@ vi.mock('../lib/logger.js', () => {
 });
 
 vi.mock('../lib/llm.js', () => ({
+  MODEL_LIGHT:   'glm-4.7-flash',
+  MODEL_MID:     'glm-4.5-air',
+  MODEL_PRIMARY: 'glm-4.7',
   MODEL_PRICING: {
     'glm-4.7-flash': { input: 0, output: 0 },
     'glm-4.5-air': { input: 0.20, output: 1.10 },

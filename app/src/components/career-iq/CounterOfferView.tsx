@@ -213,7 +213,7 @@ function ConnectingView({
   activityMessages,
   offerCompany,
 }: {
-  activityMessages: { id: string; text: string; stage: string; timestamp: number }[];
+  activityMessages: { id: string; message: string; stage?: string; timestamp: number }[];
   offerCompany: string;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -241,7 +241,7 @@ function ConnectingView({
           {activityMessages.map((msg) => (
             <div key={msg.id} className="flex items-start gap-2 py-0.5">
               <div className="h-1.5 w-1.5 rounded-full bg-[#dfc797]/40 mt-1.5 flex-shrink-0" />
-              <span className="text-[12px] text-white/45 leading-relaxed">{msg.text}</span>
+              <span className="text-[12px] text-white/45 leading-relaxed">{msg.message}</span>
             </div>
           ))}
           <div ref={bottomRef} />

@@ -113,6 +113,31 @@ export interface AgentConfig<
    * Guaranteed to run even if the loop throws.
    */
   onShutdown?: (ctx: AgentContext<TState, TEvent>) => Promise<void>;
+
+  /**
+   * Optional product-specific hints for conversation compaction.
+   *
+   * When the agent loop compacts conversation history to prevent context overflow,
+   * these hints enrich the compaction summary with domain vocabulary (entity names)
+   * and outcome patterns (regex matches for key events in dropped messages).
+   *
+   * If not provided, the compaction summary only uses generic scratchpad key listing.
+   */
+  compactionHints?: {
+    /** Domain entity names to detect in dropped messages (e.g. resume section names). */
+    sectionNames?: string[];
+    /** Regex patterns to extract outcome descriptions from dropped messages. */
+    outcomePatterns?: RegExp[];
+  };
+
+  /**
+   * Optional hook to produce a rich scratchpad status summary for compaction messages.
+   *
+   * Receives the current scratchpad and should return a human-readable string
+   * describing the work completed so far. If not provided, the loop emits a minimal
+   * generic summary (just lists scratchpad keys).
+   */
+  scratchpadSummaryHook?: (scratchpad: Record<string, unknown>) => string;
 }
 
 // ─── Agent Context (passed to tools) ─────────────────────────────────

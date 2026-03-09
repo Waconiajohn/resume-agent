@@ -425,7 +425,7 @@ describe('useCounterOfferSim', () => {
     });
 
     expect(result.current.activityMessages).toHaveLength(1);
-    expect(result.current.activityMessages[0].text).toBe('Building your negotiation scenario based on the offer details...');
+    expect(result.current.activityMessages[0].message).toBe('Building your negotiation scenario based on the offer details...');
     expect(result.current.activityMessages[0].stage).toBe('scenario_setup');
   });
 
@@ -486,8 +486,8 @@ describe('useCounterOfferSim', () => {
     });
 
     expect(result.current.activityMessages).toHaveLength(2);
-    expect(result.current.activityMessages[0].text).toBe('Generating employer pushback scenario...');
-    expect(result.current.activityMessages[1].text).toBe('Scenario ready — starting negotiation');
+    expect(result.current.activityMessages[0].message).toBe('Generating employer pushback scenario...');
+    expect(result.current.activityMessages[1].message).toBe('Scenario ready — starting negotiation');
   });
 
   it('unauthenticated: sets error state when no session token', async () => {

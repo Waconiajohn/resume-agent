@@ -9,16 +9,11 @@
 
 import { useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import type { ActivityMessage } from '@/types/activity';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface ActivityMessage {
-  id: string;
-  message: string;
-  timestamp: number;
-  stage?: string;
-  isSummary?: boolean;
-}
+export type { ActivityMessage };
 
 export interface DedupedMessage extends ActivityMessage {
   count: number;

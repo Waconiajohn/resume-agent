@@ -438,7 +438,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
 
 function PrepProgress({ company, activityMessages, currentStage }: {
   company: string;
-  activityMessages: { id: string; text: string; stage: string; timestamp: number }[];
+  activityMessages: { id: string; message: string; stage?: string; timestamp: number }[];
   currentStage: string | null;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -472,7 +472,7 @@ function PrepProgress({ company, activityMessages, currentStage }: {
         {activityMessages.map((msg) => (
           <div key={msg.id} className="flex items-start gap-2 py-1">
             <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
-            <span className="text-[12px] text-white/50 leading-relaxed">{msg.text}</span>
+            <span className="text-[12px] text-white/50 leading-relaxed">{msg.message}</span>
           </div>
         ))}
         <div ref={bottomRef} />
@@ -747,7 +747,9 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
 
   const handleNavigateToThankYou = useCallback((interviewerNotes: InterviewerNote[]) => {
     // Phase 4A-8 will wire cross-room navigation. For now, log the intent.
-    console.log('[InterviewLabRoom] Navigate to thank you notes with interviewers:', interviewerNotes);
+    if (import.meta.env.DEV) {
+      console.log('[InterviewLabRoom] Navigate to thank you notes with interviewers:', interviewerNotes);
+    }
   }, []);
 
   const fetchResumeText = useCallback(async (): Promise<string | null> => {

@@ -13,6 +13,7 @@ import { MODEL_ORCHESTRATOR } from '../../lib/llm.js';
 import type { ResumeAgentConfig } from '../types.js';
 import { STRATEGIST_SYSTEM_PROMPT } from './prompts.js';
 import { strategistTools } from './tools.js';
+import { RESUME_COMPACTION_HINTS, buildResumeScratchpadSummary } from '../resume/compaction.js';
 
 export const strategistConfig: ResumeAgentConfig = {
   identity: {
@@ -70,6 +71,12 @@ export const strategistConfig: ResumeAgentConfig = {
    * (evidence summaries, positioning data). Keep generous to avoid truncation.
    */
   loop_max_tokens: 8192,
+
+  /** Resume-specific entity names and patterns for compaction summarisation. */
+  compactionHints: RESUME_COMPACTION_HINTS,
+
+  /** Resume-aware scratchpad status summary (sections + approved state). */
+  scratchpadSummaryHook: buildResumeScratchpadSummary,
 };
 
 registerAgent(strategistConfig);

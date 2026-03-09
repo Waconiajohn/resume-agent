@@ -11,12 +11,9 @@ import type {
 
 export type { OnboardingStatus } from '@/types/onboarding';
 
-export interface ActivityMessage {
-  id: string;
-  text: string;
-  stage: string;
-  timestamp: number;
-}
+import type { ActivityMessage } from '@/types/activity';
+
+export type { ActivityMessage };
 
 interface OnboardingHookState {
   status: OnboardingStatus;
@@ -79,7 +76,7 @@ export function useOnboarding(options?: {
         ...prev.activityMessages.slice(-(MAX_ACTIVITY_MESSAGES - 1)),
         {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          text,
+          message: text,
           stage,
           timestamp: Date.now(),
         },

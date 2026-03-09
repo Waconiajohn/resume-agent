@@ -173,7 +173,7 @@ function ActivityFeed({
   currentStage,
   company,
 }: {
-  activityMessages: { id: string; text: string; stage: string; timestamp: number }[];
+  activityMessages: { id: string; message: string; stage?: string; timestamp: number }[];
   currentStage: string | null;
   company: string;
 }) {
@@ -229,7 +229,7 @@ function ActivityFeed({
                 style={{ opacity }}
               >
                 <div className="h-1.5 w-1.5 rounded-full bg-[#A396E2]/50 mt-2 flex-shrink-0" />
-                <span className="text-[13px] text-white/60 leading-relaxed">{msg.text}</span>
+                <span className="text-[13px] text-white/60 leading-relaxed">{msg.message}</span>
               </div>
             );
           })

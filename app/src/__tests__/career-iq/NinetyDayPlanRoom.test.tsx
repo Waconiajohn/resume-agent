@@ -45,8 +45,8 @@ const runningState = {
   ...idleState,
   status: 'running' as const,
   activityMessages: [
-    { id: '1', text: 'Researching the role and company context', stage: 'research', timestamp: Date.now() },
-    { id: '2', text: 'Mapping key stakeholders', stage: 'stakeholders', timestamp: Date.now() },
+    { id: '1', message: 'Researching the role and company context', stage: 'research', timestamp: Date.now() },
+    { id: '2', message: 'Mapping key stakeholders', stage: 'stakeholders', timestamp: Date.now() },
   ],
   currentStage: 'stakeholders',
 };

@@ -18,7 +18,7 @@ import {
   setUsageTrackingContext,
 } from '../../lib/llm-provider.js';
 import { createSessionLogger } from '../../lib/logger.js';
-import { MODEL_PRICING } from '../../lib/llm.js';
+import { MODEL_PRICING, MODEL_LIGHT, MODEL_MID, MODEL_PRIMARY } from '../../lib/llm.js';
 import { captureErrorWithContext } from '../../lib/sentry.js';
 import {
   recordPipelineCompletion,
@@ -68,12 +68,13 @@ function makeStageTimer(): StageTimer {
 
 /**
  * Estimate USD cost from accumulated token counts.
- * Uses a blended rate: 50% LIGHT (free), 30% MID, 20% PRIMARY.
+ * Uses a blended rate: 50% LIGHT, 30% MID, 20% PRIMARY.
+ * Model constants resolve to the correct model strings for the active provider.
  */
 function calculateCost(usage: { input_tokens: number; output_tokens: number }): number {
-  const lightPrice   = MODEL_PRICING['glm-4.7-flash']  ?? { input: 0,    output: 0    };
-  const midPrice     = MODEL_PRICING['glm-4.5-air']    ?? { input: 0.20, output: 1.10 };
-  const primaryPrice = MODEL_PRICING['glm-4.7']        ?? { input: 0.60, output: 2.20 };
+  const lightPrice   = MODEL_PRICING[MODEL_LIGHT]   ?? { input: 0, output: 0 };
+  const midPrice     = MODEL_PRICING[MODEL_MID]     ?? { input: 0, output: 0 };
+  const primaryPrice = MODEL_PRICING[MODEL_PRIMARY] ?? { input: 0, output: 0 };
 
   const blendedInput  = lightPrice.input  * 0.5 + midPrice.input  * 0.3 + primaryPrice.input  * 0.2;
   const blendedOutput = lightPrice.output * 0.5 + midPrice.output * 0.3 + primaryPrice.output * 0.2;

@@ -1,46 +1,133 @@
-# CLAUDE.md — Scrum Development Framework & Anti-Drift Rules
+# CLAUDE.md — CareerIQ Platform Development Framework
 
 > **This file is the single source of truth for all development on this project.**
-> **Claude MUST read and follow these rules for EVERY task, no exceptions.**
+> **Claude MUST read and follow every rule in this file for EVERY task, no exceptions.**
+> **When in doubt: read this file again before writing a single line of code.**
 
 ---
 
-## CORE PRINCIPLES — READ FIRST
+## ⚡ MANDATORY SESSION START — DO THIS FIRST, EVERY TIME
 
-1. **No vibe coding.** Every line of code must trace back to a story in the current sprint.
-2. **No code bloat.** Never pile on code to fix mistakes. Understand the root cause first, then apply the minimal fix.
+Before touching any code, Claude MUST complete this checklist in order:
+
+1. Read this CLAUDE.md (automatic)
+2. Read `CURRENT_SPRINT.md` — know what is active
+3. Read `CONVENTIONS.md` — know project patterns
+4. Read last 10 entries of `CHANGELOG.md` — know recent changes
+5. Read `docs/obsidian/10_Resume Agent/Project Hub.md` — platform context and agent inventory
+6. Read `docs/obsidian/10_Resume Agent/Status.md` — current health, concerns, recent decisions
+7. If working on a specific agent, read its note from `docs/obsidian/10_Resume Agent/Agents/`
+8. Declare: **"I've reviewed the project context. Current sprint is [X], working on [story]."**
+
+This is non-negotiable. No exceptions. No shortcuts.
+
+---
+
+## CORE PRINCIPLES
+
+1. **No vibe coding.** Every line of code traces back to a story in the current sprint.
+2. **No code bloat.** Never pile on code to fix mistakes. Find the root cause. Apply the minimal fix.
 3. **No memory loss.** Every change is documented. Every decision is logged. Context is externalized, not assumed.
 4. **No scope creep.** If it's not in the current sprint, it goes in the backlog. Period.
+5. **Agent-first, always.** Every feature must maximize the power of AI agents. Procedural pipelines are a last resort, never a first choice.
+
+---
+
+## 🤖 AGENT-FIRST ARCHITECTURE MANDATE
+
+This platform is built around AI agents. This is not a preference — it is the architecture. Every feature, workflow, and data pipeline must maximize agent autonomy, creativity, and inter-agent communication.
+
+### Before Writing Any Code, Ask These Questions
+
+- Can an agent own this workflow end-to-end?
+- Should a **new specialized agent** be created for this capability?
+- Are agents communicating results to each other through the knowledge graph and agent bus?
+- Is this the most agent-empowered solution possible — or just the easiest one to code?
+- If a human had to oversee this, how do we eliminate that dependency through better agent design?
+
+**If a new feature doesn't fit cleanly into an existing agent's domain, propose a new agent first. Do not write procedural code as a workaround.**
+
+### Current Agent Roster (Resume Agent — Cornerstone Product)
+
+| Agent | Domain |
+|-------|--------|
+| Resume Strategist | Candidate understanding, market research, positioning strategy |
+| Resume Craftsman | Section writing, self-review, iterative revision |
+| Resume Producer | Quality assurance, template selection, ATS compliance, document production |
+
+This app is the cornerstone of a **33-agent platform**. Every agent built here sets the pattern for the platform. Build them right.
+
+### Platform Service Lines (Full Scope)
+
+The platform serves four lines, each powered by its own agent layer:
+
+- **Career Coaching** — Resume writer, job board, LinkedIn profile builder, LinkedIn networker, interview prep, salary negotiation
+- **Outplacement** — Employer-sponsored career transition services
+- **Recruiting** — AI-driven talent matching and sourcing
+- **Retirement Planning** — Financial wellness and planning (RIA-integrated)
+
+When building features, consider cross-agent utility. A tool built for the Resume Strategist may serve the LinkedIn Profile agent. Design for reuse.
+
+### Agent Design Standards
+
+When a new agent is needed:
+
+1. Define the agent's **single domain** — what it owns, what it does not own
+2. Define its **tool set** — typed tool objects with Zod schemas
+3. Define its **model routing tier** — which tier handles reasoning vs. execution
+4. Define its **inter-agent communication** — what it sends and receives on the AgentBus
+5. Create its Obsidian note in `docs/obsidian/10_Resume Agent/Agents/`
+6. Update the agent table in `Project Hub.md`
+7. Use `agent-tool-scaffold` skill for all new tools
+
+**Never create agent-like functionality inside a route, utility, or coordinator. Agents own their domains.**
+
+---
+
+## 🚫 LEGACY REPO RULE — NON-NEGOTIABLE
+
+An older codebase exists and is accessible for reference. It is **ideas only**.
+
+| ✅ Permitted | ❌ Prohibited |
+|-------------|--------------|
+| Read it to understand what a feature was trying to accomplish | Copy any code from it |
+| Use it to identify logic flows worth reimagining | Adapt or port any of its patterns |
+| Draw inspiration for feature scope | Use its architecture as a template |
+| Identify gaps the old system had | Treat any of its code as a starting point |
+
+**The old codebase is procedural, non-agent, and pre-AI. Its architecture is incompatible with this platform by design.**
+
+If you find yourself writing something that structurally resembles the old repo — stop. Redesign it agent-first from scratch.
 
 ---
 
 ## PROJECT STRUCTURE REQUIREMENTS
 
-Every project MUST maintain the following directory:
+Every project MUST maintain this directory:
 
 ```
 /docs/
-  /docs/BACKLOG.md          <- All epics and stories not yet scheduled
-  /docs/CURRENT_SPRINT.md   <- Active sprint with stories and acceptance criteria
-  /docs/SPRINT_LOG.md       <- Completed sprints with retrospectives
-  /docs/CHANGELOG.md        <- Every change, every session, timestamped
-  /docs/ARCHITECTURE.md     <- System architecture and conventions
-  /docs/CONVENTIONS.md      <- Code style, error handling, naming rules
-  /docs/DECISIONS.md        <- Architecture Decision Records (ADRs)
+  BACKLOG.md          ← All epics and stories not yet scheduled
+  CURRENT_SPRINT.md   ← Active sprint with stories and acceptance criteria
+  SPRINT_LOG.md       ← Completed sprints with retrospectives
+  CHANGELOG.md        ← Every change, every session, timestamped
+  ARCHITECTURE.md     ← System architecture and conventions
+  CONVENTIONS.md      ← Code style, error handling, naming rules
+  DECISIONS.md        ← Architecture Decision Records (ADRs)
 ```
 
 **If these files do not exist, Claude MUST create them before writing any code.**
 
 ---
 
-## SCRUM WORKFLOW — MANDATORY PROCESS
+## SCRUM WORKFLOW
 
 ### Phase 1: Epic Decomposition
 
-When starting a new feature or project area:
+When starting a new feature area:
 
-1. Define the **Epic** — a large chunk of work (e.g., "User Authentication")
-2. Break the epic into **Stories** using this format:
+1. Define the **Epic** (e.g., "LinkedIn Profile Agent")
+2. Break it into **Stories** using this format:
 
 ```markdown
 ### Story: [SHORT_TITLE]
@@ -50,19 +137,13 @@ When starting a new feature or project area:
 - **Acceptance Criteria:**
   - [ ] Criterion 1 (testable, specific)
   - [ ] Criterion 2
-  - [ ] Criterion 3
 - **Estimated complexity:** [Small / Medium / Large]
 - **Dependencies:** [list any blockers or prerequisite stories]
 ```
 
-3. Stories MUST be small enough to complete **in a single focused session**
-4. If a story feels too big, **split it further**. No story should require more than ~300 lines of new code.
+Stories must be completable in a single focused session. No story should require more than ~300 lines of new code. If it feels too big, split it.
 
 ### Phase 2: Sprint Planning
-
-1. Select stories from the backlog for the current sprint
-2. A sprint = a logical batch of related stories (typically 3-7 stories)
-3. Document in `CURRENT_SPRINT.md`:
 
 ```markdown
 # Sprint [NUMBER]: [THEME]
@@ -70,9 +151,9 @@ When starting a new feature or project area:
 **Started:** [Date]
 
 ## Stories This Sprint
-1. [ ] Story A — [status: not started / in progress / review / done]
-2. [ ] Story B — [status]
-3. [ ] Story C — [status]
+1. [ ] Story A — [not started / in progress / review / done]
+2. [ ] Story B
+3. [ ] Story C
 
 ## Out of Scope (Explicitly)
 - [Things we are NOT doing this sprint]
@@ -80,117 +161,85 @@ When starting a new feature or project area:
 
 ### Phase 3: Build (Per Story)
 
-For EACH story, Claude MUST follow this sequence:
+For EACH story, follow this sequence without exception:
 
 1. **Announce** — State which story is being worked on
 2. **Plan** — Outline the approach BEFORE writing code (files to change, approach, risks)
 3. **Implement** — Write the minimal code to satisfy acceptance criteria
 4. **Test** — Verify each acceptance criterion is met
-5. **Document** — Update CHANGELOG.md with what changed and why
-6. **Commit message format:** `[SPRINT-X][STORY-NAME] Brief description of change`
+5. **Document** — Update CHANGELOG.md
+6. **Commit format:** `[SPRINT-X][STORY-NAME] Brief description`
 
-### Phase 4: Sprint Review & Retrospective
-
-When all stories in a sprint are complete:
-
-1. Review each story — did it meet acceptance criteria?
-2. Document in `SPRINT_LOG.md`:
+### Phase 4: Sprint Retrospective
 
 ```markdown
 # Sprint [NUMBER] Retrospective
 **Completed:** [Date]
 
 ## What was delivered
-- Story A: [summary]
-- Story B: [summary]
-
 ## What went well
-- [specific observations]
-
 ## What went wrong
-- [specific issues encountered]
-
 ## What to improve next sprint
-- [actionable improvements]
-
 ## Technical debt identified
-- [anything that needs cleanup later]
 ```
 
-3. Move completed stories out of CURRENT_SPRINT.md
-4. Plan the next sprint
+Move completed stories out of CURRENT_SPRINT.md. Plan the next sprint.
 
 ---
 
-## CODE QUALITY RULES — ENFORCED ALWAYS
+## CODE QUALITY RULES
 
 ### Before Writing Any Code
 
-- [ ] Confirm which story this code is for
+- [ ] Confirm which story this code belongs to
 - [ ] Check CONVENTIONS.md for project patterns
 - [ ] Check ARCHITECTURE.md for system constraints
 - [ ] Verify no duplicate functionality already exists
 
 ### While Writing Code
 
-- **Single Responsibility:** Each function/module does ONE thing
-- **No dead code:** Remove unused imports, functions, variables immediately
-- **No commented-out code:** Delete it. Git has history.
-- **Error handling:** Every external call (API, DB, file) has explicit error handling per CONVENTIONS.md
-- **Naming:** Follow CONVENTIONS.md exactly. No abbreviations unless defined there.
-- **DRY:** Before creating something new, search for existing utilities first
+- **Single Responsibility** — each function/module does ONE thing
+- **No dead code** — remove unused imports, functions, variables immediately
+- **No commented-out code** — delete it, Git has history
+- **Error handling** — every external call (API, DB, file) has explicit error handling per CONVENTIONS.md
+- **Naming** — follow CONVENTIONS.md exactly, no ad hoc abbreviations
+- **DRY** — search for existing utilities before creating new ones
 
-### When Fixing Bugs
+### Bug Fixing Protocol
 
-**CRITICAL: Never pile on code to fix a bug.**
+**Never pile on code to fix a bug.**
 
-Follow this sequence:
-1. **Identify** the root cause (not just the symptom)
+1. **Identify** the root cause (not the symptom)
 2. **Explain** the root cause before proposing a fix
-3. **Fix** at the root level with the minimal change
+3. **Fix** at the root level with minimal change
 4. **Verify** the fix doesn't break related functionality
-5. **Document** the bug and fix in CHANGELOG.md
+5. **Document** in CHANGELOG.md
 
-If a fix requires more than 20 lines of new code, STOP and reassess. The fix is probably wrong.
+If a fix requires more than 20 lines of new code, stop and reassess. The fix is probably wrong.
 
-### When Refactoring
+### Refactoring Rule
 
-- Refactoring is its own story — never mix refactoring with feature work
-- Create a story: "Refactor [component] to [improvement]"
-- Schedule it in a sprint like any other work
+Refactoring is always its own story. Never mix refactoring with feature work. Schedule it like any other sprint story.
 
 ---
 
-## CONTEXT DRIFT PREVENTION — ANTI-DRIFT PROTOCOL
+## CONTEXT DRIFT PREVENTION
 
-### Session Start Protocol
+### Mid-Session Verification (Every 3–5 Significant Changes)
 
-At the START of every session/conversation, Claude MUST:
-
-1. Read this CLAUDE.md file (automatic)
-2. Read `CURRENT_SPRINT.md` to know what's active
-3. Read `CONVENTIONS.md` to know project patterns
-4. Read `CHANGELOG.md` (last 10 entries) to know recent changes
-5. Read `docs/obsidian/10_Resume Agent/Project Hub.md` for platform-wide context, agent inventory, and architecture links
-6. Read `docs/obsidian/10_Resume Agent/Status.md` for current project health, active concerns, and recent decisions
-7. If the current work involves a specific agent, read its note from `docs/obsidian/10_Resume Agent/Agents/`
-8. State: "I've reviewed the project context. Current sprint is [X], working on [story]."
-
-### Mid-Session Verification (Every 3-5 Significant Changes)
-
-Claude MUST pause and run this internal check:
+Run this internal check:
 
 ```
 DRIFT CHECK:
 - Am I still working on the assigned story? [yes/no]
-- Am I following the conventions in CONVENTIONS.md? [yes/no]
-- Am I following the error handling patterns? [yes/no]
-- Am I following the architecture in ARCHITECTURE.md? [yes/no]
-- Have I introduced any code that isn't required by the current story? [yes/no]
-- Confidence score for current alignment: [1-10]
+- Am I following CONVENTIONS.md? [yes/no]
+- Am I following ARCHITECTURE.md? [yes/no]
+- Have I introduced code not required by the current story? [yes/no]
+- Am I maximizing agent autonomy in this implementation? [yes/no]
+- Confidence score: [1-10]
 ```
 
-If confidence drops below 7, Claude MUST:
+If confidence drops below 7:
 1. Stop coding
 2. Re-read CONVENTIONS.md and ARCHITECTURE.md
 3. Review the current story's acceptance criteria
@@ -202,15 +251,13 @@ Before ending any session, Claude MUST:
 
 1. Update CHANGELOG.md with all changes made
 2. Update story status in CURRENT_SPRINT.md
-3. Update `docs/obsidian/10_Resume Agent/Status.md` with current project health, any new concerns, and test counts
+3. Update `docs/obsidian/10_Resume Agent/Status.md` with current health, concerns, test counts
 4. Note any blockers, questions, or concerns for the next session
 5. If a story is incomplete, document exactly where it left off
 
 ---
 
 ## CHANGELOG FORMAT
-
-Every entry in CHANGELOG.md follows this format:
 
 ```markdown
 ## [DATE] — Session [N]
@@ -219,13 +266,12 @@ Every entry in CHANGELOG.md follows this format:
 
 ### Changes Made
 - `path/to/file.ext` — [what changed and why]
-- `path/to/other.ext` — [what changed and why]
 
 ### Decisions Made
-- [Any architectural or design decisions, with reasoning]
+- [Architectural or design decisions with reasoning]
 
 ### Known Issues
-- [Anything discovered but not yet fixed]
+- [Discovered but not yet fixed]
 
 ### Next Steps
 - [What the next session should pick up]
@@ -233,17 +279,15 @@ Every entry in CHANGELOG.md follows this format:
 
 ---
 
-## ARCHITECTURE DECISION RECORDS (DECISIONS.md)
-
-When any significant technical decision is made, log it:
+## ARCHITECTURE DECISION RECORDS
 
 ```markdown
 ## ADR-[NUMBER]: [TITLE]
 **Date:** [date]
 **Status:** [proposed / accepted / deprecated / superseded]
-**Context:** [What situation prompted this decision]
+**Context:** [What situation prompted this]
 **Decision:** [What was decided]
-**Reasoning:** [Why this choice over alternatives]
+**Reasoning:** [Why this over alternatives]
 **Consequences:** [What this means going forward]
 ```
 
@@ -251,42 +295,68 @@ When any significant technical decision is made, log it:
 
 ## OBSIDIAN KNOWLEDGE BASE (`docs/obsidian/`)
 
-The Obsidian vault at `docs/obsidian/` is the project's extended memory and knowledge base. It contains navigable reference notes on architecture, all 13 agents, model routing, SSE events, and the platform blueprint. The canonical code docs remain in `docs/` (ARCHITECTURE.md, CONVENTIONS.md, etc.) — the vault provides context, cross-references, and deeper detail.
-
-### Structure
+The Obsidian vault is the platform's extended memory. It contains navigable reference notes on architecture, all agents, model routing, SSE events, and the platform blueprint.
 
 ```
 docs/obsidian/
   10_Resume Agent/
-    Project Hub.md          <- Central entry point (read at session start)
+    Project Hub.md          ← Central entry point (read at session start)
     Architecture Overview.md
     Platform Blueprint.md
     Model Routing.md
     SSE Event System.md
-    Agents/                 <- One note per agent (#1-#20)
-  20_Prompts/               <- Prompt patterns and templates
-  30_Specs & Designs/       <- Feature specs, UX flows
-  40_Snippets & APIs/       <- Code patterns, API contracts
-  Templates/                <- Note templates (feature, decision, bug, prompt)
+    Agents/                 ← One note per agent (#1–#20+)
+  20_Prompts/               ← Prompt patterns and templates
+  30_Specs & Designs/       ← Feature specs, UX flows
+  40_Snippets & APIs/       ← Code patterns, API contracts
+  Templates/                ← Note templates
 ```
-
-### Rules
-
-- **Reference, don't duplicate.** Vault notes link to canonical repo docs, not copy them.
-- **Keep notes atomic.** One concept per note, linked via `[[wikilinks]]`.
-- **Use tags consistently:** `#agent/name`, `#status/todo|in-progress|done`, `#type/spec|decision|bug|prompt`, `#sprint/N`.
 
 ### Vault Maintenance (Mandatory)
 
-Claude MUST keep the vault current. These are not optional:
+| Event | Action |
+|-------|--------|
+| New agent built | Create note in `Agents/`, update agent table in `Project Hub.md` |
+| Architecture changes | Update `Architecture Overview.md`, `Model Routing.md`, or `SSE Event System.md` |
+| Session end | Update `Status.md` with test counts, concerns, decisions |
+| New prompt pattern | Add to `20_Prompts/` |
+| Significant bug fixed | Add postmortem to `40_Snippets & APIs/` |
+| New feature spec | Add to `30_Specs & Designs/` |
 
-1. **New agent built** → Create its note in `Agents/` using the existing agent notes as the format reference. Update the agent table in `Project Hub.md`.
-2. **Architecture changes** → Update `Architecture Overview.md`, `Model Routing.md`, or `SSE Event System.md` as applicable.
-3. **Session end** → Update `Status.md` with current test counts, active concerns, and any decisions made.
-4. **New prompt pattern discovered** → Add to `20_Prompts/` using the Prompt Pattern template.
-5. **Significant bug fixed** → Add to `40_Snippets & APIs/` using the Bug Postmortem template if the root cause is worth remembering.
-6. **New feature spec written** → Add to `30_Specs & Designs/` using the Feature Note template.
-7. **Test counts change** → Update `Project Hub.md` test health section and `Status.md`.
+Rules: reference don't duplicate, one concept per note, use tags consistently (`#agent/name`, `#status/todo|in-progress|done`, `#type/spec|decision|bug|prompt`, `#sprint/N`).
+
+---
+
+## CLAUDE CODE SKILLS — USE PROACTIVELY
+
+Skills in `~/.claude/skills/` encode this project's patterns. **Use them automatically when the task matches — don't wait to be asked.**
+
+| Trigger | Skill | What it does |
+|---------|-------|-------------|
+| Adding a new agent tool | **agent-tool-scaffold** | Creates tool def, Zod schema, model routing in llm.ts, agent registration, test file |
+| Adding a new SSE event or panel | **sse-event-pipeline** | Creates PanelData union type, backend emission, event handler, panel component, panel-renderer case |
+| Before ANY commit | **qa-gate** | Runs tsc (app + server), import resolution, stale closures |
+| Starting/ending a session | **scrum-session** | Automates Session Start/End Protocol |
+| After implementing any feature | **component-test-gen** | Generates tests with project-specific mocks |
+| Creating/modifying DB tables | **supabase-migration** | Generates migration with RLS policies |
+| Making architectural decisions | **adr-writer** | Creates ADR in docs/DECISIONS.md |
+| Adding error handling | **error-pattern** | Pipeline error emission, Pino logging, Sentry integration |
+| Modifying prompts or model routing | **llm-prompt-lab** | Prompt versioning, cost estimation, model-specific handling |
+| Suspecting unused code | **dead-code-hunter** | Scans for orphaned components, unused exports, legacy agent code |
+
+### Mandatory Skill Usage
+
+1. **qa-gate** — MUST run before every commit. Both `app` and `server` tsc must pass.
+2. **agent-tool-scaffold** — MUST use when adding tools to any agent. The 5-file sequence is error-prone without it — especially the model routing entry in `llm.ts`, which silently falls back to the wrong tier if missing.
+3. **sse-event-pipeline** — MUST use when adding new panel types. The 4-file sequence must stay in sync.
+4. **scrum-session** — SHOULD use at session start/end.
+5. **component-test-gen** — SHOULD generate tests for new components.
+
+### Quality Floor (Do Not Regress Below)
+
+- Server tests: **1,014 passing, 0 failures**
+- App tests: **586 passing, 0 failures**
+- TypeScript: both `app` and `server` tsc must pass
 
 ---
 
@@ -294,64 +364,55 @@ Claude MUST keep the vault current. These are not optional:
 
 Claude MUST NEVER:
 
-1. **Write code without an active story** — If no sprint is active, plan first
-2. **Install packages without documenting why** — Every dependency gets an ADR
-3. **Create "temporary" fixes** — Every fix is permanent or it's a documented tech debt item
-4. **Ignore existing patterns** — If the project uses pattern X, new code uses pattern X
-5. **Refactor while building features** — These are separate stories, always
-6. **Skip the changelog** — Every session, every change, documented
-7. **Assume context from previous sessions** — Always re-read project docs at session start
-8. **Add functionality beyond the current story scope** — Backlog it instead
-9. **Use `any` types, `eslint-disable`, or skip error handling** — Unless explicitly permitted in CONVENTIONS.md
-10. **Delete or overwrite these framework files** — They are append-only (except CURRENT_SPRINT.md which rotates)
+1. **Write code without an active story** — no sprint active means plan first
+2. **Install packages without documenting why** — every dependency gets an ADR
+3. **Create "temporary" fixes** — every fix is permanent or it's documented tech debt
+4. **Ignore existing patterns** — if the project uses pattern X, new code uses pattern X
+5. **Refactor while building features** — always separate stories
+6. **Skip the changelog** — every session, every change, documented
+7. **Assume context from previous sessions** — always re-read project docs at session start
+8. **Add functionality beyond current story scope** — backlog it instead
+9. **Use `any` types, `eslint-disable`, or skip error handling** — unless explicitly permitted in CONVENTIONS.md
+10. **Delete or overwrite these framework files** — append-only (except CURRENT_SPRINT.md which rotates)
+11. **Copy, adapt, or port code from the legacy repository** — ideas only, never code
+12. **Build procedural pipelines where an agent could own the work** — agent-first, always
+13. **Create a new agent without defining its domain, tools, and AgentBus contracts first**
 
 ---
 
-## NEW PROJECT INITIALIZATION CHECKLIST
+## PRODUCT MISSION
 
-When starting a brand new project, Claude MUST complete these steps before writing ANY application code:
+We take mid-level executives and optimally position them for every job they apply to, starting from the premise that they are already highly qualified.
 
-1. [ ] Create `/docs/` directory with all required files
-2. [ ] Define at least the first epic and its stories in BACKLOG.md
-3. [ ] Populate ARCHITECTURE.md with initial tech stack, folder structure, and patterns
-4. [ ] Populate CONVENTIONS.md with coding standards, naming conventions, error handling approach
-5. [ ] Create CURRENT_SPRINT.md with Sprint 1 stories selected from backlog
-6. [ ] Initialize CHANGELOG.md with project creation entry
-7. [ ] Confirm all files are created, then begin Sprint 1, Story 1
+**The process:** Resume intake → job description analysis → benchmark candidate profiling → gap analysis → guided interview to surface real experience → resume crafting that positions the user as the benchmark others are compared to.
 
----
+**Core insight:** Most executives' professional lives are only ~1% reflected on their resume. There is an enormous amount of real, relevant experience to surface. Executives are better suited for far more roles than they originally believe.
 
-## EXISTING PROJECT ONBOARDING
+**What we are NOT:** We never fabricate experience, inflate credentials, or misrepresent clients. We better position real skills, abilities, and accomplishments. We better demonstrate why the candidate is a genuine fit.
 
-When adding this framework to an existing project:
+**The goal:** The finished resume positions the executive so they are viewed as the benchmark candidate — the standard everyone else is measured against.
 
-1. [ ] Create `/docs/` directory with all required files
-2. [ ] Audit current codebase — document existing architecture in ARCHITECTURE.md
-3. [ ] Document existing conventions (even informal ones) in CONVENTIONS.md
-4. [ ] Identify current work in progress — create stories for it
-5. [ ] Identify tech debt and bugs — add to BACKLOG.md
-6. [ ] Create a "Sprint 0: Framework Onboarding" in SPRINT_LOG.md
-7. [ ] Start Sprint 1 with the most critical pending work
+This philosophy must guide all LLM prompts, tool implementations, and UX decisions.
 
 ---
 
-## USER PROMPT TEMPLATE FOR OPTIMAL SESSIONS
+## SESSION PROMPT TEMPLATE
 
-When starting a new coding session, the developer should provide:
+When starting a new coding session, provide:
 
 ```
-I'm continuing work on [PROJECT_NAME].
+I'm continuing work on CareerIQ / Resume Agent.
 Current sprint: [number]
 I want to work on: [story name or "next story in sprint"]
 ```
 
-This gives Claude the minimal context needed to orient, and Claude will then follow the Session Start Protocol above to fully load context.
+Claude will then execute the Session Start Protocol above before touching any code.
 
 ---
 
 ## THE DIAGNOSTIC PROMPT — USE WHEN THINGS FEEL OFF
 
-If at any point the developer suspects drift or quality degradation, paste this:
+If at any point you suspect drift or quality degradation, paste this:
 
 ```
 SYSTEM VERIFICATION CHECK:
@@ -360,6 +421,8 @@ Review this CLAUDE.md file.
 Review CONVENTIONS.md and ARCHITECTURE.md.
 Output the exact conventions mandated for this project.
 Identify deviations in your last three outputs.
+Check: am I maximizing agent architecture, not working around it?
+Check: have I pulled anything from the legacy repo?
 Self-correct.
 Output a confidence score for current alignment (1-10).
 Resume only when confidence is 8 or above.
@@ -367,304 +430,106 @@ Resume only when confidence is 8 or above.
 
 ---
 
-*This framework is version 1.0. Update it through the normal story/sprint process — never ad hoc.*
+## TECHNICAL REFERENCE
 
----
+### Tech Stack
 
-## Claude Code Skills — USE THESE PROACTIVELY
+- **Backend:** Hono + Node.js (port 3001)
+- **Frontend:** Vite + React 19 + TailwindCSS (port 5173)
+- **Database:** Supabase (PostgreSQL) with RLS policies
+- **LLM Primary:** Groq (LPU inference, OpenAI-compatible)
+- **LLM Fallbacks:** Z.AI GLM, Anthropic Claude (via `LLM_PROVIDER` env var)
 
-Skills in `~/.claude/skills/` encode this project's patterns and conventions. **Use them automatically when the task matches — don't wait to be asked.**
-
-### When to use each skill:
-
-| Trigger | Skill | What it does |
-|---------|-------|-------------|
-| Adding a new agent tool | **agent-tool-scaffold** | Creates tool def, Zod schema, model routing in llm.ts, agent registration, test file — all 5 files in correct order |
-| Adding a new SSE event or panel | **sse-event-pipeline** | Creates PanelData union type, backend emission, event handler, panel component, panel-renderer case |
-| Before ANY commit | **qa-gate** | Runs tsc (both app + server), import resolution, stale closures |
-| Starting/ending a session | **scrum-session** | Automates the Session Start/End Protocol from this CLAUDE.md |
-| After implementing any feature | **component-test-gen** | Generates tests with project-specific mocks |
-| Creating/modifying DB tables | **supabase-migration** | Generates migration with RLS policies |
-| Making architectural decisions | **adr-writer** | Creates ADR in docs/DECISIONS.md (next number after ADR-034) |
-| Adding error handling | **error-pattern** | Pipeline error emission, Pino logging, Sentry integration |
-| Modifying AI prompts or model routing | **llm-prompt-lab** | Prompt versioning, cost estimation, model-specific quirk handling |
-| Suspecting unused code | **dead-code-hunter** | Scans for orphaned components, unused exports, legacy agent code |
-
-### Mandatory skill usage:
-
-1. **qa-gate**: MUST run before every commit. Both `app` and `server` tsc must pass.
-2. **agent-tool-scaffold**: MUST use when adding tools to any agent. The 5-file sequence is error-prone without it — especially the model routing entry in `llm.ts` which silently falls back to the wrong tier if missing.
-3. **sse-event-pipeline**: MUST use when adding new panel types. The 4-file sequence (type, component, renderer, backend) must stay in sync.
-4. **scrum-session**: SHOULD use at session start/end to maintain the scrum framework.
-5. **component-test-gen**: SHOULD generate tests for new components. Current test floor: server 1,014 tests, app 586 tests.
-
-### Quality floor (do not regress below):
-- Server tests: 1,014 passing, 0 failures
-- App tests: 586 passing, 0 failures
-- TypeScript: both `app` and `server` tsc must pass
-
----
----
-
-# Resume Agent — Product & Technical Reference
-
-## Product Mission & Philosophy
-
-We take mid-level executives and optimally position them for every job they apply to, starting from the premise that they are already highly qualified.
-
-**The process**: Resume intake → job description analysis → benchmark candidate profiling (profession, industry, niche) → gap analysis comparing the user to the benchmark and JD → guided interview to fill gaps with real experience → resume crafting that positions the user as the benchmark others are compared to.
-
-**Core insight**: Most executives' professional lives are only ~1% reflected on their resume. There is an enormous amount of real, relevant experience to surface through guided questioning. Executives are better suited for far more roles than they originally believe.
-
-**What we are NOT**: We never fabricate experience, inflate credentials, or misrepresent clients. We better position real skills, abilities, and accomplishments. We better demonstrate why the candidate is a genuine fit.
-
-**The goal**: The finished resume positions the executive so they are viewed as the benchmark candidate — the standard everyone else is measured against.
-
-This philosophy must guide all LLM prompts, tool implementations, and UX decisions. When writing system prompts or section content, prioritize authentic positioning over embellishment.
-
-## Interaction Principles
-
-- Produce a useful draft as early as possible, then improve iteratively.
-- Ask the minimum number of questions required to materially improve quality.
-- Prefer targeted evidence capture over exhaustive interviewing.
-- The user may navigate non-linearly across workflow steps.
-- Benchmark assumptions and gap conclusions must be inspectable and editable.
-- If benchmark assumptions are edited before section writing, apply them to the current run at the next safe checkpoint.
-- If benchmark assumptions are edited after section writing starts, require confirmation and rebuild downstream work from gap analysis.
-- Never trap the user in a step when a safe fallback draft can be produced.
-- Preserve authenticity at all times; never fabricate experience, metrics, credentials, or scope.
-
-## Question Budget & Stop Conditions
-
-- Support three workflow modes: `fast_draft`, `balanced`, and `deep_dive`.
-- `fast_draft` should aggressively reduce friction via batched questions, bundled reviews, and auto-approval of lower-risk steps.
-- `balanced` should preserve quality while reducing unnecessary gates and section-by-section approvals.
-- `deep_dive` may use the full interactive review experience.
-- Questioning should stop when the evidence target and coverage confidence threshold are met.
-- If evidence target is met but must-have coverage confidence is still below threshold, ask only a small number of high-impact follow-up questions and then draft.
-- Deferred or skipped non-critical questions should not block draft generation.
-- High-risk authenticity/evidence-integrity issues remain blocking in all modes.
-
-## Technical Overview
-
-- **Backend**: Hono + Node.js (port 3001)
-- **Frontend**: Vite + React 19 + TailwindCSS (port 5173)
-- **Database**: Supabase (PostgreSQL) with RLS policies
-- **LLM**: Groq (LPU inference, OpenAI-compatible) as primary provider. Z.AI GLM and Anthropic Claude available as fallbacks via `LLM_PROVIDER` env var.
-
-## Monorepo Layout
+### Monorepo Layout
 
 ```
 app/                          # Frontend (Vite + React 19)
-  src/components/panels/      # 11 right-panel components (panel-renderer.tsx dispatches)
+  src/components/panels/      # 11 right-panel components
   src/hooks/                  # useAgent.ts (SSE), usePipeline.ts, useSession.ts, useAuth.ts
   src/types/                  # panels.ts (PanelData union), session.ts, resume.ts
 server/                       # Backend (Hono + Node.js)
   src/agents/
-    runtime/                  # Agent loop, bus, protocol, context (shared infrastructure)
-    knowledge/                # Rules (resume-guide), formatting-guide (structured extracts)
+    runtime/                  # Agent loop, bus, protocol, context
+    knowledge/                # Rules, formatting-guide
     strategist/               # Agent 1: Understanding + intelligence + positioning
     craftsman/                # Agent 2: Content creation + self-review
-    producer/                 # Agent 3: Quality assurance + document production
-    coordinator.ts            # Thin orchestrator (~800 lines) — sequences agents, manages gates
+    producer/                 # Agent 3: QA + document production
+    coordinator.ts            # Thin orchestrator (~800 lines)
     types.ts                  # PipelineState, PipelineSSEEvent, agent I/O interfaces
-  src/agent/                  # Legacy monolithic loop (used by chat route, being phased out)
+  src/agent/                  # Legacy monolithic loop (being phased out)
   src/routes/                 # pipeline.ts, sessions.ts, resumes.ts
   src/lib/                    # llm.ts, llm-provider.ts, supabase.ts, logger.ts, feature-flags.ts
 supabase/
   migrations/                 # Numbered SQL migration files
 ```
 
-## Dev Setup & Commands
+### Dev Commands
 
-**Environment variables** (in `server/.env`):
-- `LLM_PROVIDER` — `groq` (primary), `zai`, or `anthropic`. Defaults to `zai` when `ZAI_API_KEY` exists.
-- `GROQ_API_KEY` — required when `LLM_PROVIDER=groq`
-- `ZAI_API_KEY`, `PERPLEXITY_API_KEY`
-- `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
-- Optional model overrides: `GROQ_MODEL_PRIMARY`, `GROQ_MODEL_MID`, `GROQ_MODEL_ORCHESTRATOR`, `GROQ_MODEL_LIGHT` (or `ZAI_MODEL_*` for Z.AI)
-- Feature flags: `FF_INTAKE_QUIZ`, `FF_RESEARCH_VALIDATION`, `FF_GAP_ANALYSIS_QUIZ`, `FF_QUALITY_REVIEW_APPROVAL`, `FF_BLUEPRINT_APPROVAL` (all default true)
-
-**Commands**:
 - Start server: `cd server && npm run dev` (port 3001)
 - Start frontend: `cd app && npm run dev` (port 5173)
 - TypeScript check (app): `cd app && npx tsc --noEmit`
 - TypeScript check (server): `cd server && npx tsc --noEmit`
 - Test credentials: `jjschrup@yahoo.com` / `Scout123`
 
-## Server Architecture
+### Agent Architecture
 
-### Agent Architecture (3 Agents + Coordinator)
+**Coordinator** (`coordinator.ts`) — Thin orchestration layer. Sequences agents, manages SSE events and gates, routes inter-agent messages. Makes zero content decisions.
 
-This app is the cornerstone product of a 33-agent platform. It is built around 3 collaborative AI agents that demonstrate the power of agentic AI.
+**Resume Strategist** — Owns understanding, research, positioning. Runs as agentic loop. Tools: `parse_resume`, `analyze_jd`, `research_company`, `build_benchmark`, `interview_candidate`, `classify_fit`, `design_blueprint`, `emit_transparency`
 
-**Coordinator** (`server/src/agents/coordinator.ts`) — Thin orchestration layer (~800 lines) that sequences agents, manages user interaction (SSE events, gates), and routes inter-agent messages. Makes zero content decisions.
+**Resume Craftsman** — Owns content creation and self-review. Tools: `write_section`, `self_review_section`, `revise_section`, `check_keyword_coverage`, `check_anti_patterns`, `check_evidence_integrity`, `present_to_user`, `emit_transparency`
 
-#### Resume Strategist (`server/src/agents/strategist/`)
-Owns understanding, intelligence, and positioning. Interviews the candidate like a world-class executive recruiter, researches the market, identifies competitive advantages, and designs the resume strategy. Runs as an agentic loop — the LLM decides which tools to call and when to iterate.
+**Resume Producer** — Owns QA and document production. Tools: `select_template`, `adversarial_review`, `ats_compliance_check`, `humanize_check`, `check_blueprint_compliance`, `verify_cross_section_consistency`, `check_narrative_coherence`, `request_content_revision`, `emit_transparency`
 
-**Tools:** `parse_resume`, `analyze_jd`, `research_company`, `build_benchmark`, `interview_candidate`, `classify_fit`, `design_blueprint`, `emit_transparency`
-
-**Rules it owns:** `AGE_AWARENESS_RULES`, `QUALITY_CHECKLIST`, `SECTION_GUIDANCE` (structure)
-
-#### Resume Craftsman (`server/src/agents/craftsman/`)
-Owns content creation. Writes each section following the detailed rules in resume-guide.ts (section guidance, bullet frameworks, keyword targets, anti-patterns). Self-reviews every section before presenting to the user. Iterates based on feedback.
-
-**Tools:** `write_section`, `self_review_section`, `revise_section`, `check_keyword_coverage`, `check_anti_patterns`, `check_evidence_integrity`, `present_to_user`, `emit_transparency`
-
-**Rules it owns:** `SECTION_GUIDANCE` (writing), `RESUME_ANTI_PATTERNS`, `ATS_FORMATTING_RULES`
-
-#### Resume Producer (`server/src/agents/producer/`)
-Owns document production and quality assurance. Selects from 5 executive templates (resume-formatting-guide.md), verifies ATS compliance across 5 systems, runs multi-perspective quality checks. Can request content revisions from the Craftsman.
-
-**Tools:** `select_template`, `adversarial_review`, `ats_compliance_check`, `humanize_check`, `check_blueprint_compliance`, `verify_cross_section_consistency`, `check_narrative_coherence`, `request_content_revision`, `emit_transparency`
-
-**Rules it owns:** `resume-formatting-guide.md` (756 lines), 5 executive templates, ATS compatibility rules
-
-#### Inter-Agent Communication
-Agents communicate through a standard message bus (`server/src/agents/runtime/agent-bus.ts`) using a protocol designed for the 33-agent platform. The Strategist passes strategy to the Craftsman. The Craftsman passes content to the Producer. The Producer can request revisions from the Craftsman.
-
-#### Agent Runtime (`server/src/agents/runtime/`)
+**Agent Runtime** (`server/src/agents/runtime/`):
 - `agent-loop.ts` — Core agentic loop: multi-round LLM + tool calling with retries, timeouts
 - `agent-bus.ts` — In-memory inter-agent message routing
 - `agent-protocol.ts` — Standard types: AgentTool, AgentContext, AgentConfig, AgentMessage
-- `agent-context.ts` — Creates runtime context (pipeline state, SSE, gates) for tools
+- `agent-context.ts` — Creates runtime context for tools
 
-#### Knowledge Layer (`server/src/agents/knowledge/`)
-- `rules.ts` — Re-exports SECTION_GUIDANCE, QUALITY_CHECKLIST, RESUME_ANTI_PATTERNS, AGE_AWARENESS_RULES, ATS rules
-- `formatting-guide.ts` — Structured extracts from resume-formatting-guide.md (templates, typography, margins)
+### Model Routing (Groq — Primary)
 
-All agent types are in `server/src/agents/types.ts` — `PipelineState`, `PipelineStage`, `PipelineSSEEvent`, and per-agent I/O interfaces.
-
-### LLM Provider
-
-`server/src/lib/llm-provider.ts` — `GroqProvider` (primary) + `ZAIProvider` (fallback) + `AnthropicProvider` (optional). Selectable via `LLM_PROVIDER` env var. `GroqProvider` extends `ZAIProvider` with shorter timeouts (45s chat, 60s stream) and `disableParallelToolCalls: true`.
-
-### Model Routing
-
-`server/src/lib/llm.ts` — routes tools to cost-appropriate models. Provider-aware: each tier maps to different concrete models depending on `LLM_PROVIDER`.
-
-**Groq models (primary — `LLM_PROVIDER=groq`):**
-
-| Tier | Model | Cost (in/out per M) | Used For |
+| Tier | Model | Cost (per M in/out) | Used For |
 |------|-------|---------------------|----------|
 | PRIMARY | llama-3.3-70b-versatile | $0.59/$0.79 | Section writing, adversarial review |
 | MID | llama-4-scout-17b-16e-instruct | $0.11/$0.34 | Self-review, gap analysis, benchmarking |
 | ORCHESTRATOR | llama-3.3-70b-versatile | $0.59/$0.79 | Agent loop reasoning (all 3 agents) |
 | LIGHT | llama-3.1-8b-instant | $0.05/$0.08 | Text extraction, JD analysis |
 
-**Z.AI models (fallback — `LLM_PROVIDER=zai`):**
+Estimated pipeline cost: ~$0.23/pipeline (Groq) | ~$0.26/pipeline (Z.AI) | Pipeline time: 2–3 min (Groq)
 
-| Tier | Model | Cost (in/out per M) | Used For |
-|------|-------|---------------------|----------|
-| PRIMARY | glm-4.7 | $0.60/$2.20 | Section writing, adversarial review |
-| MID | glm-4.5-air | $0.20/$1.10 | classify_fit, build_benchmark |
-| ORCHESTRATOR | glm-4.7-flashx | $0.07/$0.40 | Main loop, fallback for unknown tools |
-| LIGHT | glm-4.7-flash | FREE | analyze_jd, humanize_check, research_* |
+### SSE Event Types
 
-**Estimated pipeline cost:** ~$0.23/pipeline (Groq) vs ~$0.26/pipeline (Z.AI). Pipeline time: ~2-3 min (Groq) vs 15-30 min (Z.AI).
+`stage_start` / `stage_complete` | `positioning_question` | `blueprint_ready` | `section_draft` / `section_revised` / `section_approved` | `quality_scores` | `pipeline_gate` | `questionnaire` | `right_panel_update` | `pipeline_complete` / `pipeline_error`
 
-### SSE Communication
-
-Pipeline emits events via `PipelineEmitter` callback → frontend receives via fetch-based SSE connection. Key event types:
-- `stage_start` / `stage_complete` — pipeline progress
-- `positioning_question` — interview questions for user
-- `blueprint_ready` — architect output for review
-- `section_draft` / `section_revised` / `section_approved` — section lifecycle
-- `quality_scores` — review results
-- `pipeline_gate` → user interaction required
-- `questionnaire` — structured questionnaire for user input
-- `right_panel_update` — updates right-side panel content
-- `pipeline_complete` / `pipeline_error` — terminal events
-
-### Interactive Gates
-
-Pipeline pauses at interaction points using `waitForUser()`. Frontend receives gate events, shows appropriate UI, and responds via `POST /api/pipeline/respond`. Questionnaires are gated behind feature flags (`FF_INTAKE_QUIZ`, etc.).
-
-### Routes
-
-- `POST /api/pipeline/start` — begins pipeline for a session
-- `GET /api/pipeline/:sessionId/stream` — SSE event stream
-- `POST /api/pipeline/respond` — user response to gates/questionnaires
-- `GET /api/sessions/:id` — session data
-- `GET/POST /api/resumes/...` — resume CRUD, PDF export
-
-### Utilities
-
-- `logger.ts` — pino logger with per-session child loggers
-- `supabase.ts` — admin client (service key, bypasses RLS)
-- `retry.ts` — `withRetry()` wrapper for flaky LLM calls
-- `json-repair.ts` — repairs malformed JSON from LLM responses
-- `session-lock.ts` — prevents concurrent pipeline runs per session
-- `questionnaire-helpers.ts` — builds questionnaire SSE events
-
-## Frontend Architecture
-
-### Panel System
-
-11 panel types rendered in the right pane, dispatched by `panel-renderer.tsx`:
+### Panel Types (11)
 
 `onboarding_summary` | `research_dashboard` | `gap_analysis` | `design_options` | `live_resume` | `quality_dashboard` | `completion` | `positioning_interview` | `blueprint_review` | `section_review` | `questionnaire`
 
-Each panel type has a corresponding component in `app/src/components/panels/`. `PanelData` is a discriminated union in `app/src/types/panels.ts` — the `type` field determines which component renders.
+### Database Tables
 
-`PanelErrorBoundary` wraps each panel to catch render errors gracefully.
+`master_resumes` | `job_applications` | `coach_sessions` | `messages` | `resumes` | `resume_sections` | `user_positioning_profiles` | `user_usage` | `pricing_plans` | `subscriptions` | `waitlist_emails`
 
-### SSE Hooks
+### Key Patterns
 
-- `usePipeline.ts` — connects to `/api/pipeline/:sessionId/stream`, parses SSE events, manages panel state and gate state
-- `useAgent.ts` — legacy SSE hook (being replaced by pipeline)
-- `useSession.ts` — session lifecycle management
-- `useAuth.ts` — Supabase auth state
+- **Agentic loop** — Each agent runs multi-round LLM loop. The LLM decides which tools to call and when to stop.
+- **Agent tools** — Typed objects `{ name, description, input_schema, execute }`. LLM sees the schema; `execute` runs when called.
+- **Inter-agent messaging** — Agents communicate through `AgentBus` using `AgentMessage` format.
+- **Self-review loop** — Craftsman writes, self-reviews, then presents to user. Write-review-revise happens autonomously.
+- **Pipeline gates** — `waitForUser()` pauses → SSE event → user interacts → `POST /api/pipeline/respond` → resumes.
+- **Tool-to-model routing** — `getModelForTool(toolName)` in `llm.ts` maps each tool to the right cost tier.
+- **Imports** — `@/` alias for app; `.js` extensions for server (ESM).
+- **Error handling** — Pipeline wraps each stage in try/catch, emits `pipeline_error`. Never throw from SSE handlers.
+- **TypeScript** — Strict mode. Both `app/` and `server/` must pass `tsc --noEmit`. Avoid `any`.
 
-### Styling
+### Known Issues
 
-- TailwindCSS utility classes throughout
-- Glass morphism design: `GlassCard`, `GlassButton`, `GlassInput` components
-- `cn()` helper from `@/lib/utils` for conditional class merging
-- Routing: React Router v7 with auth guard
-- Auth: Supabase Auth (email/password), `AuthContext` provider
+- **Bug 16** — Revision loops: agent may re-propose edits after user approves a section
+- **Bug 17** — Context forgetfulness on long sessions (mitigated by MAX_HISTORY_MESSAGES=60)
+- **Bug 18** — 409 Conflict: frontend sends messages while agent is still processing
+- **MaxListenersExceededWarning** — Abort listeners exceed 10 on long sessions
+- **PDF Unicode** — Check exports for `?` characters replacing special chars
 
-## Database
+---
 
-Supabase (PostgreSQL) with RLS policies on all tables. Admin client in `server/src/lib/supabase.ts` uses service key (bypasses RLS).
-
-**Key tables**: `master_resumes`, `job_applications`, `coach_sessions`, `messages`, `resumes`, `resume_sections`, `user_positioning_profiles`, `user_usage`, `pricing_plans`, `subscriptions`, `waitlist_emails`
-
-Migrations in `supabase/migrations/` — numbered sequentially (001-012, then timestamped).
-
-## Key Patterns & Conventions
-
-- **Agentic loop**: Each agent runs as a multi-round LLM loop (`agent-loop.ts`). The LLM decides which tools to call and when to stop. Tools execute against the shared `AgentContext`.
-- **Agent tools**: Typed objects `{ name, description, input_schema, execute }`. Tools wrap existing pipeline functions (e.g., `parse_resume` wraps `runIntakeAgent`). The LLM sees the schema; `execute` runs when called.
-- **Inter-agent messaging**: Agents communicate through `AgentBus` using standard `AgentMessage` format. The coordinator subscribes to bus events to handle cross-agent requests (e.g., Producer -> Craftsman revision requests).
-- **Self-review loop**: The Craftsman writes each section, then self-reviews against quality checklist and anti-pattern list before presenting to the user. This write-review-revise cycle happens autonomously within the agent loop.
-- **Pipeline gates**: `waitForUser()` pauses -> SSE event to frontend -> user interacts -> `POST /api/pipeline/respond` -> pipeline resumes.
-- **Tool-to-model routing**: `getModelForTool(toolName)` in `llm.ts` maps each tool to the right cost tier. Agent loops use `MODEL_ORCHESTRATOR` (70B on Groq, flashx on Z.AI) for reasoning; individual tools route to their own cost tiers.
-- **Panel rendering**: `panel-renderer.tsx` maps `PanelData.type` -> component. `PanelErrorBoundary` wraps each panel.
-- **Message format**: Internal content-block format; `ZAIProvider` translates to/from OpenAI format when active.
-- **Imports**: `@/` alias for app imports; `.js` extensions for server imports (ESM).
-- **Error handling**: Pipeline wraps each stage in try/catch, emits `pipeline_error` events. Never throw from SSE handlers.
-- **TypeScript**: Strict mode. Both `app/` and `server/` must pass `tsc --noEmit`. Avoid `any` where possible.
-- **JSON repair**: LLM responses often contain malformed JSON — `json-repair.ts` handles this.
-- **Session locks**: `session-lock.ts` prevents concurrent pipeline runs on the same session.
-
-## Known Issues
-
-- **Groq tool validation recovery**: 70B is GA with reliable tool calling, but `recoverFromToolValidation()` in `llm-provider.ts` is kept as a safety net. Monitor warn-level logs for trigger frequency.
-- **Parameter coercion**: `coerceToolParameters()` in `agent-loop.ts` handles stringified JSON params. Should trigger rarely with 70B. Monitor warn-level logs.
-- **JSON comment stripping**: `stripJsonComments()` in `json-repair.ts` handles Llama-generated `//` comments in JSON. Kept as safety net.
-- **Z.AI API latency** (if using Z.AI fallback): 1-5 min per call; timeouts at 3min (chat) / 5min (stream)
-- **MaxListenersExceededWarning**: Abort listeners exceed 10 on long sessions
-- **Revision loops (Bug 16)**: Agent may re-propose edits after user approves a section
-- **Context forgetfulness (Bug 17)**: Agent may forget completed sections on long sessions (mitigated by raising MAX_HISTORY_MESSAGES to 60)
-- **409 Conflict (Bug 18)**: Frontend sends messages while agent is still processing
-- **PDF Unicode**: Check PDF exports for `?` characters replacing special chars
-
-## Testing & Verification
-
-- **Server**: 891 tests passing (`cd server && npx vitest run`)
-- **App**: 416 tests passing (`cd app && npx vitest run`)
-- **E2E full pipeline**: `npx playwright test --project=full-pipeline` (15 min timeout, expects <5 min completion with Groq)
-- TypeScript compilation (`tsc --noEmit`) is the primary CI gate
-- Manual E2E: Login with test credentials -> start new session -> paste JD -> run through all stages -> export PDF
+*This framework is version 2.0. Update it through the normal story/sprint process — never ad hoc.*

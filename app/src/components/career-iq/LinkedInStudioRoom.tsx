@@ -49,7 +49,7 @@ const PROFILE_SECTION_ORDER: ProfileSection[] = ['headline', 'about', 'experienc
 
 // ─── Sub-components ───────────────────────────────────────────────────────
 
-function ActivityFeed({ messages, label }: { messages: Array<{ id: string; text: string; timestamp: number }>; label?: string }) {
+function ActivityFeed({ messages, label }: { messages: Array<{ id: string; message: string; timestamp: number }>; label?: string }) {
   if (messages.length === 0) return null;
   return (
     <GlassCard className="p-4">
@@ -60,7 +60,7 @@ function ActivityFeed({ messages, label }: { messages: Array<{ id: string; text:
       <div className="space-y-1 max-h-[160px] overflow-y-auto">
         {messages.slice(-8).map((msg) => (
           <div key={msg.id} className="text-[11px] text-white/40 leading-relaxed">
-            {msg.text}
+            {msg.message}
           </div>
         ))}
       </div>

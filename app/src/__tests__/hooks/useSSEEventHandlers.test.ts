@@ -271,7 +271,7 @@ describe('handleAskUser', () => {
       question: 'How many engineers?',
       context: 'Team size',
       inputType: 'text',
-      choices: null,
+      choices: undefined,
       skipAllowed: true,
     });
   });

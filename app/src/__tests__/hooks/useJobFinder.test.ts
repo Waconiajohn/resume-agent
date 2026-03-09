@@ -242,7 +242,7 @@ describe('useJobFinder', () => {
 
     expect(result.current.booleanSearches).toHaveLength(2);
     expect(result.current.booleanSearches[0].platform).toBe('LinkedIn');
-    expect(result.current.activityMessages.some((m) => m.text === 'Building search strings...')).toBe(true);
+    expect(result.current.activityMessages.some((m) => m.message === 'Building search strings...')).toBe(true);
   });
 
   it('handles pipeline_gate SSE event — sets status to gate', async () => {
@@ -340,9 +340,9 @@ describe('useJobFinder', () => {
     });
 
     expect(result.current.activityMessages).toHaveLength(3);
-    expect(result.current.activityMessages[0].text).toBe('Starting job search...');
-    expect(result.current.activityMessages[1].text).toBe('Querying 3 job boards...');
-    expect(result.current.activityMessages[2].text).toBe('Search complete.');
+    expect(result.current.activityMessages[0].message).toBe('Starting job search...');
+    expect(result.current.activityMessages[1].message).toBe('Querying 3 job boards...');
+    expect(result.current.activityMessages[2].message).toBe('Search complete.');
   });
 
   it('respondToGate returns false when no active session', async () => {

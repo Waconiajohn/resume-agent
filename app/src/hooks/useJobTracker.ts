@@ -3,14 +3,10 @@ import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
-export type JobTrackerStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+import type { ActivityMessage } from '@/types/activity';
 
-export interface ActivityMessage {
-  id: string;
-  text: string;
-  stage: string;
-  timestamp: number;
-}
+export type { ActivityMessage };
+export type JobTrackerStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
 
 interface JobTrackerHookState {
   status: JobTrackerStatus;
@@ -80,7 +76,7 @@ export function useJobTracker() {
       ...prev,
       activityMessages: [
         ...prev.activityMessages.slice(-(MAX_ACTIVITY_MESSAGES - 1)),
-        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, text, stage, timestamp: Date.now() },
+        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message: text, stage, timestamp: Date.now() },
       ],
     }));
   }, []);

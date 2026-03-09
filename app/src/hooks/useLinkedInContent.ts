@@ -12,12 +12,9 @@ export type LinkedInContentStatus =
   | 'complete'
   | 'error';
 
-export interface ActivityMessage {
-  id: string;
-  text: string;
-  stage: string;
-  timestamp: number;
-}
+import type { ActivityMessage } from '@/types/activity';
+
+export type { ActivityMessage };
 
 export interface TopicSuggestion {
   id: string;
@@ -90,7 +87,7 @@ export function useLinkedInContent() {
       ...prev,
       activityMessages: [
         ...prev.activityMessages.slice(-(MAX_ACTIVITY_MESSAGES - 1)),
-        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, text, stage, timestamp: Date.now() },
+        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message: text, stage, timestamp: Date.now() },
       ],
     }));
   }, []);

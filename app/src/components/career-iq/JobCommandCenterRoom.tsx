@@ -61,7 +61,7 @@ function SmartMatches({
 }: {
   matches: RankedMatch[];
   status: string;
-  activityMessages: { id: string; text: string; stage: string; timestamp: number }[];
+  activityMessages: { id: string; message: string; stage?: string; timestamp: number }[];
   gateData: { topics?: unknown; results?: unknown } | null;
   error: string | null;
   onNavigate: (route: string) => void;
@@ -103,7 +103,7 @@ function SmartMatches({
                   second: '2-digit',
                 })}
               </span>
-              <span className="text-white/50">{msg.text}</span>
+              <span className="text-white/50">{msg.message}</span>
             </div>
           ))}
           {activityMessages.length === 0 && (
@@ -640,7 +640,7 @@ function TrackerGenerator() {
                   second: '2-digit',
                 })}
               </span>
-              <span className="text-white/50">{msg.text}</span>
+              <span className="text-white/50">{msg.message}</span>
             </div>
           ))}
         </div>

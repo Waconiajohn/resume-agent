@@ -281,7 +281,7 @@ describe('useMockInterview', () => {
     });
 
     expect(result.current.activityMessages).toHaveLength(1);
-    expect(result.current.activityMessages[0].text).toBe(
+    expect(result.current.activityMessages[0].message).toBe(
       'Generating behavioral question based on your leadership experience...',
     );
     expect(result.current.activityMessages[0].stage).toBe('question_generation');
@@ -489,7 +489,7 @@ describe('useMockInterview', () => {
     });
 
     expect(result.current.activityMessages).toHaveLength(2);
-    expect(result.current.activityMessages[0].text).toBe('Generating your personalized questions...');
-    expect(result.current.activityMessages[1].text).toBe('Questions ready — starting interview');
+    expect(result.current.activityMessages[0].message).toBe('Generating your personalized questions...');
+    expect(result.current.activityMessages[1].message).toBe('Questions ready — starting interview');
   });
 });

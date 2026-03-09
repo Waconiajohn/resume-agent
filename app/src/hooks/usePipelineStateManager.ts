@@ -20,7 +20,7 @@ import type {
 } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 import type { PanelType, PanelData, SectionWorkbenchContext } from '@/types/panels';
-import type { ActivityMessage } from '@/components/IntelligenceActivityFeed';
+import type { ActivityMessage } from '@/types/activity';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

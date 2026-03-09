@@ -45,8 +45,8 @@ const runningState = {
   ...idleState,
   status: 'running' as const,
   activityMessages: [
-    { id: '1', text: 'Analyzing your professional background', stage: 'analysis', timestamp: Date.now() },
-    { id: '2', text: 'Drafting speaker bio', stage: 'drafting', timestamp: Date.now() },
+    { id: '1', message: 'Analyzing your professional background', stage: 'analysis', timestamp: Date.now() },
+    { id: '2', message: 'Drafting speaker bio', stage: 'drafting', timestamp: Date.now() },
   ],
   currentStage: 'drafting',
 };

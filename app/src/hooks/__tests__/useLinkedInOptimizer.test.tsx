@@ -382,7 +382,7 @@ describe('useLinkedInOptimizer — stage_start event', () => {
 
     expect(result.current.activityMessages.length).toBeGreaterThan(0);
     const last = result.current.activityMessages[result.current.activityMessages.length - 1];
-    expect(last.text).toBe('Analyzing your LinkedIn profile...');
+    expect(last.message).toBe('Analyzing your LinkedIn profile...');
     expect(last.stage).toBe('analyzing');
   });
 });
