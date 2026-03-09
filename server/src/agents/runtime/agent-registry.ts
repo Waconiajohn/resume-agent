@@ -138,4 +138,54 @@ export interface AgentDescription {
   max_rounds: number;
 }
 
+// ─── Startup validation ────────────────────────────────────────────
+
+/**
+ * Result returned by `validateRegisteredAgents()`.
+ */
+export interface RegistryValidationResult {
+  /** Number of tools that have a `model_tier` set. */
+  valid: number;
+  /** Warning messages for tools missing `model_tier`. */
+  warnings: string[];
+}
+
+/**
+ * Validate all registered agents at startup.
+ *
+ * Iterates every registered agent's tool list and checks that each tool
+ * has a `model_tier` set.  Any tool without `model_tier` will silently
+ * fall back to `MODEL_ORCHESTRATOR` at runtime — this warning makes that
+ * visible at startup so it can be corrected.
+ *
+ * This is a diagnostic, not a gate.  It never throws — it only logs.
+ *
+ * Usage (in `server/src/index.ts` after all agents have registered):
+ * ```ts
+ * import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
+ * const { warnings } = validateRegisteredAgents();
+ * for (const w of warnings) logger.warn(w);
+ * ```
+ */
+export function validateRegisteredAgents(): RegistryValidationResult {
+  const warnings: string[] = [];
+  let valid = 0;
+
+  for (const config of agentRegistry.list()) {
+    const agentKey = `${config.identity.domain}:${config.identity.name}`;
+    for (const tool of config.tools) {
+      if (tool.model_tier) {
+        valid++;
+      } else {
+        warnings.push(
+          `[registry] Tool "${tool.name}" on agent "${agentKey}" has no model_tier — ` +
+          'will fallback to MODEL_ORCHESTRATOR at runtime',
+        );
+      }
+    }
+  }
+
+  return { valid, warnings };
+}
+
 export type { AgentRegistry };

@@ -33,6 +33,9 @@ import { llm, MODEL_LIGHT, MODEL_MID } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
 
+// ─── Re-export base types for factory consumers ───────────────────────
+export type { BaseState, BaseEvent, AgentContext };
+
 // ─── emit_transparency factory ────────────────────────────────────────
 
 /**
@@ -535,6 +538,283 @@ export function createSelfReview<
       ctx.scratchpad[config.scoreScratchpadKey] = result;
 
       return result;
+    },
+  };
+}
+
+// ─── createAntiPatternCheck factory ──────────────────────────────────
+
+/**
+ * A single anti-pattern rule: a regex to test the content against, a
+ * human-readable message to surface when the pattern matches, and a
+ * penalty (in points out of 100) to deduct from the score.
+ */
+export interface AntiPattern {
+  pattern: RegExp;
+  message: string;
+  /** Points to deduct from 100 when this pattern is found. */
+  penalty: number;
+}
+
+/**
+ * The output stored in the scratchpad and returned by the tool.
+ */
+export interface AntiPatternCheckResult {
+  score: number;
+  violations: Array<{ pattern: string; message: string }>;
+  clean: boolean;
+}
+
+/**
+ * Configuration for the createAntiPatternCheck factory.
+ */
+export interface AntiPatternCheckConfig {
+  /**
+   * Tool name — e.g. `'check_anti_patterns'` or `'check_outreach_quality'`.
+   */
+  name: string;
+
+  /**
+   * Human-readable tool description shown to the LLM.
+   */
+  description: string;
+
+  /**
+   * Ordered list of anti-pattern rules. Each pattern is tested against the
+   * full content string. Penalties accumulate; the minimum score is 0.
+   */
+  patterns: AntiPattern[];
+
+  /**
+   * Scratchpad key from which the content string is read.
+   * The tool reads `String(ctx.scratchpad[contentScratchpadKey] ?? '')`.
+   *
+   * Example: `'section_summary'` (resume) or `'post_draft'` (LinkedIn).
+   */
+  contentScratchpadKey: string;
+
+  /**
+   * Scratchpad key where the AntiPatternCheckResult is stored.
+   * Downstream tools can read this to decide whether to revise.
+   *
+   * Example: `'anti_pattern_result'`, `'outreach_quality_result'`
+   */
+  scoreScratchpadKey: string;
+}
+
+/**
+ * Create a tool that checks content against a list of regex anti-patterns.
+ *
+ * This factory centralises the penalty-based quality scoring that was duplicated
+ * inline in the networking-outreach writer tools (inline regex checks on each
+ * message body) and in craftsman/tools.ts (`check_anti_patterns`).  Any new
+ * agent that needs fast, LLM-free content quality gating can use this factory.
+ *
+ * No LLM call — pure regex evaluation. Model tier: `orchestrator`
+ * (tool decides whether to revise; the agent loop handles iteration).
+ *
+ * The tool:
+ * 1. Reads `String(ctx.scratchpad[contentScratchpadKey] ?? '')`.
+ * 2. Tests each `AntiPattern.pattern` against the content.
+ * 3. Starts at 100 and subtracts each matching pattern's `penalty`.
+ * 4. Clamps the final score to [0, 100].
+ * 5. Stores `{ score, violations, clean }` at `ctx.scratchpad[scoreScratchpadKey]`.
+ * 6. Returns the result directly.
+ *
+ * Returns `{ success: false, reason }` when the content key is empty.
+ */
+export function createAntiPatternCheck<
+  TState extends BaseState,
+  TEvent extends BaseEvent,
+>(config: AntiPatternCheckConfig): AgentTool<TState, TEvent> {
+  return {
+    name: config.name,
+    description: config.description,
+    model_tier: 'orchestrator',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+
+    async execute(
+      _input: Record<string, unknown>,
+      ctx: AgentContext<TState, TEvent>,
+    ): Promise<unknown> {
+      const content = String(ctx.scratchpad[config.contentScratchpadKey] ?? '').trim();
+
+      if (!content) {
+        return {
+          success: false,
+          reason:
+            `No content to check — scratchpad["${config.contentScratchpadKey}"] is empty`,
+        };
+      }
+
+      let score = 100;
+      const violations: Array<{ pattern: string; message: string }> = [];
+
+      for (const rule of config.patterns) {
+        if (rule.pattern.test(content)) {
+          score -= rule.penalty;
+          violations.push({
+            pattern: rule.pattern.toString(),
+            message: rule.message,
+          });
+        }
+      }
+
+      score = Math.max(0, score);
+
+      const result: AntiPatternCheckResult = {
+        score,
+        violations,
+        clean: violations.length === 0,
+      };
+
+      ctx.scratchpad[config.scoreScratchpadKey] = result;
+
+      return result;
+    },
+  };
+}
+
+// ─── createPresentForReview factory ──────────────────────────────────
+
+/**
+ * Configuration for the createPresentForReview factory.
+ */
+export interface PresentForReviewConfig<TState extends BaseState, TEvent extends BaseEvent> {
+  /**
+   * Tool name — e.g. `'present_to_user'` or `'present_post'`.
+   */
+  name: string;
+
+  /**
+   * Human-readable tool description shown to the LLM.
+   */
+  description: string;
+
+  /**
+   * Scratchpad key from which the content to present is read.
+   * The tool reads `ctx.scratchpad[contentScratchpadKey]`.
+   *
+   * Example: `'section_summary'` (resume) or `'post_draft'` (LinkedIn).
+   */
+  contentScratchpadKey: string;
+
+  /**
+   * Prefix used to form the `waitForUser` gate name.
+   * The gate will be named `${gateNamePrefix}_review` for a fixed gate,
+   * or the caller can suffix with a dynamic segment by using the optional
+   * `gateKeySuffix` field in `buildEventPayload`.
+   *
+   * Example: `'section'` → gate `'section_review'`
+   * Example: `'post'`    → gate `'post_review'`
+   */
+  gateNamePrefix: string;
+
+  /**
+   * SSE event type to emit (e.g. `'section_draft'`, `'post_draft_ready'`).
+   * The event body is built by `buildEventPayload`.
+   */
+  eventType: string;
+
+  /**
+   * Build the full SSE event payload from the scratchpad content and
+   * the current agent context.  The result is spread-merged with
+   * `{ type: eventType }` before being emitted.
+   *
+   * The `content` argument is `ctx.scratchpad[contentScratchpadKey]` as-is
+   * (not stringified) so the builder can handle any stored shape.
+   *
+   * If the builder needs a dynamic gate key suffix (e.g. section name),
+   * it should return `{ __gate_suffix: 'mysuffix', ... }` — the factory
+   * strips the `__gate_suffix` field before emitting and appends it to the
+   * gate name.
+   */
+  buildEventPayload: (
+    content: unknown,
+    ctx: AgentContext<TState, TEvent>,
+  ) => Record<string, unknown>;
+}
+
+/**
+ * Create a tool that presents content to the user via SSE, then pauses the
+ * agent loop until the user responds via a `waitForUser` gate.
+ *
+ * The same "emit SSE → waitForUser → return response" pattern was duplicated in:
+ * - craftsman/tools.ts (`present_to_user`)
+ * - linkedin-content/writer/tools.ts (`present_post` — emit only, no gate)
+ *
+ * This factory centralises the pattern for any agent that needs interactive
+ * review.  New agents get the correct emit + gate behaviour for free.
+ *
+ * No LLM call — purely SSE emission + gate. Model tier: `orchestrator`.
+ *
+ * The tool:
+ * 1. Reads `ctx.scratchpad[contentScratchpadKey]`.
+ * 2. Calls `buildEventPayload(content, ctx)` to build the SSE payload.
+ * 3. Emits `{ type: eventType, ...payload }` (strips internal `__gate_suffix`).
+ * 4. Calls `ctx.waitForUser(gateName)` where `gateName` is
+ *    `${gateNamePrefix}_review[_${suffix}]` (suffix from `__gate_suffix`).
+ * 5. Returns the raw user response (approved / feedback / edited content).
+ *
+ * Returns `{ success: false, reason }` if the content key is empty.
+ */
+export function createPresentForReview<
+  TState extends BaseState,
+  TEvent extends BaseEvent,
+>(config: PresentForReviewConfig<TState, TEvent>): AgentTool<TState, TEvent> {
+  return {
+    name: config.name,
+    description: config.description,
+    model_tier: 'orchestrator',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+
+    async execute(
+      _input: Record<string, unknown>,
+      ctx: AgentContext<TState, TEvent>,
+    ): Promise<unknown> {
+      const content = ctx.scratchpad[config.contentScratchpadKey];
+
+      if (content === undefined || content === null || String(content).trim() === '') {
+        return {
+          success: false,
+          reason:
+            `No content to present — scratchpad["${config.contentScratchpadKey}"] is empty`,
+        };
+      }
+
+      // Build payload — may contain internal __gate_suffix directive
+      const rawPayload = config.buildEventPayload(content, ctx);
+
+      // Extract optional gate suffix before emitting
+      const gateSuffix =
+        typeof rawPayload.__gate_suffix === 'string' ? rawPayload.__gate_suffix : undefined;
+
+      // Build the SSE payload without the internal directive
+      const { __gate_suffix: _stripped, ...eventPayload } = rawPayload;
+
+      // Emit the SSE event
+      ctx.emit({
+        type: config.eventType,
+        ...eventPayload,
+      } as unknown as TEvent);
+
+      // Build the gate name
+      const gateName = gateSuffix
+        ? `${config.gateNamePrefix}_review_${gateSuffix}`
+        : `${config.gateNamePrefix}_review`;
+
+      // Pause the agent loop until the user responds
+      const userResponse = await ctx.waitForUser<unknown>(gateName);
+
+      return userResponse;
     },
   };
 }

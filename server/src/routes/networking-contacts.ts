@@ -13,6 +13,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { FF_NETWORKING_CRM } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { processNewTouchpoint } from '../lib/networking-crm-service.js';
 import logger from '../lib/logger.js';
 
 export const networkingContacts = new Hono();
@@ -383,72 +384,23 @@ networkingContacts.post(
         return c.json({ error: 'Contact not found' }, 404);
       }
 
-      const now = new Date().toISOString();
-
-      // Insert touchpoint
-      const { data: touchpoint, error: touchpointError } = await supabaseAdmin
-        .from('contact_touchpoints')
-        .insert({
-          user_id: user.id,
-          contact_id: contactId,
+      let result;
+      try {
+        result = await processNewTouchpoint({
+          userId: user.id,
+          contactId,
           type: parsed.data.type,
-          notes: parsed.data.notes ?? null,
-        })
-        .select('*')
-        .single();
-
-      if (touchpointError) {
+          notes: parsed.data.notes,
+        });
+      } catch (insertErr) {
         logger.error(
-          { error: touchpointError.message, contactId, userId: user.id },
+          { error: insertErr instanceof Error ? insertErr.message : String(insertErr), contactId, userId: user.id },
           'POST /contacts/:id/touchpoints: insert failed',
         );
         return c.json({ error: 'Failed to create touchpoint' }, 500);
       }
 
-      // Count total touchpoints after insert to determine follow-up schedule
-      const { count: touchpointCount } = await supabaseAdmin
-        .from('contact_touchpoints')
-        .select('id', { count: 'exact', head: true })
-        .eq('contact_id', contactId);
-
-      const total = touchpointCount ?? 0;
-
-      // Four-Touch Follow-Up Discipline:
-      // 1st touch → +4 days, 2nd-3rd → +6 days, 4th+ → clear (sequence complete)
-      let nextFollowup: string | null;
-      if (total <= 1) {
-        nextFollowup = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
-      } else if (total <= 3) {
-        nextFollowup = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
-      } else {
-        nextFollowup = null; // Sequence complete
-      }
-
-      // Bump relationship_strength at milestones
-      const contactUpdate: Record<string, unknown> = {
-        last_contact_date: now,
-        next_followup_at: nextFollowup,
-      };
-      if (total === 2) {
-        contactUpdate.relationship_strength = 2;
-      } else if (total === 4) {
-        contactUpdate.relationship_strength = 3;
-      }
-
-      const { error: updateError } = await supabaseAdmin
-        .from('networking_contacts')
-        .update(contactUpdate)
-        .eq('id', contactId)
-        .eq('user_id', user.id);
-
-      if (updateError) {
-        logger.warn(
-          { error: updateError.message, contactId, userId: user.id },
-          'POST /contacts/:id/touchpoints: contact update failed (non-fatal)',
-        );
-      }
-
-      return c.json({ touchpoint }, 201);
+      return c.json({ touchpoint: result.touchpoint }, 201);
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },

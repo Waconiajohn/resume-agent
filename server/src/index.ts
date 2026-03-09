@@ -47,6 +47,7 @@ import { getRequestMetrics, recordRequestMetric } from './lib/request-metrics.js
 import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
 import { initSentry, captureError, captureErrorWithContext, flushSentry } from './lib/sentry.js';
+import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
 
 const app = new Hono();
 let shuttingDown = false;
@@ -391,6 +392,16 @@ export function startServer() {
   if (server) return server;
 
   logger.info({ port }, 'Resume Agent server starting');
+
+  // Run startup registry validation — warns about tools missing model_tier.
+  // All agents register on module load (via their route imports above), so the
+  // registry is fully populated by the time startServer() is called.
+  const { valid: validToolCount, warnings: registryWarnings } = validateRegisteredAgents();
+  logger.info({ valid_tool_count: validToolCount }, 'Agent registry validation complete');
+  for (const w of registryWarnings) {
+    logger.warn(w);
+  }
+
   server = serve({ fetch: app.fetch, port });
   logger.info({ port }, `Server running at http://localhost:${port}`);
 

@@ -2,9 +2,9 @@
  * Momentum Routes — /api/momentum/*
  *
  * Deterministic CRUD routes for momentum tracking: activity logging,
- * streak computation, coaching nudges. No LLM calls in this file —
- * the Cognitive Reframing Engine (lib/cognitive-reframing.ts) handles
- * the LLM-powered stall detection and nudge generation.
+ * streak computation, coaching nudges. LLM orchestration is delegated
+ * to lib/momentum-service.ts; the cognitive-reframing engine handles
+ * stall detection and message generation.
  *
  * Feature-flagged via FF_MOMENTUM.
  * Mounted at /api/momentum by server/src/index.ts.
@@ -16,8 +16,11 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { FF_MOMENTUM } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
-import { detectStalls, generateCoachingMessage } from '../lib/cognitive-reframing.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { computeStreak, checkStallsAndGenerateNudges, generateCelebration } from '../lib/momentum-service.js';
+
+// Re-export streak helpers so existing consumers (tests, other routes) can import
+// from the route module without breaking.
+export { computeStreak } from '../lib/momentum-service.js';
 import logger from '../lib/logger.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -87,79 +90,6 @@ const coachingRequestSchema = z.object({
   description: z.string().min(10).max(2000),
   urgency: z.enum(ALLOWED_URGENCIES).optional().default('normal'),
 });
-
-// ─── Streak computation ───────────────────────────────────────────────────────
-
-/**
- * Given activities sorted by created_at DESC, compute:
- * - current: consecutive days backwards from today with at least 1 activity.
- *   If no activity TODAY, current = 0 (encourages daily action).
- * - longest: maximum consecutive day streak ever.
- */
-export function computeStreak(
-  activities: Array<{ created_at: string }>,
-): { current: number; longest: number } {
-  if (activities.length === 0) {
-    return { current: 0, longest: 0 };
-  }
-
-  // Extract unique UTC date strings (YYYY-MM-DD), sorted descending
-  const dates = Array.from(
-    new Set(
-      activities.map((a) => a.created_at.slice(0, 10)),
-    ),
-  ).sort((a, b) => (a > b ? -1 : 1));
-
-  const todayUtc = new Date().toISOString().slice(0, 10);
-
-  // ── Current streak ──
-  // If the most recent activity is not today, streak is 0
-  let current = 0;
-  if (dates[0] === todayUtc) {
-    current = 1;
-    for (let i = 1; i < dates.length; i++) {
-      const prev = dates[i - 1];
-      const curr = dates[i];
-      // Check if curr is exactly 1 day before prev
-      if (isConsecutiveDay(curr, prev)) {
-        current += 1;
-      } else {
-        break;
-      }
-    }
-  }
-
-  // ── Longest streak ──
-  let longest = 0;
-  let runLength = 1;
-  for (let i = 1; i < dates.length; i++) {
-    const prev = dates[i - 1];
-    const curr = dates[i];
-    if (isConsecutiveDay(curr, prev)) {
-      runLength += 1;
-    } else {
-      if (runLength > longest) longest = runLength;
-      runLength = 1;
-    }
-  }
-  if (runLength > longest) longest = runLength;
-
-  // Edge: single day of activity counts as streak of 1
-  if (dates.length > 0 && longest === 0) longest = 1;
-
-  return { current, longest };
-}
-
-/**
- * Returns true if `earlier` is exactly one calendar day before `later`.
- * Both inputs are UTC date strings (YYYY-MM-DD).
- */
-function isConsecutiveDay(earlier: string, later: string): boolean {
-  const e = new Date(earlier + 'T00:00:00Z');
-  const l = new Date(later + 'T00:00:00Z');
-  const diffMs = l.getTime() - e.getTime();
-  return diffMs === 24 * 60 * 60 * 1000;
-}
 
 // ─── Completed activity types (for "recent wins") ─────────────────────────────
 
@@ -426,66 +356,8 @@ momentumRoutes.post(
     const user = c.get('user');
 
     try {
-      const [stalls, baseline] = await Promise.all([
-        detectStalls(user.id),
-        getEmotionalBaseline(user.id),
-      ]);
-
-      if (stalls.length === 0) {
-        return c.json({ nudges: [] });
-      }
-
-      // Deduplication: don't re-trigger the same trigger_type within 3 days
-      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: recentNudges } = await supabaseAdmin
-        .from('coaching_nudges')
-        .select('trigger_type')
-        .eq('user_id', user.id)
-        .gte('created_at', threeDaysAgo);
-
-      const recentTriggerTypes = new Set(
-        (recentNudges ?? []).map((n: { trigger_type: string }) => n.trigger_type),
-      );
-
-      const newStalls = stalls.filter((s) => !recentTriggerTypes.has(s.trigger_type));
-      if (newStalls.length === 0) {
-        return c.json({ nudges: [] });
-      }
-
-      // Generate and persist nudges for each new stall
-      const nudgeInserts = await Promise.allSettled(
-        newStalls.map(async (stall) => {
-          const message = await generateCoachingMessage(stall, baseline, user.email ?? 'there');
-          const coachingTone = baseline?.coaching_tone ?? 'supportive';
-
-          const { data: nudge, error } = await supabaseAdmin
-            .from('coaching_nudges')
-            .insert({
-              user_id: user.id,
-              trigger_type: stall.trigger_type,
-              message,
-              coaching_tone: coachingTone,
-            })
-            .select('*')
-            .single();
-
-          if (error) {
-            logger.error(
-              { error: error.message, userId: user.id, triggerType: stall.trigger_type },
-              'POST /momentum/check-stalls: nudge insert failed',
-            );
-            return null;
-          }
-
-          return nudge;
-        }),
-      );
-
-      const createdNudges = nudgeInserts
-        .filter((r) => r.status === 'fulfilled' && r.value !== null)
-        .map((r) => (r as PromiseFulfilledResult<unknown>).value);
-
-      return c.json({ nudges: createdNudges });
+      const result = await checkStallsAndGenerateNudges(user.id, user.email ?? 'there');
+      return c.json(result);
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
@@ -513,34 +385,8 @@ momentumRoutes.post(
     const { milestone } = parsed.data;
 
     try {
-      const baseline = await getEmotionalBaseline(user.id);
-
-      const message = await generateCoachingMessage(
-        { trigger_type: 'milestone', context: milestone },
-        baseline,
-        user.email ?? 'there',
-      );
-
-      const coachingTone = baseline?.coaching_tone ?? 'supportive';
-
-      const { data: nudge, error } = await supabaseAdmin
-        .from('coaching_nudges')
-        .insert({
-          user_id: user.id,
-          trigger_type: 'milestone',
-          message,
-          coaching_tone: coachingTone,
-        })
-        .select('*')
-        .single();
-
-      if (error) {
-        logger.warn({ error: error.message, userId: user.id }, 'POST /momentum/celebrate: nudge persist failed (non-fatal)');
-        // Still return the message even if persist fails
-        return c.json({ message, nudge: null });
-      }
-
-      return c.json({ message, nudge });
+      const result = await generateCelebration(user.id, user.email ?? 'there', milestone);
+      return c.json(result);
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },

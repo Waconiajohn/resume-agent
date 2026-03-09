@@ -2,8 +2,8 @@
  * Planner Handoff Routes — /api/planner-handoff/*
  *
  * Implements the Financial Planner Warm Handoff protocol (Story 6-4).
- * All routes are deterministic CRUD except POST /refer which calls MODEL_MID
- * once to generate the handoff document.
+ * LLM orchestration and qualification pipeline are delegated to
+ * lib/planner-handoff-service.ts.
  *
  * Endpoints:
  *   POST /qualify       — run all 5 lead qualification gates
@@ -21,15 +21,15 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { FF_RETIREMENT_BRIDGE } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
 import {
-  qualifyLead,
   matchPlanners,
-  generateHandoffDocument,
-  createReferral,
   updateReferralStatus,
   getUserReferrals,
 } from '../lib/planner-handoff.js';
+import {
+  qualifyWithEmotionalReadiness,
+  runHandoffPipeline,
+} from '../lib/planner-handoff-service.js';
 import logger from '../lib/logger.js';
 
 // ─── Shared schema building blocks ───────────────────────────────────────────
@@ -97,27 +97,14 @@ plannerHandoffRoutes.post(
 
     const { user_id, opt_in, asset_range, geography } = parsed.data;
 
-    // Fix 1: Verify user_id matches authenticated user
     const user = c.get('user');
     if (user_id !== user.id) {
       return c.json({ error: 'Forbidden: user_id mismatch' }, 403);
     }
 
-    // Fix 2: Derive emotional readiness server-side from platform context
-    let emotionalReadiness = true;
     try {
-      const baselineRows = await getUserContext(user_id, 'emotional_baseline');
-      if (baselineRows.length > 0) {
-        const baseline = baselineRows[0].content as Record<string, unknown>;
-        emotionalReadiness = baseline.distress_detected !== true;
-      }
-    } catch {
-      // Non-fatal — default to true if baseline unavailable
-    }
-
-    try {
-      const result = await qualifyLead(user_id, opt_in, asset_range, geography, emotionalReadiness);
-      return c.json(result);
+      const { qualification } = await qualifyWithEmotionalReadiness(user_id, opt_in, asset_range, geography);
+      return c.json(qualification);
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user_id },
@@ -177,90 +164,40 @@ plannerHandoffRoutes.post(
       transition_context,
     } = parsed.data;
 
-    // Fix 1: Verify user_id matches authenticated user
     const user = c.get('user');
     if (user_id !== user.id) {
       return c.json({ error: 'Forbidden: user_id mismatch' }, 403);
     }
 
-    // Fix 2: Derive emotional readiness server-side from platform context
-    let emotionalReadiness = true;
     try {
-      const baselineRows = await getUserContext(user_id, 'emotional_baseline');
-      if (baselineRows.length > 0) {
-        const baseline = baselineRows[0].content as Record<string, unknown>;
-        emotionalReadiness = baseline.distress_detected !== true;
-      }
-    } catch {
-      // Non-fatal — default to true if baseline unavailable
-    }
-
-    // Step 1: Re-qualify at referral time (gates are enforced here, not trusted from client)
-    let qualification;
-    try {
-      qualification = await qualifyLead(user_id, opt_in, asset_range, geography, emotionalReadiness);
-    } catch (err) {
-      logger.error(
-        { error: err instanceof Error ? err.message : String(err), userId: user_id },
-        'POST /planner-handoff/refer: qualification error',
-      );
-      return c.json({ error: 'Internal server error during qualification' }, 500);
-    }
-
-    if (!qualification.passed) {
-      return c.json({ error: 'Lead qualification failed', qualification }, 400);
-    }
-
-    // Step 2: Load platform context for handoff document generation
-    let readinessSummary: Record<string, unknown> | undefined;
-    let clientProfile: Record<string, unknown> | undefined;
-
-    try {
-      const [readinessRows, profileRows] = await Promise.all([
-        getUserContext(user_id, 'retirement_readiness'),
-        getUserContext(user_id, 'client_profile'),
-      ]);
-
-      if (readinessRows.length > 0) {
-        readinessSummary = readinessRows[0].content;
-      }
-      if (profileRows.length > 0) {
-        clientProfile = profileRows[0].content;
-      }
-    } catch (err) {
-      // Non-fatal — handoff doc generation has fallbacks
-      logger.warn(
-        { error: err instanceof Error ? err.message : String(err), userId: user_id },
-        'POST /planner-handoff/refer: failed to load platform context (non-fatal)',
-      );
-    }
-
-    // Step 3: Generate handoff document (LLM call — has fallback)
-    let handoffDocument;
-    try {
-      handoffDocument = await generateHandoffDocument({
-        career_situation,
-        transition_context,
-        readiness_summary: readinessSummary,
-        client_profile: clientProfile,
+      const result = await runHandoffPipeline({
+        userId: user_id,
+        plannerId: planner_id,
+        optIn: opt_in,
+        assetRange: asset_range,
+        geography,
+        careerSituation: career_situation,
+        transitionContext: transition_context,
       });
+
+      return c.json({ referral: result.referral }, 201);
     } catch (err) {
+      // Qualification failures are signalled with a structured property
+      if (err instanceof Error && (err as Error & { isQualificationFailure?: boolean }).isQualificationFailure) {
+        const structured = err as Error & { qualification: unknown };
+        return c.json({ error: 'Lead qualification failed', qualification: structured.qualification }, 400);
+      }
+
+      if (err instanceof Error && err.message === 'Failed to create referral record') {
+        return c.json({ error: 'Failed to create referral record' }, 500);
+      }
+
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user_id },
-        'POST /planner-handoff/refer: handoff document generation failed',
+        'POST /planner-handoff/refer: unexpected error',
       );
-      return c.json({ error: 'Failed to generate handoff document' }, 500);
+      return c.json({ error: 'Internal server error' }, 500);
     }
-
-    // Step 4: Create referral record
-    const referral = await createReferral(user_id, planner_id, handoffDocument, qualification);
-    if (!referral) {
-      return c.json({ error: 'Failed to create referral record' }, 500);
-    }
-
-    logger.info({ userId: user_id, plannerId: planner_id, referralId: referral.id }, 'Planner referral created');
-
-    return c.json({ referral }, 201);
   },
 );
 
@@ -306,7 +243,6 @@ plannerHandoffRoutes.get(
       return c.json({ error: 'Invalid user ID' }, 400);
     }
 
-    // Fix 1: Verify userId matches authenticated user
     const user = c.get('user');
     if (userId !== user.id) {
       return c.json({ error: 'Forbidden: user_id mismatch' }, 403);
