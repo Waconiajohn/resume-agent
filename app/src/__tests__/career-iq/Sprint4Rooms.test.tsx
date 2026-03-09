@@ -166,7 +166,8 @@ describe('JobCommandCenterRoom', () => {
 
   it('renders daily ops section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Daily Ops')).toBeInTheDocument();
+    // "Daily Ops" appears in both the tab bar and the section content
+    expect(screen.getAllByText('Daily Ops').length).toBeGreaterThan(0);
   });
 
   it('renders application tracker section', () => {

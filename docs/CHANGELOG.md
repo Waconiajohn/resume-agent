@@ -1,5 +1,102 @@
 # Changelog — Resume Agent
 
+## 2026-03-08 — Session 59
+**Sprint:** 57-59 | **Stories:** All 18 stories — Phase 3A Job Command Center Complete
+**Summary:** Implemented the complete Job Command Center across 3 sprints: multi-source job search API, AI matching, Kanban drag-drop pipeline, radar search with NI cross-referencing, watchlist, and daily ops — 228 new tests.
+
+### Changes Made
+
+**Sprint 57: Foundation**
+- `server/src/lib/job-search/types.ts` — SearchAdapter interface, SearchFilters, JobResult, SearchResponse
+- `server/src/lib/job-search/index.ts` — searchAllSources() parallel fan-out, dedup, boolean parser
+- `server/src/lib/job-search/adapters/jsearch.ts` — JSearch adapter (RapidAPI, 15s timeout)
+- `server/src/lib/job-search/adapters/adzuna.ts` — Adzuna adapter (REST API, 15s timeout)
+- `server/src/routes/job-search.ts` — POST /api/job-search with auth, rate limit, Zod, DB persistence
+- `server/src/lib/feature-flags.ts` — Added FF_JOB_SEARCH
+- `server/src/index.ts` — Wired jobSearchRoutes + watchlistRoutes
+- `supabase/migrations/20260308290000_job_search_tables.sql` — job_listings, job_search_scans, job_search_results
+- `app/src/components/job-command-center/PipelineBoard.tsx` — DndContext + 8 PipelineColumn instances
+- `app/src/components/job-command-center/PipelineColumn.tsx` — useDroppable with drag-over highlight
+- `app/src/components/job-command-center/OpportunityCard.tsx` — useDraggable card with CSS.Translate
+- `app/src/components/job-command-center/StageBadge.tsx` — Color-coded stage pill
+- `app/src/components/job-command-center/ScoreBadge.tsx` — Color-coded score pill
+- `app/src/components/job-command-center/AddOpportunityDialog.tsx` — Modal for adding opportunities
+- `app/src/components/job-command-center/PipelineFilters.tsx` — Search + stage filter pills
+
+**Sprint 58: Intelligence**
+- `server/src/lib/job-search/ai-matcher.ts` — matchJobsToProfile with MODEL_MID, batch 10, positioning_strategy
+- `server/src/routes/job-search.ts` — Added POST /score, GET /scans/latest
+- `server/src/routes/watchlist.ts` — CRUD route for watchlist_companies
+- `supabase/migrations/20260308300000_watchlist_companies.sql` — watchlist_companies table + RLS
+- `app/src/hooks/useRadarSearch.ts` — search/scoreResults/loadLatestScan/dismiss/promote + NI enrichment
+- `app/src/components/job-command-center/RadarSection.tsx` — Search bar, filters, result cards
+- `app/src/hooks/useWatchlist.ts` — Watchlist CRUD hook with optimistic updates
+- `app/src/components/job-command-center/WatchlistBar.tsx` — Horizontal chip strip
+- `app/src/components/job-command-center/WatchlistManager.tsx` — Full CRUD modal
+
+**Sprint 59: Integration**
+- `server/src/lib/job-search/ni-crossref.ts` — crossReferenceWithNetwork, case-insensitive company matching
+- `server/src/routes/job-search.ts` — Added GET /enriched/:scanId, ?include_contacts on /scans/latest
+- `app/src/hooks/useDailyOps.ts` — Composition hook: topMatches, staleApplications, counts
+- `app/src/components/job-command-center/TopMatchCard.tsx` — Job card with score + actions
+- `app/src/components/job-command-center/DailyOpsSection.tsx` — Stats bar, matches, actions, stale callout
+- `app/src/components/career-iq/JobCommandCenterRoom.tsx` — 3-tab layout with display:none preservation
+
+**Tests: +228 total (103 server + 125 app)**
+- 7 new server test files: job-search-core, jsearch-adapter, adzuna-adapter, job-search-route, ai-matcher, watchlist-route, ni-crossref, enriched-route
+- 10 new app test files: StageBadge, ScoreBadge, AddOpportunityDialog, PipelineFilters, PipelineBoard, useRadarSearch, RadarSection, WatchlistBar, useDailyOps, DailyOpsSection, TopMatchCard
+
+### Decisions Made
+- ADR-040: @dnd-kit/core for Kanban drag-drop (lightweight, accessible, TypeScript-first)
+- Job search is a plain Hono route, not an agent product
+- NI cross-ref uses client_connections table (not ni_connections)
+- Tab panels use display:none to preserve state across tab switches
+- enrichJobsWithContacts runs as best-effort after search (non-blocking)
+
+### Known Issues
+- DB migrations not yet applied to Supabase
+- API keys need configuration for live search
+
+### Next Steps
+- Apply migrations, configure API keys, enable FF_JOB_SEARCH
+- Manual E2E testing of full flow
+- Phase 3B (LinkedIn Studio) and Phase 3C (Networking Hub) per backlog
+
+---
+
+## 2026-03-08 — Session 58
+**Sprint:** 57 | **Stories:** 57-1, 57-2, 57-3 — Job Search Infrastructure (Types, Adapters, Route + DB)
+**Summary:** Implemented the full backend job search stack: shared types + source adapter interface, JSearch and Adzuna adapters, aggregator with dedup, feature-flagged route with DB persistence, and migration for three new tables.
+
+### Changes Made
+
+**Story 57-1: Job Search Types + Source Adapter Interface**
+- `server/src/lib/job-search/types.ts` — New: `SearchFilters`, `JobResult`, `SearchAdapter`, `SearchResponse` interfaces
+- `server/src/lib/job-search/index.ts` — New: `searchAllSources()` fan-out with `Promise.allSettled`, per-adapter error isolation, dedup by normalised title+company+location key, `extractPrimaryQuery()` for OR-group queries
+
+**Story 57-2: JSearch + Adzuna Adapters**
+- `server/src/lib/job-search/adapters/jsearch.ts` — New: `JSearchAdapter` — RapidAPI JSearch, 15s timeout, date/remote/employment-type filter mapping, empty-array on missing key or error
+- `server/src/lib/job-search/adapters/adzuna.ts` — New: `AdzunaAdapter` — Adzuna API, 15s timeout, date/salary/employment-type filter mapping, empty-array on missing credentials or error
+
+**Story 57-3: Job Search Route + DB Migration + Feature Flag**
+- `server/src/lib/feature-flags.ts` — Added `FF_JOB_SEARCH` (default false) in Phase 3 section after `FF_APPLICATION_PIPELINE`
+- `server/src/routes/job-search.ts` — New: `POST /` with auth + 20/min rate limit, Zod validation, adapter fan-out, scan + listing upsert + result join persistence, 404 on flag-off
+- `server/src/index.ts` — Imported `jobSearchRoutes`, wired at `/api/job-search`
+- `supabase/migrations/20260308290000_job_search_tables.sql` — New: `job_listings` (unique on external_id+source), `job_search_scans`, `job_search_results` (status enum), 4 indexes, 2 moddatetime triggers, RLS policies for all 3 tables
+
+### Decisions Made
+- `job_search_results` insert failure is non-fatal (logged as warn, scan + listings already persisted) — avoids a scan being entirely rejected due to a join-table constraint edge case
+- Adzuna's `content-type` header param was dropped (not a valid URLSearchParams field for Adzuna's REST API)
+- `FF_JOB_SEARCH` defaults to `false`; requires explicit opt-in with at least one API key configured
+
+### Known Issues
+- None
+
+### Next Steps
+- Story 57-4: Kanban Board with @dnd-kit Drag-Drop (frontend)
+- Story 57-5: Add Opportunity Dialog + Pipeline Filters (frontend)
+- Story 57-6: Sprint 57 Tests
+
 ## 2026-03-08 — Session 57
 **Sprint:** 56 | **Stories:** 56-1 through 56-5 — Cover Letter Dashboard + Agent Route product_type + LinkedIn Optimizer v2
 **Summary:** Cover letter dashboard viewing/re-export, product_type wired across all 20 agent routes, LinkedIn Optimizer v2 with per-role experience entries and quality scores.

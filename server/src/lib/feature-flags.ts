@@ -250,6 +250,15 @@ export const FF_JOB_FINDER = envBool('FF_JOB_FINDER', false);
 export const FF_APPLICATION_PIPELINE = envBool('FF_APPLICATION_PIPELINE', false);
 
 /**
+ * FF_JOB_SEARCH — Enable the Job Search API routes (JSearch + Adzuna adapters).
+ *
+ * When false (default), /api/job-search/* returns 404.
+ * Set FF_JOB_SEARCH=true in server/.env to activate.
+ * Requires: JSEARCH_API_KEY (RapidAPI) and/or ADZUNA_APP_ID + ADZUNA_API_KEY.
+ */
+export const FF_JOB_SEARCH = envBool('FF_JOB_SEARCH', false);
+
+/**
  * FF_LINKEDIN_CONTENT — Enable the LinkedIn Content Writer agent routes.
  *
  * When false (default), /api/linkedin-content/* returns 404.

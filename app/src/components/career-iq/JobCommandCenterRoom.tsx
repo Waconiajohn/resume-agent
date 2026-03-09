@@ -10,7 +10,6 @@ import {
   Check,
   FileText,
   Settings2,
-  Briefcase,
   Loader2,
   AlertCircle,
   RotateCcw,
@@ -18,18 +17,26 @@ import {
   Trash2,
   BarChart3,
   Sparkles,
-  ArrowRight,
-  Clock,
-  ChevronDown,
   CheckCircle2,
   XCircle,
-  Mic,
+  Briefcase,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useJobTracker, type ApplicationInputItem } from '@/hooks/useJobTracker';
 import { useJobFinder, type RankedMatch, type BooleanSearch } from '@/hooks/useJobFinder';
-import { useApplicationPipeline, type PipelineStage, type Application, type DueAction } from '@/hooks/useApplicationPipeline';
+import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicationPipeline';
+import { useRadarSearch } from '@/hooks/useRadarSearch';
+import { useDailyOps } from '@/hooks/useDailyOps';
+import { useWatchlist } from '@/hooks/useWatchlist';
+import { PipelineBoard } from '@/components/job-command-center/PipelineBoard';
+import { AddOpportunityDialog } from '@/components/job-command-center/AddOpportunityDialog';
+import { PipelineFilters } from '@/components/job-command-center/PipelineFilters';
+import { RadarSection } from '@/components/job-command-center/RadarSection';
+import { WatchlistBar } from '@/components/job-command-center/WatchlistBar';
+import { WatchlistManager } from '@/components/job-command-center/WatchlistManager';
+import { DailyOpsSection } from '@/components/job-command-center/DailyOpsSection';
 
 import { PipelineSummary } from './PipelineSummary';
 import type { CareerIQRoom } from './Sidebar';
@@ -38,28 +45,6 @@ interface JobCommandCenterRoomProps {
   onNavigate: (route: string) => void;
   onNavigateRoom?: (room: CareerIQRoom) => void;
 }
-
-// --- Stage config ---
-
-const KANBAN_STAGES: { key: PipelineStage; label: string; color: string }[] = [
-  { key: 'saved', label: 'Saved', color: 'text-white/50' },
-  { key: 'researching', label: 'Researching', color: 'text-[#98b3ff]' },
-  { key: 'applied', label: 'Applied', color: 'text-[#dfc797]' },
-  { key: 'screening', label: 'Screening', color: 'text-[#dfc797]' },
-  { key: 'interviewing', label: 'Interviewing', color: 'text-[#b5dec2]' },
-  { key: 'offer', label: 'Offer', color: 'text-[#b5dec2]' },
-];
-
-const STAGE_DOT: Record<PipelineStage, string> = {
-  saved: 'bg-white/30',
-  researching: 'bg-[#98b3ff]/60',
-  applied: 'bg-[#dfc797]/60',
-  screening: 'bg-[#dfc797]/80',
-  interviewing: 'bg-[#b5dec2]/60',
-  offer: 'bg-[#b5dec2]/80',
-  closed_won: 'bg-[#b5dec2]',
-  closed_lost: 'bg-red-400/50',
-};
 
 // --- SmartMatches ---
 
@@ -343,250 +328,7 @@ function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearc
   );
 }
 
-// --- KanbanBoard ---
-
-function KanbanCard({
-  application,
-  onMoveStage,
-  onPrepInterview,
-  onNegotiateSalary,
-}: {
-  application: Application;
-  onMoveStage: (id: string, stage: PipelineStage) => void;
-  onPrepInterview?: (application: Application) => void;
-  onNegotiateSalary?: (application: Application) => void;
-}) {
-  const [showStageMenu, setShowStageMenu] = useState(false);
-
-  const activeStages = KANBAN_STAGES.filter((s) => s.key !== application.stage);
-
-  return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 hover:bg-white/[0.04] hover:border-white/[0.08] transition-all">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-medium text-white/75 truncate">{application.role_title}</div>
-          <div className="flex items-center gap-1 mt-0.5 text-[11px] text-white/35">
-            <Building2 size={10} />
-            {application.company_name}
-          </div>
-          {application.next_action && (
-            <div className="mt-1.5 text-[11px] text-[#98b3ff]/50 truncate">
-              {application.next_action}
-            </div>
-          )}
-          {application.stage === 'interviewing' && onPrepInterview && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onPrepInterview(application); }}
-              className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[#b5dec2]/70 hover:text-[#b5dec2] transition-colors"
-            >
-              <Mic size={10} />
-              Prep for Interview
-            </button>
-          )}
-          {application.stage === 'offer' && onNegotiateSalary && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onNegotiateSalary(application); }}
-              className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[#b5dec2]/70 hover:text-[#b5dec2] transition-colors"
-            >
-              <DollarSign size={10} />
-              Negotiate Salary
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {application.score != null && (
-            <span
-              className={cn(
-                'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
-                application.score >= 80
-                  ? 'bg-[#b5dec2]/10 text-[#b5dec2]'
-                  : application.score >= 60
-                    ? 'bg-[#98b3ff]/10 text-[#98b3ff]'
-                    : 'bg-white/[0.05] text-white/35',
-              )}
-            >
-              {application.score}
-            </span>
-          )}
-
-          {/* Stage mover */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowStageMenu((v) => !v)}
-              className="flex items-center gap-0.5 text-white/25 hover:text-white/50 transition-colors"
-              aria-label="Move to stage"
-            >
-              <ChevronDown size={13} />
-            </button>
-            {showStageMenu && (
-              <div className="absolute right-0 top-full mt-1 z-10 rounded-xl border border-white/[0.08] bg-[#0e0e14] shadow-xl py-1 min-w-[130px]">
-                {activeStages.map((s) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => {
-                      onMoveStage(application.id, s.key);
-                      setShowStageMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 text-[12px] text-white/55 hover:text-white/80 hover:bg-white/[0.04] transition-colors flex items-center gap-2"
-                  >
-                    <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0', STAGE_DOT[s.key])} />
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function KanbanBoard({
-  applications,
-  loading,
-  onMoveStage,
-  onAddApplication,
-  onPrepInterview,
-  onNegotiateSalary,
-}: {
-  applications: Application[];
-  loading: boolean;
-  onMoveStage: (id: string, stage: PipelineStage) => void;
-  onAddApplication: () => void;
-  onPrepInterview?: (application: Application) => void;
-  onNegotiateSalary?: (application: Application) => void;
-}) {
-  const byStage = (stage: PipelineStage) => applications.filter((a) => a.stage === stage);
-
-  return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Briefcase size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Application Pipeline</h3>
-        {loading && <Loader2 size={14} className="text-[#98b3ff] animate-spin ml-1" />}
-        <button
-          type="button"
-          onClick={onAddApplication}
-          className="ml-auto flex items-center gap-1 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
-        >
-          <Plus size={12} /> Add Application
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto">
-        {KANBAN_STAGES.map(({ key, label, color }) => {
-          const cards = byStage(key);
-          return (
-            <div key={key} className="min-w-[160px]">
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className={cn('h-2 w-2 rounded-full flex-shrink-0', STAGE_DOT[key])} />
-                <span className={cn('text-[11px] font-semibold uppercase tracking-wider', color)}>
-                  {label}
-                </span>
-                <span className="text-[10px] text-white/25 tabular-nums ml-auto">{cards.length}</span>
-              </div>
-              <div className="space-y-2">
-                {cards.map((app) => (
-                  <KanbanCard key={app.id} application={app} onMoveStage={onMoveStage} onPrepInterview={onPrepInterview} onNegotiateSalary={onNegotiateSalary} />
-                ))}
-                {cards.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-white/[0.05] bg-white/[0.01] p-3 text-center">
-                    <span className="text-[11px] text-white/20">Empty</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </GlassCard>
-  );
-}
-
-// --- DailyOps ---
-
-function urgencyClass(dueDateStr: string): string {
-  const due = new Date(dueDateStr);
-  const now = new Date();
-  const diffMs = due.getTime() - now.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays < 0) return 'text-red-400/70 border-red-400/20 bg-red-400/[0.04]';
-  if (diffDays < 1) return 'text-[#dfc797]/70 border-[#dfc797]/20 bg-[#dfc797]/[0.04]';
-  return 'text-white/50 border-white/[0.06] bg-white/[0.02]';
-}
-
-function DailyOps({ dueActions }: { dueActions: DueAction[] }) {
-  if (dueActions.length === 0) {
-    return (
-      <GlassCard className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Daily Ops</h3>
-        </div>
-        <p className="text-[12px] text-white/30 text-center py-4">No upcoming actions due.</p>
-      </GlassCard>
-    );
-  }
-
-  return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Clock size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Daily Ops</h3>
-        <span className="ml-auto text-[11px] text-white/30">{dueActions.length} due</span>
-      </div>
-
-      <div className="space-y-2">
-        {dueActions.map((action) => {
-          const cls = urgencyClass(action.next_action_due);
-          const dueDate = new Date(action.next_action_due);
-          const isDueToday =
-            dueDate.toDateString() === new Date().toDateString();
-          const isPast = dueDate < new Date();
-          const dueLabelClass = isPast
-            ? 'text-red-400/70'
-            : isDueToday
-              ? 'text-[#dfc797]/70'
-              : 'text-white/30';
-
-          return (
-            <div
-              key={action.id}
-              className={cn('rounded-xl border p-3 transition-colors', cls)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-white/75">
-                    {action.next_action}
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5 text-[11px] text-white/35">
-                    <Building2 size={10} />
-                    {action.company_name}
-                    <span>·</span>
-                    <span className="truncate">{action.role_title}</span>
-                  </div>
-                </div>
-                <div className={cn('text-[11px] font-medium flex-shrink-0 tabular-nums', dueLabelClass)}>
-                  {isPast
-                    ? 'Overdue'
-                    : isDueToday
-                      ? 'Today'
-                      : dueDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </GlassCard>
-  );
-}
+// DailyOps is now rendered via DailyOpsSection (imported above)
 
 // --- SearchPreferences (unchanged, local state only) ---
 
@@ -977,27 +719,105 @@ function TrackerGenerator() {
   );
 }
 
+// --- Tab types ---
+
+type JCCTab = 'pipeline' | 'radar' | 'daily-ops';
+
 // --- Main component ---
 
 export function JobCommandCenterRoom({ onNavigate, onNavigateRoom }: JobCommandCenterRoomProps) {
   const jobFinder = useJobFinder();
   const pipeline = useApplicationPipeline();
+  const radar = useRadarSearch();
+  const watchlist = useWatchlist();
+  const dailyOps = useDailyOps(pipeline.applications, pipeline.dueActions, radar.jobs, pipeline.loading);
+
+  const [activeTab, setActiveTab] = useState<JCCTab>('pipeline');
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showWatchlistManager, setShowWatchlistManager] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
+
+  // Load initial data on mount
+  useEffect(() => {
+    pipeline.fetchApplications();
+    pipeline.fetchDueActions();
+    watchlist.fetchCompanies();
+    radar.loadLatestScan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAddApplication = useCallback(() => {
-    // Placeholder — opens a modal or navigates to a form in a future story
-    pipeline.createApplication({
-      role_title: 'New Role',
-      company_name: 'Company',
-      stage: 'saved',
-      source: 'manual',
-      stage_history: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-  }, [pipeline]);
+    setShowAddDialog(true);
+  }, []);
+
+  const handleAddSubmit = useCallback(
+    async (data: {
+      role_title: string;
+      company_name: string;
+      source?: string;
+      url?: string;
+      notes?: string;
+    }) => {
+      await pipeline.createApplication({
+        role_title: data.role_title,
+        company_name: data.company_name,
+        stage: 'saved',
+        source: data.source ?? 'manual',
+        url: data.url,
+        notes: data.notes,
+        stage_history: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    },
+    [pipeline],
+  );
+
+  const handleSearchCompany = useCallback(
+    (companyName: string) => {
+      radar.search(companyName, '');
+    },
+    [radar],
+  );
+
+  const handlePromoteRadarJob = useCallback(
+    async (job: ReturnType<typeof radar.promoteJob>) => {
+      await pipeline.createApplication({
+        role_title: job.title,
+        company_name: job.company,
+        stage: 'saved',
+        source: job.source ?? 'radar',
+        url: job.apply_url ?? undefined,
+        notes: job.location ?? undefined,
+        stage_history: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      radar.dismissJob(job.external_id);
+    },
+    [pipeline, radar],
+  );
+
+  const filteredApplications = useMemo(() => {
+    let apps = pipeline.applications;
+    if (stageFilter !== 'all') {
+      apps = apps.filter((a) => a.stage === stageFilter);
+    }
+    if (searchText.trim()) {
+      const lower = searchText.toLowerCase();
+      apps = apps.filter(
+        (a) =>
+          a.role_title.toLowerCase().includes(lower) ||
+          a.company_name.toLowerCase().includes(lower),
+      );
+    }
+    return apps;
+  }, [pipeline.applications, stageFilter, searchText]);
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+      {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Job Command Center</h1>
         <p className="text-[13px] text-white/40">
@@ -1005,50 +825,163 @@ export function JobCommandCenterRoom({ onNavigate, onNavigateRoom }: JobCommandC
         </p>
       </div>
 
-      {/* Job Finder — Smart Matches */}
-      <SmartMatches
-        matches={jobFinder.matches}
-        status={jobFinder.status}
-        activityMessages={jobFinder.activityMessages}
-        gateData={jobFinder.gateData}
-        error={jobFinder.error}
-        onNavigate={onNavigate}
-        onRunFinder={jobFinder.startSearch}
-        onRespondGate={jobFinder.respondToGate}
-        onReset={jobFinder.reset}
-      />
+      {/* Quick stats bar */}
+      <div className="flex items-center gap-6 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3 text-[13px]">
+        <span className="text-white/40">
+          Active:{' '}
+          <span className="font-semibold text-white/75">{dailyOps.activeCount}</span>
+        </span>
+        <span className="text-white/20">|</span>
+        <span className="text-white/40">
+          Interviewing:{' '}
+          <span className="font-semibold text-[#98b3ff]">{dailyOps.interviewCount}</span>
+        </span>
+        <span className="text-white/20">|</span>
+        <span className="text-white/40">
+          Offers:{' '}
+          <span className="font-semibold text-[#b5dec2]">{dailyOps.offerCount}</span>
+        </span>
+        <span className="text-white/20">|</span>
+        <span className="text-white/40">
+          Due:{' '}
+          <span
+            className={cn(
+              'font-semibold',
+              dailyOps.dueActions.length > 0 ? 'text-[#dfc797]' : 'text-white/75',
+            )}
+          >
+            {dailyOps.dueActions.length}
+          </span>
+        </span>
+      </div>
 
-      {/* Application Kanban Board — full width */}
-      <KanbanBoard
-        applications={pipeline.applications}
-        loading={pipeline.loading}
-        onMoveStage={pipeline.moveToStage}
-        onAddApplication={handleAddApplication}
-        onPrepInterview={onNavigateRoom ? () => onNavigateRoom('interview') : undefined}
-        onNegotiateSalary={onNavigateRoom ? () => onNavigateRoom('salary-negotiation') : undefined}
-      />
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 border-b border-white/[0.07]">
+        {(
+          [
+            { id: 'pipeline', label: 'Pipeline', Icon: Briefcase },
+            { id: 'radar', label: 'Radar', Icon: Search },
+            { id: 'daily-ops', label: 'Daily Ops', Icon: Clock },
+          ] as const
+        ).map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors border-b-2 -mb-px',
+              activeTab === id
+                ? 'text-white/90 border-[#98b3ff]'
+                : 'text-white/35 border-transparent hover:text-white/60',
+            )}
+          >
+            <Icon size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {/* Pipeline Summary — full width */}
-      <PipelineSummary onNavigateDashboard={onNavigateRoom} />
+      {/* Pipeline tab — display:none preserves state */}
+      <div style={{ display: activeTab === 'pipeline' ? undefined : 'none' }}>
+        <div className="flex flex-col gap-6">
+          <WatchlistBar
+            companies={watchlist.companies}
+            onSearchCompany={handleSearchCompany}
+            onManage={() => setShowWatchlistManager(true)}
+          />
 
-      {/* Daily Ops + Boolean Search side-by-side */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-[2] min-w-0">
-          <DailyOps dueActions={pipeline.dueActions} />
+          <PipelineFilters
+            searchText={searchText}
+            onSearchChange={setSearchText}
+            activeStageFilter={stageFilter}
+            onStageFilterChange={setStageFilter}
+          />
+
+          <PipelineBoard
+            applications={filteredApplications}
+            loading={pipeline.loading}
+            onMoveStage={pipeline.moveToStage}
+            onSelect={() => {}}
+            onAddApplication={handleAddApplication}
+            onPrepInterview={onNavigateRoom ? () => onNavigateRoom('interview') : undefined}
+            onNegotiateSalary={onNavigateRoom ? () => onNavigateRoom('salary-negotiation') : undefined}
+          />
+
+          <PipelineSummary onNavigateDashboard={onNavigateRoom} />
         </div>
-        <div className="flex-[3] min-w-0">
+      </div>
+
+      {/* Radar tab — display:none preserves state */}
+      <div style={{ display: activeTab === 'radar' ? undefined : 'none' }}>
+        <div className="flex flex-col gap-6">
+          <WatchlistBar
+            companies={watchlist.companies}
+            onSearchCompany={handleSearchCompany}
+            onManage={() => setShowWatchlistManager(true)}
+          />
+
+          <RadarSection
+            jobs={radar.jobs}
+            loading={radar.loading}
+            scoring={radar.scoring}
+            error={radar.error}
+            lastScanId={radar.lastScanId}
+            sources_queried={radar.sources_queried}
+            executionTimeMs={radar.executionTimeMs}
+            onSearch={radar.search}
+            onScoreResults={radar.scoreResults}
+            onDismiss={radar.dismissJob}
+            onPromote={handlePromoteRadarJob}
+          />
+
+          <SmartMatches
+            matches={jobFinder.matches}
+            status={jobFinder.status}
+            activityMessages={jobFinder.activityMessages}
+            gateData={jobFinder.gateData}
+            error={jobFinder.error}
+            onNavigate={onNavigate}
+            onRunFinder={jobFinder.startSearch}
+            onRespondGate={jobFinder.respondToGate}
+            onReset={jobFinder.reset}
+          />
+
           <BooleanSearchBuilder
             searches={jobFinder.booleanSearches}
             onGenerate={jobFinder.startSearch}
           />
+
+          <SearchPreferences />
         </div>
       </div>
 
-      {/* Search Preferences */}
-      <SearchPreferences />
+      {/* Daily Ops tab — display:none preserves state */}
+      <div style={{ display: activeTab === 'daily-ops' ? undefined : 'none' }}>
+        <div className="flex flex-col gap-6">
+          <DailyOpsSection
+            data={dailyOps}
+            onPromoteJob={handlePromoteRadarJob}
+            onDismissJob={radar.dismissJob}
+          />
 
-      {/* Application Tracker Generator */}
-      <TrackerGenerator />
+          <TrackerGenerator />
+        </div>
+      </div>
+
+      <AddOpportunityDialog
+        open={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        onSubmit={handleAddSubmit}
+      />
+
+      <WatchlistManager
+        open={showWatchlistManager}
+        companies={watchlist.companies}
+        onClose={() => setShowWatchlistManager(false)}
+        onAdd={watchlist.addCompany}
+        onUpdate={watchlist.updateCompany}
+        onRemove={watchlist.removeCompany}
+      />
     </div>
   );
 }

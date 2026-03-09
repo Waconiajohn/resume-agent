@@ -36,6 +36,8 @@ import { momentumRoutes } from './routes/momentum.js';
 import { retirementBridgeRoutes } from './routes/retirement-bridge.js';
 import { plannerHandoffRoutes } from './routes/planner-handoff.js';
 import { b2bAdminRoutes } from './routes/b2b-admin.js';
+import { jobSearchRoutes } from './routes/job-search.js';
+import { watchlistRoutes } from './routes/watchlist.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -319,6 +321,8 @@ app.route('/api/momentum', momentumRoutes);
 app.route('/api/retirement-bridge', retirementBridgeRoutes);
 app.route('/api/planner-handoff', plannerHandoffRoutes);
 app.route('/api/b2b', b2bAdminRoutes);
+app.route('/api/job-search', jobSearchRoutes);
+app.route('/api/watchlist', watchlistRoutes);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

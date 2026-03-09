@@ -1,0 +1,335 @@
+import { useState, useCallback } from 'react';
+import {
+  Search,
+  MapPin,
+  Building2,
+  DollarSign,
+  Star,
+  X,
+  Plus,
+  Loader2,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+import { GlassCard } from '@/components/GlassCard';
+import { GlassButton } from '@/components/GlassButton';
+import { cn } from '@/lib/utils';
+import type { RadarJob, RadarSearchFilters } from '@/hooks/useRadarSearch';
+
+interface RadarSectionProps {
+  jobs: RadarJob[];
+  loading: boolean;
+  scoring: boolean;
+  error: string | null;
+  lastScanId: string | null;
+  sources_queried: string[];
+  executionTimeMs: number | null;
+  onSearch: (query: string, location: string, filters?: RadarSearchFilters) => void;
+  onScoreResults: () => void;
+  onDismiss: (externalId: string) => void;
+  onPromote: (job: RadarJob) => void;
+}
+
+function formatSalary(min: number | null, max: number | null): string | null {
+  if (min == null && max == null) return null;
+  const fmt = (n: number) =>
+    n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${n}`;
+  if (min != null && max != null) return `${fmt(min)}–${fmt(max)}`;
+  if (min != null) return `${fmt(min)}+`;
+  if (max != null) return `Up to ${fmt(max)}`;
+  return null;
+}
+
+function formatPostedDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+function NetworkBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] font-medium text-[#98b3ff]/70 flex-shrink-0"
+      title={`${count} network contact${count === 1 ? '' : 's'} at this company`}
+    >
+      <Users size={9} />
+      {count} {count === 1 ? 'connection' : 'connections'}
+    </span>
+  );
+}
+
+function ScoreBadge({ score }: { score: number | null | undefined }) {
+  if (score == null) return null;
+  const colorClass =
+    score >= 80
+      ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+      : score >= 60
+        ? 'bg-[#98b3ff]/10 border-[#98b3ff]/20 text-[#98b3ff]'
+        : 'bg-white/[0.04] border-white/[0.08] text-white/50';
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums flex-shrink-0',
+        colorClass,
+      )}
+    >
+      <Star size={9} />
+      {score}%
+    </span>
+  );
+}
+
+export function RadarSection({
+  jobs,
+  loading,
+  scoring,
+  error,
+  lastScanId,
+  onSearch,
+  onScoreResults,
+  onDismiss,
+  onPromote,
+}: RadarSectionProps) {
+  const [query, setQuery] = useState('');
+  const [location, setLocation] = useState('');
+  const [datePosted, setDatePosted] = useState<RadarSearchFilters['datePosted']>('any');
+  const [remoteType, setRemoteType] = useState<RadarSearchFilters['remoteType']>('any');
+
+  const handleSearch = useCallback(() => {
+    if (!query.trim()) return;
+    const filters: RadarSearchFilters = { datePosted, remoteType };
+    onSearch(query.trim(), location.trim(), filters);
+  }, [query, location, datePosted, remoteType, onSearch]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') handleSearch();
+    },
+    [handleSearch],
+  );
+
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Sparkles size={18} className="text-[#98b3ff]" />
+        <h3 className="text-[15px] font-semibold text-white/85">Radar Search</h3>
+        {jobs.length > 0 && (
+          <span className="ml-auto text-[11px] text-white/30">{jobs.length} results</span>
+        )}
+      </div>
+
+      {/* Search bar */}
+      <div className="flex gap-2 mb-3">
+        <div className="relative flex-[3]">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Job title, keywords..."
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+          />
+        </div>
+        <div className="relative flex-[2]">
+          <MapPin
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none"
+          />
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Location or Remote"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+          />
+        </div>
+      </div>
+
+      {/* Filter row */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <select
+          value={datePosted}
+          onChange={(e) => setDatePosted(e.target.value as RadarSearchFilters['datePosted'])}
+          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus:border-[#98b3ff]/30"
+        >
+          <option value="any">Any time</option>
+          <option value="24h">Last 24h</option>
+          <option value="3d">Last 3 days</option>
+          <option value="7d">Last 7 days</option>
+          <option value="14d">Last 14 days</option>
+          <option value="30d">Last 30 days</option>
+        </select>
+        <select
+          value={remoteType}
+          onChange={(e) => setRemoteType(e.target.value as RadarSearchFilters['remoteType'])}
+          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus:border-[#98b3ff]/30"
+        >
+          <option value="any">Any work type</option>
+          <option value="remote">Remote</option>
+          <option value="hybrid">Hybrid</option>
+          <option value="onsite">On-site</option>
+        </select>
+
+        <div className="flex gap-2 ml-auto">
+          {lastScanId && jobs.length > 0 && (
+            <GlassButton onClick={onScoreResults} disabled={scoring} className="text-[12px]">
+              {scoring ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" /> Scoring...
+                </>
+              ) : (
+                <>
+                  <Star size={13} /> Score Matches
+                </>
+              )}
+            </GlassButton>
+          )}
+          <GlassButton onClick={handleSearch} disabled={loading || !query.trim()} className="text-[12px]">
+            {loading ? (
+              <>
+                <Loader2 size={13} className="animate-spin" /> Searching...
+              </>
+            ) : (
+              <>
+                <Search size={13} /> Search
+              </>
+            )}
+          </GlassButton>
+        </div>
+      </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="rounded-xl border border-red-400/20 bg-red-400/[0.04] px-4 py-3 mb-4">
+          <p className="text-[12px] text-red-400/70">{error}</p>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && jobs.length === 0 && (
+        <div className="py-8 text-center">
+          <Search size={24} className="mx-auto mb-3 text-white/15" />
+          <p className="text-[12px] text-white/25">
+            Search for jobs to see results here. Enter a title and location above.
+          </p>
+        </div>
+      )}
+
+      {/* Results */}
+      {jobs.length > 0 && (
+        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+          {jobs.map((job) => {
+            const salary = formatSalary(job.salary_min, job.salary_max);
+            return (
+              <div
+                key={job.external_id}
+                className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-white/[0.1] transition-all"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="text-[14px] font-medium text-white/80 group-hover:text-white/90 transition-colors leading-snug">
+                        {job.title}
+                      </div>
+                      <ScoreBadge score={job.match_score} />
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[12px] text-white/40 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Building2 size={11} />
+                        {job.company}
+                      </span>
+                      {job.location && (
+                        <>
+                          <span className="text-white/20">·</span>
+                          <span className="flex items-center gap-1">
+                            <MapPin size={11} />
+                            {job.location}
+                          </span>
+                        </>
+                      )}
+                      {salary && (
+                        <>
+                          <span className="text-white/20">·</span>
+                          <span className="flex items-center gap-1">
+                            <DollarSign size={11} />
+                            {salary}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-white/25 flex-wrap">
+                      <span>{formatPostedDate(job.posted_date)}</span>
+                      {job.source && (
+                        <>
+                          <span className="text-white/15">·</span>
+                          <span className="capitalize">{job.source}</span>
+                        </>
+                      )}
+                      {job.remote_type && (
+                        <>
+                          <span className="text-white/15">·</span>
+                          <span className="capitalize">{job.remote_type}</span>
+                        </>
+                      )}
+                      {job.employment_type && (
+                        <>
+                          <span className="text-white/15">·</span>
+                          <span className="capitalize">{job.employment_type}</span>
+                        </>
+                      )}
+                      {(job.network_contacts?.length ?? 0) > 0 && (
+                        <>
+                          <span className="text-white/15">·</span>
+                          <NetworkBadge count={job.network_contacts!.length} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onPromote(job)}
+                      className="flex items-center gap-1 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] px-2.5 py-1.5 text-[11px] text-[#b5dec2]/60 hover:text-[#b5dec2]/90 hover:bg-[#b5dec2]/[0.08] transition-colors"
+                    >
+                      <Plus size={11} />
+                      Promote
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDismiss(job.external_id)}
+                      className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[11px] text-white/30 hover:text-white/55 hover:bg-white/[0.05] transition-colors"
+                    >
+                      <X size={11} />
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </GlassCard>
+  );
+}

@@ -501,3 +501,28 @@ Post-deploy is when real usage patterns expose issues that tests miss. Shipping 
 
 *Negative:*
 - One sprint of zero feature velocity delays the next batch of platform agents
+
+## ADR-040: @dnd-kit for Kanban Drag-Drop
+
+**Date:** 2026-03-08
+**Status:** accepted
+
+**Context:**
+The Job Command Center Kanban board needs drag-and-drop for moving applications between pipeline stages. The existing board used dropdown menus for stage transitions. We need a lightweight, accessible drag-drop library compatible with React 19.
+
+**Decision:**
+Use `@dnd-kit/core` + `@dnd-kit/utilities` for Kanban drag-drop. Chose @dnd-kit over react-beautiful-dnd (unmaintained, React 18 only), react-dnd (heavier, more complex API for our use case), and native HTML5 drag API (poor mobile support, no collision detection).
+
+**Reasoning:**
+- @dnd-kit is actively maintained, supports React 19, and has first-class TypeScript support
+- Lightweight: ~12KB gzipped for core + utilities
+- Accessible: keyboard navigation out of the box
+- PointerSensor with distance activation constraint prevents accidental drags on click
+- useDroppable/useDraggable hooks integrate cleanly with our glass morphism component patterns
+- Does not require a backend — purely client-side for optimistic UI updates
+
+**Consequences:**
+- New dev dependency: `@dnd-kit/core`, `@dnd-kit/utilities`
+- Stage dropdown kept as fallback for accessibility and precision
+- Cards use `onPointerDown` stopPropagation for buttons to prevent drag interference
+- Future: may add @dnd-kit/sortable if we need intra-column card reordering

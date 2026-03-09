@@ -2,6 +2,61 @@
 
 ---
 
+# Sprints 57-59 Retrospective — Phase 3A: Job Command Center
+**Completed:** 2026-03-08
+
+## What was delivered
+
+### Sprint 57: Foundation — Search API + DB + Kanban UI (7 stories)
+- Story 57-1: Job Search Types + Source Adapter Interface (`types.ts`, `index.ts` — SearchAdapter, searchAllSources, dedup, boolean parser)
+- Story 57-2: JSearch + Adzuna Adapters (15s timeout, env var gating, graceful empty-array on failure)
+- Story 57-3: Job Search Route + DB Migration + Feature Flag (POST /api/job-search, Zod validation, 20/min rate limit, 3 new tables)
+- Story 57-4: Kanban Board Components (PipelineBoard, PipelineColumn, OpportunityCard with @dnd-kit drag-drop)
+- Story 57-5: Add Opportunity Dialog + Pipeline Filters (modal dialog, stage filter pills, text search)
+- Story 57-6: Sprint 57 Tests (+95 tests: 53 server, 42 app — adapters, route, core, components)
+- Story 57-7: ADR-040 (@dnd-kit/core for Kanban drag-drop)
+
+### Sprint 58: Intelligence — AI Matching + Radar + Watchlist (6 stories)
+- Story 58-1: AI Job Matcher (matchJobsToProfile, MODEL_MID, batch 10, positioning_strategy context)
+- Story 58-2: Score Route + Scan Persistence (POST /api/job-search/score, GET /scans/latest)
+- Story 58-3: Watchlist Companies DB + CRUD Route (watchlist_companies table, CRUD at /api/watchlist)
+- Story 58-4: Radar Search Hook + UI (useRadarSearch, RadarSection with search/filter/promote/dismiss)
+- Story 58-5: Watchlist Hook + UI (useWatchlist, WatchlistBar chips, WatchlistManager dialog)
+- Story 58-6: Sprint 58 Tests (+74 tests: 30 server, 44 app — matcher, watchlist, radar, watchlist UI)
+
+### Sprint 59: Integration — NI Cross-Ref + Daily Ops + Page Assembly (5 stories)
+- Story 59-1: NI Integration on Job Matches (ni-crossref.ts, enriched/:scanId endpoint, NetworkBadge)
+- Story 59-2: Daily Ops Data Hook (useDailyOps composing pipeline + radar data)
+- Story 59-3: Daily Ops Section UI (TopMatchCard, DailyOpsSection with stats/matches/actions/stale)
+- Story 59-4: Job Command Center Page Assembly (3-tab layout, quick stats, display:none tab preservation)
+- Story 59-5: Sprint 59 Tests (+59 tests: 20 server, 39 app — NI cross-ref, enriched route, daily ops, top match)
+
+## What went well
+- All 18 stories across 3 sprints completed in a single session
+- +228 new tests total (103 server + 125 app), zero failures
+- Zero TypeScript errors throughout — both workspaces clean after every story
+- Parallel agent delegation maximized throughput (backend + frontend stories ran concurrently)
+- Existing infrastructure reuse worked well: useApplicationPipeline, platform-context, network-intelligence
+
+## What went wrong
+- Plan assumed `ni_connections` table but actual table is `client_connections` — required discovery mid-implementation
+- useRadarSearch test broke after adding NI enrichment (extra fetch call consumed mock) — required 3-mock chain fix
+- Sprint4Rooms.test.tsx broke when "Daily Ops" text appeared in both tab bar and section heading
+- POST /api/job-search route initially didn't return scan_id in response — caught by frontend hook integration
+
+## What to improve next sprint
+- Verify DB table/column names against actual schema before writing cross-ref code
+- When adding fetch calls to existing hooks, update all existing test mocks immediately
+- Consider integration tests that exercise the full search → score → enrich flow
+
+## Technical debt identified
+- DB migrations not yet applied to Supabase (2 migration files ready)
+- API keys (JSEARCH_API_KEY, ADZUNA_APP_ID, ADZUNA_API_KEY) need configuration
+- Manual E2E testing of full flow pending
+- WatchlistManager could benefit from optimistic delete (currently waits for server)
+
+---
+
 # Sprint 54 Retrospective — Post-Deploy Cleanup & Quality
 **Completed:** 2026-03-08
 
