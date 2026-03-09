@@ -1064,7 +1064,8 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
 // ─── Analytics Overview ───────────────────────────────────────────────────
 
 function AnalyticsOverview() {
-  const { posts } = useContentPosts();
+  const { posts: rawPosts } = useContentPosts();
+  const posts = rawPosts ?? [];
 
   const now = new Date();
   const weekStart = new Date(now);
@@ -1126,7 +1127,8 @@ function AnalyticsOverview() {
 // ─── Post Library ────────────────────────────────────────────────────────
 
 function PostLibrary() {
-  const { posts, loading, error, updatePostStatus, deletePost } = useContentPosts();
+  const { posts: rawPosts, loading, error, updatePostStatus, deletePost } = useContentPosts();
+  const posts = rawPosts ?? [];
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopy = useCallback((post: { id: string; content: string; hashtags: string[] | null }) => {
@@ -1249,7 +1251,8 @@ function PostLibrary() {
 // ─── Keyword Multiplier Nudge ──────────────────────────────────────────────
 
 function KeywordMultiplierNudge() {
-  const { posts } = useContentPosts();
+  const { posts: rawPosts } = useContentPosts();
+  const posts = rawPosts ?? [];
 
   const now = new Date();
   const weekStart = new Date(now);

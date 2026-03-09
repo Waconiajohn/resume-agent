@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import { GlassButton } from '@/components/GlassButton';
 import { X } from 'lucide-react';
 
@@ -42,8 +43,15 @@ export function AddOpportunityDialog({ open, onClose, onSubmit }: AddOpportunity
     onClose();
   }
 
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
       <div className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0e0e14] p-6 shadow-2xl">
         <button
           type="button"

@@ -403,7 +403,8 @@ interface WeeklyActivityProps {
   contacts: NetworkingContact[];
 }
 
-function WeeklyActivity({ contacts }: WeeklyActivityProps) {
+function WeeklyActivity({ contacts: rawContacts }: WeeklyActivityProps) {
+  const contacts = rawContacts ?? [];
   const weekStart = startOfWeek();
 
   const metrics = useMemo(() => {
@@ -457,7 +458,8 @@ interface RecruiterTrackerProps {
   onAddRecruiter: () => void;
 }
 
-function RecruiterTracker({ contacts, onAddRecruiter }: RecruiterTrackerProps) {
+function RecruiterTracker({ contacts: rawContacts, onAddRecruiter }: RecruiterTrackerProps) {
+  const contacts = rawContacts ?? [];
   const statusColors: Record<string, string> = {
     active: 'text-[#b5dec2] bg-[#b5dec2]/10',
     cold: 'text-[#f0d99f] bg-[#f0d99f]/10',
@@ -862,7 +864,7 @@ export function NetworkingHubRoom() {
   }, []);
 
   const recruiterContacts = useMemo(
-    () => networkingContacts.contacts.filter((c) => c.relationship_type === 'recruiter'),
+    () => (networkingContacts.contacts ?? []).filter((c) => c.relationship_type === 'recruiter'),
     [networkingContacts.contacts],
   );
 
@@ -1007,7 +1009,7 @@ export function NetworkingHubRoom() {
           />
         </div>
         <div className="flex-[2]">
-          <WeeklyActivity contacts={networkingContacts.contacts} />
+          <WeeklyActivity contacts={networkingContacts.contacts ?? []} />
         </div>
       </div>
 

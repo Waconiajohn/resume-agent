@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import { GlassButton } from '@/components/GlassButton';
 import { X, Trash2, Pencil, Check } from 'lucide-react';
 import type { WatchlistCompany } from '@/hooks/useWatchlist';
@@ -69,8 +70,15 @@ export function WatchlistManager({
 
   const sorted = [...companies].sort((a, b) => b.priority - a.priority);
 
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
       <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0e0e14] p-6 shadow-2xl max-h-[85vh] flex flex-col">
         <button
           type="button"

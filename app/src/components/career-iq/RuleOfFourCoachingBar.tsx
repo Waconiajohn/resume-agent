@@ -9,7 +9,8 @@ interface RuleOfFourCoachingBarProps {
   onFixGap: (applicationId: string, role: ContactRole) => void;
 }
 
-export function RuleOfFourCoachingBar({ groups, onFixGap }: RuleOfFourCoachingBarProps) {
+export function RuleOfFourCoachingBar({ groups: rawGroups, onFixGap }: RuleOfFourCoachingBarProps) {
+  const groups = rawGroups ?? [];
   const incomplete = groups.filter((g) => g.progress < 4);
   if (incomplete.length === 0) return null;
 
