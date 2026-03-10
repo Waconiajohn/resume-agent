@@ -333,3 +333,14 @@ export const FF_RETIREMENT_BRIDGE = envBool('FF_RETIREMENT_BRIDGE', false);
  * cohort management, and aggregate engagement metrics endpoints.
  */
 export const FF_B2B_OUTPLACEMENT = envBool('FF_B2B_OUTPLACEMENT', false);
+
+// ─── Chrome Extension ────────────────────────────────────────────────────────
+
+/**
+ * FF_EXTENSION — Enable the Chrome Extension API routes.
+ *
+ * When false (default), /api/extension/* returns 404.
+ * Set FF_EXTENSION=true in server/.env to activate.
+ * Provides: resume-lookup, job-discover, apply-status, auth-verify, infer-field.
+ */
+export const FF_EXTENSION = envBool('FF_EXTENSION', false);

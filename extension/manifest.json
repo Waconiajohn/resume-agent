@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "CareerIQ — Smart Job Apply",
+  "version": "1.0.0",
+  "description": "Auto-fill job applications using your CareerIQ tailored resume for each specific job.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*.greenhouse.io/*",
+    "https://*.lever.co/*",
+    "https://*.linkedin.com/*",
+    "https://*.indeed.com/*",
+    "https://*.myworkdayjobs.com/*",
+    "https://*.icims.com/*",
+    "http://localhost:3001/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.greenhouse.io/applications/*",
+        "https://jobs.lever.co/*/*/apply",
+        "https://www.linkedin.com/jobs/*",
+        "https://*.indeed.com/viewjob*",
+        "https://*.myworkdayjobs.com/*",
+        "https://*.icims.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "public/icon16.png",
+      "48": "public/icon48.png",
+      "128": "public/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "public/icon16.png",
+    "48": "public/icon48.png",
+    "128": "public/icon128.png"
+  }
+}
