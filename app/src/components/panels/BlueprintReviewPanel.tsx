@@ -4,7 +4,7 @@ import { GlassCard } from '../GlassCard';
 import { GlassButton } from '../GlassButton';
 import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import { cn } from '@/lib/utils';
-import type { BlueprintReviewData } from '@/types/panels';
+import type { BlueprintReviewData, BlueprintKeywordTarget, BlueprintEvidenceItem } from '@/types/panels';
 
 export interface BlueprintEdits {
   positioning_angle?: string;
@@ -60,7 +60,7 @@ function ReorderableWireframe({
       {/* Section blocks */}
       {sections.map((section, i) => {
         const config = sectionLabels[section.toLowerCase()] ?? {
-          short: section.charAt(0).toUpperCase() + section.slice(1),
+          short: section.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
           height: 'h-5',
           weight: 2,
         };
@@ -130,6 +130,9 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
     age_protection,
     evidence_allocation_count,
     keyword_count,
+    keyword_targets,
+    evidence_items,
+    experience_roles,
   } = data;
 
   const [editingAngle, setEditingAngle] = useState(false);
@@ -312,16 +315,84 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
           </GlassCard>
         )}
 
-        {/* Stats Row */}
-        {(evidence_allocation_count > 0 || keyword_count > 0) && (
-          <div className="flex flex-wrap gap-2">
-            {evidence_allocation_count > 0 && (
-              <StatBadge label={`${evidence_allocation_count} key achievements matched`} />
-            )}
-            {keyword_count > 0 && (
-              <StatBadge label={`${keyword_count} relevant terms included`} />
-            )}
-          </div>
+        {/* Evidence Allocation */}
+        {(evidence_items && evidence_items.length > 0) ? (
+          <details className="group">
+            <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+              <span>{evidence_items.length} key achievements mapped to requirements</span>
+            </summary>
+            <div className="mt-2 space-y-1.5">
+              {evidence_items.map((item: BlueprintEvidenceItem, i: number) => (
+                <div key={`ev-${item.achievement.slice(0, 30)}-${i}`} className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
+                  <p className="text-xs text-white/85">{item.achievement}</p>
+                  {item.maps_to_requirements.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {item.maps_to_requirements.map((req: string, j: number) => (
+                        <span key={`ev-req-${i}-${j}`} className="rounded border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[9px] text-white/60">
+                          {req}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {item.placement_rationale && (
+                    <p className="mt-1 text-[10px] italic text-white/50">{item.placement_rationale}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
+        ) : evidence_allocation_count > 0 ? (
+          <StatBadge label={`${evidence_allocation_count} key achievements matched`} />
+        ) : null}
+
+        {/* Keyword Targets */}
+        {(keyword_targets && keyword_targets.length > 0) ? (
+          <details className="group">
+            <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+              <span>{keyword_targets.length} keywords to weave into your resume</span>
+            </summary>
+            <div className="mt-2 space-y-1">
+              {keyword_targets.map((kw: BlueprintKeywordTarget) => (
+                <div key={`kw-${kw.keyword}`} className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5">
+                  <span className="text-xs text-white/85">{kw.keyword}</span>
+                  <div className="flex items-center gap-2">
+                    {kw.placements.length > 0 && (
+                      <span className="text-[9px] text-white/40">{kw.placements.slice(0, 2).join(', ')}</span>
+                    )}
+                    <span className={cn(
+                      'rounded-full px-1.5 py-0.5 text-[9px] font-medium',
+                      kw.current_count > 0
+                        ? 'border border-[#b5dec2]/20 bg-[#b5dec2]/10 text-[#b5dec2]'
+                        : 'border border-[#f0d99f]/20 bg-[#f0d99f]/10 text-[#f0d99f]'
+                    )}>
+                      {kw.action || (kw.current_count > 0 ? 'present' : 'add')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        ) : keyword_count > 0 ? (
+          <StatBadge label={`${keyword_count} relevant terms to include`} />
+        ) : null}
+
+        {/* Experience Roles */}
+        {experience_roles && experience_roles.length > 0 && (
+          <details className="group">
+            <summary className="cursor-pointer list-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[11px] text-white/56 hover:bg-white/[0.04] hover:text-white/72 transition-colors select-none">
+              <span>{experience_roles.length} roles planned for experience section</span>
+            </summary>
+            <div className="mt-2 space-y-1">
+              {experience_roles.map((role) => (
+                <div key={`role-${role.role_key}`} className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5">
+                  <span className="text-xs text-white/85">{role.company}</span>
+                  {role.bullet_range && (
+                    <span className="text-[10px] text-white/50">{role.bullet_range[0]}–{role.bullet_range[1]} bullets</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
         )}
 
         {/* Age Protection Card */}

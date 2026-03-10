@@ -56,7 +56,7 @@ export interface BenchmarkProfile {
   industry_standards: string[];
   competitive_differentiators: string[];
   language_keywords: string[];
-  ideal_candidate_summary: string;
+  ideal_candidate_summary?: string;
   // v2 benchmark payload compatibility (server emits these and the UI can map/fallback)
   ideal_profile?: string;
   section_expectations?: Record<string, string>;
@@ -185,6 +185,20 @@ export interface PositioningInterviewData {
 }
 
 // --- Blueprint Review ---
+export interface BlueprintKeywordTarget {
+  keyword: string;
+  target_density: number;
+  current_count: number;
+  placements: string[];
+  action: string;
+}
+
+export interface BlueprintEvidenceItem {
+  achievement: string;
+  maps_to_requirements: string[];
+  placement_rationale: string;
+}
+
 export interface BlueprintReviewData {
   target_role: string;
   positioning_angle: string;
@@ -198,6 +212,10 @@ export interface BlueprintReviewData {
   };
   evidence_allocation_count: number;
   keyword_count: number;
+  // Enriched data (optional for backward compat)
+  keyword_targets?: BlueprintKeywordTarget[];
+  evidence_items?: BlueprintEvidenceItem[];
+  experience_roles?: Array<{ role_key: string; company: string; bullet_range?: [number, number] }>;
 }
 
 // --- Section Suggestions ---

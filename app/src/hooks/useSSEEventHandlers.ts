@@ -627,33 +627,58 @@ export function handleBlueprintReady(
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
-  markPipelineProgress('Step 5 blueprint is ready for review.', 'gate', {
+  markPipelineProgress('Blueprint is ready for review.', 'gate', {
     stage: 'architect_review',
     expectedNextAction: 'Review and approve the blueprint in the workspace',
   });
   state.setIsProcessing(false);
   state.setIsPipelineGateActive(true);
   state.setBlueprintReady(data.blueprint);
+  if (!data.blueprint || typeof data.blueprint !== 'object') return;
   const bp = data.blueprint as Record<string, unknown>;
   const sectionPlan = bp.section_plan as { order?: string[] } | undefined;
   if (sectionPlan?.order && Array.isArray(sectionPlan.order)) {
     state.setSectionBuildOrder(sectionPlan.order);
   }
   state.setPanelType('blueprint_review');
+  // Extract enriched blueprint details for the panel
+  const evidenceAllocation = bp.evidence_allocation as Record<string, unknown> | undefined;
+  const selectedAccomplishments = (evidenceAllocation?.selected_accomplishments as Array<Record<string, unknown>> | undefined) ?? [];
+  const experienceSection = (evidenceAllocation?.experience_section as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const keywordMap = (bp.keyword_map as Record<string, Record<string, unknown>> | undefined) ?? {};
+
   state.setPanelData({
     type: 'blueprint_review',
     target_role: safeString(bp.target_role),
     positioning_angle: safeString(bp.positioning_angle),
-    section_plan: bp.section_plan as { order: string[]; rationale: string },
-    age_protection: bp.age_protection as {
+    section_plan: (bp.section_plan as { order: string[]; rationale: string } | undefined) ?? { order: [], rationale: '' },
+    age_protection: (bp.age_protection as {
       flags: Array<{ item: string; risk: string; action: string }>;
       clean: boolean;
-    },
-    evidence_allocation_count: (
-      (bp.evidence_allocation as Record<string, unknown>)
-        ?.selected_accomplishments as unknown[] ?? []
-    ).length,
-    keyword_count: Object.keys((bp.keyword_map as Record<string, unknown>) ?? {}).length,
+    } | undefined) ?? { flags: [], clean: true },
+    evidence_allocation_count: selectedAccomplishments.length,
+    keyword_count: Object.keys(keywordMap).length,
+    keyword_targets: Object.entries(keywordMap).map(([keyword, target]) => ({
+      keyword,
+      target_density: typeof target.target_density === 'number' ? target.target_density : 0,
+      current_count: typeof target.current_count === 'number' ? target.current_count : 0,
+      placements: Array.isArray(target.placements) ? target.placements as string[] : [],
+      action: typeof target.action === 'string' ? target.action : '',
+    })),
+    evidence_items: selectedAccomplishments.map((item) => ({
+      achievement: typeof item.achievement === 'string' ? item.achievement : '',
+      maps_to_requirements: Array.isArray(item.maps_to_requirements) ? item.maps_to_requirements as string[] : [],
+      placement_rationale: typeof item.placement_rationale === 'string' ? item.placement_rationale : '',
+    })),
+    experience_roles: Object.entries(experienceSection).map(([role_key, role]) => ({
+      role_key,
+      company: typeof role.company === 'string' ? role.company : role_key,
+      bullet_range: (
+        Array.isArray(role.bullet_count_range) &&
+        typeof role.bullet_count_range[0] === 'number' &&
+        typeof role.bullet_count_range[1] === 'number'
+      ) ? [role.bullet_count_range[0], role.bullet_count_range[1]] as [number, number] : undefined,
+    })),
   } as PanelData);
   sendGateNotification('Blueprint is ready for your review');
 }

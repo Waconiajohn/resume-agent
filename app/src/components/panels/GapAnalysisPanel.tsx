@@ -59,8 +59,8 @@ function normalizeData(data: GapAnalysisData & Record<string, unknown>) {
     const requirements: RequirementFitItem[] = analysis.map((item) => ({
       requirement: item.requirement ?? '',
       classification: mapStatus(item.status ?? 'gap'),
-      evidence: item.your_evidence ?? item.evidence,
-      strategy: item.gap_or_action ?? item.strategy,
+      evidence: item.your_evidence ?? item.evidence ?? '',
+      strategy: item.gap_or_action ?? item.strategy ?? '',
     }));
 
     const strong_count = requirements.filter(r => r.classification === 'strong').length;

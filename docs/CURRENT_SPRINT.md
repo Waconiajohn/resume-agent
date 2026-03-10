@@ -1,50 +1,54 @@
-# Sprint 60-63: LinkedIn Studio + Networking Hub — Phase 3B & 3C
-**Goal:** Replace all mock data in LinkedIn Studio and Networking Hub with real agent/DB data. Add new agent intelligence features (Three Ways Power Move, Recruiter Search Simulator). Encode coaching methodology IP from Bible Ch 4-5.
-**Started:** 2026-03-08
+# Sprint 61: Resume Pipeline UX — Intelligence Visibility
 
-## Sprint 60: LinkedIn Studio — Live Data & Content Pipeline
-1. [x] Story 60-1: Content Post Persistence Hook — **Status: done**
-2. [x] Story 60-2: Content Calendar Agent Wiring — **Status: done**
-3. [x] Story 60-3: Post History Library Tab — **Status: done** (verified: already connected to live data)
-4. [x] Story 60-4: Keyword Multiplier Coaching Nudge — **Status: done** (verified: already connected to live data)
-5. [x] Story 60-5: Analytics Tab — Real Content Metrics — **Status: done** (verified: already connected to live data)
-6. [x] Story 60-6: Sprint 60 Tests — **Status: done** (48 tests: calendar reports route, persistence hook, calendar reports hook)
+**Goal:** Surface the rich intelligence data the server already produces to the user. No backend logic changes — only frontend panel redesigns and server-side SSE emission adjustments to send full data instead of summaries.
+**Started:** 2026-03-09
+**Audit Reference:** `docs/obsidian/30_Specs & Designs/Resume Pipeline UX Audit.md`
+**Plan Reference:** `docs/obsidian/30_Specs & Designs/Resume Pipeline UX Redesign Plan.md`
 
-## Sprint 61: Networking Hub — Live CRM & Rule of Four
-1. [x] Story 61-1: useNetworkingContacts Hook — **Status: done** (verified: hook exists with full CRUD)
-2. [x] Story 61-2: Rule of Four — Application Linking — **Status: done** (verified: useRuleOfFour hook + RuleOfFourSection)
-3. [x] Story 61-3: Contact Management UI — **Status: done** (verified: ContactFormModal + ContactDetailSheet)
-4. [x] Story 61-4: Weekly Activity — Real Metrics — **Status: done** (verified: WeeklyActivity connected to live data)
-5. [x] Story 61-5: Recruiter Tracker — Real Data — **Status: done** (verified: RecruiterTracker with status logic)
-6. [x] Story 61-6: Follow-Up Reminders Bar — **Status: done** (verified: FollowUpBar with Done/Snooze actions)
-7. [x] Story 61-7: Sprint 61 Tests — **Status: done** (115 tests already existed across 4 files)
+## Stories This Sprint
 
-## Sprint 62: Cross-Agent Intelligence & Power Moves
-1. [x] Story 62-1: Context-Aware Outreach from Rule of Four — **Status: done**
-2. [x] Story 62-2: Three Ways Power Move Tool — **Status: done**
-3. [x] Story 62-3: Recruiter Search Simulator — **Status: done**
-4. [x] Story 62-4: Content-Networking Cross-Reference — **Status: done**
-5. [x] Story 62-5: Hook Formula Analyzer — **Status: done**
-6. [x] Story 62-6: Sprint 62 Tests — **Status: done** (53 tests: NetworkingHubRoom Sprint 62, hook formula UI)
+### Story 61-1: Research Dashboard — Show Full Intelligence
+- **As a** user who just uploaded my resume and JD
+- **I want to** see the full research results — JD breakdown, company context, benchmark profile
+- **So that** I understand what the system learned before it starts asking me questions
+- **Acceptance Criteria:**
+  - [ ] Company card shows name, industry, size, culture signals (from research_company output)
+  - [ ] JD Requirements card shows must-haves, nice-to-haves, implicit requirements (full text, not counts)
+  - [ ] Benchmark Profile card shows ideal candidate narrative and section expectations
+  - [ ] All data comes from existing server output (no new LLM calls)
+  - [ ] Progressive disclosure: summary visible, details in collapsibles
+- **Estimated complexity:** Medium
+- **Status:** done
 
-## Sprint 63: Coaching Discipline & Polish
-1. [x] Story 63-1: Three Messaging Methods — **Status: done**
-2. [x] Story 63-2: Rule of Four Coaching Nudges — **Status: done**
-3. [x] Story 63-3: Auto Follow-Up Scheduling — **Status: done**
-4. [x] Story 63-4: Calendar-to-Composer Promotion — **Status: done**
-5. [x] Story 63-5: 50 Groups Strategy Guide — **Status: done**
-6. [x] Story 63-6: Sprint 63 Tests — **Status: done** (41 tests: CRM service, messaging config, FiftyGroupsGuide)
+### Story 61-2: Gap Analysis — Show Strategy, Not Just Counts
+- **As a** user reviewing my fit for a role
+- **I want to** see exactly where I'm strong, partial, and gap — with mitigation strategies
+- **So that** I understand the positioning strategy before the interview starts
+- **Acceptance Criteria:**
+  - [ ] Each requirement shows classification (strong/partial/gap) with color coding
+  - [ ] Partial fits show "strengthen" instructions
+  - [ ] Gaps show mitigation strategies
+  - [ ] Why Me / Why Not Me sections visible
+  - [ ] User can flag gaps they actually have experience for
+- **Estimated complexity:** Large
+- **Status:** done
 
-## Sprint E1: Documentation Remediation (documentation-only)
-1. [x] Story E1-1: Create 4 missing Obsidian agent notes — **Status: done**
-2. [x] Story E1-2: Fix Project Hub (agent count, Retirement Bridge, test counts) — **Status: done**
-3. [x] Story E1-3: Update Status.md — **Status: done**
-4. [x] Story E1-4: Update SSE Event System.md — **Status: done**
-5. [x] Story E1-5: Update stale agent notes — **Status: done**
-6. [x] Story E1-6: Seed vault subdirectories — **Status: done**
+### Story 61-3: Blueprint Review — Expose the Strategy
+- **As a** user reviewing my resume blueprint
+- **I want to** see evidence allocation, keyword targets, and section rationale
+- **So that** I make informed decisions about the resume structure
+- **Acceptance Criteria:**
+  - [ ] No underscores in section names (fix sectionLabels map)
+  - [ ] Evidence allocation visible per section
+  - [ ] Keyword targets shown with current vs target counts
+  - [ ] Section rationale explains ordering logic
+  - [ ] Step indicator contextualizes progress (not arbitrary "Step 5")
+- **Estimated complexity:** Medium
+- **Status:** done
 
 ## Out of Scope (Explicitly)
-- LinkedIn API OAuth integration
-- Automated LinkedIn posting
-- LinkedIn Recruiter platform integration
-- Google Jobs / USAJobs sources
+- Interview redesign (Sprint 62)
+- Section writing changes (Sprint 63)
+- Navigation unification (Sprint 64)
+- New server-side LLM calls or tools
+- Backend logic changes to agent tools

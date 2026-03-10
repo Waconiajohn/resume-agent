@@ -1,5 +1,57 @@
 # Changelog — Resume Agent
 
+## 2026-03-09 — Session 68
+**Sprint:** 61 | **Stories:** 61-1, 61-2, 61-3 — Intelligence Visibility
+**Summary:** Activated two ghost panels (Research Dashboard, Gap Analysis) by adding SSE emissions to strategist tools, and enriched Blueprint Review with full keyword targets, evidence allocation, and experience role details.
+
+### Changes Made
+- `server/src/agents/strategist/tools.ts` — Added `ctx.emit()` for `research_dashboard` panel in `analyze_jd` (maps full research output to frontend shape); added `ctx.emit()` for `gap_analysis` panel in `classify_fit` (maps requirements with mitigation/strengthen strategies); imported `RequirementMapping` type; deduplicated count variables
+- `app/src/hooks/useSSEEventHandlers.ts` — Fixed "Step 5" → "Blueprint is ready for review" in `handleBlueprintReady`; enriched blueprint panel data to pass through keyword targets, evidence items, and experience roles instead of just counts
+- `app/src/types/panels.ts` — Added `BlueprintKeywordTarget`, `BlueprintEvidenceItem` interfaces; extended `BlueprintReviewData` with `keyword_targets`, `evidence_items`, `experience_roles`
+- `app/src/components/panels/BlueprintReviewPanel.tsx` — Replaced stat badges with collapsible `<details>` sections showing keyword targets with action status, evidence items with requirement mapping, and experience roles with bullet ranges; fixed underscore-to-title-case in section name fallback
+
+### Decisions Made
+- Research Dashboard and Gap Analysis panels were "ghost components" — fully built but never triggered. The fix was server-side: add `ctx.emit()` calls in the strategist tools that already produce the data
+- Blueprint panel enrichment uses progressive disclosure (`<details>`) to keep the panel clean while exposing full strategy
+
+### Next Steps
+- Sprint 62: Positioning Interview redesign
+- Sprint 63: Section Writing improvements
+
+## 2026-03-09 — Session 67
+**Sprint:** Extension A2 | **Story:** A2 — Extension Project Setup + Shared Modules
+**Summary:** Created the `extension/` directory at the repo root with Vite/TypeScript build tooling and the three shared modules (types, config, url-normalizer) plus 31 passing unit tests.
+
+### Changes Made
+- `extension/package.json` — New package: careeriq-extension, ESM, Vite + Vitest + TypeScript + @types/chrome
+- `extension/tsconfig.json` — Strict TypeScript config targeting ES2022, bundler module resolution, chrome + vitest globals
+- `extension/vite.config.ts` — Multi-entry Vite build for background.js, content.js, popup.js; source maps on; minify off for debuggability
+- `extension/vitest.config.ts` — Vitest config with node environment and `@` alias
+- `extension/manifest.json` — Manifest V3: 6 ATS host permissions, no identity permission (token exchange model)
+- `extension/src/shared/types.ts` — ATSPlatform, ExtensionMessage discriminated union, TabStatus, ResumePayload, FillLogEntry, FlattenedResume
+- `extension/src/shared/config.ts` — CONFIG constants, ATS_PLATFORMS definitions with URL patterns and form selectors, FIELD_LABEL_MAP
+- `extension/src/shared/url-normalizer.ts` — normalizeJobUrl (strips tracking params, platform-specific normalization), detectPlatform, isJobApplicationPage
+- `extension/src/shared/__tests__/url-normalizer.test.ts` — 31 unit tests covering all 3 exported functions across all 6 ATS platforms + edge cases
+- `extension/src/background/background.ts` — Placeholder
+- `extension/src/content/content.ts` — Placeholder
+- `extension/src/content/field-mapper.ts` — Placeholder
+- `extension/src/content/content.css` — Injected UI styles: fill button (fixed bottom-right, loading/done states, hover animation) + status banner
+- `extension/src/popup/popup.html` — Extension popup shell with dark glass design
+- `extension/src/popup/popup.ts` — Placeholder
+
+### Decisions Made
+- `emptyOutDir: true` used in vite.config.ts (spec had `emptyDirOnBuild` which is not a valid Vite option — corrected to the valid key)
+- No `identity` permission in manifest — auth uses token exchange with the CareerIQ API, not Chrome Identity API
+- `.js` extensions on all local imports in shared modules (ESM requirement consistent with server conventions)
+
+### Known Issues
+- None
+
+### Next Steps
+- Story A3: Background service worker (auth, message routing, resume cache)
+- Story A4: Content script + field mapper
+- Story A5: Popup UI
+
 ## 2026-03-09 — Session 66
 **Sprint:** 60 | **Stories:** 60-1 (Content Post Persistence Feedback), 60-2 (Calendar History Hook)
 **Summary:** Added "Saved to Library" confirmation badge to Post Composer complete state, and added a Previous Calendars collapsible section to the Content Calendar tab backed by a new GET /api/content-calendar/reports route.

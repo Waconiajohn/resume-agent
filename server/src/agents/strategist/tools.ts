@@ -22,6 +22,7 @@ import type {
   PositioningProfile,
   PositioningQuestion,
   EvidenceItem,
+  RequirementMapping,
   PipelineState,
   PipelineSSEEvent,
 } from '../types.js';
@@ -133,6 +134,48 @@ const analyzeJdTool: ResumeAgentTool = {
     // Store full research output so subsequent tools can reuse it
     ctx.updateState({ research: result });
     ctx.scratchpad.research = result;
+
+    // Emit research dashboard so frontend can show intelligence to user
+    ctx.emit({
+      type: 'right_panel_update',
+      panel_type: 'research_dashboard',
+      data: {
+        company: {
+          company_name: result.company_research.company_name,
+          values: result.company_research.culture_signals,
+        },
+        jd_requirements: {
+          must_haves: result.jd_analysis.must_haves,
+          nice_to_haves: result.jd_analysis.nice_to_haves,
+          seniority_level: result.jd_analysis.seniority_level,
+        },
+        benchmark: {
+          ideal_profile: result.benchmark_candidate.ideal_profile,
+          language_keywords: result.benchmark_candidate.language_keywords,
+          section_expectations: result.benchmark_candidate.section_expectations,
+          required_skills: [
+            ...result.jd_analysis.must_haves.map((req: string) => ({
+              requirement: req,
+              importance: 'critical' as const,
+              category: 'must_have',
+            })),
+            ...result.jd_analysis.nice_to_haves.map((req: string) => ({
+              requirement: req,
+              importance: 'nice_to_have' as const,
+              category: 'nice_to_have',
+            })),
+          ],
+          experience_expectations: result.benchmark_candidate.ideal_profile,
+          culture_fit_traits: result.company_research.culture_signals,
+          communication_style: result.benchmark_candidate.language_keywords.slice(0, 3).join(', '),
+          industry_standards: [],
+          competitive_differentiators: [],
+          ideal_candidate_summary: result.benchmark_candidate.ideal_profile,
+        },
+        loading_state: 'complete',
+        status_note: `Analyzed ${result.jd_analysis.must_haves.length} must-haves, ${result.jd_analysis.nice_to_haves.length} nice-to-haves`,
+      },
+    });
 
     return {
       success: true,
@@ -649,13 +692,38 @@ const classifyFitTool: ResumeAgentTool = {
     ctx.updateState({ gap_analysis: result });
     ctx.scratchpad.gap_analysis = result;
 
+    // Emit gap analysis panel so frontend shows the strategy, not just counts
+    const strongCount = result.requirements.filter((r: RequirementMapping) => r.classification === 'strong').length;
+    const partialCount = result.requirements.filter((r: RequirementMapping) => r.classification === 'partial').length;
+    const gapCount = result.requirements.filter((r: RequirementMapping) => r.classification === 'gap').length;
+
+    ctx.emit({
+      type: 'right_panel_update',
+      panel_type: 'gap_analysis',
+      data: {
+        requirements: result.requirements.map((r: RequirementMapping) => ({
+          requirement: r.requirement,
+          classification: r.classification,
+          evidence: r.evidence.length > 0 ? r.evidence.join('; ') : '',
+          strategy: r.classification === 'gap'
+            ? (r.mitigation ?? r.strengthen ?? '')
+            : (r.strengthen ?? r.mitigation ?? ''),
+        })),
+        strong_count: strongCount,
+        partial_count: partialCount,
+        gap_count: gapCount,
+        total: result.requirements.length,
+        addressed: strongCount + partialCount,
+      },
+    });
+
     return {
       success: true,
       coverage_score: result.coverage_score,
       requirements_total: result.requirements.length,
-      strong_count: result.requirements.filter(r => r.classification === 'strong').length,
-      partial_count: result.requirements.filter(r => r.classification === 'partial').length,
-      gap_count: result.requirements.filter(r => r.classification === 'gap').length,
+      strong_count: strongCount,
+      partial_count: partialCount,
+      gap_count: gapCount,
       critical_gaps: result.critical_gaps,
       addressable_gaps: result.addressable_gaps,
       strength_summary: result.strength_summary,
