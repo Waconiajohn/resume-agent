@@ -29,6 +29,7 @@ Object.assign(navigator, {
 
 const mockStartPipeline = vi.fn().mockResolvedValue(true);
 const mockReset = vi.fn();
+const mockRespondToGate = vi.fn().mockResolvedValue(true);
 
 const idleState = {
   status: 'idle' as const,
@@ -37,7 +38,10 @@ const idleState = {
   activityMessages: [],
   error: null,
   currentStage: null,
+  bioReviewData: null,
+  pendingGate: null,
   startPipeline: mockStartPipeline,
+  respondToGate: mockRespondToGate,
   reset: mockReset,
 };
 

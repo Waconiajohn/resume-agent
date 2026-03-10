@@ -46,9 +46,29 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
         stageMessage: {
           startStage: 'writing',
           start: 'Writing your cover letter...',
-          complete: 'Cover letter complete',
+          complete: 'Cover letter ready for review',
         },
-        onComplete: (scratchpad, state) => {
+        gates: [
+          {
+            name: 'letter_review',
+            condition: (state) => typeof state.letter_draft === 'string' && state.letter_draft.length > 0,
+            onResponse: (response, state) => {
+              // Response: true (approved), or { feedback: string } (revision requested),
+              // or { edited_content: string } (direct edit)
+              if (response === true || response === 'approved') {
+                // Approved — no changes needed
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.edited_content === 'string') {
+                  state.letter_draft = resp.edited_content;
+                } else if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+              }
+            },
+          },
+        ],
+        onComplete: (scratchpad, state, emit) => {
           if (scratchpad.letter_draft && typeof scratchpad.letter_draft === 'string') {
             state.letter_draft = scratchpad.letter_draft;
           }
@@ -57,6 +77,17 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           }
           if (typeof scratchpad.review_feedback === 'string') {
             state.review_feedback = scratchpad.review_feedback;
+          }
+
+          // Emit letter for review panel before the gate blocks
+          if (state.letter_draft) {
+            emit({
+              type: 'letter_review_ready',
+              session_id: state.session_id,
+              letter_draft: state.letter_draft,
+              quality_score: state.quality_score,
+            });
+            emit({ type: 'pipeline_gate', gate: 'letter_review' });
           }
         },
       },
@@ -136,6 +167,16 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           '',
           'Call write_letter to generate the letter, then review_letter to check quality.',
         ];
+
+        // If the user requested revisions at the review gate, include feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Revision Requested',
+            `The user reviewed the cover letter and requested the following changes: "${state.revision_feedback}"`,
+            'Call write_letter again incorporating this feedback, then review_letter to check quality.',
+          );
+        }
 
         // Emotional baseline tone adaptation
         const toneGuidance = getToneGuidanceFromInput(input);

@@ -7,7 +7,12 @@ import { safeString } from '@/lib/safe-cast';
 import type { ActivityMessage } from '@/types/activity';
 
 export type { ActivityMessage };
-export type InterviewPrepStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+export type InterviewPrepStatus = 'idle' | 'connecting' | 'running' | 'star_stories_review' | 'complete' | 'error';
+
+export interface StarStoriesReviewData {
+  report: string;
+  quality_score: number;
+}
 
 interface InterviewPrepState {
   status: InterviewPrepStatus;
@@ -16,6 +21,8 @@ interface InterviewPrepState {
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
+  starStoriesReviewData: StarStoriesReviewData | null;
+  pendingGate: string | null;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -29,6 +36,8 @@ export function useInterviewPrep() {
     activityMessages: [],
     error: null,
     currentStage: null,
+    starStoriesReviewData: null,
+    pendingGate: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -96,6 +105,25 @@ export function useInterviewPrep() {
             addActivity(`Reviewing section: ${section}`, 'writing');
           } else if (progressStatus === 'complete') {
             addActivity(`Section complete: ${section}`, 'writing');
+          }
+          break;
+        }
+
+        case 'star_stories_review_ready': {
+          setState((prev) => ({
+            ...prev,
+            starStoriesReviewData: {
+              report: safeString(data.report),
+              quality_score: typeof data.quality_score === 'number' ? data.quality_score : 0,
+            },
+          }));
+          break;
+        }
+
+        case 'pipeline_gate': {
+          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          if (gateName === 'star_stories_review') {
+            setState((prev) => ({ ...prev, status: 'star_stories_review', pendingGate: gateName }));
           }
           break;
         }
@@ -238,6 +266,8 @@ export function useInterviewPrep() {
         activityMessages: [],
         error: null,
         currentStage: null,
+        starStoriesReviewData: null,
+        pendingGate: null,
       });
 
       try {
@@ -277,6 +307,36 @@ export function useInterviewPrep() {
     [connectSSE],
   );
 
+  const respondToGate = useCallback(
+    async (gate: string, response: unknown): Promise<boolean> => {
+      const sessionId = sessionIdRef.current;
+      const token = accessTokenRef.current;
+      if (!sessionId || !token) return false;
+
+      try {
+        const res = await fetch(`${API_BASE}/interview-prep/respond`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId, gate, response }),
+        });
+        if (!res.ok) {
+          console.error('[useInterviewPrep] Gate respond failed:', res.status);
+          return false;
+        }
+        // Transition back to running after responding
+        setState((prev) => ({ ...prev, status: 'running', pendingGate: null }));
+        return true;
+      } catch (err) {
+        console.error('[useInterviewPrep] Gate respond error:', err);
+        return false;
+      }
+    },
+    [],
+  );
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     if (reconnectTimerRef.current) {
@@ -293,12 +353,15 @@ export function useInterviewPrep() {
       activityMessages: [],
       error: null,
       currentStage: null,
+      starStoriesReviewData: null,
+      pendingGate: null,
     });
   }, []);
 
   return {
     ...state,
     startPipeline,
+    respondToGate,
     reset,
   };
 }

@@ -7,7 +7,13 @@ import { safeString, safeNumber } from '@/lib/safe-cast';
 import type { ActivityMessage } from '@/types/activity';
 
 export type { ActivityMessage };
-export type NinetyDayPlanStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+export type NinetyDayPlanStatus = 'idle' | 'connecting' | 'running' | 'stakeholder_review' | 'complete' | 'error';
+
+export interface StakeholderReviewData {
+  stakeholder_map: unknown[];
+  quick_wins: unknown[];
+  role_context: unknown;
+}
 
 interface NinetyDayPlanState {
   status: NinetyDayPlanStatus;
@@ -16,6 +22,8 @@ interface NinetyDayPlanState {
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
+  stakeholderReviewData: StakeholderReviewData | null;
+  pendingGate: string | null;
 }
 
 export interface NinetyDayPlanInput {
@@ -38,6 +46,8 @@ export function useNinetyDayPlan() {
     activityMessages: [],
     error: null,
     currentStage: null,
+    stakeholderReviewData: null,
+    pendingGate: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -104,6 +114,26 @@ export function useNinetyDayPlan() {
             `Research complete: ${stakeholders} stakeholders, ${quickWins} quick wins, ${learningPriorities} learning priorities`,
             'research',
           );
+          break;
+        }
+
+        case 'stakeholder_review_ready': {
+          setState((prev) => ({
+            ...prev,
+            stakeholderReviewData: {
+              stakeholder_map: Array.isArray(data.stakeholder_map) ? data.stakeholder_map : [],
+              quick_wins: Array.isArray(data.quick_wins) ? data.quick_wins : [],
+              role_context: data.role_context ?? null,
+            },
+          }));
+          break;
+        }
+
+        case 'pipeline_gate': {
+          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          if (gateName === 'stakeholder_review') {
+            setState((prev) => ({ ...prev, status: 'stakeholder_review', pendingGate: gateName }));
+          }
           break;
         }
 
@@ -256,6 +286,8 @@ export function useNinetyDayPlan() {
         activityMessages: [],
         error: null,
         currentStage: null,
+        stakeholderReviewData: null,
+        pendingGate: null,
       });
 
       try {
@@ -297,6 +329,36 @@ export function useNinetyDayPlan() {
     [connectSSE],
   );
 
+  const respondToGate = useCallback(
+    async (gate: string, response: unknown): Promise<boolean> => {
+      const sessionId = sessionIdRef.current;
+      const token = accessTokenRef.current;
+      if (!sessionId || !token) return false;
+
+      try {
+        const res = await fetch(`${API_BASE}/ninety-day-plan/respond`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId, gate, response }),
+        });
+        if (!res.ok) {
+          console.error('[useNinetyDayPlan] Gate respond failed:', res.status);
+          return false;
+        }
+        // Transition back to running after responding
+        setState((prev) => ({ ...prev, status: 'running', pendingGate: null }));
+        return true;
+      } catch (err) {
+        console.error('[useNinetyDayPlan] Gate respond error:', err);
+        return false;
+      }
+    },
+    [],
+  );
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     if (reconnectTimerRef.current) {
@@ -313,12 +375,15 @@ export function useNinetyDayPlan() {
       activityMessages: [],
       error: null,
       currentStage: null,
+      stakeholderReviewData: null,
+      pendingGate: null,
     });
   }, []);
 
   return {
     ...state,
     startPipeline,
+    respondToGate,
     reset,
   };
 }

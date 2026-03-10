@@ -46,7 +46,8 @@ describe('QualityDashboardPanel', () => {
   // 1. Panel header renders
   it('renders the Quality Dashboard header', () => {
     render(<QualityDashboardPanel data={makeData()} />);
-    expect(screen.getByText('Your Resume Quality Score')).toBeInTheDocument();
+    expect(screen.getByText('Quality Scores')).toBeInTheDocument();
+    expect(screen.getByText('AI estimate')).toBeInTheDocument();
   });
 
   // 2. Renders primary score rings
@@ -177,7 +178,8 @@ describe('QualityDashboardPanel', () => {
   // 9. Renders without crashing when all optional fields are omitted
   it('renders without crashing with minimal data', () => {
     render(<QualityDashboardPanel data={{}} />);
-    expect(screen.getByText('Your Resume Quality Score')).toBeInTheDocument();
+    expect(screen.getByText('Quality Scores')).toBeInTheDocument();
+    expect(screen.getByText('AI estimate')).toBeInTheDocument();
   });
 
   // 10. Shows coherence issues when populated

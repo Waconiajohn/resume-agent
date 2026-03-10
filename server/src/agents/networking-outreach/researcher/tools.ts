@@ -138,6 +138,20 @@ ${resumeText}`,
       }
     }
 
+    // Emit transparency warning when no verified context is available
+    if (!contextNotes) {
+      ctx.emit({
+        type: 'transparency',
+        stage: 'analyze_target',
+        message: 'No context provided for this contact — profile data is AI-inferred. Review carefully before sending.',
+      });
+    }
+
+    const noContextInstructions = !contextNotes
+      ? `- Prefix ALL items in professional_interests and recent_activity with '[AI-inferred] ' since no verified data is available.`
+      : `- professional_interests should be realistic for someone in their role and industry
+- If context_notes mention recent posts or achievements, incorporate them into recent_activity`;
+
     const analysisPrompt = `Analyze this target contact for a networking outreach campaign. Build a professional profile based on their title, company, and any additional context.
 
 TARGET CONTACT:
@@ -159,9 +173,7 @@ Return as JSON:
 }
 
 Rules:
-- professional_interests should be realistic for someone in their role and industry
-- If context_notes mention recent posts or achievements, incorporate them into recent_activity
-- If no context_notes, infer likely recent activity from industry trends for their role
+${noContextInstructions}
 - Be specific to their role — not generic business interests
 - seniority should be inferred from the title`;
 
@@ -176,11 +188,16 @@ Rules:
     try {
       targetAnalysis = JSON.parse(repairJSON(response.text) ?? response.text);
     } catch {
+      const inferredPrefix = !contextNotes ? '[AI-inferred] ' : '';
       targetAnalysis = {
         target_name: targetName,
         target_title: targetTitle,
         target_company: targetCompany,
-        professional_interests: ['Industry leadership', 'Team development', 'Strategic growth'],
+        professional_interests: [
+          `${inferredPrefix}Industry leadership`,
+          `${inferredPrefix}Team development`,
+          `${inferredPrefix}Strategic growth`,
+        ],
         recent_activity: [],
         industry: 'General',
         seniority: 'Senior',

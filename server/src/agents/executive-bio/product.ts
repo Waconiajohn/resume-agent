@@ -33,9 +33,29 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
         stageMessage: {
           startStage: 'writing',
           start: 'Analyzing positioning and writing your executive bios...',
-          complete: 'Bio collection complete',
+          complete: 'Bio collection ready for review',
         },
-        onComplete: (scratchpad, state) => {
+        gates: [
+          {
+            name: 'bio_review',
+            condition: (state) => state.bios.length > 0,
+            onResponse: (response, state) => {
+              // Response: true (approved), or { feedback: string } (revision requested),
+              // or { edited_content: string } (direct edit to the final report)
+              if (response === true || response === 'approved') {
+                // Approved — no changes needed
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.edited_content === 'string') {
+                  state.final_report = resp.edited_content;
+                } else if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+              }
+            },
+          },
+        ],
+        onComplete: (scratchpad, state, emit) => {
           if (scratchpad.positioning_analysis && !state.positioning_analysis) {
             state.positioning_analysis = scratchpad.positioning_analysis as ExecutiveBioState['positioning_analysis'];
           }
@@ -50,6 +70,18 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
           }
           if (scratchpad.resume_data && !state.resume_data) {
             state.resume_data = scratchpad.resume_data as ExecutiveBioState['resume_data'];
+          }
+
+          // Emit bios for review panel before the gate blocks
+          if (state.bios.length > 0) {
+            emit({
+              type: 'bio_review_ready',
+              session_id: state.session_id,
+              bios: state.bios,
+              final_report: state.final_report,
+              quality_score: state.quality_score,
+            });
+            emit({ type: 'pipeline_gate', gate: 'bio_review' });
           }
         },
       },
@@ -105,6 +137,16 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
           '',
           'Call tools in order: analyze_positioning first, then write_bio + quality_check_bio for each format/length combination, then assemble_bio_collection.',
         );
+
+        // If the user requested revisions at the review gate, include feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Revision Requested',
+            `The user reviewed the bio collection and requested the following changes: "${state.revision_feedback}"`,
+            'Call write_bio again for the affected bios incorporating this feedback, then quality_check_bio, then assemble_bio_collection with all updated bios.',
+          );
+        }
 
         // Distress resources — first (and only) agent
         const distress = getDistressFromInput(input);

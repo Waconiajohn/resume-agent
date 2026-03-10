@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
@@ -105,7 +106,12 @@ const classificationConfig = {
   },
 };
 
-function RequirementRow({ item }: { item: RequirementFitItem }) {
+function RequirementRow({ item, userContext, onUserContextChange }: {
+  item: RequirementFitItem;
+  userContext: string;
+  onUserContextChange: (value: string) => void;
+}) {
+  const [showInput, setShowInput] = useState(false);
   const config = classificationConfig[item.classification] ?? classificationConfig.gap;
   const Icon = config.icon;
 
@@ -121,6 +127,40 @@ function RequirementRow({ item }: { item: RequirementFitItem }) {
           {item.strategy && (
             <p className="mt-1 text-xs italic text-white/62">{cleanText(item.strategy)}</p>
           )}
+          {!showInput && !userContext && (
+            <button
+              type="button"
+              onClick={() => setShowInput(true)}
+              className="mt-1.5 text-[10px] text-white/30 hover:text-white/50 transition-colors"
+            >
+              + Add context
+            </button>
+          )}
+          {showInput && (
+            <div className="mt-2">
+              <input
+                type="text"
+                value={userContext}
+                onChange={(e) => onUserContextChange(e.target.value)}
+                onBlur={() => { if (!userContext) setShowInput(false); }}
+                placeholder="Add evidence or dispute this assessment..."
+                autoFocus
+                className="w-full rounded border border-white/[0.12] bg-white/[0.04] px-2 py-1 text-xs text-white/80 placeholder:text-white/30 focus:border-white/25 focus:outline-none"
+              />
+            </div>
+          )}
+          {userContext && !showInput && (
+            <div className="mt-1.5 flex items-start gap-1.5">
+              <span className="text-[10px] text-white/40 italic flex-1">{userContext}</span>
+              <button
+                type="button"
+                onClick={() => setShowInput(true)}
+                className="text-[10px] text-white/30 hover:text-white/50 transition-colors shrink-0"
+              >
+                Edit
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -129,6 +169,7 @@ function RequirementRow({ item }: { item: RequirementFitItem }) {
 
 export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
   const { requirements, strong_count, partial_count, gap_count, total, addressed } = normalizeData(data as GapAnalysisData & Record<string, unknown>);
+  const [userContextMap, setUserContextMap] = useState<Record<number, string>>({});
 
   const progressPct = total > 0 ? Math.round((addressed / total) * 100) : 0;
   const hasOpenItems = partial_count > 0 || gap_count > 0;
@@ -136,7 +177,10 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
   return (
     <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">How Your Experience Matches</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-white/85">How Your Experience Matches</span>
+          <span className="text-[10px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5 ml-2">AI assessment</span>
+        </div>
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -194,7 +238,12 @@ export function GapAnalysisPanel({ data }: GapAnalysisPanelProps) {
           </summary>
           <div className="mt-2 space-y-2">
             {requirements.map((req, i) => (
-              <RequirementRow key={`req-${req.requirement.slice(0, 40)}-${i}`} item={req} />
+              <RequirementRow
+                key={`req-${req.requirement.slice(0, 40)}-${i}`}
+                item={req}
+                userContext={userContextMap[i] ?? ''}
+                onUserContextChange={(value) => setUserContextMap((prev) => ({ ...prev, [i]: value }))}
+              />
             ))}
           </div>
         </details>

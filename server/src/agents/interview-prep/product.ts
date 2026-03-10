@@ -49,16 +49,45 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
         stageMessage: {
           startStage: 'writing',
           start: 'Writing your interview preparation report...',
-          complete: 'Interview prep report complete',
+          complete: 'STAR stories ready for review',
         },
-        onComplete: (scratchpad, state) => {
+        onComplete: (scratchpad, state, emit) => {
           if (scratchpad.final_report && typeof scratchpad.final_report === 'string') {
             state.final_report = scratchpad.final_report;
           }
           if (typeof scratchpad.quality_score === 'number') {
             state.quality_score = scratchpad.quality_score;
           }
+
+          // Emit review data before the gate blocks
+          if (state.final_report) {
+            emit({
+              type: 'star_stories_review_ready',
+              session_id: state.session_id,
+              report: state.final_report,
+              quality_score: state.quality_score ?? 0,
+            });
+            emit({ type: 'pipeline_gate', gate: 'star_stories_review' });
+          }
         },
+        gates: [
+          {
+            name: 'star_stories_review',
+            condition: (state) => typeof state.final_report === 'string' && state.final_report.length > 0,
+            onResponse: (response, state) => {
+              if (response === true || response === 'approved') {
+                // Approved — no changes needed
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.edited_content === 'string') {
+                  state.final_report = resp.edited_content;
+                } else if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+              }
+            },
+          },
+        ],
       },
     ],
 
@@ -133,6 +162,16 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
           '',
           'Do NOT skip any section. Do NOT skip self-review.',
         ];
+
+        // If the user requested revisions at the review gate, incorporate feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Revision Requested',
+            `The user reviewed the STAR stories and requested the following changes: "${state.revision_feedback}"`,
+            'Call assemble_report again incorporating this feedback.',
+          );
+        }
 
         // Emotional baseline tone adaptation
         const toneGuidance = getToneGuidanceFromInput(input);

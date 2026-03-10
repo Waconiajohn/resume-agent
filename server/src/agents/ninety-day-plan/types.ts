@@ -147,6 +147,9 @@ export interface NinetyDayPlanState extends BaseState {
   /** Overall quality score (0-100) */
   quality_score?: number;
 
+  /** Feedback from the user review gate (stakeholder_review) */
+  revision_feedback?: string;
+
   /** Parsed resume data */
   resume_data?: {
     name: string;
@@ -184,6 +187,8 @@ export type NinetyDayPlanSSEEvent =
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'research_complete'; stakeholder_count: number; quick_win_count: number; learning_priority_count: number }
+  | { type: 'stakeholder_review_ready'; session_id: string; stakeholder_map: Stakeholder[]; quick_wins: QuickWin[]; role_context: RoleContext }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'phase_drafted'; phase: PhaseNumber; title: string; activity_count: number }
   | { type: 'phase_complete'; phase: PhaseNumber; title: string; milestone_count: number }
   | { type: 'plan_complete'; session_id: string; report: string; quality_score: number; phase_count: number }

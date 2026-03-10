@@ -545,7 +545,10 @@ const assembleNegotiationPrepTool: StrategistTool = {
     // ── Market Research Summary ──
     if (state.market_research) {
       const mr = state.market_research;
+      const dataConfidence = mr.data_confidence;
       reportParts.push('## Market Research Summary');
+      reportParts.push('');
+      reportParts.push(`> ⚠️ **AI-Estimated Data:** All compensation figures below are estimated from AI training data, not live market surveys. Confidence: ${dataConfidence}. Cross-check against Glassdoor, Levels.fyi, or industry contacts before negotiating.`);
       reportParts.push('');
       reportParts.push(`| Metric | Value |`);
       reportParts.push(`|--------|-------|`);
@@ -558,18 +561,18 @@ const assembleNegotiationPrepTool: StrategistTool = {
       reportParts.push('');
       reportParts.push(`| Percentile | Amount |`);
       reportParts.push(`|-----------|--------|`);
-      reportParts.push(`| 25th | $${mr.salary_range.p25.toLocaleString()} |`);
-      reportParts.push(`| 50th (Median) | $${mr.salary_range.p50.toLocaleString()} |`);
-      reportParts.push(`| 75th | $${mr.salary_range.p75.toLocaleString()} |`);
-      reportParts.push(`| 90th | $${mr.salary_range.p90.toLocaleString()} |`);
+      reportParts.push(`| 25th | ~$${mr.salary_range.p25.toLocaleString()} |`);
+      reportParts.push(`| 50th (Median) | ~$${mr.salary_range.p50.toLocaleString()} |`);
+      reportParts.push(`| 75th | ~$${mr.salary_range.p75.toLocaleString()} |`);
+      reportParts.push(`| 90th | ~$${mr.salary_range.p90.toLocaleString()} |`);
       reportParts.push('');
       reportParts.push('### Total Compensation Estimate');
       reportParts.push('');
       reportParts.push(`| Range | Amount |`);
       reportParts.push(`|-------|--------|`);
-      reportParts.push(`| Low | $${mr.total_comp_estimate.low.toLocaleString()} |`);
-      reportParts.push(`| Mid | $${mr.total_comp_estimate.mid.toLocaleString()} |`);
-      reportParts.push(`| High | $${mr.total_comp_estimate.high.toLocaleString()} |`);
+      reportParts.push(`| Low | ~$${mr.total_comp_estimate.low.toLocaleString()} |`);
+      reportParts.push(`| Mid | ~$${mr.total_comp_estimate.mid.toLocaleString()} |`);
+      reportParts.push(`| High | ~$${mr.total_comp_estimate.high.toLocaleString()} |`);
       reportParts.push('');
       reportParts.push('### Market Context');
       reportParts.push('');

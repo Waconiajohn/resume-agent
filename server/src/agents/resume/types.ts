@@ -76,7 +76,7 @@ export interface PositioningProfile {
   top_capabilities: Array<{
     capability: string;
     evidence: string[];
-    source: 'resume' | 'interview' | 'both';
+    source: 'resume' | 'interview' | 'both' | 'inferred';
   }>;
   evidence_library: EvidenceItem[];
   signature_method: {

@@ -26,9 +26,9 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
         stageMessage: {
           startStage: 'research',
           start: 'Analyzing role context and mapping stakeholders...',
-          complete: 'Research complete — stakeholders mapped, quick wins identified, learning priorities assessed',
+          complete: 'Stakeholder map ready for review',
         },
-        onComplete: (scratchpad, state) => {
+        onComplete: (scratchpad, state, emit) => {
           if (scratchpad.resume_data && !state.resume_data) {
             state.resume_data = scratchpad.resume_data as NinetyDayPlanState['resume_data'];
           }
@@ -41,7 +41,39 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           if (Array.isArray(scratchpad.learning_priorities)) {
             state.learning_priorities = scratchpad.learning_priorities as LearningPriority[];
           }
+
+          // Emit stakeholder map for review before the gate blocks
+          if (state.stakeholder_map.length > 0) {
+            emit({
+              type: 'stakeholder_review_ready',
+              session_id: state.session_id,
+              stakeholder_map: state.stakeholder_map,
+              quick_wins: state.quick_wins,
+              role_context: state.role_context,
+            });
+            emit({ type: 'pipeline_gate', gate: 'stakeholder_review' });
+          }
         },
+        gates: [
+          {
+            name: 'stakeholder_review',
+            condition: (state) => state.stakeholder_map.length > 0,
+            onResponse: (response, state) => {
+              if (response === true || response === 'approved') {
+                // Approved — proceed with the inferred stakeholder map
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+                // Merge corrected stakeholder map if user provided one
+                if (Array.isArray(resp.stakeholder_map)) {
+                  state.stakeholder_map = resp.stakeholder_map as Stakeholder[];
+                }
+              }
+            },
+          },
+        ],
       },
       {
         name: 'planner',
@@ -163,6 +195,16 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           '',
           'Do NOT skip any phase.',
         ];
+
+        // If the user corrected the stakeholder map at the review gate, acknowledge changes
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Corrections to Stakeholder Map',
+            `The user reviewed the stakeholder map and provided corrections: "${state.revision_feedback}"`,
+            'Incorporate these corrections when writing the stakeholder engagement sections of the plan.',
+          );
+        }
 
         // Emotional baseline tone adaptation
         const toneGuidance = getToneGuidanceFromInput(input);

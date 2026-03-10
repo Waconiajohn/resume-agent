@@ -100,6 +100,8 @@ export interface MarketResearch {
   market_context: string;
   /** Confidence level in the research data based on source availability */
   data_confidence: 'low' | 'medium' | 'high';
+  /** Source type — always 'ai_estimated' since no live data API is used */
+  data_source: 'ai_estimated';
 }
 
 // ─── Leverage Points ──────────────────────────────────────────────
@@ -263,6 +265,9 @@ export interface SalaryNegotiationState extends BaseState {
 
   /** Overall quality score for the negotiation strategy (0-100) */
   quality_score?: number;
+
+  /** User feedback for strategy revision (set when user requests changes at strategy_review gate) */
+  revision_feedback?: string;
 }
 
 // ─── SSE Events ───────────────────────────────────────────────────
@@ -275,5 +280,17 @@ export type SalaryNegotiationSSEEvent =
   | { type: 'research_complete'; market_p50: number; market_p75: number; data_confidence: 'low' | 'medium' | 'high' }
   | { type: 'strategy_ready'; approach: string; leverage_count: number }
   | { type: 'scenario_complete'; scenario_type: ScenarioType; talking_point_count: number }
+  | {
+      type: 'strategy_review_ready';
+      session_id: string;
+      opening_position: string;
+      walk_away_point: string;
+      batna: string;
+      approach: string;
+      market_p50?: number;
+      market_p75?: number;
+      data_confidence?: 'low' | 'medium' | 'high';
+    }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'negotiation_complete'; session_id: string; report: string; quality_score: number }
   | { type: 'pipeline_error'; stage: string; error: string };

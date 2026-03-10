@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { safeString, safeNumber } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
+import type { StrategyReviewData } from '@/types/panels';
 
 export type { ActivityMessage };
-export type SalaryNegotiationStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+export type SalaryNegotiationStatus = 'idle' | 'connecting' | 'running' | 'strategy_review' | 'complete' | 'error';
 
 interface SalaryNegotiationState {
   status: SalaryNegotiationStatus;
@@ -16,6 +17,7 @@ interface SalaryNegotiationState {
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
+  strategyReviewData: StrategyReviewData | null;
 }
 
 export interface SalaryNegotiationInput {
@@ -44,6 +46,7 @@ export function useSalaryNegotiation() {
     activityMessages: [],
     error: null,
     currentStage: null,
+    strategyReviewData: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -103,14 +106,14 @@ export function useSalaryNegotiation() {
           break;
 
         case 'research_complete': {
-          const p50 = safeNumber(data.p50);
-          const p75 = safeNumber(data.p75);
+          const p50 = safeNumber(data.market_p50);
+          const p75 = safeNumber(data.market_p75);
           addActivity(`Market research complete — P50: $${p50.toLocaleString()}, P75: $${p75.toLocaleString()}`, 'research');
           break;
         }
 
         case 'strategy_ready': {
-          const leveragePoints = safeNumber(data.leverage_points);
+          const leveragePoints = safeNumber(data.leverage_count);
           addActivity(`Strategy designed — ${leveragePoints} leverage points identified`, 'strategy');
           break;
         }
@@ -118,6 +121,30 @@ export function useSalaryNegotiation() {
         case 'scenario_complete': {
           const scenarioType = safeString(data.scenario_type);
           addActivity(`Scenario complete: ${scenarioType}`, 'scenarios');
+          break;
+        }
+
+        case 'strategy_review_ready': {
+          setState((prev) => ({
+            ...prev,
+            strategyReviewData: {
+              opening_position: safeString(data.opening_position),
+              walk_away_point: safeString(data.walk_away_point),
+              batna: safeString(data.batna),
+              approach: safeString(data.approach),
+              market_p50: typeof data.market_p50 === 'number' ? data.market_p50 : undefined,
+              market_p75: typeof data.market_p75 === 'number' ? data.market_p75 : undefined,
+              data_confidence: (data.data_confidence as 'low' | 'medium' | 'high' | undefined) ?? undefined,
+            },
+          }));
+          break;
+        }
+
+        case 'pipeline_gate': {
+          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          if (gateName === 'strategy_review') {
+            setState((prev) => ({ ...prev, status: 'strategy_review' }));
+          }
           break;
         }
 
@@ -254,6 +281,7 @@ export function useSalaryNegotiation() {
         activityMessages: [],
         error: null,
         currentStage: null,
+        strategyReviewData: null,
       });
 
       try {
@@ -301,6 +329,36 @@ export function useSalaryNegotiation() {
     [connectSSE],
   );
 
+  const respondToGate = useCallback(
+    async (gate: string, response: unknown): Promise<boolean> => {
+      const sessionId = sessionIdRef.current;
+      const token = accessTokenRef.current;
+      if (!sessionId || !token) return false;
+
+      try {
+        const res = await fetch(`${API_BASE}/salary-negotiation/respond`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId, gate, response }),
+        });
+        if (!res.ok) {
+          console.error('[useSalaryNegotiation] Gate respond failed:', res.status);
+          return false;
+        }
+        // Transition back to running after responding
+        setState((prev) => ({ ...prev, status: 'running' }));
+        return true;
+      } catch (err) {
+        console.error('[useSalaryNegotiation] Gate respond error:', err);
+        return false;
+      }
+    },
+    [],
+  );
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     if (reconnectTimerRef.current) {
@@ -317,12 +375,14 @@ export function useSalaryNegotiation() {
       activityMessages: [],
       error: null,
       currentStage: null,
+      strategyReviewData: null,
     });
   }, []);
 
   return {
     ...state,
     startPipeline,
+    respondToGate,
     reset,
   };
 }

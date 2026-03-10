@@ -12,7 +12,15 @@ export type PanelType =
   | 'positioning_interview'
   | 'blueprint_review'
   | 'section_review'
-  | 'questionnaire';
+  | 'questionnaire'
+  | 'letter_review'
+  | 'bio_review'
+  | 'strategy_review'
+  | 'sequence_review'
+  | 'star_stories_review'
+  | 'findings_review'
+  | 'note_review'
+  | 'stakeholder_review';
 
 // --- Onboarding Summary ---
 export interface OnboardingSummaryData {
@@ -307,6 +315,159 @@ export interface QuestionnaireData {
   current_index: number;
 }
 
+// --- Letter Review ---
+export interface LetterReviewData {
+  /** The full cover letter draft text */
+  letter: string;
+  /** Self-review quality score (0-100) */
+  quality_score?: number;
+}
+
+// --- Bio Review ---
+export interface BioVariant {
+  /** Bio format label (e.g. "Speaker Bio", "Board Bio") */
+  format_label: string;
+  /** Bio length label (e.g. "Standard (250 words)") */
+  length_label: string;
+  /** Actual word count */
+  word_count: number;
+  /** The bio content */
+  content: string;
+  /** Quality score (0-100) */
+  quality_score: number;
+}
+
+export interface BioReviewData {
+  /** All generated bio variants */
+  bios: BioVariant[];
+  /** Overall quality score for the collection (0-100) */
+  quality_score?: number;
+  /** Final assembled report (markdown) */
+  final_report?: string;
+}
+
+// --- Strategy Review (Salary Negotiation) ---
+export interface StrategyReviewData {
+  /** Recommended opening position (the number to ask for) */
+  opening_position: string;
+  /** Walk-away point (minimum acceptable) */
+  walk_away_point: string;
+  /** Best Alternative to a Negotiated Agreement */
+  batna: string;
+  /** Overall negotiation approach (e.g. "collaborative", "value-anchored") */
+  approach: string;
+  /** Market P50 for reference context (AI-estimated) */
+  market_p50?: number;
+  /** Market P75 for reference context (AI-estimated) */
+  market_p75?: number;
+  /** Confidence level of market data */
+  data_confidence?: 'low' | 'medium' | 'high';
+}
+
+// --- Sequence Review (Networking Outreach) ---
+export interface OutreachMessagePreview {
+  /** Message type in the sequence */
+  type: string;
+  /** Message subject (for InMail) */
+  subject: string;
+  /** Full message body */
+  body: string;
+  /** Character count */
+  char_count: number;
+  /** Recommended timing */
+  timing: string;
+  /** Quality score (0-100) */
+  quality_score: number;
+}
+
+export interface SequenceReviewData {
+  /** All outreach messages in the sequence */
+  messages: OutreachMessagePreview[];
+  /** Target person's name */
+  target_name: string;
+  /** Target person's company */
+  target_company: string;
+  /** Overall sequence quality score (0-100) */
+  quality_score: number;
+}
+
+// --- Star Stories Review (Interview Prep) ---
+export interface StarStoriesReviewData {
+  /** The full interview prep report (markdown) */
+  report: string;
+  /** Quality score (0-100) */
+  quality_score?: number;
+}
+
+// --- Brand Findings Review (Personal Brand) ---
+export interface AuditFindingItem {
+  id: string;
+  category: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  source: string;
+  affected_elements: string[];
+  recommendation: string;
+}
+
+export interface BrandFindingsReviewData {
+  /** All audit findings */
+  findings: AuditFindingItem[];
+  /** Consistency scores (optional) */
+  consistency_scores?: {
+    overall: number;
+    messaging: number;
+    value_proposition: number;
+    tone_voice: number;
+    audience_alignment: number;
+    visual_identity: number;
+  };
+}
+
+// --- Note Review (Thank You Note) ---
+export interface ThankYouNoteItem {
+  interviewer_name: string;
+  interviewer_title: string;
+  format: string;
+  content: string;
+  subject_line?: string;
+  personalization_notes: string;
+  quality_score?: number;
+}
+
+export interface NoteReviewData {
+  /** All generated thank-you notes */
+  notes: ThankYouNoteItem[];
+  /** Overall quality score (0-100) */
+  quality_score?: number;
+}
+
+// --- Stakeholder Review (90-Day Plan) ---
+export interface StakeholderItem {
+  name_or_role: string;
+  relationship_type: string;
+  priority: string;
+  engagement_strategy: string;
+}
+
+export interface StakeholderReviewData {
+  /** AI-inferred stakeholder map */
+  stakeholder_map: StakeholderItem[];
+  /** Quick wins identified (summary context) */
+  quick_wins?: Array<{
+    description: string;
+    impact: string;
+    effort: string;
+  }>;
+  /** Role context for display */
+  role_context?: {
+    target_role: string;
+    target_company: string;
+    target_industry: string;
+  };
+}
+
 // Discriminated union type for all panel data (type field matches PanelType)
 export type PanelData =
   | { type: 'onboarding_summary' } & OnboardingSummaryData
@@ -319,4 +480,12 @@ export type PanelData =
   | { type: 'positioning_interview' } & PositioningInterviewData
   | { type: 'blueprint_review' } & BlueprintReviewData
   | { type: 'section_review' } & SectionReviewData
-  | { type: 'questionnaire' } & QuestionnaireData;
+  | { type: 'questionnaire' } & QuestionnaireData
+  | { type: 'letter_review' } & LetterReviewData
+  | { type: 'bio_review' } & BioReviewData
+  | { type: 'strategy_review' } & StrategyReviewData
+  | { type: 'sequence_review' } & SequenceReviewData
+  | { type: 'star_stories_review' } & StarStoriesReviewData
+  | { type: 'findings_review' } & BrandFindingsReviewData
+  | { type: 'note_review' } & NoteReviewData
+  | { type: 'stakeholder_review' } & StakeholderReviewData;

@@ -220,6 +220,9 @@ export interface NetworkingOutreachState extends BaseState {
 
   /** Overall sequence quality score (0-100) */
   quality_score?: number;
+
+  /** User feedback for sequence revision (set when user requests changes at sequence_review gate) */
+  revision_feedback?: string;
 }
 
 // ─── SSE Events ─────────────────────────────────────────────────────
@@ -229,5 +232,14 @@ export type NetworkingOutreachSSEEvent =
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'message_progress'; message_type: OutreachMessageType; status: 'drafting' | 'reviewing' | 'complete' }
+  | {
+      type: 'sequence_review_ready';
+      session_id: string;
+      messages: OutreachMessage[];
+      target_name: string;
+      target_company: string;
+      quality_score: number;
+    }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'sequence_complete'; session_id: string; report: string; quality_score: number; message_count: number }
   | { type: 'pipeline_error'; stage: string; error: string };

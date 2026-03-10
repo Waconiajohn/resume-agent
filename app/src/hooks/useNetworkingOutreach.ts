@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { safeString } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
+import type { SequenceReviewData } from '@/types/panels';
 
 export type { ActivityMessage };
-export type NetworkingOutreachStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+export type NetworkingOutreachStatus = 'idle' | 'connecting' | 'running' | 'sequence_review' | 'complete' | 'error';
 
 interface NetworkingOutreachState {
   status: NetworkingOutreachStatus;
@@ -17,6 +18,7 @@ interface NetworkingOutreachState {
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
+  sequenceReviewData: SequenceReviewData | null;
 }
 
 export interface NetworkingOutreachInput {
@@ -43,6 +45,7 @@ export function useNetworkingOutreach() {
     activityMessages: [],
     error: null,
     currentStage: null,
+    sequenceReviewData: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -109,6 +112,35 @@ export function useNetworkingOutreach() {
             addActivity(`Drafting ${label}...`, 'writing');
           } else if (status === 'complete') {
             addActivity(`${label} complete`, 'writing');
+          }
+          break;
+        }
+
+        case 'sequence_review_ready': {
+          const rawMessages = Array.isArray(data.messages) ? data.messages : [];
+          setState((prev) => ({
+            ...prev,
+            sequenceReviewData: {
+              messages: rawMessages.map((m: Record<string, unknown>) => ({
+                type: safeString(m.type),
+                subject: safeString(m.subject),
+                body: safeString(m.body),
+                char_count: typeof m.char_count === 'number' ? m.char_count : 0,
+                timing: safeString(m.timing),
+                quality_score: typeof m.quality_score === 'number' ? m.quality_score : 0,
+              })),
+              target_name: safeString(data.target_name),
+              target_company: safeString(data.target_company),
+              quality_score: typeof data.quality_score === 'number' ? data.quality_score : 0,
+            },
+          }));
+          break;
+        }
+
+        case 'pipeline_gate': {
+          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          if (gateName === 'sequence_review') {
+            setState((prev) => ({ ...prev, status: 'sequence_review' }));
           }
           break;
         }
@@ -248,6 +280,7 @@ export function useNetworkingOutreach() {
         activityMessages: [],
         error: null,
         currentStage: null,
+        sequenceReviewData: null,
       });
 
       try {
@@ -286,6 +319,36 @@ export function useNetworkingOutreach() {
     [connectSSE],
   );
 
+  const respondToGate = useCallback(
+    async (gate: string, response: unknown): Promise<boolean> => {
+      const sessionId = sessionIdRef.current;
+      const token = accessTokenRef.current;
+      if (!sessionId || !token) return false;
+
+      try {
+        const res = await fetch(`${API_BASE}/networking-outreach/respond`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId, gate, response }),
+        });
+        if (!res.ok) {
+          console.error('[useNetworkingOutreach] Gate respond failed:', res.status);
+          return false;
+        }
+        // Transition back to running after responding
+        setState((prev) => ({ ...prev, status: 'running' }));
+        return true;
+      } catch (err) {
+        console.error('[useNetworkingOutreach] Gate respond error:', err);
+        return false;
+      }
+    },
+    [],
+  );
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     if (reconnectTimerRef.current) {
@@ -303,12 +366,14 @@ export function useNetworkingOutreach() {
       activityMessages: [],
       error: null,
       currentStage: null,
+      sequenceReviewData: null,
     });
   }, []);
 
   return {
     ...state,
     startPipeline,
+    respondToGate,
     reset,
   };
 }

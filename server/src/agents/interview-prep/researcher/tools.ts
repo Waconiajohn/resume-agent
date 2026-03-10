@@ -201,12 +201,21 @@ const researchCompanyTool: InterviewPrepTool = {
       ], { max_tokens: 4096 });
     } catch (err) {
       log.warn({ error: err instanceof Error ? err.message : String(err) }, 'Perplexity unavailable for company research, using LLM fallback');
-      rawResearch = (await llm.chat({
+      ctx.emit({
+        type: 'right_panel_update',
+        panelType: 'transparency',
+        data: {
+          stage: 'research_company',
+          message: 'Live web research unavailable — company data is from AI training (knowledge cutoff: mid-2025). Verify key facts before your interview.',
+        },
+      });
+      const fallbackResult = await llm.chat({
         model: MODEL_MID,
         max_tokens: 4096,
         system: 'You are a business research analyst. Provide the best company information you can from your training data. Note when information may be outdated.',
         messages: [{ role: 'user', content: overviewQuery }],
-      })).text;
+      });
+      rawResearch = `\u26a0\ufe0f NOTE: This research is from AI training data, not live web sources. Information may be outdated.\n\n${fallbackResult.text}`;
     }
 
     // Parse the research into structured format

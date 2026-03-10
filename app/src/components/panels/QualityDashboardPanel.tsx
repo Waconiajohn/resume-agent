@@ -135,7 +135,10 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
   return (
     <div data-panel-root className="flex h-full flex-col">
       <div className="border-b border-white/[0.12] px-4 py-3">
-        <span className="text-sm font-medium text-white/85">Your Resume Quality Score</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-white/85">Quality Scores</span>
+          <span className="text-[10px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5">AI estimate</span>
+        </div>
       </div>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -152,13 +155,14 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             {primaryRings.length > 0 && (
               <div className="flex items-center justify-around gap-y-4">
                 {primaryRings.map((ring) => (
-                  <ScoreRing
-                    key={ring.label}
-                    score={ring.score}
-                    max={ring.max}
-                    label={ring.label}
-                    color={ring.color}
-                  />
+                  <div key={ring.label} title="AI-estimated score based on pattern analysis — not a guarantee of outcome">
+                    <ScoreRing
+                      score={ring.score}
+                      max={ring.max}
+                      label={ring.label}
+                      color={ring.color}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -167,7 +171,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
             {secondaryMetrics.length > 0 && (
               <div className={cn('space-y-2', primaryRings.length > 0 && 'mt-4 border-t border-white/[0.08] pt-4')}>
                 {secondaryMetrics.map((metric) => (
-                  <div key={metric.label} className="flex items-center justify-between text-xs">
+                  <div key={metric.label} className="flex items-center justify-between text-xs" title="AI-estimated score based on pattern analysis — not a guarantee of outcome">
                     <span className="text-white/60">{metric.label}</span>
                     <span className={cn('font-medium', secondaryScoreColor(metric.score))}>
                       {metric.score}%

@@ -148,6 +148,9 @@ export interface InterviewPrepState extends BaseState {
 
   /** Quality score from self-review (0-100) */
   quality_score?: number;
+
+  /** Feedback from the user review gate (star_stories_review) */
+  revision_feedback?: string;
 }
 
 // ─── SSE Events ─────────────────────────────────────────────────────
@@ -156,6 +159,9 @@ export type InterviewPrepSSEEvent =
   | { type: 'stage_start'; stage: string; message: string }
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
+  | { type: 'right_panel_update'; panelType: string; data: Record<string, unknown> }
   | { type: 'section_progress'; section: InterviewPrepSection; status: 'writing' | 'reviewing' | 'complete' }
+  | { type: 'star_stories_review_ready'; session_id: string; report: string; quality_score: number }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'report_complete'; session_id: string; report: string; quality_score: number }
   | { type: 'pipeline_error'; stage: string; error: string };

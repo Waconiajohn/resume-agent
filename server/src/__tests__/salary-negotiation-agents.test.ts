@@ -467,6 +467,7 @@ describe('Salary Negotiation ProductConfig', () => {
       total_comp_estimate: { low: 300000, mid: 400000, high: 550000 },
       market_context: 'Strong demand for operations leaders in SaaS.',
       data_confidence: 'high',
+      data_source: 'ai_estimated',
     };
     expect(() => config.validateAfterAgent!('researcher', state)).not.toThrow();
   });
@@ -503,6 +504,7 @@ describe('Salary Negotiation ProductConfig', () => {
       total_comp_estimate: { low: 300000, mid: 400000, high: 550000 },
       market_context: 'Strong demand.',
       data_confidence: 'high',
+      data_source: 'ai_estimated',
     };
 
     const events: SalaryNegotiationSSEEvent[] = [];

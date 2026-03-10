@@ -216,6 +216,9 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                 {angleWasEdited ? 'Edited' : 'Editable'}
               </span>
             )}
+            {!angleWasEdited && (
+              <span className="text-[10px] text-indigo-300/60 bg-indigo-400/[0.08] border border-indigo-400/20 rounded px-1.5 py-0.5">AI-suggested</span>
+            )}
             <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
               Target
             </span>
@@ -297,6 +300,9 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                 )}>
                   {orderWasEdited ? 'Edited' : 'Reorderable'}
                 </span>
+              )}
+              {!orderWasEdited && (
+                <span className="text-[10px] text-indigo-300/60 bg-indigo-400/[0.08] border border-indigo-400/20 rounded px-1.5 py-0.5">AI-suggested</span>
               )}
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                 Section Layout

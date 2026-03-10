@@ -182,13 +182,20 @@ Return JSON:
     ].join(' ');
     const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
 
+    const INFER_LABEL = '[Verify — AI-inferred detail] ';
     const caseStudy: CaseStudy = {
       achievement_id: achievementId,
       title: String(result.title ?? achievement.title),
       executive_summary: String(result.executive_summary ?? ''),
-      situation: String(result.situation ?? ''),
-      approach: String(result.approach ?? ''),
-      results: String(result.results ?? ''),
+      situation: achievement.situation_is_inferred
+        ? `${INFER_LABEL}${String(result.situation ?? '')}`
+        : String(result.situation ?? ''),
+      approach: achievement.approach_is_inferred
+        ? `${INFER_LABEL}${String(result.approach ?? '')}`
+        : String(result.approach ?? ''),
+      results: achievement.results_is_inferred
+        ? `${INFER_LABEL}${String(result.results ?? '')}`
+        : String(result.results ?? ''),
       metrics: Array.isArray(result.metrics)
         ? result.metrics.map((m: Record<string, unknown>) => ({
             label: String(m.label ?? ''),
@@ -281,11 +288,10 @@ Current Metrics:
 ${caseStudy.metrics.map((m) => `- ${m.label}: ${m.value} (${m.context})`).join('\n')}
 
 REQUIREMENTS:
-- For each metric, add before/after comparison where possible
-- Add industry benchmark context (e.g., "vs. industry average of X%")
+- For each metric, add before/after comparison where possible using data already present in the case study
 - Frame each metric to highlight magnitude of impact
-- Add 1-2 additional derived metrics if they strengthen the narrative (e.g., ROI, payback period)
-- Do NOT fabricate numbers — enhance framing of existing data
+- Do NOT add industry benchmark comparisons or derived metrics that weren't provided by the user. Only enhance the visual framing of user-confirmed metrics.
+- Do NOT fabricate numbers — enhance framing of existing data only
 - Keep the same metric labels but enrich the value and context fields
 
 Return JSON:

@@ -56,7 +56,8 @@ You guide mid-to-upper level executives through career transitions. You know whe
 - Always check the budget before recommending expensive pipeline actions.
 - Use the client's name naturally in conversation.
 - Keep responses concise but substantive — executives don't want fluff.
-- If you don't know something, say so and suggest how to find out.`;
+- If you don't know something, say so and suggest how to find out.
+- When assess_emotional_state returns a suggested_acknowledgment, weave it naturally into your next response. Never name clinical labels (grief_stage, confidence_level) directly to the user.`;
 
 export const coachAgentConfig: AgentConfig<CoachState, CoachSSEEvent> = {
   identity: { name: 'coach', domain: 'platform' },

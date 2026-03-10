@@ -12,6 +12,14 @@ import { PositioningInterviewPanel } from './PositioningInterviewPanel';
 import { BlueprintReviewPanel } from './BlueprintReviewPanel';
 import { SectionWorkbench } from './SectionWorkbench';
 import { QuestionnairePanel } from './QuestionnairePanel';
+import { LetterReviewPanel } from './LetterReviewPanel';
+import { BioReviewPanel } from './BioReviewPanel';
+import { StrategyReviewPanel } from './StrategyReviewPanel';
+import { SequenceReviewPanel } from './SequenceReviewPanel';
+import { StarStoriesReviewPanel } from './StarStoriesReviewPanel';
+import { BrandFindingsReviewPanel } from './BrandFindingsReviewPanel';
+import { NoteReviewPanel } from './NoteReviewPanel';
+import { StakeholderReviewPanel } from './StakeholderReviewPanel';
 import type { PanelData, PanelType, SectionWorkbenchContext } from '@/types/panels';
 import type { QuestionnaireSubmission } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
@@ -106,6 +114,46 @@ export function validatePanelData(panelData: PanelData | null): string | null {
     case 'questionnaire':
       if (!panelData.questionnaire_id || !Array.isArray(panelData.questions)) {
         return 'Still loading the questionnaire. This will appear shortly.';
+      }
+      return null;
+    case 'letter_review':
+      if (typeof panelData.letter !== 'string' || panelData.letter.length === 0) {
+        return 'Still loading your cover letter. This will appear shortly.';
+      }
+      return null;
+    case 'bio_review':
+      if (!Array.isArray(panelData.bios) || panelData.bios.length === 0) {
+        return 'Still loading your bio collection. This will appear shortly.';
+      }
+      return null;
+    case 'strategy_review':
+      if (!panelData.opening_position || !panelData.walk_away_point || !panelData.batna) {
+        return 'Still loading your negotiation strategy. This will appear shortly.';
+      }
+      return null;
+    case 'sequence_review':
+      if (!Array.isArray(panelData.messages) || panelData.messages.length === 0) {
+        return 'Still loading your outreach sequence. This will appear shortly.';
+      }
+      return null;
+    case 'star_stories_review':
+      if (typeof panelData.report !== 'string' || panelData.report.length === 0) {
+        return 'Still loading your interview prep report. This will appear shortly.';
+      }
+      return null;
+    case 'findings_review':
+      if (!Array.isArray(panelData.findings) || panelData.findings.length === 0) {
+        return 'Still loading brand findings. This will appear shortly.';
+      }
+      return null;
+    case 'note_review':
+      if (!Array.isArray(panelData.notes) || panelData.notes.length === 0) {
+        return 'Still loading your thank-you notes. This will appear shortly.';
+      }
+      return null;
+    case 'stakeholder_review':
+      if (!Array.isArray(panelData.stakeholder_map) || panelData.stakeholder_map.length === 0) {
+        return 'Still loading the stakeholder map. This will appear shortly.';
       }
       return null;
     case 'quality_dashboard':
@@ -237,6 +285,72 @@ function renderPanelBody(props: PanelRendererProps) {
           onDraftNow={panelData.stage === 'positioning' ? () => {
             onPipelineRespond?.(`questionnaire_${panelData.questionnaire_id}`, { draft_now: true });
           } : undefined}
+        />
+      );
+    case 'letter_review':
+      return (
+        <LetterReviewPanel
+          data={panelData}
+          onPipelineRespond={onPipelineRespond}
+        />
+      );
+    case 'bio_review':
+      return (
+        <BioReviewPanel
+          data={panelData}
+          onPipelineRespond={onPipelineRespond}
+        />
+      );
+    case 'strategy_review':
+      return (
+        <StrategyReviewPanel
+          data={panelData}
+          onApprove={(edits) => {
+            onPipelineRespond?.('strategy_review', edits
+              ? { approved: true, ...edits }
+              : true,
+            );
+          }}
+        />
+      );
+    case 'sequence_review':
+      return (
+        <SequenceReviewPanel
+          data={panelData}
+          onApprove={(feedback) => {
+            onPipelineRespond?.('sequence_review', feedback
+              ? { approved: true, feedback }
+              : true,
+            );
+          }}
+        />
+      );
+    case 'star_stories_review':
+      return (
+        <StarStoriesReviewPanel
+          data={panelData}
+          onPipelineRespond={onPipelineRespond}
+        />
+      );
+    case 'findings_review':
+      return (
+        <BrandFindingsReviewPanel
+          data={panelData}
+          onPipelineRespond={onPipelineRespond}
+        />
+      );
+    case 'note_review':
+      return (
+        <NoteReviewPanel
+          data={panelData}
+          onPipelineRespond={onPipelineRespond}
+        />
+      );
+    case 'stakeholder_review':
+      return (
+        <StakeholderReviewPanel
+          data={panelData}
+          onPipelineRespond={onPipelineRespond}
         />
       );
     default: {

@@ -658,7 +658,7 @@ const classifyFitTool: ResumeAgentTool = {
       top_capabilities: parsedResume.skills.slice(0, 5).map(skill => ({
         capability: skill,
         evidence: [`Listed on resume: ${skill}`],
-        source: 'resume' as const,
+        source: 'inferred' as const,
       })),
       evidence_library: evidenceLibrary,
       signature_method: null,

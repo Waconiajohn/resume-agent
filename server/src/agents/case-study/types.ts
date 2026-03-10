@@ -88,10 +88,16 @@ export interface Achievement {
   impact_category: ImpactCategory;
   /** Context, stakes, and constraints (the "S" in STAR) */
   situation: string;
+  /** True if the situation was inferred by AI rather than directly stated in user input */
+  situation_is_inferred?: boolean;
   /** What the executive specifically did, decisions made (the "A" in STAR) */
   approach: string;
+  /** True if the approach was inferred by AI rather than directly stated in user input */
+  approach_is_inferred?: boolean;
   /** Quantified outcomes and business impact (the "R" in STAR) */
   results: string;
+  /** True if the results were inferred by AI rather than directly stated in user input */
+  results_is_inferred?: boolean;
   /** Specific metrics with context */
   metrics: Array<{ label: string; value: string; context: string }>;
   /** Lessons that apply beyond this specific company/industry */

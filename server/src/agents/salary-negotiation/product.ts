@@ -49,9 +49,9 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
         stageMessage: {
           startStage: 'strategy',
           start: 'Designing your negotiation strategy and talking points...',
-          complete: 'Negotiation preparation complete',
+          complete: 'Strategy ready — review your negotiation numbers before finalizing',
         },
-        onComplete: (scratchpad, state) => {
+        onComplete: (scratchpad, state, emit) => {
           if (scratchpad.negotiation_strategy && !state.negotiation_strategy) {
             state.negotiation_strategy = scratchpad.negotiation_strategy as SalaryNegotiationState['negotiation_strategy'];
           }
@@ -67,7 +67,60 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
           if (typeof scratchpad.quality_score === 'number') {
             state.quality_score = scratchpad.quality_score;
           }
+
+          // Emit strategy data for review panel before the gate blocks
+          if (state.negotiation_strategy) {
+            emit({
+              type: 'strategy_review_ready',
+              session_id: state.session_id,
+              opening_position: state.negotiation_strategy.opening_position,
+              walk_away_point: state.negotiation_strategy.walk_away_point,
+              batna: state.negotiation_strategy.batna,
+              approach: state.negotiation_strategy.approach,
+              market_p50: state.market_research?.salary_range?.p50,
+              market_p75: state.market_research?.salary_range?.p75,
+              data_confidence: state.market_research?.data_confidence,
+            });
+            emit({ type: 'pipeline_gate', gate: 'strategy_review' });
+          }
         },
+        gates: [
+          {
+            name: 'strategy_review',
+            condition: (state) => !!state.negotiation_strategy,
+            onResponse: (response, state) => {
+              if (response === true || response === 'approved') {
+                // Approved — proceed with the generated strategy
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+                // Merge edited dollar amounts if provided
+                if (state.negotiation_strategy) {
+                  if (typeof resp.opening_position === 'string') {
+                    state.negotiation_strategy = {
+                      ...state.negotiation_strategy,
+                      opening_position: resp.opening_position,
+                    };
+                  }
+                  if (typeof resp.walk_away_point === 'string') {
+                    state.negotiation_strategy = {
+                      ...state.negotiation_strategy,
+                      walk_away_point: resp.walk_away_point,
+                    };
+                  }
+                  if (typeof resp.batna === 'string') {
+                    state.negotiation_strategy = {
+                      ...state.negotiation_strategy,
+                      batna: resp.batna,
+                    };
+                  }
+                }
+              }
+            },
+          },
+        ],
       },
     ],
 

@@ -7,13 +7,18 @@ import { safeString, safeNumber } from '@/lib/safe-cast';
 import type { ActivityMessage } from '@/types/activity';
 
 export type { ActivityMessage };
-export type PersonalBrandStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+export type PersonalBrandStatus = 'idle' | 'connecting' | 'running' | 'findings_review' | 'complete' | 'error';
 
 export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
 export interface BrandFinding {
   title: string;
   severity: FindingSeverity;
+}
+
+export interface FindingsReviewData {
+  findings: unknown[];
+  consistency_scores?: unknown;
 }
 
 interface PersonalBrandHookState {
@@ -24,6 +29,8 @@ interface PersonalBrandHookState {
   findings: BrandFinding[];
   error: string | null;
   currentStage: string | null;
+  findingsReviewData: FindingsReviewData | null;
+  pendingGate: string | null;
 }
 
 export interface PersonalBrandInput {
@@ -46,6 +53,8 @@ export function usePersonalBrand() {
     findings: [],
     error: null,
     currentStage: null,
+    findingsReviewData: null,
+    pendingGate: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -126,6 +135,25 @@ export function usePersonalBrand() {
         case 'audit_complete': {
           const findingCount = safeNumber(data.finding_count);
           addActivity(`Audit complete — ${findingCount} findings identified`, 'audit');
+          break;
+        }
+
+        case 'findings_review_ready': {
+          setState((prev) => ({
+            ...prev,
+            findingsReviewData: {
+              findings: Array.isArray(data.findings) ? data.findings : [],
+              consistency_scores: data.consistency_scores,
+            },
+          }));
+          break;
+        }
+
+        case 'pipeline_gate': {
+          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          if (gateName === 'findings_review') {
+            setState((prev) => ({ ...prev, status: 'findings_review', pendingGate: gateName }));
+          }
           break;
         }
 
@@ -270,6 +298,8 @@ export function usePersonalBrand() {
         findings: [],
         error: null,
         currentStage: null,
+        findingsReviewData: null,
+        pendingGate: null,
       });
 
       try {
@@ -310,6 +340,36 @@ export function usePersonalBrand() {
     [connectSSE],
   );
 
+  const respondToGate = useCallback(
+    async (gate: string, response: unknown): Promise<boolean> => {
+      const sessionId = sessionIdRef.current;
+      const token = accessTokenRef.current;
+      if (!sessionId || !token) return false;
+
+      try {
+        const res = await fetch(`${API_BASE}/personal-brand/respond`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId, gate, response }),
+        });
+        if (!res.ok) {
+          console.error('[usePersonalBrand] Gate respond failed:', res.status);
+          return false;
+        }
+        // Transition back to running after responding
+        setState((prev) => ({ ...prev, status: 'running', pendingGate: null }));
+        return true;
+      } catch (err) {
+        console.error('[usePersonalBrand] Gate respond error:', err);
+        return false;
+      }
+    },
+    [],
+  );
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     if (reconnectTimerRef.current) {
@@ -327,12 +387,15 @@ export function usePersonalBrand() {
       findings: [],
       error: null,
       currentStage: null,
+      findingsReviewData: null,
+      pendingGate: null,
     });
   }, []);
 
   return {
     ...state,
     startPipeline,
+    respondToGate,
     reset,
   };
 }

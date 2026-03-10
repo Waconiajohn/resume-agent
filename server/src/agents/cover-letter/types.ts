@@ -51,6 +51,9 @@ export interface CoverLetterState extends BaseState {
 
   /** Review feedback from self-review */
   review_feedback?: string;
+
+  /** User-supplied revision feedback from the letter_review gate */
+  revision_feedback?: string;
 }
 
 // ─── SSE Events ───────────────────────────────────────────────────────
@@ -60,5 +63,7 @@ export type CoverLetterSSEEvent =
   | { type: 'stage_complete'; stage: string; message: string; duration_ms?: number }
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'letter_draft'; letter: string; quality_score?: number }
+  | { type: 'letter_review_ready'; session_id: string; letter_draft: string; quality_score?: number }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'letter_complete'; session_id: string; letter: string; quality_score: number }
   | { type: 'pipeline_error'; stage: string; error: string };

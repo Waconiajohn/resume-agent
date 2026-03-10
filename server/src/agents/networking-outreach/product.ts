@@ -57,9 +57,9 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
         stageMessage: {
           startStage: 'writing',
           start: 'Writing your personalized outreach sequence...',
-          complete: 'Outreach sequence complete',
+          complete: 'Outreach sequence ready — review your messages before sending',
         },
-        onComplete: (scratchpad, state) => {
+        onComplete: (scratchpad, state, emit) => {
           if (scratchpad.final_report && typeof scratchpad.final_report === 'string') {
             state.final_report = scratchpad.final_report;
           }
@@ -69,7 +69,36 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           if (Array.isArray(scratchpad.messages)) {
             state.messages = scratchpad.messages as NetworkingOutreachState['messages'];
           }
+
+          // Emit sequence data for review panel before the gate blocks
+          if (state.messages && state.messages.length > 0) {
+            emit({
+              type: 'sequence_review_ready',
+              session_id: state.session_id,
+              messages: state.messages,
+              target_name: state.target_input?.target_name ?? '',
+              target_company: state.target_input?.target_company ?? '',
+              quality_score: state.quality_score ?? 0,
+            });
+            emit({ type: 'pipeline_gate', gate: 'sequence_review' });
+          }
         },
+        gates: [
+          {
+            name: 'sequence_review',
+            condition: (state) => Array.isArray(state.messages) && state.messages.length > 0,
+            onResponse: (response, state) => {
+              if (response === true || response === 'approved') {
+                // Approved — proceed with generated sequence
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+              }
+            },
+          },
+        ],
       },
     ],
 

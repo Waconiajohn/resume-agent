@@ -130,6 +130,8 @@ Return JSON:
         : [],
       target_audience: String(result.target_audience ?? ''),
       tone_recommendation: String(result.tone_recommendation ?? ''),
+      // The career_summary in resume_data is always LLM-synthesized (not extracted verbatim)
+      career_summary_is_synthesized: true,
     };
 
     // Store resume_data if parsed

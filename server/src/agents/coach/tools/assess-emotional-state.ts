@@ -14,6 +14,30 @@ import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 
+function getSuggestedAcknowledgment(
+  recommendedRegister: string,
+  confidenceLevel: string,
+  energyLevel: string,
+): string {
+  switch (recommendedRegister) {
+    case 'operational_guide':
+      // Crisis or high-urgency — focus on immediate, practical action
+      return "I can tell timing matters right now — let's focus on what moves the needle fastest.";
+    case 'coach_motivator':
+      if (confidenceLevel === 'low') {
+        return "Career transitions are tough. Let's take this one step at a time.";
+      }
+      if (energyLevel === 'high') {
+        return "Love the energy — let's channel it into action.";
+      }
+      return "Let's build on where you are and move this forward together.";
+    case 'strategic_advisor':
+      return "You're thinking clearly about this. Let's map out the strategic path forward.";
+    default:
+      return "Let's figure out the best next step together.";
+  }
+}
+
 const assessEmotionalStateTool: CoachTool = {
   name: 'assess_emotional_state',
   description:
@@ -91,14 +115,22 @@ const assessEmotionalStateTool: CoachTool = {
         });
       }
 
+      const recommendedRegister = String(parsed.recommended_register ?? 'coach_motivator');
+      const suggestedAcknowledgment = getSuggestedAcknowledgment(
+        recommendedRegister,
+        String(parsed.confidence_level ?? 'moderate'),
+        String(parsed.energy_level ?? 'moderate'),
+      );
+
       return JSON.stringify({
         grief_stage: parsed.grief_stage ?? 'unknown',
         financial_segment: parsed.financial_segment ?? 'unknown',
         confidence_level: parsed.confidence_level ?? 'moderate',
         energy_level: parsed.energy_level ?? 'moderate',
-        recommended_register: parsed.recommended_register ?? 'coach_motivator',
+        recommended_register: recommendedRegister,
         key_signals: Array.isArray(parsed.key_signals) ? parsed.key_signals : [],
         coaching_note: String(parsed.coaching_note ?? ''),
+        suggested_acknowledgment: suggestedAcknowledgment,
       });
     } catch (err) {
       logger.error({ err, sessionId: ctx.sessionId }, 'assess_emotional_state: LLM call failed');

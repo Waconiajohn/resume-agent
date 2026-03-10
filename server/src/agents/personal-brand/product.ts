@@ -33,9 +33,9 @@ export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandS
         stageMessage: {
           startStage: 'auditing',
           start: 'Auditing brand consistency across all provided sources...',
-          complete: 'Audit complete — findings and consistency scores ready',
+          complete: 'Audit findings ready for review',
         },
-        onComplete: (scratchpad, state) => {
+        onComplete: (scratchpad, state, emit) => {
           if (scratchpad.resume_data && !state.resume_data) {
             state.resume_data = scratchpad.resume_data as PersonalBrandState['resume_data'];
           }
@@ -45,7 +45,34 @@ export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandS
           if (scratchpad.resume_brand || scratchpad.linkedin_brand || scratchpad.bio_brand) {
             // Consistency scores should already be on state from score_consistency tool
           }
+
+          // Emit findings for review panel before the gate blocks
+          if (state.audit_findings.length > 0) {
+            emit({
+              type: 'findings_review_ready',
+              session_id: state.session_id,
+              findings: state.audit_findings,
+              consistency_scores: state.consistency_scores,
+            });
+            emit({ type: 'pipeline_gate', gate: 'findings_review' });
+          }
         },
+        gates: [
+          {
+            name: 'findings_review',
+            condition: (state) => state.audit_findings.length > 0,
+            onResponse: (response, state) => {
+              if (response === true || response === 'approved') {
+                // Approved — proceed with findings as-is
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+              }
+            },
+          },
+        ],
       },
       {
         name: 'advisor',
@@ -180,6 +207,16 @@ export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandS
           '',
           'Do NOT skip any step.',
         ];
+
+        // If the user disputed or corrected findings at the review gate, factor in feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Feedback on Findings',
+            `The user reviewed the audit findings and provided the following corrections: "${state.revision_feedback}"`,
+            'Adjust your recommendations to account for this feedback.',
+          );
+        }
 
         // Emotional baseline tone adaptation
         const toneGuidance = getToneGuidanceFromInput(input);

@@ -104,6 +104,12 @@ export interface PositioningAnalysis {
   target_audience: string;
   /** Recommended tone and voice direction */
   tone_recommendation: string;
+  /**
+   * True when the career_summary stored in resume_data was synthesized by the LLM
+   * from the resume content rather than extracted verbatim. Downstream gates can
+   * surface this flag so users know the summary is AI-generated, not a direct quote.
+   */
+  career_summary_is_synthesized?: boolean;
 }
 
 // ─── Pipeline State ─────────────────────────────────────────────────
@@ -164,6 +170,9 @@ export interface ExecutiveBioState extends BaseState {
 
   /** Overall quality score for the bio collection (0-100) */
   quality_score?: number;
+
+  /** User-supplied revision feedback from the bio_review gate */
+  revision_feedback?: string;
 }
 
 // ─── SSE Events ─────────────────────────────────────────────────────
@@ -175,5 +184,7 @@ export type ExecutiveBioSSEEvent =
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'bio_drafted'; format: BioFormat; length: BioLength; word_count: number }
   | { type: 'bio_complete'; format: BioFormat; length: BioLength; quality_score: number }
+  | { type: 'bio_review_ready'; session_id: string; bios: Bio[]; final_report?: string; quality_score?: number }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; bio_count: number }
   | { type: 'pipeline_error'; stage: string; error: string };

@@ -29,9 +29,9 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
         stageMessage: {
           startStage: 'writing',
           start: 'Analyzing interview context and writing personalized thank-you notes...',
-          complete: 'Thank-you note collection complete',
+          complete: 'Thank-you notes ready for review',
         },
-        onComplete: (scratchpad, state) => {
+        onComplete: (scratchpad, state, emit) => {
           if (Array.isArray(scratchpad.notes) && state.notes.length === 0) {
             state.notes = scratchpad.notes as ThankYouNoteState['notes'];
           }
@@ -41,7 +41,36 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
           if (typeof scratchpad.quality_score === 'number' && state.quality_score == null) {
             state.quality_score = scratchpad.quality_score;
           }
+
+          // Emit notes for review panel before the gate blocks
+          if (state.notes.length > 0) {
+            emit({
+              type: 'note_review_ready',
+              session_id: state.session_id,
+              notes: state.notes,
+              quality_score: state.quality_score ?? 0,
+            });
+            emit({ type: 'pipeline_gate', gate: 'note_review' });
+          }
         },
+        gates: [
+          {
+            name: 'note_review',
+            condition: (state) => state.notes.length > 0,
+            onResponse: (response, state) => {
+              if (response === true || response === 'approved') {
+                // Approved — no changes needed
+              } else if (response && typeof response === 'object') {
+                const resp = response as Record<string, unknown>;
+                if (typeof resp.edited_content === 'string') {
+                  state.final_report = resp.edited_content;
+                } else if (typeof resp.feedback === 'string') {
+                  state.revision_feedback = resp.feedback;
+                }
+              }
+            },
+          },
+        ],
       },
     ],
 
@@ -110,6 +139,16 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
         parts.push(
           'Call tools in order: analyze_interview_context first, then write_thank_you_note + personalize_per_interviewer for each interviewer, then assemble_note_set.',
         );
+
+        // If the user requested revisions at the review gate, incorporate feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Revision Requested',
+            `The user reviewed the thank-you notes and requested the following changes: "${state.revision_feedback}"`,
+            'Call write_thank_you_note and assemble_note_set again incorporating this feedback.',
+          );
+        }
 
         // Distress resources — first (and only) agent
         const distress = getDistressFromInput(input);

@@ -211,6 +211,7 @@ Rules:
         },
         market_context: String(parsed.market_context ?? ''),
         data_confidence: parseDataConfidence(parsed.data_confidence),
+        data_source: 'ai_estimated' as const,
       };
     } catch {
       marketResearch = {
@@ -222,6 +223,7 @@ Rules:
         total_comp_estimate: { low: 0, mid: 0, high: 0 },
         market_context: 'Unable to parse market research data.',
         data_confidence: 'low',
+        data_source: 'ai_estimated' as const,
       };
     }
 

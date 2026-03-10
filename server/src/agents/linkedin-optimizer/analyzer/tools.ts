@@ -142,6 +142,16 @@ ${resumeText}`,
       };
     }
 
+    // Disclose seniority fallback — target_seniority always defaults to 'senior'
+    // when no explicit target context is provided
+    if (!targetRole && !targetIndustry) {
+      ctx.emit({
+        type: 'transparency',
+        stage: 'parse_inputs',
+        message: 'No target role specified — defaulting to "senior" seniority level. Provide target details for more accurate optimization.',
+      });
+    }
+
     ctx.emit({
       type: 'transparency',
       stage: 'parse_inputs',

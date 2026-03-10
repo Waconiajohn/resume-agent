@@ -94,6 +94,9 @@ export interface ThankYouNoteState extends BaseState {
   /** Overall quality score for the note collection (0-100) */
   quality_score?: number;
 
+  /** Feedback from the user review gate (note_review) */
+  revision_feedback?: string;
+
   /** Parsed resume data */
   resume_data?: {
     name: string;
@@ -131,5 +134,7 @@ export type ThankYouNoteSSEEvent =
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'note_drafted'; interviewer_name: string; format: NoteFormat }
   | { type: 'note_complete'; interviewer_name: string; format: NoteFormat; quality_score: number }
+  | { type: 'note_review_ready'; session_id: string; notes: ThankYouNote[]; quality_score: number }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; note_count: number }
   | { type: 'pipeline_error'; stage: string; error: string };

@@ -7,7 +7,13 @@ import { safeString, safeNumber } from '@/lib/safe-cast';
 import type { ActivityMessage } from '@/types/activity';
 
 export type { ActivityMessage };
-export type ExecutiveBioStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
+export type ExecutiveBioStatus = 'idle' | 'connecting' | 'running' | 'bio_review' | 'complete' | 'error';
+
+export interface BioReviewData {
+  bios: unknown[];
+  final_report?: string;
+  quality_score?: number;
+}
 
 interface ExecutiveBioState {
   status: ExecutiveBioStatus;
@@ -16,6 +22,8 @@ interface ExecutiveBioState {
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
+  bioReviewData: BioReviewData | null;
+  pendingGate: string | null;
 }
 
 export interface ExecutiveBioInput {
@@ -37,6 +45,8 @@ export function useExecutiveBio() {
     activityMessages: [],
     error: null,
     currentStage: null,
+    bioReviewData: null,
+    pendingGate: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -107,6 +117,26 @@ export function useExecutiveBio() {
           const format = safeString(data.format);
           const qualityScore = safeNumber(data.quality_score);
           addActivity(`Quality checked ${format} bio — score: ${qualityScore}`, 'quality');
+          break;
+        }
+
+        case 'bio_review_ready': {
+          setState((prev) => ({
+            ...prev,
+            bioReviewData: {
+              bios: Array.isArray(data.bios) ? data.bios : [],
+              final_report: typeof data.final_report === 'string' ? data.final_report : undefined,
+              quality_score: typeof data.quality_score === 'number' ? data.quality_score : undefined,
+            },
+          }));
+          break;
+        }
+
+        case 'pipeline_gate': {
+          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          if (gateName === 'bio_review') {
+            setState((prev) => ({ ...prev, status: 'bio_review', pendingGate: gateName }));
+          }
           break;
         }
 
@@ -243,6 +273,8 @@ export function useExecutiveBio() {
         activityMessages: [],
         error: null,
         currentStage: null,
+        bioReviewData: null,
+        pendingGate: null,
       });
 
       try {
@@ -283,6 +315,36 @@ export function useExecutiveBio() {
     [connectSSE],
   );
 
+  const respondToGate = useCallback(
+    async (gate: string, response: unknown): Promise<boolean> => {
+      const sessionId = sessionIdRef.current;
+      const token = accessTokenRef.current;
+      if (!sessionId || !token) return false;
+
+      try {
+        const res = await fetch(`${API_BASE}/executive-bio/respond`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId, gate, response }),
+        });
+        if (!res.ok) {
+          console.error('[useExecutiveBio] Gate respond failed:', res.status);
+          return false;
+        }
+        // Transition back to running after responding
+        setState((prev) => ({ ...prev, status: 'running', pendingGate: null }));
+        return true;
+      } catch (err) {
+        console.error('[useExecutiveBio] Gate respond error:', err);
+        return false;
+      }
+    },
+    [],
+  );
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     if (reconnectTimerRef.current) {
@@ -299,12 +361,15 @@ export function useExecutiveBio() {
       activityMessages: [],
       error: null,
       currentStage: null,
+      bioReviewData: null,
+      pendingGate: null,
     });
   }, []);
 
   return {
     ...state,
     startPipeline,
+    respondToGate,
     reset,
   };
 }

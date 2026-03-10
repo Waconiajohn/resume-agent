@@ -195,6 +195,9 @@ export interface PersonalBrandState extends BaseState {
     /** Target industry */
     target_industry: string;
   };
+
+  /** Feedback from the user review gate (findings_review) */
+  revision_feedback?: string;
 }
 
 // --- SSE Events -----------------------------------------------------------
@@ -207,6 +210,8 @@ export type PersonalBrandSSEEvent =
   | { type: 'audit_progress'; stage: string; message: string; sources_analyzed: number; total_sources: number }
   | { type: 'finding_identified'; finding_id: string; category: FindingCategory; severity: string; title: string }
   | { type: 'audit_complete'; finding_count: number; consistency_scores: ConsistencyScores }
+  | { type: 'findings_review_ready'; session_id: string; findings: AuditFinding[]; consistency_scores?: ConsistencyScores }
+  | { type: 'pipeline_gate'; gate: string }
   | { type: 'recommendations_ready'; recommendation_count: number; top_priority: string }
   | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; finding_count: number }
   | { type: 'pipeline_error'; stage: string; error: string };

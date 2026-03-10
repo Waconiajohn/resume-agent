@@ -1,4 +1,5 @@
-import { Building2, Target, UserCheck } from 'lucide-react';
+import { useState } from 'react';
+import { Building2, Target, UserCheck, Pencil, Check } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { GlassSkeletonCard } from '../GlassSkeleton';
 import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
@@ -39,6 +40,9 @@ function renderAssumptionValue(value: unknown): string {
 }
 
 export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [editedSummary, setEditedSummary] = useState('');
+
   const company = data.company ?? {};
   const jd_requirements = data.jd_requirements ?? {};
   const benchmark = data.benchmark ?? { required_skills: [], language_keywords: [] };
@@ -194,9 +198,48 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           )}
 
           {benchmarkSummary && (
-            <p className="text-sm text-white/90 leading-relaxed mb-3">
-              {cleanText(benchmarkSummary)}
-            </p>
+            <div className="mb-3">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[10px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5">AI-generated estimate</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isEditingSummary) {
+                      setEditedSummary(editedSummary || cleanText(benchmarkSummary));
+                    }
+                    setIsEditingSummary(!isEditingSummary);
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-white/50 hover:text-white/80 transition-colors"
+                >
+                  {isEditingSummary ? (
+                    <>
+                      <Check className="h-3 w-3" />
+                      Done
+                    </>
+                  ) : (
+                    <>
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </>
+                  )}
+                </button>
+              </div>
+              {isEditingSummary ? (
+                <>
+                  <textarea
+                    value={editedSummary}
+                    onChange={(e) => setEditedSummary(e.target.value)}
+                    className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-sm text-white/90 leading-relaxed resize-none focus:outline-none focus:border-white/25"
+                    rows={4}
+                  />
+                  <p className="text-[10px] text-white/25 mt-1">This edit is for your reference — it does not change the pipeline analysis.</p>
+                </>
+              ) : (
+                <p className="text-sm text-white/90 leading-relaxed">
+                  {editedSummary || cleanText(benchmarkSummary)}
+                </p>
+              )}
+            </div>
           )}
 
           {assumptionEntries.length > 0 && (

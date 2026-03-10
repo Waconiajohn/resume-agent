@@ -1,4 +1,5 @@
-import { Briefcase, Award, Users, TrendingUp, DollarSign, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { Briefcase, Award, Users, TrendingUp, DollarSign, CheckCircle, AlertTriangle, Pencil } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import type { OnboardingSummaryData } from '@/types/panels';
@@ -73,6 +74,8 @@ function normalizeData(data: OnboardingSummaryData & Record<string, unknown>) {
 
 export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
   const { cards, strengths, opportunities, parseConfidence, parseWarnings } = normalizeData(data as OnboardingSummaryData & Record<string, unknown>);
+  const [editedStats, setEditedStats] = useState<Record<string, string>>({});
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
   const confidenceTone = parseConfidence === 'high'
     ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90'
     : parseConfidence === 'medium'
@@ -126,19 +129,41 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
         <div>
           <div className="mb-2">
             <span className="text-[11px] text-white/55">What we found in your resume</span>
+            <p className="text-[10px] text-white/25 mt-1">Edits are for your reference only and don't affect processing.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {cards.map(({ label, value, icon: Icon }, i) => {
-            if (value == null) return null;
+          {cards.filter(({ value }) => value != null).map(({ label, value, icon: Icon }, i) => {
+            const displayValue = editedStats[label] ?? String(value);
+            const isEditing = editingLabel === label;
             return (
               <GlassCard key={label} className="motion-safe:opacity-0 motion-safe:animate-card-stagger p-3" style={{ animationDelay: `${i * 75}ms` }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className="h-3.5 w-3.5 text-[#afc4ff]" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-white/60 flex-1">
                     {label}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditingLabel(isEditing ? null : label)}
+                    className="text-white/30 hover:text-white/60 transition-colors"
+                    aria-label={`Edit ${label}`}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
                 </div>
-                <span className="text-lg font-semibold text-white">{String(value)}</span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={displayValue}
+                    onChange={(e) => setEditedStats((prev) => ({ ...prev, [label]: e.target.value }))}
+                    onBlur={() => setEditingLabel(null)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingLabel(null); }}
+                    autoFocus
+                    className="w-full rounded border border-white/[0.15] bg-white/[0.06] px-2 py-1 text-sm font-semibold text-white focus:border-[#afc4ff]/40 focus:outline-none"
+                  />
+                ) : (
+                  <span className="text-lg font-semibold text-white">{displayValue}</span>
+                )}
               </GlassCard>
             );
           })}

@@ -420,8 +420,11 @@ For each selected achievement, return:
   {
     "id": "ach_1",
     "situation": "3-5 sentences: Context, stakes, constraints, and why this mattered. What was the business problem or opportunity? What was at risk?",
+    "situation_is_inferred": false,
     "approach": "3-5 sentences: What the executive specifically did. Decisions made, strategies employed, teams led, resources mobilized. Focus on leadership and strategic thinking.",
+    "approach_is_inferred": false,
     "results": "3-5 sentences: Quantified outcomes and business impact. Revenue generated, costs saved, efficiency gained, risks mitigated. Connect results to the situation.",
+    "results_is_inferred": false,
     "transferable_lessons": ["Lesson 1 that applies beyond this specific company", "Lesson 2"],
     "tags": ["leadership", "strategy", "relevant_tag"]
   }
@@ -433,7 +436,7 @@ Rules:
 - Results must be specific and quantified wherever possible — even estimates are better than vague claims
 - Transferable lessons should demonstrate patterns of excellence, not company-specific knowledge
 - Tags should enable categorization and filtering (leadership, strategy, innovation, operations, etc.)
-- If evidence is limited, infer reasonable context from the role and company — but flag inferences`;
+- For each field (situation, approach, results), set the corresponding is_inferred flag to true if you filled in details not explicitly stated in the user's achievement data. Set is_inferred to false only when the content directly comes from the user's input.`;
 
     const response = await llm.chat({
       model: MODEL_MID,
@@ -446,11 +449,16 @@ Rules:
     interface NarrativeItem {
       id?: string;
       situation?: string;
+      situation_is_inferred?: boolean;
       approach?: string;
+      approach_is_inferred?: boolean;
       results?: string;
+      results_is_inferred?: boolean;
       transferable_lessons?: string[];
       tags?: string[];
     }
+
+    const inferredFields: Array<{ achievement: string; field: string }> = [];
 
     try {
       const parsed = JSON.parse(repairJSON(response.text) ?? response.text);
@@ -461,16 +469,42 @@ Rules:
         const achievement = selected.find((a) => a.id === String(item.id ?? ''));
         if (achievement) {
           achievement.situation = String(item.situation ?? '');
+          achievement.situation_is_inferred = item.situation_is_inferred === true;
           achievement.approach = String(item.approach ?? '');
+          achievement.approach_is_inferred = item.approach_is_inferred === true;
           achievement.results = String(item.results ?? '');
+          achievement.results_is_inferred = item.results_is_inferred === true;
           achievement.transferable_lessons = Array.isArray(item.transferable_lessons)
             ? item.transferable_lessons.map(String)
             : [];
           achievement.tags = Array.isArray(item.tags) ? item.tags.map(String) : [];
+
+          // Track inferred fields for transparency reporting
+          if (item.situation_is_inferred === true) {
+            inferredFields.push({ achievement: achievement.title, field: 'situation' });
+          }
+          if (item.approach_is_inferred === true) {
+            inferredFields.push({ achievement: achievement.title, field: 'approach' });
+          }
+          if (item.results_is_inferred === true) {
+            inferredFields.push({ achievement: achievement.title, field: 'results' });
+          }
         }
       }
     } catch {
       // Leave narrative fields empty — identify_metrics can still run
+    }
+
+    // Emit transparency event for any inferred narrative elements
+    if (inferredFields.length > 0) {
+      const summary = inferredFields
+        .map((f) => `"${f.field}" for "${f.achievement}"`)
+        .join(', ');
+      ctx.emit({
+        type: 'transparency',
+        stage: 'extract_narrative_elements',
+        message: `AI-inferred details (not explicitly stated in your input): ${summary}. These are marked for your verification.`,
+      });
     }
 
     state.selected_achievements = selected;
@@ -561,7 +595,7 @@ Rules:
 - Metrics must be specific: "$2.4M" not "significant revenue increase"
 - Include context that makes the metric meaningful (timeframe, baseline, scope)
 - Acceptable metric types: revenue ($), cost savings ($), percentage improvements (%), time reductions, team/headcount scale, customer/user counts, process improvements
-- If exact numbers are not available, use reasonable estimates with qualifiers (e.g., "~$500K estimated savings")
+- If exact numbers are not available for a metric, set the value to 'USER_INPUT_NEEDED' and include a 'context' field explaining what metric is needed. Do NOT estimate or fabricate numbers.
 - Label should be a short category name, value should be the specific metric, context should explain why it matters
 - Aim for 2-4 metrics per achievement — quality over quantity`;
 
@@ -602,6 +636,21 @@ Rules:
 
     const totalMetrics = selected.reduce((sum, a) => sum + a.metrics.length, 0);
     const withMetrics = selected.filter((a) => a.metrics.length > 0).length;
+
+    // Flag any metrics that require user input instead of AI estimates
+    const missingMetrics = selected.flatMap((a) =>
+      a.metrics
+        .filter((m) => m.value === 'USER_INPUT_NEEDED')
+        .map((m) => ({ achievement: a.title, label: m.label, context: m.context })),
+    );
+
+    if (missingMetrics.length > 0) {
+      ctx.emit({
+        type: 'transparency',
+        stage: 'identify_metrics',
+        message: `${missingMetrics.length} metric(s) need your input: ${missingMetrics.map((m) => `"${m.label}" for "${m.achievement}"`).join(', ')}. These cannot be estimated — please provide the actual figures.`,
+      });
+    }
 
     ctx.emit({
       type: 'transparency',
