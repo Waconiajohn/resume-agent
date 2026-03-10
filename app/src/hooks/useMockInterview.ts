@@ -178,7 +178,8 @@ export function useMockInterview() {
         }
 
         case 'simulation_complete': {
-          const summary = data as unknown as SimulationSummary;
+          const summary = (data as { summary?: SimulationSummary }).summary;
+          if (!summary) break;
           setState((prev) => ({
             ...prev,
             status: 'complete',

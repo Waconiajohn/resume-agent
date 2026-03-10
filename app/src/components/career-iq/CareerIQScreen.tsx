@@ -1,5 +1,29 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
+
+const VALID_ROOMS = new Set<string>([
+  'dashboard',
+  'resume',
+  'linkedin',
+  'content-calendar',
+  'jobs',
+  'networking',
+  'interview',
+  'salary-negotiation',
+  'executive-bio',
+  'case-study',
+  'thank-you-note',
+  'personal-brand',
+  'ninety-day-plan',
+  'network-intelligence',
+  'financial',
+  'learning',
+]);
+
+function toValidRoom(value: string | undefined): CareerIQRoom {
+  if (value && VALID_ROOMS.has(value)) return value as CareerIQRoom;
+  return 'dashboard';
+}
 import { DashboardHome } from './DashboardHome';
 import { WelcomeState } from './WelcomeState';
 import { WhyMeEngine } from './WhyMeEngine';
@@ -82,14 +106,14 @@ export function CareerIQScreen({
   initialRoom,
 }: CareerIQScreenProps) {
   const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(
-    (initialRoom as CareerIQRoom) || 'dashboard'
+    toValidRoom(initialRoom)
   );
 
   // When initialRoom changes (e.g., user clicks a different tool from catalog),
   // update the active room even if already mounted
   useEffect(() => {
     if (initialRoom) {
-      setActiveRoom(initialRoom as CareerIQRoom);
+      setActiveRoom(toValidRoom(initialRoom));
     }
   }, [initialRoom]);
 
@@ -302,16 +326,55 @@ export function CareerIQScreen({
     return <RoomPlaceholder room={activeRoom} />;
   };
 
-  // Mobile: show daily briefing card stack
+  // Mobile: show daily briefing on dashboard, room content on any other room
   if (isMobile) {
+    if (activeRoom === 'dashboard') {
+      return (
+        <MobileBriefing
+          userName={userName}
+          signals={signals}
+          dashboardState={dashboardState}
+          activeRoom={activeRoom}
+          onRefineWhyMe={handleStartWhyMe}
+          onNavigateRoom={handleRoomNavigate}
+        />
+      );
+    }
+
     return (
-      <MobileBriefing
-        userName={userName}
-        signals={signals}
-        dashboardState={dashboardState}
-        onRefineWhyMe={handleStartWhyMe}
-        onNavigateRoom={handleRoomNavigate}
-      />
+      <div className="flex flex-col min-h-screen pb-20">
+        {/* Mobile room header with back button */}
+        <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+          <button
+            type="button"
+            onClick={() => handleRoomNavigate('dashboard')}
+            className="flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Home
+          </button>
+        </div>
+
+        {/* Room content */}
+        <div className="flex-1 overflow-y-auto">
+          <Suspense fallback={<RoomLoadingSkeleton />}>
+            {renderContent()}
+          </Suspense>
+        </div>
+
+        {/* Bottom nav persists on room views so users can switch rooms */}
+        <MobileBriefing
+          userName={userName}
+          signals={signals}
+          dashboardState={dashboardState}
+          activeRoom={activeRoom}
+          onRefineWhyMe={handleStartWhyMe}
+          onNavigateRoom={handleRoomNavigate}
+          navOnly
+        />
+      </div>
     );
   }
 

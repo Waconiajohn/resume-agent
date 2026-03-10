@@ -569,7 +569,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     longDescription:
       'A structured intake assessment that surfaces your professional strengths, career goals, and financial context through carefully designed questions. Builds a confidential client profile that personalizes every tool in the platform to your unique situation.',
     icon: '🎯',
-    status: 'coming_soon',
+    status: 'active',
     route: '/onboarding',
     category: 'career',
     features: [

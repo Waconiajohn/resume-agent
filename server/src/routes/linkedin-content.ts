@@ -85,4 +85,5 @@ export const linkedInContentRoutes = createProductRoutes<LinkedInContentState, L
 
     return input;
   },
+  momentumActivityType: 'linkedin_content_completed',
 });

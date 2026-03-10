@@ -35,6 +35,7 @@ const idleState = {
   report: null,
   qualityScore: null,
   activityMessages: [],
+  findings: [],
   error: null,
   currentStage: null,
   startPipeline: mockStartPipeline,

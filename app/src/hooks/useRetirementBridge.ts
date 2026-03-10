@@ -56,6 +56,8 @@ async function getAuthHeader(): Promise<string | null> {
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
+const MAX_RECONNECT_ATTEMPTS = 3;
+
 export function useRetirementBridge() {
   const [phase, setPhase] = useState<AssessmentPhase>('idle');
   const [questions, setQuestions] = useState<RetirementQuestion[]>([]);
@@ -66,12 +68,17 @@ export function useRetirementBridge() {
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const tokenRef = useRef<string | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       abortRef.current?.abort();
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
     };
   }, []);
 
@@ -94,6 +101,11 @@ export function useRetirementBridge() {
             setPhase('error');
           }
           return;
+        }
+
+        // Successful connection — reset reconnect counter
+        if (mountedRef.current) {
+          reconnectAttemptsRef.current = 0;
         }
 
         try {
@@ -131,13 +143,39 @@ export function useRetirementBridge() {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           console.error('[useRetirementBridge] SSE stream error:', err);
         }
+
+        // Stream ended without a terminal event — attempt reconnect
+        if (!controller.signal.aborted && mountedRef.current) {
+          if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+            const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
+            reconnectAttemptsRef.current += 1;
+            reconnectTimerRef.current = setTimeout(() => {
+              if (mountedRef.current && sessionIdRef.current) {
+                connectSSE(sessionIdRef.current);
+              }
+            }, delay);
+          } else {
+            setError('Connection lost');
+            setPhase('error');
+          }
+        }
       })
       .catch((err) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('[useRetirementBridge] SSE fetch error:', err);
         if (mountedRef.current) {
-          setError('Failed to connect to assessment stream');
-          setPhase('error');
+          if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+            const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
+            reconnectAttemptsRef.current += 1;
+            reconnectTimerRef.current = setTimeout(() => {
+              if (mountedRef.current && sessionIdRef.current) {
+                connectSSE(sessionIdRef.current);
+              }
+            }, delay);
+          } else {
+            setError('Failed to connect to assessment stream');
+            setPhase('error');
+          }
         }
       });
   }, []);
@@ -230,8 +268,13 @@ export function useRetirementBridge() {
 
   const reset = useCallback((): void => {
     abortRef.current?.abort();
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     sessionIdRef.current = null;
     tokenRef.current = null;
+    reconnectAttemptsRef.current = 0;
     setPhase('idle');
     setQuestions([]);
     setSummary(null);

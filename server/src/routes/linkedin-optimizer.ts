@@ -101,4 +101,5 @@ export const linkedInOptimizerRoutes = createProductRoutes<LinkedInOptimizerStat
 
     return input;
   },
+  momentumActivityType: 'linkedin_optimized',
 });

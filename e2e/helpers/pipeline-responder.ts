@@ -118,10 +118,16 @@ async function detectCurrentPanel(page: Page): Promise<PanelType> {
     const text = panel.textContent || '';
     const buttons = btnTexts(panel);
 
-    // 3. Section review — has "Looks Good" button
-    if (buttons.some((b) => /Looks Good/i.test(b))) return 'section_review';
+    // 3. Blueprint review — "Section Layout" text is unique to this panel
+    //    Must check BEFORE section_review because blueprint button includes "Looks Good"
+    if (text.includes('Section Layout') || text.includes('Age Protection')) {
+      return 'blueprint_review';
+    }
 
-    // 4. Questionnaire — has Continue/Submit/Finish Batch (Back may not exist on first question)
+    // 4. Section review — has "Looks Good" button that does NOT contain "Start Writing"
+    if (buttons.some((b) => /Looks Good/i.test(b) && !/Start Writing/i.test(b))) return 'section_review';
+
+    // 5. Questionnaire — has Continue/Submit/Finish Batch/Next (Back may not exist on first question)
     //    Check BEFORE positioning_interview because batch interviews render as questionnaires
     const hasContinue = buttons.some(
       (b) => /Continue|Submit|Finish Batch|^Next$/i.test(b),
@@ -129,16 +135,8 @@ async function detectCurrentPanel(page: Page): Promise<PanelType> {
     const hasLooksGood = buttons.some((b) => /Looks Good/i.test(b));
     if (hasContinue && !hasLooksGood) return 'questionnaire';
 
-    // 5. Positioning interview — legacy single-question path (rarely fires with batch mode)
+    // 6. Positioning interview — legacy single-question path (rarely fires with batch mode)
     if (text.includes('Why Me Interview') || text.includes('Positioning Interview')) return 'positioning_interview';
-
-    // 6. Blueprint review — both header text AND approve button
-    if (text.includes('Resume Blueprint')) {
-      const hasApprove = buttons.some(
-        (b) => /Approve blueprint|Approve Blueprint/i.test(b),
-      );
-      if (hasApprove) return 'blueprint_review';
-    }
 
     // 7. Quality dashboard
     if (text.includes('Quality Dashboard')) return 'quality_dashboard';
@@ -436,32 +434,89 @@ async function respondToQuestionnaire(page: Page): Promise<void> {
  * bypassing zero-height layout issues.
  */
 async function approveBlueprint(page: Page): Promise<void> {
-  // Scroll the panel container to bottom (via DOM) to make approve button visible
+  // Scroll ALL possible containers to bottom to reveal the approve button
   await page.evaluate((sel) => {
+    // Scroll panel scroll container
     const panel = document.querySelector(sel);
-    if (!panel) return;
-    const scrollContainer = panel.querySelector('[data-panel-scroll]');
-    if (scrollContainer) scrollContainer.scrollTo(0, scrollContainer.scrollHeight);
+    if (panel) {
+      const scrollContainer = panel.querySelector('[data-panel-scroll]') || panel;
+      scrollContainer.scrollTo(0, scrollContainer.scrollHeight);
+    }
+    // Also scroll main, body, and any overflow container
+    document.querySelector('main')?.scrollTo(0, 99999);
+    const overflows = document.querySelectorAll('[class*="overflow"]');
+    overflows.forEach((el) => el.scrollTo(0, el.scrollHeight));
   }, PANEL_SEL);
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(500);
 
-  // Find and click approve button via DOM
-  const clicked = await page.evaluate((sel) => {
+  // Diagnostic: log all buttons found in the panel and full page
+  const diag = await page.evaluate((sel) => {
     const panel = document.querySelector(sel);
-    if (!panel) return 'not_found';
-    const buttons = Array.from(panel.querySelectorAll('button'));
-    const approveBtn = buttons.find(
-      (b) => /Approve blueprint|Approve Blueprint/i.test(b.textContent?.trim() || ''),
-    );
-    if (!approveBtn) return 'not_found';
-    if ((approveBtn as HTMLButtonElement).disabled) return 'disabled';
-    (approveBtn as HTMLElement).click();
-    return 'clicked';
+    const panelBtns = panel
+      ? Array.from(panel.querySelectorAll('button')).map((b) => ({
+          text: b.textContent?.trim().slice(0, 60) || '',
+          disabled: (b as HTMLButtonElement).disabled,
+          ariaLabel: b.getAttribute('aria-label') || '',
+        }))
+      : [];
+    // Also check full page for the button (it might be outside panel root)
+    const allBtns = Array.from(document.querySelectorAll('button'))
+      .filter((b) => /Start Writing|Approve blueprint/i.test(
+        (b.textContent?.trim() || '') + ' ' + (b.getAttribute('aria-label') || ''),
+      ))
+      .map((b) => ({
+        text: b.textContent?.trim().slice(0, 60) || '',
+        disabled: (b as HTMLButtonElement).disabled,
+        ariaLabel: b.getAttribute('aria-label') || '',
+      }));
+    return { panelBtns, matchingBtns: allBtns };
   }, PANEL_SEL);
+  // eslint-disable-next-line no-console
+  console.log('[pipeline-responder] Blueprint diag:', JSON.stringify(diag, null, 2));
+
+  // Strategy 1: Find by aria-label (most reliable — set by the component)
+  let clicked = await page.evaluate(() => {
+    const btn = document.querySelector(
+      'button[aria-label*="Approve blueprint"]',
+    ) as HTMLButtonElement | null;
+    if (!btn) return 'not_found';
+    if (btn.disabled) return 'disabled';
+    btn.click();
+    return 'clicked';
+  });
+
+  // Strategy 2: Find by text content "Start Writing" inside panel
+  if (clicked === 'not_found') {
+    clicked = await page.evaluate((sel) => {
+      const panel = document.querySelector(sel);
+      const scope = panel || document;
+      const buttons = Array.from(scope.querySelectorAll('button'));
+      const btn = buttons.find(
+        (b) => /Start Writing/i.test(b.textContent?.trim() || '') && !b.disabled,
+      );
+      if (!btn) return 'not_found';
+      (btn as HTMLElement).click();
+      return 'clicked';
+    }, PANEL_SEL);
+  }
+
+  // Strategy 3: Playwright force click as fallback
+  if (clicked === 'not_found') {
+    try {
+      const loc = page.locator('button').filter({ hasText: /Start Writing/i }).first();
+      if (await loc.count() > 0) {
+        await loc.click({ force: true, timeout: 5_000 });
+        clicked = 'clicked';
+      }
+    } catch {
+      // eslint-disable-next-line no-console
+      console.warn('[pipeline-responder] Blueprint: Playwright force click also failed');
+    }
+  }
 
   if (clicked === 'not_found') {
     // eslint-disable-next-line no-console
-    console.warn('[pipeline-responder] Blueprint: approve button not found in DOM');
+    console.warn('[pipeline-responder] Blueprint: approve button not found anywhere');
     return;
   }
   if (clicked === 'disabled') {
@@ -471,7 +526,7 @@ async function approveBlueprint(page: Page): Promise<void> {
   }
 
   // eslint-disable-next-line no-console
-  console.log('[pipeline-responder] Blueprint: clicking approve button');
+  console.log('[pipeline-responder] Blueprint: approve button clicked');
   await page.waitForTimeout(POST_RESPONSE_DELAY_MS);
 }
 

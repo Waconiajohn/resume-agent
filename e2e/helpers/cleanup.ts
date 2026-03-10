@@ -58,7 +58,7 @@ export async function cleanupBeforeTest(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log('[cleanup] Clearing stuck running pipelines...');
   const pipelineRes = await fetch(
-    `${url}/rest/v1/coach_sessions?user_id=eq.${TEST_USER_ID}&pipeline_status=eq.running`,
+    `${url}/rest/v1/coach_sessions?user_id=eq.${TEST_USER_ID}&pipeline_status=in.(running,waiting)`,
     {
       method: 'PATCH',
       headers,

@@ -69,11 +69,46 @@ interface ScoreResponse {
   jobs: Array<{ external_id: string; match_score: number | null }>;
 }
 
-interface LatestScanResponse {
-  scan_id: string;
-  jobs: RadarJob[];
+interface LatestScanMeta {
+  id: string;
+  query: string;
+  location: string | null;
   sources_queried: string[];
-  execution_time_ms: number;
+  execution_time_ms: number | null;
+  result_count: number;
+  created_at: string;
+}
+
+interface LatestScanResultRow {
+  id: string;
+  scan_id: string;
+  listing_id: string;
+  user_id: string;
+  status: string;
+  match_score: number | null;
+  created_at: string;
+  updated_at: string;
+  job_listings: {
+    id: string;
+    external_id: string;
+    source: string;
+    title: string;
+    company: string;
+    location: string | null;
+    salary_min: number | null;
+    salary_max: number | null;
+    description: string | null;
+    posted_date: string;
+    apply_url: string | null;
+    remote_type: string | null;
+    employment_type: string | null;
+    required_skills: string[] | null;
+  } | null;
+}
+
+interface LatestScanResponse {
+  scan: LatestScanMeta | null;
+  results: LatestScanResultRow[];
 }
 
 /**
@@ -157,10 +192,37 @@ export function useRadarSearch() {
           return;
         }
 
+        // Merge saved preferences from SearchPreferences component.
+        // Caller-supplied filter values always win; prefs fill in only unset fields.
+        let savedPrefs: { salaryMin?: string; remote?: string } = {};
+        try {
+          const raw = localStorage.getItem('careeriq_search_prefs');
+          if (raw) savedPrefs = JSON.parse(raw) as { salaryMin?: string; remote?: string };
+        } catch {
+          // ignore — corrupted storage should not break the search
+        }
+
+        const mergedFilters: RadarSearchFilters = { ...filters };
+
+        if (mergedFilters.salaryMin == null && savedPrefs.salaryMin) {
+          const parsed = parseInt(savedPrefs.salaryMin, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            mergedFilters.salaryMin = parsed;
+          }
+        }
+
+        if (mergedFilters.remoteType == null && savedPrefs.remote) {
+          const validRemoteTypes = ['remote', 'hybrid', 'onsite', 'any'] as const;
+          type RemoteType = (typeof validRemoteTypes)[number];
+          if (validRemoteTypes.includes(savedPrefs.remote as RemoteType)) {
+            mergedFilters.remoteType = savedPrefs.remote as RemoteType;
+          }
+        }
+
         const res = await fetch(`${API_BASE}/job-search`, {
           method: 'POST',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, location, filters }),
+          body: JSON.stringify({ query, location, filters: mergedFilters }),
         });
 
         if (!res.ok) {
@@ -283,13 +345,6 @@ export function useRadarSearch() {
         headers: authHeader,
       });
 
-      if (res.status === 404) {
-        if (mountedRef.current) {
-          setState((prev) => ({ ...prev, loading: false }));
-        }
-        return;
-      }
-
       if (!res.ok) {
         const body = await res.text();
         if (mountedRef.current) {
@@ -303,14 +358,46 @@ export function useRadarSearch() {
       }
 
       const data = (await res.json()) as LatestScanResponse;
+
+      // No scans yet — backend returns 200 with scan: null
+      if (!data.scan) {
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, loading: false }));
+        }
+        return;
+      }
+
+      // Flatten each result row: merge job_listings fields + match_score → RadarJob
+      const jobs: RadarJob[] = (data.results ?? [])
+        .filter((row) => row.job_listings !== null)
+        .map((row) => {
+          const listing = row.job_listings!;
+          return {
+            external_id: listing.external_id,
+            title: listing.title,
+            company: listing.company,
+            location: listing.location,
+            salary_min: listing.salary_min,
+            salary_max: listing.salary_max,
+            description: listing.description,
+            posted_date: listing.posted_date,
+            apply_url: listing.apply_url,
+            source: listing.source,
+            remote_type: listing.remote_type,
+            employment_type: listing.employment_type,
+            required_skills: listing.required_skills,
+            match_score: row.match_score,
+          };
+        });
+
       if (mountedRef.current) {
         setState((prev) => ({
           ...prev,
-          jobs: data.jobs ?? [],
+          jobs,
           loading: false,
-          lastScanId: data.scan_id ?? null,
-          sources_queried: data.sources_queried ?? [],
-          executionTimeMs: data.execution_time_ms ?? null,
+          lastScanId: data.scan!.id,
+          sources_queried: data.scan!.sources_queried ?? [],
+          executionTimeMs: data.scan!.execution_time_ms ?? null,
         }));
       }
     } catch (err) {

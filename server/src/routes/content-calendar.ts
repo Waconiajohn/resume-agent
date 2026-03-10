@@ -115,6 +115,8 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
 
     return input;
   },
+
+  momentumActivityType: 'content_calendar_completed',
 });
 
 // ─── GET /reports — List user's saved calendar reports ────────────────────────

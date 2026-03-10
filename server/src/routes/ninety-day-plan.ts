@@ -98,4 +98,6 @@ export const ninetyDayPlanRoutes = createProductRoutes<NinetyDayPlanState, Ninet
 
     return transformed;
   },
+
+  momentumActivityType: 'ninety_day_plan_completed',
 });

@@ -33,15 +33,6 @@ const STAGE_TO_DB: Record<PipelineStage, string> = {
   Accepted: 'accepted',
 };
 
-const FALLBACK_CARDS: PipelineCard[] = [
-  { id: '1', company: 'Acme Corp', role: 'VP Operations', stage: 'Interviewing', daysSinceMovement: 2, hasNewActivity: true },
-  { id: '2', company: 'TechVentures', role: 'Director of Engineering', stage: 'Applied', daysSinceMovement: 5, hasNewActivity: false },
-  { id: '3', company: 'Global Industries', role: 'SVP Supply Chain', stage: 'Discovered', daysSinceMovement: 1, hasNewActivity: true },
-  { id: '4', company: 'Nexus Partners', role: 'Head of Operations', stage: 'Applied', daysSinceMovement: 10, hasNewActivity: false },
-  { id: '5', company: 'Summit Health', role: 'COO', stage: 'Offer', daysSinceMovement: 0, hasNewActivity: true },
-  { id: '6', company: 'Meridian Solutions', role: 'VP Business Operations', stage: 'Discovered', daysSinceMovement: 3, hasNewActivity: false },
-  { id: '7', company: 'Pinnacle Group', role: 'Director of Strategy', stage: 'Interviewing', daysSinceMovement: 8, hasNewActivity: false },
-];
 
 function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
@@ -153,9 +144,9 @@ function PipelineCardItem({
 }
 
 export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
-  const [cards, setCards] = useState<PipelineCard[]>(FALLBACK_CARDS);
+  const [cards, setCards] = useState<PipelineCard[]>([]);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
-  const [usingRealData, setUsingRealData] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const draggedCardId = useRef<string | null>(null);
 
   // Load from Supabase on mount
@@ -172,15 +163,14 @@ export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
           .neq('status', 'archived')
           .order('updated_at', { ascending: false });
 
-        if (error || !data || cancelled) return;
-
-        if (data.length > 0) {
+        if (cancelled) return;
+        if (!error && data) {
           setCards(data.map(toCard));
-          setUsingRealData(true);
         }
-        // If no data, keep fallback cards
+        setLoaded(true);
       } catch {
-        // Supabase unreachable — keep fallback
+        // Supabase unreachable — show empty state
+        setLoaded(true);
       }
     }
     load();
@@ -215,54 +205,50 @@ export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
       ),
     );
 
-    // Persist to Supabase if using real data
-    if (usingRealData) {
-      const dbStage = STAGE_TO_DB[targetStage];
-      supabase
-        .from('job_applications')
-        .update({ pipeline_stage: dbStage, updated_at: new Date().toISOString() })
-        .eq('id', cardId)
-        .then(({ error }) => {
-          if (error) {
-            // Rollback on error — reload from DB
-            supabase
-              .from('job_applications')
-              .select('id, company, title, pipeline_stage, updated_at')
-              .neq('status', 'archived')
-              .order('updated_at', { ascending: false })
-              .then(({ data }) => {
-                if (data) setCards(data.map(toCard));
-              });
-          }
-        });
-    }
-  }, [usingRealData]);
+    // Persist to Supabase
+    const dbStage = STAGE_TO_DB[targetStage];
+    supabase
+      .from('job_applications')
+      .update({ pipeline_stage: dbStage, updated_at: new Date().toISOString() })
+      .eq('id', cardId)
+      .then(({ error }) => {
+        if (error) {
+          // Rollback on error — reload from DB
+          supabase
+            .from('job_applications')
+            .select('id, company, title, pipeline_stage, updated_at')
+            .neq('status', 'archived')
+            .order('updated_at', { ascending: false })
+            .then(({ data }) => {
+              if (data) setCards(data.map(toCard));
+            });
+        }
+      });
+  }, []);
 
   const handleArchive = useCallback((cardId: string) => {
     // Optimistic remove
     setCards((prev) => prev.filter((c) => c.id !== cardId));
 
     // Persist archive to Supabase
-    if (usingRealData) {
-      supabase
-        .from('job_applications')
-        .update({ status: 'archived' })
-        .eq('id', cardId)
-        .then(({ error }) => {
-          if (error) {
-            // Rollback — reload
-            supabase
-              .from('job_applications')
-              .select('id, company, title, pipeline_stage, updated_at')
-              .neq('status', 'archived')
-              .order('updated_at', { ascending: false })
-              .then(({ data }) => {
-                if (data) setCards(data.map(toCard));
-              });
-          }
-        });
-    }
-  }, [usingRealData]);
+    supabase
+      .from('job_applications')
+      .update({ status: 'archived' })
+      .eq('id', cardId)
+      .then(({ error }) => {
+        if (error) {
+          // Rollback — reload
+          supabase
+            .from('job_applications')
+            .select('id, company, title, pipeline_stage, updated_at')
+            .neq('status', 'archived')
+            .order('updated_at', { ascending: false })
+            .then(({ data }) => {
+              if (data) setCards(data.map(toCard));
+            });
+        }
+      });
+  }, []);
 
   const totalActive = cards.length;
   const inMotion = cards.filter((c) => c.daysSinceMovement <= 3).length;
@@ -280,8 +266,8 @@ export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
         </div>
       </div>
 
-      {/* Empty state for real data with no applications */}
-      {usingRealData && cards.length === 0 ? (
+      {/* Empty state — shown once data has loaded and no applications exist */}
+      {loaded && cards.length === 0 ? (
         <div className="text-center py-8">
           <Search size={24} className="text-white/20 mx-auto mb-3" />
           <p className="text-[13px] text-white/45 mb-1">No applications yet</p>

@@ -7,8 +7,6 @@ import {
   Clock,
   ArrowLeft,
   Brain,
-  Users,
-  Newspaper,
   MessageCircle,
   Plus,
   ChevronDown,
@@ -25,7 +23,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useInterviewPrep } from '@/hooks/useInterviewPrep';
 import { supabase } from '@/lib/supabase';
 import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
-import type { InterviewerNote } from '@/hooks/useInterviewDebriefs';
 import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 
@@ -63,39 +60,6 @@ export interface PipelineInterviewCard {
   role: string;
 }
 
-const MOCK_UPCOMING: UpcomingInterview[] = [
-  { id: '1', company: 'Medtronic', role: 'VP of Supply Chain Operations', date: 'Mar 10', time: '10:00 AM CT', type: 'video', round: 'Round 2 — VP Engineering' },
-  { id: '2', company: 'Abbott Labs', role: 'Senior Director, Operations', date: 'Mar 13', time: '2:00 PM CT', type: 'onsite', round: 'Round 1 — Hiring Manager' },
-];
-
-const MOCK_COMPANY_INTEL = {
-  overview: 'Medtronic is a global medical technology leader with $31.2B revenue. Recently announced a major supply chain restructuring initiative targeting $500M in cost savings over 3 years.',
-  recentNews: [
-    'Q3 earnings beat estimates — 6% revenue growth driven by surgical innovations',
-    'New CEO announced 3-year operational efficiency mandate',
-    'Supply chain reorganization announced — consolidating from 8 regions to 4',
-  ],
-  culture: 'Mission-driven ("alleviating pain, restoring health"). Values engineering rigor. Collaborative but metric-heavy. Expect data-backed answers.',
-  keyPeople: [
-    { name: 'Karen Parkhill', title: 'CFO', note: 'Key decision-maker on cost savings initiatives' },
-    { name: 'Bob White', title: 'EVP Global Operations', note: 'Your interviewer\'s boss — champion of the restructuring' },
-  ],
-};
-
-const MOCK_QUESTIONS: PracticeQuestion[] = [
-  { question: 'Tell me about a time you led a major supply chain transformation. What was the situation, and what results did you achieve?', tip: 'Lead with the turnaround story from your Why-Me. Quantify: timeline, cost savings, team size. They want to see you\'ve done this at scale.', category: 'behavioral' },
-  { question: 'How would you approach consolidating our supply chain from 8 regions to 4?', tip: 'Don\'t jump to the answer — ask clarifying questions first. Show your methodology, not just the outcome. Reference their $500M target.', category: 'strategic' },
-  { question: 'How do you handle resistance from plant managers during a restructuring?', tip: 'This is really about your leadership style. They want to know you won\'t just mandate from HQ. Show empathy + results.', category: 'situational' },
-  { question: 'What metrics do you use to measure supply chain health?', tip: 'Name 3-4 specific KPIs you\'ve used. Tie each to business impact, not just operational efficiency. They\'re looking for strategic thinking.', category: 'technical' },
-  { question: 'Why are you interested in Medtronic specifically?', tip: 'Connect your Why-Me story to their mission. Don\'t say "medical devices" — reference their restructuring mandate and how your experience maps.', category: 'behavioral' },
-];
-
-const SEED_HISTORY: PastInterview[] = [
-  { id: 'h1', company: 'Honeywell', role: 'VP Manufacturing', date: 'Feb 28', outcome: 'advanced', notes: 'Strong rapport with hiring manager. Asked to return for final round with division president.' },
-  { id: 'h2', company: 'Parker Hannifin', role: 'Director of Operations', date: 'Feb 20', outcome: 'rejected', notes: 'Wanted someone with aerospace-specific experience. Good conversation but wrong industry fit.' },
-  { id: 'h3', company: 'Johnson Controls', role: 'VP Operational Excellence', date: 'Feb 14', outcome: 'pending', notes: 'Waiting on feedback. Interviewer mentioned budget freeze may delay decision.' },
-];
-
 const HISTORY_STORAGE_KEY = 'careeriq_interview_history';
 
 function loadHistory(): PastInterview[] {
@@ -103,7 +67,7 @@ function loadHistory(): PastInterview[] {
     const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
     if (saved) return JSON.parse(saved);
   } catch { /* ignore */ }
-  return SEED_HISTORY;
+  return [];
 }
 
 function saveHistory(history: PastInterview[]) {
@@ -184,75 +148,20 @@ function CompanyResearch() {
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Brain size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Company Intel — Medtronic</h3>
+        <h3 className="text-[15px] font-semibold text-white/85">Company Intel</h3>
       </div>
-
-      <div className="space-y-4">
-        {/* Overview */}
-        <div>
-          <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-1.5">Overview</div>
-          <p className="text-[13px] text-white/55 leading-relaxed">{MOCK_COMPANY_INTEL.overview}</p>
-        </div>
-
-        {/* Recent news */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Newspaper size={12} className="text-white/30" />
-            <span className="text-[11px] font-medium text-white/40 uppercase tracking-wider">Recent News</span>
-          </div>
-          <ul className="space-y-1.5">
-            {MOCK_COMPANY_INTEL.recentNews.map((item, i) => (
-              <li key={i} className="text-[12px] text-white/45 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-[7px] before:h-1 before:w-1 before:rounded-full before:bg-white/20">
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Culture */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <MessageCircle size={12} className="text-white/30" />
-            <span className="text-[11px] font-medium text-white/40 uppercase tracking-wider">Culture Signal</span>
-          </div>
-          <p className="text-[12px] text-white/45 leading-relaxed italic">{MOCK_COMPANY_INTEL.culture}</p>
-        </div>
-
-        {/* Key people */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Users size={12} className="text-white/30" />
-            <span className="text-[11px] font-medium text-white/40 uppercase tracking-wider">Key People</span>
-          </div>
-          <div className="space-y-2">
-            {MOCK_COMPANY_INTEL.keyPeople.map((person) => (
-              <div key={person.name} className="flex items-start gap-2">
-                <div className="h-6 w-6 rounded-full bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-white/40">{person.name.split(' ').map(n => n[0]).join('')}</span>
-                </div>
-                <div>
-                  <div className="text-[12px] text-white/60">{person.name} — {person.title}</div>
-                  <div className="text-[11px] text-white/30">{person.note}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="text-center py-8">
+        <Brain size={24} className="text-white/20 mx-auto mb-2" />
+        <p className="text-[13px] text-white/40">No company intel yet</p>
+        <p className="text-[11px] text-white/25 mt-1">
+          Complete an interview prep session to see company intel here
+        </p>
       </div>
     </GlassCard>
   );
 }
 
 function PracticeQuestions({ onStartPractice }: { onStartPractice: () => void }) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-
-  const categoryColors: Record<string, string> = {
-    behavioral: 'text-[#98b3ff] bg-[#98b3ff]/10',
-    technical: 'text-[#b5dec2] bg-[#b5dec2]/10',
-    situational: 'text-[#f0d99f] bg-[#f0d99f]/10',
-    strategic: 'text-[#e8a0a0] bg-[#e8a0a0]/10',
-  };
-
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -261,30 +170,12 @@ function PracticeQuestions({ onStartPractice }: { onStartPractice: () => void })
         <span className="ml-auto text-[11px] text-white/30">Based on role + Why-Me</span>
       </div>
 
-      <div className="space-y-2">
-        {MOCK_QUESTIONS.map((q, i) => (
-          <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}
-              className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
-            >
-              <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 mt-0.5', categoryColors[q.category])}>
-                {q.category}
-              </span>
-              <span className="text-[13px] text-white/65 leading-relaxed flex-1">{q.question}</span>
-              {expandedIndex === i ? <ChevronUp size={14} className="text-white/25 flex-shrink-0 mt-1" /> : <ChevronDown size={14} className="text-white/25 flex-shrink-0 mt-1" />}
-            </button>
-            {expandedIndex === i && (
-              <div className="border-t border-white/[0.06] px-4 py-3 bg-[#98b3ff]/[0.02]">
-                <div className="flex items-start gap-2">
-                  <Brain size={12} className="text-[#98b3ff] mt-0.5 flex-shrink-0" />
-                  <p className="text-[12px] text-[#98b3ff]/60 leading-relaxed">{q.tip}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+      <div className="text-center py-6">
+        <MessageCircle size={24} className="text-white/20 mx-auto mb-2" />
+        <p className="text-[13px] text-white/40">No predicted questions yet</p>
+        <p className="text-[11px] text-white/25 mt-1">
+          Generate interview prep for a specific role to see tailored questions here
+        </p>
       </div>
 
       <div className="mt-4">
@@ -623,6 +514,7 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
   const [jdWarning, setJdWarning] = useState(false);
   const [mockInterviewConfig, setMockInterviewConfig] = useState<MockInterviewConfig | null>(null);
   const [mockInterviewLoading, setMockInterviewLoading] = useState(false);
+  const [mockInterviewError, setMockInterviewError] = useState<string | null>(null);
 
   const { debriefs, createDebrief } = useInterviewDebriefs();
 
@@ -745,12 +637,9 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     setViewMode('lab');
   }, []);
 
-  const handleNavigateToThankYou = useCallback((interviewerNotes: InterviewerNote[]) => {
-    // Phase 4A-8 will wire cross-room navigation. For now, log the intent.
-    if (import.meta.env.DEV) {
-      console.log('[InterviewLabRoom] Navigate to thank you notes with interviewers:', interviewerNotes);
-    }
-  }, []);
+  // handleNavigateToThankYou intentionally omitted — cross-room navigation to the
+  // thank-you-note room is not yet implemented (planned for Phase 4A-8). The
+  // DebriefForm hides the "Generate Thank You Notes" button when the prop is absent.
 
   const fetchResumeText = useCallback(async (): Promise<string | null> => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -767,10 +656,11 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
 
   const handleStartMockInterview = useCallback(async () => {
     setMockInterviewLoading(true);
+    setMockInterviewError(null);
     try {
       const resumeText = await fetchResumeText();
       if (!resumeText || resumeText.length < 50) {
-        console.warn('[InterviewLab] No resume found — cannot start mock interview');
+        setMockInterviewError('Upload a resume first — we need it to run the mock interview.');
         setMockInterviewLoading(false);
         return;
       }
@@ -788,10 +678,16 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
 
   const handleStartPracticeSession = useCallback(async () => {
     setMockInterviewLoading(true);
+    setMockInterviewError(null);
     try {
       const resumeText = await fetchResumeText();
+      if (!resumeText || resumeText.length < 50) {
+        setMockInterviewError('Upload a resume first — we need it to run a practice session.');
+        setMockInterviewLoading(false);
+        return;
+      }
       setMockInterviewConfig({
-        resumeText: resumeText ?? '',
+        resumeText,
         mode: 'practice',
         questionType: 'behavioral',
       });
@@ -814,7 +710,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
       <DebriefForm
         onSave={handleDebriefSave}
         onCancel={handleDebriefCancel}
-        onNavigateToThankYou={handleNavigateToThankYou}
       />
     );
   }
@@ -944,6 +839,14 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         </GlassButton>
       </div>
 
+      {/* Mock interview error */}
+      {mockInterviewError && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
+          <span className="text-[13px] text-red-300/80">{mockInterviewError}</span>
+        </div>
+      )}
+
       {/* Upcoming + Company Intel side-by-side */}
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-[2] min-w-0">
@@ -960,7 +863,7 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
                     round: 'From pipeline',
                     jobApplicationId: card.id,
                   }))
-                : MOCK_UPCOMING
+                : []
             }
             onGeneratePrep={handleGeneratePrep}
           />

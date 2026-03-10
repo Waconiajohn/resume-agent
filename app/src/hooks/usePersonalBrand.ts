@@ -9,11 +9,19 @@ import type { ActivityMessage } from '@/types/activity';
 export type { ActivityMessage };
 export type PersonalBrandStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
 
+export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
+
+export interface BrandFinding {
+  title: string;
+  severity: FindingSeverity;
+}
+
 interface PersonalBrandHookState {
   status: PersonalBrandStatus;
   report: string | null;
   qualityScore: number | null;
   activityMessages: ActivityMessage[];
+  findings: BrandFinding[];
   error: string | null;
   currentStage: string | null;
 }
@@ -35,6 +43,7 @@ export function usePersonalBrand() {
     report: null,
     qualityScore: null,
     activityMessages: [],
+    findings: [],
     error: null,
     currentStage: null,
   });
@@ -105,7 +114,11 @@ export function usePersonalBrand() {
 
         case 'finding_identified': {
           const title = safeString(data.title);
-          const severity = safeString(data.severity);
+          const severity = safeString(data.severity) as FindingSeverity;
+          setState((prev) => ({
+            ...prev,
+            findings: [...prev.findings, { title, severity }],
+          }));
           addActivity(`Finding: ${title} [${severity}]`, 'audit');
           break;
         }
@@ -254,6 +267,7 @@ export function usePersonalBrand() {
         report: null,
         qualityScore: null,
         activityMessages: [],
+        findings: [],
         error: null,
         currentStage: null,
       });
@@ -310,6 +324,7 @@ export function usePersonalBrand() {
       report: null,
       qualityScore: null,
       activityMessages: [],
+      findings: [],
       error: null,
       currentStage: null,
     });

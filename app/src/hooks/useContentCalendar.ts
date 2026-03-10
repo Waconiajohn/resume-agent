@@ -26,9 +26,23 @@ import type { ActivityMessage } from '@/types/activity';
 export type { ActivityMessage };
 export type ContentCalendarStatus = 'idle' | 'connecting' | 'running' | 'complete' | 'error';
 
+export interface StructuredPost {
+  day: number;
+  day_of_week: string;
+  content_type: string;
+  hook: string;
+  body: string;
+  cta: string;
+  hashtags: string[];
+  posting_time: string;
+  quality_score: number;
+  word_count: number;
+}
+
 interface ContentCalendarState {
   status: ContentCalendarStatus;
   report: string | null;
+  posts: StructuredPost[];
   qualityScore: number | null;
   postCount: number | null;
   activityMessages: ActivityMessage[];
@@ -52,6 +66,7 @@ export function useContentCalendar() {
   const [state, setState] = useState<ContentCalendarState>({
     status: 'idle',
     report: null,
+    posts: [],
     qualityScore: null,
     postCount: null,
     activityMessages: [],
@@ -198,6 +213,7 @@ export function useContentCalendar() {
             ...prev,
             status: 'complete',
             report: safeString(data.report),
+            posts: Array.isArray(data.posts) ? (data.posts as StructuredPost[]) : prev.posts,
             qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
             postCount: typeof data.post_count === 'number' ? data.post_count : prev.postCount,
           }));
@@ -325,6 +341,7 @@ export function useContentCalendar() {
       setState((prev) => ({
         status: 'connecting',
         report: null,
+        posts: [],
         qualityScore: null,
         postCount: null,
         activityMessages: [],
@@ -383,6 +400,7 @@ export function useContentCalendar() {
     setState((prev) => ({
       status: 'idle',
       report: null,
+      posts: [],
       qualityScore: null,
       postCount: null,
       activityMessages: [],

@@ -102,4 +102,5 @@ export const jobFinderRoutes = createProductRoutes<JobFinderState, JobFinderSSEE
 
     return input;
   },
+  momentumActivityType: 'job_search_completed',
 });

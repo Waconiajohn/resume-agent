@@ -102,6 +102,7 @@ export function usePlannerHandoff() {
       if (!res.ok) {
         const body = await res.text();
         setError(`Qualification failed (${res.status}): ${body}`);
+        setPlanners([]);
         setPhase('error');
         return;
       }
@@ -124,6 +125,7 @@ export function usePlannerHandoff() {
         if (!matchRes.ok) {
           const body = await matchRes.text();
           setError(`Matching failed (${matchRes.status}): ${body}`);
+          setPlanners([]);
           setPhase('error');
           return;
         }
@@ -131,11 +133,13 @@ export function usePlannerHandoff() {
         const matchResult = (await matchRes.json()) as { planners?: PlannerProfile[] };
         setPlanners(matchResult.planners ?? []);
       } else {
+        setPlanners([]);
         setPhase('disqualified');
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
+      setPlanners([]);
       setPhase('error');
     }
   }, []);

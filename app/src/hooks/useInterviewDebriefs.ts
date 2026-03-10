@@ -99,6 +99,10 @@ export function useInterviewDebriefs() {
     }
   }, []);
 
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
   const createDebrief = useCallback(
     async (
       data: Omit<InterviewDebrief, 'id' | 'user_id' | 'created_at' | 'updated_at'>,

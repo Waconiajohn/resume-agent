@@ -32,7 +32,7 @@ const TABS: TabDef[] = [
 ];
 
 // Tabs that are always accessible regardless of connection status
-const ALWAYS_UNLOCKED: NiTab[] = ['upload', 'boolean-search', 'scan-jobs'];
+const ALWAYS_UNLOCKED: NiTab[] = ['upload', 'boolean-search'];
 
 export function NetworkIntelligenceRoom() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -201,19 +201,6 @@ export function NetworkIntelligenceRoom() {
             </button>
           );
         })}
-      </div>
-
-      {/* Active tab indicator strip */}
-      <div className="flex gap-1 -mt-4">
-        {TABS.map((tab) => (
-          <div
-            key={tab.id}
-            className={cn(
-              'flex-1 h-0.5 rounded-full transition-all duration-200',
-              activeTab === tab.id ? 'bg-[#98b3ff]' : 'bg-transparent',
-            )}
-          />
-        ))}
       </div>
 
       {renderTabContent()}

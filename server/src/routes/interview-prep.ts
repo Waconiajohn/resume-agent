@@ -98,4 +98,6 @@ export const interviewPrepRoutes = createProductRoutes<InterviewPrepState, Inter
 
     return input;
   },
+
+  momentumActivityType: 'interview_prep',
 });

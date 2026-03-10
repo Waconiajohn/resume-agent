@@ -101,4 +101,6 @@ export const counterOfferSimRoutes = createProductRoutes<CounterOfferSimState, C
 
     return input;
   },
+
+  momentumActivityType: 'counter_offer_sim_completed',
 });

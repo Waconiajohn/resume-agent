@@ -106,4 +106,6 @@ export const personalBrandRoutes = createProductRoutes<PersonalBrandState, Perso
 
     return transformed;
   },
+
+  momentumActivityType: 'personal_brand_completed',
 });

@@ -99,4 +99,6 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
 
     return transformed;
   },
+
+  momentumActivityType: 'executive_bio_completed',
 });

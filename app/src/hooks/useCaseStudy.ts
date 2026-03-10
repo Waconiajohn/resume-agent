@@ -262,6 +262,7 @@ export function useCaseStudy() {
           body: JSON.stringify({
             session_id: sessionId,
             resume_text: input.resumeText,
+            focus_areas: input.focusAreas,
             target_role: input.targetRole,
             target_industry: input.targetIndustry,
             max_case_studies: input.maxCaseStudies,

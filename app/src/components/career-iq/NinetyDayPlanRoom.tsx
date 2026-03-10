@@ -233,9 +233,9 @@ function ReportView({
 
 // --- Field label component ---
 
-function FieldLabel({ label, required, optional }: { label: string; required?: boolean; optional?: boolean }) {
+function FieldLabel({ label, required, optional, htmlFor }: { label: string; required?: boolean; optional?: boolean; htmlFor?: string }) {
   return (
-    <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
+    <label htmlFor={htmlFor} className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
       {label}
       {required && <span className="text-[#98b3ff]/60 ml-1">*</span>}
       {optional && <span className="text-white/20 normal-case font-normal ml-1">(optional)</span>}
@@ -323,6 +323,8 @@ export function NinetyDayPlanRoom() {
     reset();
     setFormError(null);
     setResumeLoaded(false);
+    setTargetRole('');
+    setTargetCompany('');
   }, [reset]);
 
   // Complete → report
@@ -452,8 +454,9 @@ export function NinetyDayPlanRoom() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <FieldLabel label="Role Title" required />
+            <FieldLabel label="Role Title" required htmlFor="ndp-target-role" />
             <input
+              id="ndp-target-role"
               type="text"
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
@@ -462,8 +465,9 @@ export function NinetyDayPlanRoom() {
             />
           </div>
           <div>
-            <FieldLabel label="Company" required />
+            <FieldLabel label="Company" required htmlFor="ndp-target-company" />
             <input
+              id="ndp-target-company"
               type="text"
               value={targetCompany}
               onChange={(e) => setTargetCompany(e.target.value)}
@@ -474,8 +478,9 @@ export function NinetyDayPlanRoom() {
         </div>
 
         <div>
-          <FieldLabel label="Target Industry" optional />
+          <FieldLabel label="Target Industry" optional htmlFor="ndp-target-industry" />
           <input
+            id="ndp-target-industry"
             type="text"
             value={targetIndustry}
             onChange={(e) => setTargetIndustry(e.target.value)}
@@ -496,8 +501,9 @@ export function NinetyDayPlanRoom() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <FieldLabel label="Reporting To" optional />
+            <FieldLabel label="Reporting To" optional htmlFor="ndp-reporting-to" />
             <input
+              id="ndp-reporting-to"
               type="text"
               value={reportingTo}
               onChange={(e) => setReportingTo(e.target.value)}
@@ -506,8 +512,9 @@ export function NinetyDayPlanRoom() {
             />
           </div>
           <div>
-            <FieldLabel label="Team Size" optional />
+            <FieldLabel label="Team Size" optional htmlFor="ndp-team-size" />
             <input
+              id="ndp-team-size"
               type="text"
               value={teamSize}
               onChange={(e) => setTeamSize(e.target.value)}

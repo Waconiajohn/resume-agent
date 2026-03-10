@@ -74,4 +74,5 @@ export const onboardingRoutes = createProductRoutes<OnboardingState, OnboardingS
 
     return transformed;
   },
+  momentumActivityType: 'onboarding_completed',
 });

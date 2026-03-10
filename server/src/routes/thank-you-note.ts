@@ -96,4 +96,6 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
     return transformed;
   },
+
+  momentumActivityType: 'thank_you_note_completed',
 });

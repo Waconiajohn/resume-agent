@@ -27,9 +27,7 @@ import { CounterOfferView } from '@/components/career-iq/CounterOfferView';
 
 const STAGE_LABELS: Record<string, string> = {
   research: 'Researching market rates',
-  strategy: 'Designing strategy',
-  scenarios: 'Building negotiation scenarios',
-  quality: 'Quality review',
+  strategy: 'Building strategy',
 };
 
 // --- Activity feed ---
@@ -385,8 +383,8 @@ export function SalaryNegotiationRoom() {
 
         {/* Stage indicators */}
         <div className="flex items-center gap-3">
-          {['research', 'strategy', 'scenarios', 'quality'].map((stage, i, arr) => {
-            const stageOrder = ['research', 'strategy', 'scenarios', 'quality'];
+          {['research', 'strategy'].map((stage, i, arr) => {
+            const stageOrder = ['research', 'strategy'];
             const currentIdx = currentStage ? stageOrder.indexOf(currentStage) : -1;
             const stageIdx = stageOrder.indexOf(stage);
             const isDone = currentIdx > stageIdx;

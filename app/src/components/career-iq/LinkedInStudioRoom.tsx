@@ -687,22 +687,10 @@ function SectionResult({ label, content }: { label: string; content: string }) {
 
 // ─── Profile Optimizer (legacy: wraps useLinkedInOptimizer) ───────────────
 
-function ProfileOptimizer({ signals, report }: { signals: WhyMeSignals; report: string | null }) {
+function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | null }) {
   const [copied, setCopied] = useState<'headline' | 'about' | null>(null);
 
   const parsedSections = report ? parseReportSections(report) : null;
-
-  const MOCK_PROFILE = {
-    currentHeadline: 'VP of Operations | Supply Chain | Manufacturing',
-    suggestedHeadline: 'I turn around underperforming supply chains — 3 turnarounds, $40M+ in recovered margin',
-    currentAbout: 'Experienced operations executive with 20+ years in manufacturing and supply chain management...',
-    suggestedAbout: 'When a supply chain is broken, I\'m the person they call. Three times in my career, I\'ve walked into plants losing money and rebuilt them into profit centers...',
-  };
-
-  const headline = parsedSections?.headline ?? MOCK_PROFILE.suggestedHeadline;
-  const about = parsedSections?.about ?? MOCK_PROFILE.suggestedAbout;
-  const currentHeadline = parsedSections?.currentHeadline ?? MOCK_PROFILE.currentHeadline;
-  const currentAbout = parsedSections?.currentAbout ?? MOCK_PROFILE.currentAbout;
 
   const handleCopy = (text: string, field: 'headline' | 'about') => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -710,23 +698,34 @@ function ProfileOptimizer({ signals, report }: { signals: WhyMeSignals; report: 
     setTimeout(() => setCopied(null), 2000);
   };
 
+  if (!parsedSections) {
+    return (
+      <GlassCard className="p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <PenLine size={18} className="text-[#98b3ff]" />
+          <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Optimizer</h3>
+        </div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Sparkles size={24} className="text-[#98b3ff]/40 mb-3" />
+          <p className="text-[13px] text-white/40 leading-relaxed">
+            Run the optimizer to see profile recommendations
+          </p>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  const { headline, about, currentHeadline, currentAbout } = parsedSections;
+
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
         <PenLine size={18} className="text-[#98b3ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Optimizer</h3>
-        {!report && signals.clarity !== 'green' && (
-          <span className="ml-auto text-[11px] text-[#f0d99f]/70 flex items-center gap-1">
-            <Sparkles size={11} />
-            Strengthen your Clarity signal for better suggestions
-          </span>
-        )}
-        {report && (
-          <span className="ml-auto text-[11px] text-[#b5dec2]/70 flex items-center gap-1">
-            <Check size={11} />
-            AI-optimized
-          </span>
-        )}
+        <span className="ml-auto text-[11px] text-[#b5dec2]/70 flex items-center gap-1">
+          <Check size={11} />
+          AI-optimized
+        </span>
       </div>
 
       <div className="mb-5">

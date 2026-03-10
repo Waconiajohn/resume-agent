@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
-import { useContentCalendar } from '@/hooks/useContentCalendar';
+import { useContentCalendar, type StructuredPost, type SavedCalendarReport } from '@/hooks/useContentCalendar';
 import { supabase } from '@/lib/supabase';
 
 // --- Content type labels & colors ---
@@ -51,21 +51,10 @@ function ActivityFeed({ messages }: { messages: Array<{ id: string; message: str
   );
 }
 
-interface PostCardProps {
-  day: number;
-  dayOfWeek: string;
-  contentType: string;
-  hook: string;
-  body: string;
-  hashtags: string[];
-  postingTime: string;
-  qualityScore: number;
-}
-
-function PostCard({ day, dayOfWeek, contentType, hook, body, hashtags, postingTime, qualityScore }: PostCardProps) {
+function PostCard({ day, day_of_week, content_type, hook, body, hashtags, posting_time, quality_score }: StructuredPost) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const typeConfig = CONTENT_TYPE_CONFIG[contentType] ?? { label: contentType, color: 'text-white/60 bg-white/5' };
+  const typeConfig = CONTENT_TYPE_CONFIG[content_type] ?? { label: content_type, color: 'text-white/60 bg-white/5' };
 
   const fullPost = `${body}\n\n${hashtags.map((h) => `#${h}`).join(' ')}`;
 
@@ -80,7 +69,7 @@ function PostCard({ day, dayOfWeek, contentType, hook, body, hashtags, postingTi
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-white/30 font-medium tabular-nums">Day {day}</span>
-          <span className="text-[10px] text-white/20 capitalize">{dayOfWeek}</span>
+          <span className="text-[10px] text-white/20 capitalize">{day_of_week}</span>
           <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', typeConfig.color)}>
             {typeConfig.label}
           </span>
@@ -88,11 +77,11 @@ function PostCard({ day, dayOfWeek, contentType, hook, body, hashtags, postingTi
         <div className="flex items-center gap-2">
           <span className={cn(
             'text-[10px] px-1.5 py-0.5 rounded-full',
-            qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
-            qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
+            quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
+            quality_score >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
             'text-[#f0b8b8] bg-[#f0b8b8]/10',
           )}>
-            {qualityScore}%
+            {quality_score}%
           </span>
           <button type="button" onClick={handleCopy} className="text-white/30 hover:text-white/60 transition-colors">
             {copied ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
@@ -124,45 +113,12 @@ function PostCard({ day, dayOfWeek, contentType, hook, body, hashtags, postingTi
           </div>
           <div className="flex items-center gap-1.5">
             <Clock size={10} className="text-white/20" />
-            <span className="text-[10px] text-white/30">{postingTime}</span>
+            <span className="text-[10px] text-white/30">{posting_time}</span>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-interface ParsedPost {
-  day: number;
-  dayOfWeek: string;
-  contentType: string;
-  hook: string;
-  body: string;
-  hashtags: string[];
-  postingTime: string;
-  qualityScore: number;
-}
-
-function parsePostsFromReport(report: string): ParsedPost[] {
-  const posts: ParsedPost[] = [];
-  // Match day sections in the markdown report
-  const dayPattern = /### Day (\d+)\s*\((\w+)\)\s*\n(?:.*?\n)*?.*?Type:\s*([\w_]+)\s*\n.*?Hook:\s*(.*?)\n([\s\S]*?)(?=### Day \d+|## Week|## Calendar|$)/gi;
-  let match;
-  while ((match = dayPattern.exec(report)) !== null) {
-    const body = match[5]?.trim() ?? '';
-    const hashtagMatch = body.match(/#(\w+)/g);
-    posts.push({
-      day: parseInt(match[1], 10),
-      dayOfWeek: match[2]?.toLowerCase() ?? '',
-      contentType: match[3]?.toLowerCase() ?? 'thought_leadership',
-      hook: match[4]?.trim() ?? '',
-      body: body.replace(/#\w+\s*/g, '').trim(),
-      hashtags: hashtagMatch?.map((h) => h.slice(1)) ?? [],
-      postingTime: '8:00 AM EST',
-      qualityScore: 80,
-    });
-  }
-  return posts;
 }
 
 // --- Main component ---
@@ -200,13 +156,17 @@ export function ContentCalendarRoom() {
   }, [calendar.startPipeline]);
 
   const isRunning = calendar.status === 'connecting' || calendar.status === 'running';
-  const parsedPosts = calendar.report ? parsePostsFromReport(calendar.report) : [];
+  const posts = calendar.posts;
 
-  // Group posts by week
-  const weeks: ParsedPost[][] = [];
-  for (let i = 0; i < parsedPosts.length; i += 4) {
-    weeks.push(parsedPosts.slice(i, i + 4));
+  // Group posts by calendar week (days 1-7 = week 1, 8-14 = week 2, etc.)
+  const weekMap = new Map<number, StructuredPost[]>();
+  for (const post of posts) {
+    const weekNum = Math.ceil(post.day / 7);
+    const arr = weekMap.get(weekNum) ?? [];
+    arr.push(post);
+    weekMap.set(weekNum, arr);
   }
+  const weeks = [...weekMap.values()];
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
@@ -269,7 +229,7 @@ export function ContentCalendarRoom() {
       {isRunning && <ActivityFeed messages={calendar.activityMessages} />}
 
       {/* Empty state */}
-      {!isRunning && !calendar.report && (
+      {!isRunning && posts.length === 0 && (
         <GlassCard className="p-8 text-center">
           <Sparkles size={28} className="text-[#98b3ff]/40 mx-auto mb-3" />
           <h3 className="text-[15px] font-semibold text-white/70 mb-2">Your AI Content Strategist</h3>
@@ -282,7 +242,7 @@ export function ContentCalendarRoom() {
       )}
 
       {/* Calendar view */}
-      {parsedPosts.length > 0 && (
+      {posts.length > 0 && (
         <>
           {/* View toggle */}
           <div className="flex items-center gap-2">
@@ -321,12 +281,35 @@ export function ContentCalendarRoom() {
             ))
           ) : (
             <div className="space-y-2">
-              {parsedPosts.map((post) => (
+              {posts.map((post) => (
                 <PostCard key={post.day} {...post} />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {/* Previous Calendars */}
+      {calendar.savedReports.length > 0 && (
+        <div className="mt-2">
+          <h3 className="text-[14px] font-semibold text-white/60 mb-3">Previous Calendars</h3>
+          <div className="space-y-2">
+            {calendar.savedReports.map((report: SavedCalendarReport) => (
+              <GlassCard key={report.id} className="p-3 flex items-center justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] text-white/70 font-medium">
+                    {report.target_role || 'Content Calendar'}
+                    {report.target_industry ? ` · ${report.target_industry}` : ''}
+                  </span>
+                  <span className="text-[10px] text-white/30">
+                    {report.post_count} posts · Quality {report.quality_score}% · {new Date(report.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <FileText size={14} className="text-white/20" />
+              </GlassCard>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

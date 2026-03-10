@@ -177,6 +177,18 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
         post_count: state.posts.length,
+        posts: state.posts.map((p) => ({
+          day: p.day,
+          day_of_week: p.day_of_week,
+          content_type: p.content_type,
+          hook: p.hook,
+          body: p.body,
+          cta: p.cta,
+          hashtags: p.hashtags,
+          posting_time: p.posting_time,
+          quality_score: p.quality_score,
+          word_count: p.word_count,
+        })),
       });
 
       return {

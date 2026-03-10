@@ -1,6 +1,6 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { Sparkles, Flame, ArrowRight, Pencil } from 'lucide-react';
+import { Sparkles, ArrowRight, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WhyMeSignals, SignalLevel, DashboardState } from './useWhyMeStory';
 
@@ -11,13 +11,6 @@ interface ZoneYourDayProps {
   onRefineWhyMe?: () => void;
 }
 
-// Webinar-triggered insights rotate into the strong state
-const WEBINAR_INSIGHTS = [
-  'Based on Monday\'s Why-Me Workshop: your Clarity signal could be stronger. Revisiting your first prompt is the highest-leverage move today.',
-  'From Tuesday\'s LinkedIn Masterclass: your headline isn\'t reflecting your Why-Me story. Your LinkedIn Agent has a suggested update ready.',
-  'After last week\'s Salary Negotiation session: review any "Offer" stage roles in your pipeline — the tactics discussed apply directly.',
-];
-
 function getRotatingInsight(state: DashboardState): string {
   if (state === 'new-user') {
     return 'Let\'s start by defining what makes you exceptional. Your Why-Me story is the foundation everything else builds on.';
@@ -25,22 +18,14 @@ function getRotatingInsight(state: DashboardState): string {
   if (state === 'refining') {
     return 'Your Why-Me story is taking shape. Strengthen your signals and every agent will produce sharper results.';
   }
-  // Strong state: rotate between default and webinar-triggered insights
-  const dayOfWeek = new Date().getDay();
-  if (dayOfWeek <= 2) {
-    // Mon-Tue: show webinar insight from most recent session
-    return WEBINAR_INSIGHTS[dayOfWeek % WEBINAR_INSIGHTS.length];
-  }
-  return 'Your LinkedIn headline isn\'t reflecting your Why-Me story. Fixing this is the highest-leverage action you can take today.';
+  return 'Your signals are strong. Keep refining your Why-Me story to sharpen every agent\'s output.';
 }
 
 const ACTIONS_BY_STATE: Record<DashboardState, string> = {
   'new-user': 'Define your Why-Me story',
   refining: 'Refine your Why-Me story',
-  strong: 'Update your LinkedIn headline',
+  strong: 'Refine your Why-Me story',
 };
-
-const MOCK_STREAK = 3;
 
 function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
   const colors: Record<SignalLevel, string> = {
@@ -76,7 +61,7 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe }
             <GlassButton
               variant="primary"
               className="group"
-              onClick={dashboardState !== 'strong' ? onRefineWhyMe : undefined}
+              onClick={onRefineWhyMe}
             >
               {ACTIONS_BY_STATE[dashboardState]}
               <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-0.5" />
@@ -108,13 +93,7 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe }
             </div>
           </div>
 
-          {/* Streak */}
-          {dashboardState !== 'new-user' && (
-            <div className="flex items-center gap-2 text-[13px] text-white/40">
-              <Flame size={16} className="text-[#f0d99f]" />
-              <span>{MOCK_STREAK}-day streak</span>
-            </div>
-          )}
+          {/* Streak — hidden until connected to real Momentum data */}
         </div>
       </div>
     </GlassCard>

@@ -84,6 +84,7 @@ export function useWhyMeStory() {
 
         if (error) {
           console.warn('Failed to load Why-Me story from Supabase, using localStorage:', error.message);
+          initialLoadDone.current = true;
           setSupabaseLoading(false);
           return;
         }
@@ -114,7 +115,10 @@ export function useWhyMeStory() {
         initialLoadDone.current = true;
         setSupabaseLoading(false);
       } catch {
-        if (!cancelled) setSupabaseLoading(false);
+        if (!cancelled) {
+          initialLoadDone.current = true;
+          setSupabaseLoading(false);
+        }
       }
     }
 

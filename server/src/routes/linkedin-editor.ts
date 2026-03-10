@@ -45,10 +45,16 @@ export const linkedInEditorRoutes = createProductRoutes<LinkedInEditorState, Lin
     if (!userId) return input;
 
     try {
-      const [baseline, strategyRows, evidenceRows] = await Promise.all([
+      const [baseline, strategyRows, evidenceRows, whyMeRows] = await Promise.all([
         getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'evidence_item'),
+        supabaseAdmin
+          .from('why_me_stories')
+          .select('colleagues_came_for_what, known_for_what, why_not_me')
+          .eq('user_id', userId)
+          .maybeSingle()
+          .then((r) => r.data),
       ]);
 
       const platformContext: Record<string, unknown> = {};
@@ -59,6 +65,14 @@ export const linkedInEditorRoutes = createProductRoutes<LinkedInEditorState, Lin
 
       if (evidenceRows.length > 0) {
         platformContext.evidence_items = evidenceRows.map((r) => r.content);
+      }
+
+      if (whyMeRows) {
+        platformContext.why_me_story = {
+          colleaguesCameForWhat: whyMeRows.colleagues_came_for_what ?? '',
+          knownForWhat: whyMeRows.known_for_what ?? '',
+          whyNotMe: whyMeRows.why_not_me ?? '',
+        };
       }
 
       const result: Record<string, unknown> = { ...input };
@@ -81,4 +95,5 @@ export const linkedInEditorRoutes = createProductRoutes<LinkedInEditorState, Lin
 
     return input;
   },
+  momentumActivityType: 'profile_update',
 });

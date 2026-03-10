@@ -121,6 +121,8 @@ const pipeline = createProductRoutes<PipelineState, PipelineSSEEvent>({
     }
     cleanupSession(sessionId);
   },
+
+  momentumActivityType: 'resume_completed',
 });
 
 // ─── GET /status — pipeline status endpoint ──────────────────────────

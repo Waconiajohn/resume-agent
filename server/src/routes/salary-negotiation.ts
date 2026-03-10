@@ -114,4 +114,5 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
 
     return transformed;
   },
+  momentumActivityType: 'salary_negotiation',
 });

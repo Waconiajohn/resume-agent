@@ -276,6 +276,13 @@ export interface ProductRouteConfig<
   onError?: (sessionId: string, error: unknown) => Promise<void>;
 
   /**
+   * Momentum activity type to log on pipeline completion. When set, the factory
+   * auto-inserts into `user_momentum_activities` after onComplete runs.
+   * Must match one of the allowed activity types in momentum.ts.
+   */
+  momentumActivityType?: string;
+
+  /**
    * Pre-respond validation hook. Called after basic validation and pipeline_status
    * check but before gate response persistence. Use for stale pipeline detection,
    * response normalization, etc.
@@ -326,7 +333,7 @@ export function createProductRoutes<
 
   router.post('/start', rateLimitMiddleware(5, 60_000), async (c) => {
     if (config.isEnabled && !config.isEnabled()) {
-      return c.json({ error: 'This product is not available' }, 404);
+      return c.json({ error: 'feature_not_enabled', message: 'This feature is not currently enabled' }, 403);
     }
 
     const parsedBody = await parseJsonBodyWithLimit(c, maxStartBytes);
@@ -467,6 +474,20 @@ export function createProductRoutes<
           logger.warn({ session_id: sessionId, error: err instanceof Error ? err.message : String(err) }, 'onComplete hook failed');
         });
       }
+      // Momentum: auto-log activity on pipeline completion
+      if (config.momentumActivityType) {
+        const { error: momentumErr } = await supabaseAdmin
+          .from('user_momentum_activities')
+          .insert({
+            user_id: user.id,
+            activity_type: config.momentumActivityType,
+            related_id: sessionId,
+            metadata: {},
+          });
+        if (momentumErr) {
+          logger.warn({ session_id: sessionId, error: momentumErr.message }, 'Momentum activity log failed');
+        }
+      }
     }).catch(async (pipelineError) => {
       logger.error(
         { session_id: sessionId, error: pipelineError instanceof Error ? pipelineError.message : String(pipelineError) },
@@ -494,7 +515,7 @@ export function createProductRoutes<
   // ── POST /respond ───────────────────────────────────────────────
   router.post('/respond', rateLimitMiddleware(30, 60_000), async (c) => {
     if (config.isEnabled && !config.isEnabled()) {
-      return c.json({ error: 'This product is not available' }, 404);
+      return c.json({ error: 'feature_not_enabled', message: 'This feature is not currently enabled' }, 403);
     }
 
     const parsedBody = await parseJsonBodyWithLimit(c, maxRespondBytes);
@@ -631,7 +652,7 @@ export function createProductRoutes<
   // ── GET /:sessionId/stream ─────────────────────────────────────
   router.get('/:sessionId/stream', async (c) => {
     if (config.isEnabled && !config.isEnabled()) {
-      return c.json({ error: 'This product is not available' }, 404);
+      return c.json({ error: 'feature_not_enabled', message: 'This feature is not currently enabled' }, 403);
     }
 
     const sessionId = c.req.param('sessionId');

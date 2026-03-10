@@ -94,4 +94,5 @@ export const mockInterviewRoutes = createProductRoutes<MockInterviewState, MockI
 
     return input;
   },
+  momentumActivityType: 'mock_interview',
 });

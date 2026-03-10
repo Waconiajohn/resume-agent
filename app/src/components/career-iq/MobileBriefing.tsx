@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Sparkles,
   Bot,
-  Radio,
   Home,
   Columns3,
   Video,
@@ -21,8 +20,11 @@ interface MobileBriefingProps {
   userName: string;
   signals: WhyMeSignals;
   dashboardState: DashboardState;
+  activeRoom: CareerIQRoom;
   onRefineWhyMe: () => void;
   onNavigateRoom: (room: CareerIQRoom) => void;
+  /** When true, renders only the bottom nav (used when a room is active) */
+  navOnly?: boolean;
 }
 
 // --- Card 1: One Action Today ---
@@ -76,14 +78,7 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe }: {
   );
 }
 
-// --- Card 2: Agent Activity Overnight ---
-
-const MOCK_OVERNIGHT_ACTIVITY = [
-  { icon: '📝', text: 'Cover Letter Agent drafted a letter for Acme Corp' },
-  { icon: '🔗', text: 'LinkedIn Agent found 3 new connections at target companies' },
-  { icon: '🎯', text: 'Job Finder surfaced 2 roles matching your profile' },
-  { icon: '💡', text: 'Interview Agent prepared practice questions for Thursday' },
-];
+// --- Card 2: Agent Activity ---
 
 function AgentActivityCard() {
   return (
@@ -91,77 +86,21 @@ function AgentActivityCard() {
       <div className="flex items-center gap-2 mb-4">
         <Bot size={16} className="text-[#98b3ff]" />
         <span className="text-[11px] font-medium text-[#98b3ff]/60 uppercase tracking-widest">
-          What Agents Did Overnight
+          Agent Activity
         </span>
       </div>
-      <div className="flex-1 space-y-3">
-        {MOCK_OVERNIGHT_ACTIVITY.map((item, i) => (
-          <div key={i} className="flex items-start gap-2.5">
-            <span className="text-[14px] flex-shrink-0 mt-0.5">{item.icon}</span>
-            <span className="text-[13px] text-white/60 leading-relaxed">{item.text}</span>
-          </div>
-        ))}
-      </div>
-    </GlassCard>
-  );
-}
-
-// --- Card 3: Live Session Alert ---
-
-function LiveSessionCard() {
-  const now = new Date();
-  const isLive = now.getMinutes() < 30;
-
-  return (
-    <GlassCard className={cn('p-6 flex flex-col min-h-[240px]', isLive && 'border-red-400/20')}>
-      <div className="flex items-center gap-2 mb-4">
-        {isLive ? (
-          <>
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" style={{ animationDuration: '2s' }} />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
-            </span>
-            <span className="text-[11px] font-semibold text-red-400 uppercase tracking-widest">
-              Live Now
-            </span>
-          </>
-        ) : (
-          <>
-            <Radio size={14} className="text-white/30" />
-            <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest">
-              Next Session
-            </span>
-          </>
-        )}
-      </div>
-
-      <h3 className="text-[16px] font-semibold text-white/85 mb-1">
-        {isLive ? 'Interview Confidence for Executives' : 'Networking Without the Cringe'}
-      </h3>
-      <p className="text-[12px] text-white/40 mb-1">
-        with {isLive ? 'Dr. Amy Walsh' : 'James Okafor'}
-      </p>
-      {!isLive && (
-        <p className="text-[12px] text-white/30 mb-auto">
-          Thursday at 3:00 PM
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-[13px] text-white/35 text-center leading-relaxed">
+          No recent agent activity.
         </p>
-      )}
-
-      <button
-        type="button"
-        className={cn(
-          'mt-4 w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[14px] font-medium transition-colors',
-          isLive
-            ? 'bg-red-400/15 border border-red-400/20 text-red-300 hover:bg-red-400/25'
-            : 'border border-white/[0.08] bg-white/[0.04] text-white/50 hover:bg-white/[0.07]',
-        )}
-      >
-        {isLive ? 'Join Now' : 'Set Reminder'}
-        <ArrowRight size={16} />
-      </button>
+      </div>
     </GlassCard>
   );
 }
+
+// LiveSessionCard is hidden until a real session schedule system is connected.
+// Returning null here removes it from the CardStack children array.
+// Note: CardStack filters out null/undefined children via React's normal rendering.
 
 // --- Swipeable Card Stack ---
 
@@ -246,25 +185,25 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
 
 // --- Bottom Navigation ---
 
-const MOBILE_TABS: { id: CareerIQRoom | 'profile'; label: string; icon: typeof Home }[] = [
+const MOBILE_TABS: { id: CareerIQRoom; label: string; icon: typeof Home }[] = [
   { id: 'dashboard', label: 'Home', icon: Home },
   { id: 'jobs', label: 'Pipeline', icon: Columns3 },
   { id: 'learning', label: 'Live', icon: Video },
-  { id: 'dashboard', label: 'Agents', icon: Activity },
-  { id: 'profile' as CareerIQRoom, label: 'Profile', icon: User },
+  { id: 'networking', label: 'Network', icon: Activity },
+  { id: 'resume', label: 'Resume', icon: User },
 ];
 
-function BottomNav({ activeTab, onNavigate }: { activeTab: string; onNavigate: (room: CareerIQRoom) => void }) {
+function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavigate: (room: CareerIQRoom) => void }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-white/[0.08] bg-[var(--bg-1)]/95 backdrop-blur-xl px-2 py-2 safe-area-pb">
       {MOBILE_TABS.map((tab) => {
         const Icon = tab.icon;
-        const isActive = activeTab === tab.id || (tab.label === 'Home' && activeTab === 'dashboard');
+        const isActive = activeTab === tab.id;
         return (
           <button
-            key={tab.label}
+            key={tab.id}
             type="button"
-            onClick={() => onNavigate(tab.id as CareerIQRoom)}
+            onClick={() => onNavigate(tab.id)}
             className={cn(
               'flex flex-col items-center gap-0.5 px-3 py-1 transition-colors',
               isActive ? 'text-[#98b3ff]' : 'text-white/35',
@@ -281,7 +220,12 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: string; onNavigate: (
 
 // --- Main export ---
 
-export function MobileBriefing({ userName, signals, dashboardState, onRefineWhyMe, onNavigateRoom }: MobileBriefingProps) {
+export function MobileBriefing({ userName, signals, dashboardState, activeRoom, onRefineWhyMe, onNavigateRoom, navOnly = false }: MobileBriefingProps) {
+  // navOnly mode: render only the bottom nav bar (used when a room is displayed above)
+  if (navOnly) {
+    return <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} />;
+  }
+
   return (
     <div className="flex flex-col min-h-screen pb-20">
       {/* Header */}
@@ -296,12 +240,11 @@ export function MobileBriefing({ userName, signals, dashboardState, onRefineWhyM
         <CardStack>
           <ActionCard userName={userName} dashboardState={dashboardState} onRefineWhyMe={onRefineWhyMe} />
           <AgentActivityCard />
-          <LiveSessionCard />
         </CardStack>
       </div>
 
-      {/* Bottom navigation */}
-      <BottomNav activeTab="dashboard" onNavigate={onNavigateRoom} />
+      {/* Bottom navigation — reflects current active room */}
+      <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} />
     </div>
   );
 }

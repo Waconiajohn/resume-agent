@@ -173,7 +173,7 @@ export function useLinkedInEditor() {
         case 'pipeline_complete':
           setState((prev) => {
             if (prev.status === 'complete' || prev.status === 'error') return prev;
-            return prev;
+            return { ...prev, status: 'complete' };
           });
           abortRef.current?.abort();
           break;

@@ -6,10 +6,18 @@ import { MomentumCard } from './MomentumCard';
 import { CoachingNudgeBar } from './CoachingNudgeBar';
 import { GlassCard } from '@/components/GlassCard';
 import { ArrowRight, FileText, Search, X } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import type { CareerIQRoom } from './Sidebar';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { MomentumSummary, CoachingNudge } from '@/hooks/useMomentum';
+
+interface PipelineStats {
+  total: number;
+  interviewing: number;
+  offer: number;
+  daysSinceLastActivity: number;
+}
 
 interface CoverLetterSession {
   id: string;
@@ -50,6 +58,36 @@ function saveDismissed(dismissed: Record<string, boolean>) {
 
 export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
+  const [pipelineStats, setPipelineStats] = useState<PipelineStats | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPipelineStats() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await supabase
+          .from('job_applications')
+          .select('pipeline_stage, updated_at')
+          .eq('user_id', user.id)
+          .neq('status', 'archived');
+        if (cancelled || !data) return;
+        const total = data.length;
+        const interviewing = data.filter((r) => r.pipeline_stage === 'interviewing').length;
+        const offer = data.filter((r) => r.pipeline_stage === 'offer' || r.pipeline_stage === 'accepted').length;
+        const lastActivity = data.reduce((max, r) => {
+          const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+          return t > max ? t : max;
+        }, 0);
+        const daysSinceLastActivity = lastActivity
+          ? Math.floor((Date.now() - lastActivity) / (1000 * 60 * 60 * 24))
+          : 99;
+        setPipelineStats({ total, interviewing, offer, daysSinceLastActivity });
+      } catch { /* ignore */ }
+    }
+    loadPipelineStats();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleDismiss = (key: string) => {
     const updated = { ...dismissed, [key]: true };
@@ -100,9 +138,11 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
     return events.slice(0, 5);
   }, [recentSessions, coverLetterSessions]);
 
-  // Determine which nudge to show
-  const showResumeNudge = dashboardState !== 'new-user' && !hasResumeSessions && !dismissed['resume_nudge'];
-  const showJobsNudge = dashboardState !== 'new-user' && hasResumeSessions && !dismissed['jobs_nudge'];
+  // Determine which nudge to show — max 1 at a time.
+  // Momentum nudges take priority; fall back to hardcoded contextual nudges.
+  const firstMomentumNudge = nudges.length > 0 ? nudges[0] : null;
+  const showResumeNudge = !firstMomentumNudge && dashboardState !== 'new-user' && !hasResumeSessions && !dismissed['resume_nudge'];
+  const showJobsNudge = !firstMomentumNudge && !showResumeNudge && dashboardState !== 'new-user' && hasResumeSessions && !dismissed['jobs_nudge'];
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
@@ -159,9 +199,9 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
         </GlassCard>
       )}
 
-      {/* Coaching nudges from momentum engine */}
-      {nudges.length > 0 && (
-        <CoachingNudgeBar nudges={nudges} onDismiss={onDismissNudge ?? (() => {})} />
+      {/* Coaching nudge from momentum engine — one at a time */}
+      {firstMomentumNudge && (
+        <CoachingNudgeBar nudges={[firstMomentumNudge]} onDismiss={onDismissNudge ?? (() => {})} />
       )}
 
       {/* Zone 1: Your Day — full width */}
@@ -184,6 +224,7 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
           <ZoneYourSignals
             whyMeSignals={signals}
             sessionCount={sessionCount}
+            pipelineStats={pipelineStats}
           />
         </div>
         <div className="flex-1 min-w-0">

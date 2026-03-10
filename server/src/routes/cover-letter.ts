@@ -92,4 +92,6 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
 
     return input;
   },
+
+  momentumActivityType: 'cover_letter_completed',
 });

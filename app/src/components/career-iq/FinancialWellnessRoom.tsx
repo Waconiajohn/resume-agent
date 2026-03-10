@@ -622,31 +622,25 @@ function EducationalResources() {
         {RESOURCES.map((resource) => (
           <div
             key={resource.id}
-            className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-white/[0.1] transition-all cursor-pointer"
+            className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
-                    {resource.category}
-                  </span>
-                  <span className="text-[10px] text-white/20">·</span>
-                  <span className="flex items-center gap-1 text-[10px] text-white/25">
-                    <Clock size={9} />
-                    {resource.readTime}
-                  </span>
-                </div>
-                <h4 className="text-[13px] font-medium text-white/70 group-hover:text-white/85 transition-colors">
-                  {resource.title}
-                </h4>
-                <p className="mt-1 text-[12px] text-white/35 leading-relaxed line-clamp-2">
-                  {resource.description}
-                </p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-medium text-[#98b3ff]/50 uppercase tracking-wider">
+                  {resource.category}
+                </span>
+                <span className="text-[10px] text-white/20">·</span>
+                <span className="flex items-center gap-1 text-[10px] text-white/25">
+                  <Clock size={9} />
+                  {resource.readTime}
+                </span>
               </div>
-              <ArrowRight
-                size={14}
-                className="text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0 mt-1"
-              />
+              <h4 className="text-[13px] font-medium text-white/70">
+                {resource.title}
+              </h4>
+              <p className="mt-1 text-[12px] text-white/35 leading-relaxed line-clamp-2">
+                {resource.description}
+              </p>
             </div>
           </div>
         ))}
@@ -755,9 +749,11 @@ export function FinancialWellnessRoom() {
       {/* Bridge Analysis + Planner side-by-side */}
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-[3] min-w-0">{renderLeftPanel()}</div>
-        <div className="flex-[2]">
-          <PlannerConnectionCard />
-        </div>
+        {phase === 'complete' && summary && (
+          <div className="flex-[2]">
+            <PlannerConnectionCard />
+          </div>
+        )}
       </div>
 
       {/* Educational resources — full width */}

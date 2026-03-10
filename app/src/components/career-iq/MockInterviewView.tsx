@@ -384,8 +384,9 @@ export function MockInterviewView({
   const [hasStarted, setHasStarted] = useState(false);
   const [showPreviousEvals, setShowPreviousEvals] = useState(false);
 
-  // Must match server's interviewer agent max_questions for 'full' mode
-  // See: server/src/agents/interview-prep/simulation/interviewer/agent.ts
+  // Must match the question count in the interviewer agent system prompt
+  // (server/src/agents/interview-prep/simulation/interviewer/agent.ts — "6-question session").
+  // If the server-side count changes, update this constant to keep the progress bar accurate.
   const FULL_MODE_TOTAL = 6;
 
   useEffect(() => {

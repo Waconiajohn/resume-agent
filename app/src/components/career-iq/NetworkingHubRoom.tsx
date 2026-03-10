@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useNetworkingOutreach } from '@/hooks/useNetworkingOutreach';
 import { useNetworkingContacts, type NetworkingContact, type Touchpoint } from '@/hooks/useNetworkingContacts';
 import { useRuleOfFour, CONTACT_ROLE_LABELS, ALL_ROLES, type ContactRole, type RuleOfFourGroup } from '@/hooks/useRuleOfFour';
@@ -456,9 +457,10 @@ function WeeklyActivity({ contacts: rawContacts }: WeeklyActivityProps) {
 interface RecruiterTrackerProps {
   contacts: NetworkingContact[];
   onAddRecruiter: () => void;
+  onOpenContact: (contact: NetworkingContact) => void;
 }
 
-function RecruiterTracker({ contacts: rawContacts, onAddRecruiter }: RecruiterTrackerProps) {
+function RecruiterTracker({ contacts: rawContacts, onAddRecruiter, onOpenContact }: RecruiterTrackerProps) {
   const contacts = rawContacts ?? [];
   const statusColors: Record<string, string> = {
     active: 'text-[#b5dec2] bg-[#b5dec2]/10',
@@ -509,9 +511,11 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter }: RecruiterTr
         {recruiters.map((recruiter) => {
           const status = recruiterStatus(recruiter);
           return (
-            <div
+            <button
               key={recruiter.id}
-              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
+              type="button"
+              onClick={() => onOpenContact(recruiter)}
+              className="w-full flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left hover:bg-white/[0.04] transition-colors"
             >
               <div className="h-8 w-8 rounded-full bg-white/[0.06] flex items-center justify-center flex-shrink-0">
                 <span className="text-[10px] font-bold text-white/40">
@@ -547,7 +551,7 @@ function RecruiterTracker({ contacts: rawContacts, onAddRecruiter }: RecruiterTr
                   {status}
                 </span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -573,6 +577,29 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
   const [messagingMethod, setMessagingMethod] = useState<MessagingMethod>('group_message');
   const [copied, setCopied] = useState(false);
   const [showForm, setShowForm] = useState(true);
+
+  // Auto-load master resume on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function loadResume() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await supabase
+          .from('master_resumes')
+          .select('raw_text')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (!cancelled && data?.raw_text) {
+          setResumeText(data.raw_text);
+        }
+      } catch { /* ignore */ }
+    }
+    loadResume();
+    return () => { cancelled = true; };
+  }, []);
 
   // Sync prefill into form when a contact's "Generate Message" is clicked
   useEffect(() => {
@@ -709,7 +736,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
           <textarea
             id="outreach-resume"
             aria-label="Resume text"
-            placeholder="Paste your resume text here * (minimum 50 characters)"
+            placeholder="Resume text * — auto-loading from your master resume..."
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             rows={4}
@@ -856,8 +883,9 @@ export function NetworkingHubRoom() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  // Fetch follow-ups on mount
+  // Fetch contacts and follow-ups on mount
   useEffect(() => {
+    void networkingContacts.fetchContacts();
     networkingContacts.fetchFollowUps(7).then((contacts) => {
       setFollowUps(contacts);
     });
@@ -1017,6 +1045,7 @@ export function NetworkingHubRoom() {
       <RecruiterTracker
         contacts={recruiterContacts}
         onAddRecruiter={handleAddRecruiter}
+        onOpenContact={handleOpenContactDetail}
       />
 
       {/* Modals */}

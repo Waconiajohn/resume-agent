@@ -76,4 +76,5 @@ export const retirementBridgeRoutes = createProductRoutes<RetirementBridgeState,
 
     return transformed;
   },
+  momentumActivityType: 'retirement_assessment_completed',
 });

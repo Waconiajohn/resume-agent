@@ -57,6 +57,18 @@ const ALLOWED_ACTIVITY_TYPES = [
   'linkedin_post',
   'profile_update',
   'salary_negotiation',
+  'executive_bio_completed',
+  'content_calendar_completed',
+  'personal_brand_completed',
+  'case_study_completed',
+  'thank_you_note_completed',
+  'ninety_day_plan_completed',
+  'counter_offer_sim_completed',
+  'job_search_completed',
+  'linkedin_optimized',
+  'linkedin_content_completed',
+  'onboarding_completed',
+  'retirement_assessment_completed',
 ] as const;
 
 type ActivityType = typeof ALLOWED_ACTIVITY_TYPES[number];

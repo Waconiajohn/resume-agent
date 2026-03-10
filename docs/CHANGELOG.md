@@ -1,5 +1,83 @@
 # Changelog — Resume Agent
 
+## 2026-03-10 — Session 69 (continued)
+**Sprint:** R2 + R3 | **Stories:** R2-1 through R2-17, R3-1 through R3-11
+**Summary:** Fixed all 18 MEDIUM + 12 LOW bugs from Platform UX Audit, plus 2 cross-cutting patterns.
+
+### Sprint R2 Changes (MEDIUM bugs)
+- `app/src/hooks/useCaseStudy.ts` — R2-1: Added `focus_areas` to POST body
+- `app/src/components/career-iq/InterviewLabRoom.tsx` — R2-2: Removed 4 mock data blocks, replaced with empty states
+- `app/src/hooks/useRetirementBridge.ts` — R2-3: Added SSE reconnect (3 attempts, exponential backoff)
+- `app/src/hooks/useLinkedInEditor.ts` — R2-4: `pipeline_complete` now transitions to `complete`
+- `app/src/hooks/useLinkedInContent.ts` — R2-5: Abort existing SSE before new; `pipeline_complete` defers to `content_complete` when `postDraft` null
+- `app/src/hooks/usePersonalBrand.ts` — R2-6: Added `BrandFinding[]` with severity to hook state
+- `app/src/__tests__/career-iq/PersonalBrandRoom.test.tsx` — Added `findings: []` to test mocks
+- `app/src/components/career-iq/DashboardHome.tsx` — R2-7: Computed real `pipelineStats` from `job_applications`, passed to `ZoneYourSignals`
+- `app/src/components/career-iq/ZoneYourDay.tsx` — R2-8: CTA label → "Refine your Why-Me story" to match onClick
+- `app/src/components/career-iq/SalaryNegotiationRoom.tsx` — R2-9: Stage indicator reduced to 2 stages matching backend
+- `app/src/components/career-iq/NetworkingHubRoom.tsx` — R2-10: `fetchContacts()` on mount; R2-11: Recruiter rows onClick → ContactDetailSheet; R2-12: OutreachGenerator auto-loads master resume
+- `app/src/components/career-iq/FinancialWellnessRoom.tsx` — R2-13: Planner CTA hidden until assessment complete
+- `app/src/hooks/useWhyMeStory.ts` — R2-14: `initialLoadDone = true` on error so saves work
+- `server/src/routes/linkedin-editor.ts` — R2-15: Added `why_me_story` to `transformInput`
+- `app/src/hooks/useRadarSearch.ts` — R2-16: Merged localStorage search prefs into API filters
+
+### Sprint R3 Changes (LOW bugs + cross-cutting)
+- `app/src/components/career-iq/MockInterviewView.tsx` — R3-1a: Documented server constant link for `FULL_MODE_TOTAL`
+- `app/src/components/career-iq/InterviewLabRoom.tsx` — R3-1b: Practice mode validates `resumeText >= 50` chars; R3-2: Removed no-op thank-you button
+- `app/src/hooks/usePlannerHandoff.ts` — R3-3: Clear `planners` on qualify/match failure (3 branches + catch)
+- `app/src/components/career-iq/NinetyDayPlanRoom.tsx` — R3-4: Clear `targetRole`/`targetCompany` on reset; added `htmlFor`/`id` to 5 labels
+- `app/src/components/career-iq/NetworkIntelligenceRoom.tsx` — R3-6a: Removed redundant tab indicator strip; R3-6b: `scan-jobs` locked until CSV upload
+- `app/src/components/career-iq/DashboardHome.tsx` — R3-7: Max 1 nudge bar (momentum priority)
+- `app/src/hooks/useMomentum.ts` — R3-8: 404 responses silently ignored
+- `app/src/types/platform.ts` — R3-9: `onboarding-assessment` → `active`
+- `server/src/routes/product-route-factory.ts` — R3-10: All 3 `isEnabled()` guards return 403 instead of 404
+
+### Decisions Made
+- Pattern 2 (Feature Flag Wall): 403 with structured error body is better than 404 — frontend naturally displays the message
+- Patterns 1, 3, 4 deferred to backlog — require dedicated sprints (context badge for 16 rooms, structured data for 7 tools, session persistence for 6 tools)
+
+### Next Steps
+- All 55 audit bugs resolved (14 HIGH + 18 MEDIUM + 12 LOW + 2 cross-cutting patterns)
+- 3 cross-cutting patterns deferred to backlog
+- Ready to commit all changes
+
+## 2026-03-10 — Session 69
+**Sprint:** R1 | **Stories:** R1-1 through R1-10 — Trust & Broken Functionality
+**Summary:** Fixed all 10 HIGH-severity bugs from Platform UX Audit. Enum mismatches, deserialization bugs, mock data removal, mobile nav, momentum wiring, content calendar structured data.
+
+### Changes Made
+- `app/src/components/career-iq/ExecutiveBioRoom.tsx` — R1-1: Fixed format `'linkedin'`→`'linkedin_featured'`, length `'long'`→`'standard'`
+- `app/src/hooks/useCounterOfferSim.ts` — R1-2: Fixed `simulation_complete` to read `data.summary` not `data` directly
+- `app/src/hooks/useMockInterview.ts` — R1-2: Fixed `interview_complete` to read `data.summary` not `data` directly
+- `app/src/hooks/useInterviewDebriefs.ts` — R1-3: Added `refresh()` on mount via useEffect
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — R1-3: Removed `MOCK_PROFILE`, added empty state when profile parse fails
+- `app/src/components/career-iq/FinancialWellnessRoom.tsx` — R1-4: Removed ghost link styling (cursor-pointer, ArrowRight, hover states) from resource cards
+- `app/src/components/career-iq/CareerIQScreen.tsx` — R1-5: Added `VALID_ROOMS` set + `toValidRoom()` fallback to `'dashboard'`; R1-7: Fixed mobile room navigation
+- `app/src/components/career-iq/ZoneYourPipeline.tsx` — R1-6: Replaced `FALLBACK_CARDS` with empty state
+- `app/src/components/career-iq/ZoneAgentFeed.tsx` — R1-6: Replaced `MOCK_FEED` with empty state
+- `app/src/components/career-iq/ZoneYourDay.tsx` — R1-6: Replaced `MOCK_STREAK` with 0/hidden
+- `app/src/components/career-iq/LivePulseStrip.tsx` — R1-6: Removed fake schedule, hidden when no real sessions
+- `app/src/components/career-iq/MobileBriefing.tsx` — R1-6: Replaced `MOCK_OVERNIGHT_ACTIVITY` with empty state; R1-7: Mobile nav fixes
+- `app/src/hooks/useRadarSearch.ts` — R1-8: Fixed `loadLatestScan` to read `data.scan`/`data.results` matching backend shape
+- `server/src/routes/product-route-factory.ts` — R1-9: Added `momentumActivityType` field to `ProductRouteConfig`, auto-inserts into `user_momentum_activities` after `onComplete`
+- `server/src/routes/momentum.ts` — R1-9: Expanded `ALLOWED_ACTIVITY_TYPES` from 10 to 22 types to cover all products
+- 19 product route files — R1-9: Added `momentumActivityType` to each `createProductRoutes()` config
+- `server/src/agents/content-calendar/product.ts` — R1-10: Emit structured `posts[]` array in `calendar_complete` SSE event
+- `server/src/agents/content-calendar/types.ts` — R1-10: Extended `calendar_complete` event type with `posts` array
+- `app/src/hooks/useContentCalendar.ts` — R1-10: Added `StructuredPost` interface, stored structured posts in state from `calendar_complete`
+- `app/src/components/career-iq/ContentCalendarRoom.tsx` — R1-10: Removed brittle regex parser, uses structured posts directly; added Previous Calendars section rendering `savedReports`
+
+### Decisions Made
+- R1-9: Centralized momentum logging in `product-route-factory.ts` rather than adding to 18 individual frontend hooks — single point of change, server-authoritative
+- R1-10: Emit structured posts alongside markdown rather than fixing the regex — structured data is more reliable and the markdown serves as human-readable fallback
+
+### Known Issues
+- Content Calendar: `fetchReportById` exists in hook but no UI to load a specific previous report (follow-up for Sprint R2 or R3)
+
+### Next Steps
+- Sprint R2: 18 MEDIUM-severity bugs
+- Sprint R3: 12 LOW-severity bugs + cross-cutting patterns
+
 ## 2026-03-09 — Session 68
 **Sprint:** 61 | **Stories:** 61-1, 61-2, 61-3 — Intelligence Visibility
 **Summary:** Activated two ghost panels (Research Dashboard, Gap Analysis) by adding SSE emissions to strategist tools, and enriched Blueprint Review with full keyword targets, evidence allocation, and experience role details.

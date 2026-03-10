@@ -35,12 +35,12 @@ const FORMAT_OPTIONS: FormatOption[] = [
   { id: 'board', label: 'Board', icon: LayoutGrid, description: 'Board of directors bio' },
   { id: 'advisory', label: 'Advisory', icon: Users, description: 'Advisory board bio' },
   { id: 'professional', label: 'Professional', icon: Briefcase, description: 'General professional bio' },
-  { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, description: 'LinkedIn About section' },
+  { id: 'linkedin_featured', label: 'LinkedIn', icon: Linkedin, description: 'LinkedIn About section' },
 ];
 
 const LENGTH_OPTIONS = [
   { id: 'short', label: 'Short', description: '50-100 words' },
-  { id: 'long', label: 'Long', description: '200-300 words' },
+  { id: 'standard', label: 'Long', description: '150-250 words' },
 ];
 
 // --- Stage labels ---
@@ -174,8 +174,8 @@ function ReportView({
 export function ExecutiveBioRoom() {
   const [resumeText, setResumeText] = useState('');
   const [resumeLoading, setResumeLoading] = useState(false);
-  const [selectedFormats, setSelectedFormats] = useState<string[]>(['professional', 'linkedin']);
-  const [selectedLengths, setSelectedLengths] = useState<string[]>(['short', 'long']);
+  const [selectedFormats, setSelectedFormats] = useState<string[]>(['professional', 'linkedin_featured']);
+  const [selectedLengths, setSelectedLengths] = useState<string[]>(['short', 'standard']);
   const [targetRole, setTargetRole] = useState('');
   const [targetIndustry, setTargetIndustry] = useState('');
 

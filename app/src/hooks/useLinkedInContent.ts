@@ -162,17 +162,19 @@ export function useLinkedInContent() {
           break;
         }
 
-        case 'content_complete':
+        case 'content_complete': {
+          const updatedDraft = typeof data.post === 'string' ? data.post : null;
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            postDraft: typeof data.post === 'string' ? data.post : prev.postDraft,
+            postDraft: updatedDraft ?? prev.postDraft,
             postHashtags: (data.hashtags as string[]) ?? prev.postHashtags,
             qualityScores: (data.quality_scores as PostQualityScores) ?? prev.qualityScores,
             postSaved: true,
           }));
           abortRef.current?.abort();
           break;
+        }
 
         case 'pipeline_error':
           setState((prev) => ({
@@ -186,7 +188,10 @@ export function useLinkedInContent() {
         case 'pipeline_complete':
           setState((prev) => {
             if (prev.status === 'complete' || prev.status === 'error') return prev;
-            return { ...prev, status: 'complete' };
+            // Only transition if postDraft is already set — otherwise content_complete
+            // hasn't fired yet and we'd show a blank post. Store a flag instead.
+            if (!prev.postDraft) return { ...prev, postSaved: true };
+            return { ...prev, status: 'complete', postSaved: true };
           });
           abortRef.current?.abort();
           break;
@@ -336,6 +341,9 @@ export function useLinkedInContent() {
     const sessionId = sessionIdRef.current;
     const token = accessTokenRef.current;
     if (!sessionId || !token) return false;
+
+    // Abort existing SSE connection before opening a new one
+    abortRef.current?.abort();
 
     try {
       const res = await fetch(`${API_BASE}/linkedin-content/respond`, {

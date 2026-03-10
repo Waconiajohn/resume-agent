@@ -95,20 +95,26 @@ export function useMomentum(): UseMomentumReturn {
       ]);
 
       if (!summaryRes.ok) {
-        const body = await summaryRes.text();
-        if (mountedRef.current) {
-          setError(`Failed to fetch momentum summary (${summaryRes.status}): ${body}`);
-          setLoading(false);
+        // 404 means the momentum feature is not enabled — fail silently
+        if (summaryRes.status !== 404) {
+          const body = await summaryRes.text();
+          if (mountedRef.current) {
+            setError(`Failed to fetch momentum summary (${summaryRes.status}): ${body}`);
+          }
         }
+        if (mountedRef.current) setLoading(false);
         return;
       }
 
       if (!nudgesRes.ok) {
-        const body = await nudgesRes.text();
-        if (mountedRef.current) {
-          setError(`Failed to fetch nudges (${nudgesRes.status}): ${body}`);
-          setLoading(false);
+        // 404 means the momentum feature is not enabled — fail silently
+        if (nudgesRes.status !== 404) {
+          const body = await nudgesRes.text();
+          if (mountedRef.current) {
+            setError(`Failed to fetch nudges (${nudgesRes.status}): ${body}`);
+          }
         }
+        if (mountedRef.current) setLoading(false);
         return;
       }
 
@@ -186,6 +192,7 @@ export function useMomentum(): UseMomentumReturn {
         headers: authHeader,
       });
 
+      // 404 means the momentum feature is not enabled — fail silently
       if (!res.ok) return;
 
       // Refresh nudges after stall check

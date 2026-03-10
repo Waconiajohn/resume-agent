@@ -91,4 +91,6 @@ export const caseStudyRoutes = createProductRoutes<CaseStudyState, CaseStudySSEE
 
     return transformed;
   },
+
+  momentumActivityType: 'case_study_completed',
 });

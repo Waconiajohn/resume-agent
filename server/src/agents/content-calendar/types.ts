@@ -208,5 +208,5 @@ export type ContentCalendarSSEEvent =
   | { type: 'transparency'; stage: string; message: string }
   | { type: 'theme_identified'; theme_name: string; theme_count: number }
   | { type: 'post_progress'; day: number; total_days: number; content_type: ContentType; status: 'drafting' | 'reviewing' | 'complete' }
-  | { type: 'calendar_complete'; session_id: string; report: string; quality_score: number; post_count: number }
+  | { type: 'calendar_complete'; session_id: string; report: string; quality_score: number; post_count: number; posts: Array<{ day: number; day_of_week: string; content_type: string; hook: string; body: string; cta: string; hashtags: string[]; posting_time: string; quality_score: number; word_count: number }> }
   | { type: 'pipeline_error'; stage: string; error: string };
