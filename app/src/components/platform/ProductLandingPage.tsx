@@ -46,12 +46,24 @@ export function ProductLandingPage({ product, onNavigate }: ProductLandingPagePr
 
       <div className="flex justify-start">
         {isActive ? (
-          <GlassButton
-            variant="primary"
-            onClick={() => onNavigate(product.route)}
-          >
-            {product.ctaLabel}
-          </GlassButton>
+          product.externalUrl ? (
+            <a
+              href={product.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#afc4ff]/20 bg-[#afc4ff]/10 px-5 py-2.5 text-sm font-medium text-[#afc4ff] hover:bg-[#afc4ff]/15 transition-colors"
+            >
+              {product.ctaLabel}
+              <span aria-hidden="true" className="text-xs">&#8599;</span>
+            </a>
+          ) : (
+            <GlassButton
+              variant="primary"
+              onClick={() => onNavigate(product.route)}
+            >
+              {product.ctaLabel}
+            </GlassButton>
+          )
         ) : (
           <GlassButton variant="ghost" disabled>
             Coming Soon

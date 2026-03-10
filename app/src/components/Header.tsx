@@ -69,6 +69,14 @@ export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionC
           )}
           {email && (
             <button
+              onClick={() => onNavigate?.('/tools/job-applier')}
+              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+            >
+              Job Applier
+            </button>
+          )}
+          {email && (
+            <button
               onClick={() => onNavigate?.('career-iq')}
               className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#98b3ff]/80 hover:bg-[#98b3ff]/10 hover:text-[#98b3ff] transition-colors"
             >
@@ -171,6 +179,14 @@ export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionC
                   className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
                 >
                   Tools
+                </button>
+              )}
+              {email && (
+                <button
+                  onClick={() => handleNavClick('/tools/job-applier')}
+                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+                >
+                  Job Applier
                 </button>
               )}
               {email && (

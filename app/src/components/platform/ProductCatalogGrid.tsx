@@ -18,10 +18,10 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
         'p-6 flex flex-col gap-3',
         isActive ? 'cursor-pointer' : 'opacity-60 cursor-default',
       )}
-      onClick={isActive ? () => onNavigate(`/tools/${product.slug}`) : undefined}
+      onClick={isActive ? () => onNavigate(product.route) : undefined}
       role={isActive ? 'button' : undefined}
       tabIndex={isActive ? 0 : undefined}
-      onKeyDown={isActive ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate(`/tools/${product.slug}`); } : undefined}
+      onKeyDown={isActive ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate(product.route); } : undefined}
       aria-label={isActive ? `Open ${product.name}` : `${product.name} — coming soon`}
     >
       <div className="flex items-start justify-between">

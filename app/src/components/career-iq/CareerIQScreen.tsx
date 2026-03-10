@@ -58,6 +58,7 @@ interface CareerIQScreenProps {
   sessionsLoading?: boolean;
   onNewSession?: () => void;
   onResumeSession?: (sessionId: string) => void;
+  initialRoom?: string;
 }
 
 function RoomLoadingSkeleton() {
@@ -78,8 +79,20 @@ export function CareerIQScreen({
   sessionsLoading = false,
   onNewSession,
   onResumeSession,
+  initialRoom,
 }: CareerIQScreenProps) {
-  const [activeRoom, setActiveRoom] = useState<CareerIQRoom>('dashboard');
+  const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(
+    (initialRoom as CareerIQRoom) || 'dashboard'
+  );
+
+  // When initialRoom changes (e.g., user clicks a different tool from catalog),
+  // update the active room even if already mounted
+  useEffect(() => {
+    if (initialRoom) {
+      setActiveRoom(initialRoom as CareerIQRoom);
+    }
+  }, [initialRoom]);
+
   const [showWhyMeEngine, setShowWhyMeEngine] = useState(false);
   const { story, updateField, signals, dashboardState } = useWhyMeStory();
   const isMobile = useMediaQuery('(max-width: 767px)');

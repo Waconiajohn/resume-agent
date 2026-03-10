@@ -91,6 +91,7 @@ export default function App() {
 
   const [view, setView] = useState<View>('landing');
   const [toolSlug, setToolSlug] = useState<string | undefined>(undefined);
+  const [initialRoom, setInitialRoom] = useState<string | undefined>(undefined);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [intakeLoading, setIntakeLoading] = useState(false);
 
@@ -561,6 +562,11 @@ export default function App() {
             else if (route.startsWith('/tools/')) navigateTo(route);
             else if (route === '/cover-letter') navigateTo('cover-letter');
             else if (route === '/app' || route === '/') navigateTo('landing');
+            else if (route.startsWith('/career-iq')) {
+              const roomParam = new URL(route, 'http://x').searchParams.get('room');
+              setInitialRoom(roomParam ?? undefined);
+              navigateTo('career-iq');
+            }
             else navigateTo('landing');
           }}
         />
@@ -583,6 +589,7 @@ export default function App() {
           sessionsLoading={sessionLoading}
           onNewSession={handleNewSession}
           onResumeSession={handleResumeSession}
+          initialRoom={initialRoom}
         />
       )}
 

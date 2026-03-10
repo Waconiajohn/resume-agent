@@ -26,6 +26,7 @@ export interface ProductDefinition {
   category: ProductCategory;
   features: ProductFeature[];
   ctaLabel: string;
+  externalUrl?: string;
 }
 
 export const PRODUCT_CATALOG: ProductDefinition[] = [
@@ -109,7 +110,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Prepares you for interviews by generating likely questions from the JD, then coaching you through STAR-format answers drawn from your verified evidence library.',
     icon: '\u{1F3AF}',
     status: 'active',
-    route: '/tools/interview-prep',
+    route: '/career-iq?room=interview',
     category: 'interview',
     features: [
       {
@@ -144,7 +145,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Optimizes your LinkedIn headline, summary, and experience sections to align with your resume positioning strategy, maximizing recruiter visibility and inbound opportunities.',
     icon: '\u{1F4BC}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=linkedin',
     category: 'career',
     features: [
       {
@@ -179,7 +180,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates a personalized 30-day LinkedIn content calendar from your resume and positioning strategy. Each post includes a hook, full body, CTA, and hashtags — ready to copy and publish.',
     icon: '\u{1F4C5}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=content-calendar',
     category: 'writing',
     features: [
       {
@@ -214,7 +215,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Central hub for your active job search. Track applications through every pipeline stage, surface AI-matched job opportunities, and get coaching nudges to keep momentum.',
     icon: '\u{1F50D}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=jobs',
     category: 'career',
     features: [
       {
@@ -241,6 +242,42 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     ctaLabel: 'Open Command Center',
   },
   {
+    id: 'job-applier',
+    slug: 'job-applier',
+    name: 'Job Applier',
+    shortDescription: 'Chrome extension that auto-fills job applications with your tailored resume',
+    longDescription:
+      'A Chrome extension that detects when you are on a job application page and auto-fills the form using your CareerIQ tailored resume. Supports Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS. Uses a 4-tier field detection strategy — ATS-specific selectors, label matching, attribute matching, and AI inference — to fill every field accurately, including resume PDF upload.',
+    icon: '\u{1F680}',
+    status: 'active',
+    route: '/tools/job-applier',
+    category: 'career',
+    externalUrl: 'https://chromewebstore.google.com',
+    features: [
+      {
+        title: '6 ATS Platforms',
+        description:
+          'Auto-fills applications on Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS — the platforms used by 90%+ of employers.',
+      },
+      {
+        title: '4-Tier Field Detection',
+        description:
+          'ATS-specific selectors, label matching, attribute matching, and AI inference work together so every field gets filled, even on custom forms.',
+      },
+      {
+        title: 'Resume PDF Upload',
+        description:
+          'Automatically uploads your tailored resume PDF to file input fields — no manual download and re-upload required.',
+      },
+      {
+        title: 'Tailored Per Job',
+        description:
+          'Pulls the resume CareerIQ tailored for this specific job, not a generic master resume. Each application gets the right version automatically.',
+      },
+    ],
+    ctaLabel: 'Get Chrome Extension',
+  },
+  {
     id: 'networking-hub',
     slug: 'networking',
     name: 'Networking Hub',
@@ -249,7 +286,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Apply the Rule of Four: reach out to four people at every target company before the interview starts. AI writes personalized LinkedIn outreach sequences so warm referrals replace cold applications.',
     icon: '\u{1F91D}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=networking',
     category: 'networking',
     features: [
       {
@@ -285,7 +322,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts for the initial counter, silence management, and multi-offer navigation.',
     icon: '\u{1F4B0}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=salary-negotiation',
     category: 'planning',
     features: [
       {
@@ -320,7 +357,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates a role-specific 30-60-90 day plan that demonstrates strategic thinking in interviews and accelerates onboarding after you land the job. Built from the JD, company context, and your positioning.',
     icon: '\u{1F5FA}\uFE0F',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=ninety-day-plan',
     category: 'planning',
     features: [
       {
@@ -356,7 +393,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates a versatile executive biography from your resume and positioning strategy. Produces short, medium, and long versions for conference programs, board profiles, media kits, and LinkedIn.',
     icon: '\u{1F4DD}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=executive-bio',
     category: 'writing',
     features: [
       {
@@ -391,7 +428,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Turns your raw accomplishments into publication-ready case studies. Structures each win in the Problem-Action-Result format with quantified outcomes, ready for portfolios, proposals, and board presentations.',
     icon: '\u{1F4CA}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=case-study',
     category: 'writing',
     features: [
       {
@@ -426,7 +463,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates personalized thank you notes for every interviewer within minutes of a conversation. Ties each note to a specific insight from the conversation, reinforcing your key differentiators.',
     icon: '\u{1F48C}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=thank-you-note',
     category: 'writing',
     features: [
       {
@@ -462,7 +499,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Analyzes your digital footprint against your target positioning — resume, LinkedIn, bio, and public profiles — and identifies gaps, contradictions, and quick wins to strengthen your executive brand.',
     icon: '\u{1F50E}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=personal-brand',
     category: 'intelligence',
     features: [
       {
@@ -497,7 +534,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Upload your LinkedIn connections and we map open positions to companies where you have existing contacts. Surface job matches, identify warm referral paths, and prioritize applications where your network gives you an inside track.',
     icon: '\u{1F310}',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=network-intelligence',
     category: 'intelligence',
     features: [
       {
@@ -532,7 +569,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     longDescription:
       'A structured intake assessment that surfaces your professional strengths, career goals, and financial context through carefully designed questions. Builds a confidential client profile that personalizes every tool in the platform to your unique situation.',
     icon: '🎯',
-    status: 'active',
+    status: 'coming_soon',
     route: '/onboarding',
     category: 'career',
     features: [
@@ -569,7 +606,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Simulates realistic interview scenarios using role-specific questions drawn from the JD and company context. The AI plays a calibrated interviewer and coaches you through stronger STAR-format answers after each response.',
     icon: '🎤',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=interview',
     category: 'interview',
     features: [
       {
@@ -605,7 +642,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates high-impact individual LinkedIn posts that position you as a thought leader in your field. Each post is derived from your real expertise and aligned to your strategic positioning — not recycled career advice.',
     icon: '✍️',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=linkedin',
     category: 'writing',
     features: [
       {
@@ -640,7 +677,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Works through your LinkedIn profile section by section — headline, About, experience, skills — rewriting each to align with your strategic positioning. The result is a profile that recruiter searches surface and hiring managers take seriously.',
     icon: '✏️',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=linkedin',
     category: 'career',
     features: [
       {
@@ -676,7 +713,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Structured debrief session immediately after an interview while details are fresh. Analyzes what went well, where you left value on the table, and what signals you should read into — then builds a targeted prep plan for the next round.',
     icon: '📋',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=interview',
     category: 'interview',
     features: [
       {
@@ -712,7 +749,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Runs you through realistic counter-offer scenarios so you walk into the real negotiation having already rehearsed every response. Builds your leverage map, scripts your opening move, and prepares you for the most common pushbacks.',
     icon: '⚖️',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=salary-negotiation',
     category: 'planning',
     features: [
       {
@@ -748,7 +785,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Monitors the cadence of your job search activity — applications sent, outreach made, interviews scheduled — and provides weekly momentum scores with coaching nudges to prevent the stalls that sink most searches.',
     icon: '📈',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=dashboard',
     category: 'intelligence',
     features: [
       {
@@ -784,7 +821,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'A seven-dimension retirement readiness assessment that evaluates your financial, health, social, and psychological preparedness. Provides fiduciary-grade guidance and matches you with qualified financial planners for a warm, documented handoff.',
     icon: '🏦',
     status: 'active',
-    route: '/career-iq',
+    route: '/career-iq?room=financial',
     category: 'financial',
     features: [
       {
