@@ -6,11 +6,7 @@ import {
   Calendar,
   Clock,
   ArrowLeft,
-  Brain,
-  MessageCircle,
   Plus,
-  ChevronDown,
-  ChevronUp,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -18,6 +14,7 @@ import {
   AlertCircle,
   ClipboardList,
 } from 'lucide-react';
+import { markdownToHtml } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useInterviewPrep } from '@/hooks/useInterviewPrep';
@@ -143,50 +140,6 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
   );
 }
 
-function CompanyResearch() {
-  return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Brain size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Company Intel</h3>
-      </div>
-      <div className="text-center py-8">
-        <Brain size={24} className="text-white/20 mx-auto mb-2" />
-        <p className="text-[13px] text-white/40">No company intel yet</p>
-        <p className="text-[11px] text-white/25 mt-1">
-          Complete an interview prep session to see company intel here
-        </p>
-      </div>
-    </GlassCard>
-  );
-}
-
-function PracticeQuestions({ onStartPractice }: { onStartPractice: () => void }) {
-  return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <MessageCircle size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Predicted Questions</h3>
-        <span className="ml-auto text-[11px] text-white/30">Based on role + Why-Me</span>
-      </div>
-
-      <div className="text-center py-6">
-        <MessageCircle size={24} className="text-white/20 mx-auto mb-2" />
-        <p className="text-[13px] text-white/40">No predicted questions yet</p>
-        <p className="text-[11px] text-white/25 mt-1">
-          Generate interview prep for a specific role to see tailored questions here
-        </p>
-      </div>
-
-      <div className="mt-4">
-        <GlassButton variant="ghost" onClick={onStartPractice} className="w-full">
-          <Mic size={14} className="mr-1.5" />
-          Start a Practice Session
-        </GlassButton>
-      </div>
-    </GlassCard>
-  );
-}
 
 function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debriefCount }: {
   history: PastInterview[];
@@ -443,49 +396,6 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
       </GlassCard>
     </div>
   );
-}
-
-/** Minimal markdown → HTML for the report. Handles headers, bold, italic, lists, blockquotes, hr. */
-function markdownToHtml(md: string): string {
-  const escaped = md
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  return escaped
-    .split('\n')
-    .map((line) => {
-      // Headers
-      if (line.startsWith('### ')) return `<h3>${line.slice(4)}</h3>`;
-      if (line.startsWith('## ')) return `<h2>${line.slice(3)}</h2>`;
-      if (line.startsWith('# ')) return `<h1>${line.slice(2)}</h1>`;
-      // HR
-      if (/^---+$/.test(line.trim())) return '<hr />';
-      // Blockquote
-      if (line.startsWith('&gt; ')) return `<blockquote><p>${line.slice(5)}</p></blockquote>`;
-      // Unordered list
-      if (/^[\-\*] /.test(line.trim())) {
-        const content = line.replace(/^[\s]*[\-\*] /, '');
-        return `<li>${inlineFormat(content)}</li>`;
-      }
-      // Ordered list
-      if (/^\d+\. /.test(line.trim())) {
-        const content = line.replace(/^[\s]*\d+\. /, '');
-        return `<li>${inlineFormat(content)}</li>`;
-      }
-      // Empty line
-      if (line.trim() === '') return '<br />';
-      // Paragraph
-      return `<p>${inlineFormat(line)}</p>`;
-    })
-    .join('\n');
-}
-
-function inlineFormat(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/_(.+?)_/g, '<em>$1</em>');
 }
 
 // --- Main component ---
@@ -847,34 +757,24 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         </div>
       )}
 
-      {/* Upcoming + Company Intel side-by-side */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-[2] min-w-0">
-          <UpcomingInterviews
-            interviews={
-              pipelineInterviews && pipelineInterviews.length > 0
-                ? pipelineInterviews.map((card) => ({
-                    id: card.id,
-                    company: card.company,
-                    role: card.role,
-                    date: 'TBD',
-                    time: 'TBD',
-                    type: 'video' as const,
-                    round: 'From pipeline',
-                    jobApplicationId: card.id,
-                  }))
-                : []
-            }
-            onGeneratePrep={handleGeneratePrep}
-          />
-        </div>
-        <div className="flex-[3]">
-          <CompanyResearch />
-        </div>
-      </div>
-
-      {/* Practice Questions — full width */}
-      <PracticeQuestions onStartPractice={() => void handleStartPracticeSession()} />
+      {/* Upcoming Interviews — full width */}
+      <UpcomingInterviews
+        interviews={
+          pipelineInterviews && pipelineInterviews.length > 0
+            ? pipelineInterviews.map((card) => ({
+                id: card.id,
+                company: card.company,
+                role: card.role,
+                date: 'TBD',
+                time: 'TBD',
+                type: 'video' as const,
+                round: 'From pipeline',
+                jobApplicationId: card.id,
+              }))
+            : []
+        }
+        onGeneratePrep={handleGeneratePrep}
+      />
 
       {/* Interview History — full width */}
       <InterviewHistory

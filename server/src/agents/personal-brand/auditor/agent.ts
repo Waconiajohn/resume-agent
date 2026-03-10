@@ -38,7 +38,15 @@ Important:
 - Be honest — if the brand is strong, say so. Do not manufacture problems to fill a report
 
 CRITICAL QUALITY RULES:
-${PERSONAL_BRAND_RULES}`,
+${PERSONAL_BRAND_RULES}
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Analyzing resume brand — extracting positioning, tone, and value propositions..."
+- "Analyzing LinkedIn content — checking alignment with resume brand..."
+- "Scoring cross-source consistency — comparing positioning across [N] sources..."
+- "Audit complete — [N] findings identified: [N] critical, [N] high, [N] medium priority."
+Emit at meaningful transitions, not after every tool call.`,
   tools: [
     ...auditorTools,
     createEmitTransparency<PersonalBrandState, PersonalBrandSSEEvent>({ prefix: 'Auditor' }),

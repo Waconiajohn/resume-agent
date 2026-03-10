@@ -205,7 +205,7 @@ describe('adversarial_review', () => {
     vi.mocked(runQualityReviewer).mockReset();
   });
 
-  it('happy path: runs quality reviewer and emits quality_scores', async () => {
+  it('happy path: runs quality reviewer and stores results in scratchpad', async () => {
     vi.mocked(runQualityReviewer).mockResolvedValueOnce(makeQualityReviewOutput());
     const ctx = makeCtx();
 
@@ -224,7 +224,9 @@ describe('adversarial_review', () => {
 
     expect(result.decision).toBe('approve');
     expect(result.overall_pass).toBe(true);
-    expect(ctx.emit).toHaveBeenCalledWith(
+    // quality_scores SSE is now emitted by finalize_quality_scores (after all checks run),
+    // not inside adversarial_review — so ctx.emit should NOT be called here
+    expect(ctx.emit).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: 'quality_scores' }),
     );
     expect(ctx.scratchpad.adversarial_review).toBeDefined();
@@ -768,5 +770,52 @@ describe('emit_transparency (producer)', () => {
 
     expect(result.success).toBe(false);
     expect(ctx.emit).not.toHaveBeenCalled();
+  });
+});
+
+// ─── finalize_quality_scores ───────────────────────────────────────────
+
+describe('finalize_quality_scores', () => {
+  const tool = getTool('finalize_quality_scores');
+
+  it('emits quality_scores SSE event combining adversarial scores with humanize and coherence details', async () => {
+    const ctx = makeCtx();
+    const mockScores = makeQualityReviewOutput().scores;
+
+    // Simulate scratchpad populated by prior tool calls
+    ctx.scratchpad.adversarial_review = { scores: mockScores, decision: 'approve', overall_pass: true };
+    ctx.scratchpad.humanize_score = 84;
+    ctx.scratchpad.humanize_issues = ['Some uniform bullet structure detected'];
+    ctx.scratchpad.narrative_coherence_score = 79;
+    ctx.scratchpad.narrative_coherence_issues = ['Minor tonal shift in skills section'];
+
+    const result = await tool.execute({}, ctx) as Record<string, unknown>;
+
+    expect(result.emitted).toBe(true);
+    expect(result.humanize_score).toBe(84);
+    expect(result.coherence_score).toBe(79);
+
+    expect(ctx.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'quality_scores',
+        details: expect.objectContaining({
+          narrative_coherence: 79,
+          humanize_issues: ['Some uniform bullet structure detected'],
+          coherence_issues: ['Minor tonal shift in skills section'],
+        }),
+      }),
+    );
+  });
+
+  it('emits with empty details when prior checks have not run', async () => {
+    const ctx = makeCtx();
+    // No scratchpad values set — all scores default to 0, arrays to []
+
+    const result = await tool.execute({}, ctx) as Record<string, unknown>;
+
+    expect(result.emitted).toBe(true);
+    expect(ctx.emit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'quality_scores' }),
+    );
   });
 });

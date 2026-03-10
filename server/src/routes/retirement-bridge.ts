@@ -50,15 +50,19 @@ export const retirementBridgeRoutes = createProductRoutes<RetirementBridgeState,
     const transformed: Record<string, unknown> = { ...input };
 
     try {
-      const [baseline, profileRows] = await Promise.all([
+      const [baseline, profileRows, strategyRows] = await Promise.all([
         getEmotionalBaseline(userId),
         getUserContext(userId, 'client_profile'),
+        getUserContext(userId, 'positioning_strategy'),
       ]);
 
       const platformContext: Record<string, unknown> = {};
 
       if (profileRows.length > 0) {
         platformContext.client_profile = profileRows[0].content;
+      }
+      if (strategyRows.length > 0) {
+        platformContext.positioning_strategy = strategyRows[0].content;
       }
 
       if (Object.keys(platformContext).length > 0) {

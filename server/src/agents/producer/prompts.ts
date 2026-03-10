@@ -65,7 +65,7 @@ Work through these checks using your tools. Call each tool individually — the 
 
    **ATS compliance vs. authentic voice:** When you identify a conflict between ATS compliance and the candidate's authentic voice, favor authenticity if the candidate's language is specific and distinctive. Generic ATS keywords are less valuable than genuine executive language that demonstrates expertise. Only enforce ATS keyword changes when the gap is critical (must-have requirement with zero coverage).
 
-5. **Emit quality scores** — After all checks are complete, emit the final quality scores via ctx.emit({ type: 'quality_scores', scores }).
+5. **finalize_quality_scores** — After adversarial_review, humanize_check, AND check_narrative_coherence have all run, call finalize_quality_scores. This emits a single combined quality_scores event to the frontend that includes humanize_issues and coherence_issues alongside the adversarial scores. Do NOT skip this — the frontend dashboard will be empty without it.
 
 6. **emit_transparency** — Keep the user informed at each significant step.
 

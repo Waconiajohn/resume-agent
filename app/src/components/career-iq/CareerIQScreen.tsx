@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
 
 const VALID_ROOMS = new Set<string>([
@@ -32,8 +32,10 @@ import { MobileBriefing } from './MobileBriefing';
 import { useWhyMeStory } from './useWhyMeStory';
 import { useMediaQuery } from './useMediaQuery';
 import { useMomentum } from '@/hooks/useMomentum';
+import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
 import { supabase } from '@/lib/supabase';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
+import type { RealFeedEvent } from './ZoneAgentFeed';
 
 // Lazy-load room components for code splitting
 const LiveSessionsRoom = lazy(() => import('./LiveSessionsRoom').then(m => ({ default: m.LiveSessionsRoom })));
@@ -52,6 +54,7 @@ const PersonalBrandRoom = lazy(() => import('./PersonalBrandRoom').then(m => ({ 
 const NinetyDayPlanRoom = lazy(() => import('./NinetyDayPlanRoom').then(m => ({ default: m.NinetyDayPlanRoom })));
 const NetworkIntelligenceRoom = lazy(() => import('./NetworkIntelligenceRoom').then(m => ({ default: m.NetworkIntelligenceRoom })));
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then(m => ({ default: m.RoomPlaceholder })));
+const CoachDrawer = lazy(() => import('./CoachDrawer').then(m => ({ default: m.CoachDrawer })));
 
 interface ResumeSession {
   id: string;
@@ -123,6 +126,8 @@ export function CareerIQScreen({
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
   const { summary: momentum, nudges, loading: momentumLoading, dismissNudge, checkStalls } = useMomentum();
+  const { recommendation: coachRec, loading: coachLoading, refresh: refreshCoachRec } = useCoachRecommendation();
+  const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
 
   // Check for stalled activity after initial load (non-blocking, 2s delay)
   useEffect(() => {
@@ -190,8 +195,39 @@ export function CareerIQScreen({
     return () => { cancelled = true; };
   }, []);
 
+  // Compute feed events for mobile briefing (mirrors DashboardHome logic)
+  const mobileFeedEvents = useMemo<RealFeedEvent[] | undefined>(() => {
+    const events: RealFeedEvent[] = [];
+    for (const s of sessions) {
+      const company = s.company_name || 'Untitled';
+      const isComplete = s.pipeline_stage === 'complete' || s.pipeline_stage === 'completed';
+      events.push({
+        type: isComplete ? 'session_completed' : 'session_created',
+        timestamp: s.created_at,
+        detail: isComplete
+          ? `Completed resume for ${company} — ready for download`
+          : `Started resume session for ${company}`,
+      });
+    }
+    for (const s of coverLetterSessions) {
+      const company = s.company_name || 'Untitled';
+      const isComplete = s.pipeline_status === 'complete';
+      events.push({
+        type: isComplete ? 'session_completed' : 'session_created',
+        timestamp: s.created_at,
+        detail: isComplete
+          ? `Generated cover letter for ${company}`
+          : `Started cover letter for ${company}`,
+      });
+    }
+    if (events.length === 0) return undefined;
+    events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return events.slice(0, 5);
+  }, [sessions, coverLetterSessions]);
+
   const handleRoomNavigate = (room: CareerIQRoom) => {
     setActiveRoom(room);
+    refreshCoachRec();
   };
 
   const handleStartWhyMe = () => setShowWhyMeEngine(true);
@@ -234,6 +270,9 @@ export function CareerIQScreen({
           momentumLoading={momentumLoading}
           nudges={nudges}
           onDismissNudge={dismissNudge}
+          onOpenCoach={() => setCoachDrawerOpen(true)}
+          coachRecommendation={coachRec}
+          coachLoading={coachLoading}
         />
       );
     }
@@ -330,14 +369,26 @@ export function CareerIQScreen({
   if (isMobile) {
     if (activeRoom === 'dashboard') {
       return (
-        <MobileBriefing
-          userName={userName}
-          signals={signals}
-          dashboardState={dashboardState}
-          activeRoom={activeRoom}
-          onRefineWhyMe={handleStartWhyMe}
-          onNavigateRoom={handleRoomNavigate}
-        />
+        <>
+          <MobileBriefing
+            userName={userName}
+            signals={signals}
+            dashboardState={dashboardState}
+            activeRoom={activeRoom}
+            onRefineWhyMe={handleStartWhyMe}
+            onNavigateRoom={handleRoomNavigate}
+            feedEvents={mobileFeedEvents}
+          />
+          <Suspense fallback={null}>
+            <CoachDrawer
+              userName={userName}
+              onNavigate={(room) => handleRoomNavigate(toValidRoom(room))}
+              isOpen={coachDrawerOpen}
+              onOpen={() => setCoachDrawerOpen(true)}
+              onClose={() => setCoachDrawerOpen(false)}
+            />
+          </Suspense>
+        </>
       );
     }
 
@@ -372,8 +423,19 @@ export function CareerIQScreen({
           activeRoom={activeRoom}
           onRefineWhyMe={handleStartWhyMe}
           onNavigateRoom={handleRoomNavigate}
+          feedEvents={mobileFeedEvents}
           navOnly
         />
+        {/* Coach drawer available on all mobile room views */}
+        <Suspense fallback={null}>
+          <CoachDrawer
+            userName={userName}
+            onNavigate={(room) => handleRoomNavigate(toValidRoom(room))}
+            isOpen={coachDrawerOpen}
+            onOpen={() => setCoachDrawerOpen(true)}
+            onClose={() => setCoachDrawerOpen(false)}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -384,6 +446,12 @@ export function CareerIQScreen({
         activeRoom={activeRoom}
         onNavigate={handleRoomNavigate}
         dashboardState={dashboardState}
+        onOpenCoach={() => setCoachDrawerOpen(true)}
+        coachData={{
+          firstName: userName?.split(' ')[0] || '',
+          phase: coachRec?.phase_label || 'Getting Started',
+          recommendation: coachRec?.action,
+        }}
       />
       <main className="flex-1 overflow-y-auto flex flex-col">
         <LivePulseStrip />
@@ -391,6 +459,15 @@ export function CareerIQScreen({
           {renderContent()}
         </Suspense>
       </main>
+      <Suspense fallback={null}>
+        <CoachDrawer
+          userName={userName}
+          onNavigate={(room) => handleRoomNavigate(toValidRoom(room))}
+          isOpen={coachDrawerOpen}
+          onOpen={() => setCoachDrawerOpen(true)}
+          onClose={() => setCoachDrawerOpen(false)}
+        />
+      </Suspense>
     </div>
   );
 }

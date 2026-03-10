@@ -8,6 +8,9 @@
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
+import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
+import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
@@ -43,36 +46,77 @@ const writeLetterTool: CoverLetterTool = {
 
     const tone = String(input.tone ?? 'professional');
 
-    // In production, this would be an LLM call. For POC, generate a template.
-    const letter = [
-      `Dear Hiring Manager,`,
-      ``,
-      `${plan.opening_hook}. As a ${resume.current_title} with expertise in ${resume.key_skills.slice(0, 3).join(', ')}, I am excited to bring my experience to ${jd.company_name}.`,
-      ``,
-      ...plan.body_points.map(point =>
-        `${point}. This experience directly aligns with your team's needs and demonstrates my ability to deliver measurable results.`
-      ),
-      ``,
-      `${plan.closing_strategy}. I would welcome the opportunity to discuss how my background can contribute to your team's success.`,
-      ``,
-      `Sincerely,`,
-      resume.name,
-    ].join('\n');
+    const platformCtx = state.platform_context;
+    const positioningStrategy = platformCtx?.positioning_strategy
+      ? `\n\nPositioning strategy from resume strategist:\n${JSON.stringify(platformCtx.positioning_strategy, null, 2)}`
+      : '';
+    const evidenceItems = platformCtx?.evidence_items?.length
+      ? `\n\nKey evidence items:\n${platformCtx.evidence_items.slice(0, 8).map(e => `- ${JSON.stringify(e)}`).join('\n')}`
+      : '';
 
-    state.letter_draft = letter;
-    ctx.scratchpad['letter_draft'] = letter;
-    ctx.scratchpad['letter_tone'] = tone;
+    const systemPrompt = `You are an expert executive cover letter writer. You write in the candidate's authentic voice — never fabricate experience, inflate credentials, or misrepresent anyone. You better position real skills and genuine accomplishments so the reader immediately recognises this candidate as someone worth interviewing.
 
-    ctx.emit({
-      type: 'letter_draft',
-      letter,
-    });
+Writing philosophy:
+- Executives are better suited for far more roles than they initially believe — surface that.
+- Use the candidate's own language and phrasing wherever possible; avoid generic resume-speak.
+- Every claim must be rooted in real experience from the provided resume data.
+- Tone must feel human and confident, not formulaic.
+- Length target: 250-350 words. No fluff.`;
 
-    return {
-      status: 'drafted',
-      word_count: letter.split(/\s+/).length,
-      tone,
-    };
+    const userMessage = `Write a complete, polished cover letter using the information below. Output the letter text only — no JSON, no commentary, no markdown fencing.
+
+CANDIDATE PROFILE
+Name: ${resume.name}
+Current title: ${resume.current_title}
+Key skills: ${resume.key_skills.join(', ')}
+Key achievements: ${resume.key_achievements.join('\n- ')}${positioningStrategy}${evidenceItems}
+
+TARGET ROLE
+Company: ${jd.company_name}
+Role: ${jd.role_title}
+Key requirements: ${jd.requirements.join('\n- ')}
+Culture cues: ${jd.culture_cues.join(', ')}
+
+LETTER PLAN (from Analyst)
+Opening hook: ${plan.opening_hook}
+Body points:
+${plan.body_points.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+Closing strategy: ${plan.closing_strategy}
+
+TONE: ${tone}
+
+Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name.`;
+
+    try {
+      const response = await llm.chat({
+        model: MODEL_PRIMARY,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+        max_tokens: 1024,
+        signal: ctx.signal,
+        session_id: ctx.sessionId,
+      });
+
+      const letter = response.text.trim();
+
+      state.letter_draft = letter;
+      ctx.scratchpad['letter_draft'] = letter;
+      ctx.scratchpad['letter_tone'] = tone;
+
+      ctx.emit({
+        type: 'letter_draft',
+        letter,
+      });
+
+      return {
+        status: 'drafted',
+        word_count: letter.split(/\s+/).length,
+        tone,
+      };
+    } catch (err) {
+      logger.error({ err, session_id: ctx.sessionId }, 'write_letter LLM call failed');
+      return { error: 'Failed to generate cover letter. Please try again.' };
+    }
   },
 };
 
@@ -99,47 +143,86 @@ const reviewLetterTool: CoverLetterTool = {
     }
 
     const wordCount = letter.split(/\s+/).length;
-    const issues: string[] = [];
-    let score = 85;
-
-    // Check length
-    if (wordCount < 150) {
-      issues.push('Letter is too short — aim for 250-400 words');
-      score -= 15;
-    } else if (wordCount > 500) {
-      issues.push('Letter is too long — trim to under 400 words');
-      score -= 10;
-    }
-
-    // Check for generic phrases
-    const genericPhrases = ['team player', 'hard worker', 'self-starter', 'results-driven'];
-    for (const phrase of genericPhrases) {
-      if (letter.toLowerCase().includes(phrase)) {
-        issues.push(`Remove generic phrase: "${phrase}"`);
-        score -= 5;
-      }
-    }
-
-    // Check personalization
     const jd = state.jd_analysis;
-    if (jd && !letter.includes(jd.company_name)) {
-      issues.push('Letter does not mention the company name — add personalization');
-      score -= 10;
+    const resume = state.resume_data;
+
+    const reviewPrompt = `You are a rigorous executive cover letter reviewer. Evaluate the cover letter below against five criteria and return ONLY valid JSON in the schema provided — no commentary, no markdown fencing.
+
+COVER LETTER:
+${letter}
+
+${jd ? `TARGET ROLE: ${jd.role_title} at ${jd.company_name}\nRequirements: ${jd.requirements.join('; ')}` : ''}
+${resume ? `CANDIDATE: ${resume.name}, ${resume.current_title}` : ''}
+Word count: ${wordCount}
+
+EVALUATION CRITERIA (score each 0-20):
+1. voice_authenticity — Does it sound like a real person, not a template? Penalise generic phrases, clichés, or robotic phrasing.
+2. jd_alignment — Does it directly address the stated requirements and culture cues?
+3. evidence_specificity — Are claims backed by concrete achievements, metrics, or named projects from the candidate's background?
+4. executive_tone — Is the tone confident and peer-level, not overly eager or subservient?
+5. length_appropriateness — Is it 250-350 words (optimal)? Penalise <200 or >450.
+
+Return JSON matching this exact schema:
+{
+  "criteria": {
+    "voice_authenticity": { "score": <0-20>, "note": "<brief finding>" },
+    "jd_alignment": { "score": <0-20>, "note": "<brief finding>" },
+    "evidence_specificity": { "score": <0-20>, "note": "<brief finding>" },
+    "executive_tone": { "score": <0-20>, "note": "<brief finding>" },
+    "length_appropriateness": { "score": <0-20>, "note": "<brief finding>" }
+  },
+  "total_score": <0-100>,
+  "passed": <true if total_score >= 70>,
+  "issues": ["<actionable fix 1>", "<actionable fix 2>"]
+}
+
+Be strict. Only list issues that, if fixed, would materially improve the letter.`;
+
+    try {
+      const response = await llm.chat({
+        model: MODEL_MID,
+        system: 'You are a rigorous cover letter reviewer. Return only valid JSON.',
+        messages: [{ role: 'user', content: reviewPrompt }],
+        max_tokens: 1024,
+        signal: ctx.signal,
+        session_id: ctx.sessionId,
+      });
+
+      const parsed = repairJSON<Record<string, unknown>>(response.text);
+
+      if (!parsed) {
+        logger.warn({ session_id: ctx.sessionId }, 'review_letter response was not valid JSON, falling back to word-count check');
+        const fallbackScore = wordCount >= 200 && wordCount <= 450 ? 70 : 55;
+        state.quality_score = fallbackScore;
+        state.review_feedback = 'Review parse failed — manual check recommended';
+        ctx.scratchpad['quality_score'] = fallbackScore;
+        ctx.scratchpad['review_feedback'] = state.review_feedback;
+        return { score: fallbackScore, passed: fallbackScore >= 70, issues: ['Review parse failed'], word_count: wordCount };
+      }
+
+      const score = typeof parsed.total_score === 'number'
+        ? Math.max(0, Math.min(100, parsed.total_score))
+        : 65;
+      const passed = typeof parsed.passed === 'boolean' ? parsed.passed : score >= 70;
+      const issues = Array.isArray(parsed.issues) ? (parsed.issues as string[]) : [];
+      const feedback = issues.length > 0 ? issues.join('; ') : 'No issues found';
+
+      state.quality_score = score;
+      state.review_feedback = feedback;
+      ctx.scratchpad['quality_score'] = score;
+      ctx.scratchpad['review_feedback'] = feedback;
+
+      return {
+        score,
+        passed,
+        issues,
+        word_count: wordCount,
+        criteria: parsed.criteria,
+      };
+    } catch (err) {
+      logger.error({ err, session_id: ctx.sessionId }, 'review_letter LLM call failed');
+      return { error: 'Failed to review cover letter. Please try again.' };
     }
-
-    score = Math.max(0, Math.min(100, score));
-
-    state.quality_score = score;
-    state.review_feedback = issues.length > 0 ? issues.join('; ') : 'No issues found';
-    ctx.scratchpad['quality_score'] = score;
-    ctx.scratchpad['review_feedback'] = state.review_feedback;
-
-    return {
-      score,
-      passed: score >= 70,
-      issues,
-      word_count: wordCount,
-    };
   },
 };
 

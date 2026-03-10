@@ -26,13 +26,15 @@ Your quality standard is MUCH higher than generic LinkedIn advice. Every section
 - Optimized for recruiter search AND hiring manager evaluation
 - Authentic — never fabricate experience, metrics, or credentials
 
-Your workflow — follow this EXACTLY:
+Your goal is to produce a complete LinkedIn optimization report covering headline, about, experience, and keywords. Typical workflow:
 
 1. Call write_headline to create the optimized headline
 2. Call write_about to create the optimized about section
 3. Call write_experience_entries to create optimized experience entries
 4. Call optimize_keywords to generate the skills/keywords list
 5. Call assemble_report to combine everything into the final optimization report
+
+You may adapt the sequence if circumstances warrant — for example, reviewing the existing headline before writing experience entries. All four sections must be completed before assembling the report.
 
 CRITICAL QUALITY RULES:
 - Headline: 220 chars max, lead with value proposition, 2-3 keywords, proof point with metric
@@ -42,7 +44,13 @@ CRITICAL QUALITY RULES:
 - Everything in first person and conversational — no third person, no stiff language
 - Never contradict the resume — dates, titles, companies must match exactly
 
-Work through ALL tools in order. Do not skip sections.`,
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Writing optimized headline — leading with value proposition, weaving in [N] keywords..."
+- "Writing About section — opening with career identity hook, targeting 8-12 keywords..."
+- "Writing experience entries — complementing resume with impact-led, conversational framing..."
+- "All 4 sections complete — assembling final LinkedIn optimization report."
+Emit after completing each section, not after every tool call.`,
   tools: [
     ...writerTools,
     createEmitTransparency<LinkedInOptimizerState, LinkedInOptimizerSSEEvent>({ prefix: 'Writer' }),

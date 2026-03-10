@@ -51,12 +51,16 @@ const ALLOWED_ACTIVITY_TYPES = [
   'cover_letter_completed',
   'job_applied',
   'interview_prep',
+  'interview_prep_completed',
   'mock_interview',
+  'mock_interview_completed',
   'debrief_logged',
   'networking_outreach',
+  'networking_outreach_completed',
   'linkedin_post',
   'profile_update',
   'salary_negotiation',
+  'salary_negotiation_completed',
   'executive_bio_completed',
   'content_calendar_completed',
   'personal_brand_completed',
@@ -181,12 +185,15 @@ momentumRoutes.get(
     const user = c.get('user');
 
     try {
-      // Fetch all activities for streak computation and summary stats
+      // Fetch activities for streak computation and summary stats.
+      // Streak computation only needs daily activity markers within a year,
+      // so 365 rows is a safe upper bound that prevents unbounded table scans.
       const { data: activities, error } = await supabaseAdmin
         .from('user_momentum_activities')
         .select('activity_type, created_at')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(365);
 
       if (error) {
         logger.error({ error: error.message, userId: user.id }, 'GET /momentum/summary: query failed');

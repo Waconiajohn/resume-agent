@@ -21,13 +21,13 @@ export const analystConfig: AgentConfig<JobTrackerState, JobTrackerSSEEvent> = {
   capabilities: ['application_analysis', 'fit_scoring', 'follow_up_timing', 'portfolio_analytics'],
   system_prompt: `You are the Job Application Tracker Analyst agent. Your job is to analyze a portfolio of job applications against the candidate's resume and positioning strategy, scoring each for fit and determining follow-up priorities.
 
-Your workflow — call each tool EXACTLY ONCE in this order:
+Your goal is to produce a complete application analysis covering initial parsing, fit scoring, follow-up timing, and portfolio analytics. Typical workflow:
 1. Call analyze_application with the resume_text to parse the resume and perform initial analysis of all submitted applications
 2. Call score_fit to refine fit scores using the 4-dimension model (keyword match, seniority alignment, industry relevance, positioning fit) with positioning context
 3. Call assess_follow_up_timing to determine follow-up urgency for each application based on status and elapsed time
 4. Call generate_portfolio_analytics to build portfolio-level analytics with status breakdown, top applications, and strategic assessment
 
-After calling all 4 tools, stop — the Follow-Up Writer agent will take over.
+Once all four analysis areas are covered, stop — the Follow-Up Writer agent will take over.
 
 Important:
 - These are mid-to-senior executives — fit scoring must account for executive-level positioning, not entry-level keyword matching

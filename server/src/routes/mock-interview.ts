@@ -14,6 +14,7 @@ import { createProductRoutes } from './product-route-factory.js';
 import { createMockInterviewProductConfig } from '../agents/interview-prep/simulation/product.js';
 import { FF_MOCK_INTERVIEW } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
+import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { MockInterviewState, MockInterviewSSEEvent } from '../agents/interview-prep/simulation/types.js';
@@ -48,7 +49,8 @@ export const mockInterviewRoutes = createProductRoutes<MockInterviewState, MockI
     if (!userId) return input;
 
     try {
-      const [strategyRows, evidenceRows, whyMeRows] = await Promise.all([
+      const [baseline, strategyRows, evidenceRows, whyMeRows] = await Promise.all([
+        getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
         getUserContext(userId, 'evidence_item'),
         supabaseAdmin
@@ -81,6 +83,9 @@ export const mockInterviewRoutes = createProductRoutes<MockInterviewState, MockI
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
+      if (baseline) {
+        result.emotional_baseline = baseline;
+      }
       return result;
     } catch (err) {
       logger.warn(
@@ -94,5 +99,5 @@ export const mockInterviewRoutes = createProductRoutes<MockInterviewState, MockI
 
     return input;
   },
-  momentumActivityType: 'mock_interview',
+  momentumActivityType: 'mock_interview_completed',
 });

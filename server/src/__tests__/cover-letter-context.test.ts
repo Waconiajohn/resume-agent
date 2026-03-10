@@ -12,6 +12,12 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
+vi.mock('../lib/supabase.js', () => ({
+  supabaseAdmin: {
+    from: () => ({ insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) }),
+  },
+}));
+
 vi.mock('../lib/emotional-baseline.js', () => ({
   getToneGuidanceFromInput: () => '',
   getDistressFromInput: () => null,

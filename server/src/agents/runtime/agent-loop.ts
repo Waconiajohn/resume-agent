@@ -31,6 +31,9 @@ import logger from '../../lib/logger.js';
 // ─── Constants ───────────────────────────────────────────────────────
 
 const DEFAULT_MAX_ROUNDS = 10;
+
+/** Scratchpad key where the agent loop stores the final assistant text. */
+export const FINAL_TEXT_KEY = '_final_text' as const;
 const DEFAULT_ROUND_TIMEOUT_MS = 120_000;   // 2 min per round
 const DEFAULT_OVERALL_TIMEOUT_MS = 600_000; // 10 min total
 
@@ -184,7 +187,7 @@ export async function runAgentLoop<
 
           // Store final text in scratchpad
           if (response.text) {
-            ctx.scratchpad._final_text = response.text;
+            ctx.scratchpad[FINAL_TEXT_KEY] = response.text;
           }
           shouldBreak = true;
         } else {
@@ -372,7 +375,7 @@ export async function runAgentLoop<
  * @internal Exported for testing only.
  */
 export function buildScratchpadSummary(scratchpad: Record<string, unknown>): string {
-  const keys = Object.keys(scratchpad).filter(k => k !== '_final_text' && scratchpad[k] != null);
+  const keys = Object.keys(scratchpad).filter(k => k !== FINAL_TEXT_KEY && scratchpad[k] != null);
   if (keys.length === 0) return '';
   return `Scratchpad data available: ${keys.slice(0, 20).join(', ')}`;
 }

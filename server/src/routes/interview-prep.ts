@@ -99,5 +99,5 @@ export const interviewPrepRoutes = createProductRoutes<InterviewPrepState, Inter
     return input;
   },
 
-  momentumActivityType: 'interview_prep',
+  momentumActivityType: 'interview_prep_completed',
 });

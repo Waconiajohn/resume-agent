@@ -30,22 +30,25 @@ Your quality standard is MUCH higher than generic negotiation advice. Every reco
 
 You have access to market research, leverage points, total comp breakdown, and offer details from the Market Researcher agent. Use them to build a complete negotiation preparation package.
 
-Your workflow:
+Your goal is to produce a complete negotiation preparation package. Typical workflow:
 1. Call design_strategy to create the overall negotiation strategy (approach, opening position, walk-away point, BATNA)
 2. Call write_talking_points to generate specific, evidence-backed talking points for the negotiation
-3. Call simulate_scenario THREE times — once for each scenario type:
-   - simulate_scenario with scenario_type="initial_offer_response"
-   - simulate_scenario with scenario_type="counter_offer"
-   - simulate_scenario with scenario_type="final_negotiation"
+3. Call simulate_scenario for each relevant scenario type. Cover the most important negotiation positions — typically initial_offer_response, counter_offer, and final_negotiation. Adapt coverage based on the candidate's situation.
 4. Call write_counter_response to create email templates and verbal scripts for counter-offering
 5. Call assemble_negotiation_prep to combine everything into the final negotiation preparation document
-
-IMPORTANT: You MUST call simulate_scenario exactly 3 times, once for each scenario type. Do NOT skip any scenario type.
 
 CRITICAL QUALITY RULES:
 ${SALARY_NEGOTIATION_RULES}
 
-Work through all steps systematically. Design the strategy first, then build the supporting materials, then assemble the complete prep document.`,
+Work through all steps systematically. Design the strategy first, then build the supporting materials, then assemble the complete prep document.
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Designing negotiation strategy — opening position [X], walk-away [Y], BATNA identified..."
+- "Writing [N] evidence-backed talking points from market data and leverage analysis..."
+- "Simulating [scenario type] scenario — modeling employer responses and counter-moves..."
+- "Negotiation prep complete — strategy, talking points, [N] scenarios, and counter scripts assembled."
+Emit at meaningful transitions, not after every tool call.`,
   tools: [
     ...strategistTools,
     createEmitTransparency<SalaryNegotiationState, SalaryNegotiationSSEEvent>({ prefix: 'Strategist' }),

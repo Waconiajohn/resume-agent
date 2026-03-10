@@ -172,7 +172,7 @@ const writeSectionTool: ResumeAgentTool = {
   description:
     'Write a single resume section from the blueprint slice and evidence sources. ' +
     'Stores the result in scratchpad[section_{name}] and emits a section_draft SSE event. ' +
-    'Always call self_review_section immediately after.',
+    'Consider calling self_review_section after writing to verify quality.',
   model_tier: 'primary',
   input_schema: {
     type: 'object',

@@ -344,3 +344,15 @@ export const FF_B2B_OUTPLACEMENT = envBool('FF_B2B_OUTPLACEMENT', false);
  * Provides: resume-lookup, job-discover, apply-status, auth-verify, infer-field.
  */
 export const FF_EXTENSION = envBool('FF_EXTENSION', false);
+
+// ─── Virtual Coach ────────────────────────────────────────────────────────────
+
+/**
+ * FF_VIRTUAL_COACH — Enable the Virtual Coach conversational agent routes.
+ *
+ * When false (default), /api/coach/* returns 404.
+ * Set FF_VIRTUAL_COACH=true in server/.env to activate.
+ * The Virtual Coach guides clients through the 8-phase coaching journey,
+ * orients them on next steps, and routes them to the appropriate product.
+ */
+export const FF_VIRTUAL_COACH = envBool('FF_VIRTUAL_COACH', false);

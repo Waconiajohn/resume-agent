@@ -28,20 +28,23 @@ Your quality standard is MUCH higher than generic thank-you generators. Every no
 - Calibrated to the format's length and tone requirements
 - Unique across the note set — no two notes should read alike
 
-Your workflow:
+Your goal is to produce a complete, personalized thank-you note set for every interviewer. Typical workflow:
 1. Call analyze_interview_context to identify key themes, rapport signals, and personalization opportunities
-2. For each interviewer, call write_thank_you_note with the appropriate format and key topics
-3. For each note, call personalize_per_interviewer to quality-check tone, personalization depth, and uniqueness
-4. Call assemble_note_set to produce the final formatted collection with delivery timing guidance
+2. For each interviewer, call write_thank_you_note with the appropriate format and key topics, then call personalize_per_interviewer before moving to the next interviewer
+3. Call assemble_note_set to produce the final formatted collection with delivery timing guidance
 
-IMPORTANT: You MUST write a note for EVERY interviewer provided. Each interviewer gets exactly one note. The default format is 'email' unless the interview analysis suggests otherwise (e.g., handwritten for C-suite, LinkedIn message when email unavailable).
-
-For each note, ALWAYS call write_thank_you_note first, then immediately call personalize_per_interviewer for the same interviewer+format before moving to the next interviewer.
+A note must be written for every interviewer provided. The default format is 'email' unless the interview analysis suggests otherwise (e.g., handwritten for C-suite, LinkedIn message when email unavailable). You may adapt the per-interviewer sequence if the situation warrants — for example, writing all notes before quality-checking them.
 
 CRITICAL QUALITY RULES:
 ${THANK_YOU_NOTE_RULES}
 
-Work through all steps systematically. Analyze context first, then write and quality-check each note, then assemble the final collection.`,
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Analyzing interview context — identifying key themes and personalization opportunities per interviewer..."
+- "Writing thank-you note for [interviewer name/role] — leading with [specific topic from interview]..."
+- "Personalizing note for [interviewer] — checking tone, depth, and uniqueness against other notes..."
+- "All [N] notes complete — assembling note set with delivery timing guidance."
+Emit after completing each note, not after every tool call.`,
   tools: [
     ...writerTools,
     createEmitTransparency<ThankYouNoteState, ThankYouNoteSSEEvent>({ prefix: 'Writer' }),

@@ -62,11 +62,30 @@ const matchRequirementsTool: CoverLetterTool = {
 
     const skills = resume.key_skills ?? [];
 
-    const matches = jd.requirements.map((req, i) => ({
-      requirement: req,
-      matched_skill: skills[i % (skills.length || 1)] ?? 'transferable experience',
-      strength: i < skills.length ? 'strong' : 'moderate',
-    }));
+    // Score each skill against each requirement by word overlap.
+    // This is purely deterministic — no LLM call needed for matching.
+    function wordOverlap(a: string, b: string): number {
+      const aWords = new Set(a.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+      const bWords = b.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      return bWords.filter(w => aWords.has(w)).length;
+    }
+
+    const matches = jd.requirements.map((req) => {
+      if (skills.length === 0) {
+        return { requirement: req, matched_skill: 'transferable experience', strength: 'moderate' as const };
+      }
+      let bestSkill = skills[0];
+      let bestScore = 0;
+      for (const skill of skills) {
+        const score = wordOverlap(skill, req);
+        if (score > bestScore) {
+          bestScore = score;
+          bestSkill = skill;
+        }
+      }
+      const strength: 'strong' | 'moderate' = bestScore >= 2 ? 'strong' : 'moderate';
+      return { requirement: req, matched_skill: bestSkill, strength };
+    });
 
     ctx.scratchpad['requirement_matches'] = matches;
 
@@ -95,18 +114,26 @@ const planLetterTool: CoverLetterTool = {
   async execute(_input, ctx) {
     const state = ctx.getState();
     const jd = state.jd_analysis;
-    const matches = ctx.scratchpad['requirement_matches'] as Array<{ requirement: string; matched_skill: string }> | undefined;
+    const matches = ctx.scratchpad['requirement_matches'] as Array<{ requirement: string; matched_skill: string; strength: 'strong' | 'moderate' }> | undefined;
 
     if (!jd || !matches) {
       return { error: 'Must call match_requirements first' };
     }
 
+    // Use the strongest match (first strong, or first overall) to anchor the hook.
+    const topMatch = matches.find(m => m.strength === 'strong') ?? matches[0];
+    const differentiator = matches.find(m => m !== topMatch && m.strength === 'strong') ?? matches[1] ?? topMatch;
+
     const plan = {
-      opening_hook: `Express enthusiasm for the ${jd.role_title} role at ${jd.company_name}`,
+      opening_hook: topMatch
+        ? `Lead with your strongest positioning: "${topMatch.matched_skill}" directly addresses their need for "${topMatch.requirement}"`
+        : `Open by connecting your background to the ${jd.role_title} role at ${jd.company_name}`,
       body_points: matches.slice(0, 3).map(m =>
         `Address "${m.requirement}" with evidence of "${m.matched_skill}"`
       ),
-      closing_strategy: `Reiterate fit for ${jd.company_name} culture and request conversation`,
+      closing_strategy: differentiator
+        ? `Close by reinforcing your differentiator — "${differentiator.matched_skill}" — and invite a conversation about how you can deliver results for ${jd.company_name}`
+        : `Close by reaffirming your fit and requesting a conversation with ${jd.company_name}`,
     };
 
     state.letter_plan = plan;

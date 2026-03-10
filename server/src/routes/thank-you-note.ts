@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createThankYouNoteProductConfig } from '../agents/thank-you-note/product.js';
 import { FF_THANK_YOU_NOTE } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
+import { getUserContext, getWhyMeContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
@@ -62,15 +62,19 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
     // Load cross-product platform context and emotional baseline
     try {
-      const [baseline, strategyRows] = await Promise.all([
+      const [baseline, strategyRows, whyMe] = await Promise.all([
         getEmotionalBaseline(userId),
         getUserContext(userId, 'positioning_strategy'),
+        getWhyMeContext(userId),
       ]);
 
       const platformContext: Record<string, unknown> = {};
 
       if (strategyRows.length > 0) {
         platformContext.positioning_strategy = strategyRows[0].content;
+      }
+      if (whyMe) {
+        platformContext.why_me_story = whyMe;
       }
 
       if (Object.keys(platformContext).length > 0) {

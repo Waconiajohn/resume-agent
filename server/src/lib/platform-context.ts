@@ -11,6 +11,14 @@
 import { supabaseAdmin } from './supabase.js';
 import logger from './logger.js';
 
+// ─── WhyMeContext ─────────────────────────────────────────────────────────────
+
+export interface WhyMeContext {
+  colleaguesCameForWhat: string;
+  knownForWhat: string;
+  whyNotMe: string;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ContextType =
@@ -155,6 +163,71 @@ export async function deleteUserContext(
   const { error } = await query;
   if (error) {
     throw new Error(`Failed to delete context: ${error.message}`);
+  }
+}
+
+// ─── getWhyMeContext ──────────────────────────────────────────────────────────
+
+/**
+ * Unified why-me story loader. Tries two sources in priority order:
+ *   1. `user_platform_context` rows with context_type = 'career_narrative'
+ *      (structured as `{ why_me_story: { colleaguesCameForWhat, knownForWhat, whyNotMe } }`)
+ *   2. Direct query of the `why_me_stories` table
+ *
+ * Returns null if neither source has data.
+ */
+export async function getWhyMeContext(userId: string): Promise<WhyMeContext | null> {
+  // Source 1: platform context career_narrative
+  try {
+    const narrativeRows = await getUserContext(userId, 'career_narrative');
+    if (narrativeRows.length > 0) {
+      const content = narrativeRows[0].content;
+      const nested = (content as Record<string, unknown>).why_me_story;
+      if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+        const n = nested as Record<string, unknown>;
+        const result: WhyMeContext = {
+          colleaguesCameForWhat: typeof n.colleaguesCameForWhat === 'string' ? n.colleaguesCameForWhat : '',
+          knownForWhat: typeof n.knownForWhat === 'string' ? n.knownForWhat : '',
+          whyNotMe: typeof n.whyNotMe === 'string' ? n.whyNotMe : '',
+        };
+        if (result.colleaguesCameForWhat || result.knownForWhat || result.whyNotMe) {
+          return result;
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn(
+      { error: err instanceof Error ? err.message : String(err), userId },
+      'getWhyMeContext: career_narrative lookup failed, trying why_me_stories table',
+    );
+  }
+
+  // Source 2: why_me_stories table (direct)
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('why_me_stories')
+      .select('colleagues_came_for_what, known_for_what, why_not_me')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      logger.warn({ error: error.message, userId }, 'getWhyMeContext: why_me_stories query failed');
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      colleaguesCameForWhat: data.colleagues_came_for_what ?? '',
+      knownForWhat: data.known_for_what ?? '',
+      whyNotMe: data.why_not_me ?? '',
+    };
+  } catch (err) {
+    logger.warn(
+      { error: err instanceof Error ? err.message : String(err), userId },
+      'getWhyMeContext: unexpected error',
+    );
+    return null;
   }
 }
 

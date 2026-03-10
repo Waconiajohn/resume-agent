@@ -5,12 +5,14 @@ import { ZoneYourSignals } from './ZoneYourSignals';
 import { MomentumCard } from './MomentumCard';
 import { CoachingNudgeBar } from './CoachingNudgeBar';
 import { GlassCard } from '@/components/GlassCard';
-import { ArrowRight, FileText, Search, X } from 'lucide-react';
+import { ArrowRight, FileText, Search, X, AlertCircle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { CareerIQRoom } from './Sidebar';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { MomentumSummary, CoachingNudge } from '@/hooks/useMomentum';
+import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
+import { CoachSpotlight } from './CoachSpotlight';
 
 interface PipelineStats {
   total: number;
@@ -40,6 +42,9 @@ interface DashboardHomeProps {
   momentumLoading?: boolean;
   nudges?: CoachingNudge[];
   onDismissNudge?: (nudgeId: string) => void;
+  onOpenCoach?: () => void;
+  coachRecommendation?: CoachRecommendation | null;
+  coachLoading?: boolean;
 }
 
 const NUDGE_DISMISS_KEY = 'careeriq_nudge_dismissed';
@@ -56,9 +61,10 @@ function saveDismissed(dismissed: Record<string, boolean>) {
   try { localStorage.setItem(NUDGE_DISMISS_KEY, JSON.stringify(dismissed)); } catch { /* ignore */ }
 }
 
-export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge }: DashboardHomeProps) {
+export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge, onOpenCoach, coachRecommendation, coachLoading = false }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | undefined>(undefined);
+  const [pipelineStatsError, setPipelineStatsError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +89,9 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
           ? Math.floor((Date.now() - lastActivity) / (1000 * 60 * 60 * 24))
           : 99;
         setPipelineStats({ total, interviewing, offer, daysSinceLastActivity });
-      } catch { /* ignore */ }
+      } catch {
+        if (!cancelled) setPipelineStatsError('Could not load pipeline stats. Please try again.');
+      }
     }
     loadPipelineStats();
     return () => { cancelled = true; };
@@ -146,6 +154,15 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+      {/* Coach spotlight — deterministic recommendation from AI coach */}
+      <CoachSpotlight
+        userName={userName}
+        recommendation={coachRecommendation ?? null}
+        loading={coachLoading}
+        onNavigateRoom={onNavigateRoom}
+        onOpenCoach={onOpenCoach}
+      />
+
       {/* Contextual nudge */}
       {showResumeNudge && (
         <GlassCard className="px-4 py-3 flex items-center gap-3 border-[#98b3ff]/15 bg-[#98b3ff]/[0.04]">
@@ -221,6 +238,19 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
       {/* Zone 4: Your Signals + Momentum (50/50) */}
       <div className="flex gap-6 flex-col lg:flex-row">
         <div className="flex-1 min-w-0">
+          {pipelineStatsError && (
+            <div className="text-[12px] text-red-400/70 flex items-center gap-2 mb-3">
+              <AlertCircle size={12} />
+              {pipelineStatsError}
+              <button
+                type="button"
+                onClick={() => { setPipelineStatsError(null); }}
+                className="text-[#98b3ff] hover:underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           <ZoneYourSignals
             whyMeSignals={signals}
             sessionCount={sessionCount}

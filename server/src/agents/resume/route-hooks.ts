@@ -19,6 +19,7 @@ import type { Context } from 'hono';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getEmotionalBaseline } from '../../lib/emotional-baseline.js';
+import { getUserContext } from '../../lib/platform-context.js';
 import { parsePositiveInt } from '../../lib/http-body-guard.js';
 import { sseConnections } from '../../routes/sessions.js';
 import { STALE_PIPELINE_MS } from '../../routes/product-route-factory.js';
@@ -812,7 +813,7 @@ export async function resumeTransformInput(
     );
   }
 
-  // Load emotional baseline for tone adaptation
+  // Load emotional baseline and platform context for personalization
   const userId = typeof session.user_id === 'string' ? session.user_id : undefined;
   if (userId) {
     try {
@@ -824,6 +825,35 @@ export async function resumeTransformInput(
       logger.warn(
         { error: err instanceof Error ? err.message : String(err), userId },
         'Resume: failed to load emotional baseline (continuing without it)',
+      );
+    }
+
+    try {
+      const [positioningCtx, clientProfileCtx, emotionalBaselineCtx] = await Promise.all([
+        getUserContext(userId, 'positioning_strategy'),
+        getUserContext(userId, 'client_profile'),
+        getUserContext(userId, 'emotional_baseline'),
+      ]);
+
+      const platformContext: Record<string, unknown> = {};
+
+      if (positioningCtx.length > 0) {
+        platformContext.positioning_strategy = positioningCtx[0].content;
+      }
+      if (clientProfileCtx.length > 0) {
+        platformContext.client_profile = clientProfileCtx[0].content;
+      }
+      if (emotionalBaselineCtx.length > 0) {
+        platformContext.emotional_baseline = emotionalBaselineCtx[0].content;
+      }
+
+      if (Object.keys(platformContext).length > 0) {
+        enriched.platform_context = platformContext;
+      }
+    } catch (err) {
+      logger.warn(
+        { error: err instanceof Error ? err.message : String(err), userId },
+        'Resume: failed to load platform context (continuing without it)',
       );
     }
   }

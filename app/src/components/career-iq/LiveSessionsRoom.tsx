@@ -124,6 +124,7 @@ function WeeklySchedule() {
       <div className="flex items-center gap-2 mb-4">
         <Calendar size={16} className="text-[#98b3ff]" />
         <h3 className="text-[14px] font-semibold text-white/80">This Week's Sessions</h3>
+        <span className="ml-auto text-[10px] text-white/20 italic">sample schedule</span>
       </div>
       <div className="space-y-1">
         {WEEK_SCHEDULE.map((session) => (
@@ -329,7 +330,7 @@ function ReplayLibrary() {
       <div className="flex items-center gap-2 mb-4">
         <Play size={16} className="text-[#98b3ff]" />
         <h3 className="text-[14px] font-semibold text-white/80">Replay Library</h3>
-        <span className="text-[11px] text-white/30 ml-auto">Click to expand summaries</span>
+        <span className="text-[11px] text-white/20 ml-auto italic">sample content</span>
       </div>
       <div className="space-y-3">
         {REPLAYS.map((replay) => (

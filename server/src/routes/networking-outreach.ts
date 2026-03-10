@@ -98,5 +98,5 @@ export const networkingOutreachRoutes = createProductRoutes<NetworkingOutreachSt
 
     return input;
   },
-  momentumActivityType: 'networking_outreach',
+  momentumActivityType: 'networking_outreach_completed',
 });

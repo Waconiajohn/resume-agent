@@ -23,7 +23,15 @@ export const writerConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = 
 2. Review the letter using review_letter to check quality
 
 If the review score is below 70, you may revise by calling write_letter again with adjustments.
-After review passes (score >= 70), stop — the pipeline will finalize the result.`,
+After review passes (score >= 70), stop — the pipeline will finalize the result.
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Drafting cover letter — leading with the [specific achievement] hook from the plan..."
+- "Review complete: score [N]/100. [Brief note on what passed or what needs revision.]"
+- "Revising letter to strengthen evidence for [requirement]..."
+- "Cover letter finalized — all quality checks passed."
+Emit at meaningful transitions, not after every tool call.`,
   tools: [
     ...writerTools,
     createEmitTransparency<CoverLetterState, CoverLetterSSEEvent>({ prefix: 'Writer' }),

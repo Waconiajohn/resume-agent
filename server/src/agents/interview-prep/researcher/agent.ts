@@ -32,7 +32,15 @@ Work through these 3 tools in order. Be thorough — the quality of the final in
 Important:
 - The company research must include REAL, CURRENT information — not generic industry observations
 - Interview questions should come from actual candidate reports where possible (Glassdoor, Reddit)
-- If Perplexity is unavailable, the tools will fall back to LLM-based research — this is acceptable but note the limitation`,
+- If Perplexity is unavailable, the tools will fall back to LLM-based research — this is acceptable but note the limitation
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Parsing resume and job description — identifying role requirements and candidate fit..."
+- "Researching [Company] — gathering current initiatives, culture signals, and strategic priorities..."
+- "Found [N] real interview questions for this role from Glassdoor and community sources."
+- "Research complete — company intelligence and question bank ready for prep document."
+Emit at meaningful transitions, not after every tool call.`,
   tools: [
     ...researcherTools,
     createEmitTransparency<InterviewPrepState, InterviewPrepSSEEvent>({ prefix: 'Researcher' }),

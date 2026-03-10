@@ -91,15 +91,54 @@ function ActivityFeed({
   );
 }
 
+// --- Findings summary ---
+
+const SEVERITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  critical: { label: 'Critical', color: 'text-[#f87171]', bg: 'border-[#f87171]/20 bg-[#f87171]/[0.05]' },
+  high:     { label: 'High',     color: 'text-[#f0a070]', bg: 'border-[#f0a070]/20 bg-[#f0a070]/[0.05]' },
+  medium:   { label: 'Medium',   color: 'text-[#f0d99f]', bg: 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.05]' },
+  low:      { label: 'Low',      color: 'text-[#57CDA4]', bg: 'border-[#57CDA4]/20 bg-[#57CDA4]/[0.05]' },
+  info:     { label: 'Info',     color: 'text-[#98b3ff]', bg: 'border-[#98b3ff]/20 bg-[#98b3ff]/[0.05]' },
+};
+
+function FindingsSummary({ findings }: { findings: import('@/hooks/usePersonalBrand').BrandFinding[] }) {
+  if (findings.length === 0) return null;
+
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <AlertCircle size={16} className="text-[#f0d99f]" />
+        <h3 className="text-[14px] font-semibold text-white/80">Key Findings</h3>
+        <span className="ml-auto text-[11px] text-white/30">{findings.length} finding{findings.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="space-y-2">
+        {findings.map((f, i) => {
+          const cfg = SEVERITY_CONFIG[f.severity] ?? SEVERITY_CONFIG.info;
+          return (
+            <div key={i} className={cn('flex items-center gap-3 rounded-lg border px-3 py-2', cfg.bg)}>
+              <span className={cn('text-[10px] font-semibold uppercase tracking-wider flex-shrink-0 w-12', cfg.color)}>
+                {cfg.label}
+              </span>
+              <span className="text-[12px] text-white/65">{f.title}</span>
+            </div>
+          );
+        })}
+      </div>
+    </GlassCard>
+  );
+}
+
 // --- Report view ---
 
 function ReportView({
   report,
   qualityScore,
+  findings,
   onReset,
 }: {
   report: string;
   qualityScore: number | null;
+  findings: import('@/hooks/usePersonalBrand').BrandFinding[];
   onReset: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -141,6 +180,8 @@ function ReportView({
           {copied ? 'Copied!' : 'Copy Report'}
         </GlassButton>
       </div>
+
+      <FindingsSummary findings={findings} />
 
       <GlassCard className="p-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-[#57CDA4]/[0.03] blur-3xl pointer-events-none" />
@@ -191,6 +232,7 @@ export function PersonalBrandRoom() {
     status,
     report,
     qualityScore,
+    findings,
     activityMessages,
     error,
     currentStage,
@@ -255,7 +297,7 @@ export function PersonalBrandRoom() {
   if (status === 'complete' && report) {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
-        <ReportView report={report} qualityScore={qualityScore} onReset={handleReset} />
+        <ReportView report={report} qualityScore={qualityScore} findings={findings} onReset={handleReset} />
       </div>
     );
   }

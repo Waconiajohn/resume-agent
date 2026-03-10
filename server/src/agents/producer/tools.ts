@@ -361,13 +361,9 @@ const adversarialReview: ResumeAgentTool = {
       logger.warn({ errors: validation.error, session_id: ctx.sessionId }, 'Schema validation failed for adversarial_review, using raw data');
     }
 
-    // Emit quality scores SSE event immediately so the frontend gets them
-    ctx.emit({
-      type: 'quality_scores',
-      scores: result.scores,
-    });
-
-    // Store in scratchpad
+    // Store in scratchpad — quality_scores SSE is emitted later by finalize_quality_scores
+    // after humanize_check and check_narrative_coherence have run, so the frontend
+    // receives a complete picture (including humanize_issues and coherence_issues).
     ctx.scratchpad.adversarial_review = result;
     ctx.scratchpad.decision = result.decision;
     ctx.scratchpad.overall_pass = result.overall_pass;
@@ -935,6 +931,50 @@ Return ONLY valid JSON: { "coherence_score": 82, "issues": ["specific issues fou
   },
 };
 
+// ─── Tool: finalize_quality_scores ────────────────────────────────────
+//
+// Assembles the complete quality_scores SSE event from all three quality
+// checks (adversarial_review, humanize_check, check_narrative_coherence)
+// and emits it to the frontend. Must be called AFTER all three checks run.
+
+const finalizeQualityScores: ResumeAgentTool = {
+  name: 'finalize_quality_scores',
+  description:
+    'Emit the final quality_scores SSE event to the frontend. Call this AFTER adversarial_review, humanize_check, and check_narrative_coherence have all run. Reads scores from scratchpad and emits a combined event so the frontend receives humanize_issues and coherence_issues alongside the adversarial scores.',
+  model_tier: 'orchestrator',
+  input_schema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+
+  async execute(_input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> {
+    const adversarialResult = ctx.scratchpad.adversarial_review as Record<string, unknown> | undefined;
+    const scores = (adversarialResult?.scores ?? {}) as QualityScores;
+
+    const humanizeScore = safeNum(ctx.scratchpad.humanize_score, 0);
+    const humanizeIssues = safeStringArray(ctx.scratchpad.humanize_issues);
+    const coherenceScore = safeNum(ctx.scratchpad.narrative_coherence_score, 0);
+    const coherenceIssues = safeStringArray(ctx.scratchpad.narrative_coherence_issues);
+
+    ctx.emit({
+      type: 'quality_scores',
+      scores,
+      details: {
+        narrative_coherence: coherenceScore,
+        humanize_issues: humanizeIssues,
+        coherence_issues: coherenceIssues,
+      },
+    });
+
+    return {
+      emitted: true,
+      humanize_score: humanizeScore,
+      coherence_score: coherenceScore,
+    };
+  },
+};
+
 // ─── Exports ─────────────────────────────────────────────────────────
 
 export const producerTools: ResumeAgentTool[] = [
@@ -946,5 +986,6 @@ export const producerTools: ResumeAgentTool[] = [
   verifyCrossSectionConsistency,
   checkNarrativeCoherence,
   requestContentRevision,
+  finalizeQualityScores,
   emitTransparency,
 ];

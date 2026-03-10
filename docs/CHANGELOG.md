@@ -1,5 +1,24 @@
 # Changelog — Resume Agent
 
+## 2026-03-10 — Session 70
+**Sprint:** D1 | **Story:** Red flag detection + proactive nudges
+**Summary:** Built detect_red_flags tool, wired it into the coach agent, and added login-time red flag scan to the /stream SSE endpoint.
+
+### Changes Made
+- `server/src/agents/coach/tools/detect-red-flags.ts` — New tool. Pure-logic scan of client snapshot against RED_FLAG_THRESHOLDS. Returns prioritized alert list (no_login, stalled_pipeline, no_applications, no_interview_prep, approaching_financial_deadline). Sorted high > medium > low.
+- `server/src/agents/coach/tools/index.ts` — Added barrel export for detectRedFlagsTool.
+- `server/src/agents/coach/agent.ts` — Imported detectRedFlagsTool, added to tools array (after assessJourneyPhaseTool), updated system prompt "How You Work" steps 3-7 to include detect_red_flags as step 3.
+- `server/src/routes/coach.ts` — Imported loadClientSnapshot + RED_FLAG_THRESHOLDS. Added login-time red flag scan block in GET /stream after the connected event. Emits coach_nudge SSE event with nudge messages when thresholds are exceeded. Scan is best-effort (catch block prevents stream breakage).
+
+### Decisions Made
+- detect_red_flags has model_tier: undefined — it is pure logic with no LLM call. The tool uses the already-loaded client_snapshot from state rather than re-fetching.
+- The stream endpoint scan duplicates a subset of the tool's logic (no_login + stalled_pipeline only) to generate user-facing message strings rather than internal coaching_response strings. This is intentional — the tool serves the agent's internal reasoning; the stream scan serves the user directly.
+- coach_nudge is a new SSE event type on the /stream endpoint. Frontend can consume it to show nudge banners at login time.
+
+### Next Steps
+- Frontend: Handle coach_nudge event in the VirtualCoach room to display nudge banners.
+- Consider adding financial_deadline check to the stream scan if the client_profile financial_segment is available at login time.
+
 ## 2026-03-10 — Session 69 (continued)
 **Sprint:** R2 + R3 | **Stories:** R2-1 through R2-17, R3-1 through R3-11
 **Summary:** Fixed all 18 MEDIUM + 12 LOW bugs from Platform UX Audit, plus 2 cross-cutting patterns.

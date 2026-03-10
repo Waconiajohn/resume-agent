@@ -34,7 +34,15 @@ Important:
 - The analysis must consider the user's seniority level — these are experienced executives, not entry-level professionals
 - If a positioning strategy or Why-Me story is available from the platform, factor it into common ground and approach strategy
 - Personalization hooks must be genuine — never fabricate shared experiences or connections
-- The outreach plan should prioritize building authentic professional relationships, not transactional networking`,
+- The outreach plan should prioritize building authentic professional relationships, not transactional networking
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Analyzing target contact — identifying role, background, and mutual touchpoints..."
+- "Found [N] genuine personalization hooks — strongest: [brief description]..."
+- "Assessing connection path — [direct/2nd-degree/cold] approach with [strategy]..."
+- "Outreach sequence planned — [N] messages designed across [N] days."
+Emit at meaningful transitions, not after every tool call.`,
   tools: [
     ...researcherTools,
     createEmitTransparency<NetworkingOutreachState, NetworkingOutreachSSEEvent>({ prefix: 'Researcher' }),

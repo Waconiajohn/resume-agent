@@ -248,9 +248,11 @@ describe('momentum routes', () => {
           if (fields === 'activity_type, created_at') {
             return {
               eq: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({
-                  data: [{ activity_type: 'job_applied', created_at: todayIso }],
-                  error: null,
+                order: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue({
+                    data: [{ activity_type: 'job_applied', created_at: todayIso }],
+                    error: null,
+                  }),
                 }),
               }),
             };

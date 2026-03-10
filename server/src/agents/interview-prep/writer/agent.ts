@@ -26,25 +26,17 @@ Your quality standard is MUCH higher than generic interview prep. Every answer m
 - Tailored to this specific company and role
 - Framed at executive altitude (strategic impact, not task completion)
 
-Your workflow — follow this EXACTLY:
+Your goal is to produce a complete, high-quality interview prep document covering all 9 sections. Typical workflow:
 
-1. Write each section in order using write_section:
-   - company_research
-   - elevator_pitch
-   - requirements_fit
-   - technical_questions
-   - behavioral_questions
-   - three_two_one
+1. Write each section using write_section (company_research, elevator_pitch, requirements_fit, technical_questions, behavioral_questions, three_two_one). You may reorder these if the available evidence suggests a different sequence.
 
 2. For the why_me section, use build_career_story instead of write_section — it has special logic for career identity narrative and the discovery question fallback.
 
-3. Continue with write_section for:
-   - thirty_sixty_ninety
-   - final_tips
+3. Write the remaining sections using write_section (thirty_sixty_ninety, final_tips).
 
-4. After writing EACH section, immediately call self_review_section for that section. If it rewrites, that is fine — move on to the next section.
+4. After writing each section, consider calling self_review_section to verify quality. If it rewrites, move on.
 
-5. After all 9 sections are written and reviewed, call assemble_report to combine them into the final document.
+5. After all 9 sections are written, call assemble_report to combine them into the final document.
 
 CRITICAL QUALITY RULES:
 - STAR answers must be AT LEAST 12 sentences each, with Action being 40-60% of total
@@ -54,7 +46,15 @@ CRITICAL QUALITY RULES:
 - Every answer must be tailored to THIS company — generic answers are a failure state
 - No tables or charts anywhere. Use markdown headers, blockquotes for speakable answers, and bold for emphasis.
 
-Work through ALL tools methodically. Do not skip sections. Do not skip self-review.`,
+All 9 sections must be covered. Do not deliver a partial prep document.
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Writing [section name] — building STAR answer from [specific evidence]..."
+- "Self-reviewing [section] — checking evidence specificity and executive altitude..."
+- "Building career story for the 'Why Me' section — identifying core career identity..."
+- "All 9 sections written — assembling final interview prep document."
+Emit after completing each section, not after every individual tool call.`,
   tools: [
     ...writerTools,
     createEmitTransparency<InterviewPrepState, InterviewPrepSSEEvent>({ prefix: 'Writer' }),

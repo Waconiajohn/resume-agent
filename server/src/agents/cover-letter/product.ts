@@ -11,6 +11,8 @@ import { analystConfig } from './analyst/agent.js';
 import { writerConfig } from './writer/agent.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from './types.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
+import { supabaseAdmin } from '../../lib/supabase.js';
+import logger from '../../lib/logger.js';
 
 export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState, CoverLetterSSEEvent> {
   return {
@@ -160,6 +162,45 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
         quality_score: state.quality_score,
         review_feedback: state.review_feedback,
       };
+    },
+
+    persistResult: async (state, result) => {
+      const data = result as {
+        letter: string | undefined;
+        quality_score: number | undefined;
+        review_feedback: string | undefined;
+      };
+
+      try {
+        const { error } = await supabaseAdmin
+          .from('session_workflow_artifacts')
+          .insert({
+            session_id: state.session_id,
+            node_key: 'complete',
+            artifact_type: 'cover_letter_result',
+            version: 1,
+            payload: {
+              letter_draft: data.letter ?? '',
+              quality_score: data.quality_score ?? 0,
+              review_feedback: data.review_feedback ?? '',
+              jd_analysis: state.jd_analysis,
+              letter_plan: state.letter_plan,
+            },
+            created_by: 'cover-letter',
+          });
+
+        if (error) {
+          logger.warn(
+            { error: error.message, session_id: state.session_id },
+            'Cover letter: failed to persist result to workflow artifacts (non-fatal)',
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err), session_id: state.session_id },
+          'Cover letter: failed to persist result (non-fatal)',
+        );
+      }
     },
 
     validateAfterAgent: (agentName, state) => {

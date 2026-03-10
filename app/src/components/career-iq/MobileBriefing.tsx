@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useState, useRef, useCallback } from 'react';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { CareerIQRoom } from './Sidebar';
+import type { RealFeedEvent } from './ZoneAgentFeed';
 
 interface MobileBriefingProps {
   userName: string;
@@ -23,16 +24,18 @@ interface MobileBriefingProps {
   activeRoom: CareerIQRoom;
   onRefineWhyMe: () => void;
   onNavigateRoom: (room: CareerIQRoom) => void;
+  feedEvents?: RealFeedEvent[];
   /** When true, renders only the bottom nav (used when a room is active) */
   navOnly?: boolean;
 }
 
 // --- Card 1: One Action Today ---
 
-function ActionCard({ userName, dashboardState, onRefineWhyMe }: {
+function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom }: {
   userName: string;
   dashboardState: DashboardState;
   onRefineWhyMe: () => void;
+  onNavigateRoom: (room: CareerIQRoom) => void;
 }) {
   const firstName = userName?.split('@')[0]?.split('.')[0] ?? 'there';
   const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
@@ -68,7 +71,7 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe }: {
       </p>
       <button
         type="button"
-        onClick={dashboardState !== 'strong' ? onRefineWhyMe : undefined}
+        onClick={dashboardState === 'strong' ? () => onNavigateRoom('linkedin') : onRefineWhyMe}
         className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[#9eb8ff]/45 bg-[linear-gradient(180deg,rgba(158,184,255,0.2),rgba(158,184,255,0.1))] px-4 py-3 text-[14px] font-medium text-white shadow-[0_10px_28px_-18px_rgba(132,160,255,0.9)]"
       >
         {cta}
@@ -80,7 +83,19 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe }: {
 
 // --- Card 2: Agent Activity ---
 
-function AgentActivityCard() {
+function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
+  const events = feedEvents ?? [];
+
+  function relativeTime(timestamp: string): string {
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return `${Math.floor(diffHr / 24)}d ago`;
+  }
+
   return (
     <GlassCard className="p-6 flex flex-col min-h-[240px]">
       <div className="flex items-center gap-2 mb-4">
@@ -89,11 +104,25 @@ function AgentActivityCard() {
           Agent Activity
         </span>
       </div>
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-[13px] text-white/35 text-center leading-relaxed">
-          No recent agent activity.
-        </p>
-      </div>
+      {events.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-[13px] text-white/35 text-center leading-relaxed">
+            No recent agent activity.
+          </p>
+        </div>
+      ) : (
+        <div className="flex-1 space-y-3">
+          {events.slice(0, 5).map((event, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-white/60 leading-relaxed">{event.detail}</p>
+                <p className="text-[10px] text-white/25 mt-0.5">{relativeTime(event.timestamp)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </GlassCard>
   );
 }
@@ -153,15 +182,19 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           type="button"
           onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
           disabled={activeIndex === 0}
+          aria-label="Previous card"
           className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors"
         >
           <ChevronLeft size={20} />
         </button>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="tablist" aria-label="Card navigation">
           {children.map((_, i) => (
             <button
-              key={i}
+              key={`dot-${i}`}
               type="button"
+              role="tab"
+              aria-selected={i === activeIndex}
+              aria-label={`Go to card ${i + 1}`}
               onClick={() => setActiveIndex(i)}
               className={cn(
                 'h-2 rounded-full transition-all duration-300',
@@ -174,6 +207,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           type="button"
           onClick={() => setActiveIndex((i) => Math.min(children.length - 1, i + 1))}
           disabled={activeIndex === children.length - 1}
+          aria-label="Next card"
           className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors"
         >
           <ChevronRight size={20} />
@@ -220,7 +254,7 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavig
 
 // --- Main export ---
 
-export function MobileBriefing({ userName, signals, dashboardState, activeRoom, onRefineWhyMe, onNavigateRoom, navOnly = false }: MobileBriefingProps) {
+export function MobileBriefing({ userName, signals, dashboardState, activeRoom, onRefineWhyMe, onNavigateRoom, feedEvents, navOnly = false }: MobileBriefingProps) {
   // navOnly mode: render only the bottom nav bar (used when a room is displayed above)
   if (navOnly) {
     return <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} />;
@@ -238,8 +272,8 @@ export function MobileBriefing({ userName, signals, dashboardState, activeRoom, 
       {/* Swipeable card stack */}
       <div className="flex-1 pt-2">
         <CardStack>
-          <ActionCard userName={userName} dashboardState={dashboardState} onRefineWhyMe={onRefineWhyMe} />
-          <AgentActivityCard />
+          <ActionCard userName={userName} dashboardState={dashboardState} onRefineWhyMe={onRefineWhyMe} onNavigateRoom={onNavigateRoom} />
+          <AgentActivityCard feedEvents={feedEvents} />
         </CardStack>
       </div>
 

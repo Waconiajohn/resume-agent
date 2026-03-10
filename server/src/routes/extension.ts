@@ -87,7 +87,7 @@ extensionRoutes.get(
     // One-time use — delete immediately after retrieval.
     tokenExchangeStore.delete(code);
 
-    return c.json({ token: entry.token, userId: entry.userId, email: entry.email });
+    return c.json({ token: entry.token, userId: entry.userId });
   },
 );
 

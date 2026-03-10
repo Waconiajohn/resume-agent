@@ -11,7 +11,7 @@ import { ScrapeJobsPanel } from '@/components/network-intelligence/ScrapeJobsPan
 import type { CsvUploadSummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { Upload, Users, Target, Briefcase, Search, ScanLine } from 'lucide-react';
+import { Upload, Users, Target, Briefcase, Search, ScanLine, AlertCircle } from 'lucide-react';
 
 type NiTab = 'upload' | 'connections' | 'targets' | 'matches' | 'boolean-search' | 'scan-jobs';
 
@@ -39,6 +39,7 @@ export function NetworkIntelligenceRoom() {
   const [activeTab, setActiveTab] = useState<NiTab>('upload');
   const [hasConnections, setHasConnections] = useState(false);
   const [uploadSummary, setUploadSummary] = useState<CsvUploadSummary | null>(null);
+  const [connectionsError, setConnectionsError] = useState<string | null>(null);
 
   // Load access token from Supabase session
   useEffect(() => {
@@ -70,7 +71,10 @@ export function NetworkIntelligenceRoom() {
           setHasConnections(false);
         }
       } catch {
-        if (!cancelled) setHasConnections(false);
+        if (!cancelled) {
+          setHasConnections(false);
+          setConnectionsError('Could not load connections. Please try again.');
+        }
       }
     }
 
@@ -151,7 +155,7 @@ export function NetworkIntelligenceRoom() {
       {/* Room header */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-[20px] font-bold text-white/90">Network Intelligence</h1>
+          <h1 className="text-lg font-semibold text-white/90">Network Intelligence</h1>
           <p className="text-[13px] text-white/40">
             Find jobs where your network gives you an inside track. Warm referrals beat cold applications every time.
           </p>
@@ -167,6 +171,21 @@ export function NetworkIntelligenceRoom() {
           </GlassButton>
         )}
       </div>
+
+      {/* Connection check error */}
+      {connectionsError && (
+        <div className="text-[12px] text-red-400/70 flex items-center gap-2">
+          <AlertCircle size={12} />
+          {connectionsError}
+          <button
+            type="button"
+            onClick={() => { setConnectionsError(null); }}
+            className="text-[#98b3ff] hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="flex items-center gap-1 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-1">

@@ -30,7 +30,15 @@ Important:
 - The analysis must consider the candidate's seniority level — these are experienced executives, not entry-level professionals
 - If a positioning strategy or Why-Me story is available from the platform, factor it into the analysis
 - If no current LinkedIn profile is provided, the analysis should focus on what the optimized profile SHOULD contain based on resume data
-- Never fabricate information — analyze only what is provided`,
+- Never fabricate information — analyze only what is provided
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Parsing resume and LinkedIn profile — extracting structured data for analysis..."
+- "Analyzing current profile — scoring against optimization best practices..."
+- "Identified [N] keyword gaps between resume and LinkedIn — [top gap example]..."
+- "Analysis complete — profile quality scores and keyword gaps ready for the Writer."
+Emit at meaningful transitions, not after every tool call.`,
   tools: [
     ...analyzerTools,
     createEmitTransparency<LinkedInOptimizerState, LinkedInOptimizerSSEEvent>({ prefix: 'Analyzer' }),

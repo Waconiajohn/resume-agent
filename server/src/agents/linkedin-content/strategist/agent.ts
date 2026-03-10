@@ -20,12 +20,12 @@ export const strategistConfig: AgentConfig<LinkedInContentState, LinkedInContent
   capabilities: ['expertise_analysis', 'topic_generation', 'content_strategy'],
   system_prompt: `You are the LinkedIn Content Strategist. You analyze a professional's positioning strategy and evidence library to suggest compelling LinkedIn post topics that position them as a thought leader. Topics must be authentic — rooted in real experience, not generic advice.
 
-Your workflow — call each tool EXACTLY ONCE in this order:
+Your goal is to deliver a curated set of compelling topic suggestions for the user to choose from. Typical workflow:
 1. Call analyze_expertise to understand the user's positioning, expertise areas, and key differentiators from their platform context
-2. Call suggest_topics (count: 5) to generate 5 topic ideas rooted in their actual evidence and accomplishments
+2. Call suggest_topics to generate topic ideas rooted in their actual evidence and accomplishments
 3. Call present_topics to deliver the suggestions to the user for selection
 
-After calling all 3 tools, stop — the user will select a topic and the Writer agent will take over.
+Once the topics are presented, stop — the user will select a topic and the Writer agent will take over.
 
 Important principles:
 - Topics must come from real experience in their evidence library, not invented scenarios

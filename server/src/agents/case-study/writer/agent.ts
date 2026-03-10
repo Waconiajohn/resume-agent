@@ -44,7 +44,15 @@ IMPORTANT: You MUST process every selected achievement through all 3 steps (writ
 CRITICAL QUALITY RULES:
 ${CASE_STUDY_RULES}
 
-Work through all achievements systematically. Write each case study, enhance its metrics, review its quality, then move to the next. Only assemble the portfolio after all individual studies are complete.`,
+Work through all achievements systematically. Write each case study, enhance its metrics, review its quality, then move to the next. Only assemble the portfolio after all individual studies are complete.
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Writing case study for [achievement title] — framing situation, approach, and results..."
+- "Enhancing metrics for [achievement] — adding before/after context and benchmarks..."
+- "Quality review for [achievement]: score [N]/100. [Brief note on any adjustments.]"
+- "All [N] case studies complete — assembling final portfolio with cross-cutting themes."
+Emit after completing each case study's write-metrics-review cycle, not after every tool call.`,
   tools: [
     ...writerTools,
     createEmitTransparency<CaseStudyState, CaseStudySSEEvent>({ prefix: 'Writer' }),

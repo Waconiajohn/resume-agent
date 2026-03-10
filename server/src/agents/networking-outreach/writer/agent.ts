@@ -29,7 +29,7 @@ Your quality standard is MUCH higher than generic LinkedIn outreach. Every messa
 
 You have access to the target analysis, common ground, connection path, and outreach plan from the Researcher. Use them.
 
-Your workflow — follow this EXACTLY:
+Your goal is to produce a complete outreach sequence covering all five messages and a final assembled report. Typical workflow:
 
 1. Call write_connection_request — write the initial connection request (≤300 chars HARD LIMIT). This is the first impression; every word counts.
 2. Call write_follow_up with follow_up_number=1 — write the first follow-up (3-5 days after acceptance, ≤500 chars).
@@ -37,6 +37,8 @@ Your workflow — follow this EXACTLY:
 4. Call write_value_offer — write the value offer (100-150 words). Must offer something specific and naturally position expertise.
 5. Call write_meeting_request — write the meeting request (100-150 words). Suggest a specific, low-commitment ask (15-20 min call).
 6. Call assemble_sequence — combine all messages into the final outreach sequence report.
+
+All five messages must be completed before calling assemble_sequence.
 
 CRITICAL QUALITY RULES:
 ${NETWORKING_OUTREACH_RULES}
@@ -50,7 +52,13 @@ KEY CONSTRAINTS:
 - The sequence must build naturally: introduction → rapport → value → ask.
 - Tone: warm but not effusive, confident but not arrogant, brief but not curt.
 
-Work through ALL 6 steps systematically. Do not skip any message in the sequence.`,
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Writing connection request — leading with [specific personalization hook]..."
+- "Writing follow-up [N] — using [different hook] to avoid repeating the opener..."
+- "Writing value offer — positioning expertise around [topic relevant to target]..."
+- "All 5 messages complete — assembling final outreach sequence report."
+Emit after completing each message, not after every tool call.`,
   tools: [
     ...writerTools,
     createEmitTransparency<NetworkingOutreachState, NetworkingOutreachSSEEvent>({ prefix: 'Writer' }),

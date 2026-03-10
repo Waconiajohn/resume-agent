@@ -32,7 +32,15 @@ Important:
 - The analysis must consider the candidate's seniority level — these are experienced executives, not entry-level professionals
 - If a positioning strategy or Why-Me story is available from the platform, factor it into theme identification and audience mapping
 - Content themes should reflect genuine expertise — never fabricate themes the candidate cannot credibly speak to
-- The content mix should balance thought leadership with engagement-oriented posts`,
+- The content mix should balance thought leadership with engagement-oriented posts
+
+## Transparency Protocol
+Call emit_transparency at natural milestones to keep the user informed. Examples:
+- "Analyzing expertise — identifying [N] core competency areas to build themes around..."
+- "Identified [N] content themes grounded in your experience: [theme 1], [theme 2]..."
+- "Mapping audience interests — aligning themes to what [primary audience] cares about..."
+- "Content mix planned — [N] posts per week, [X]% thought leadership, [Y]% engagement."
+Emit at meaningful transitions, not after every tool call.`,
   tools: [
     ...strategistTools,
     createEmitTransparency<ContentCalendarState, ContentCalendarSSEEvent>({ prefix: 'Strategist' }),

@@ -871,6 +871,7 @@ export function NetworkingHubRoom() {
   const [selectedTouchpoints, setSelectedTouchpoints] = useState<Touchpoint[]>([]);
 
   const [followUps, setFollowUps] = useState<NetworkingContact[]>([]);
+  const [contactsError, setContactsError] = useState<string | null>(null);
 
   // Story 62-1: prefill state for outreach generator + expose messages for GeneratedMessages
   const [outreachPrefill, setOutreachPrefill] = useState<OutreachPrefill | null>(null);
@@ -885,9 +886,13 @@ export function NetworkingHubRoom() {
 
   // Fetch contacts and follow-ups on mount
   useEffect(() => {
-    void networkingContacts.fetchContacts();
+    networkingContacts.fetchContacts().catch(() => {
+      setContactsError('Could not load contacts. Please try again.');
+    });
     networkingContacts.fetchFollowUps(7).then((contacts) => {
       setFollowUps(contacts);
+    }).catch(() => {
+      setContactsError('Could not load follow-ups. Please try again.');
     });
   }, []);
 
@@ -989,6 +994,26 @@ export function NetworkingHubRoom() {
           Add Contact
         </GlassButton>
       </div>
+
+      {/* Contacts load error */}
+      {contactsError && (
+        <div className="text-[12px] text-red-400/70 flex items-center gap-2">
+          <AlertCircle size={12} />
+          {contactsError}
+          <button
+            type="button"
+            onClick={() => {
+              setContactsError(null);
+              networkingContacts.fetchContacts().catch(() => {
+                setContactsError('Could not load contacts. Please try again.');
+              });
+            }}
+            className="text-[#98b3ff] hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Follow-up reminders */}
       {followUps.length > 0 && (

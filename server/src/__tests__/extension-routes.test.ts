@@ -639,7 +639,7 @@ describe('GET /token-exchange', () => {
     tokenExchangeStore.clear();
   });
 
-  it('returns token, userId, and email for a valid code', async () => {
+  it('returns token and userId (no email PII) for a valid code', async () => {
     tokenExchangeStore.set('valid-code-abc', {
       token: 'supabase-jwt-token-xyz',
       userId: 'user-ext-001',
@@ -652,10 +652,10 @@ describe('GET /token-exchange', () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json() as { token: string; userId: string; email: string };
+    const body = await res.json() as { token: string; userId: string; email?: string };
     expect(body.token).toBe('supabase-jwt-token-xyz');
     expect(body.userId).toBe('user-ext-001');
-    expect(body.email).toBe('ext@example.com');
+    expect(body.email).toBeUndefined();
   });
 
   it('deletes the entry after successful retrieval (one-time use)', async () => {
