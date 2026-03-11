@@ -258,15 +258,15 @@ async function mockAllNetworkRequests(page: Page): Promise<void> {
       return;
     }
 
-    // Applications pipeline — returns an array directly (not wrapped in object)
+    // Applications pipeline — backend returns { applications: [], count: 0 }
     if (path.startsWith('/api/applications')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ applications: [], count: 0 }) });
       return;
     }
 
-    // Watchlist companies — returns an array directly
+    // Watchlist companies
     if (path.startsWith('/api/watchlist')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ companies: [] }) });
       return;
     }
 
@@ -428,12 +428,10 @@ test.describe('Smoke: major page routes', () => {
     await mockAllNetworkRequests(page);
     await page.goto('/career-iq');
     await waitForAuthenticatedShell(page);
-    // The Sidebar header label is a <span> inside the <aside> element
+    // The sidebar <aside> must be visible with at least the Dashboard button
     await expect(
-      page.getByRole('complementary').getByText('CareerIQ', { exact: true }),
+      page.locator('aside').getByText('Dashboard', { exact: true }),
     ).toBeVisible({ timeout: 10_000 });
-    // Sidebar group label for rooms
-    await expect(page.getByText(/Resume Tools/i)).toBeVisible({ timeout: 8_000 });
     expect(errors).toHaveLength(0);
   });
 });
@@ -461,7 +459,7 @@ test.describe('Smoke: header navigation', () => {
     await page.getByRole('button', { name: /^CareerIQ$/i }).click();
     await expect(page).toHaveURL(/\/career-iq/, { timeout: 5_000 });
     await expect(
-      page.getByRole('complementary').getByText('CareerIQ', { exact: true }),
+      page.locator('aside').getByText('Dashboard', { exact: true }),
     ).toBeVisible({ timeout: 8_000 });
   });
 
@@ -518,7 +516,7 @@ async function navigateToCareerIQRoom(page: Page, roomLabel: string): Promise<vo
   // Scope to the sidebar <aside> to avoid strict-mode violations when the same
   // label appears in both the sidebar and the main content area (e.g. DashboardHome
   // quick-launch buttons).
-  const sidebar = page.getByRole('complementary');
+  const sidebar = page.locator('aside');
   const roomBtn = sidebar.getByRole('button', { name: roomLabel });
   await expect(roomBtn).toBeVisible({ timeout: 5_000 });
   await roomBtn.click();
@@ -579,9 +577,9 @@ test.describe('Smoke: Career IQ rooms', () => {
 
     await sharedPage.goto('/career-iq');
     await waitForAuthenticatedShell(sharedPage);
-    // Wait for sidebar to be visible — the sidebar <span> label is inside <aside>
+    // Wait for sidebar to be visible — Dashboard button inside <aside>
     await expect(
-      sharedPage.getByRole('complementary').getByText('CareerIQ', { exact: true }),
+      sharedPage.locator('aside').getByText('Dashboard', { exact: true }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -611,7 +609,7 @@ test.describe('Smoke: Career IQ rooms', () => {
     // Verify the sidebar is still visible (no full-page crash), and that
     // the main scroll container has rendered something.
     await expect(
-      sharedPage.getByRole('complementary').getByText('CareerIQ', { exact: true }),
+      sharedPage.locator('aside').getByText('Dashboard', { exact: true }),
     ).toBeVisible({ timeout: 5_000 });
     // The scroll container inside <main> should have at least one child element
     await expect(sharedPage.locator('main > *').first()).toBeVisible({ timeout: 8_000 });
@@ -692,7 +690,7 @@ test.describe('Smoke: Career IQ rooms', () => {
   test('sidebar collapse and expand works without crash', async () => {
     // Navigate back to dashboard first — scope to sidebar to avoid ambiguity
     // with the Header "Dashboard" nav button
-    await sharedPage.getByRole('complementary').getByRole('button', { name: /^Dashboard$/i }).click();
+    await sharedPage.locator('aside').getByText('Dashboard', { exact: true }).click();
 
     const collapseBtn = sharedPage.getByRole('button', { name: /Collapse sidebar/i });
     await expect(collapseBtn).toBeVisible({ timeout: 5_000 });

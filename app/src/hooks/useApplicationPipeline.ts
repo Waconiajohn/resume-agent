@@ -135,7 +135,9 @@ export function useApplicationPipeline() {
 
       if (!res.ok) return;
 
-      const data = (await res.json()) as DueAction[];
+      const json = await res.json() as { actions?: DueAction[]; feature_disabled?: boolean };
+      if (json.feature_disabled) return;
+      const data = json.actions ?? [];
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, dueActions: data }));
       }

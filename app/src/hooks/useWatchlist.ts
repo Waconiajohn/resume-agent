@@ -64,7 +64,12 @@ export function useWatchlist() {
         return;
       }
 
-      const data = (await res.json()) as WatchlistCompany[];
+      const json = await res.json() as { companies?: WatchlistCompany[]; feature_disabled?: boolean };
+      if (json.feature_disabled) {
+        if (mountedRef.current) { setCompanies([]); setLoading(false); }
+        return;
+      }
+      const data = json.companies ?? [];
       if (mountedRef.current) {
         setCompanies(data);
         setLoading(false);
