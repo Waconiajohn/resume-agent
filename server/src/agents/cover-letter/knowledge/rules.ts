@@ -94,7 +94,7 @@ Executive framing standards:
 2. **Influence and decision-making** — Executive contribution is measured by decisions made, strategies set, and organizations moved. The letter should reveal how the candidate thinks — what they saw, what they decided, and why those decisions delivered the outcomes they did.
 3. **Organizational scope signals seniority** — Budget owned, teams led, geographies covered, stakeholders managed. Include scope context so the reader understands the scale at which the candidate operates. "Led a $200M P&L across 4 business units" communicates executive altitude immediately.
 4. **Peer-level language** — Write as if one senior leader is writing to another. The tone should be confident and collegial, not eager or deferential. "I believe my background would be an excellent fit" reads as junior. "The operations challenges you're navigating at Apex are exactly where I've built my career" reads as executive-level.
-5. **Forward-looking close** — The closing paragraph should not beg for the opportunity. It should express a confident expectation of mutual interest and propose a logical next step. "I would welcome a conversation to discuss how my experience building enterprise analytics platforms applies to your 2025 roadmap" is appropriate.`;
+5. **Forward-looking close** — The closing paragraph should not beg for the opportunity. It should express a confident expectation of mutual interest and propose a logical next step. "I would welcome a conversation to discuss how my experience building enterprise analytics platforms applies to your growth roadmap" is appropriate.`;
 
 // ─── Rule 5: Age Awareness ───────────────────────────────────────────
 

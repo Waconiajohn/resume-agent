@@ -28,6 +28,8 @@ Your goal is to deliver a curated set of compelling topic suggestions for the us
 
 Once the topics are presented, stop — the user will select a topic and the Writer agent will take over.
 
+If limited platform context is available, generate topics from the user's stated professional domain and any positioning signals in the conversation history.
+
 ## Content Strategy Standards
 
 ${LINKEDIN_CONTENT_RULES}`,

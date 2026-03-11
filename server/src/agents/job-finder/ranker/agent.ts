@@ -32,6 +32,11 @@ export const rankerConfig: AgentConfig<JobFinderState, JobFinderSSEEvent> = {
 
 ${JOB_FINDER_RULES}
 
+## Scoring Guidance
+
+- **Seniority overmatch**: Over-qualified by 1 level is often fine (fresh challenge). 2+ levels down is worth flagging.
+- **Gap bridging**: Boost score for roles that help close critical gaps identified in the gap analysis — these are strategic opportunities, not just good fits.
+
 ## Narrative Quality
 
 "Why this matches" narratives must be:
