@@ -27,7 +27,7 @@ export function WatchlistManager({
   onUpdate,
   onRemove,
 }: WatchlistManagerProps) {
-  const { dialogRef } = useDialogA11y(true, onClose);
+  const { dialogRef } = useDialogA11y(open, onClose);
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
   const [website, setWebsite] = useState('');

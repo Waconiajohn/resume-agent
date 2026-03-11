@@ -69,14 +69,14 @@ export function WelcomeState({ userName, onStartWhyMe }: WelcomeStateProps) {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[11px] font-bold tabular-nums ${step.active ? 'text-[#98b3ff]' : 'text-white/40'}`}>
+                  <span className={`text-[11px] font-bold tabular-nums ${step.active ? 'text-[#98b3ff]' : 'text-white/45'}`}>
                     STEP {step.number}
                   </span>
-                  <span className={`text-[13px] font-medium ${step.active ? 'text-white/75' : 'text-white/40'}`}>
+                  <span className={`text-[13px] font-medium ${step.active ? 'text-white/75' : 'text-white/45'}`}>
                     {step.label}
                   </span>
                 </div>
-                <div className={`text-[12px] mt-0.5 ${step.active ? 'text-white/45' : 'text-white/40'}`}>
+                <div className={`text-[12px] mt-0.5 ${step.active ? 'text-white/45' : 'text-white/45'}`}>
                   {step.desc}
                 </div>
               </div>

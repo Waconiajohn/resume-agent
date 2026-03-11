@@ -280,7 +280,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
                     value={revisionFeedback}
                     onChange={(e) => setRevisionFeedback(e.target.value)}
                     placeholder="What would you like changed? (e.g. make it more direct, add a specific story, shorten it)"
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/25 resize-none focus:outline-none focus:border-[#98b3ff]/30 min-h-[80px]"
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[80px]"
                   />
                   <GlassButton
                     onClick={handleRevise}
@@ -592,7 +592,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
                   value={revisionFeedback}
                   onChange={(e) => setRevisionFeedback(e.target.value)}
                   placeholder="What would you like changed?"
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/25 resize-none focus:outline-none focus:border-[#98b3ff]/30 min-h-[80px]"
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/70 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[80px]"
                 />
                 <GlassButton
                   onClick={handleRevise}

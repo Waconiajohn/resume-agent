@@ -148,7 +148,7 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
             className={cn(
               'w-full min-h-[160px] rounded-xl border bg-white/[0.03] px-4 py-3',
               'text-[14px] text-white/85 placeholder:text-white/25 leading-relaxed',
-              'focus:outline-none focus:ring-1 transition-all duration-200 resize-y',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 transition-all duration-200 resize-y',
               signals[signalKeys[currentStep]] === 'green'
                 ? 'border-[#b5dec2]/20 focus:ring-[#b5dec2]/30 focus:border-[#b5dec2]/30'
                 : 'border-white/[0.1] focus:ring-[#98b3ff]/30 focus:border-[#98b3ff]/20',

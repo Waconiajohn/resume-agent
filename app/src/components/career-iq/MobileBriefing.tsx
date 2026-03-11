@@ -239,7 +239,7 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavig
             onClick={() => onNavigate(tab.id)}
             className={cn(
               'flex flex-col items-center gap-0.5 px-3 py-1 min-h-[44px] min-w-[44px] transition-colors',
-              isActive ? 'text-[#98b3ff]' : 'text-white/35',
+              isActive ? 'text-[#98b3ff]' : 'text-white/50',
             )}
           >
             <Icon size={20} />

@@ -184,7 +184,7 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
           <div key={group.label} className={collapsed ? 'mb-1' : 'mb-4'}>
             {!collapsed && (
               <div className="px-3 pb-1 pt-2">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/45">
                   {group.label}
                 </span>
               </div>

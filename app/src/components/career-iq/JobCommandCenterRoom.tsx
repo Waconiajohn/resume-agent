@@ -382,7 +382,7 @@ function SearchPreferences() {
             type="text"
             value={prefs.titles}
             onChange={(e) => handleChange('titles', e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
         <div>
@@ -393,7 +393,7 @@ function SearchPreferences() {
             type="text"
             value={prefs.locations}
             onChange={(e) => handleChange('locations', e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
         <div className="flex gap-3">
@@ -405,7 +405,7 @@ function SearchPreferences() {
               type="text"
               value={prefs.salaryMin}
               onChange={(e) => handleChange('salaryMin', e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             />
           </div>
           <div className="flex-1">
@@ -415,7 +415,7 @@ function SearchPreferences() {
             <select
               value={prefs.remote}
               onChange={(e) => handleChange('remote', e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus:border-[#98b3ff]/30"
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             >
               <option value="any">Any</option>
               <option value="remote">Remote</option>
@@ -509,7 +509,7 @@ function TrackerGenerator() {
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             placeholder="Paste your resume text here..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30 min-h-[80px] resize-y"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[80px] resize-y"
             rows={3}
           />
         </div>
@@ -553,7 +553,7 @@ function TrackerGenerator() {
                     value={app.company}
                     onChange={(e) => updateApp(i, 'company', e.target.value)}
                     placeholder="Company"
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   />
                   <input
                     id={`app-role-${i}`}
@@ -561,7 +561,7 @@ function TrackerGenerator() {
                     value={app.role}
                     onChange={(e) => updateApp(i, 'role', e.target.value)}
                     placeholder="Role Title"
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -571,14 +571,14 @@ function TrackerGenerator() {
                     type="date"
                     value={app.date_applied}
                     onChange={(e) => updateApp(i, 'date_applied', e.target.value)}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 focus:outline-none focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   />
                   <select
                     id={`app-status-${i}`}
                     aria-label={`Application ${i + 1} status`}
                     value={app.status}
                     onChange={(e) => updateApp(i, 'status', e.target.value)}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 focus:outline-none focus:border-[#98b3ff]/30"
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                   >
                     <option value="applied">Applied</option>
                     <option value="followed_up">Followed Up</option>
@@ -595,7 +595,7 @@ function TrackerGenerator() {
                   value={app.contact_name ?? ''}
                   onChange={(e) => updateApp(i, 'contact_name', e.target.value)}
                   placeholder="Contact name (optional)"
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                 />
                 <textarea
                   id={`app-jd-${i}`}
@@ -603,7 +603,7 @@ function TrackerGenerator() {
                   value={app.jd_text}
                   onChange={(e) => updateApp(i, 'jd_text', e.target.value)}
                   placeholder="Paste job description here..."
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30 min-h-[60px] resize-y"
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 min-h-[60px] resize-y"
                   rows={2}
                 />
               </div>

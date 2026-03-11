@@ -230,7 +230,7 @@ function AskBeforeSession() {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="What would you like the host to cover?"
-            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           />
           <button
@@ -513,7 +513,7 @@ function ResourceLibrary() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search resources..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
       </div>
@@ -683,7 +683,7 @@ function AskACoach() {
           <select
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus:border-[#98b3ff]/30 appearance-none"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 appearance-none"
           >
             <option value="" className="bg-[#1a1a2e]">Select a topic...</option>
             {COACH_TOPICS.map((t) => (
@@ -700,7 +700,7 @@ function AskACoach() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe what you need help with..."
             rows={3}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30 resize-none"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-none"
           />
         </div>
 

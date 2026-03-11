@@ -205,7 +205,7 @@ function AssessmentQuestionsView({
                 onChange={(e) => handleChange(q.id, e.target.value)}
                 rows={3}
                 placeholder="Your answer..."
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 resize-none focus:outline-none focus:border-[#98b3ff]/40 transition-colors"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
               />
             </div>
           );
@@ -512,7 +512,7 @@ function PlannerConnectionCard() {
             <select
               value={assetRange}
               onChange={(e) => setAssetRange(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 focus:outline-none focus:border-[#98b3ff]/40 transition-colors"
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
             >
               <option value="">Select a range</option>
               <option value="under_100k">Under $100k</option>
@@ -531,7 +531,7 @@ function PlannerConnectionCard() {
               value={geography}
               onChange={(e) => setGeography(e.target.value)}
               placeholder="e.g. Chicago, IL"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 focus:outline-none focus:border-[#98b3ff]/40 transition-colors"
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-white/75 placeholder:text-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 transition-colors"
             />
           </div>
         </div>
