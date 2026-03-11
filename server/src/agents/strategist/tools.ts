@@ -28,7 +28,7 @@ import type {
 } from '../types.js';
 import { randomUUID } from 'node:crypto';
 import { positioningToQuestionnaire, extractInterviewAnswers, buildQuestionnaireEvent } from '../../lib/questionnaire-helpers.js';
-import { evaluateFollowUp, MAX_FOLLOW_UPS } from '../positioning-coach.js';
+import { evaluateFollowUp, generateQuestions, MAX_FOLLOW_UPS } from '../positioning-coach.js';
 import { createEmitTransparency } from '../runtime/shared-tools.js';
 
 // ─── Tool: parse_resume ───────────────────────────────────────────────
@@ -372,6 +372,9 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
   },
   model_tier: 'orchestrator',
   execute: async (input: Record<string, unknown>, ctx: ResumeAgentContext): Promise<unknown> => {
+    // The LLM provides questions in its tool call, but we ignore them.
+    // Instead we use generateQuestions() which does proper gap analysis
+    // with MODEL_MID. The LLM only controls WHEN to call this tool.
     const rawQuestions = Array.isArray(input.questions)
       ? (input.questions as Record<string, unknown>[])
       : [];
@@ -400,28 +403,78 @@ const interviewCandidateBatchTool: ResumeAgentTool = {
       };
     }
 
-    // Trim batch to remaining budget
-    const trimmedQuestions = rawQuestions.slice(0, remaining);
+    // ── Generate quality questions on first invocation ──────────────
+    // On the first call, run the full gap-analysis question pipeline
+    // and store all questions in scratchpad. Subsequent calls pull from
+    // the pre-generated list.
+    if (!ctx.scratchpad.generated_questions) {
+      const state = ctx.getState();
+      const resume = (ctx.scratchpad.intake ?? state.intake) as NonNullable<typeof state.intake> | undefined;
+      const research = (ctx.scratchpad.research ?? state.research) as NonNullable<typeof state.research> | undefined;
 
-    // Convert to PositioningQuestion format
-    const positioningQuestions: PositioningQuestion[] = trimmedQuestions.map((rq, i) => {
-      const rawSuggestions = Array.isArray(rq.suggestions) ? rq.suggestions as Record<string, unknown>[] : [];
-      const suggestions = rawSuggestions.map(s => ({
-        label: String(s.label ?? ''),
-        description: String(s.description ?? ''),
-        source: (s.source as 'resume' | 'inferred' | 'jd') ?? 'inferred',
-      }));
+      if (resume && research) {
+        try {
+          const allQuestions = await generateQuestions(resume, research, {
+            workflow_mode: state.user_preferences?.workflow_mode,
+          });
+          ctx.scratchpad.generated_questions = allQuestions;
+          ctx.scratchpad.generated_question_index = 0;
+          logger.info({ count: allQuestions.length }, 'Pre-generated positioning questions via gap analysis');
+        } catch (err) {
+          logger.warn(
+            { error: err instanceof Error ? err.message : String(err) },
+            'Failed to pre-generate questions, falling back to orchestrator questions',
+          );
+        }
+      }
+    }
 
-      return {
-        id: randomUUID(),
-        question_number: asked + i + 1,
-        question_text: String(rq.question_text ?? ''),
-        context: String(rq.context ?? ''),
-        input_type: suggestions.length > 0 ? 'hybrid' as const : 'text' as const,
-        category: (String(rq.category ?? 'requirement_mapped')) as PositioningQuestion['category'],
-        suggestions: suggestions.length > 0 ? suggestions : undefined,
-      };
-    });
+    // ── Pull questions from pre-generated list or fall back to LLM ──
+    const generatedQuestions = ctx.scratchpad.generated_questions as PositioningQuestion[] | undefined;
+    let positioningQuestions: PositioningQuestion[];
+
+    if (generatedQuestions && generatedQuestions.length > 0) {
+      const startIdx = (ctx.scratchpad.generated_question_index as number) ?? 0;
+      const batchSize = Math.min(remaining, 3);
+      const batch = generatedQuestions.slice(startIdx, startIdx + batchSize);
+
+      if (batch.length > 0) {
+        positioningQuestions = batch.map((q, i) => ({
+          ...q,
+          question_number: asked + i + 1,
+        }));
+        ctx.scratchpad.generated_question_index = startIdx + batch.length;
+      } else {
+        // All pre-generated questions exhausted — budget reached
+        return {
+          budget_reached: true,
+          questions_asked: asked,
+          budget,
+          message: `All pre-generated questions asked. Proceed to classify_fit.`,
+        };
+      }
+    } else {
+      // Fallback: use orchestrator-provided questions (original behavior)
+      const trimmedQuestions = rawQuestions.slice(0, Math.min(remaining, 3));
+      positioningQuestions = trimmedQuestions.map((rq, i) => {
+        const rawSuggestions = Array.isArray(rq.suggestions) ? rq.suggestions as Record<string, unknown>[] : [];
+        const suggestions = rawSuggestions.map(s => ({
+          label: String(s.label ?? ''),
+          description: String(s.description ?? ''),
+          source: (s.source as 'resume' | 'inferred' | 'jd') ?? 'inferred',
+        }));
+
+        return {
+          id: randomUUID(),
+          question_number: asked + i + 1,
+          question_text: String(rq.question_text ?? ''),
+          context: String(rq.context ?? ''),
+          input_type: suggestions.length > 0 ? 'hybrid' as const : 'text' as const,
+          category: (String(rq.category ?? 'requirement_mapped')) as PositioningQuestion['category'],
+          suggestions: suggestions.length > 0 ? suggestions : undefined,
+        };
+      });
+    }
 
     // Convert to QuestionnaireQuestion format and emit as questionnaire
     const questionnaireQuestions = positioningToQuestionnaire(positioningQuestions);
