@@ -1103,6 +1103,66 @@ export function handleSectionError(
   ]);
 }
 
+export function handleContextLoaded(
+  data: Record<string, unknown>,
+  state: PipelineStateManager,
+): void {
+  const message = typeof data.message === 'string' && data.message.trim().length > 0
+    ? data.message
+    : 'Coach loaded your platform context.';
+  pushActivityMessage(state, message, 'context_loaded');
+  state.setMessages((prev) => [
+    ...prev,
+    {
+      id: state.nextId(),
+      role: 'system',
+      content: message,
+      timestamp: new Date().toISOString(),
+    },
+  ]);
+}
+
+export function handlePhaseAssessed(
+  data: Record<string, unknown>,
+  state: PipelineStateManager,
+): void {
+  const phase = typeof data.phase === 'string' ? data.phase : '';
+  const message = typeof data.message === 'string' && data.message.trim().length > 0
+    ? data.message
+    : phase.length > 0
+      ? `Coach assessed your journey phase: ${phase.replace(/_/g, ' ')}.`
+      : 'Coach assessed your journey phase.';
+  pushActivityMessage(state, message, 'phase_assessed');
+  state.setMessages((prev) => [
+    ...prev,
+    {
+      id: state.nextId(),
+      role: 'system',
+      content: message,
+      timestamp: new Date().toISOString(),
+    },
+  ]);
+}
+
+export function handleRecommendationReady(
+  data: Record<string, unknown>,
+  state: PipelineStateManager,
+): void {
+  const message = typeof data.message === 'string' && data.message.trim().length > 0
+    ? data.message
+    : 'Coach has a recommendation ready for you.';
+  pushActivityMessage(state, message, 'recommendation_ready');
+  state.setMessages((prev) => [
+    ...prev,
+    {
+      id: state.nextId(),
+      role: 'system',
+      content: message,
+      timestamp: new Date().toISOString(),
+    },
+  ]);
+}
+
 export function handlePipelineComplete(
   data: Record<string, unknown> | null,
   state: PipelineStateManager,
@@ -1462,6 +1522,27 @@ export function createSSEEventRouter(
       case 'pipeline_error': {
         const data = safeParse(rawData);
         handlePipelineError(data, state, markPipelineProgress);
+        break;
+      }
+
+      case 'context_loaded': {
+        const data = safeParse(rawData);
+        if (!data) break;
+        handleContextLoaded(data, state);
+        break;
+      }
+
+      case 'phase_assessed': {
+        const data = safeParse(rawData);
+        if (!data) break;
+        handlePhaseAssessed(data, state);
+        break;
+      }
+
+      case 'recommendation_ready': {
+        const data = safeParse(rawData);
+        if (!data) break;
+        handleRecommendationReady(data, state);
         break;
       }
 

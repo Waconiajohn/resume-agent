@@ -12,13 +12,21 @@ interface SessionCardProps {
 
 export function SessionCard({ session, onClick, onDelete, deleteDisabled = false }: SessionCardProps) {
   const timeAgo = getTimeAgo(session.updated_at);
+  const sessionTitle =
+    [session.company_name, session.job_title].filter(Boolean).join(' — ') || null;
+  const phaseLabel = PHASE_LABELS[session.current_phase] ?? session.current_phase;
 
   return (
     <GlassCard hover className="cursor-pointer p-4" onClick={onClick}>
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
+          {sessionTitle ? (
+            <span className="text-sm font-medium text-white/85 truncate max-w-[200px]">
+              {sessionTitle}
+            </span>
+          ) : null}
           <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/70 w-fit">
-            {PHASE_LABELS[session.current_phase] ?? session.current_phase}
+            {phaseLabel}
           </span>
           <div className="flex items-center gap-1.5 text-xs text-white/60">
             <Clock className="h-3 w-3" />

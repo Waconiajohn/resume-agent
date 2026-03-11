@@ -390,7 +390,7 @@ const atsComplianceCheck: ResumeAgentTool = {
     required: ['full_text'],
   },
 
-  async execute(input: Record<string, unknown>): Promise<unknown> {
+  async execute(input: Record<string, unknown>, _ctx: ResumeAgentContext): Promise<unknown> {
     const fullText = safeStr(input.full_text);
     const findings = runAtsComplianceCheck(fullText);
 
@@ -515,7 +515,7 @@ const checkBlueprintCompliance: ResumeAgentTool = {
     required: ['sections', 'blueprint'],
   },
 
-  async execute(input: Record<string, unknown>): Promise<unknown> {
+  async execute(input: Record<string, unknown>, _ctx: ResumeAgentContext): Promise<unknown> {
     const sections = (input.sections ?? {}) as Record<string, string>;
     const blueprint = (input.blueprint ?? {}) as Record<string, unknown>;
 
@@ -661,7 +661,7 @@ const verifyCrossSectionConsistency: ResumeAgentTool = {
     required: ['sections'],
   },
 
-  async execute(input: Record<string, unknown>): Promise<unknown> {
+  async execute(input: Record<string, unknown>, _ctx: ResumeAgentContext): Promise<unknown> {
     const sections = (input.sections ?? {}) as Record<string, string>;
     const issues: string[] = [];
 

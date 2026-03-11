@@ -86,6 +86,8 @@ const generateQuestionsTool: OnboardingTool = {
     const response = await llm.chat({
       model: MODEL_MID,
       max_tokens: 4096,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
       system: `You are a senior career advisor designing an intake assessment. Generate 3-5 questions that feel like a warm conversation, not a form.
 
 ${ONBOARDING_RULES}
@@ -205,6 +207,8 @@ const evaluateResponsesTool: OnboardingTool = {
     const response = await llm.chat({
       model: MODEL_MID,
       max_tokens: 4096,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
       system: `You are a senior career advisor analyzing a client's intake responses. Extract actionable signals for their career coaching profile.
 
 ${ONBOARDING_RULES}
@@ -332,6 +336,8 @@ const detectFinancialSegmentTool: OnboardingTool = {
     const response = await llm.chat({
       model: MODEL_LIGHT,
       max_tokens: 1024,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
       system: `You classify a job seeker's financial segment from indirect signals. You NEVER see actual financial data.
 
 Segments:

@@ -17,6 +17,7 @@ import { FF_SALARY_NEGOTIATION } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { SalaryNegotiationState, SalaryNegotiationSSEEvent } from '../agents/salary-negotiation/types.js';
 
@@ -119,9 +120,9 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
 
 // ─── GET /reports/latest — Fetch most recent salary negotiation report ────────
 
-salaryNegotiationRoutes.get('/reports/latest', async (c) => {
+salaryNegotiationRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!FF_SALARY_NEGOTIATION) {
-    return c.json({ data: null, feature_disabled: true }, 200);
+    return c.json({ error: 'Not found' }, 404);
   }
 
   const user = c.get('user');

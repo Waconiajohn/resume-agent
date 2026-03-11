@@ -116,7 +116,7 @@ ni.post('/csv/parse', rateLimitMiddleware(5, 60_000), async (c) => {
 
 // ─── Connections ──────────────────────────────────────────────────────────────
 
-ni.get('/connections', async (c) => {
+ni.get('/connections', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
   const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10) || 100, 500);
   const offset = parseInt(c.req.query('offset') ?? '0', 10) || 0;
@@ -125,13 +125,13 @@ ni.get('/connections', async (c) => {
   return c.json({ connections });
 });
 
-ni.get('/connections/count', async (c) => {
+ni.get('/connections/count', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
   const count = await getConnectionCount(userId);
   return c.json({ count });
 });
 
-ni.get('/connections/companies', async (c) => {
+ni.get('/connections/companies', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
   const companies = await getCompanySummary(userId);
   return c.json({ companies });
@@ -139,13 +139,13 @@ ni.get('/connections/companies', async (c) => {
 
 // ─── Target Titles ───────────────────────────────────────────────────────────
 
-ni.get('/target-titles', async (c) => {
+ni.get('/target-titles', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
   const titles = await getTargetTitlesByUser(userId);
   return c.json({ titles });
 });
 
-ni.post('/target-titles', async (c) => {
+ni.post('/target-titles', rateLimitMiddleware(30, 60_000), async (c) => {
   const bodyResult = await parseJsonBodyWithLimit(c, 10_000);
   if (!bodyResult.ok) return bodyResult.response;
 
@@ -164,7 +164,7 @@ ni.post('/target-titles', async (c) => {
   return c.json({ title }, 201);
 });
 
-ni.delete('/target-titles/:id', async (c) => {
+ni.delete('/target-titles/:id', rateLimitMiddleware(30, 60_000), async (c) => {
   const userId = c.get('user').id;
   const titleId = c.req.param('id');
 
@@ -178,7 +178,7 @@ ni.delete('/target-titles/:id', async (c) => {
 
 // ─── Job Matches ──────────────────────────────────────────────────────────────
 
-ni.get('/matches', async (c) => {
+ni.get('/matches', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
   const status = c.req.query('status') as typeof JOB_MATCH_STATUSES[number] | undefined;
   const limit = parseInt(c.req.query('limit') ?? '50', 10) || 50;
@@ -188,7 +188,7 @@ ni.get('/matches', async (c) => {
   return c.json({ matches });
 });
 
-ni.post('/matches', async (c) => {
+ni.post('/matches', rateLimitMiddleware(30, 60_000), async (c) => {
   const bodyResult = await parseJsonBodyWithLimit(c, 50_000);
   if (!bodyResult.ok) return bodyResult.response;
 
@@ -207,7 +207,7 @@ ni.post('/matches', async (c) => {
   return c.json({ match }, 201);
 });
 
-ni.patch('/matches/:id/status', async (c) => {
+ni.patch('/matches/:id/status', rateLimitMiddleware(30, 60_000), async (c) => {
   const bodyResult = await parseJsonBodyWithLimit(c, 1_000);
   if (!bodyResult.ok) return bodyResult.response;
 
@@ -254,7 +254,7 @@ ni.post('/boolean-search/generate', rateLimitMiddleware(10, 60_000), async (c) =
   }
 });
 
-ni.get('/boolean-search/:id', async (c) => {
+ni.get('/boolean-search/:id', rateLimitMiddleware(60, 60_000), async (c) => {
   const id = c.req.param('id');
   const result = getBooleanSearch(id);
 
@@ -295,7 +295,7 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   return c.json({ scrape_log_id: logId }, 202);
 });
 
-ni.get('/scrape/status/:id', async (c) => {
+ni.get('/scrape/status/:id', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
   const logId = c.req.param('id');
 

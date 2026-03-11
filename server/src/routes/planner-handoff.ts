@@ -26,6 +26,7 @@ import {
   updateReferralStatus,
   getUserReferrals,
 } from '../lib/planner-handoff.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import {
   qualifyWithEmotionalReadiness,
   runHandoffPipeline,
@@ -215,6 +216,23 @@ plannerHandoffRoutes.patch(
     }
 
     const { status } = parsed.data;
+
+    const user = c.get('user');
+
+    // Verify ownership: the referral must belong to the requesting user
+    const { data: existing, error: lookupError } = await supabaseAdmin
+      .from('planner_referrals')
+      .select('user_id')
+      .eq('id', referralId)
+      .maybeSingle();
+
+    if (lookupError || !existing) {
+      return c.json({ error: 'Referral not found' }, 404);
+    }
+
+    if (existing.user_id !== user.id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
 
     try {
       await updateReferralStatus(referralId, status);

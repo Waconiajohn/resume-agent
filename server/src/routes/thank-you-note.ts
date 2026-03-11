@@ -17,6 +17,7 @@ import { FF_THANK_YOU_NOTE } from '../lib/feature-flags.js';
 import { getUserContext, getWhyMeContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { ThankYouNoteState, ThankYouNoteSSEEvent } from '../agents/thank-you-note/types.js';
 
@@ -106,7 +107,7 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
 // ─── GET /reports/latest — Fetch most recent thank-you note report ────────────
 
-thankYouNoteRoutes.get('/reports/latest', async (c) => {
+thankYouNoteRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!FF_THANK_YOU_NOTE) {
     return c.json({ error: 'Not found' }, 404);
   }

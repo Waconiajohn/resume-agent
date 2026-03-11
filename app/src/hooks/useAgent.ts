@@ -33,13 +33,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
   // Keep accessTokenRef in sync
   useEffect(() => {
     state.accessTokenRef.current = accessToken;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- state.accessTokenRef is a stable ref; omitting it is intentional
   }, [accessToken]);
 
   // Keep isProcessingRef in sync
   useEffect(() => {
     state.isProcessingRef.current = state.isProcessing;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- state.isProcessingRef is a stable ref; omitting it is intentional
   }, [state.isProcessing]);
 
   // ── markPipelineProgress (stable callback) ────────────────────────────────
@@ -71,8 +71,9 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
             : prev.expected_next_action,
       }));
     },
-    // All accessed properties (refs, setters) are individually stable
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // All accessed properties (refs, setters) are individually stable — empty
+    // dep array is correct; adding [] explicitly suppresses the lint warning.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs and setState functions are stable; no reactive deps needed
     [],
   );
 
@@ -105,13 +106,13 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       flushDeltaBuffer,
       abortCurrentConnection,
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` object identity changes every render; the individual stable items listed are the correct triggers
   }, [markPipelineProgress, flushDeltaBuffer, abortCurrentConnection]);
 
   // ── Session reset effect ──────────────────────────────────────────────────
   useEffect(() => {
     state.resetState(sessionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only sessionId changes should trigger a reset; state.resetState is stable but listing `state` would cause spurious resets
   }, [sessionId]);
 
   // ── Mount the SSE connection effect ───────────────────────────────────────
@@ -147,7 +148,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
     };
   // connectSSE changes identity when sessionId/state changes which is the correct
   // behaviour — we want to remount the connection on those changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup refs (abortControllerRef etc.) are stable; listing them would not add value and ESLint cannot verify ref stability
   }, [sessionId, hasAccessToken, connectSSE]);
 
   // ── Stale detection ───────────────────────────────────────────────────────
@@ -323,7 +324,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       cancelled = true;
       clearInterval(interval);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` object identity changes every render; specific reactive values are listed explicitly to avoid infinite poll restart loops
   }, [sessionId, hasAccessToken, state.connected, state.sessionComplete]);
 
   // ── Derived actions ───────────────────────────────────────────────────────
@@ -344,7 +345,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
       state.setPhaseGate(null);
       state.setIsProcessing(true);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- all accessed values are stable setState functions; empty dep array is correct
     [],
   );
 
@@ -364,7 +365,7 @@ export function useAgent(sessionId: string | null, accessToken: string | null) {
         };
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- all accessed values are stable refs; empty dep array is correct
     [],
   );
 

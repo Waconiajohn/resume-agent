@@ -21,12 +21,6 @@ const admin = new Hono();
 admin.use('*', async (c, next) => {
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) {
-    if (process.env.NODE_ENV === 'development') {
-      logger.warn('ADMIN_API_KEY not set — admin routes unprotected in development');
-      await next();
-      return;
-    }
-    // In staging, CI, or any unknown environment, block access rather than passthrough
     return c.json({ error: 'Admin API key not configured' }, 503);
   }
 

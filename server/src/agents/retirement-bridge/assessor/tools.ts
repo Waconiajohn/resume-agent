@@ -81,6 +81,8 @@ const generateAssessmentQuestionsTool: RetirementTool = {
     const response = await llm.chat({
       model: MODEL_MID,
       max_tokens: 4096,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
       system: `You are designing a retirement readiness conversation for a career transitioner. Your questions help them think through their situation — you are NOT a financial advisor and you never give advice.
 
 ${RETIREMENT_BRIDGE_RULES}
@@ -240,6 +242,8 @@ const evaluateReadinessTool: RetirementTool = {
     const response = await llm.chat({
       model: MODEL_MID,
       max_tokens: 6144,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
       system: `You are analyzing a career transitioner's retirement readiness responses. You surface observations and questions — you do NOT give financial advice.
 
 ${RETIREMENT_BRIDGE_RULES}
@@ -402,6 +406,8 @@ const buildReadinessSummaryTool: RetirementTool = {
     const response = await llm.chat({
       model: MODEL_MID,
       max_tokens: 4096,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
       system: `You are synthesizing a retirement readiness assessment. You produce observations and a discussion guide — you do NOT give financial advice.
 
 ${RETIREMENT_BRIDGE_RULES}

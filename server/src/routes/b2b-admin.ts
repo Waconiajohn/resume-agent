@@ -222,11 +222,10 @@ b2bAdminRoutes.get(
     const orgId = c.req.param('orgId');
 
     try {
-      const org = await getOrganization(orgId);
-      if (!org) {
-        return c.json({ error: 'Organization not found' }, 404);
-      }
-      return c.json({ organization: org });
+      const authResult = await requireOrgAdmin(c, orgId);
+      if (!isOrgResult(authResult)) return authResult;
+
+      return c.json({ organization: authResult.org });
     } catch (err) {
       logger.warn(
         { error: err instanceof Error ? err.message : String(err), orgId },
@@ -448,6 +447,20 @@ b2bAdminRoutes.post(
     }
 
     try {
+      // Look up the seat's org_id and verify the caller is an admin of that org
+      const { data: seatRow, error: seatLookupError } = await supabaseAdmin
+        .from('b2b_seats')
+        .select('org_id')
+        .eq('id', seatId)
+        .maybeSingle() as { data: SeatRow | null; error: unknown };
+
+      if (seatLookupError || !seatRow) {
+        return c.json({ error: 'Seat not found' }, 404);
+      }
+
+      const authResult = await requireOrgAdmin(c, seatRow.org_id);
+      if (!isOrgResult(authResult)) return authResult;
+
       const result = await activateSeat(seatId, parsed.data.user_id);
       if (result === 'not_found') {
         return c.json({ error: 'Seat not found' }, 404);

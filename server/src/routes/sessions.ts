@@ -387,11 +387,30 @@ sessions.post('/', rateLimitMiddleware(12, 60_000), async (c) => {
   const user = c.get('user');
   const body = parsedBody.data as Record<string, unknown>;
 
-  const { master_resume_id, job_application_id, product_type } = body as {
+  const KNOWN_PRODUCT_TYPES = new Set([
+    'resume',
+    'executive_bio',
+    'case_study',
+    'thank_you_note',
+    'salary_negotiation',
+    'ninety_day_plan',
+    'personal_brand',
+    'content_calendar',
+    'linkedin_optimization',
+    'interview_prep',
+    'cover_letter',
+    'job_search',
+  ]);
+
+  const { master_resume_id, job_application_id, product_type: rawProductType } = body as {
     master_resume_id?: string;
     job_application_id?: string;
     product_type?: string;
   };
+
+  const product_type = typeof rawProductType === 'string' && KNOWN_PRODUCT_TYPES.has(rawProductType)
+    ? rawProductType
+    : 'resume';
 
   let resolvedMasterResumeId = master_resume_id ?? null;
   if (!resolvedMasterResumeId) {

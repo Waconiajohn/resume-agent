@@ -17,6 +17,7 @@ import { FF_PERSONAL_BRAND_AUDIT } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { PersonalBrandState, PersonalBrandSSEEvent, BrandSourceInput } from '../agents/personal-brand/types.js';
 
@@ -112,9 +113,9 @@ export const personalBrandRoutes = createProductRoutes<PersonalBrandState, Perso
 
 // ─── GET /reports/latest — Fetch most recent personal brand report ────────────
 
-personalBrandRoutes.get('/reports/latest', async (c) => {
+personalBrandRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!FF_PERSONAL_BRAND_AUDIT) {
-    return c.json({ data: null, feature_disabled: true }, 200);
+    return c.json({ error: 'Not found' }, 404);
   }
 
   const user = c.get('user');

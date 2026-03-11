@@ -33,13 +33,14 @@
 //   FF_RETIREMENT_BRIDGE=true     Retirement Bridge Assessment (Phase 6)
 //   FF_B2B_OUTPLACEMENT=true      B2B Outplacement Admin Portal (Phase 7)
 //
-// PIPELINE GATES — recommended true in production (already default true in dev):
+// PIPELINE GATES — set in production as needed:
 //
-//   FF_BLUEPRINT_APPROVAL=true
-//   FF_INTAKE_QUIZ=true
-//   FF_GAP_ANALYSIS_QUIZ=true
-//   FF_QUALITY_REVIEW_APPROVAL=true
-//   FF_POSITIONING_BATCH=true
+//   FF_BLUEPRINT_APPROVAL=true    (default: true)
+//   FF_GAP_ANALYSIS_QUIZ=true     (default: true)
+//   FF_QUALITY_REVIEW_APPROVAL=true (default: true)
+//   FF_POSITIONING_BATCH=true     (default: true)
+//   FF_INTAKE_QUIZ=true           (default: false — enable when intake quiz is production-ready)
+//   FF_RESEARCH_VALIDATION=true   (default: false — enable when research validation is production-ready)
 //
 // INFRASTRUCTURE FLAGS — leave false unless scaling requires it:
 //

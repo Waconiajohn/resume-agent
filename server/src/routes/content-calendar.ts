@@ -170,7 +170,7 @@ contentCalendarRoutes.get(
     const user = c.get('user');
     const reportId = c.req.param('id');
 
-    if (!reportId || !/^[0-9a-f-]{36}$/i.test(reportId)) {
+    if (!reportId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reportId)) {
       return c.json({ error: 'Invalid report ID' }, 400);
     }
 

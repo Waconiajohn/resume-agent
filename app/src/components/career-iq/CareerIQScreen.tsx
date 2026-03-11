@@ -21,6 +21,27 @@ const VALID_ROOMS = new Set<string>([
   'learning',
 ]);
 
+/**
+ * Rooms whose server-side feature flags are disabled by default.
+ * Rooms in this set render the Coming Soon placeholder instead of their
+ * full UI, preventing API calls to routes that return 404.
+ *
+ * Update this set when a feature flag is enabled in server/.env.
+ */
+const COMING_SOON_ROOMS = new Set<string>([
+  'linkedin',
+  'content-calendar',
+  'networking',
+  'interview',
+  'salary-negotiation',
+  'executive-bio',
+  'case-study',
+  'thank-you-note',
+  'personal-brand',
+  'ninety-day-plan',
+  'network-intelligence',
+]);
+
 function toValidRoom(value: string | undefined): CareerIQRoom {
   if (value && VALID_ROOMS.has(value)) return value as CareerIQRoom;
   return 'dashboard';
@@ -238,6 +259,11 @@ export function CareerIQScreen({
           />
         </div>
       );
+    }
+
+    // Feature-flag guard: rooms whose backend flags are disabled show Coming Soon
+    if (COMING_SOON_ROOMS.has(activeRoom)) {
+      return <RoomPlaceholder room={activeRoom} />;
     }
 
     // State 1: New user — show welcome

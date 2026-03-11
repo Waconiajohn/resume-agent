@@ -363,7 +363,7 @@ describe('GET /b2b/orgs/:orgId', () => {
     mockUser = { id: 'user-abc', email: 'admin@corp.com', accessToken: 'tok' };
   });
 
-  it('returns org by ID (public read)', async () => {
+  it('returns org by ID (admin only)', async () => {
     mockOrgLookup();
 
     const res = await app.request('/b2b/orgs/org-1', {
@@ -528,10 +528,14 @@ describe('POST /b2b/seats/:seatId/activate', () => {
   });
 
   it('activates a provisioned seat', async () => {
-    // activateSeat calls from() twice: lookup then update
-    // Seat lookup: exists with status provisioned
+    // 1. New org_id lookup from b2b_seats
+    mockFrom.mockReturnValueOnce(
+      buildChain({ data: { org_id: 'org-1' }, error: null }),
+    );
+    // 2. requireOrgAdmin → getOrganization
+    mockOrgLookup();
+    // 3. activateSeat calls from() twice: lookup then update
     const lookupChain = buildChain({ data: { id: 'seat-1', status: 'provisioned' }, error: null });
-    // Update chain
     const updateChain = buildChain({ data: null, error: null });
 
     mockFrom
@@ -567,7 +571,13 @@ describe('POST /b2b/seats/:seatId/activate', () => {
   });
 
   it('returns 409 for already-activated seat', async () => {
-    // Seat lookup returns seat with status 'active' (not provisioned)
+    // 1. New org_id lookup from b2b_seats
+    mockFrom.mockReturnValueOnce(
+      buildChain({ data: { org_id: 'org-1' }, error: null }),
+    );
+    // 2. requireOrgAdmin → getOrganization
+    mockOrgLookup();
+    // 3. activateSeat: Seat lookup returns seat with status 'active' (not provisioned)
     mockFrom.mockReturnValueOnce(
       buildChain({ data: { id: 'seat-1', status: 'active' }, error: null }),
     );

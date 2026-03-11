@@ -325,6 +325,7 @@ function getInterviewQuestionCount(ctx: ResumeAgentContext): number {
 const interviewCandidateBatchTool: ResumeAgentTool = {
   name: 'interview_candidate_batch',
   description: 'Ask the candidate 2-3 related questions at once. Group questions by category (e.g., all scale_and_scope questions in one batch). More efficient than single questions — the candidate answers all at once. Use this as your primary interview tool. Falls back gracefully if the budget is reached mid-batch.',
+  isInteractive: true,
   input_schema: {
     type: 'object',
     properties: {

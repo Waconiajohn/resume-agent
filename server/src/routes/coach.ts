@@ -271,6 +271,9 @@ app.get('/stream', async (c) => {
 
 // ─── POST /mode ───────────────────────────────────────────────────────────────
 
+// 20 mode switches per minute — switching modes is a low-frequency action
+app.use('/mode', rateLimitMiddleware(20, 60_000));
+
 app.post('/mode', async (c) => {
   const bodyResult = await parseJsonBodyWithLimit(c, 4_096);
   if (!bodyResult.ok) return bodyResult.response;

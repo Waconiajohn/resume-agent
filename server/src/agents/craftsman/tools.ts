@@ -338,6 +338,7 @@ const writeSectionTool: ResumeAgentTool = {
 
     // Store in scratchpad
     ctx.scratchpad[`section_${section}`] = result;
+    ctx.scratchpad[`blueprint_slice_${section}`] = blueprint_slice;
 
     // Emit section_draft SSE event
     ctx.emit({

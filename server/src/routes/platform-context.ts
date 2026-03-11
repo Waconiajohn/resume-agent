@@ -35,10 +35,12 @@ const SUMMARY_TYPES: ContextType[] = [
 
 // ─── GET /summary ─────────────────────────────────────────────────────────────
 
-// 60 requests per minute — called on room navigation, should be cheap
+// Auth runs first, then rate limit — auth rejects unauthenticated requests
+// before they consume rate limit capacity.
+app.use('/summary', authMiddleware);
 app.use('/summary', rateLimitMiddleware(60, 60_000));
 
-app.get('/summary', authMiddleware, async (c) => {
+app.get('/summary', async (c) => {
   const user = c.get('user') as { id: string };
 
   try {

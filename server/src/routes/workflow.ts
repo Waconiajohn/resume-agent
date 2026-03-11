@@ -496,11 +496,15 @@ workflow.post('/:sessionId/restart', rateLimitMiddleware(20, 60_000), async (c) 
   });
 
   let proxyResponse: Response;
+  const proxyController = new AbortController();
+  const proxyTimeout = setTimeout(() => proxyController.abort(), 30_000);
   try {
-    proxyResponse = await pipelineRouter.fetch(proxyRequest);
+    proxyResponse = await pipelineRouter.fetch(new Request(proxyRequest, { signal: proxyController.signal }));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to restart pipeline';
     return c.json({ error: message }, 500);
+  } finally {
+    clearTimeout(proxyTimeout);
   }
 
   const proxyData = await proxyResponse.json().catch(() => ({} as { error?: string; status?: string }));

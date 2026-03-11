@@ -17,6 +17,7 @@ import { FF_CASE_STUDY } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { CaseStudyState, CaseStudySSEEvent } from '../agents/case-study/types.js';
 
@@ -97,7 +98,7 @@ export const caseStudyRoutes = createProductRoutes<CaseStudyState, CaseStudySSEE
 
 // ─── GET /reports/latest — Fetch most recent case study report ────────────────
 
-caseStudyRoutes.get('/reports/latest', async (c) => {
+caseStudyRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!FF_CASE_STUDY) {
     return c.json({ error: 'Not found' }, 404);
   }

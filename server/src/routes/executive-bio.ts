@@ -17,6 +17,7 @@ import { FF_EXECUTIVE_BIO } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { ExecutiveBioState, ExecutiveBioSSEEvent } from '../agents/executive-bio/types.js';
 
@@ -105,9 +106,9 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
 
 // ─── GET /reports/latest — Fetch most recent executive bio report ─────────────
 
-executiveBioRoutes.get('/reports/latest', async (c) => {
+executiveBioRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!FF_EXECUTIVE_BIO) {
-    return c.json({ data: null, feature_disabled: true }, 200);
+    return c.json({ error: 'Not found' }, 404);
   }
 
   const user = c.get('user');

@@ -17,6 +17,7 @@ import { FF_NINETY_DAY_PLAN } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { NinetyDayPlanState, NinetyDayPlanSSEEvent } from '../agents/ninety-day-plan/types.js';
 
@@ -104,9 +105,9 @@ export const ninetyDayPlanRoutes = createProductRoutes<NinetyDayPlanState, Ninet
 
 // ─── GET /reports/latest — Fetch most recent 90-day plan report ───────────────
 
-ninetyDayPlanRoutes.get('/reports/latest', async (c) => {
+ninetyDayPlanRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
   if (!FF_NINETY_DAY_PLAN) {
-    return c.json({ data: null, feature_disabled: true }, 200);
+    return c.json({ error: 'Not found' }, 404);
   }
 
   const user = c.get('user');

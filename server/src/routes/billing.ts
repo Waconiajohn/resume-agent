@@ -15,12 +15,39 @@ import {
 const billing = new Hono();
 
 // ---------------------------------------------------------------------------
+// Allowed billing origins — validates browser-originated requests.
+// Webhooks from Stripe bypass this check entirely (no origin header).
+// ---------------------------------------------------------------------------
+const ALLOWED_BILLING_ORIGINS: Set<string> = (() => {
+  const envOrigins = process.env.ALLOWED_BILLING_ORIGINS;
+  if (envOrigins) {
+    return new Set(envOrigins.split(',').map((o) => o.trim()).filter(Boolean));
+  }
+  return new Set([
+    'https://app.careeriq.ai',
+    'https://careeriq.ai',
+    'https://www.careeriq.ai',
+    'http://localhost:5173',
+    'http://localhost:4173',
+  ]);
+})();
+
+function isAllowedBillingOrigin(origin: string | undefined): boolean {
+  if (!origin) return true; // server-to-server calls (no browser origin)
+  return ALLOWED_BILLING_ORIGINS.has(origin);
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/billing/checkout — Create a Stripe Checkout session
 // Auth required. Body: { plan_id: string }
 // ---------------------------------------------------------------------------
 billing.post('/checkout', authMiddleware, async (c) => {
   if (!stripe) {
     return c.json({ error: 'Billing is not configured' }, 503);
+  }
+
+  if (!isAllowedBillingOrigin(c.req.header('origin'))) {
+    return c.json({ error: 'Forbidden' }, 403);
   }
 
   const user = c.get('user');
@@ -273,6 +300,10 @@ billing.get('/subscription', authMiddleware, async (c) => {
 billing.post('/portal', authMiddleware, async (c) => {
   if (!stripe) {
     return c.json({ error: 'Billing is not configured' }, 503);
+  }
+
+  if (!isAllowedBillingOrigin(c.req.header('origin'))) {
+    return c.json({ error: 'Forbidden' }, 403);
   }
 
   const user = c.get('user');
