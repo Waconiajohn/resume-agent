@@ -51,7 +51,13 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
                   state.revision_feedback = undefined;
                 } else if (typeof resp.feedback === 'string') {
                   state.revision_feedback = resp.feedback;
+                } else {
+                  // H6: Unknown object shape — clear feedback to prevent phantom reruns
+                  state.revision_feedback = undefined;
                 }
+              } else {
+                // H6: Falsy or unknown response — clear feedback to prevent phantom reruns
+                state.revision_feedback = undefined;
               }
             },
             requiresRerun: (state) => !!state.revision_feedback,

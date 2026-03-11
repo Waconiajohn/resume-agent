@@ -32,7 +32,8 @@ const TABS: TabDef[] = [
 ];
 
 // Tabs that are always accessible regardless of connection status
-const ALWAYS_UNLOCKED: NiTab[] = ['upload', 'boolean-search'];
+// scan-jobs scans career pages by company name — no CSV required
+const ALWAYS_UNLOCKED: NiTab[] = ['upload', 'boolean-search', 'scan-jobs'];
 
 export function NetworkIntelligenceRoom() {
   const [accessToken, setAccessToken] = useState<string | null>(null);

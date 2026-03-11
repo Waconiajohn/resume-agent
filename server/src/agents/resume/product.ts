@@ -31,6 +31,7 @@ import type {
   IntakeOutput,
   MasterResumeEvidenceItem,
   MasterResumeData,
+  QualityScores,
 } from '../types.js';
 
 // Re-export PipelineEmitter and WaitForUser for route compatibility
@@ -1154,20 +1155,33 @@ export function createResumeProductConfig(input: Record<string, unknown>): Produ
           complete: 'Step 7 of 7 complete: final resume ready for export',
         },
         onComplete: (scratchpad, state, emit) => {
-          // Re-emit quality_scores with detailed findings from Producer scratchpad
-          if (state.quality_review?.scores) {
+          // H7: Fallback quality_scores emission if finalize_quality_scores was skipped.
+          // finalize_quality_scores is the primary emitter; it sets scratchpad.quality_scores_emitted.
+          // If the LLM skipped it, emit here from whatever scratchpad data is available so
+          // the frontend always receives a quality_scores event.
+          if (!scratchpad.quality_scores_emitted) {
+            const adversarialResult = scratchpad.adversarial_review as Record<string, unknown> | undefined;
+            const rawScores = adversarialResult?.scores as Partial<QualityScores> | undefined;
+            const fallbackScores: QualityScores = {
+              hiring_manager_impact: rawScores?.hiring_manager_impact ?? 0,
+              requirement_coverage:  rawScores?.requirement_coverage  ?? 0,
+              ats_score:             rawScores?.ats_score             ?? 0,
+              authenticity:          rawScores?.authenticity          ?? 0,
+              evidence_integrity:    rawScores?.evidence_integrity    ?? 0,
+              blueprint_compliance:  rawScores?.blueprint_compliance  ?? 0,
+            };
             emit({
               type: 'quality_scores',
-              scores: state.quality_review.scores,
+              scores: fallbackScores,
               details: {
                 narrative_coherence: typeof scratchpad.narrative_coherence_score === 'number'
                   ? scratchpad.narrative_coherence_score : undefined,
                 humanize_issues: Array.isArray(scratchpad.humanize_issues)
-                  ? scratchpad.humanize_issues : undefined,
+                  ? scratchpad.humanize_issues as string[] : undefined,
                 coherence_issues: Array.isArray(scratchpad.narrative_coherence_issues)
-                  ? scratchpad.narrative_coherence_issues : undefined,
+                  ? scratchpad.narrative_coherence_issues as string[] : undefined,
                 ats_findings: Array.isArray(scratchpad.ats_findings)
-                  ? scratchpad.ats_findings : undefined,
+                  ? scratchpad.ats_findings as Array<{ issue: string; priority: string }> : undefined,
               },
             });
           }

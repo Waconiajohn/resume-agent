@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
 
 interface UsePriorResultOptions {
   /** Product API slug (e.g., 'executive-bio', 'case-study') */
@@ -39,9 +40,11 @@ export function usePriorResult<T = Record<string, unknown>>({
     if (cached) return;
 
     setLoading(true);
-    const token = sessionStorage.getItem('access_token') ?? '';
-    fetch(`/api/${productSlug}/reports/latest`, {
-      headers: { Authorization: `Bearer ${token}` },
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const token = session?.access_token ?? '';
+      return fetch(`/api/${productSlug}/reports/latest`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     })
       .then((r) => {
         if (r.status === 404) return null; // No prior result — not an error

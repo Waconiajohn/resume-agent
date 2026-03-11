@@ -45,12 +45,6 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
 
   const lastNavRef = useRef<string | null>(null);
 
-  // Reset the nav dedup key at the start of each new turn so the coach can
-  // recommend the same room again in a later conversation turn.
-  useEffect(() => {
-    if (loading) lastNavRef.current = null;
-  }, [loading]);
-
   // Handle navigation events from coach
   useEffect(() => {
     const navEvent = events.find(

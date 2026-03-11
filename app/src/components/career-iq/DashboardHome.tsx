@@ -6,7 +6,7 @@ import { MomentumCard } from './MomentumCard';
 import { CoachingNudgeBar } from './CoachingNudgeBar';
 import { GlassCard } from '@/components/GlassCard';
 import { ArrowRight, FileText, Search, X, AlertCircle } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { CareerIQRoom } from './Sidebar';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
@@ -66,36 +66,36 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | undefined>(undefined);
   const [pipelineStatsError, setPipelineStatsError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadPipelineStats() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        const { data } = await supabase
-          .from('job_applications')
-          .select('pipeline_stage, updated_at')
-          .eq('user_id', user.id)
-          .neq('status', 'archived');
-        if (cancelled || !data) return;
-        const total = data.length;
-        const interviewing = data.filter((r) => r.pipeline_stage === 'interviewing').length;
-        const offer = data.filter((r) => r.pipeline_stage === 'offer' || r.pipeline_stage === 'accepted').length;
-        const lastActivity = data.reduce((max, r) => {
-          const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
-          return t > max ? t : max;
-        }, 0);
-        const daysSinceLastActivity = lastActivity
-          ? Math.floor((Date.now() - lastActivity) / (1000 * 60 * 60 * 24))
-          : 99;
-        setPipelineStats({ total, interviewing, offer, daysSinceLastActivity });
-      } catch {
-        if (!cancelled) setPipelineStatsError('Could not load pipeline stats. Please try again.');
-      }
+  const loadPipelineStats = useCallback(async () => {
+    setPipelineStatsError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('job_applications')
+        .select('pipeline_stage, updated_at')
+        .eq('user_id', user.id)
+        .neq('status', 'archived');
+      if (!data) return;
+      const total = data.length;
+      const interviewing = data.filter((r) => r.pipeline_stage === 'interviewing').length;
+      const offer = data.filter((r) => r.pipeline_stage === 'offer' || r.pipeline_stage === 'accepted').length;
+      const lastActivity = data.reduce((max, r) => {
+        const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        return t > max ? t : max;
+      }, 0);
+      const daysSinceLastActivity = lastActivity
+        ? Math.floor((Date.now() - lastActivity) / (1000 * 60 * 60 * 24))
+        : 99;
+      setPipelineStats({ total, interviewing, offer, daysSinceLastActivity });
+    } catch {
+      setPipelineStatsError('Could not load pipeline stats. Please try again.');
     }
-    loadPipelineStats();
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    void loadPipelineStats();
+  }, [loadPipelineStats]);
 
   const handleDismiss = (key: string) => {
     const updated = { ...dismissed, [key]: true };
@@ -244,7 +244,7 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
               {pipelineStatsError}
               <button
                 type="button"
-                onClick={() => { setPipelineStatsError(null); }}
+                onClick={() => { void loadPipelineStats(); }}
                 className="text-[#98b3ff] hover:underline"
               >
                 Retry

@@ -541,6 +541,7 @@ export function ThankYouNoteRoom() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
             <button
+              type="button"
               onClick={clearPrior}
               className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
             >

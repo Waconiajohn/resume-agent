@@ -54,7 +54,6 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
 
   useEffect(() => {
     mountedRef.current = true;
-    fetchedRef.current = false; // Allow re-fetch on remount (StrictMode)
     return () => { mountedRef.current = false; };
   }, []);
 

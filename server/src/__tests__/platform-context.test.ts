@@ -47,7 +47,7 @@ function makeChain(resolvedValue: unknown) {
   const chain: Record<string, unknown> = {};
   const chainMethods = [
     'select', 'insert', 'update', 'upsert', 'delete',
-    'eq', 'in', 'order', 'maybeSingle', 'single',
+    'eq', 'in', 'order', 'limit', 'maybeSingle', 'single',
   ];
   for (const m of chainMethods) {
     chain[m] = vi.fn(() => chain);

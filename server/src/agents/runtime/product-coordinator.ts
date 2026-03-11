@@ -251,6 +251,10 @@ export async function runProductPipeline<
             // Gate loop: wait → onResponse → optionally re-run agent → re-fire gate
             // eslint-disable-next-line no-constant-condition
             while (true) {
+              // C1: Abort check at top of every revision loop iteration to prevent
+              // hanging after SSE disconnect during a revision loop.
+              if (pipelineAbort.signal.aborted) break;
+
               log.info({ gate: gate.name, agent: phase.name, rerunCount }, 'Product coordinator: waiting at gate');
               const response = await waitForUser<unknown>(gate.name);
               if (gate.onResponse) {

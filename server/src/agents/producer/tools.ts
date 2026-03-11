@@ -967,6 +967,9 @@ const finalizeQualityScores: ResumeAgentTool = {
       },
     });
 
+    // H7: Mark emission so the resume product's onComplete fallback knows to skip
+    ctx.scratchpad.quality_scores_emitted = true;
+
     return {
       emitted: true,
       humanize_score: humanizeScore,

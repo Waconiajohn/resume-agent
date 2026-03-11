@@ -895,7 +895,7 @@ export function NetworkingHubRoom() {
     }).catch(() => {
       setContactsError('Could not load follow-ups. Please try again.');
     });
-  }, []);
+  }, [networkingContacts.fetchContacts, networkingContacts.fetchFollowUps]);
 
   const recruiterContacts = useMemo(
     () => (networkingContacts.contacts ?? []).filter((c) => c.relationship_type === 'recruiter'),

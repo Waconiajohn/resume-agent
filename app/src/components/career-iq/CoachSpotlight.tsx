@@ -12,6 +12,17 @@ import { ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import type { CareerIQRoom } from './Sidebar';
 
+const VALID_ROOMS: readonly CareerIQRoom[] = [
+  'dashboard', 'resume', 'linkedin', 'content-calendar', 'jobs', 'networking',
+  'interview', 'salary-negotiation', 'executive-bio', 'case-study', 'thank-you-note',
+  'personal-brand', 'ninety-day-plan', 'network-intelligence', 'financial', 'learning',
+];
+
+function toValidRoom(value: string | null): CareerIQRoom | null {
+  if (!value) return null;
+  return (VALID_ROOMS as readonly string[]).includes(value) ? (value as CareerIQRoom) : null;
+}
+
 interface CoachSpotlightProps {
   userName: string;
   recommendation: CoachRecommendation | null;
@@ -47,8 +58,9 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
   if (!recommendation) return null;
 
   const handleCTA = () => {
-    if (recommendation.room) {
-      onNavigateRoom?.(recommendation.room as CareerIQRoom);
+    const validRoom = toValidRoom(recommendation.room);
+    if (validRoom) {
+      onNavigateRoom?.(validRoom);
     } else {
       onOpenCoach?.();
     }

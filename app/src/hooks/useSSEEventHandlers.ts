@@ -627,6 +627,10 @@ export function handleBlueprintReady(
   state: PipelineStateManager,
   markPipelineProgress: MarkPipelineProgressFn,
 ): void {
+  if (!data.blueprint || typeof data.blueprint !== 'object') {
+    state.setIsProcessing(false);
+    return;
+  }
   markPipelineProgress('Blueprint is ready for review.', 'gate', {
     stage: 'architect_review',
     expectedNextAction: 'Review and approve the blueprint in the workspace',
@@ -634,7 +638,6 @@ export function handleBlueprintReady(
   state.setIsProcessing(false);
   state.setIsPipelineGateActive(true);
   state.setBlueprintReady(data.blueprint);
-  if (!data.blueprint || typeof data.blueprint !== 'object') return;
   const bp = data.blueprint as Record<string, unknown>;
   const sectionPlan = bp.section_plan as { order?: string[] } | undefined;
   if (sectionPlan?.order && Array.isArray(sectionPlan.order)) {

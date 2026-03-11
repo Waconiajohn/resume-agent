@@ -105,6 +105,18 @@ app.post('/message', async (c) => {
   const { conversation_id, message } = parsed.data;
   const events: CoachSSEEvent[] = [];
 
+  // Verify conversation ownership before running the LLM loop
+  const { data: existing } = await supabaseAdmin
+    .from('coach_conversations')
+    .select('id')
+    .eq('id', conversation_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!existing) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120_000);
 

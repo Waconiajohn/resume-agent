@@ -338,15 +338,17 @@ export function useNetworkingOutreach() {
           console.error('[useNetworkingOutreach] Gate respond failed:', res.status);
           return false;
         }
-        // Transition back to running after responding
+        // Transition back to running and reconnect the SSE stream to receive
+        // events from the resumed pipeline.
         setState((prev) => ({ ...prev, status: 'running' }));
+        if (sessionId) connectSSE(sessionId);
         return true;
       } catch (err) {
         console.error('[useNetworkingOutreach] Gate respond error:', err);
         return false;
       }
     },
-    [],
+    [connectSSE],
   );
 
   const reset = useCallback(() => {

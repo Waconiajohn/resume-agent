@@ -251,7 +251,8 @@ export async function listUserContextByType(
       .from('user_platform_context')
       .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(500);
 
     if (types && types.length > 0) {
       query = query.in('context_type', types);

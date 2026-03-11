@@ -44,7 +44,8 @@ export async function runConversationTurn(params: ConversationTurnParams): Promi
 
   // 1. Load or create conversation
   const conversation = await loadOrCreateConversation(userId, conversationId);
-  const priorMessages: ChatMessage[] = conversation.messages ?? [];
+  const MAX_COACH_HISTORY = 40; // 20 turns = 40 messages (user+assistant pairs)
+  const priorMessages: ChatMessage[] = (conversation.messages ?? []).slice(-MAX_COACH_HISTORY);
 
   // 2. Load client snapshot
   const snapshot = await loadClientSnapshot(userId);

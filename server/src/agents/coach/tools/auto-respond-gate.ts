@@ -80,6 +80,15 @@ const autoRespondGateTool: CoachTool = {
 
   async execute(input, ctx) {
     const state = ctx.getState();
+
+    // ─── Mode guard: guided mode cannot auto-respond ──────────
+    if (state.mode === 'guided') {
+      return JSON.stringify({
+        error: 'guided_mode_restriction',
+        message: 'In guided mode, gates must be responded to by the user directly.',
+      });
+    }
+
     const sessionId = String(input.session_id ?? '').trim();
     const gate = String(input.gate ?? '').trim();
     const action = String(input.action ?? 'approve').trim();

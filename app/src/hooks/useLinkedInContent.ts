@@ -189,11 +189,13 @@ export function useLinkedInContent() {
           setState((prev) => {
             if (prev.status === 'complete' || prev.status === 'error') return prev;
             // Only transition if postDraft is already set — otherwise content_complete
-            // hasn't fired yet and we'd show a blank post. Store a flag instead.
-            if (!prev.postDraft) return { ...prev, postSaved: true };
+            // hasn't fired yet and we'd show a blank post. Don't abort: let the
+            // stream continue so content_complete can arrive.
+            if (!prev.postDraft) return prev;
+            // postDraft is present — we're truly done. Abort after state flush.
+            setTimeout(() => abortRef.current?.abort(), 0);
             return { ...prev, status: 'complete', postSaved: true };
           });
-          abortRef.current?.abort();
           break;
 
         case 'heartbeat':

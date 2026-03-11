@@ -172,9 +172,9 @@ describe('useLinkedInContent — content_complete SSE event', () => {
     await waitFor(() => expect(result.current.status).toBe('complete'));
   });
 
-  it('pipeline_complete sets postSaved=true when postDraft is null', async () => {
-    // When pipeline_complete fires and postDraft is null, the hook sets postSaved: true
-    // as a flag to indicate completion, even though content_complete has not fired.
+  it('pipeline_complete without postDraft leaves state unchanged (waits for content_complete)', async () => {
+    // When pipeline_complete fires and postDraft is null, the hook leaves state unchanged
+    // so the SSE stream stays open to receive the content_complete event.
     stubFetchForStream([
       { event: 'pipeline_complete', data: {} },
     ]);
@@ -186,7 +186,7 @@ describe('useLinkedInContent — content_complete SSE event', () => {
     });
 
     await waitFor(() => expect(result.current.status).not.toBe('idle'));
-    expect(result.current.postSaved).toBe(true);
+    expect(result.current.postSaved).toBe(false);
   });
 });
 

@@ -70,6 +70,7 @@ export function useRetirementBridge() {
   const tokenRef = useRef<string | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const phaseRef = useRef<AssessmentPhase>('idle');
 
   useEffect(() => {
     mountedRef.current = true;
@@ -124,14 +125,17 @@ export function useRetirementBridge() {
             if (msg.event === 'questions_ready') {
               const qs = data.questions as RetirementQuestion[] | undefined;
               setQuestions(qs ?? []);
+              phaseRef.current = 'awaiting_responses';
               setPhase('awaiting_responses');
             } else if (msg.event === 'assessment_complete') {
               const s = data.summary as RetirementReadinessSummary | undefined;
               if (s) setSummary(s);
+              phaseRef.current = 'complete';
               setPhase('complete');
               controller.abort();
             } else if (msg.event === 'pipeline_error') {
               setError(typeof data.error === 'string' ? data.error : 'Assessment failed');
+              phaseRef.current = 'error';
               setPhase('error');
               controller.abort();
             } else if (msg.event === 'pipeline_complete') {
@@ -145,7 +149,11 @@ export function useRetirementBridge() {
         }
 
         // Stream ended without a terminal event — attempt reconnect
-        if (!controller.signal.aborted && mountedRef.current) {
+        // Don't reconnect if waiting for user input or already finished
+        if (!controller.signal.aborted && mountedRef.current
+            && phaseRef.current !== 'awaiting_responses'
+            && phaseRef.current !== 'complete'
+            && phaseRef.current !== 'error') {
           if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
             const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
             reconnectAttemptsRef.current += 1;
@@ -192,6 +200,7 @@ export function useRetirementBridge() {
     const sessionId = crypto.randomUUID();
     sessionIdRef.current = sessionId;
 
+    phaseRef.current = 'generating_questions';
     setPhase('generating_questions');
     setError(null);
     setQuestions([]);
@@ -275,6 +284,7 @@ export function useRetirementBridge() {
     sessionIdRef.current = null;
     tokenRef.current = null;
     reconnectAttemptsRef.current = 0;
+    phaseRef.current = 'idle';
     setPhase('idle');
     setQuestions([]);
     setSummary(null);
