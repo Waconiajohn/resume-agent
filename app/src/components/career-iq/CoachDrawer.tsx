@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquare, X, Send } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useCoach } from '@/hooks/useCoach';
 import type { CoachMode } from '@/types/coach';
 
@@ -21,9 +22,11 @@ interface CoachDrawerProps {
   isOpen?: boolean;
   onOpen?: () => void;
   onClose?: () => void;
+  /** When true, raises the FAB to clear mobile bottom navigation */
+  isMobile?: boolean;
 }
 
-export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOpen, onClose }: CoachDrawerProps) {
+export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOpen, onClose, isMobile = false }: CoachDrawerProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setIsOpen = useCallback((open: boolean) => {
@@ -90,7 +93,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 flex items-center justify-center transition-all hover:scale-105"
+        className={cn('fixed right-6 z-50 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 flex items-center justify-center transition-all hover:scale-105', isMobile ? 'bottom-20' : 'bottom-6')}
         aria-label="Open AI Coach"
       >
         <MessageSquare size={22} />

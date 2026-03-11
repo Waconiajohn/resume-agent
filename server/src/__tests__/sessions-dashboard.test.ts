@@ -81,17 +81,17 @@ function makeChain(resolvedValue: { data: unknown; error: unknown }) {
       builder[m] = vi.fn().mockReturnValue(builder);
     }
   }
-  // limit() must return the builder (so further .eq() chaining works) AND be
-  // awaitable itself (so `const { data } = await query` resolves correctly).
-  const limitFn = vi.fn().mockImplementation(() => {
-    // Return a thenable that also has all chain methods
+  // limit() and range() must return the builder (so further .eq() chaining works)
+  // AND be awaitable (so `const { data, count } = await query` resolves correctly).
+  const makeThenableBuilder = () => {
     const thenableBuilder = Object.assign(
       Promise.resolve(resolvedValue),
       builder,
     );
     return thenableBuilder;
-  });
-  builder['limit'] = limitFn;
+  };
+  builder['limit'] = vi.fn().mockImplementation(makeThenableBuilder);
+  builder['range'] = vi.fn().mockImplementation(makeThenableBuilder);
   return builder;
 }
 
@@ -255,11 +255,11 @@ describe('GET /api/sessions — enriched session list', () => {
     const app = makeApp();
     const res = await callApp(app, '/api/sessions?limit=999');
     expect(res.status).toBe(200);
-    // The limit() call should have been made with at most 100
-    // (internal clamp in the route)
-    const limitFn = (builder as { limit: ReturnType<typeof vi.fn> }).limit;
-    const limitArg: number = limitFn.mock.calls[0]?.[0] as number;
-    expect(limitArg).toBeLessThanOrEqual(100);
+    // The range() call should have been made with at most 99 as the end index
+    // (offset 0, capped limit 100 → range(0, 99))
+    const rangeFn = (builder as { range: ReturnType<typeof vi.fn> }).range;
+    const rangeEnd: number = rangeFn.mock.calls[0]?.[1] as number;
+    expect(rangeEnd).toBeLessThanOrEqual(99);
   });
 
   it('returns 500 when Supabase reports an error', async () => {

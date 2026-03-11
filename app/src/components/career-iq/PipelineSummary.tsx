@@ -8,11 +8,16 @@ import type { CareerIQRoom } from './Sidebar';
 const STAGES = ['Discovered', 'Applied', 'Interviewing', 'Offer', 'Accepted'] as const;
 
 const STAGE_DB_MAP: Record<string, string> = {
+  saved: 'Discovered',
   discovered: 'Discovered',
   applied: 'Applied',
+  phone_screen: 'Interviewing',
   interviewing: 'Interviewing',
+  final_round: 'Interviewing',
   offer: 'Offer',
   accepted: 'Accepted',
+  rejected: 'Discovered',
+  withdrawn: 'Discovered',
 };
 
 const STAGE_COLORS: Record<string, string> = {
@@ -47,9 +52,9 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
         if (!user || cancelled) return;
 
         const { data } = await supabase
-          .from('job_applications')
-          .select('pipeline_stage')
-          .neq('status', 'archived');
+          .from('application_pipeline')
+          .select('stage')
+          .eq('user_id', user.id);
 
         if (!data || cancelled) return;
 
@@ -57,7 +62,7 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
           const counts: Record<string, number> = {};
           for (const stage of STAGES) counts[stage] = 0;
           for (const row of data) {
-            const mapped = STAGE_DB_MAP[row.pipeline_stage] ?? 'Discovered';
+            const mapped = STAGE_DB_MAP[row.stage] ?? 'Discovered';
             counts[mapped] = (counts[mapped] ?? 0) + 1;
           }
           setStageCounts(counts);

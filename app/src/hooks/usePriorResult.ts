@@ -46,10 +46,12 @@ export function usePriorResult<T = Record<string, unknown>>({
         headers: { Authorization: `Bearer ${token}` },
       });
     })
-      .then((r) => {
+      .then(async (r) => {
         if (r.status === 404) return null; // No prior result — not an error
         if (!r.ok) return null;
-        return r.json() as Promise<{ report: T } | null>;
+        const json = await r.json() as { report?: T; feature_disabled?: boolean } | null;
+        if (json && 'feature_disabled' in json) return null;
+        return json as { report: T } | null;
       })
       .then((data) => {
         if (!mounted.current) return;

@@ -751,20 +751,21 @@ sessions.get('/', async (c) => {
   const user = c.get('user');
 
   const limit = Math.min(Math.max(parseInt(c.req.query('limit') ?? '50', 10) || 50, 1), 100);
+  const offset = Math.max(parseInt(c.req.query('offset') ?? '0', 10) || 0, 0);
   const statusFilter = c.req.query('status') ?? '';
 
   let query = supabaseAdmin
     .from('coach_sessions')
-    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, product_type, created_at, updated_at')
+    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, product_type, job_application_id, created_at, updated_at, job_applications(company, title)', { count: 'exact' })
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (statusFilter) {
     query = query.eq('pipeline_status', statusFilter);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) {
     logger.error({ error: error.message }, 'Failed to load sessions');
@@ -784,15 +785,17 @@ sessions.get('/', async (c) => {
       output_tokens_used: row.output_tokens_used ?? 0,
       estimated_cost_usd: row.estimated_cost_usd ?? 0,
       last_panel_type: row.last_panel_type ?? null,
-      company_name: (resume?.company_name as string) ?? (panelData?.company_name as string) ?? null,
-      job_title: (resume?.job_title as string) ?? (panelData?.job_title as string) ?? null,
+      company_name: (resume?.company_name as string) ?? (panelData?.company_name as string) ?? (row.job_applications as Record<string, unknown> | null)?.company as string ?? null,
+      job_title: (resume?.job_title as string) ?? (panelData?.job_title as string) ?? (row.job_applications as Record<string, unknown> | null)?.title as string ?? null,
       product_type: (row.product_type as string) ?? 'resume',
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
   });
 
-  return c.json({ sessions: enriched });
+  const totalCount = count ?? enriched.length;
+  const has_more = offset + enriched.length < totalCount;
+  return c.json({ sessions: enriched, has_more });
 });
 
 export function getSessionRouteStats() {

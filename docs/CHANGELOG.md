@@ -1,5 +1,36 @@
 # Changelog — Resume Agent
 
+## 2026-03-10 — Session 75
+**Sprint:** R4 | **Story:** All 9 stories (R4-H1 through R4-L2)
+**Summary:** Fix 9 UI/UX issues found during Playwright testing — identity, data alignment, error UX, mobile, pagination, grammar, feature flags, session enrichment, favicon.
+
+### Changes Made
+- `app/src/hooks/useAuth.ts` — R4-H1: derive `displayName` from `user_metadata.full_name`, add to return
+- `app/src/App.tsx` — R4-H1: pass `displayName` (not `user.email`) as `userName` to CareerIQScreen
+- `app/src/components/career-iq/PipelineSummary.tsx` — R4-H2: switch from `job_applications.pipeline_stage` to `application_pipeline.stage`, expanded stage mapping
+- `app/src/components/career-iq/DashboardHome.tsx` — R4-H2: switch `loadPipelineStats` to `application_pipeline` table; R4-H3: filter error sessions from activity feed
+- `app/src/components/dashboard/DashboardSessionCard.tsx` — R4-H3: "Error" → "Incomplete" status label
+- `app/src/components/dashboard/SessionHistoryTab.tsx` — R4-H3: "Error" → "Incomplete" filter label; R4-M2: pagination with "Load more" button, offset state, accumulated sessions
+- `app/src/components/career-iq/CoachDrawer.tsx` — R4-M1: `isMobile` prop, conditional `bottom-20`/`bottom-6` FAB positioning
+- `app/src/components/career-iq/CareerIQScreen.tsx` — R4-M1: pass `isMobile` to all CoachDrawer instances
+- `app/src/components/career-iq/ResumeWorkshopRoom.tsx` — R4-M3: singular/plural in `formatRelativeTime` ("1 week ago")
+- `server/src/routes/coach.ts` — R4-M4: feature flag gate returns 200 with `feature_disabled: true` instead of 404
+- `server/src/routes/momentum.ts` — R4-M4: same feature flag change
+- `server/src/routes/personal-brand.ts` — R4-M4: same for `/reports/latest` endpoint
+- `app/src/hooks/usePriorResult.ts` — R4-M4: handle `feature_disabled` in API response
+- `app/src/hooks/useMomentum.ts` — R4-M4: handle `feature_disabled` in summary/nudges responses
+- `app/src/hooks/useCoachRecommendation.ts` — R4-M4: handle `feature_disabled` in recommendation response
+- `server/src/routes/sessions.ts` — R4-M2: `offset` query param with `.range()` and `has_more` response; R4-L1: LEFT JOIN `job_applications` for title enrichment fallback
+- `app/public/favicon.svg` — R4-L2: new SVG favicon (indigo gradient with "C")
+- `app/index.html` — R4-L2: `<link rel="icon">` tag
+
+### Test Results
+- Server: tsc clean | App: tsc clean
+
+### Next Steps
+- Run full test suites to verify no regressions
+- Playwright verification of all 9 fixes
+
 ## 2026-03-10 — Session 74
 **Sprint:** R3 | **Story:** Audit fix batch 2 (MEDIUM + LOW)
 **Summary:** Fix remaining 22 MEDIUM + LOW items from full R1/R2/R3 code audit.

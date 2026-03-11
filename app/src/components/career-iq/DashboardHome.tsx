@@ -36,7 +36,7 @@ interface DashboardHomeProps {
   onRefineWhyMe?: () => void;
   hasResumeSessions?: boolean;
   sessionCount?: number;
-  recentSessions?: { id: string; company_name?: string | null; created_at: string; pipeline_stage?: string | null }[];
+  recentSessions?: { id: string; company_name?: string | null; created_at: string; pipeline_stage?: string | null; pipeline_status?: string | null }[];
   coverLetterSessions?: CoverLetterSession[];
   momentum?: MomentumSummary | null;
   momentumLoading?: boolean;
@@ -72,14 +72,13 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase
-        .from('job_applications')
-        .select('pipeline_stage, updated_at')
-        .eq('user_id', user.id)
-        .neq('status', 'archived');
+        .from('application_pipeline')
+        .select('stage, updated_at')
+        .eq('user_id', user.id);
       if (!data) return;
       const total = data.length;
-      const interviewing = data.filter((r) => r.pipeline_stage === 'interviewing').length;
-      const offer = data.filter((r) => r.pipeline_stage === 'offer' || r.pipeline_stage === 'accepted').length;
+      const interviewing = data.filter((r) => r.stage === 'interviewing' || r.stage === 'phone_screen' || r.stage === 'final_round').length;
+      const offer = data.filter((r) => r.stage === 'offer' || r.stage === 'accepted').length;
       const lastActivity = data.reduce((max, r) => {
         const t = r.updated_at ? new Date(r.updated_at).getTime() : 0;
         return t > max ? t : max;
@@ -114,6 +113,7 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
 
     if (recentSessions) {
       for (const s of recentSessions) {
+        if (s.pipeline_status === 'error') continue;
         const company = s.company_name || 'Untitled';
         const isComplete = s.pipeline_stage === 'complete' || s.pipeline_stage === 'completed';
         events.push({

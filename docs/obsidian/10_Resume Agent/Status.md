@@ -3,16 +3,18 @@
 > Updated every session by Claude. This is the living snapshot of where things stand.
 
 ## Last Updated
-2026-03-10 | Session 74 (Full R1/R2/R3 Code Audit + Fixes)
+2026-03-10 | Session 75 (Sprint R4 — UI/UX Playwright Remediation)
 
 ## Current State
-- **Sprint R3 complete** — all 16 stories done (11 LOW bugs + 4 cross-cutting pattern stories + Pattern 3)
-- **Full code audit complete** — 216 files audited, 55 bugs found and fixed (2 CRITICAL + 10 HIGH + 21 MEDIUM + 22 LOW)
-- Gate re-run architecture built — revision feedback now works across 6 products
-- Platform context visibility badge in 12 rooms
-- Session persistence (usePriorResult) in 6 rooms with backend APIs
-- Coach navigation redesign DONE (6 stories)
-- Resume Pipeline UX redesign plan exists (Sprints 61-65) but not yet started
+- **Sprint R4 complete** — all 9 stories done (3 HIGH + 4 MEDIUM + 2 LOW UI/UX fixes)
+- Username display uses real name from user_metadata, not email
+- Pipeline summary reads from canonical `application_pipeline` table (matches kanban)
+- Error sessions hidden from feed, relabeled "Incomplete"
+- Mobile FAB clears bottom navigation
+- Session list pagination with "Load more"
+- Feature-flagged routes return 200 (not 404) when disabled
+- Session titles enriched from job_applications FK
+- SVG favicon added
 
 ### Cross-Cutting Patterns Status
 - **Pattern 1 (Context Visibility)**: DONE — ContextLoadedBadge in 12 rooms

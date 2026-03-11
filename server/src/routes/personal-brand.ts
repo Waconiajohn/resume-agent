@@ -114,7 +114,7 @@ export const personalBrandRoutes = createProductRoutes<PersonalBrandState, Perso
 
 personalBrandRoutes.get('/reports/latest', async (c) => {
   if (!FF_PERSONAL_BRAND_AUDIT) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ data: null, feature_disabled: true }, 200);
   }
 
   const user = c.get('user');

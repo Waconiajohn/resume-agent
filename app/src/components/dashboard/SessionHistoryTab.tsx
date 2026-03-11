@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { API_BASE } from '@/lib/api';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { DashboardSessionCard } from '@/components/dashboard/DashboardSessionCard';
@@ -14,7 +16,7 @@ const FILTER_OPTIONS: Array<{ id: StatusFilter; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'complete', label: 'Completed' },
   { id: 'running', label: 'In Progress' },
-  { id: 'error', label: 'Error' },
+  { id: 'error', label: 'Incomplete' },
 ];
 
 type ProductFilter = 'all' | string;
@@ -58,15 +60,60 @@ export function SessionHistoryTab({
   const [viewingCoverLetterSessionId, setViewingCoverLetterSessionId] = useState<string | null>(null);
   const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
   const [showComparison, setShowComparison] = useState(false);
+  const [extraSessions, setExtraSessions] = useState<CoachSession[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const filters = filter !== 'all' ? { status: filter } : undefined;
     onLoadSessions(filters);
   }, [filter, onLoadSessions]);
 
-  const productTypes = getUniqueProductTypes(sessions);
+  // Reset accumulated pages when filters change
+  useEffect(() => {
+    setExtraSessions([]);
+    setHasMore(false);
+  }, [filter, productFilter]);
 
-  const filteredSessions = sessions.filter((s) => {
+  // Derive hasMore from whether the parent loaded a full page
+  useEffect(() => {
+    setHasMore(sessions.length >= 50);
+  }, [sessions]);
+
+  const allSessions = useMemo(() => {
+    if (extraSessions.length === 0) return sessions;
+    const seen = new Set(sessions.map((s) => s.id));
+    const extras = extraSessions.filter((s) => !seen.has(s.id));
+    return [...sessions, ...extras];
+  }, [sessions, extraSessions]);
+
+  const handleLoadMore = useCallback(async () => {
+    setLoadingMore(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const token = authSession?.access_token;
+      if (!token) return;
+
+      const nextOffset = sessions.length + extraSessions.length;
+      const params = new URLSearchParams({ offset: String(nextOffset), limit: '50' });
+      if (filter !== 'all') params.set('status', filter);
+
+      const res = await fetch(`${API_BASE}/sessions?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+
+      const responseData = await res.json() as { sessions: CoachSession[]; has_more: boolean };
+      setExtraSessions((prev) => [...prev, ...responseData.sessions]);
+      setHasMore(responseData.has_more);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [sessions.length, extraSessions.length, filter]);
+
+  const productTypes = getUniqueProductTypes(allSessions);
+
+  const filteredSessions = allSessions.filter((s) => {
     const matchesStatus = filter === 'all' || s.pipeline_status === filter;
     const matchesProduct = productFilter === 'all' || (s.product_type ?? 'resume') === productFilter;
     return matchesStatus && matchesProduct;
@@ -176,6 +223,19 @@ export function SessionHistoryTab({
         </div>
       )}
 
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <GlassButton
+            variant="ghost"
+            className="h-9 px-4 text-xs"
+            onClick={() => void handleLoadMore()}
+            disabled={loadingMore}
+          >
+            {loadingMore ? 'Loading...' : 'Load more'}
+          </GlassButton>
+        </div>
+      )}
+
       {selectedForCompare.size > 0 && selectedForCompare.size < 2 && (
         <p className="mt-3 text-center text-xs text-white/40">
           Select one more completed session to compare.
@@ -206,7 +266,7 @@ export function SessionHistoryTab({
             setSelectedForCompare(new Set());
           }}
           onGetSessionResume={onGetSessionResume}
-          sessions={sessions}
+          sessions={allSessions}
         />
       )}
     </div>

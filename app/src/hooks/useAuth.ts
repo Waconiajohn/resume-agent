@@ -54,10 +54,15 @@ export function useAuth() {
     await supabase.auth.signOut();
   };
 
+  const displayName = user?.user_metadata?.full_name
+    ?? user?.email?.split('@')[0]
+    ?? 'there';
+
   return {
     user,
     session,
     loading,
+    displayName,
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,

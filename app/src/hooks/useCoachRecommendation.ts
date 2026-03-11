@@ -84,10 +84,14 @@ export function useCoachRecommendation(): UseCoachRecommendationResult {
         throw new Error(`Recommend failed (${res.status})`);
       }
 
-      const data = (await res.json()) as CoachRecommendation;
-      saveCache(data);
+      const data = await res.json() as Record<string, unknown>;
+      if ('feature_disabled' in data) {
+        if (mountedRef.current) { setLoading(false); setRecommendation(null); }
+        return;
+      }
+      saveCache(data as unknown as CoachRecommendation);
       if (mountedRef.current) {
-        setRecommendation(data);
+        setRecommendation(data as unknown as CoachRecommendation);
         setLoading(false);
         setError(null);
       }

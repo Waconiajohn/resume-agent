@@ -22,7 +22,7 @@ import { resumeToText } from '@/lib/export';
 type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq';
 
 export default function App() {
-  const { user, session, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
+  const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
     useAuth();
   const accessToken = session?.access_token ?? null;
   const {
@@ -582,7 +582,7 @@ export default function App() {
 
       {view === 'career-iq' && (
         <CareerIQScreen
-          userName={user.email ?? ''}
+          userName={displayName}
           onNavigate={navigateTo}
           sessions={sessions}
           resumes={resumes}

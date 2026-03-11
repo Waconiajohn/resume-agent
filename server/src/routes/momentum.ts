@@ -128,7 +128,7 @@ momentumRoutes.use('*', authMiddleware);
 // Feature flag guard
 momentumRoutes.use('*', async (c, next) => {
   if (!FF_MOMENTUM) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ data: null, feature_disabled: true }, 200);
   }
   await next();
 });

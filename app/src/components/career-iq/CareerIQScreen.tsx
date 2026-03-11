@@ -386,6 +386,7 @@ export function CareerIQScreen({
               isOpen={coachDrawerOpen}
               onOpen={() => setCoachDrawerOpen(true)}
               onClose={() => setCoachDrawerOpen(false)}
+              isMobile={isMobile}
             />
           </Suspense>
         </>

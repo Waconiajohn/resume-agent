@@ -146,12 +146,12 @@ describe('SessionHistoryTab', () => {
     expect(screen.getByText(/no sessions found/i)).toBeInTheDocument();
   });
 
-  it('shows filter buttons for All, Completed, In Progress, Error', () => {
+  it('shows filter buttons for All, Completed, In Progress, Incomplete', () => {
     render(<SessionHistoryTab {...makeProps()} />);
     expect(screen.getByRole('button', { name: /all/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /completed/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /in progress/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /error/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /incomplete/i })).toBeInTheDocument();
   });
 
   it('calls onLoadSessions with status filter when filter changes', async () => {

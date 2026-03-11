@@ -109,9 +109,18 @@ export function useMomentum(): UseMomentumReturn {
         return;
       }
 
-      const summaryData = (await summaryRes.json()) as MomentumSummary;
-      const nudgesJson = (await nudgesRes.json()) as { nudges: CoachingNudge[] };
-      const nudgesData = nudgesJson.nudges ?? [];
+      const summaryJson = await summaryRes.json() as Record<string, unknown>;
+      if ('feature_disabled' in summaryJson) {
+        if (mountedRef.current) setLoading(false);
+        return;
+      }
+      const summaryData = summaryJson as unknown as MomentumSummary;
+      const nudgesJson = await nudgesRes.json() as Record<string, unknown>;
+      if ('feature_disabled' in nudgesJson) {
+        if (mountedRef.current) setLoading(false);
+        return;
+      }
+      const nudgesData = ((nudgesJson as { nudges?: CoachingNudge[] }).nudges) ?? [];
 
       if (mountedRef.current) {
         setSummary(summaryData);

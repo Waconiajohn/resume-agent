@@ -58,7 +58,7 @@ function StatusBadge({ status }: StatusBadgeProps) {
   const config: Record<string, { dot: string; label: string; text: string }> = {
     running: { dot: 'bg-[#afc4ff]', label: 'Running', text: 'text-[#afc4ff]' },
     complete: { dot: 'bg-[#b5dec2]', label: 'Complete', text: 'text-[#b5dec2]' },
-    error: { dot: 'bg-[#f0b8b8]', label: 'Error', text: 'text-[#f0b8b8]/80' },
+    error: { dot: 'bg-[#f0b8b8]', label: 'Incomplete', text: 'text-[#f0b8b8]/80' },
   };
   const cfg = config[normalized] ?? { dot: 'bg-white/30', label: normalized, text: 'text-white/50' };
 

@@ -36,7 +36,7 @@ const app = new Hono();
 // ─── Feature Flag Gate ────────────────────────────────────────────────────────
 
 app.use('*', async (c, next) => {
-  if (!FF_VIRTUAL_COACH) return c.json({ error: 'Not found' }, 404);
+  if (!FF_VIRTUAL_COACH) return c.json({ data: null, feature_disabled: true }, 200);
   await next();
 });
 

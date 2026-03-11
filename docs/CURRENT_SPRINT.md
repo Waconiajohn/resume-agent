@@ -1,111 +1,79 @@
-# Sprint R3: Polish, Edge Cases & Cross-Cutting Patterns
+# Sprint R4: UI/UX Polish — Playwright Testing Remediation
 
-**Goal:** Fix all LOW-severity bugs and address actionable cross-cutting patterns from the Platform UX Audit.
+**Goal:** Fix 9 UI/UX issues found during Session 74 Playwright testing before launch.
 **Started:** 2026-03-10
-**Audit Reference:** `docs/obsidian/30_Specs & Designs/Platform UX Audit.md`
+**Findings Reference:** `docs/obsidian/30_Specs & Designs/UI-UX Testing Findings - Session 74.md`
 
 ## Stories This Sprint
 
-### Story R3-1: Mock Interview magic constant + empty resume guard [L1, L2]
+### Story R4-H1: Username Display — Use Real Name [HIGH]
 - **Acceptance Criteria:**
-  - [x] `FULL_MODE_TOTAL` documented with server-side constant name
-  - [x] Practice mode validates `resumeText` length before POST
+  - [x] `useAuth()` returns `displayName` from `user.user_metadata?.full_name ?? email.split('@')[0] ?? 'there'`
+  - [x] `App.tsx` passes `displayName` (not `user.email`) as `userName` to CareerIQScreen
+  - [x] Greeting shows real first name; sidebar shows "AI John" not "AI jjschrup@yahoo.com"
+  - [x] Tests updated, tsc clean
 - **Status:** done
 
-### Story R3-2: Interview Debrief thank-you stub [L3]
+### Story R4-H2: PipelineSummary Data Source Alignment [HIGH]
 - **Acceptance Criteria:**
-  - [x] Removed no-op "Generate Thank You Notes" button (callback + prop removed)
+  - [x] PipelineSummary reads from `application_pipeline` table with `stage` column
+  - [x] DashboardHome `loadPipelineStats` also reads `application_pipeline`
+  - [x] Stage mapping keys match kanban stages
+  - [x] tsc clean
 - **Status:** done
 
-### Story R3-3: Planner Handoff stale planners [L4]
+### Story R4-H3: Error Sessions UX Cleanup [HIGH]
 - **Acceptance Criteria:**
-  - [x] `planners` array cleared on qualify/match failure (3 branches + catch)
+  - [x] DashboardHome feed filters out `pipeline_status === 'error'` sessions
+  - [x] DashboardSessionCard status badge: "Error" → "Incomplete"
+  - [x] SessionHistoryTab filter label: "Error" → "Incomplete"
+  - [x] tsc clean
 - **Status:** done
 
-### Story R3-4: 90-Day Plan reset + accessibility [L5, L6]
+### Story R4-M1: Mobile FAB Clears Bottom Nav [MEDIUM]
 - **Acceptance Criteria:**
-  - [x] `targetRole`/`targetCompany` cleared on reset
-  - [x] `<label>` elements have `htmlFor`/`id` association (5 inputs)
+  - [x] CoachDrawer FAB uses `bottom-20` on mobile (clears nav), `bottom-6` on desktop
+  - [x] `isMobile` prop passed from CareerIQScreen (already computed via useMediaQuery)
+  - [x] tsc clean
 - **Status:** done
 
-### Story R3-5: Daily Ops staleApplications rendering [L7]
+### Story R4-M2: Session List Pagination [MEDIUM]
 - **Acceptance Criteria:**
-  - [x] Already rendered in DailyOpsSection — no change needed
-- **Status:** done (already implemented)
-
-### Story R3-6: Network Intelligence double indicator + scan-jobs guard [L8, L9]
-- **Acceptance Criteria:**
-  - [x] Removed redundant active tab indicator strip
-  - [x] `scan-jobs` removed from `ALWAYS_UNLOCKED` — now locked until CSV upload
+  - [x] Backend GET /sessions accepts `offset` query param (default 0, positive integer)
+  - [x] Backend applies `.range(offset, offset + limit - 1)`, returns `{ sessions, has_more }`
+  - [x] SessionHistoryTab shows "Load more" button when `has_more` is true
+  - [x] Load more appends results, increments offset
+  - [x] tsc clean (app + server)
 - **Status:** done
 
-### Story R3-7: Dashboard nudge bar coordination [L10]
+### Story R4-M3: Relative Time Grammar Fix [MEDIUM]
 - **Acceptance Criteria:**
-  - [x] Max 1 nudge bar shown at a time (momentum priority > hardcoded)
+  - [x] Returns "1 week ago" for 7–13 days
+  - [x] tsc clean
 - **Status:** done
 
-### Story R3-8: Momentum feature flag guard [L11]
+### Story R4-M4: Feature-Flagged Routes Return 200 When Disabled [MEDIUM]
 - **Acceptance Criteria:**
-  - [x] 404 responses from momentum API silently ignored (no error state)
+  - [x] Feature flag guards return `200 { data: null, feature_disabled: true }` instead of 404
+  - [x] Frontend hooks check `feature_disabled` flag and return null cleanly
+  - [x] Product route factory 403 for disabled products unchanged (POST /start, different path)
+  - [x] tsc clean (app + server)
 - **Status:** done
 
-### Story R3-9: Product Catalog onboarding status [L12]
+### Story R4-L1: Session Title Enrichment [LOW]
 - **Acceptance Criteria:**
-  - [x] `onboarding-assessment` status changed to `active`
+  - [x] GET /sessions LEFT JOINs `job_applications` via `job_application_id`
+  - [x] Enrichment fallback: panel_data → job_applications → null
+  - [x] Server tsc clean
 - **Status:** done
 
-### Story R3-10: Feature Flag Wall — graceful handling [Pattern 2]
+### Story R4-L2: Add Favicon [LOW]
 - **Acceptance Criteria:**
-  - [x] Backend returns 403 `{ error: "feature_not_enabled" }` on all 3 route handlers
-  - [x] Frontend will show the message string instead of generic 404 error
+  - [x] SVG favicon in `app/public/favicon.svg`
+  - [x] `<link rel="icon">` in `app/index.html`
+  - [x] Browser tab shows icon
 - **Status:** done
 
-### Story R3-11: Network Intelligence resume auto-load [Pattern 5 remainder]
-- **Acceptance Criteria:**
-  - [x] BooleanSearchBuilder already auto-loads master resume — no change needed
-- **Status:** done (already implemented)
-
-### Story R3-12: Platform Context Visibility [Pattern 1]
-- **Acceptance Criteria:**
-  - [x] `GET /api/platform-context/summary` returns one row per context type (auth-required)
-  - [x] `usePlatformContextSummary` hook fetches + caches in sessionStorage
-  - [x] `ContextLoadedBadge` component shows indigo pill with relevant context type + date
-  - [x] Badge integrated into 12 rooms with appropriate contextTypes
-- **Status:** done
-
-### Story R3-13: Session Persistence — Backend APIs [Pattern 4, Part A]
-- **Acceptance Criteria:**
-  - [x] `GET /reports/latest` endpoint added to 6 product routes (executive-bio, case-study, thank-you-note, personal-brand, salary-negotiation, ninety-day-plan)
-  - [x] `usePriorResult` shared hook: fetch-on-mount, sessionStorage cache, `clearPrior` method
-- **Status:** done
-
-### Story R3-14: Session Persistence — Room Integration [Pattern 4, Part B]
-- **Acceptance Criteria:**
-  - [x] `usePriorResult` integrated into 6 rooms (ExecutiveBio, CaseStudy, ThankYouNote, PersonalBrand, SalaryNegotiation, NinetyDayPlan)
-  - [x] Prior result card shown with rendered markdown when prior exists and pipeline is idle
-  - [x] "New [Product]" button clears prior and lets user start fresh
-  - [x] Loading skeleton while fetching
-- **Status:** done
-
-### Story R3-15: Gate Re-run Architecture [Revision Feedback Fix]
-- **Acceptance Criteria:**
-  - [x] `GateDef.requiresRerun` added to product-config.ts
-  - [x] product-coordinator.ts gate loop re-invokes agent when requiresRerun returns true (max 3 re-runs)
-  - [x] 6 products updated with requiresRerun + onComplete overwrite guards fixed
-  - [x] revision_feedback cleared on approve in all products
-  - [x] 3 new tests in product-coordinator.test.ts
-- **Status:** done
-
-### Story R3-16: Rich Structured Data in Completion Events [Pattern 3]
-- **Acceptance Criteria:**
-  - [x] Cover Letter: `jd_analysis` + `letter_plan` in completion event + return value
-  - [x] Executive Bio: `bios` + `positioning_analysis` in completion event + return value
-  - [x] Case Study: `case_studies` + `selected_achievements` in completion event + return value
-  - [x] Content Calendar: `coherence_score` + `themes` + `content_mix` in completion event
-  - [x] Personal Brand: `audit_findings` + `consistency_scores` + `recommendations` in completion event
-  - [x] Salary Negotiation: `scenarios` + `talking_points` + `market_research` + `leverage_points` + `negotiation_strategy` in completion event + return value
-  - [x] Ninety-Day Plan: `phases` + `stakeholder_map` + `quick_wins` + `learning_priorities` in completion event + return value
-- **Status:** done
-
-## Deferred to Backlog (Explicitly)
-- Frontend rendering of structured completion data (quality breakdowns, evidence provenance, per-item scores)
+## Out of Scope (Explicitly)
+- Resume pipeline UX redesign (Sprints 61-65)
+- Frontend rendering of structured completion data
