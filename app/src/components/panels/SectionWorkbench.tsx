@@ -257,12 +257,21 @@ export function SectionWorkbench({
   const contextVersion = typeof context?.context_version === 'number' ? context.context_version : 0;
   const showUndoRedoControls = hasLocalEdits || undoStack.length > 0 || redoStack.length > 0;
 
+  const statusMessage = isApprovalAnimating
+    ? `${toTitleCase(section)} section approved`
+    : isRefining
+      ? `Refining ${toTitleCase(section)} section`
+      : hasLocalEdits
+        ? `${toTitleCase(section)} section has unsaved edits`
+        : '';
+
   return (
     <div
       ref={rootRef}
       className="relative flex h-full min-h-0 flex-col"
       data-panel-root
     >
+      <span className="sr-only" aria-live="polite">{statusMessage}</span>
       {/* Progress dots — sticky */}
       {sectionOrder.length > 0 && (
         <WorkbenchProgressDots

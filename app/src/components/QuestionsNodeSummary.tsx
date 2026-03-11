@@ -177,7 +177,7 @@ export function QuestionsNodeSummary({
                 {questionReuseMetrics && questionReuseMetrics.total_skipped > 0 && (
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <div className="rounded-md border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Reuse Savings</div>
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/55">Reuse Savings</div>
                       <div className="mt-1 text-xs text-white/78">
                         Reused {questionReuseMetrics.total_skipped} lower-impact question{questionReuseMetrics.total_skipped === 1 ? '' : 's'}
                       </div>
@@ -186,7 +186,7 @@ export function QuestionsNodeSummary({
                       </div>
                     </div>
                     <div className="rounded-md border border-white/[0.06] bg-white/[0.015] px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/35">Reuse Basis</div>
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-white/55">Reuse Basis</div>
                       <div className="mt-1 text-xs text-white/78">
                         Topic match {questionReuseMetrics.matched_by_topic_count} • Payoff match {questionReuseMetrics.matched_by_payoff_count}
                       </div>

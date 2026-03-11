@@ -145,7 +145,7 @@ function RequirementRow({ item, userContext, onUserContextChange }: {
                 onBlur={() => { if (!userContext) setShowInput(false); }}
                 placeholder="Add evidence or dispute this assessment..."
                 autoFocus
-                className="w-full rounded border border-white/[0.12] bg-white/[0.04] px-2 py-1 text-xs text-white/80 placeholder:text-white/30 focus:border-white/25 focus:outline-none"
+                className="w-full rounded border border-white/[0.12] bg-white/[0.04] px-2 py-1 text-xs text-white/80 placeholder:text-white/30 focus:border-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
               />
             </div>
           )}

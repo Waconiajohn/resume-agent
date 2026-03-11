@@ -229,7 +229,7 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
                   <textarea
                     value={editedSummary}
                     onChange={(e) => setEditedSummary(e.target.value)}
-                    className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-sm text-white/90 leading-relaxed resize-none focus:outline-none focus:border-white/25"
+                    className="w-full rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-sm text-white/90 leading-relaxed resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-white/25"
                     rows={4}
                   />
                   <p className="text-[10px] text-white/25 mt-1">This edit is for your reference — it does not change the pipeline analysis.</p>

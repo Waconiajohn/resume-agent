@@ -40,7 +40,7 @@ export function WelcomeState({ userName, onStartWhyMe }: WelcomeStateProps) {
           <ArrowRight size={18} className="ml-2" />
         </GlassButton>
 
-        <p className="mt-4 text-[12px] text-white/30">
+        <p className="mt-4 text-[12px] text-white/50">
           Takes about 5 minutes — and you can refine it anytime
         </p>
       </GlassCard>
@@ -69,14 +69,14 @@ export function WelcomeState({ userName, onStartWhyMe }: WelcomeStateProps) {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[11px] font-bold tabular-nums ${step.active ? 'text-[#98b3ff]' : 'text-white/25'}`}>
+                  <span className={`text-[11px] font-bold tabular-nums ${step.active ? 'text-[#98b3ff]' : 'text-white/40'}`}>
                     STEP {step.number}
                   </span>
                   <span className={`text-[13px] font-medium ${step.active ? 'text-white/75' : 'text-white/40'}`}>
                     {step.label}
                   </span>
                 </div>
-                <div className={`text-[12px] mt-0.5 ${step.active ? 'text-white/45' : 'text-white/25'}`}>
+                <div className={`text-[12px] mt-0.5 ${step.active ? 'text-white/45' : 'text-white/40'}`}>
                   {step.desc}
                 </div>
               </div>

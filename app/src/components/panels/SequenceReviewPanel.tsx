@@ -208,7 +208,7 @@ export function SequenceReviewPanel({ data, onApprove }: SequenceReviewPanelProp
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={3}
                   placeholder="e.g. The follow-up messages are too formal — make them more conversational..."
-                  className="w-full rounded-md border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs text-white/85 placeholder:text-white/30 focus:border-white/25 focus:outline-none resize-none"
+                  className="w-full rounded-md border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs text-white/85 placeholder:text-white/30 focus:border-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
                 />
                 <button
                   type="button"

@@ -1,6 +1,7 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
+import { EmptyStateIllustration } from '@/components/shared/EmptyStateIllustration';
 import {
   Mic,
   Building2,
@@ -239,6 +240,12 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
         </div>
       )}
 
+      {history.length === 0 && (
+        <EmptyStateIllustration
+          variant="interview"
+          message="No interview history yet. Add your past interviews to track outcomes."
+        />
+      )}
       <div className="space-y-3">
         {history.map((interview) => {
           const outcome = outcomeConfig[interview.outcome];

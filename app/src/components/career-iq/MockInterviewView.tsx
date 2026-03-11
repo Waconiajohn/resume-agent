@@ -578,7 +578,7 @@ export function MockInterviewView({
                   className={cn(
                     'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3',
                     'text-[13px] text-white/75 placeholder:text-white/20 leading-relaxed',
-                    'focus:outline-none focus:border-[#98b3ff]/30 resize-y',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-y',
                   )}
                 />
                 <div className="flex items-center justify-between mt-1.5">

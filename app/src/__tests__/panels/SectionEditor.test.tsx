@@ -45,26 +45,27 @@ describe('SectionEditor', () => {
   it('displays the correct word count', () => {
     renderEditor();
     // "Led a team of 50 engineers across three continents." = 9 words
-    expect(screen.getByText('9 words')).toBeInTheDocument();
+    // sr-only live region + visible span both show word count
+    expect(screen.getAllByText('9 words').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows singular "word" for single word content', () => {
     renderEditor({ content: 'Hello' });
-    expect(screen.getByText('1 word')).toBeInTheDocument();
+    expect(screen.getAllByText('1 word').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows 0 words for empty content', () => {
     renderEditor({ content: '' });
-    expect(screen.getByText('0 words')).toBeInTheDocument();
+    expect(screen.getAllByText('0 words').length).toBeGreaterThanOrEqual(1);
   });
 
   it('updates word count as user types', () => {
     renderEditor({ content: 'Hello world' });
-    expect(screen.getByText('2 words')).toBeInTheDocument();
+    expect(screen.getAllByText('2 words').length).toBeGreaterThanOrEqual(1);
 
     const textarea = screen.getByLabelText(/Edit Professional Summary section content/i);
     fireEvent.change(textarea, { target: { value: 'Hello world foo bar' } });
-    expect(screen.getByText('4 words')).toBeInTheDocument();
+    expect(screen.getAllByText('4 words').length).toBeGreaterThanOrEqual(1);
   });
 
   // --- Save / Cancel ---

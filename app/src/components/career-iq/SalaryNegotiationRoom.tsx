@@ -209,7 +209,7 @@ function InputField({
           placeholder={placeholder}
           className={cn(
             'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] py-3 text-[13px] text-white/80 placeholder:text-white/25',
-            'focus:outline-none focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all',
             prefix ? 'pl-7 pr-4' : 'px-4',
           )}
         />
@@ -239,7 +239,7 @@ function TextareaField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
+        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/40 focus:ring-2 focus:ring-[#98b3ff]/10 transition-all"
       />
     </div>
   );

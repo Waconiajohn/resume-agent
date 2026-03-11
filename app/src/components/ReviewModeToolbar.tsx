@@ -74,7 +74,7 @@ export function ReviewModeToolbar({
       </div>
 
       {/* Status label */}
-      <span className="ml-auto text-xs text-white/50">
+      <span className="ml-auto text-xs text-white/50" aria-live="polite" role="status">
         {isProcessing && activeLabel
           ? `Writing your ${activeLabel}...`
           : activeLabel

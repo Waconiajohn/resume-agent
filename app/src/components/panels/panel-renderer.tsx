@@ -72,7 +72,7 @@ function PanelError({ message }: { message?: string }) {
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-3 text-center">
-        <AlertTriangle className="h-8 w-8 text-white/28" />
+        <AlertTriangle className="h-8 w-8 text-white/45" />
         <p className="text-sm text-white/50">
           {message ?? "This section is loading. It will appear shortly."}
         </p>

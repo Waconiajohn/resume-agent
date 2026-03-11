@@ -159,7 +159,7 @@ export function OnboardingSummaryPanel({ data }: OnboardingSummaryPanelProps) {
                     onBlur={() => setEditingLabel(null)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingLabel(null); }}
                     autoFocus
-                    className="w-full rounded border border-white/[0.15] bg-white/[0.06] px-2 py-1 text-sm font-semibold text-white focus:border-[#afc4ff]/40 focus:outline-none"
+                    className="w-full rounded border border-white/[0.15] bg-white/[0.06] px-2 py-1 text-sm font-semibold text-white focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
                   />
                 ) : (
                   <span className="text-lg font-semibold text-white">{displayValue}</span>

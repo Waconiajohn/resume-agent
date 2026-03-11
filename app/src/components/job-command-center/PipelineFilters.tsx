@@ -34,7 +34,7 @@ export function PipelineFilters({
           value={searchText}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search applications..."
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
         />
       </div>
 

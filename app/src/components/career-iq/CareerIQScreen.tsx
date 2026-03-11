@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
+import { RoomSkeleton } from '@/components/shared/RoomSkeleton';
 
 const VALID_ROOMS = new Set<string>([
   'dashboard',
@@ -88,15 +89,6 @@ interface CareerIQScreenProps {
   initialRoom?: string;
 }
 
-function RoomLoadingSkeleton() {
-  return (
-    <div className="p-6 max-w-[1400px] mx-auto animate-pulse">
-      <div className="h-6 w-48 bg-white/[0.06] rounded mb-2" />
-      <div className="h-4 w-80 bg-white/[0.04] rounded mb-6" />
-      <div className="h-64 bg-white/[0.03] rounded-xl border border-white/[0.06]" />
-    </div>
-  );
-}
 
 export function CareerIQScreen({
   userName,
@@ -411,7 +403,7 @@ export function CareerIQScreen({
 
         {/* Room content */}
         <div className="flex-1 overflow-y-auto">
-          <Suspense fallback={<RoomLoadingSkeleton />}>
+          <Suspense fallback={<RoomSkeleton />}>
             {renderContent()}
           </Suspense>
         </div>
@@ -456,7 +448,7 @@ export function CareerIQScreen({
       />
       <main className="flex-1 overflow-y-auto flex flex-col">
         <LivePulseStrip />
-        <Suspense fallback={<RoomLoadingSkeleton />}>
+        <Suspense fallback={<RoomSkeleton />}>
           {renderContent()}
         </Suspense>
       </main>

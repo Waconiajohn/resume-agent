@@ -80,7 +80,7 @@ export function ContactFormModal({
   };
 
   const inputClass =
-    'w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none';
+    'w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40';
   const labelClass = 'block text-[11px] text-white/40 mb-1';
 
   return (
@@ -93,7 +93,12 @@ export function ContactFormModal({
       />
 
       {/* Modal */}
-      <GlassCard className="relative w-full max-w-lg p-6 z-10">
+      <GlassCard
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative w-full max-w-lg p-6 z-10"
+      >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-[15px] font-semibold text-white/85">{title}</h2>
           <button

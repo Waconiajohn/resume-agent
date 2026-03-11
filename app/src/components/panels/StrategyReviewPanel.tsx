@@ -130,7 +130,7 @@ function NumberField({
               if (e.key === 'Escape') { onResetEdit(); onDoneEdit(); }
             }}
             autoFocus
-            className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-sm text-white/90 placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+            className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-sm text-white/90 placeholder:text-white/30 focus:border-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             placeholder="e.g. $185,000 base"
           />
           <div className="flex gap-3">
@@ -360,7 +360,7 @@ export function StrategyReviewPanel({ data, onApprove }: StrategyReviewPanelProp
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={3}
                   placeholder="e.g. Adjust BATNA — I have a competing offer at $175k..."
-                  className="w-full rounded-md border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs text-white/85 placeholder:text-white/30 focus:border-white/25 focus:outline-none resize-none"
+                  className="w-full rounded-md border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs text-white/85 placeholder:text-white/30 focus:border-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
                 />
                 <button
                   type="button"

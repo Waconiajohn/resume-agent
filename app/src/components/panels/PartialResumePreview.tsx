@@ -30,6 +30,12 @@ export function PartialResumePreview({ approvedSections, totalSections = 7 }: Pa
         </div>
       </div>
 
+      <span className="sr-only" aria-live="polite">
+        {approvedCount > 0
+          ? `${approvedCount} of ${totalSections} sections approved`
+          : 'No sections approved yet'}
+      </span>
+
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4">
         <div className="mx-auto max-w-2xl space-y-4">
           {/* Paper view */}

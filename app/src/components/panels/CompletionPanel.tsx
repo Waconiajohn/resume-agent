@@ -172,7 +172,9 @@ export function CompletionPanel({
           <div className="motion-safe:animate-celebration-check rounded-full motion-safe:animate-celebration-glow">
             <CheckCircle className="h-8 w-8 text-[#a8d7b8]" />
           </div>
-          <span className="text-lg font-semibold text-white/85">Your Resume Is Ready!</span>
+          <span className="text-lg font-semibold text-white/85" aria-live="assertive" role="status">
+            Your Resume Is Ready!
+          </span>
         </div>
         {data.ats_score != null && (
           <p className="text-sm text-[#b5dec2]/80 mt-1">{data.ats_score}% match for this role</p>

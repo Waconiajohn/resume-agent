@@ -32,7 +32,7 @@ function getTodayDateString(): string {
 }
 
 const INPUT_CLASS =
-  'rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30';
+  'rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30';
 
 const LABEL_CLASS = 'text-[11px] font-medium text-white/40 uppercase tracking-wider mb-1.5 block';
 

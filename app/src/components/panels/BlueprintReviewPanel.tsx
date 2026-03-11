@@ -240,7 +240,7 @@ export function BlueprintReviewPanel({ data, onApprove }: BlueprintReviewPanelPr
                       }
                     }}
                     rows={3}
-                    className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+                    className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
                     placeholder="Enter positioning angle..."
                   />
                   <div className="flex gap-2">

@@ -143,7 +143,7 @@ export function RadarSection({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Job title, keywords..."
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
         <div className="relative flex-[2]">
@@ -157,7 +157,7 @@ export function RadarSection({
             onChange={(e) => setLocation(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Location or Remote"
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
           />
         </div>
       </div>
@@ -167,7 +167,7 @@ export function RadarSection({
         <select
           value={datePosted}
           onChange={(e) => setDatePosted(e.target.value as RadarSearchFilters['datePosted'])}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus:border-[#98b3ff]/30"
+          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
         >
           <option value="any">Any time</option>
           <option value="24h">Last 24h</option>
@@ -179,7 +179,7 @@ export function RadarSection({
         <select
           value={remoteType}
           onChange={(e) => setRemoteType(e.target.value as RadarSearchFilters['remoteType'])}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus:border-[#98b3ff]/30"
+          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
         >
           <option value="any">Any work type</option>
           <option value="remote">Remote</option>

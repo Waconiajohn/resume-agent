@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { GlassButton } from '@/components/GlassButton';
 import { X, Trash2, Pencil, Check } from 'lucide-react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import type { WatchlistCompany } from '@/hooks/useWatchlist';
 
 interface WatchlistManagerProps {
@@ -14,7 +15,7 @@ interface WatchlistManagerProps {
 }
 
 const INPUT_CLASS =
-  'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus:border-[#98b3ff]/30';
+  'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30';
 
 const LABEL_CLASS = 'text-[11px] text-white/40 uppercase tracking-wider mb-1 block';
 
@@ -26,6 +27,7 @@ export function WatchlistManager({
   onUpdate,
   onRemove,
 }: WatchlistManagerProps) {
+  const { dialogRef } = useDialogA11y(true, onClose);
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
   const [website, setWebsite] = useState('');
@@ -79,7 +81,7 @@ export function WatchlistManager({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0e0e14] p-6 shadow-2xl max-h-[85vh] flex flex-col">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Manage watchlist" className="relative w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0e0e14] p-6 shadow-2xl max-h-[85vh] flex flex-col">
         <button
           type="button"
           onClick={onClose}
@@ -177,7 +179,7 @@ export function WatchlistManager({
                       max="5"
                       value={editPriority}
                       onChange={(e) => setEditPriority(e.target.value)}
-                      className="w-12 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[12px] text-white/70 text-center focus:outline-none focus:border-[#98b3ff]/30"
+                      className="w-12 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[12px] text-white/70 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
                     />
                     <button
                       type="button"

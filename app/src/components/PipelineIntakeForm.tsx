@@ -297,7 +297,7 @@ export function PipelineIntakeForm({
                   onClick={handleFileClick}
                   disabled={loading || fileLoading}
                   id="file-upload-hint"
-                  className="inline-flex items-center gap-1 text-xs text-white/58 transition-colors hover:text-white/84 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:underline"
+                  className="inline-flex items-center gap-1 text-xs text-white/58 transition-colors hover:text-white/84 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
                   aria-label="Upload a resume file (.txt, .docx, .pdf)"
                 >
                   {fileLoading ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <Upload className="h-3 w-3" />}
@@ -347,7 +347,7 @@ export function PipelineIntakeForm({
                   type="button"
                   onClick={handleJobFileClick}
                   disabled={loading || jobFileLoading}
-                  className="inline-flex items-center gap-1 text-xs text-white/58 transition-colors hover:text-white/84 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:underline"
+                  className="inline-flex items-center gap-1 text-xs text-white/58 transition-colors hover:text-white/84 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:underline"
                   aria-label="Upload a job description file (.txt, .docx, .pdf, .html)"
                 >
                   {jobFileLoading ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <Upload className="h-3 w-3" />}

@@ -3,6 +3,7 @@ import { X, Copy, Download } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { downloadAsText } from '@/lib/export';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 interface SessionCoverLetterModalProps {
   sessionId: string;
@@ -15,6 +16,7 @@ export function SessionCoverLetterModal({
   onClose,
   onGetSessionCoverLetter,
 }: SessionCoverLetterModalProps) {
+  const { dialogRef } = useDialogA11y(true, onClose);
   const [letter, setLetter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +63,11 @@ export function SessionCoverLetterModal({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <GlassCard className="flex max-h-[90vh] w-full max-w-2xl flex-col p-0 overflow-hidden">
+      <GlassCard role="dialog" aria-modal="true" aria-label="Session Cover Letter" className="flex max-h-[90vh] w-full max-w-2xl flex-col p-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
           <h2 className="text-sm font-semibold text-white/90">Session Cover Letter</h2>

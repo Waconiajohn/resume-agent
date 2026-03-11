@@ -183,7 +183,7 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
           <button
             type="button"
             onClick={() => handleDismiss('resume_nudge')}
-            className="text-white/25 hover:text-white/50 transition-colors flex-shrink-0"
+            className="text-white/45 hover:text-white/70 transition-colors flex-shrink-0"
           >
             <X size={14} />
           </button>
@@ -209,7 +209,7 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
           <button
             type="button"
             onClick={() => handleDismiss('jobs_nudge')}
-            className="text-white/25 hover:text-white/50 transition-colors flex-shrink-0"
+            className="text-white/45 hover:text-white/70 transition-colors flex-shrink-0"
           >
             <X size={14} />
           </button>

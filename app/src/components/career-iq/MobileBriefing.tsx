@@ -106,7 +106,7 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
       </div>
       {events.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-[13px] text-white/35 text-center leading-relaxed">
+          <p className="text-[13px] text-white/50 text-center leading-relaxed">
             No recent agent activity.
           </p>
         </div>
@@ -117,7 +117,7 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
               <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] text-white/60 leading-relaxed">{event.detail}</p>
-                <p className="text-[10px] text-white/25 mt-0.5">{relativeTime(event.timestamp)}</p>
+                <p className="text-[10px] text-white/45 mt-0.5">{relativeTime(event.timestamp)}</p>
               </div>
             </div>
           ))}
@@ -182,7 +182,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
           disabled={activeIndex === 0}
           aria-label="Previous card"
-          className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors"
+          className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronLeft size={20} />
         </button>
@@ -207,7 +207,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           onClick={() => setActiveIndex((i) => Math.min(validChildren.length - 1, i + 1))}
           disabled={activeIndex === validChildren.length - 1}
           aria-label="Next card"
-          className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors"
+          className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronRight size={20} />
         </button>
@@ -238,7 +238,7 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavig
             type="button"
             onClick={() => onNavigate(tab.id)}
             className={cn(
-              'flex flex-col items-center gap-0.5 px-3 py-1 transition-colors',
+              'flex flex-col items-center gap-0.5 px-3 py-1 min-h-[44px] min-w-[44px] transition-colors',
               isActive ? 'text-[#98b3ff]' : 'text-white/35',
             )}
           >

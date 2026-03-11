@@ -140,6 +140,11 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
           <span className="text-[10px] text-amber-400/60 bg-amber-400/[0.08] border border-amber-400/20 rounded px-1.5 py-0.5">AI estimate</span>
         </div>
       </div>
+      <span className="sr-only" aria-live="polite">
+        {primaryRings.length > 0
+          ? primaryRings.map((r) => `${r.label}: ${r.score} out of ${r.max}`).join(', ')
+          : ''}
+      </span>
 
       <div data-panel-scroll className="flex-1 overflow-y-auto p-4 space-y-4">
         <ProcessStepGuideCard

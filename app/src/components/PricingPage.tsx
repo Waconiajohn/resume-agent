@@ -265,7 +265,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
               onChange={(e) => { setPromoCode(e.target.value); setPromoResult(null); }}
               onKeyDown={(e) => { if (e.key === 'Enter') void handleValidatePromo(); }}
               placeholder="Have a promo code?"
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-4 text-sm text-white placeholder:text-white/30 focus:border-[#9eb8ff]/40 focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-4 text-sm text-white placeholder:text-white/30 focus:border-[#9eb8ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
           </div>
           <GlassButton

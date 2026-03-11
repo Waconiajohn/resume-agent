@@ -693,7 +693,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target name *"
               value={targetName}
               onChange={(e) => setTargetName(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
             <input
               id="outreach-target-title"
@@ -702,7 +702,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target title *"
               value={targetTitle}
               onChange={(e) => setTargetTitle(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
             <input
               id="outreach-target-company"
@@ -711,7 +711,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Target company *"
               value={targetCompany}
               onChange={(e) => setTargetCompany(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -722,7 +722,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="LinkedIn URL (optional)"
               value={targetLinkedIn}
               onChange={(e) => setTargetLinkedIn(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
             <input
               id="outreach-context-notes"
@@ -731,7 +731,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
               placeholder="Context notes (optional — shared events, mutual connections, etc.)"
               value={contextNotes}
               onChange={(e) => setContextNotes(e.target.value)}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none"
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
             />
           </div>
           <textarea
@@ -741,7 +741,7 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             rows={4}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none resize-none"
+            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none"
           />
           <div className="flex flex-col gap-2">
             <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider">Messaging Method</label>

@@ -64,7 +64,7 @@ export function ContactDetailSheet({
   };
 
   const inputClass =
-    'w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none';
+    'w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
@@ -76,7 +76,12 @@ export function ContactDetailSheet({
       />
 
       {/* Sheet */}
-      <GlassCard className="relative w-full max-w-xl p-6 z-10 max-h-[90vh] overflow-y-auto">
+      <GlassCard
+        role="dialog"
+        aria-modal="true"
+        aria-label={contact.name}
+        className="relative w-full max-w-xl p-6 z-10 max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-[15px] font-semibold text-white/85">{contact.name}</h2>

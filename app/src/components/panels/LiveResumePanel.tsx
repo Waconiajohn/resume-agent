@@ -66,7 +66,7 @@ function EditableLine({
     return (
       <div className="group rounded-lg border border-white/[0.14] bg-white/[0.04] p-3">
         <textarea
-          className="w-full resize-none rounded border border-white/[0.14] bg-white/[0.05] px-3 py-2 text-sm text-white/90 focus:border-white/[0.24] focus:outline-none"
+          className="w-full resize-none rounded border border-white/[0.14] bg-white/[0.05] px-3 py-2 text-sm text-white/90 focus:border-white/[0.24] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40"
           value={editText}
           onChange={(e) => onEditTextChange(e.target.value)}
           rows={3}

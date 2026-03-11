@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-type IllustrationVariant = 'resume' | 'research' | 'interview' | 'blueprint';
+type IllustrationVariant = 'resume' | 'research' | 'interview' | 'blueprint' | 'jobs' | 'networking' | 'linkedin' | 'general';
 
 const illustrations: Record<IllustrationVariant, React.ReactNode> = {
   resume: (
@@ -35,6 +35,40 @@ const illustrations: Record<IllustrationVariant, React.ReactNode> = {
       <rect x="12" y="24" width="16" height="8" rx="1" />
       <rect x="36" y="24" width="16" height="12" rx="1" />
       <rect x="12" y="40" width="16" height="12" rx="1" />
+    </svg>
+  ),
+  jobs: (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="8" y="20" width="48" height="34" rx="3" />
+      <path d="M22 20v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4" />
+      <line x1="8" y1="34" x2="56" y2="34" />
+      <line x1="28" y1="34" x2="36" y2="34" />
+    </svg>
+  ),
+  networking: (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="32" cy="14" r="6" />
+      <circle cx="10" cy="48" r="6" />
+      <circle cx="54" cy="48" r="6" />
+      <line x1="28" y1="18" x2="14" y2="44" />
+      <line x1="36" y1="18" x2="50" y2="44" />
+      <line x1="16" y1="48" x2="48" y2="48" />
+    </svg>
+  ),
+  linkedin: (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="8" y="8" width="48" height="48" rx="6" />
+      <line x1="20" y1="28" x2="20" y2="48" />
+      <circle cx="20" cy="20" r="3" />
+      <line x1="28" y1="28" x2="28" y2="48" />
+      <path d="M28 36a10 10 0 0 1 18 0v12" />
+    </svg>
+  ),
+  general: (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="32" cy="32" r="22" />
+      <line x1="32" y1="22" x2="32" y2="34" />
+      <circle cx="32" cy="42" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   ),
 };

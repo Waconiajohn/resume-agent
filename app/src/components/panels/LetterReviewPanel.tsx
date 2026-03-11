@@ -77,7 +77,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
               rows={18}
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2.5 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
+              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2.5 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-y font-mono"
               aria-label="Edit cover letter directly"
             />
           </div>
@@ -98,7 +98,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. Strengthen the opening hook, make the tone less formal, add a reference to the company's recent product launch..."
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
               aria-label="Feedback for cover letter revision"
               autoFocus
             />

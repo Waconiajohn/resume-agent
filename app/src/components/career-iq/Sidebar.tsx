@@ -184,7 +184,7 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
           <div key={group.label} className={collapsed ? 'mb-1' : 'mb-4'}>
             {!collapsed && (
               <div className="px-3 pb-1 pt-2">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/25">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
                   {group.label}
                 </span>
               </div>
@@ -205,7 +205,7 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
 
       <div className="px-3 pb-4 pt-2 border-t border-white/[0.06]">
         {!collapsed && (
-          <div className="text-[11px] text-white/30 text-center">
+          <div className="text-[11px] text-white/50 text-center">
             CareerIQ Platform
           </div>
         )}

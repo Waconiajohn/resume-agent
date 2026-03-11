@@ -196,7 +196,7 @@ function PlatformCard({ platform, value, onUpdate }: PlatformCardProps) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={4}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 font-mono text-[12px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none resize-none leading-relaxed"
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 font-mono text-[12px] text-white/80 placeholder:text-white/25 focus:border-[#98b3ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 resize-none leading-relaxed"
         />
       ) : (
         <div className="rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3">
@@ -388,7 +388,7 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
             placeholder={resumeLoading ? 'Loading your resume...' : 'Paste your resume text here (min 50 characters)'}
             rows={5}
             disabled={resumeLoading}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none disabled:opacity-40"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none disabled:opacity-40"
           />
         </div>
 
@@ -403,7 +403,7 @@ export function BooleanSearchBuilder({ accessToken }: BooleanSearchBuilderProps)
             value={targetTitles}
             onChange={(e) => setTargetTitles(e.target.value)}
             placeholder="e.g. VP of Operations, Director of Supply Chain"
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors"
           />
         </div>
 

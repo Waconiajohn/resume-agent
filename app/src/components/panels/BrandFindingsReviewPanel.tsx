@@ -152,7 +152,7 @@ export function BrandFindingsReviewPanel({ data, onPipelineRespond }: BrandFindi
               onChange={(e) => setFeedback(e.target.value)}
               rows={4}
               placeholder="e.g. The LinkedIn tone finding is incorrect — I intentionally use informal language on LinkedIn. The messaging inconsistency finding about the bio is accurate..."
-              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
+              className="w-full rounded-md border border-white/[0.15] bg-white/[0.06] px-3 py-2 text-xs text-white/85 leading-relaxed placeholder:text-white/30 focus:border-[#afc4ff]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-1 focus:ring-[#afc4ff]/20 resize-none"
               aria-label="Feedback on brand findings"
               autoFocus
             />

@@ -29,8 +29,9 @@ export function SectionEditor({ content, section, onSave, onCancel }: SectionEdi
         className="w-full resize-y"
         aria-label={`Edit ${sectionLabel} section content`}
       />
+      <span className="sr-only" aria-live="polite">{words} {words === 1 ? 'word' : 'words'}</span>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-white/40">{words} {words === 1 ? 'word' : 'words'}</span>
+        <span className="text-xs text-white/40" aria-hidden="true">{words} {words === 1 ? 'word' : 'words'}</span>
         <div className="flex items-center gap-2">
           <GlassButton variant="ghost" onClick={onCancel}>
             <X className="mr-1.5 h-3.5 w-3.5" />
