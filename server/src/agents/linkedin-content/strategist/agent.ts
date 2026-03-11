@@ -11,6 +11,7 @@ import type { AgentConfig } from '../../runtime/agent-protocol.js';
 import { registerAgent } from '../../runtime/agent-registry.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
 import { strategistTools } from './tools.js';
+import { LINKEDIN_CONTENT_RULES } from '../knowledge/rules.js';
 
 export const strategistConfig: AgentConfig<LinkedInContentState, LinkedInContentSSEEvent> = {
   identity: {
@@ -27,12 +28,9 @@ Your goal is to deliver a curated set of compelling topic suggestions for the us
 
 Once the topics are presented, stop — the user will select a topic and the Writer agent will take over.
 
-Important principles:
-- Topics must come from real experience in their evidence library, not invented scenarios
-- Each topic should have a specific hook that stops the scroll — not "Here are 5 tips..."
-- Position them as a practitioner sharing hard-won insight, not a content creator
-- Thought leadership means having a perspective, not just sharing information
-- If limited platform context is available, generate topics from their stated professional domain`,
+## Content Strategy Standards
+
+${LINKEDIN_CONTENT_RULES}`,
 
   tools: strategistTools,
   model: 'orchestrator',

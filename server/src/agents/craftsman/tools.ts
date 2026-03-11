@@ -417,7 +417,13 @@ Return ONLY valid JSON:
 Rules:
 - passed = true if score >= 7 AND no more than 2 FAIL results
 - issues should be actionable revision instructions, not generic comments
-- Be strict — a section with vague impact, missing metrics, or passive voice FAILS those criteria`;
+- Be strict — a section with vague impact, missing metrics, or passive voice FAILS those criteria
+
+Quality Dimensions (evaluate in addition to the checklist):
+- **Positioning Strength**: Does this section advance the candidate's positioning as the benchmark? Does it answer "why this person" for the target role? A summary that could describe anyone at this level FAILS.
+- **Voice Authenticity**: Does the writing sound like a real person or a resume template? Look for the candidate's authentic phrases from the interview transcript. If no authentic voice markers are present, flag it.
+- **Impact Density**: What percentage of bullets have quantified, specific impact? Target: 80%+ of bullets should have at least one metric or concrete scope indicator. Bullets that only describe responsibilities without outcomes FAIL.
+- **Narrative Coherence**: Does this section connect to the sections already written? Does it reinforce the same positioning angle? Disconnected sections that feel like they describe different people FAIL.`;
 
     const response = await llm.chat({
       model: FF_SELF_REVIEW_LIGHT ? MODEL_LIGHT : MODEL_MID,

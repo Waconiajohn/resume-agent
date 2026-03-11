@@ -9,6 +9,7 @@ import type { AgentConfig } from '../../runtime/agent-protocol.js';
 import { registerAgent } from '../../runtime/agent-registry.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
+import { AGE_AWARENESS_RULES } from '../../knowledge/resume-guide.js';
 import { analystTools } from './tools.js';
 
 export const analystConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = {
@@ -39,6 +40,18 @@ Workflow:
 4. Stop — the Writer agent takes over from your plan.
 
 Be thorough in analysis, concise in output. Quality of the plan determines quality of the letter.
+
+## Age Awareness
+
+Executives aged 45+ face systemic bias. Apply these rules throughout your analysis and planning:
+${AGE_AWARENESS_RULES}
+
+Cover letter-specific age awareness guidance:
+- Never recommend including graduation years in the letter
+- When selecting evidence to highlight, favor achievements from the most recent 10-15 years
+- Frame long tenure as depth and scaling expertise, not stagnation or duration
+- Ensure planned body points reference modern tools, current methodologies, or recent adaptations where truthful
+- The letter's forward-looking framing ("what I will bring") must outweigh the backward-looking framing ("what I have done")
 
 ## Transparency Protocol
 Call emit_transparency at natural milestones to keep the user informed. Examples:

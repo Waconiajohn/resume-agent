@@ -453,6 +453,14 @@ Common AI tells to look for:
 - Lack of company-specific or role-specific language
 - Missing authentic quirks, specific context, or unusual framing
 
+Specific patterns to catch:
+- "Successfully led" / "Successfully managed" / "Successfully implemented" — the word "successfully" is almost always filler. Real achievements show success through metrics, not adverbs.
+- Every bullet starting with a past-tense action verb followed by a metric — real humans vary their sentence openers.
+- Parallel structure across ALL bullets (e.g., "Led X resulting in Y" repeated 15 times) — some parallelism is good writing, but perfect uniformity across an entire resume signals AI generation.
+- The "power verb + quantified result + method" triple appearing in every bullet: "Drove $12M revenue by implementing..." "Reduced costs 30% by streamlining..." "Increased retention 25% by redesigning..." — real resumes have this pattern in some bullets but break it with narrative bullets, context-setting bullets, or scope-defining bullets.
+- Corporate jargon clusters: "cross-functional stakeholder alignment," "strategic operational excellence," "data-driven decision-making framework" — these phrases are technically correct but say nothing specific.
+- Missing first-person perspective markers — a real resume author occasionally uses constructions that reveal personal investment: "Built from scratch," "Inherited a team that was...," "Championed despite resistance from..."
+
 Return ONLY valid JSON: { "score": 82, "issues": ["List of specific issues found, or empty array if score >= 90"] }`,
       messages: [
         {

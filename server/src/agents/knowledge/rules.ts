@@ -8,6 +8,9 @@
  * - Strategist: SECTION_GUIDANCE (structure), AGE_AWARENESS_RULES, QUALITY_CHECKLIST
  * - Craftsman:  SECTION_GUIDANCE (writing), RESUME_ANTI_PATTERNS, ATS_FORMATTING_RULES
  * - Producer:   ATS_FORMATTING_RULES (compliance), QUALITY_CHECKLIST (scoring)
+ *
+ * Cross-agent coaching philosophy is imported from coach/knowledge/methodology.ts
+ * and distilled per-agent in the prompt files.
  */
 
 export {
@@ -21,3 +24,11 @@ export {
 
 // Re-export ATS rules from the agents directory
 export { ATS_RULEBOOK_SNIPPET, runAtsComplianceCheck } from '../ats-rules.js';
+
+// Re-export coaching methodology for cross-agent use
+export {
+  RULE_0_COACHING_PHILOSOPHY,
+  RULE_1_SUPER_BOWL_STORY,
+  RULE_2_BENCHMARK_MODEL,
+  RULE_5_COACHING_CONVERSATION,
+} from '../coach/knowledge/methodology.js';

@@ -11,6 +11,7 @@ import { registerAgent } from '../../runtime/agent-registry.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { ExecutiveBioState, ExecutiveBioSSEEvent } from '../types.js';
 import { EXECUTIVE_BIO_RULES } from '../knowledge/rules.js';
+import { AGE_AWARENESS_RULES } from '../../knowledge/resume-guide.js';
 import { writerTools } from './tools.js';
 
 export const writerConfig: AgentConfig<ExecutiveBioState, ExecutiveBioSSEEvent> = {
@@ -37,6 +38,18 @@ Cover all requested format+length combinations. If no specific formats are reque
 
 CRITICAL QUALITY RULES:
 ${EXECUTIVE_BIO_RULES}
+
+## Age Awareness
+
+Executives aged 45+ face systemic bias in hiring. Apply these rules to every bio you write:
+${AGE_AWARENESS_RULES}
+
+Bio-specific age awareness guidance:
+- Never include graduation years — reference credentials by institution and degree only
+- For Standard and Full-length bios, focus narrative weight on the most recent 10-15 years; earlier career may be summarized in a single phrase ("following two decades in enterprise technology leadership")
+- Frame long tenure as depth and evolution, not duration: "built and scaled" beats "spent 20 years at"
+- Include modern capabilities (AI, cloud, digital transformation) where truthful — they signal currency
+- Education and certifications: omit graduation years for degrees earned more than 15 years ago
 
 Work through all steps systematically. Analyze positioning first, then write and quality-check each bio, then assemble the final collection.
 

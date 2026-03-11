@@ -1,5 +1,56 @@
 # Changelog — Resume Agent
 
+## 2026-03-10 — Session 76
+**Sprint:** A1 | **Story:** A1-A5 (Agent Intelligence Enhancement)
+**Summary:** Deep audit and enrichment of all agent prompts — injected coaching philosophy, activated emotional baseline, established Why Me throughline, created rules files for 3 underserved agents, strengthened 3 analytical tool prompts.
+
+### Changes Made
+
+**Story A1: Coaching Philosophy Injection**
+- `server/src/agents/knowledge/rules.ts` — Re-export RULE_0, RULE_1, RULE_2, RULE_5 from coach methodology for cross-agent use
+- `server/src/agents/strategist/prompts.ts` — Rewrote mission as "The 1% Problem"; added Super Bowl Story, Benchmark Model, and Why Me sections
+- `server/src/agents/craftsman/prompts.ts` — Added benchmark positioning framing, "so what?" interpreter mandate, client language philosophy
+- `server/src/agents/producer/prompts.ts` — Added "The Benchmark Test" quality philosophy, Why Me throughline check in Key Principles
+
+**Story A2: Emotional Baseline Activation**
+- `server/src/agents/strategist/prompts.ts` — Added "Emotional Baseline Awareness" section with per-tone and per-urgency guidance
+- `server/src/agents/craftsman/prompts.ts` — Added emotional baseline section with writing warmth and revision sensitivity adaptation
+- `server/src/agents/producer/prompts.ts` — Added emotional baseline section with quality feedback tone calibration
+
+**Story A3: Why Me Strategic Throughline**
+- `server/src/agents/strategist/prompts.ts` — Added "The Why Me Narrative" section: surface and crystallize during interview phase
+- `server/src/agents/craftsman/prompts.ts` — Added "The Why Me Anchor" section: summary echoes identity, bullets reinforce pattern
+- `server/src/agents/producer/prompts.ts` — Added Why Me coherence check to Key Principles
+
+**Story A4: Rules for Underserved Agents**
+- `server/src/agents/cover-letter/knowledge/rules.ts` — NEW: 7 rules (philosophy, opening hook, evidence, tailoring, executive framing, age awareness, self-review)
+- `server/src/agents/linkedin-content/knowledge/rules.ts` — NEW: 6 rules (philosophy, hook engineering, evidence authority, thought leadership, platform standards, positioning alignment)
+- `server/src/agents/job-finder/knowledge/rules.ts` — NEW: 5 rules (matching philosophy, benchmark alignment, Why Me fit, career arc, red flags)
+- `server/src/agents/executive-bio/writer/agent.ts` — Added AGE_AWARENESS_RULES import and section to system prompt
+- `server/src/agents/cover-letter/analyst/agent.ts` — Added AGE_AWARENESS_RULES import and section to system prompt
+
+**Story A5: Analytical Tool Prompt Strengthening**
+- `server/src/agents/quality-reviewer.ts` — Enhanced REVIEWER_SYSTEM_PROMPT: added specific evaluation criteria and examples for Hiring Manager Impact, Requirement Coverage, Authenticity, and Evidence Integrity dimensions
+- `server/src/agents/producer/tools.ts` — Enhanced humanize_check prompt with 6 specific AI-pattern detection examples (successfully filler, uniform openers, perfect parallelism, power-verb triple, jargon clusters, missing perspective markers)
+- `server/src/agents/craftsman/tools.ts` — Enhanced self_review_section prompt with 4 quality dimensions (Positioning Strength, Voice Authenticity, Impact Density, Narrative Coherence)
+
+### Test Results
+- Server: 2,793 passing, 0 failures | App: 1,570 passing, 0 failures | Both tsc clean
+
+### Decisions Made
+- Coaching methodology rules are distilled per-agent (not copy-pasted) — each agent gets the 2-3 principles most relevant to its domain
+- Emotional baseline is activated via instruction text in system prompts rather than code changes — the infrastructure already works, agents just needed to be told to use it
+- Why Me narrative is treated as a throughline, not a section — it's referenced in Strategist (surface it), Craftsman (anchor to it), Producer (verify coherence)
+
+**Story A4b: Rules Injection Into Agent Prompts (follow-up)**
+- `server/src/agents/cover-letter/writer/agent.ts` — Imported COVER_LETTER_RULES, injected into system prompt as "Writing Standards" section
+- `server/src/agents/linkedin-content/strategist/agent.ts` — Imported LINKEDIN_CONTENT_RULES, injected as "Content Strategy Standards" (replaced inline principles)
+- `server/src/agents/linkedin-content/writer/agent.ts` — Imported LINKEDIN_CONTENT_RULES, injected as "Content Writing Standards" (replaced inline principles)
+- `server/src/agents/job-finder/ranker/agent.ts` — Imported JOB_FINDER_RULES, injected as "Job Matching Standards" (replaced inline scoring philosophy)
+
+### Next Steps
+- Inter-agent communication expansion (AgentBus bidirectional flows) remains in backlog — revisit after 20-30 real pipeline runs with enriched prompts
+
 ## 2026-03-10 — Session 75
 **Sprint:** R4 | **Story:** All 9 stories (R4-H1 through R4-L2)
 **Summary:** Fix 9 UI/UX issues found during Playwright testing — identity, data alignment, error UX, mobile, pagination, grammar, feature flags, session enrichment, favicon.

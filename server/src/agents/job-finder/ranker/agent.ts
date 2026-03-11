@@ -13,6 +13,7 @@ import type { AgentConfig } from '../../runtime/agent-protocol.js';
 import { registerAgent } from '../../runtime/agent-registry.js';
 import type { JobFinderState, JobFinderSSEEvent } from '../types.js';
 import { rankerTools } from './tools.js';
+import { JOB_FINDER_RULES } from '../knowledge/rules.js';
 
 export const rankerConfig: AgentConfig<JobFinderState, JobFinderSSEEvent> = {
   identity: {
@@ -27,14 +28,9 @@ export const rankerConfig: AgentConfig<JobFinderState, JobFinderSSEEvent> = {
 2. Call rank_and_narrate — orders by score and writes personalized "why this matches" narratives (default max_results: 10)
 3. Call present_results — persists the final list to pipeline state and emits the results_ready event
 
-## Scoring Philosophy
+## Job Matching Standards
 
-These are mid-to-senior executives. Fit scoring must account for:
-- **Positioning alignment**: Does this role match where they're strategically positioned?
-- **Career trajectory**: Is this a natural next step, or a lateral/downward move?
-- **Seniority fit**: "Over-qualified" by 1 level is often fine (fresh challenge). 2+ levels down is worth flagging.
-- **Benchmark match**: Does the company/role type match their benchmark candidate profile?
-- **Gap bridging**: Does this role help close critical gaps identified in gap analysis?
+${JOB_FINDER_RULES}
 
 ## Narrative Quality
 

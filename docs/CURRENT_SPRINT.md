@@ -1,79 +1,69 @@
-# Sprint R4: UI/UX Polish — Playwright Testing Remediation
+# Sprint A1: Agent Intelligence Enhancement
 
-**Goal:** Fix 9 UI/UX issues found during Session 74 Playwright testing before launch.
+**Goal:** Inject coaching philosophy, emotional baseline awareness, Why Me throughline, and stronger analytical prompts across all agents.
 **Started:** 2026-03-10
-**Findings Reference:** `docs/obsidian/30_Specs & Designs/UI-UX Testing Findings - Session 74.md`
+**Audit Reference:** Agent Intelligence Audit (Session 76)
 
 ## Stories This Sprint
 
-### Story R4-H1: Username Display — Use Real Name [HIGH]
+### Story A1: Inject Coaching Philosophy Into Core Agents [LARGE]
+- **As a** resume pipeline
+- **I want to** have coaching methodology principles woven into Strategist, Craftsman, and Producer prompts
+- **So that** agents understand The 1% Problem, Super Bowl Story, and Benchmark Model as their mission
 - **Acceptance Criteria:**
-  - [x] `useAuth()` returns `displayName` from `user.user_metadata?.full_name ?? email.split('@')[0] ?? 'there'`
-  - [x] `App.tsx` passes `displayName` (not `user.email`) as `userName` to CareerIQScreen
-  - [x] Greeting shows real first name; sidebar shows "AI John" not "AI jjschrup@yahoo.com"
-  - [x] Tests updated, tsc clean
-- **Status:** done
-
-### Story R4-H2: PipelineSummary Data Source Alignment [HIGH]
-- **Acceptance Criteria:**
-  - [x] PipelineSummary reads from `application_pipeline` table with `stage` column
-  - [x] DashboardHome `loadPipelineStats` also reads `application_pipeline`
-  - [x] Stage mapping keys match kanban stages
+  - [x] Strategist prompt includes RULE_0 (1% Problem) and RULE_1 (Super Bowl Story) as mission framing
+  - [x] Craftsman prompt includes RULE_5 (client's language) and RULE_2 (benchmark positioning) as writing philosophy
+  - [x] Producer prompt includes RULE_2 (benchmark test) as quality evaluation criteria
+  - [x] knowledge/rules.ts exports coaching methodology rules for cross-agent use
   - [x] tsc clean
 - **Status:** done
 
-### Story R4-H3: Error Sessions UX Cleanup [HIGH]
+### Story A2: Activate Emotional Baseline in System Prompts [MEDIUM]
+- **As a** pipeline agent
+- **I want to** know how to USE the emotional baseline guidance appended to my messages
+- **So that** I adapt interview depth, writing warmth, and feedback tone to the candidate's state
 - **Acceptance Criteria:**
-  - [x] DashboardHome feed filters out `pipeline_status === 'error'` sessions
-  - [x] DashboardSessionCard status badge: "Error" → "Incomplete"
-  - [x] SessionHistoryTab filter label: "Error" → "Incomplete"
+  - [x] Strategist prompt instructs agent to read and apply emotional baseline
+  - [x] Craftsman prompt instructs agent to adapt language warmth
+  - [x] Producer prompt instructs agent to calibrate feedback tone
   - [x] tsc clean
 - **Status:** done
 
-### Story R4-M1: Mobile FAB Clears Bottom Nav [MEDIUM]
+### Story A3: Make "Why Me" the Strategic Throughline [MEDIUM]
+- **As a** candidate
+- **I want to** have my Why Me narrative anchored throughout all outputs
+- **So that** every product reinforces my authentic positioning story
 - **Acceptance Criteria:**
-  - [x] CoachDrawer FAB uses `bottom-20` on mobile (clears nav), `bottom-6` on desktop
-  - [x] `isMobile` prop passed from CareerIQScreen (already computed via useMediaQuery)
+  - [x] Strategist prompt explicitly goals surfacing the Why Me narrative
+  - [x] Craftsman prompt directs anchoring authenticity in the Why Me story
   - [x] tsc clean
 - **Status:** done
 
-### Story R4-M2: Session List Pagination [MEDIUM]
+### Story A4: Formalize Rules for Underserved Agents [MEDIUM]
+- **As a** cover letter and linkedin content agent
+- **I want to** have formal rules files like other mature agents
+- **So that** my outputs follow coaching philosophy and quality standards
 - **Acceptance Criteria:**
-  - [x] Backend GET /sessions accepts `offset` query param (default 0, positive integer)
-  - [x] Backend applies `.range(offset, offset + limit - 1)`, returns `{ sessions, has_more }`
-  - [x] SessionHistoryTab shows "Load more" button when `has_more` is true
-  - [x] Load more appends results, increments offset
-  - [x] tsc clean (app + server)
-- **Status:** done
-
-### Story R4-M3: Relative Time Grammar Fix [MEDIUM]
-- **Acceptance Criteria:**
-  - [x] Returns "1 week ago" for 7–13 days
+  - [x] `cover-letter/knowledge/rules.ts` created with 6-8 rules
+  - [x] `linkedin-content/knowledge/rules.ts` created with 6-8 rules
+  - [x] `job-finder/knowledge/rules.ts` created with 5-7 rules
+  - [x] AGE_AWARENESS_RULES extended to executive-bio, case-study, linkedin-optimizer, cover-letter agent prompts
   - [x] tsc clean
 - **Status:** done
 
-### Story R4-M4: Feature-Flagged Routes Return 200 When Disabled [MEDIUM]
+### Story A5: Strengthen Analytical Tool Prompts [SMALL]
+- **As a** quality review tool
+- **I want to** have specific evaluation criteria with examples
+- **So that** analytical reviews are as strong as creative writing prompts
 - **Acceptance Criteria:**
-  - [x] Feature flag guards return `200 { data: null, feature_disabled: true }` instead of 404
-  - [x] Frontend hooks check `feature_disabled` flag and return null cleanly
-  - [x] Product route factory 403 for disabled products unchanged (POST /start, different path)
-  - [x] tsc clean (app + server)
-- **Status:** done
-
-### Story R4-L1: Session Title Enrichment [LOW]
-- **Acceptance Criteria:**
-  - [x] GET /sessions LEFT JOINs `job_applications` via `job_application_id`
-  - [x] Enrichment fallback: panel_data → job_applications → null
-  - [x] Server tsc clean
-- **Status:** done
-
-### Story R4-L2: Add Favicon [LOW]
-- **Acceptance Criteria:**
-  - [x] SVG favicon in `app/public/favicon.svg`
-  - [x] `<link rel="icon">` in `app/index.html`
-  - [x] Browser tab shows icon
+  - [x] adversarial_review (quality-reviewer.ts) prompt strengthened with specific evaluation criteria
+  - [x] humanize_check prompt enhanced with AI-pattern examples
+  - [x] self_review_section prompt enhanced with quality dimension rubric
+  - [x] tsc clean
 - **Status:** done
 
 ## Out of Scope (Explicitly)
-- Resume pipeline UX redesign (Sprints 61-65)
-- Frontend rendering of structured completion data
+- Inter-agent communication expansion (AgentBus bidirectional flows)
+- Cross-product context sharing (needs platform context graph design)
+- New agent creation
+- Tool additions

@@ -11,6 +11,7 @@ import type { AgentConfig } from '../../runtime/agent-protocol.js';
 import { registerAgent } from '../../runtime/agent-registry.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
 import { writerTools } from './tools.js';
+import { LINKEDIN_CONTENT_RULES } from '../knowledge/rules.js';
 
 export const writerConfig: AgentConfig<LinkedInContentState, LinkedInContentSSEEvent> = {
   identity: {
@@ -30,13 +31,9 @@ After presenting, if the user provides feedback:
 5. Call self_review_post again to re-score
 6. Call present_post again to show the revision
 
-Writing principles:
-- Match the user's authentic voice from their career narrative — avoid corporate speak
-- The hook (first 1-2 lines) must stop the scroll without clickbait
-- Short paragraphs (2-3 sentences max) with intentional white space
-- Specific > generic always: "reduced churn by 23%" beats "improved retention"
-- End with a genuine question, not a follower solicitation
-- 3-5 highly targeted hashtags, never more than 5`,
+## Content Writing Standards
+
+${LINKEDIN_CONTENT_RULES}`,
 
   tools: writerTools,
   model: 'orchestrator',

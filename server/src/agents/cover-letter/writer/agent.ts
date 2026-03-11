@@ -10,6 +10,7 @@ import { registerAgent } from '../../runtime/agent-registry.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
 import { writerTools } from './tools.js';
+import { COVER_LETTER_RULES } from '../knowledge/rules.js';
 
 export const writerConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = {
   identity: {
@@ -24,6 +25,10 @@ export const writerConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = 
 
 If the review score is below 70, you may revise by calling write_letter again with adjustments.
 After review passes (score >= 70), stop — the pipeline will finalize the result.
+
+## Writing Standards
+
+${COVER_LETTER_RULES}
 
 ## Transparency Protocol
 Call emit_transparency at natural milestones to keep the user informed. Examples:
