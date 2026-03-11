@@ -56,16 +56,18 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
               // Response: true (approved), or { feedback: string } (revision requested),
               // or { edited_content: string } (direct edit)
               if (response === true || response === 'approved') {
-                // Approved — no changes needed
+                state.revision_feedback = undefined;
               } else if (response && typeof response === 'object') {
                 const resp = response as Record<string, unknown>;
                 if (typeof resp.edited_content === 'string') {
                   state.letter_draft = resp.edited_content;
+                  state.revision_feedback = undefined;
                 } else if (typeof resp.feedback === 'string') {
                   state.revision_feedback = resp.feedback;
                 }
               }
             },
+            requiresRerun: (state) => !!state.revision_feedback,
           },
         ],
         onComplete: (scratchpad, state, emit) => {

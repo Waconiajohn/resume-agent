@@ -443,31 +443,24 @@ describe('LivePulseStrip', () => {
   afterEach(() => cleanup());
 
   it('renders a session title', () => {
-    render(<LivePulseStrip />);
-    // getNextSession() picks from a list of known titles based on day
-    const knownTitles = [
-      'Why-Me Story Workshop',
-      'LinkedIn Headline Masterclass',
-      'Interview Confidence for Executives',
-      'Networking Without the Cringe',
-      'Salary Negotiation Tactics',
-    ];
-    const found = knownTitles.some((title) => screen.queryByText(title) !== null);
-    expect(found).toBe(true);
+    // LivePulseStrip is intentionally stubbed to return null until a real
+    // session schedule system is connected — showing fake data is a trust violation.
+    const { container } = render(<LivePulseStrip />);
+    expect(container.firstChild).toBeNull();
   });
 
   it('renders either LIVE NOW or Next Session text', () => {
+    // Component returns null — neither label is rendered.
     render(<LivePulseStrip />);
-    const hasLive = screen.queryByText('Live Now') !== null;
-    const hasNext = screen.queryByText('Next Session') !== null;
-    expect(hasLive || hasNext).toBe(true);
+    expect(screen.queryByText('Live Now')).toBeNull();
+    expect(screen.queryByText('Next Session')).toBeNull();
   });
 
   it('renders a Join Now or Set Reminder button', () => {
+    // Component returns null — neither button is rendered.
     render(<LivePulseStrip />);
-    const hasJoin = screen.queryByText('Join Now') !== null;
-    const hasReminder = screen.queryByText('Set Reminder') !== null;
-    expect(hasJoin || hasReminder).toBe(true);
+    expect(screen.queryByText('Join Now')).toBeNull();
+    expect(screen.queryByText('Set Reminder')).toBeNull();
   });
 });
 
@@ -491,7 +484,7 @@ describe('ZoneYourDay', () => {
     expect(screen.getByText('Define your Why-Me story')).toBeInTheDocument();
   });
 
-  it('strong state shows "Update your LinkedIn headline" action', () => {
+  it('strong state shows "Refine your Why-Me story" action', () => {
     render(
       <ZoneYourDay
         userName="test@example.com"
@@ -500,7 +493,7 @@ describe('ZoneYourDay', () => {
         onRefineWhyMe={vi.fn()}
       />,
     );
-    expect(screen.getByText('Update your LinkedIn headline')).toBeInTheDocument();
+    expect(screen.getByText('Refine your Why-Me story')).toBeInTheDocument();
   });
 
   it('strong state shows "Refine story" link', () => {
@@ -548,7 +541,7 @@ describe('ZoneYourDay', () => {
     expect(screen.queryByText(/day streak/)).not.toBeInTheDocument();
   });
 
-  it('shows streak for refining state', () => {
+  it('does not show streak for refining state (awaiting real Momentum data)', () => {
     render(
       <ZoneYourDay
         userName="test@example.com"
@@ -556,7 +549,8 @@ describe('ZoneYourDay', () => {
         dashboardState="refining"
       />,
     );
-    expect(screen.getByText('3-day streak')).toBeInTheDocument();
+    // Streak UI is hidden until connected to real Momentum data.
+    expect(screen.queryByText(/day streak/)).not.toBeInTheDocument();
   });
 
   it('renders signal dots (Clarity, Alignment, Differentiation)', () => {

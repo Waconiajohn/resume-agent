@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import {
   TrendingDown,
   Shield,
@@ -744,6 +745,10 @@ export function FinancialWellnessRoom() {
           Understand your financial position and connect with fiduciary planners who specialize
           in career transitions.
         </p>
+        <ContextLoadedBadge
+          contextTypes={['emotional_baseline', 'client_profile']}
+          className="mt-2"
+        />
       </div>
 
       {/* Bridge Analysis + Planner side-by-side */}

@@ -52,7 +52,7 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
           complete: 'Strategy ready — review your negotiation numbers before finalizing',
         },
         onComplete: (scratchpad, state, emit) => {
-          if (scratchpad.negotiation_strategy && !state.negotiation_strategy) {
+          if (scratchpad.negotiation_strategy) {
             state.negotiation_strategy = scratchpad.negotiation_strategy as SalaryNegotiationState['negotiation_strategy'];
           }
           if (Array.isArray(scratchpad.talking_points)) {
@@ -90,11 +90,13 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
             condition: (state) => !!state.negotiation_strategy,
             onResponse: (response, state) => {
               if (response === true || response === 'approved') {
-                // Approved — proceed with the generated strategy
+                state.revision_feedback = undefined;
               } else if (response && typeof response === 'object') {
                 const resp = response as Record<string, unknown>;
                 if (typeof resp.feedback === 'string') {
                   state.revision_feedback = resp.feedback;
+                } else {
+                  state.revision_feedback = undefined;
                 }
                 // Merge edited dollar amounts if provided
                 if (state.negotiation_strategy) {
@@ -119,6 +121,7 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
                 }
               }
             },
+            requiresRerun: (state) => !!state.revision_feedback,
           },
         ],
       },
@@ -232,6 +235,16 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
           '',
           'Do NOT skip any step or scenario type.',
         ];
+
+        // If the user requested revisions at the strategy review gate, include feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Revision Requested',
+            `The user reviewed the negotiation strategy and requested the following changes: "${state.revision_feedback}"`,
+            'Adjust your strategy, talking points, and scenarios to incorporate this feedback, then call assemble_negotiation_prep with the updated content.',
+          );
+        }
 
         // Emotional baseline tone adaptation
         const toneGuidance = getToneGuidanceFromInput(input);

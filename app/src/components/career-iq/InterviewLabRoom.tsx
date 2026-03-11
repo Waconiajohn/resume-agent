@@ -1,5 +1,6 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import {
   Mic,
   Building2,
@@ -733,6 +734,10 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
           <p className="text-[13px] text-white/40">
             Prepare for every interview with AI-powered company research, predicted questions, and practice sessions.
           </p>
+          <ContextLoadedBadge
+            contextTypes={['positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
+            className="mt-2"
+          />
         </div>
         <GlassButton
           variant="primary"

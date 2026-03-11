@@ -32,13 +32,13 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
           complete: 'Thank-you notes ready for review',
         },
         onComplete: (scratchpad, state, emit) => {
-          if (Array.isArray(scratchpad.notes) && state.notes.length === 0) {
+          if (Array.isArray(scratchpad.notes) && scratchpad.notes.length > 0) {
             state.notes = scratchpad.notes as ThankYouNoteState['notes'];
           }
-          if (scratchpad.final_report && typeof scratchpad.final_report === 'string' && !state.final_report) {
+          if (scratchpad.final_report && typeof scratchpad.final_report === 'string') {
             state.final_report = scratchpad.final_report;
           }
-          if (typeof scratchpad.quality_score === 'number' && state.quality_score == null) {
+          if (typeof scratchpad.quality_score === 'number') {
             state.quality_score = scratchpad.quality_score;
           }
 
@@ -59,16 +59,18 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
             condition: (state) => state.notes.length > 0,
             onResponse: (response, state) => {
               if (response === true || response === 'approved') {
-                // Approved — no changes needed
+                state.revision_feedback = undefined;
               } else if (response && typeof response === 'object') {
                 const resp = response as Record<string, unknown>;
                 if (typeof resp.edited_content === 'string') {
                   state.final_report = resp.edited_content;
+                  state.revision_feedback = undefined;
                 } else if (typeof resp.feedback === 'string') {
                   state.revision_feedback = resp.feedback;
                 }
               }
             },
+            requiresRerun: (state) => !!state.revision_feedback,
           },
         ],
       },

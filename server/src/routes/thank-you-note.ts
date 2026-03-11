@@ -103,3 +103,31 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
   momentumActivityType: 'thank_you_note_completed',
 });
+
+// ─── GET /reports/latest — Fetch most recent thank-you note report ────────────
+
+thankYouNoteRoutes.get('/reports/latest', async (c) => {
+  if (!FF_THANK_YOU_NOTE) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+
+  const { data, error } = await supabaseAdmin
+    .from('thank_you_note_reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id }, 'GET /thank-you-note/reports/latest: query failed');
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No reports found' }, 404);
+  }
+
+  return c.json({ report: data });
+});

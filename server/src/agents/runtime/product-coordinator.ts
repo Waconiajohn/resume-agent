@@ -245,12 +245,79 @@ export async function runProductPipeline<
         for (const gate of phase.gates) {
           const shouldFire = !gate.condition || gate.condition(state);
           if (shouldFire) {
-            log.info({ gate: gate.name, agent: phase.name }, 'Product coordinator: waiting at gate');
-            const response = await waitForUser<unknown>(gate.name);
-            if (gate.onResponse) {
-              gate.onResponse(response, state, emit as (event: BaseEvent) => void);
+            const MAX_GATE_RERUNS = 3;
+            let rerunCount = 0;
+
+            // Gate loop: wait → onResponse → optionally re-run agent → re-fire gate
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+              log.info({ gate: gate.name, agent: phase.name, rerunCount }, 'Product coordinator: waiting at gate');
+              const response = await waitForUser<unknown>(gate.name);
+              if (gate.onResponse) {
+                gate.onResponse(response, state, emit as (event: BaseEvent) => void);
+              }
+
+              // Check if agent needs to re-run (e.g., user provided feedback)
+              if (gate.requiresRerun?.(state) && rerunCount < MAX_GATE_RERUNS) {
+                rerunCount++;
+                log.info(
+                  { gate: gate.name, agent: phase.name, rerunCount },
+                  'Product coordinator: re-running agent after gate feedback',
+                );
+
+                // Emit stage restart so frontend shows progress
+                if (phase.stageMessage) {
+                  emit({
+                    type: 'stage_start',
+                    stage: phase.stageMessage.startStage,
+                    message: `Revising based on your feedback (attempt ${rerunCount})...`,
+                  } as unknown as TEvent);
+                }
+
+                // Re-build message (now includes revision_feedback from onResponse)
+                const revisionMessage = await productConfig.buildAgentMessage(phase.name, state, input);
+
+                // Re-subscribe inter-agent handlers
+                let revCleanup: (() => void) | undefined;
+                if (productConfig.interAgentHandlers && productConfig.interAgentHandlers.length > 0) {
+                  revCleanup = subscribeInterAgentHandlers(
+                    productConfig.interAgentHandlers,
+                    bus, state, emit, waitForUser, pipelineAbort.signal,
+                  );
+                }
+
+                try {
+                  const revResult = await runAgentLoop({
+                    config: phase.config,
+                    contextParams: {
+                      ...contextParams,
+                      state, // state already mutated by onResponse
+                    },
+                    initialMessage: revisionMessage,
+                  });
+
+                  log.info(
+                    { agent: phase.name, rounds: revResult.rounds_used, rerunCount },
+                    'Product coordinator: revision agent complete',
+                  );
+
+                  // Post-process scratchpad again
+                  if (phase.onComplete) {
+                    phase.onComplete(revResult.scratchpad, state, emit);
+                  }
+                } finally {
+                  if (revCleanup) revCleanup();
+                }
+
+                // Loop back to re-fire the gate so user can review the revision
+                continue;
+              }
+
+              // No re-run needed (approved or direct edit) — exit gate loop
+              break;
             }
-            log.info({ gate: gate.name }, 'Product coordinator: gate passed');
+
+            log.info({ gate: gate.name, rerunCount }, 'Product coordinator: gate passed');
           }
         }
       }

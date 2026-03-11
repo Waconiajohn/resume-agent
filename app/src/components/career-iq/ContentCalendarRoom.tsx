@@ -1,5 +1,6 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import {
   Calendar,
   Sparkles,
@@ -177,6 +178,10 @@ export function ContentCalendarRoom() {
           <p className="text-[13px] text-white/40">
             30 days of strategic LinkedIn posts based on your expertise and positioning.
           </p>
+          <ContextLoadedBadge
+            contextTypes={['positioning_strategy', 'evidence_item']}
+            className="mt-2"
+          />
         </div>
         <GlassButton
           onClick={handleGenerate}

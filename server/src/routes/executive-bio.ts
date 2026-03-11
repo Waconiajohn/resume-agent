@@ -102,3 +102,31 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
 
   momentumActivityType: 'executive_bio_completed',
 });
+
+// ─── GET /reports/latest — Fetch most recent executive bio report ─────────────
+
+executiveBioRoutes.get('/reports/latest', async (c) => {
+  if (!FF_EXECUTIVE_BIO) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+
+  const { data, error } = await supabaseAdmin
+    .from('executive_bio_reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id }, 'GET /executive-bio/reports/latest: query failed');
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No reports found' }, 404);
+  }
+
+  return c.json({ report: data });
+});

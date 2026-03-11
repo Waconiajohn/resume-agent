@@ -66,12 +66,17 @@ afterEach(() => {
 });
 
 describe('useInterviewDebriefs', () => {
-  it('starts with empty debriefs and loading=false', () => {
+  it('starts with empty debriefs and loading=true (refresh fires on mount)', async () => {
     const { result } = renderHook(() => useInterviewDebriefs());
 
+    // The hook calls refresh() via useEffect on mount, so loading starts as true.
     expect(result.current.debriefs).toEqual([]);
-    expect(result.current.loading).toBe(false);
+    expect(result.current.loading).toBe(true);
     expect(result.current.error).toBeNull();
+
+    // After the mount refresh completes (fetch returns []), loading settles to false.
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.debriefs).toEqual([]);
   });
 
   it('refresh fetches debriefs from the correct endpoint', async () => {

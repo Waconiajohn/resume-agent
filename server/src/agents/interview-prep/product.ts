@@ -76,16 +76,18 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
             condition: (state) => typeof state.final_report === 'string' && state.final_report.length > 0,
             onResponse: (response, state) => {
               if (response === true || response === 'approved') {
-                // Approved — no changes needed
+                state.revision_feedback = undefined;
               } else if (response && typeof response === 'object') {
                 const resp = response as Record<string, unknown>;
                 if (typeof resp.edited_content === 'string') {
                   state.final_report = resp.edited_content;
+                  state.revision_feedback = undefined;
                 } else if (typeof resp.feedback === 'string') {
                   state.revision_feedback = resp.feedback;
                 }
               }
             },
+            requiresRerun: (state) => !!state.revision_feedback,
           },
         ],
       },

@@ -1,5 +1,90 @@
 # Changelog — Resume Agent
 
+## 2026-03-10 — Session 72
+**Sprint:** R3 | **Stories:** R3-12 through R3-15
+**Summary:** Gate re-run architecture for revision feedback, platform context visibility badge in 12 rooms, session persistence APIs + usePriorResult hook in 6 rooms, 11 stale app tests fixed.
+
+### Changes Made
+
+#### Gate Re-run Architecture (R3-15)
+- `server/src/agents/runtime/product-config.ts` — Added `requiresRerun?: (state: TState) => boolean` to GateDef
+- `server/src/agents/runtime/product-coordinator.ts` — Gate processing loop: re-invokes agent when requiresRerun returns true, max 3 re-runs, re-builds message (now includes revision_feedback), re-subscribes inter-agent handlers
+- `server/src/agents/cover-letter/product.ts` — Added requiresRerun, clear revision_feedback on approve
+- `server/src/agents/executive-bio/product.ts` — Added requiresRerun, fixed onComplete guards (bios.length===0 → scratchpad check)
+- `server/src/agents/interview-prep/product.ts` — Added requiresRerun, clear revision_feedback on approve
+- `server/src/agents/linkedin-content/product.ts` — Added requiresRerun, clear revision_feedback on approve
+- `server/src/agents/networking-outreach/product.ts` — Added requiresRerun, added revision_feedback to writer buildAgentMessage
+- `server/src/agents/salary-negotiation/product.ts` — Added requiresRerun, fixed onComplete guards, added revision_feedback to strategist buildAgentMessage
+- `server/src/agents/thank-you-note/product.ts` — Added requiresRerun, fixed onComplete guards (notes.length===0 → scratchpad check)
+- `server/src/__tests__/product-coordinator.test.ts` — 3 new tests: re-run on feedback, cap at 3, no re-run when not set
+
+#### Platform Context Visibility (R3-12)
+- `server/src/routes/platform-context.ts` — New route: GET /summary returns latest context per type
+- `server/src/index.ts` — Mounted platformContextRoutes at /api/platform-context
+- `app/src/hooks/usePlatformContextSummary.ts` — New hook with sessionStorage caching
+- `app/src/components/career-iq/ContextLoadedBadge.tsx` — Indigo pill badge component
+- 12 rooms integrated with ContextLoadedBadge (ExecutiveBio, CaseStudy, ThankYouNote, PersonalBrand, SalaryNegotiation, NinetyDayPlan, InterviewLab, ContentCalendar, LinkedInStudio, NetworkingHub, FinancialWellness, JobCommandCenter)
+
+#### Session Persistence (R3-13, R3-14)
+- `server/src/routes/executive-bio.ts` — Added GET /reports/latest
+- `server/src/routes/case-study.ts` — Added GET /reports/latest
+- `server/src/routes/thank-you-note.ts` — Added GET /reports/latest
+- `server/src/routes/personal-brand.ts` — Added GET /reports/latest
+- `server/src/routes/salary-negotiation.ts` — Added GET /reports/latest
+- `server/src/routes/ninety-day-plan.ts` — Added GET /reports/latest
+- `app/src/hooks/usePriorResult.ts` — New shared hook: fetch-on-mount, sessionStorage cache, clearPrior
+- 6 rooms integrated with usePriorResult (ExecutiveBio, CaseStudy, ThankYouNote, PersonalBrand, SalaryNegotiation, NinetyDayPlan)
+
+#### Stale Test Fixes
+- `app/src/__tests__/career-iq/CareerIQComponents.test.tsx` — Updated LivePulseStrip + ZoneYourDay assertions
+- `app/src/__tests__/platform/ProductCatalogGrid.test.tsx` — Route assertion uses product.route
+- `app/src/__tests__/hooks/useCounterOfferSim.test.ts` — Mock data wrapped as { summary }
+- `app/src/__tests__/hooks/useMockInterview.test.ts` — Same wrap
+- `app/src/__tests__/hooks/useInterviewDebriefs.test.ts` — Assert loading: true initially
+- `app/src/hooks/__tests__/useLinkedInContent-persistence.test.tsx` — Assert postSaved: true
+
+### Decisions Made
+- requiresRerun max cap of 3 prevents infinite revision loops while allowing meaningful iteration
+- personal-brand and ninety-day-plan don't need requiresRerun — their feedback flows from earlier agent gate to later agent via buildAgentMessage
+- ContextLoadedBadge cached per session — one network call, not per navigation
+- usePriorResult uses sessionStorage, invalidated by clearPrior button
+
+### Next Steps
+- Pattern 3 (Rich Backend Data Lost) — emit structured data alongside markdown in completion events
+- Coach navigation redesign (sidebar reorg, CoachBanner, CoachSpotlight) per plan
+
+## 2026-03-10 — Session 71
+**Sprint:** R3 (Pattern 1) | **Story:** Platform Context Visibility — Stories 1, 2, 3
+**Summary:** Added a platform context summary API endpoint, a sessionStorage-cached frontend hook, and a ContextLoadedBadge component wired into 12 CareerIQ rooms.
+
+### Changes Made
+- `server/src/routes/platform-context.ts` — New route. `GET /summary` returns the latest context record per type for the authenticated user, deduped to one row per context_type. Rate-limited at 60 rpm. Uses `listUserContextByType` from platform-context.ts.
+- `server/src/index.ts` — Imported `platformContextRoutes`, mounted at `/api/platform-context`.
+- `app/src/hooks/usePlatformContextSummary.ts` — New hook. Fetches `/api/platform-context/summary` once per browser session (cached in sessionStorage under `platform_context_summary`). Returns `{ items, loading }`. Uses `supabase.auth.getSession()` for the Bearer token, matching project auth patterns.
+- `app/src/components/career-iq/ContextLoadedBadge.tsx` — New component. Renders an indigo pill badge showing which context is powering the room (e.g. "Using your positioning strategy from today"). Accepts `contextTypes[]` prop, filters to relevant items, surfaces the highest-priority type. Returns null if no relevant context exists.
+- `app/src/components/career-iq/ExecutiveBioRoom.tsx` — Added import + badge after room header with `['positioning_strategy', 'career_narrative', 'emotional_baseline']`.
+- `app/src/components/career-iq/CaseStudyRoom.tsx` — Added import + badge after room header with `['positioning_strategy', 'evidence_item', 'emotional_baseline']`.
+- `app/src/components/career-iq/ThankYouNoteRoom.tsx` — Added import + badge after idle-form room header with `['positioning_strategy', 'emotional_baseline']`.
+- `app/src/components/career-iq/PersonalBrandRoom.tsx` — Added import + badge after room header with `['positioning_strategy', 'career_narrative']`.
+- `app/src/components/career-iq/SalaryNegotiationRoom.tsx` — Added import + badge after idle-form room header with `['positioning_strategy', 'emotional_baseline']`.
+- `app/src/components/career-iq/NinetyDayPlanRoom.tsx` — Added import + badge after idle-form room header with `['positioning_strategy', 'emotional_baseline']`.
+- `app/src/components/career-iq/InterviewLabRoom.tsx` — Added import + badge inside the header flex div with `['positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']`.
+- `app/src/components/career-iq/ContentCalendarRoom.tsx` — Added import + badge inside the header flex div with `['positioning_strategy', 'evidence_item']`.
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — Added import + badge inside the header flex div with `['positioning_strategy', 'emotional_baseline']`.
+- `app/src/components/career-iq/NetworkingHubRoom.tsx` — Added import + badge inside the header flex div with `['positioning_strategy', 'evidence_item']`.
+- `app/src/components/career-iq/FinancialWellnessRoom.tsx` — Added import + badge after the h1/p block with `['emotional_baseline', 'client_profile']`.
+- `app/src/components/career-iq/JobCommandCenterRoom.tsx` — Added import + badge after the h1/p block with `['positioning_strategy']`.
+
+### Decisions Made
+- Badge is sessionStorage-cached: one network call per browser session, not per room navigation. Acceptable because platform context changes infrequently (per pipeline run).
+- Badge renders nothing (null) when context is missing — no placeholder or skeleton — to avoid the "mock data trust violation" anti-pattern identified in the audit.
+- Priority order in badge label: `positioning_strategy > career_narrative > evidence_item > benchmark_candidate > gap_analysis > client_profile > positioning_foundation > emotional_baseline`. Positioning strategy is the most meaningful signal to surface.
+- Badge placed after the room header paragraph in rooms with a simple header block, and inside the flex column in rooms with a side-by-side header+actions layout.
+
+### Next Steps
+- Consider invalidating the sessionStorage cache when the user runs a new pipeline (could be wired via a custom event from usePipeline).
+- The 4 rooms not in the integration map (ResumeWorkshopRoom, NetworkIntelligenceRoom, LiveSessionsRoom, MobileBriefing) do not use platform context — no badge needed.
+
 ## 2026-03-10 — Session 70
 **Sprint:** D1 | **Story:** Red flag detection + proactive nudges
 **Summary:** Built detect_red_flags tool, wired it into the coach agent, and added login-time red flag scan to the /stream SSE endpoint.

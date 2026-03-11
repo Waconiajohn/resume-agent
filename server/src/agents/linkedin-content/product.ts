@@ -67,14 +67,17 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
             onResponse: (response, state) => {
               // Response: true (approved), or { feedback: string } (revision requested)
               if (response === true || response === 'approved') {
-                // Approved — state already has the final draft
+                state.revision_feedback = undefined;
               } else if (response && typeof response === 'object') {
                 const resp = response as Record<string, unknown>;
                 if (typeof resp.feedback === 'string') {
                   state.revision_feedback = resp.feedback;
+                } else {
+                  state.revision_feedback = undefined;
                 }
               }
             },
+            requiresRerun: (state) => !!state.revision_feedback,
           },
         ],
         onComplete: (scratchpad, state) => {

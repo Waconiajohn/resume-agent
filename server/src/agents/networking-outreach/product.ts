@@ -89,14 +89,17 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
             condition: (state) => Array.isArray(state.messages) && state.messages.length > 0,
             onResponse: (response, state) => {
               if (response === true || response === 'approved') {
-                // Approved — proceed with generated sequence
+                state.revision_feedback = undefined;
               } else if (response && typeof response === 'object') {
                 const resp = response as Record<string, unknown>;
                 if (typeof resp.feedback === 'string') {
                   state.revision_feedback = resp.feedback;
+                } else {
+                  state.revision_feedback = undefined;
                 }
               }
             },
+            requiresRerun: (state) => !!state.revision_feedback,
           },
         ],
       },
@@ -186,6 +189,16 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           '',
           'Do NOT skip any message type in the sequence.',
         ];
+
+        // If the user requested revisions at the review gate, include feedback
+        if (state.revision_feedback) {
+          parts.push(
+            '',
+            '## User Revision Requested',
+            `The user reviewed the outreach sequence and requested the following changes: "${state.revision_feedback}"`,
+            'Rewrite the affected messages incorporating this feedback, then call assemble_sequence with all updated messages.',
+          );
+        }
 
         // Cross-reference recent LinkedIn posts for genuine personalization
         try {

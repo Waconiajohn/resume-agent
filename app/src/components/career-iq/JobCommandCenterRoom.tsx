@@ -1,5 +1,6 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import {
   Search,
   MapPin,
@@ -823,6 +824,10 @@ export function JobCommandCenterRoom({ onNavigate, onNavigateRoom }: JobCommandC
         <p className="text-[13px] text-white/40">
           AI-surfaced roles matching your Why-Me story, smart search tools, and pipeline management.
         </p>
+        <ContextLoadedBadge
+          contextTypes={['positioning_strategy']}
+          className="mt-2"
+        />
       </div>
 
       {/* Quick stats bar */}

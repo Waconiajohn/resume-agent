@@ -1,5 +1,6 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import {
   Users,
   UserCircle,
@@ -988,6 +989,10 @@ export function NetworkingHubRoom() {
             Networking is your sales force. For every application, the Rule of Four gets you past
             the queue and in front of decision-makers.
           </p>
+          <ContextLoadedBadge
+            contextTypes={['positioning_strategy', 'evidence_item']}
+            className="mt-2"
+          />
         </div>
         <GlassButton onClick={handleAddGenericContact}>
           <Plus size={14} />

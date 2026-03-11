@@ -65,7 +65,36 @@
   - [x] BooleanSearchBuilder already auto-loads master resume — no change needed
 - **Status:** done (already implemented)
 
+### Story R3-12: Platform Context Visibility [Pattern 1]
+- **Acceptance Criteria:**
+  - [x] `GET /api/platform-context/summary` returns one row per context type (auth-required)
+  - [x] `usePlatformContextSummary` hook fetches + caches in sessionStorage
+  - [x] `ContextLoadedBadge` component shows indigo pill with relevant context type + date
+  - [x] Badge integrated into 12 rooms with appropriate contextTypes
+- **Status:** done
+
+### Story R3-13: Session Persistence — Backend APIs [Pattern 4, Part A]
+- **Acceptance Criteria:**
+  - [x] `GET /reports/latest` endpoint added to 6 product routes (executive-bio, case-study, thank-you-note, personal-brand, salary-negotiation, ninety-day-plan)
+  - [x] `usePriorResult` shared hook: fetch-on-mount, sessionStorage cache, `clearPrior` method
+- **Status:** done
+
+### Story R3-14: Session Persistence — Room Integration [Pattern 4, Part B]
+- **Acceptance Criteria:**
+  - [x] `usePriorResult` integrated into 6 rooms (ExecutiveBio, CaseStudy, ThankYouNote, PersonalBrand, SalaryNegotiation, NinetyDayPlan)
+  - [x] Prior result card shown with rendered markdown when prior exists and pipeline is idle
+  - [x] "New [Product]" button clears prior and lets user start fresh
+  - [x] Loading skeleton while fetching
+- **Status:** done
+
+### Story R3-15: Gate Re-run Architecture [Revision Feedback Fix]
+- **Acceptance Criteria:**
+  - [x] `GateDef.requiresRerun` added to product-config.ts
+  - [x] product-coordinator.ts gate loop re-invokes agent when requiresRerun returns true (max 3 re-runs)
+  - [x] 6 products updated with requiresRerun + onComplete overwrite guards fixed
+  - [x] revision_feedback cleared on approve in all products
+  - [x] 3 new tests in product-coordinator.test.ts
+- **Status:** done
+
 ## Deferred to Backlog (Explicitly)
-- Pattern 1 (Platform Context Invisibility) — requires new shared component + integration into 16 rooms
 - Pattern 3 (Rich Backend Data Lost) — R1-10 set the pattern for Content Calendar; other tools are individual stories
-- Pattern 4 (No Session Persistence) — architectural change affecting 6+ tools, needs dedicated sprint

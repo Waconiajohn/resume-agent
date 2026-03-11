@@ -31,6 +31,14 @@ export interface GateDef<TState extends BaseState = BaseState> {
    * function for sending SSE events to the frontend.
    */
   onResponse?: (response: unknown, state: TState, emit?: (event: BaseEvent) => void) => void;
+  /**
+   * After onResponse, should the owning agent re-run to incorporate feedback?
+   * When true, the coordinator rebuilds the agent message (which now includes
+   * revision_feedback from onResponse), re-runs the agent loop, then re-fires
+   * this gate so the user can approve the revision.
+   * Max 3 re-runs to prevent infinite loops.
+   */
+  requiresRerun?: (state: TState) => boolean;
 }
 
 // ─── Agent Phase ─────────────────────────────────────────────────────

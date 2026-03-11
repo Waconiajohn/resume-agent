@@ -1,5 +1,6 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import {
   Mail,
   Plus,
@@ -20,10 +21,12 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useThankYouNote, type InterviewerInput } from '@/hooks/useThankYouNote';
+import { usePriorResult } from '@/hooks/usePriorResult';
 import { supabase } from '@/lib/supabase';
 import { markdownToHtml } from '@/lib/markdown';
 
@@ -368,6 +371,12 @@ export function ThankYouNoteRoom() {
     reset,
   } = useThankYouNote();
 
+  const isPipelineActive = status === 'connecting' || status === 'running';
+  const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{ report_markdown?: string; quality_score?: number }>({
+    productSlug: 'thank-you-note',
+    skip: isPipelineActive,
+  });
+
   // Auto-load resume on mount
   useEffect(() => {
     let cancelled = false;
@@ -513,6 +522,38 @@ export function ThankYouNoteRoom() {
           </p>
         </div>
       </div>
+      <ContextLoadedBadge
+        contextTypes={['positioning_strategy', 'emotional_baseline']}
+        className="mb-3"
+      />
+
+      {/* Prior result */}
+      {priorLoading && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 text-[12px] text-white/35">
+            <Loader2 size={12} className="animate-spin" />
+            Loading previous result...
+          </div>
+        </GlassCard>
+      )}
+      {priorResult && !isPipelineActive && (
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
+            <button
+              onClick={clearPrior}
+              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              New Thank You Note
+            </button>
+          </div>
+          <div
+            className="prose prose-invert prose-sm max-w-none text-white/80 max-h-96 overflow-y-auto"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(priorResult.report_markdown ?? '') }}
+          />
+        </GlassCard>
+      )}
 
       {/* Resume status */}
       {loadingResume ? (

@@ -116,3 +116,31 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
   },
   momentumActivityType: 'salary_negotiation_completed',
 });
+
+// ─── GET /reports/latest — Fetch most recent salary negotiation report ────────
+
+salaryNegotiationRoutes.get('/reports/latest', async (c) => {
+  if (!FF_SALARY_NEGOTIATION) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+
+  const { data, error } = await supabaseAdmin
+    .from('salary_negotiation_reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id }, 'GET /salary-negotiation/reports/latest: query failed');
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No reports found' }, 404);
+  }
+
+  return c.json({ report: data });
+});

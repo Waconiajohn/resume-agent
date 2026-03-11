@@ -101,3 +101,31 @@ export const ninetyDayPlanRoutes = createProductRoutes<NinetyDayPlanState, Ninet
 
   momentumActivityType: 'ninety_day_plan_completed',
 });
+
+// ─── GET /reports/latest — Fetch most recent 90-day plan report ───────────────
+
+ninetyDayPlanRoutes.get('/reports/latest', async (c) => {
+  if (!FF_NINETY_DAY_PLAN) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+
+  const { data, error } = await supabaseAdmin
+    .from('ninety_day_plan_reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id }, 'GET /ninety-day-plan/reports/latest: query failed');
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No reports found' }, 404);
+  }
+
+  return c.json({ report: data });
+});

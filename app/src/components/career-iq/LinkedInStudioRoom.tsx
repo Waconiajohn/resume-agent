@@ -1,5 +1,6 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import {
   Linkedin,
   TrendingUp,
@@ -1370,6 +1371,10 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           <p className="text-[13px] text-white/40">
             Write posts, optimize your profile, plan your content strategy, and track your LinkedIn presence.
           </p>
+          <ContextLoadedBadge
+            contextTypes={['positioning_strategy', 'emotional_baseline']}
+            className="mt-2"
+          />
         </div>
         <div className="flex items-center gap-2">
           <GlassButton

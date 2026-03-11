@@ -200,7 +200,7 @@ describe('useCounterOfferSim', () => {
   });
 
   it('SSE: simulation_complete sets summary and status to complete', async () => {
-    const event = makeEvent('simulation_complete', sampleSummary as unknown as Record<string, unknown>);
+    const event = makeEvent('simulation_complete', { summary: sampleSummary } as unknown as Record<string, unknown>);
 
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })

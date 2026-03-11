@@ -38,7 +38,7 @@ describe('ProductCatalogGrid', () => {
     if (!activeProduct) throw new Error('No active product in catalog');
     const card = screen.getByRole('button', { name: `Open ${activeProduct.name}` });
     fireEvent.click(card);
-    expect(onNavigate).toHaveBeenCalledWith(`/tools/${activeProduct.slug}`);
+    expect(onNavigate).toHaveBeenCalledWith(activeProduct.route);
   });
 
   it('does not call onNavigate when a coming-soon product is clicked', () => {
@@ -67,7 +67,7 @@ describe('ProductCatalogGrid', () => {
     if (!activeProduct) throw new Error('No active product in catalog');
     const card = screen.getByRole('button', { name: `Open ${activeProduct.name}` });
     fireEvent.keyDown(card, { key: 'Enter' });
-    expect(onNavigate).toHaveBeenCalledWith(`/tools/${activeProduct.slug}`);
+    expect(onNavigate).toHaveBeenCalledWith(activeProduct.route);
   });
 
   it('catalog has at least 22 entries', () => {
