@@ -246,6 +246,7 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
           onClick={onToggleCollapse}
           className="rounded-lg p-1.5 text-white/40 hover:bg-white/[0.06] hover:text-white/70 transition-colors"
           aria-label="Expand sidebar"
+          aria-expanded={!collapsed}
         >
           <ChevronRight size={16} />
         </button>
@@ -275,6 +276,7 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
           onClick={onToggleCollapse}
           className="rounded-lg p-1.5 text-white/40 hover:bg-white/[0.06] hover:text-white/70 transition-colors flex-shrink-0"
           aria-label="Collapse sidebar"
+          aria-expanded={!collapsed}
         >
           <ChevronLeft size={16} />
         </button>

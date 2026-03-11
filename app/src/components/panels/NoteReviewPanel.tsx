@@ -72,11 +72,13 @@ export function NoteReviewPanel({ data, onPipelineRespond }: NoteReviewPanelProp
 
         {/* Note selector (if multiple interviewers) */}
         {notes.length > 1 && (
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap" role="tablist" aria-label="Select interviewer note">
             {notes.map((note, idx) => (
               <button
                 key={idx}
                 type="button"
+                role="tab"
+                aria-selected={idx === selectedNote}
                 onClick={() => setSelectedNote(idx)}
                 className={cn(
                   'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',

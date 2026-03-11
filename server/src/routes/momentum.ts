@@ -75,7 +75,8 @@ const ALLOWED_ACTIVITY_TYPES = [
   'retirement_assessment_completed',
 ] as const;
 
-type ActivityType = typeof ALLOWED_ACTIVITY_TYPES[number];
+export type ActivityType = typeof ALLOWED_ACTIVITY_TYPES[number];
+export { ALLOWED_ACTIVITY_TYPES };
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 

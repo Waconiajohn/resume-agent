@@ -37,6 +37,7 @@ import {
 import type { ProductConfig, RuntimeParams } from '../agents/runtime/product-config.js';
 import type { BaseState, BaseEvent } from '../agents/runtime/agent-protocol.js';
 import { runProductPipeline } from '../agents/runtime/product-coordinator.js';
+import type { ActivityType } from './momentum.js';
 
 // ─── Gate polling infrastructure ──────────────────────────────────────
 
@@ -280,7 +281,7 @@ export interface ProductRouteConfig<
    * auto-inserts into `user_momentum_activities` after onComplete runs.
    * Must match one of the allowed activity types in momentum.ts.
    */
-  momentumActivityType?: string;
+  momentumActivityType?: ActivityType;
 
   /**
    * Pre-respond validation hook. Called after basic validation and pipeline_status

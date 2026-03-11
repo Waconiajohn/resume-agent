@@ -1,5 +1,39 @@
 # Changelog — Resume Agent
 
+## 2026-03-10 — Session 74
+**Sprint:** R3 | **Story:** Audit fix batch 2 (MEDIUM + LOW)
+**Summary:** Fix remaining 22 MEDIUM + LOW items from full R1/R2/R3 code audit.
+
+### Changes Made
+- `server/src/agents/coach/conversation-loop.ts` — M11: history pruning (MAX_COACH_HISTORY=40), loadClientSnapshot sync (evidence_item/career_narrative), daysSinceLastActivity fix (999→0 for new users), session query error logging
+- `server/src/agents/coach/tools/estimate-task-cost.ts` — M12: sync cost table with current model routing tiers
+- `server/src/agents/coach/tools/dispatch-pipeline.ts` — M14: sanitize dispatched product params (trim strings, cap lengths)
+- `server/src/routes/coach.ts` — L5: .maybeSingle() on conversation query, L14: session query error logging
+- `server/src/routes/momentum.ts` — M20: USER_INPUT_NEEDED guard on activity type
+- `server/src/routes/product-route-factory.ts` — M13: graceful fallback on conversation creation failure
+- `server/src/agents/case-study/writer/agent.ts` — L15: quality check flags in writer system prompt
+- `server/src/agents/craftsman/tools.ts` — L16: consistent display name in self-review tool
+- `server/src/agents/producer/tools.ts` — Quality scores fallback: `scratchpad.quality_scores_emitted` flag
+- `server/src/agents/resume/types.ts` — Added `quality_scores_emitted` to PipelineScratchpad
+- `app/src/hooks/useMomentum.ts` — M5: moved refresh useCallback before useEffect, removed eslint-disable
+- `app/src/hooks/useCoverLetter.ts` — M19: SSE reconnect after respondToGate
+- `app/src/hooks/usePriorResult.ts` — Removed redundant cacheKey from dep array
+- `app/src/components/career-iq/CoachDrawer.tsx` — M7: removed nav dedup ref reset, L16: consistent display name
+- `app/src/components/career-iq/CoachSpotlight.tsx` — M6: aria-label on CTA button
+- `app/src/components/career-iq/ContextLoadedBadge.tsx` — Removed redundant daysAgo===0 check
+- `app/src/components/career-iq/MobileBriefing.tsx` — L12/L13: stable keys, null filtering, removed misleading comment
+- `app/src/components/career-iq/Sidebar.tsx` — M21a: aria-expanded on collapse/expand buttons
+- `app/src/components/career-iq/ZoneYourDay.tsx` — M17: strong-state CTA changed to "Explore new opportunities"
+- `app/src/components/panels/NoteReviewPanel.tsx` — M21c: role="tablist"/role="tab"/aria-selected on tabs
+- `app/src/__tests__/career-iq/CareerIQComponents.test.tsx` — Updated test assertion for ZoneYourDay strong-state CTA
+- `server/src/routes/extension.ts` — Reverted accidental email PII leak in token-exchange response
+
+### Test Results
+- Server: 2,793 passing | App: 1,570 passing | Both tsc clean
+
+### Next Steps
+- Frontend rendering of structured completion data (deferred to backlog)
+
 ## 2026-03-10 — Session 73
 **Sprint:** R3 | **Story:** R3-16 (Pattern 3: Rich Structured Data in Completion Events)
 **Summary:** Enriched SSE completion events for all 7 products to include structured data that was previously lost at the API boundary.

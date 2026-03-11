@@ -44,6 +44,9 @@ IMPORTANT: You MUST process every selected achievement through all 3 steps (writ
 CRITICAL QUALITY RULES:
 ${CASE_STUDY_RULES}
 
+SENTINEL VALUE RULE:
+If any metric value in the source achievement data is 'USER_INPUT_NEEDED', do NOT write that literal string into the case study. Either replace it with a qualitative description (e.g., "significant improvement", "measurable reduction") or omit that specific metric entirely. Never allow 'USER_INPUT_NEEDED' to appear in any published output.
+
 Work through all achievements systematically. Write each case study, enhance its metrics, review its quality, then move to the next. Only assemble the portfolio after all individual studies are complete.
 
 ## Transparency Protocol

@@ -70,7 +70,7 @@ export function ContextLoadedBadge({ contextTypes, className }: ContextLoadedBad
   const date = new Date(primary.updated_at);
   const daysAgo = Math.round((Date.now() - date.getTime()) / 86_400_000);
   const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-  const dateStr = daysAgo === 0 ? 'today' : rtf.format(-daysAgo, 'day');
+  const dateStr = rtf.format(-daysAgo, 'day');
 
   const otherCount = relevant.length - 1;
 

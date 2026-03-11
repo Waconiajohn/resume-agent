@@ -169,9 +169,9 @@ app.get('/conversation', async (c) => {
     .select('messages, turn_count, mode, created_at')
     .eq('id', conversationId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (dbError && dbError.code !== 'PGRST116') {
+  if (dbError) {
     logger.error({ error: dbError.message, conversationId, userId: user.id }, 'Failed to load coach conversation');
     return c.json({ error: 'Failed to load conversation' }, 500);
   }

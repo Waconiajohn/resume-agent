@@ -319,15 +319,17 @@ export function useCoverLetter(accessToken: string | null) {
           console.error('[useCoverLetter] Gate respond failed:', res.status);
           return false;
         }
-        // Transition back to running after responding
+        // Transition back to running and reconnect the SSE stream to receive
+        // events from the resumed pipeline.
         setState((prev) => ({ ...prev, status: 'running', pendingGate: null }));
+        if (sessionId) connectSSE(sessionId);
         return true;
       } catch (err) {
         console.error('[useCoverLetter] Gate respond error:', err);
         return false;
       }
     },
-    [accessToken],
+    [accessToken, connectSSE],
   );
 
   const reset = useCallback(() => {

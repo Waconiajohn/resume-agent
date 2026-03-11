@@ -83,7 +83,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
     void setMode(nextMode);
   }, [mode, setMode]);
 
-  const firstName = userName?.split(' ')[0] ?? 'there';
+  const firstName = userName?.split(' ')[0] || '';
 
   if (!isOpen) {
     return (
@@ -107,7 +107,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
             <span className="text-xs font-semibold text-indigo-300">AI</span>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white/90">{firstName === 'there' ? 'AI Coach' : `AI ${firstName}`}</h3>
+            <h3 className="text-sm font-semibold text-white/90">{firstName ? `AI ${firstName}` : 'AI Coach'}</h3>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span className="text-[10px] text-white/40 uppercase tracking-wider">
@@ -140,7 +140,7 @@ export function CoachDrawer({ userName, onNavigate, isOpen: controlledOpen, onOp
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 && !loading && (
           <div className="text-center text-white/30 text-sm mt-8">
-            <p className="font-medium text-white/50 mb-1">Hi {firstName}!</p>
+            <p className="font-medium text-white/50 mb-1">Hi {firstName || 'there'}!</p>
             <p>I'm your AI career coach. Ask me anything about your career transition.</p>
           </div>
         )}

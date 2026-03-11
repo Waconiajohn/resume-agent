@@ -163,11 +163,12 @@ async function loadOrCreateConversation(userId: string, conversationId: string) 
     .select()
     .single();
 
-  if (insertError) {
-    log.warn({ error: insertError.message, conversationId, userId }, 'Failed to insert new conversation — using in-memory fallback');
+  if (insertError || !created) {
+    log.error({ error: insertError?.message, conversationId, userId }, 'Failed to insert new conversation');
+    throw new Error(`Failed to create conversation: ${insertError?.message ?? 'no row returned'}`);
   }
 
-  return created ?? { id: conversationId, messages: [], turn_count: 0, mode: 'guided' };
+  return created;
 }
 
 export async function loadClientSnapshot(userId: string): Promise<ClientSnapshot> {
@@ -183,12 +184,16 @@ export async function loadClientSnapshot(userId: string): Promise<ClientSnapshot
   const narrativeRows = allContextRows.filter((r) => r.context_type === 'career_narrative');
 
   // Load active and completed pipelines
-  const { data: sessions } = await supabaseAdmin
+  const { data: sessions, error: sessionsError } = await supabaseAdmin
     .from('coach_sessions')
     .select('id, product_type, pipeline_status, pipeline_stage, pending_gate, created_at, updated_at')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
     .limit(50);
+
+  if (sessionsError) {
+    log.warn({ error: sessionsError.message, userId }, 'loadClientSnapshot: sessions query failed — snapshot may be incomplete');
+  }
 
   const allSessions = sessions ?? [];
   const now = Date.now();
@@ -226,20 +231,29 @@ export async function loadClientSnapshot(userId: string): Promise<ClientSnapshot
       };
     });
 
-  // Determine journey phase
+  // Determine journey phase.
+  // NOTE: Keep this context type list in sync with loadClientContextTool in
+  // tools/load-client-context.ts, which is the authoritative implementation.
+  // Both must include evidence_item and career_narrative so that determineJourneyPhase
+  // receives the same input regardless of which path loaded the snapshot.
   const contextTypes = [
     clientProfile ? 'client_profile' : null,
     positioning ? 'positioning_strategy' : null,
     emotional ? 'emotional_baseline' : null,
+    evidenceRows.length > 0 ? 'evidence_item' : null,
+    narrativeRows.length > 0 ? 'career_narrative' : null,
   ].filter(Boolean) as string[];
 
   const journeyPhase = determineJourneyPhase(completedProducts, contextTypes);
 
-  // Days since last activity
+  // Days since last activity.
+  // Brand-new users with no sessions at all default to 0 (not 999) — they are
+  // not inactive, they simply haven't started yet. 999 would trigger stale-user
+  // logic incorrectly for first-time visitors.
   const lastActivity = allSessions[0]?.updated_at;
   const daysSinceLastActivity = lastActivity
     ? Math.floor((now - new Date(lastActivity).getTime()) / (24 * 60 * 60 * 1000))
-    : 999;
+    : 0;
 
   // Extract client name from profile
   const profile = clientProfile?.content as Record<string, unknown> | undefined;

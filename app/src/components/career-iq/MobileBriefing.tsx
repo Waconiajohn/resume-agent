@@ -113,7 +113,7 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
       ) : (
         <div className="flex-1 space-y-3">
           {events.slice(0, 5).map((event, i) => (
-            <div key={i} className="flex items-start gap-2">
+            <div key={`${event.type}-${event.timestamp}-${i}`} className="flex items-start gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] text-white/60 leading-relaxed">{event.detail}</p>
@@ -128,12 +128,11 @@ function AgentActivityCard({ feedEvents }: { feedEvents?: RealFeedEvent[] }) {
 }
 
 // LiveSessionCard is hidden until a real session schedule system is connected.
-// Returning null here removes it from the CardStack children array.
-// Note: CardStack filters out null/undefined children via React's normal rendering.
 
 // --- Swipeable Card Stack ---
 
 function CardStack({ children }: { children: React.ReactNode[] }) {
+  const validChildren = children.filter(Boolean);
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
@@ -149,12 +148,12 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
 
   const handleTouchEnd = useCallback(() => {
     const threshold = 50;
-    if (touchDeltaX.current < -threshold && activeIndex < children.length - 1) {
+    if (touchDeltaX.current < -threshold && activeIndex < validChildren.length - 1) {
       setActiveIndex((i) => i + 1);
     } else if (touchDeltaX.current > threshold && activeIndex > 0) {
       setActiveIndex((i) => i - 1);
     }
-  }, [activeIndex, children.length]);
+  }, [activeIndex, validChildren.length]);
 
   return (
     <div className="flex flex-col">
@@ -168,8 +167,8 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           className="flex transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${activeIndex * 100}%)` }}
         >
-          {children.map((child, i) => (
-            <div key={i} className="w-full flex-shrink-0 px-4">
+          {validChildren.map((child, i) => (
+            <div key={`card-${i}`} className="w-full flex-shrink-0 px-4">
               {child}
             </div>
           ))}
@@ -188,7 +187,7 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
           <ChevronLeft size={20} />
         </button>
         <div className="flex gap-2" role="tablist" aria-label="Card navigation">
-          {children.map((_, i) => (
+          {validChildren.map((_, i) => (
             <button
               key={`dot-${i}`}
               type="button"
@@ -205,8 +204,8 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
         </div>
         <button
           type="button"
-          onClick={() => setActiveIndex((i) => Math.min(children.length - 1, i + 1))}
-          disabled={activeIndex === children.length - 1}
+          onClick={() => setActiveIndex((i) => Math.min(validChildren.length - 1, i + 1))}
+          disabled={activeIndex === validChildren.length - 1}
           aria-label="Next card"
           className="text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors"
         >

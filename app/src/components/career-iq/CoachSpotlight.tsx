@@ -96,6 +96,7 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
               type="button"
               onClick={handleCTA}
               className="flex items-center gap-1.5 text-[12px] font-medium text-indigo-300 hover:text-indigo-200 transition-colors"
+              aria-label={recommendation.room ? `Go to ${recommendation.room.replace(/-/g, ' ')}` : 'Open AI Coach'}
             >
               {recommendation.room ? 'Go there' : 'Talk to coach'}
               <ArrowRight size={13} />

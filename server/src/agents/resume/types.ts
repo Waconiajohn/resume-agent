@@ -625,6 +625,8 @@ export type PipelineSSEEvent =
       humanize_issues?: string[];
       coherence_issues?: string[];
       ats_findings?: Array<{ issue: string; priority: string }>;
+      humanize_check_ran?: boolean;
+      coherence_check_ran?: boolean;
     } }
   | { type: 'revision_start'; instructions: RevisionInstruction[] }
   | {

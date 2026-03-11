@@ -65,15 +65,6 @@ export function useMomentum(): UseMomentumReturn {
 
   const mountedRef = useRef(true);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    void refresh();
-    return () => {
-      mountedRef.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const refresh = useCallback(async (): Promise<void> => {
     if (!mountedRef.current) return;
     setLoading(true);
@@ -135,6 +126,14 @@ export function useMomentum(): UseMomentumReturn {
       }
     }
   }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void refresh();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [refresh]);
 
   const logActivity = useCallback(
     async (

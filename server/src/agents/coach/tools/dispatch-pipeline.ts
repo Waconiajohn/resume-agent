@@ -12,9 +12,9 @@
  */
 
 import type { CoachTool } from '../types.js';
-import { JOURNEY_PHASES } from '../knowledge/journey-phases.js';
 import logger from '../../../lib/logger.js';
 import { PRODUCT_ROOM_MAP } from '../knowledge/room-map.js';
+import { PRODUCT_COST_ESTIMATES, DEFAULT_COST_USD } from './estimate-task-cost.js';
 
 const log = logger.child({ tool: 'dispatch_pipeline' });
 
@@ -42,6 +42,7 @@ const dispatchPipelineTool: CoachTool = {
       reason: {
         type: 'string',
         description: 'Why this pipeline is being dispatched right now — surfaces to the client as context',
+        maxLength: 500,
       },
     },
     required: ['product', 'reason'],
@@ -50,7 +51,7 @@ const dispatchPipelineTool: CoachTool = {
   async execute(input, ctx) {
     const state = ctx.getState();
     const product = String(input.product ?? '').trim();
-    const reason = String(input.reason ?? '').trim();
+    const reason = String(input.reason ?? '').trim().slice(0, 500);
 
     // ─── Validate product ────────────────────────────────────
     if (!product) {
@@ -67,8 +68,7 @@ const dispatchPipelineTool: CoachTool = {
     // ─── Budget guard ────────────────────────────────────────
     const budget = state.budget;
     if (budget) {
-      const phase = JOURNEY_PHASES.find((p) => p.typical_products.includes(product));
-      const estimatedCost = phase?.estimated_cost_usd ?? 0.10;
+      const estimatedCost = PRODUCT_COST_ESTIMATES[product] ?? DEFAULT_COST_USD;
 
       if (budget.remaining_daily_usd < estimatedCost) {
         log.warn(

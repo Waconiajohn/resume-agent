@@ -20,7 +20,7 @@ import type { CoachTool } from '../types.js';
  *
  * Source: MEMORY.md pipeline cost estimates + sprint metrics.
  */
-const PRODUCT_COST_ESTIMATES: Record<string, number> = {
+export const PRODUCT_COST_ESTIMATES: Record<string, number> = {
   resume: 0.23,
   cover_letter: 0.05,
   linkedin_editor: 0.08,
@@ -41,7 +41,7 @@ const PRODUCT_COST_ESTIMATES: Record<string, number> = {
 };
 
 /** Fallback cost when a product is not in the table */
-const DEFAULT_COST_USD = 0.10;
+export const DEFAULT_COST_USD = 0.10;
 
 // ─── Tool ──────────────────────────────────────────────────────────
 

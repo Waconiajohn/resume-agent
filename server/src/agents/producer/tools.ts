@@ -957,6 +957,9 @@ const finalizeQualityScores: ResumeAgentTool = {
     const coherenceScore = safeNum(ctx.scratchpad.narrative_coherence_score, 0);
     const coherenceIssues = safeStringArray(ctx.scratchpad.narrative_coherence_issues);
 
+    const humanizeCheckRan = 'humanize_score' in ctx.scratchpad;
+    const coherenceCheckRan = 'narrative_coherence_score' in ctx.scratchpad;
+
     ctx.emit({
       type: 'quality_scores',
       scores,
@@ -964,6 +967,8 @@ const finalizeQualityScores: ResumeAgentTool = {
         narrative_coherence: coherenceScore,
         humanize_issues: humanizeIssues,
         coherence_issues: coherenceIssues,
+        humanize_check_ran: humanizeCheckRan,
+        coherence_check_ran: coherenceCheckRan,
       },
     });
 

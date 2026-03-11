@@ -67,7 +67,7 @@ export function usePriorResult<T = Record<string, unknown>>({
     return () => {
       mounted.current = false;
     };
-  }, [productSlug, skip, cacheKey]);
+  }, [productSlug, skip]);
 
   const clearPrior = useCallback(() => {
     sessionStorage.removeItem(cacheKey);

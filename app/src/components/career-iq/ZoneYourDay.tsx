@@ -24,7 +24,7 @@ function getRotatingInsight(state: DashboardState): string {
 const ACTIONS_BY_STATE: Record<DashboardState, string> = {
   'new-user': 'Define your Why-Me story',
   refining: 'Refine your Why-Me story',
-  strong: 'Refine your Why-Me story',
+  strong: 'Explore new opportunities',
 };
 
 function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
