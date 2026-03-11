@@ -106,7 +106,7 @@ export const ninetyDayPlanRoutes = createProductRoutes<NinetyDayPlanState, Ninet
 
 ninetyDayPlanRoutes.get('/reports/latest', async (c) => {
   if (!FF_NINETY_DAY_PLAN) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ data: null, feature_disabled: true }, 200);
   }
 
   const user = c.get('user');

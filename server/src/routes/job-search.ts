@@ -30,7 +30,7 @@ jobSearchRoutes.use('*', authMiddleware);
 // Feature flag guard
 jobSearchRoutes.use('*', async (c, next) => {
   if (!FF_JOB_SEARCH) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ data: null, feature_disabled: true }, 200);
   }
   await next();
 });

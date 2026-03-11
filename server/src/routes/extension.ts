@@ -55,7 +55,7 @@ exchangeCleanupTimer.unref();
 // ─── Feature flag guard ────────────────────────────────────────────────────────
 
 extensionRoutes.use('/*', async (c, next) => {
-  if (!FF_EXTENSION) return c.json({ error: 'Extension API not enabled' }, 404);
+  if (!FF_EXTENSION) return c.json({ data: null, feature_disabled: true }, 200);
   await next();
 });
 

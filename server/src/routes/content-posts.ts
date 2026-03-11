@@ -26,7 +26,7 @@ contentPostsRoutes.use('*', authMiddleware);
 // Feature flag guard
 contentPostsRoutes.use('*', async (c, next) => {
   if (!FF_LINKEDIN_CONTENT) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ data: null, feature_disabled: true }, 200);
   }
   await next();
 });

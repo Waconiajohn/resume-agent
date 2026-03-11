@@ -76,7 +76,7 @@ describe('useApplicationPipeline', () => {
       'fetch',
       vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(apps),
+        json: () => Promise.resolve({ applications: apps }),
       }),
     );
 
@@ -94,7 +94,7 @@ describe('useApplicationPipeline', () => {
   it('fetchApplications passes stage query param when provided', async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([]),
+      json: () => Promise.resolve({ applications: [] }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -151,7 +151,7 @@ describe('useApplicationPipeline', () => {
       'fetch',
       vi.fn()
         // First call: fetchApplications to seed state
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([app]) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ applications: [app] }) })
         // Second call: moveToStage PATCH
         .mockResolvedValueOnce({ ok: true }),
     );
@@ -177,7 +177,7 @@ describe('useApplicationPipeline', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([app]) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ applications: [app] }) })
         .mockResolvedValueOnce({ ok: false, status: 500 }),
     );
 
@@ -200,7 +200,7 @@ describe('useApplicationPipeline', () => {
     const app = makeApplication({ id: 'app-1', stage: 'saved' });
     const mockFetch = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([app]),
+      json: () => Promise.resolve({ applications: [app] }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -269,7 +269,7 @@ describe('useApplicationPipeline', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([app]) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ applications: [app] }) })
         .mockResolvedValueOnce({ ok: true }),
     );
 
@@ -311,7 +311,7 @@ describe('useApplicationPipeline', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([original]) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ applications: [original] }) })
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(updated) }),
     );
 

@@ -107,7 +107,7 @@ export const executiveBioRoutes = createProductRoutes<ExecutiveBioState, Executi
 
 executiveBioRoutes.get('/reports/latest', async (c) => {
   if (!FF_EXECUTIVE_BIO) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ data: null, feature_disabled: true }, 200);
   }
 
   const user = c.get('user');

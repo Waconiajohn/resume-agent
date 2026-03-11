@@ -121,7 +121,7 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
 
 salaryNegotiationRoutes.get('/reports/latest', async (c) => {
   if (!FF_SALARY_NEGOTIATION) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ data: null, feature_disabled: true }, 200);
   }
 
   const user = c.get('user');

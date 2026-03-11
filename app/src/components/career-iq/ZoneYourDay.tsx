@@ -42,8 +42,7 @@ function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
 }
 
 export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe }: ZoneYourDayProps) {
-  const firstName = userName?.split('@')[0]?.split('.')[0] ?? 'there';
-  const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+  const displayName = userName || 'there';
 
   return (
     <GlassCard className="p-6">

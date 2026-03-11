@@ -105,7 +105,12 @@ export function useApplicationPipeline() {
         return;
       }
 
-      const data = (await res.json()) as Application[];
+      const json = await res.json() as { applications?: Application[]; feature_disabled?: boolean };
+      if (json.feature_disabled) {
+        if (mountedRef.current) setState((prev) => ({ ...prev, applications: [], loading: false }));
+        return;
+      }
+      const data = json.applications ?? [];
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, applications: data, loading: false }));
       }

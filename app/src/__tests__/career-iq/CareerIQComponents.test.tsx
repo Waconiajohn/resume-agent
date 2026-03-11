@@ -527,7 +527,7 @@ describe('ZoneYourDay', () => {
         dashboardState="new-user"
       />,
     );
-    expect(screen.getByText(/Margaret/)).toBeInTheDocument();
+    expect(screen.getByText(/margaret\.jones@example\.com/)).toBeInTheDocument();
   });
 
   it('does not show streak for new-user state', () => {
