@@ -1,5 +1,33 @@
 # Changelog — Resume Agent
 
+## 2026-03-10 — Session 73
+**Sprint:** R3 | **Story:** R3-16 (Pattern 3: Rich Structured Data in Completion Events)
+**Summary:** Enriched SSE completion events for all 7 products to include structured data that was previously lost at the API boundary.
+
+### Changes Made
+- `server/src/agents/cover-letter/types.ts` — Added `jd_analysis` + `letter_plan` to `letter_complete` event
+- `server/src/agents/cover-letter/product.ts` — Emit + return `jd_analysis` and `letter_plan` in finalizeResult
+- `server/src/agents/executive-bio/types.ts` — Added `bios` + `positioning_analysis` to `collection_complete` event
+- `server/src/agents/executive-bio/product.ts` — Emit + return `bios` and `positioning_analysis` in finalizeResult
+- `server/src/agents/case-study/types.ts` — Added `case_studies` + `selected_achievements` to `collection_complete` event
+- `server/src/agents/case-study/product.ts` — Emit + return `case_studies` and `selected_achievements` in finalizeResult
+- `server/src/agents/content-calendar/types.ts` — Added `coherence_score` + `themes` + `content_mix` to `calendar_complete` event
+- `server/src/agents/content-calendar/product.ts` — Emit `coherence_score`, `themes`, `content_mix` in finalizeResult
+- `server/src/agents/personal-brand/types.ts` — Added `audit_findings` + `consistency_scores` + `recommendations` to `collection_complete` event
+- `server/src/agents/personal-brand/product.ts` — Emit structured fields in finalizeResult
+- `server/src/agents/salary-negotiation/types.ts` — Added `scenarios` + `talking_points` + `market_research` + `leverage_points` + `negotiation_strategy` to `negotiation_complete` event
+- `server/src/agents/salary-negotiation/product.ts` — Emit + return all structured fields in finalizeResult
+- `server/src/agents/ninety-day-plan/types.ts` — Added `phases` + `stakeholder_map` + `quick_wins` + `learning_priorities` to `plan_complete` event
+- `server/src/agents/ninety-day-plan/product.ts` — Emit + return `learning_priorities` in finalizeResult
+
+### Decisions Made
+- All new event fields are optional (matching state optionality) so existing frontend consumers are unaffected
+- Content Calendar already emitted posts — just added the 3 missing fields (coherence_score, themes, content_mix)
+- Salary Negotiation was the most data-rich addition: 5 new fields surfaced from state
+
+### Next Steps
+- Frontend hooks and room components can now consume structured data from completion events for richer UI (quality breakdowns, per-item scores, evidence provenance)
+
 ## 2026-03-10 — Session 72
 **Sprint:** R3 | **Stories:** R3-12 through R3-15
 **Summary:** Gate re-run architecture for revision feedback, platform context visibility badge in 12 rooms, session persistence APIs + usePriorResult hook in 6 rooms, 11 stale app tests fixed.

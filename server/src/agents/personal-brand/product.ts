@@ -237,6 +237,9 @@ export function createPersonalBrandProductConfig(): ProductConfig<PersonalBrandS
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
         finding_count: state.audit_findings.length,
+        audit_findings: state.audit_findings,
+        consistency_scores: state.consistency_scores,
+        recommendations: state.recommendations,
       });
 
       return {

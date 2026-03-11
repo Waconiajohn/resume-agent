@@ -198,12 +198,16 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
         session_id: state.session_id,
         letter: state.letter_draft ?? '',
         quality_score: state.quality_score ?? 0,
+        jd_analysis: state.jd_analysis,
+        letter_plan: state.letter_plan,
       });
 
       return {
         letter: state.letter_draft,
         quality_score: state.quality_score,
         review_feedback: state.review_feedback,
+        jd_analysis: state.jd_analysis,
+        letter_plan: state.letter_plan,
       };
     },
 

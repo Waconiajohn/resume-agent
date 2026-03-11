@@ -186,5 +186,5 @@ export type ExecutiveBioSSEEvent =
   | { type: 'bio_complete'; format: BioFormat; length: BioLength; quality_score: number }
   | { type: 'bio_review_ready'; session_id: string; bios: Bio[]; final_report?: string; quality_score?: number }
   | { type: 'pipeline_gate'; gate: string }
-  | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; bio_count: number }
+  | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; bio_count: number; bios: Bio[]; positioning_analysis?: PositioningAnalysis }
   | { type: 'pipeline_error'; stage: string; error: string };

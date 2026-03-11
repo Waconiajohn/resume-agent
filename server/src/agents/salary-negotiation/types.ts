@@ -292,5 +292,5 @@ export type SalaryNegotiationSSEEvent =
       data_confidence?: 'low' | 'medium' | 'high';
     }
   | { type: 'pipeline_gate'; gate: string }
-  | { type: 'negotiation_complete'; session_id: string; report: string; quality_score: number }
+  | { type: 'negotiation_complete'; session_id: string; report: string; quality_score: number; scenarios?: NegotiationScenario[]; talking_points?: TalkingPoint[]; market_research?: MarketResearch; leverage_points?: LeveragePoint[]; negotiation_strategy?: { approach: string; opening_position: string; walk_away_point: string; batna: string } }
   | { type: 'pipeline_error'; stage: string; error: string };

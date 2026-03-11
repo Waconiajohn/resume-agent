@@ -205,5 +205,5 @@ export type CaseStudySSEEvent =
   | { type: 'achievement_selected'; title: string; company: string; impact_score: number; impact_category: ImpactCategory }
   | { type: 'case_study_drafted'; title: string; word_count: number }
   | { type: 'case_study_complete'; title: string; quality_score: number }
-  | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; case_study_count: number }
+  | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; case_study_count: number; case_studies: CaseStudy[]; selected_achievements: Achievement[] }
   | { type: 'pipeline_error'; stage: string; error: string };

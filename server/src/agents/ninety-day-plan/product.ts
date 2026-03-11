@@ -225,6 +225,10 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
         phase_count: state.phases.length,
+        phases: state.phases,
+        stakeholder_map: state.stakeholder_map,
+        quick_wins: state.quick_wins,
+        learning_priorities: state.learning_priorities,
       });
 
       return {
@@ -233,6 +237,7 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
         phases: state.phases,
         stakeholder_map: state.stakeholder_map,
         quick_wins: state.quick_wins,
+        learning_priorities: state.learning_priorities,
       };
     },
 

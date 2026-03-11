@@ -264,6 +264,11 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
         session_id: state.session_id,
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
+        scenarios: state.scenarios,
+        talking_points: state.talking_points,
+        market_research: state.market_research,
+        leverage_points: state.leverage_points,
+        negotiation_strategy: state.negotiation_strategy,
       });
 
       return {
@@ -272,6 +277,8 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
         scenarios: state.scenarios,
         talking_points: state.talking_points,
         market_research: state.market_research,
+        leverage_points: state.leverage_points,
+        negotiation_strategy: state.negotiation_strategy,
       };
     },
 

@@ -65,5 +65,12 @@ export type CoverLetterSSEEvent =
   | { type: 'letter_draft'; letter: string; quality_score?: number }
   | { type: 'letter_review_ready'; session_id: string; letter_draft: string; quality_score?: number }
   | { type: 'pipeline_gate'; gate: string }
-  | { type: 'letter_complete'; session_id: string; letter: string; quality_score: number }
+  | {
+      type: 'letter_complete';
+      session_id: string;
+      letter: string;
+      quality_score: number;
+      jd_analysis?: CoverLetterState['jd_analysis'];
+      letter_plan?: CoverLetterState['letter_plan'];
+    }
   | { type: 'pipeline_error'; stage: string; error: string };

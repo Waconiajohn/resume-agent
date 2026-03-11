@@ -178,12 +178,15 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
         bio_count: state.bios.length,
+        bios: state.bios,
+        positioning_analysis: state.positioning_analysis,
       });
 
       return {
         report: state.final_report,
         quality_score: state.quality_score,
         bios: state.bios,
+        positioning_analysis: state.positioning_analysis,
       };
     },
 

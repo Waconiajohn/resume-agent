@@ -191,5 +191,5 @@ export type NinetyDayPlanSSEEvent =
   | { type: 'pipeline_gate'; gate: string }
   | { type: 'phase_drafted'; phase: PhaseNumber; title: string; activity_count: number }
   | { type: 'phase_complete'; phase: PhaseNumber; title: string; milestone_count: number }
-  | { type: 'plan_complete'; session_id: string; report: string; quality_score: number; phase_count: number }
+  | { type: 'plan_complete'; session_id: string; report: string; quality_score: number; phase_count: number; phases: PlanPhase[]; stakeholder_map: Stakeholder[]; quick_wins: QuickWin[]; learning_priorities: LearningPriority[] }
   | { type: 'pipeline_error'; stage: string; error: string };

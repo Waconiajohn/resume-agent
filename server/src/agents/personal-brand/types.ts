@@ -213,5 +213,5 @@ export type PersonalBrandSSEEvent =
   | { type: 'findings_review_ready'; session_id: string; findings: AuditFinding[]; consistency_scores?: ConsistencyScores }
   | { type: 'pipeline_gate'; gate: string }
   | { type: 'recommendations_ready'; recommendation_count: number; top_priority: string }
-  | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; finding_count: number }
+  | { type: 'collection_complete'; session_id: string; report: string; quality_score: number; finding_count: number; audit_findings: AuditFinding[]; consistency_scores?: ConsistencyScores; recommendations: BrandRecommendation[] }
   | { type: 'pipeline_error'; stage: string; error: string };

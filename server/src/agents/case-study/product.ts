@@ -161,12 +161,15 @@ export function createCaseStudyProductConfig(): ProductConfig<CaseStudyState, Ca
         report: state.final_report ?? '',
         quality_score: state.quality_score ?? 0,
         case_study_count: state.case_studies.length,
+        case_studies: state.case_studies,
+        selected_achievements: state.selected_achievements ?? [],
       });
 
       return {
         report: state.final_report,
         quality_score: state.quality_score,
         case_studies: state.case_studies,
+        selected_achievements: state.selected_achievements,
       };
     },
 

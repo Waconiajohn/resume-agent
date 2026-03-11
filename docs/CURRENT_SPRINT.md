@@ -96,5 +96,16 @@
   - [x] 3 new tests in product-coordinator.test.ts
 - **Status:** done
 
+### Story R3-16: Rich Structured Data in Completion Events [Pattern 3]
+- **Acceptance Criteria:**
+  - [x] Cover Letter: `jd_analysis` + `letter_plan` in completion event + return value
+  - [x] Executive Bio: `bios` + `positioning_analysis` in completion event + return value
+  - [x] Case Study: `case_studies` + `selected_achievements` in completion event + return value
+  - [x] Content Calendar: `coherence_score` + `themes` + `content_mix` in completion event
+  - [x] Personal Brand: `audit_findings` + `consistency_scores` + `recommendations` in completion event
+  - [x] Salary Negotiation: `scenarios` + `talking_points` + `market_research` + `leverage_points` + `negotiation_strategy` in completion event + return value
+  - [x] Ninety-Day Plan: `phases` + `stakeholder_map` + `quick_wins` + `learning_priorities` in completion event + return value
+- **Status:** done
+
 ## Deferred to Backlog (Explicitly)
-- Pattern 3 (Rich Backend Data Lost) — R1-10 set the pattern for Content Calendar; other tools are individual stories
+- Frontend rendering of structured completion data (quality breakdowns, evidence provenance, per-item scores)
