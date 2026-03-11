@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSession } from '@/hooks/useSession';
 import { useAgent } from '@/hooks/useAgent';
@@ -18,6 +18,8 @@ import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
+
+const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then(m => ({ default: m.CoachDrawer })));
 
 type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq';
 
@@ -94,6 +96,7 @@ export default function App() {
   const [initialRoom, setInitialRoom] = useState<string | undefined>(undefined);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [intakeLoading, setIntakeLoading] = useState(false);
+  const [toolsCoachOpen, setToolsCoachOpen] = useState(false);
 
 
   // Detect URL-based views on mount
@@ -555,21 +558,42 @@ export default function App() {
       )}
 
       {view === 'tools' && (
-        <ToolsScreen
-          slug={toolSlug}
-          onNavigate={(route) => {
-            if (route === '/tools') navigateTo('tools');
-            else if (route.startsWith('/tools/')) navigateTo(route);
-            else if (route === '/cover-letter') navigateTo('cover-letter');
-            else if (route === '/app' || route === '/') navigateTo('landing');
-            else if (route.startsWith('/career-iq')) {
-              const roomParam = new URL(route, 'http://x').searchParams.get('room');
-              setInitialRoom(roomParam ?? undefined);
-              navigateTo('career-iq');
-            }
-            else navigateTo('landing');
-          }}
-        />
+        <>
+          <ToolsScreen
+            slug={toolSlug}
+            userName={displayName}
+            onOpenCoach={() => setToolsCoachOpen(true)}
+            onNavigate={(route) => {
+              if (route === '/tools') navigateTo('tools');
+              else if (route.startsWith('/tools/')) navigateTo(route);
+              else if (route === '/cover-letter') navigateTo('cover-letter');
+              else if (route === '/app' || route === '/') navigateTo('landing');
+              else if (route === '/onboarding') {
+                setInitialRoom('onboarding');
+                navigateTo('career-iq');
+              }
+              else if (route.startsWith('/career-iq')) {
+                const roomParam = new URL(route, 'http://x').searchParams.get('room');
+                setInitialRoom(roomParam ?? undefined);
+                navigateTo('career-iq');
+              }
+              else navigateTo('landing');
+            }}
+          />
+          <Suspense fallback={null}>
+            <CoachDrawer
+              userName={displayName}
+              isOpen={toolsCoachOpen}
+              onOpen={() => setToolsCoachOpen(true)}
+              onClose={() => setToolsCoachOpen(false)}
+              onNavigate={(room) => {
+                setToolsCoachOpen(false);
+                setInitialRoom(room);
+                navigateTo('career-iq');
+              }}
+            />
+          </Suspense>
+        </>
       )}
 
       {view === 'cover-letter' && (

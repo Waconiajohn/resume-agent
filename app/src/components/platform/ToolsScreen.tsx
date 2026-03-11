@@ -5,9 +5,11 @@ import { PRODUCT_CATALOG } from '@/types/platform';
 interface ToolsScreenProps {
   slug?: string;
   onNavigate: (route: string) => void;
+  onOpenCoach?: () => void;
+  userName?: string;
 }
 
-export function ToolsScreen({ slug, onNavigate }: ToolsScreenProps) {
+export function ToolsScreen({ slug, onNavigate, onOpenCoach, userName }: ToolsScreenProps) {
   if (slug) {
     const product = PRODUCT_CATALOG.find((p) => p.slug === slug);
 
@@ -37,7 +39,7 @@ export function ToolsScreen({ slug, onNavigate }: ToolsScreenProps) {
 
   return (
     <div className="h-[calc(100vh-3.5rem)] overflow-y-auto">
-      <ProductCatalogGrid onNavigate={onNavigate} />
+      <ProductCatalogGrid onNavigate={onNavigate} onOpenCoach={onOpenCoach} userName={userName} />
     </div>
   );
 }
