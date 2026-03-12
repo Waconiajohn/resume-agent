@@ -97,7 +97,7 @@ export function V2StreamingDisplay({
   const userScrolledRef = useRef(false);
 
   // Toolbar position state
-  const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number } | null>(null);
+  const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number; bottom: number } | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
 
@@ -123,7 +123,7 @@ export function V2StreamingDisplay({
   const handleTextSelect = useCallback((text: string, section: string, rect: DOMRect) => {
     setSelectedText(text);
     setSelectedSection(section);
-    setToolbarPos({ top: rect.top, left: rect.left + rect.width / 2 });
+    setToolbarPos({ top: rect.top, left: rect.left + rect.width / 2, bottom: rect.bottom });
   }, []);
 
   // Dismiss toolbar

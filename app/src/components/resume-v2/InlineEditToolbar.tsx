@@ -9,7 +9,7 @@ import { Loader2, Zap, BarChart3, Minimize2, Key, RefreshCw, MessageSquare, Mic 
 import type { EditAction } from '@/hooks/useInlineEdit';
 
 interface InlineEditToolbarProps {
-  position: { top: number; left: number } | null;
+  position: { top: number; left: number; bottom: number } | null;
   isEditing: boolean;
   onAction: (action: EditAction, customInstruction?: string) => void;
   onDismiss: () => void;
@@ -29,6 +29,17 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customText, setCustomText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [flipped, setFlipped] = useState(false);
+
+  // After render, check if toolbar would go above viewport — if so, flip below
+  useEffect(() => {
+    if (!position || !toolbarRef.current) return;
+    const toolbarHeight = toolbarRef.current.offsetHeight;
+    const MARGIN = 8;
+    // Flip below selection if toolbar would go above viewport OR if selection top is above viewport
+    setFlipped(position.top - toolbarHeight - MARGIN < 0 || position.top < MARGIN);
+  }, [position]);
 
   // Focus custom input when shown
   useEffect(() => {
@@ -70,11 +81,12 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
 
   return (
     <div
+      ref={toolbarRef}
       className="fixed z-50 flex flex-col items-start gap-1 rounded-xl border border-white/[0.12] bg-[#0f141e]/95 backdrop-blur-xl px-1.5 py-1.5 shadow-2xl"
       style={{
-        top: position.top,
-        left: position.left,
-        transform: 'translate(-50%, -100%) translateY(-8px)',
+        top: flipped ? position.bottom + 8 : position.top,
+        left: Math.max(8, Math.min(position.left, window.innerWidth - 8)),
+        transform: flipped ? 'translateX(-50%)' : 'translate(-50%, -100%) translateY(-8px)',
       }}
       role="toolbar"
       aria-label="AI editing actions"

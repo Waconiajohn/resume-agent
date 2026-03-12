@@ -479,3 +479,168 @@ test.describe('V2 Pipeline: gap analysis interactions', () => {
     await expect(page.getByText('1 missing')).toBeVisible({ timeout: 5_000 });
   });
 });
+
+test.describe('V2 Pipeline: inline editing', () => {
+  /** Helper: run the pipeline to completion with mocks */
+  async function runPipelineToCompletion(page: Page) {
+    await mockV2PipelineNetwork(page);
+    await page.goto('/app');
+    await waitForAuthenticatedShell(page);
+    await page.getByRole('button', { name: /Start New Session/i }).click();
+    await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
+    await page.locator('#v2-jd').fill(REAL_JD_TEXT);
+    await page.getByRole('button', { name: /Go/i }).click();
+    await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 15_000 });
+  }
+
+  /** Helper: programmatically select text and trigger mouseup */
+  async function selectResumeText(page: Page, selector: string, charCount = 30) {
+    // Scroll the target element into view first so getBoundingClientRect returns viewport-relative coords
+    await page.locator(selector).first().scrollIntoViewIfNeeded();
+
+    await page.evaluate(({ sel, count }) => {
+      const el = document.querySelector(sel);
+      if (!el) throw new Error(`Element not found: ${sel}`);
+      // Walk to the first text node (may be nested inside a <span> like NewMarker)
+      let textNode: Node | null = null;
+      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) {
+        if ((walk.currentNode.textContent?.trim().length ?? 0) > 5) {
+          textNode = walk.currentNode;
+          break;
+        }
+      }
+      if (!textNode) throw new Error('No suitable text node found');
+
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, Math.min(count, textNode.textContent?.length ?? 0));
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+
+      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    }, { sel: selector, count: charCount });
+  }
+
+  test('selecting resume text shows the inline edit toolbar', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    await expect(page.getByText('Select text to edit with AI')).toBeVisible({ timeout: 5_000 });
+
+    await selectResumeText(page, '[data-section="executive_summary"] p');
+
+    const toolbar = page.getByRole('toolbar', { name: /AI editing actions/i });
+    await expect(toolbar).toBeVisible({ timeout: 3_000 });
+    await expect(toolbar.getByTitle('Strengthen')).toBeVisible();
+    await expect(toolbar.getByTitle('Rewrite')).toBeVisible();
+    await expect(toolbar.getByTitle('Not my voice')).toBeVisible();
+  });
+
+  test('clicking an edit action calls the API and shows diff view', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    // Mock the edit endpoint to return a replacement
+    await page.route('**/api/pipeline/*/edit', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ replacement: 'IMPROVED: Enterprise cloud architect with 15+ years transforming infrastructure.' }),
+      });
+    });
+
+    await selectResumeText(page, '[data-section="executive_summary"] p');
+
+    const toolbar = page.getByRole('toolbar', { name: /AI editing actions/i });
+    await expect(toolbar).toBeVisible({ timeout: 3_000 });
+
+    // Click "Strengthen"
+    await toolbar.getByTitle('Strengthen').click();
+
+    // Toolbar should disappear, "AI is editing..." spinner should show briefly
+    // Then the DiffView should appear with the replacement
+    await expect(page.getByText('IMPROVED:')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('accepting an edit updates the resume text', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    await page.route('**/api/pipeline/*/edit', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ replacement: 'UPGRADED executive summary text here.' }),
+      });
+    });
+
+    await selectResumeText(page, '[data-section="executive_summary"] p');
+    const toolbar = page.getByRole('toolbar', { name: /AI editing actions/i });
+    await expect(toolbar).toBeVisible({ timeout: 3_000 });
+    await toolbar.getByTitle('Rewrite').click();
+
+    // Wait for diff to appear
+    await expect(page.getByText('UPGRADED executive summary')).toBeVisible({ timeout: 10_000 });
+
+    // Accept the edit
+    const acceptBtn = page.getByRole('button', { name: 'Accept edit' });
+    await expect(acceptBtn).toBeVisible({ timeout: 3_000 });
+    await acceptBtn.click();
+
+    // The updated text should now appear in the resume document
+    await expect(page.locator('[data-section="executive_summary"]').getByText('UPGRADED executive summary')).toBeVisible({ timeout: 5_000 });
+
+    // Undo button should appear
+    await expect(page.getByRole('button', { name: /undo/i })).toBeVisible({ timeout: 3_000 });
+  });
+
+  test('rejecting an edit restores original text', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    await page.route('**/api/pipeline/*/edit', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ replacement: 'REJECTED text that should not persist.' }),
+      });
+    });
+
+    await selectResumeText(page, '[data-section="executive_summary"] p');
+    const toolbar = page.getByRole('toolbar', { name: /AI editing actions/i });
+    await expect(toolbar).toBeVisible({ timeout: 3_000 });
+    await toolbar.getByTitle('Strengthen').click();
+
+    await expect(page.getByText('REJECTED text')).toBeVisible({ timeout: 10_000 });
+
+    // Reject the edit
+    const rejectBtn = page.getByRole('button', { name: 'Reject edit' });
+    await expect(rejectBtn).toBeVisible({ timeout: 3_000 });
+    await rejectBtn.click();
+
+    // The diff should disappear
+    await expect(page.getByText('REJECTED text')).not.toBeVisible({ timeout: 3_000 });
+
+    // Original text should still be in the resume
+    await expect(page.locator('[data-section="executive_summary"]').getByText('Enterprise cloud architect')).toBeVisible();
+  });
+
+  test('edit API error shows error message', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    // Mock edit endpoint to return an error
+    await page.route('**/api/pipeline/*/edit', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'LLM provider timeout' }),
+      });
+    });
+
+    await selectResumeText(page, '[data-section="executive_summary"] p');
+    const toolbar = page.getByRole('toolbar', { name: /AI editing actions/i });
+    await expect(toolbar).toBeVisible({ timeout: 3_000 });
+    await toolbar.getByTitle('Strengthen').click();
+
+    // Error message should appear
+    await expect(page.getByText('LLM provider timeout')).toBeVisible({ timeout: 10_000 });
+  });
+});
