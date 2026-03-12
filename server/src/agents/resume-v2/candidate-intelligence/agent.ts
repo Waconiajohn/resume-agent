@@ -98,7 +98,7 @@ export async function runCandidateIntelligence(
     // Extract name from first line of resume as fallback
     const firstLine = input.resume_text.trim().split('\n')[0]?.trim() ?? '';
     parsed.contact = {
-      ...parsed.contact,
+      ...(parsed.contact ?? {}),
       name: firstLine.length > 0 && firstLine.length < 60 ? firstLine : '',
     };
   }

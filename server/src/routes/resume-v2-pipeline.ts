@@ -24,8 +24,8 @@ import { MODEL_MID, MODEL_LIGHT } from '../lib/model-constants.js';
 import { repairJSON } from '../lib/json-repair.js';
 
 const startSchema = z.object({
-  resume_text: z.string().min(50, 'Resume must be at least 50 characters'),
-  job_description: z.string().min(50, 'Job description must be at least 50 characters'),
+  resume_text: z.string().min(50, 'Resume must be at least 50 characters').max(50000, 'Resume must be at most 50,000 characters'),
+  job_description: z.string().min(50, 'Job description must be at least 50 characters').max(50000, 'Job description must be at most 50,000 characters'),
   user_context: z.string().optional(),
 });
 
@@ -94,8 +94,9 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
   // Pipeline runs asynchronously — events are emitted to SSE connections
   void (async () => {
     try {
-      const emitters = sseConnections.get(sessionId);
+      // emitters is looked up on every emit so late-connecting clients receive events
       const emit = (event: V2PipelineSSEEvent) => {
+        const emitters = sseConnections.get(sessionId);
         if (!emitters) return;
         for (const emitter of emitters) {
           try {
@@ -107,7 +108,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         }
       };
 
-      await runV2Pipeline({
+      const result = await runV2Pipeline({
         resume_text,
         job_description,
         session_id: sessionId,
@@ -116,9 +117,16 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         user_context,
       });
 
+      // Persist the final assembled result so clients can retrieve it on reconnect
+      // via GET /:sessionId/result. Stored in tailored_sections (repurposed as
+      // pipeline_result for v2 sessions) since it's an existing JSONB column.
       await supabaseAdmin
         .from('coach_sessions')
-        .update({ pipeline_status: 'complete', pipeline_stage: 'complete' })
+        .update({
+          pipeline_status: 'complete',
+          pipeline_stage: 'complete',
+          tailored_sections: result.final_resume as unknown as Record<string, unknown>,
+        })
         .eq('id', sessionId);
 
       totalCompleted++;
@@ -167,6 +175,8 @@ resumeV2Pipeline.get('/:sessionId/stream', authMiddleware, async (c) => {
       });
     };
 
+    // Type boundary: V2PipelineSSEEvent is a different union from the legacy AnySSEEvent.
+    // The emitter itself is typed as (event: unknown) — the cast is safe here.
     addSSEConnection(sessionId, userId, emitter as (event: AnySSEEvent) => void);
 
     // Keep-alive heartbeat
@@ -181,9 +191,34 @@ resumeV2Pipeline.get('/:sessionId/stream', authMiddleware, async (c) => {
       });
     } finally {
       clearInterval(heartbeat);
-      removeSSEConnection(sessionId, userId, emitter as (event: AnySSEEvent) => void);
+      removeSSEConnection(sessionId, userId, emitter as (event: AnySSEEvent) => void); // same type boundary as above
     }
   });
+});
+
+// ─── GET /:sessionId/result ──────────────────────────────────────────
+
+resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id, pipeline_status, tailored_sections')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  if (session.pipeline_status !== 'complete') {
+    return c.json({ error: 'Pipeline not yet complete', status: session.pipeline_status }, 409);
+  }
+
+  return c.json({ result: session.tailored_sections });
 });
 
 // ─── POST /:sessionId/edit ───────────────────────────────────────────

@@ -143,7 +143,14 @@ export interface GapAnalysisOutput {
   coverage_score: number;
   strength_summary: string;
   critical_gaps: string[];
-  /** Strategies the user must confirm before they're used in the resume */
+  /**
+   * Authoritative source for strategies requiring user confirmation before use.
+   * These are the strategies the orchestrator passes to the Narrative Strategy agent.
+   *
+   * NOTE: `requirements[*].strategy` is for display context only (showing the user
+   * what gap strategy exists for each requirement). `pending_strategies` is what
+   * the orchestrator reads to build the approved_strategies list. Do not conflate them.
+   */
   pending_strategies: Array<{
     requirement: string;
     strategy: GapStrategy;

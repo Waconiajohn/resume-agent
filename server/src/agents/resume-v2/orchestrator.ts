@@ -61,6 +61,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
   try {
     // ─── Stage 1: Analysis (Agents 1 & 2 in parallel, then Agent 3) ──
+    signal?.throwIfAborted();
     state.current_stage = 'analysis';
     emit({ type: 'stage_start', stage: 'analysis', message: "Analyzing the job and your background..." });
 
@@ -85,6 +86,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'stage_complete', stage: 'analysis', message: 'Analysis complete', duration_ms: Date.now() - analysisStart });
 
     // ─── Stage 2: Strategy (Agents 4 & 5 sequential) ─────────────────
+    signal?.throwIfAborted();
     state.current_stage = 'strategy';
     emit({ type: 'stage_start', stage: 'strategy', message: "Building your positioning strategy..." });
 
@@ -100,15 +102,13 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     state.gap_analysis = gapAnalysis;
     emit({ type: 'gap_analysis', data: gapAnalysis });
 
-    // Merge pre-approved strategies with any new pending strategies
-    // In the initial run, all strategies are pending (user approves later).
+    // H1: Use pending_strategies as the authoritative source for strategies that
+    // need user confirmation. Strong-match requirements don't have strategies —
+    // only partial/missing requirements get a strategy from gap analysis.
     // In "Add Context" re-runs, previously approved strategies are passed in.
     const allApproved = [
       ...state.approved_strategies,
-      // Auto-approve strategies for strong matches (no user confirmation needed)
-      ...gapAnalysis.requirements
-        .filter(r => r.classification === 'strong' && r.strategy)
-        .map(r => ({ requirement: r.requirement, strategy: r.strategy! })),
+      ...gapAnalysis.pending_strategies,
     ];
 
     const narrative = await runNarrativeStrategy({
@@ -123,6 +123,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'stage_complete', stage: 'strategy', message: 'Positioning strategy complete', duration_ms: Date.now() - strategyStart });
 
     // ─── Stage 3: Writing (Agent 6) ──────────────────────────────────
+    signal?.throwIfAborted();
     state.current_stage = 'writing';
     emit({ type: 'stage_start', stage: 'writing', message: "Writing your resume..." });
 
@@ -142,6 +143,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'stage_complete', stage: 'writing', message: 'Resume draft complete', duration_ms: Date.now() - writingStart });
 
     // ─── Stage 4: Verification (Agents 7, 8, 9 in parallel) ─────────
+    signal?.throwIfAborted();
     state.current_stage = 'verification';
     emit({ type: 'stage_start', stage: 'verification', message: "Verifying accuracy, ATS compliance, and tone..." });
 
@@ -168,6 +170,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'stage_complete', stage: 'verification', message: 'Verification complete', duration_ms: Date.now() - verificationStart });
 
     // ─── Stage 5: Assembly (Agent 10 — deterministic) ────────────────
+    signal?.throwIfAborted();
     state.current_stage = 'assembly';
     emit({ type: 'stage_start', stage: 'assembly', message: "Assembling final resume..." });
 

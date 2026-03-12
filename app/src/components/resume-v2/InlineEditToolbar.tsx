@@ -15,21 +15,20 @@ interface InlineEditToolbarProps {
   onDismiss: () => void;
 }
 
-const ACTIONS: Array<{ action: EditAction; label: string; icon: typeof Zap; shortLabel: string }> = [
-  { action: 'strengthen', label: 'Strengthen', icon: Zap, shortLabel: 'Strengthen' },
-  { action: 'add_metrics', label: '+ Metrics', icon: BarChart3, shortLabel: 'Metrics' },
-  { action: 'shorten', label: 'Shorten', icon: Minimize2, shortLabel: 'Shorten' },
-  { action: 'add_keywords', label: '+ Keywords', icon: Key, shortLabel: 'Keywords' },
-  { action: 'rewrite', label: 'Rewrite', icon: RefreshCw, shortLabel: 'Rewrite' },
-  { action: 'custom', label: 'Custom', icon: MessageSquare, shortLabel: 'Custom' },
-  { action: 'not_my_voice', label: 'Not my voice', icon: Mic, shortLabel: 'Voice' },
+const ACTIONS: Array<{ action: EditAction; label: string; icon: typeof Zap }> = [
+  { action: 'strengthen', label: 'Strengthen', icon: Zap },
+  { action: 'add_metrics', label: '+ Metrics', icon: BarChart3 },
+  { action: 'shorten', label: 'Shorten', icon: Minimize2 },
+  { action: 'add_keywords', label: '+ Keywords', icon: Key },
+  { action: 'rewrite', label: 'Rewrite', icon: RefreshCw },
+  { action: 'custom', label: 'Custom', icon: MessageSquare },
+  { action: 'not_my_voice', label: 'Not my voice', icon: Mic },
 ];
 
 export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: InlineEditToolbarProps) {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customText, setCustomText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
 
   // Focus custom input when shown
   useEffect(() => {
@@ -71,7 +70,6 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
 
   return (
     <div
-      ref={toolbarRef}
       className="fixed z-50 flex flex-col items-start gap-1 rounded-xl border border-white/[0.12] bg-[#0f141e]/95 backdrop-blur-xl px-1.5 py-1.5 shadow-2xl"
       style={{
         top: position.top,
@@ -95,6 +93,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
             onChange={(e) => setCustomText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleCustomSubmit(); }}
             placeholder="What should I do?"
+            maxLength={500}
             className="w-48 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-white/90 placeholder:text-white/30 outline-none focus:border-[#afc4ff]/40"
           />
           <button

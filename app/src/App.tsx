@@ -476,6 +476,7 @@ export default function App() {
         <V2ResumeScreen
           accessToken={accessToken}
           onBack={() => setView('landing')}
+          initialResumeText={intakeInitialResumeText}
         />
       )}
 

@@ -4,10 +4,11 @@
  * Claim-by-claim verification. Every bullet must trace to source data.
  * Flags hallucinated metrics or fabricated experience.
  *
- * Model: MODEL_MID
+ * Model: MODEL_PRIMARY — this is a critical guardrail; accuracy requires the
+ * strongest available model, not a cost-saving mid-tier model.
  */
 
-import { llm, MODEL_MID } from '../../../lib/llm.js';
+import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import type { TruthVerificationInput, TruthVerificationOutput } from '../types.js';
 
@@ -55,7 +56,7 @@ export async function runTruthVerification(
   const resumeText = formatDraftForVerification(input);
 
   const response = await llm.chat({
-    model: MODEL_MID,
+    model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
     messages: [{
       role: 'user',
@@ -89,6 +90,25 @@ function formatDraftForVerification(input: TruthVerificationInput): string {
     for (const b of exp.bullets) {
       parts.push(`- ${b.text}`);
     }
+  }
+
+  if (d.earlier_career && d.earlier_career.length > 0) {
+    parts.push('\nEARLIER CAREER:');
+    for (const e of d.earlier_career) {
+      parts.push(`- ${e.title} at ${e.company} (${e.dates})`);
+    }
+  }
+
+  if (d.education.length > 0) {
+    parts.push('\nEDUCATION:');
+    for (const edu of d.education) {
+      parts.push(`- ${edu.degree} from ${edu.institution}${edu.year ? ` (${edu.year})` : ''}`);
+    }
+  }
+
+  if (d.certifications.length > 0) {
+    parts.push('\nCERTIFICATIONS:');
+    parts.push(d.certifications.join(', '));
   }
 
   return parts.join('\n');

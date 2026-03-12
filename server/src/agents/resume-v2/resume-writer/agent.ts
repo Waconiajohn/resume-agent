@@ -12,7 +12,7 @@
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
-import { getResumeRulesPrompt, BANNED_PHRASES } from '../knowledge/resume-rules.js';
+import { getResumeRulesPrompt } from '../knowledge/resume-rules.js';
 import type { ResumeWriterInput, ResumeDraftOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are the #1 executive resume writer in the country. Your clients pay $3,000+ per engagement. You've placed candidates at Google, McKinsey, Fortune 100 C-suites, and PE-backed growth companies.
@@ -35,9 +35,6 @@ YOUR GUARDRAILS:
 
 ${getResumeRulesPrompt()}
 
-BANNED PHRASES — NEVER USE:
-${BANNED_PHRASES.map(p => `- "${p}"`).join('\n')}
-
 OUTPUT FORMAT: Return valid JSON matching this exact structure:
 {
   "header": {
@@ -51,6 +48,8 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
     "content": "3-5 line executive summary. Pitch + scale + marquee accomplishments.",
     "is_new": true
   },
+  // is_new: true = content you wrote, rephrased, or enhanced beyond the original resume
+  // is_new: false = content taken verbatim or near-verbatim from the original
   "core_competencies": ["9-12 hard skills mirroring JD keywords"],
   "selected_accomplishments": [
     {
@@ -184,7 +183,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
   parts.push(
     '',
     '## WHY ME STORY (for tone reference — do not copy verbatim into resume)',
-    input.narrative.why_me_story.slice(0, 500),
+    input.narrative.why_me_story.slice(0, 2000),
     '',
     'Now write the complete resume. Every bullet must show impact. Every section must reinforce the narrative. Mark is_new correctly.',
   );

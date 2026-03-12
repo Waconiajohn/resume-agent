@@ -216,11 +216,7 @@ export type V2SSEEvent =
   | { type: 'gap_analysis'; data: GapAnalysis }
   | { type: 'narrative_strategy'; data: NarrativeStrategy }
   | { type: 'resume_draft'; data: ResumeDraft }
-  | { type: 'verification_complete'; data: {
-      truth: unknown;
-      ats: unknown;
-      tone: unknown;
-    }}
+  | { type: 'verification_complete' }  // Scores come through assembly_complete
   | { type: 'assembly_complete'; data: AssemblyResult }
   | { type: 'pipeline_complete'; session_id: string }
   | { type: 'pipeline_error'; stage: V2Stage; error: string };

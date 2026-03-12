@@ -19,10 +19,12 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
   const [context, setContext] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const canSubmit = context.trim().length >= 20 && !loading;
+
   const handleSubmit = useCallback(() => {
-    if (!context.trim() || loading) return;
+    if (!canSubmit) return;
     onSubmit(context.trim());
-  }, [context, loading, onSubmit]);
+  }, [canSubmit, context, onSubmit]);
 
   if (!isExpanded) {
     return (
@@ -59,13 +61,18 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
         placeholder="What did we miss?"
         rows={4}
         disabled={loading}
-        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white/90 placeholder:text-white/30 outline-none focus:border-[#afc4ff]/40 disabled:opacity-50 resize-y mb-3"
+        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white/90 placeholder:text-white/30 outline-none focus:border-[#afc4ff]/40 disabled:opacity-50 resize-y mb-1"
       />
+      <p className="text-xs text-white/30 mb-2">
+        {context.trim().length < 20 && context.length > 0
+          ? `${20 - context.trim().length} more characters needed`
+          : '\u00a0'}
+      </p>
 
       <div className="flex items-center gap-2">
         <GlassButton
           onClick={handleSubmit}
-          disabled={!context.trim() || loading}
+          disabled={!canSubmit}
           size="sm"
           className="gap-1.5"
         >

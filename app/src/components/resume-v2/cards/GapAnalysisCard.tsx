@@ -41,7 +41,8 @@ export function GapAnalysisCard({ data, onStrategyChange, approvals = {}, isComp
         <span className="flex items-center gap-1 text-[#f0b8b8]"><XCircle className="h-3 w-3" /> {missing.length} missing</span>
       </div>
 
-      {/* Requirements list */}
+      {/* Requirements list — array index keys are acceptable here (static render-once list;
+           strategy toggles mutate approval state but never reorder/add/remove items) */}
       <div className="space-y-2">
         {data.requirements.map((req, i) => (
           <RequirementRow
@@ -78,12 +79,13 @@ function RequirementRow({ requirement, classification, evidence, strategy, showT
     missing: <XCircle className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />,
   }[classification];
 
-  // Default: approved unless explicitly rejected
-  const isApproved = approved !== false;
+  // Only show active state after user interaction; neutral by default
+  const isApproved = approved === true;
   const isRejected = approved === false;
+  const isNeutral = approved === undefined;
 
   return (
-    <div className={`rounded-lg border px-3 py-2.5 transition-colors ${isRejected ? 'border-white/[0.04] bg-white/[0.01] opacity-50' : 'border-white/[0.06] bg-white/[0.02]'}`}>
+    <div className={`rounded-lg border px-3 py-2.5 transition-colors ${isRejected ? 'border-white/[0.04] bg-white/[0.01] opacity-50' : isNeutral || isApproved ? 'border-white/[0.06] bg-white/[0.02]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
       <div className="flex items-start gap-2">
         {icon}
         <div className="flex-1 min-w-0">
@@ -103,6 +105,7 @@ function RequirementRow({ requirement, classification, evidence, strategy, showT
                       className={`rounded p-1 transition-colors ${isApproved ? 'bg-[#b5dec2]/20 text-[#b5dec2]' : 'text-white/25 hover:text-white/50'}`}
                       title="Use this strategy"
                       aria-label={`Approve strategy for ${requirement}`}
+                      aria-pressed={isApproved}
                     >
                       <ThumbsUp className="h-3 w-3" />
                     </button>
@@ -112,6 +115,7 @@ function RequirementRow({ requirement, classification, evidence, strategy, showT
                       className={`rounded p-1 transition-colors ${isRejected ? 'bg-[#f0b8b8]/20 text-[#f0b8b8]' : 'text-white/25 hover:text-white/50'}`}
                       title="Skip this strategy"
                       aria-label={`Reject strategy for ${requirement}`}
+                      aria-pressed={isRejected}
                     >
                       <ThumbsDown className="h-3 w-3" />
                     </button>

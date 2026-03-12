@@ -140,6 +140,9 @@ export function useV2Pipeline(accessToken: string | null) {
 
   const start = useCallback(async (resumeText: string, jobDescription: string, userContext?: string) => {
     if (!accessToken) return;
+    // isStarting guard: covers the brief window between user submit and SSE connection.
+    // Once SSE connects, isStarting becomes false and the UI switches to streaming display,
+    // making duplicate submissions impossible through the normal UX flow.
     if (isStarting) return;
 
     // Reset state

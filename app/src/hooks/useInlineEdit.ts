@@ -132,6 +132,13 @@ export function useInlineEdit(
     onResumeUpdate(entry.resume);
   }, [resume, onResumeUpdate]);
 
+  const resetHistory = useCallback(() => {
+    undoStack.current = [];
+    redoStack.current = [];
+    setUndoCount(0);
+    setRedoCount(0);
+  }, []);
+
   return {
     pendingEdit,
     isEditing,
@@ -143,6 +150,7 @@ export function useInlineEdit(
     rejectEdit,
     undo,
     redo,
+    resetHistory,
   };
 }
 
@@ -193,7 +201,7 @@ function resumeToPlainText(r: ResumeDraft): string {
 
 /** Apply a text replacement across all string fields in the resume */
 function applyTextReplacement(resume: ResumeDraft, oldText: string, newText: string): ResumeDraft {
-  const replace = (s: string) => s.includes(oldText) ? s.replace(oldText, newText) : s;
+  const replace = (s: string) => s.includes(oldText) ? s.replaceAll(oldText, newText) : s;
 
   return {
     ...resume,

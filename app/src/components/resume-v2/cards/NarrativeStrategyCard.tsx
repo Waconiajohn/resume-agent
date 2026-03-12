@@ -26,6 +26,12 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       <div>
         <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">Why You</h4>
         <p className="text-sm text-white/70 leading-relaxed">{data.why_me_concise}</p>
+        {data.why_me_story && (
+          <details className="mt-2">
+            <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">Full positioning story</summary>
+            <p className="mt-1 text-xs text-white/50 leading-relaxed">{data.why_me_story}</p>
+          </details>
+        )}
       </div>
 
       {/* Best line */}

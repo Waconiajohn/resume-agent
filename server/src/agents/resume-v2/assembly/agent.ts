@@ -53,13 +53,13 @@ function applyToneFixes(
 
   if (replacements.size === 0) return draft;
 
-  // Apply replacements across all text fields
+  // Apply replacements across all text fields — case-insensitive, replaces all occurrences
   const applyReplacements = (text: string): string => {
     let result = text;
     for (const [old, replacement] of replacements) {
-      if (result.includes(old)) {
-        result = result.replace(old, replacement);
-      }
+      // Use a case-insensitive global regex so every occurrence is replaced
+      const regex = new RegExp(old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      result = result.replace(regex, replacement);
     }
     return result;
   };
@@ -70,6 +70,7 @@ function applyToneFixes(
       ...draft.executive_summary,
       content: applyReplacements(draft.executive_summary.content),
     },
+    core_competencies: draft.core_competencies.map(applyReplacements),
     selected_accomplishments: draft.selected_accomplishments.map(a => ({
       ...a,
       content: applyReplacements(a.content),
@@ -117,5 +118,11 @@ function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
     });
   }
 
-  return wins.slice(0, 3);
+  const quickWins = wins.slice(0, 3);
+
+  if (quickWins.length === 0) {
+    quickWins.push({ description: 'Resume is well-optimized — no critical improvements needed', impact: 'low' });
+  }
+
+  return quickWins;
 }

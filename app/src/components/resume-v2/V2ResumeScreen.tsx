@@ -20,9 +20,10 @@ import type { StrategyApprovals } from './cards/GapAnalysisCard';
 interface V2ResumeScreenProps {
   accessToken: string | null;
   onBack: () => void;
+  initialResumeText?: string;
 }
 
-export function V2ResumeScreen({ accessToken, onBack }: V2ResumeScreenProps) {
+export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2ResumeScreenProps) {
   const { data, isConnected, isComplete, isStarting, error, start, reset } = useV2Pipeline(accessToken);
 
   // Track the editable resume separately — starts as the pipeline output,
@@ -39,7 +40,7 @@ export function V2ResumeScreen({ accessToken, onBack }: V2ResumeScreenProps) {
 
   const {
     pendingEdit, isEditing, editError, undoCount, redoCount,
-    requestEdit, acceptEdit: rawAcceptEdit, rejectEdit, undo, redo,
+    requestEdit, acceptEdit: rawAcceptEdit, rejectEdit, undo, redo, resetHistory,
   } = useInlineEdit(accessToken, data.sessionId, currentResume, jobDescription, setEditableResume);
 
   // Live ATS scoring
@@ -74,8 +75,9 @@ export function V2ResumeScreen({ accessToken, onBack }: V2ResumeScreenProps) {
     setResumeText(rt);
     setJobDescription(jd);
     setEditableResume(null);
+    resetHistory();
     void start(rt, jd);
-  }, [start]);
+  }, [start, resetHistory]);
 
   const handleAddContext = useCallback((userContext: string) => {
     // Include rejected strategies so the pipeline knows what to skip
@@ -90,8 +92,9 @@ export function V2ResumeScreen({ accessToken, onBack }: V2ResumeScreenProps) {
 
     setEditableResume(null);
     setStrategyApprovals({});
+    resetHistory();
     void start(resumeText, jobDescription, contextParts.join('\n'));
-  }, [start, resumeText, jobDescription, strategyApprovals]);
+  }, [start, resumeText, jobDescription, strategyApprovals, resetHistory]);
 
   const handleStartOver = useCallback(() => {
     reset();
@@ -107,6 +110,7 @@ export function V2ResumeScreen({ accessToken, onBack }: V2ResumeScreenProps) {
         onSubmit={handleSubmit}
         loading={isStarting}
         error={error}
+        initialResumeText={initialResumeText}
       />
     );
   }

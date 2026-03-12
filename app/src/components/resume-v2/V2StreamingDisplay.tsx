@@ -54,7 +54,7 @@ interface V2StreamingDisplayProps {
   onStrategyChange: (approvals: StrategyApprovals) => void;
 }
 
-const STAGE_ORDER: V2Stage[] = ['analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
+const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
 
 function StageIndicator({ stage, currentStage, isComplete }: { stage: V2Stage; currentStage: V2Stage; isComplete: boolean }) {
   const stageIdx = STAGE_ORDER.indexOf(stage);
@@ -146,11 +146,12 @@ export function V2StreamingDisplay({
     const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('[role="toolbar"]')) return; // Don't dismiss when clicking toolbar itself
-      // Let mouseup in the resume handle new selections; only dismiss if clicking elsewhere
+      if (target.closest('[data-section]')) return; // Let mouseup handle new selections
+      dismissToolbar();
     };
     window.addEventListener('mousedown', handleMouseDown);
     return () => window.removeEventListener('mousedown', handleMouseDown);
-  }, [toolbarPos]);
+  }, [toolbarPos, dismissToolbar]);
 
   const hasAnalysis = data.jobIntelligence || data.candidateIntelligence || data.benchmarkCandidate;
   const hasStrategy = data.gapAnalysis || data.narrativeStrategy;
@@ -169,6 +170,14 @@ export function V2StreamingDisplay({
           <div className="flex items-center gap-2 text-xs text-white/40" role="status" aria-live="polite">
             <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
             <span>{getStageMessage(data.stage)}</span>
+          </div>
+        )}
+
+        {/* Disconnected banner */}
+        {!isComplete && !isConnected && data.stage !== 'intake' && (
+          <div className="flex items-center gap-2 text-xs text-[#f0d99f]/70" role="status">
+            <AlertCircle className="h-3 w-3" />
+            Connection lost — waiting to reconnect...
           </div>
         )}
 

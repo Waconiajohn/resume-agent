@@ -9,10 +9,11 @@ interface V2IntakeFormProps {
   onSubmit: (resumeText: string, jobDescription: string) => void;
   loading?: boolean;
   error?: string | null;
+  initialResumeText?: string;
 }
 
-export function V2IntakeForm({ onSubmit, loading = false, error }: V2IntakeFormProps) {
-  const [resumeText, setResumeText] = useState('');
+export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeText }: V2IntakeFormProps) {
+  const [resumeText, setResumeText] = useState(initialResumeText ?? '');
   const [jobDescription, setJobDescription] = useState('');
   const [resumeFileLoading, setResumeFileLoading] = useState(false);
   const [resumeFileError, setResumeFileError] = useState<string | null>(null);

@@ -27,6 +27,7 @@ export function useLiveScoring(
   const [isScoring, setIsScoring] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -43,7 +44,10 @@ export function useLiveScoring(
     if (timerRef.current) clearTimeout(timerRef.current);
     abortRef.current?.abort();
 
+    const generation = ++generationRef.current;
+
     timerRef.current = setTimeout(async () => {
+      if (generation !== generationRef.current) return; // stale timer
       const controller = new AbortController();
       abortRef.current = controller;
       setIsScoring(true);

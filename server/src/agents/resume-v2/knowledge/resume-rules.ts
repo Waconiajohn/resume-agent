@@ -128,30 +128,17 @@ export const BANNED_PHRASES = [
 ];
 
 // ─── Age-Proofing Rules (Critical for 45-60) ────────────────────────
+//
+// AGE_AWARENESS_RULES from shared-knowledge.ts is the platform-wide canonical
+// version used by cover-letter, executive-bio, and other agents.
+// AGE_PROOFING_RULES here is the resume-specific superset that includes the
+// "USE" section (template/formatting guidance). Both are kept in sync on
+// the shared principles; resume-specific additions live here only.
 
-export const AGE_PROOFING_RULES = `## Age-Proofing Rules (Ages 45-60)
+import { AGE_AWARENESS_RULES } from '../../shared-knowledge.js';
+export { AGE_AWARENESS_RULES };
 
-REMOVE:
-- Graduation dates for degrees earned 20+ years ago
-- "25+ years of experience" or similar age-revealing quantifiers
-- Objective statements (outdated format signal)
-- "References available upon request" (dated convention)
-- Street addresses (phone + email + LinkedIn only)
-- Obsolete technologies (Lotus Notes, COBOL, etc. unless specifically required)
-- Hobbies or personal interests sections
-
-FRAME:
-- Experience as strategic advantage, not "long tenure"
-- Emphasize last 5-10 years prominently
-- Show adaptability: modern tools, current methodologies
-- Forward-looking language: "Currently leading..." beats "Have spent 25 years..."
-- Evolution and depth of impact, not length of service
-
-EMPHASIZE:
-- Modern skills: AI, cloud, data analytics, digital transformation (where truthful)
-- Recent achievements weighted first
-- Continuous learning and professional development
-- LinkedIn profile URL (signals digital presence)
+export const AGE_PROOFING_RULES = `${AGE_AWARENESS_RULES}
 
 USE:
 - Modern, clean template design

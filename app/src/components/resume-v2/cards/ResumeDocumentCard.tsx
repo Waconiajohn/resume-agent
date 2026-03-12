@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import type { ResumeDraft } from '@/types/resume-v2';
 
 interface ResumeDocumentCardProps {
@@ -7,8 +7,6 @@ interface ResumeDocumentCardProps {
 }
 
 export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const handleMouseUp = useCallback(() => {
     if (!onTextSelect) return;
 
@@ -30,12 +28,11 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
 
   return (
     <div
-      ref={containerRef}
       className="space-y-6 font-serif select-text cursor-text"
       onMouseUp={handleMouseUp}
     >
       {/* Header */}
-      <div className="text-center border-b border-white/10 pb-4">
+      <div data-section="header" className="text-center border-b border-white/10 pb-4">
         <h2 className="text-2xl font-bold text-white/95">{resume.header.name}</h2>
         <p className="text-sm text-[#afc4ff] mt-1">{resume.header.branded_title}</p>
         <div className="mt-2 flex items-center justify-center gap-3 text-xs text-white/50">

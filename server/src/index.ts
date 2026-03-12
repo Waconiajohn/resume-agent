@@ -51,6 +51,7 @@ import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
 import { initSentry, captureError, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
+import { FF_RESUME_V2 } from './lib/feature-flags.js';
 
 const app = new Hono();
 let shuttingDown = false;
@@ -296,7 +297,9 @@ app.get('/metrics', (c) => {
 
 app.route('/api/sessions', sessions);
 app.route('/api/resumes', resumes);
-app.route('/api/pipeline', resumeV2Pipeline);
+if (FF_RESUME_V2) {
+  app.route('/api/pipeline', resumeV2Pipeline);
+}
 app.route('/api/workflow', workflow);
 app.route('/api/billing', billing);
 app.route('/api/admin', admin);
@@ -358,7 +361,7 @@ function shutdown(signal: string) {
 
   const flushTasks = Promise.allSettled([
     releaseAllLocks(),
-    Promise.resolve(0), // Resume pipeline v2 flush will go here
+    Promise.resolve(0), // TODO: drain active v2 pipeline sessions before exit (ticket: INFRA-drain-v2)
     flushSentry(2000),
   ]).then((results) => {
     logger.info('Completed shutdown flush tasks');

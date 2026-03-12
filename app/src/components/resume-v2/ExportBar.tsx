@@ -37,18 +37,16 @@ export function ExportBar({ resume, companyName, jobTitle, atsScore }: ExportBar
     }
   }, [getFinalResume]);
 
-  const handlePdf = useCallback(() => {
+  const handlePdf = useCallback(async () => {
     setExporting('pdf');
     setError(null);
     try {
-      // Dynamic import to avoid bundling jspdf when not needed
-      void import('@/lib/export-pdf').then(({ exportPdf }) => {
-        const result = exportPdf(getFinalResume());
-        if (!result.success) setError(result.error ?? 'PDF export failed');
-        setExporting(null);
-      });
+      const { exportPdf } = await import('@/lib/export-pdf');
+      const result = exportPdf(getFinalResume());
+      if (!result.success) setError(result.error ?? 'PDF export failed');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
+    } finally {
       setExporting(null);
     }
   }, [getFinalResume]);

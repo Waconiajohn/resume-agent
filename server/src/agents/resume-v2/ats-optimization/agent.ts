@@ -30,8 +30,8 @@ OUTPUT FORMAT: Return valid JSON:
 }
 
 RULES:
-- match_score = keywords_found / (keywords_found + keywords_missing) × 100, weighted by importance
-- Only flag keywords that are genuinely important (must_have and important from job intel)
+- match_score = (keywords_found / total_important_keywords) × 100, where total_important_keywords = keywords_found + keywords_missing
+- Only count must-have and important keywords, not nice-to-haves
 - natural_phrasing: suggest ACTUAL resume text that incorporates the keyword naturally
 - formatting_issues: flag anything that would trip up ATS parsing (tables, multi-column, images, unusual section headers)
 - Readability for humans comes FIRST — keyword optimization second`;

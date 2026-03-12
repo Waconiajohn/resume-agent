@@ -35,7 +35,7 @@ export function ScoresCard({ scores, quickWins }: { scores: VerificationScores; 
 function ScorePill({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-center">
-      <div className="text-2xl font-bold" style={{ color }}>{value}</div>
+      <div className="text-2xl font-bold" style={{ color }}>{value}%</div>
       <div className="text-xs text-white/50 mt-0.5">{label}</div>
     </div>
   );

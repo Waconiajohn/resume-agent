@@ -3,7 +3,7 @@
  */
 
 import type { ResumeDraft } from '@/types/resume-v2';
-import type { FinalResume, ContactInfo, MasterResumeExperience, MasterResumeEducation } from '@/types/resume.ts';
+import type { FinalResume, ContactInfo, MasterResumeExperience, MasterResumeEducation } from '@/types/resume';
 
 export function resumeDraftToFinalResume(draft: ResumeDraft, opts?: {
   companyName?: string;

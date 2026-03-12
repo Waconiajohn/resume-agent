@@ -28,7 +28,7 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
-  // Step 3: Extract JSON object/array from surrounding text
+  // Step 4 (extraction): Extract JSON object/array from surrounding text
   const firstBrace = cleaned.indexOf('{');
   const firstBracket = cleaned.indexOf('[');
   let start = -1;
@@ -54,7 +54,7 @@ export function repairJSON<T>(text: string): T | null {
     }
   }
 
-  // Step 4: Fix trailing commas
+  // Step 5: Fix trailing commas
   const noTrailing = cleaned
     .replace(/,\s*([\]}])/g, '$1');
 
@@ -64,7 +64,7 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
-  // Step 5: Fix common Z.AI quirks — unescaped newlines/tabs inside strings,
+  // Step 6: Fix common Z.AI quirks — unescaped newlines/tabs inside strings,
   // single quotes, unquoted keys
   let aggressive = noTrailing
     // Fix unescaped control chars inside JSON strings (newlines, tabs)
@@ -79,7 +79,7 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
-  // Step 6: Fix unquoted keys — { key: "value" } → { "key": "value" }
+  // Step 7: Fix unquoted keys — { key: "value" } → { "key": "value" }
   const quotedKeys = aggressive.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
   try {
     return JSON.parse(quotedKeys) as T;
@@ -87,7 +87,7 @@ export function repairJSON<T>(text: string): T | null {
     // continue
   }
 
-  // Step 7: Partial JSON truncation — close unclosed braces/brackets
+  // Step 8: Partial JSON truncation — close unclosed braces/brackets
   // Common with Z.AI timeouts. Count opens vs closes and append missing closers.
   function closePartial(s: string): string {
     const stack: string[] = [];
@@ -115,7 +115,7 @@ export function repairJSON<T>(text: string): T | null {
     }
   }
 
-  // Step 8: Give up — log raw snippet for debugging
+  // Step 9: Give up — log raw snippet for debugging
   logger.warn({ rawSnippet: text.substring(0, 300) }, 'Failed to repair JSON');
   return null;
 }
