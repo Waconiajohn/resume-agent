@@ -60,8 +60,10 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
   const user = c.get('user');
   const userId = user.id;
 
-  const body = await parseJsonBodyWithLimit(c, 200_000);
-  const parsed = startSchema.safeParse(body);
+  const parsedBody = await parseJsonBodyWithLimit(c, 200_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = startSchema.safeParse(parsedBody.data);
   if (!parsed.success) {
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
@@ -261,8 +263,10 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  const body = await parseJsonBodyWithLimit(c, 50_000);
-  const parsed = editSchema.safeParse(body);
+  const parsedBody = await parseJsonBodyWithLimit(c, 50_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = editSchema.safeParse(parsedBody.data);
   if (!parsed.success) {
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
@@ -337,8 +341,10 @@ resumeV2Pipeline.post('/:sessionId/rescore', authMiddleware, rateLimitMiddleware
     return c.json({ error: 'Session not found' }, 404);
   }
 
-  const body = await parseJsonBodyWithLimit(c, 200_000);
-  const parsed = rescoreSchema.safeParse(body);
+  const parsedBody = await parseJsonBodyWithLimit(c, 200_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = rescoreSchema.safeParse(parsedBody.data);
   if (!parsed.success) {
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
