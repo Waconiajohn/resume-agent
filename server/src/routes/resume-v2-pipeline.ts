@@ -75,7 +75,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
     .from('coach_sessions')
     .insert({
       user_id: userId,
-      session_type: 'resume_v2',
+      product_type: 'resume_v2',
       pipeline_status: 'running',
       pipeline_stage: 'intake',
     })
