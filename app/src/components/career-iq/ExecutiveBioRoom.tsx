@@ -15,6 +15,8 @@ import {
   Copy,
   Check,
   ChevronRight,
+  Clock,
+  Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -92,6 +94,91 @@ function ActivityFeed({
   );
 }
 
+// --- Bio section card (per-bio copy + metadata) ---
+
+interface BioSectionCardProps {
+  title: string;
+  content: string;
+}
+
+function BioSectionCard({ title, content }: BioSectionCardProps) {
+  const [copied, setCopied] = useState(false);
+
+  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+  const readTime = Math.max(1, Math.round(wordCount / 200));
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, [content]);
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+      {/* Bio header row */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[13px] font-semibold text-[#A396E2]/90">{title}</h3>
+        <div className="flex items-center gap-2">
+          {/* Word count chip */}
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+            <Hash className="h-2.5 w-2.5" />
+            {wordCount}w
+          </span>
+          {/* Read time chip */}
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+            <Clock className="h-2.5 w-2.5" />
+            ~{readTime}m
+          </span>
+          {/* Copy button */}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={cn(
+              'flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] border transition-all',
+              copied
+                ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+            )}
+          >
+            {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
+      <p className="text-[13px] text-white/65 leading-relaxed whitespace-pre-wrap">{content}</p>
+    </div>
+  );
+}
+
+// --- Parse bio sections from markdown report ---
+
+function parseBioSections(report: string): { title: string; content: string }[] {
+  // Find H2 sections in the markdown report
+  const sections: { title: string; content: string }[] = [];
+  const lines = report.split('\n');
+  let current: { title: string; lines: string[] } | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith('## ')) {
+      if (current) {
+        const content = current.lines.join('\n').trim();
+        if (content) sections.push({ title: current.title, content });
+      }
+      current = { title: line.replace(/^## /, '').trim(), lines: [] };
+    } else if (current) {
+      current.lines.push(line);
+    }
+  }
+  if (current) {
+    const content = current.lines.join('\n').trim();
+    if (content) sections.push({ title: current.title, content });
+  }
+
+  return sections;
+}
+
 // --- Report view ---
 
 function ReportView({
@@ -103,15 +190,18 @@ function ReportView({
   qualityScore: number | null;
   onReset: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
 
-  const handleCopy = useCallback(async () => {
+  const handleCopyAll = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(report);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
     } catch { /* ignore */ }
   }, [report]);
+
+  const bioSections = parseBioSections(report);
+  const hasParsedSections = bioSections.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -131,17 +221,17 @@ function ReportView({
             <div className={cn(
               'text-[12px] font-semibold px-3 py-1.5 rounded-full border',
               qualityScore >= 80
-                ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
+                ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
                 : qualityScore >= 60
                 ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-                : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20',
+                : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20',
             )}>
               Quality {qualityScore}%
             </div>
           )}
-          <GlassButton variant="ghost" onClick={handleCopy} size="sm">
-            {copied ? <Check size={14} className="mr-1.5 text-[#57CDA4]" /> : <Copy size={14} className="mr-1.5" />}
-            {copied ? 'Copied' : 'Copy All'}
+          <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
+            {copiedAll ? <Check size={14} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={14} className="mr-1.5" />}
+            {copiedAll ? 'Copied' : 'Copy All'}
           </GlassButton>
           <GlassButton variant="ghost" onClick={onReset} size="sm">
             <RotateCcw size={14} className="mr-1.5" />
@@ -150,23 +240,55 @@ function ReportView({
         </div>
       </div>
 
-      {/* Report content */}
-      <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
-        <div
-          className="prose prose-invert prose-sm max-w-none
-            prose-headings:text-white/85 prose-headings:font-semibold
-            prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
-            prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#A396E2]/90
-            prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
-            prose-p:text-white/65 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
-            prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-            prose-strong:text-white/80
-            prose-em:text-[#f0d99f]/80
-            prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#A396E2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
-            prose-hr:border-white/[0.06] prose-hr:my-6"
-          dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
-        />
-      </GlassCard>
+      {/* Quality bar */}
+      {qualityScore !== null && (
+        <GlassCard className="px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] text-white/40">Bio Collection Quality</span>
+            <span className={cn(
+              'text-[11px] font-semibold',
+              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+            )}>
+              {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Good' : 'Needs Work'}
+            </span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+              )}
+              style={{ width: `${qualityScore}%` }}
+            />
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Per-bio cards (if parseable) or fallback prose */}
+      {hasParsedSections ? (
+        <div className="space-y-3">
+          {bioSections.map((section, i) => (
+            <BioSectionCard key={i} title={section.title} content={section.content} />
+          ))}
+        </div>
+      ) : (
+        <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+          <div
+            className="prose prose-invert prose-sm max-w-none
+              prose-headings:text-white/85 prose-headings:font-semibold
+              prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+              prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#A396E2]/90
+              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
+              prose-p:text-white/65 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
+              prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
+              prose-strong:text-white/80
+              prose-em:text-[#f0d99f]/80
+              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#A396E2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+              prose-hr:border-white/[0.06] prose-hr:my-6"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
+          />
+        </GlassCard>
+      )}
     </div>
   );
 }
@@ -287,7 +409,7 @@ export function ExecutiveBioRoom() {
                 <div className={cn(
                   'flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all',
                   isActive ? 'bg-[#A396E2]/15 text-[#A396E2] border border-[#A396E2]/25'
-                    : isDone ? 'bg-[#57CDA4]/10 text-[#57CDA4] border border-[#57CDA4]/20'
+                    : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20'
                     : 'bg-white/[0.04] text-white/25 border border-white/[0.06]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
@@ -334,11 +456,11 @@ export function ExecutiveBioRoom() {
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold text-white/90">Executive Bio Suite</h1>
         </div>
-        <GlassCard className="p-6 border-[#f87171]/20">
+        <GlassCard className="p-6 border-[#f0b8b8]/20">
           <div className="flex items-start gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f87171] flex-shrink-0 mt-0.5" />
+            <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] text-[#f87171] font-medium">Generation failed</p>
+              <p className="text-[13px] text-[#f0b8b8] font-medium">Generation failed</p>
               <p className="text-[12px] text-white/40 mt-0.5">{error}</p>
             </div>
           </div>
@@ -411,7 +533,7 @@ export function ExecutiveBioRoom() {
           </div>
         ) : resumeText.length > 50 ? (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-[#57CDA4]/70">
+            <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
               <Check size={12} />
               Resume loaded — {Math.round(resumeText.length / 5)} words
             </div>

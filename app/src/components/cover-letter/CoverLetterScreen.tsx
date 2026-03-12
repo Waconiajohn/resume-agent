@@ -1,6 +1,22 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2, CheckCircle, AlertCircle, Download, FileText, RotateCcw, ArrowLeft } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Download,
+  FileText,
+  RotateCcw,
+  ArrowLeft,
+  Copy,
+  Check,
+  Sparkles,
+  Building2,
+  Target,
+  MessageSquare,
+  ArrowRight,
+} from 'lucide-react';
 import { CoverLetterIntakeForm } from './CoverLetterIntakeForm';
+import type { CoverLetterTone } from './CoverLetterIntakeForm';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { useCoverLetter } from '@/hooks/useCoverLetter';
@@ -16,13 +32,246 @@ interface CoverLetterScreenProps {
 
 type Phase = 'intake' | 'running' | 'complete' | 'error';
 
+// ─── Section parsing ──────────────────────────────────────────────────────────
+
+interface LetterSection {
+  type: 'opening_hook' | 'why_company' | 'value_proposition' | 'call_to_action' | 'body';
+  label: string;
+  content: string;
+  icon: React.ElementType;
+  color: string;
+  borderColor: string;
+}
+
+function parseSectionsFromLetter(text: string): LetterSection[] {
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length === 0) return [];
+
+  const sectionConfig: Omit<LetterSection, 'content'>[] = [
+    {
+      type: 'opening_hook',
+      label: 'Opening Hook',
+      icon: Sparkles,
+      color: 'text-[#afc4ff]',
+      borderColor: 'border-[#afc4ff]/15',
+    },
+    {
+      type: 'why_company',
+      label: 'Why This Company',
+      icon: Building2,
+      color: 'text-[#b5dec2]',
+      borderColor: 'border-[#b5dec2]/15',
+    },
+    {
+      type: 'value_proposition',
+      label: 'Value Proposition',
+      icon: Target,
+      color: 'text-[#f0d99f]',
+      borderColor: 'border-[#f0d99f]/15',
+    },
+    {
+      type: 'call_to_action',
+      label: 'Call to Action',
+      icon: ArrowRight,
+      color: 'text-[#afc4ff]',
+      borderColor: 'border-[#afc4ff]/15',
+    },
+  ];
+
+  // Assign paragraphs to sections. Opening = first, CTA = last, body paragraphs fill middle.
+  const sections: LetterSection[] = [];
+
+  if (paragraphs.length === 1) {
+    sections.push({ ...sectionConfig[0], content: paragraphs[0] });
+    return sections;
+  }
+
+  // Opening hook = first paragraph
+  sections.push({ ...sectionConfig[0], content: paragraphs[0] });
+
+  // Call to action = last paragraph
+  const last = paragraphs[paragraphs.length - 1];
+
+  // Middle paragraphs: assign why_company and value_proposition
+  const middle = paragraphs.slice(1, paragraphs.length - 1);
+
+  if (middle.length >= 1) {
+    sections.push({ ...sectionConfig[1], content: middle[0] });
+  }
+  if (middle.length >= 2) {
+    sections.push({ ...sectionConfig[2], content: middle[1] });
+  }
+  // Any additional middle paragraphs become generic body sections
+  for (let i = 2; i < middle.length; i++) {
+    sections.push({
+      type: 'body',
+      label: `Body ${i}`,
+      icon: MessageSquare,
+      color: 'text-white/50',
+      borderColor: 'border-white/[0.06]',
+      content: middle[i],
+    });
+  }
+
+  sections.push({ ...sectionConfig[3], content: last });
+
+  return sections;
+}
+
+// ─── Letter output ────────────────────────────────────────────────────────────
+
+function LetterOutput({
+  letterDraft,
+  qualityScore,
+  companyName,
+  tone,
+  onCopy,
+  copied,
+}: {
+  letterDraft: string;
+  qualityScore: number | null;
+  companyName: string;
+  tone: CoverLetterTone;
+  onCopy: () => void;
+  copied: boolean;
+}) {
+  const sections = parseSectionsFromLetter(letterDraft);
+  const wordCount = letterDraft.trim().split(/\s+/).length;
+  const readTime = Math.max(1, Math.round(wordCount / 200));
+
+  const toneLabel = tone === 'bold' ? 'Bold' : tone === 'conversational' ? 'Conversational' : 'Formal';
+  const toneBg = tone === 'bold'
+    ? 'bg-[#f0d99f]/10 text-[#f0d99f] border-[#f0d99f]/15'
+    : tone === 'conversational'
+    ? 'bg-[#b5dec2]/10 text-[#b5dec2] border-[#b5dec2]/15'
+    : 'bg-[#afc4ff]/10 text-[#afc4ff] border-[#afc4ff]/15';
+
+  return (
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-[#b5dec2]" />
+          <span className="text-sm font-medium text-white/85">Cover Letter Ready</span>
+          {companyName && (
+            <span className="text-xs text-white/40">for {companyName}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          {/* Tone badge */}
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium border', toneBg)}>
+            {toneLabel}
+          </span>
+          {/* Word count */}
+          <span className="rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+            {wordCount} words
+          </span>
+          {/* Read time */}
+          <span className="rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+            ~{readTime} min read
+          </span>
+          {/* Quality score */}
+          {qualityScore != null && (
+            <span
+              className={cn(
+                'rounded-md px-1.5 py-0.5 text-[10px] font-medium border',
+                qualityScore >= 80
+                  ? 'bg-[#b5dec2]/10 text-[#b5dec2] border-[#b5dec2]/15'
+                  : qualityScore >= 60
+                    ? 'bg-[#f0d99f]/10 text-[#f0d99f] border-[#f0d99f]/15'
+                    : 'bg-[#f0b8b8]/10 text-[#f0b8b8] border-[#f0b8b8]/15',
+              )}
+            >
+              Quality {qualityScore}/100
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Quality score bar (if available) */}
+      {qualityScore != null && (
+        <GlassCard className="px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] text-white/40">Letter Quality</span>
+            <span className={cn(
+              'text-[11px] font-semibold',
+              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+            )}>
+              {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Good' : 'Needs Work'}
+            </span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+              )}
+              style={{ width: `${qualityScore}%` }}
+            />
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Sectioned letter display */}
+      {sections.length > 0 ? (
+        <div className="space-y-3">
+          {sections.map((section, i) => {
+            const Icon = section.icon;
+            return (
+              <GlassCard
+                key={i}
+                className={cn('p-4 border', section.borderColor)}
+              >
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Icon className={cn('h-3.5 w-3.5', section.color)} />
+                  <span className={cn('text-[11px] font-semibold uppercase tracking-wider', section.color)}>
+                    {section.label}
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed text-white/75 whitespace-pre-wrap">
+                  {section.content}
+                </p>
+              </GlassCard>
+            );
+          })}
+        </div>
+      ) : (
+        <GlassCard className="p-6">
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/80">
+            {letterDraft}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Copy full letter button (above the action row) */}
+      <div className="flex justify-end">
+        <GlassButton variant="ghost" onClick={onCopy} size="sm">
+          {copied ? (
+            <><Check className="mr-1.5 h-3 w-3 text-[#b5dec2]" />Copied</>
+          ) : (
+            <><Copy className="mr-1.5 h-3 w-3" />Copy Full Letter</>
+          )}
+        </GlassButton>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
 export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume }: CoverLetterScreenProps) {
   const [phase, setPhase] = useState<Phase>('intake');
   const [intakeLoading, setIntakeLoading] = useState(false);
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState('');
+  const [selectedTone, setSelectedTone] = useState<CoverLetterTone>('formal');
   const [defaultResumeText, setDefaultResumeText] = useState<string | undefined>(undefined);
   const [resumeLoading, setResumeLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Fetch the master resume on mount and pre-fill the intake form
   useEffect(() => {
@@ -68,11 +317,12 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
           : 'running';
 
   const handleSubmit = useCallback(
-    async (data: { resumeText: string; jobDescription: string; companyName: string }) => {
+    async (data: { resumeText: string; jobDescription: string; companyName: string; tone: CoverLetterTone }) => {
       if (!accessToken) return;
       setIntakeLoading(true);
       setIntakeError(null);
       setCompanyName(data.companyName);
+      setSelectedTone(data.tone);
 
       try {
         // Create a session first
@@ -117,13 +367,24 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
     setPhase('intake');
     setIntakeError(null);
     setCompanyName('');
+    setCopied(false);
   }, [reset]);
 
   const handleRetry = useCallback(() => {
     reset();
     setPhase('intake');
     setIntakeError(null);
+    setCopied(false);
   }, [reset]);
+
+  const handleCopy = useCallback(async () => {
+    if (!letterDraft) return;
+    try {
+      await navigator.clipboard.writeText(letterDraft);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, [letterDraft]);
 
   // ─── Intake Phase ────────────────────────────────────────────────
   if (effectivePhase === 'intake') {
@@ -152,11 +413,11 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
           Back to Tools
         </button>
 
-        {/* Activity Feed (running + complete) */}
+        {/* Activity Feed (running) */}
         {effectivePhase === 'running' && (
           <GlassCard className="mb-6 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#aec3ff]" />
+              <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#afc4ff]" />
               <span className="text-sm font-medium text-white/85">
                 {currentStage
                   ? currentStage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -182,7 +443,7 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
             )}
             {/* Progress bar */}
             <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
-              <div className="h-full motion-safe:animate-pulse rounded-full bg-[#aec3ff]/40" style={{ width: '60%' }} />
+              <div className="h-full motion-safe:animate-pulse rounded-full bg-[#afc4ff]/40" style={{ width: '60%' }} />
             </div>
           </GlassCard>
         )}
@@ -207,37 +468,16 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
         {/* Complete Phase — Letter Display */}
         {effectivePhase === 'complete' && letterDraft && (
           <>
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-[#b5dec2]" />
-                <span className="text-sm font-medium text-white/85">Cover Letter Ready</span>
-                {companyName && (
-                  <span className="text-xs text-white/50">for {companyName}</span>
-                )}
-              </div>
-              {qualityScore != null && (
-                <span
-                  className={cn(
-                    'rounded-full px-2.5 py-0.5 text-xs font-medium',
-                    qualityScore >= 80
-                      ? 'bg-[#b5dec2]/15 text-[#b5dec2]'
-                      : qualityScore >= 60
-                        ? 'bg-[#f0d99f]/15 text-[#f0d99f]'
-                        : 'bg-[#f0b8b8]/15 text-[#f0b8b8]',
-                  )}
-                >
-                  Quality: {qualityScore}/100
-                </span>
-              )}
-            </div>
+            <LetterOutput
+              letterDraft={letterDraft}
+              qualityScore={qualityScore}
+              companyName={companyName}
+              tone={selectedTone}
+              onCopy={handleCopy}
+              copied={copied}
+            />
 
-            <GlassCard className="mb-6 p-6">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/80">
-                {letterDraft}
-              </div>
-            </GlassCard>
-
-            <div className="flex flex-wrap items-center gap-3" data-testid="cover-letter-actions">
+            <div className="mt-6 flex flex-wrap items-center gap-3" data-testid="cover-letter-actions">
               <GlassButton
                 variant="primary"
                 onClick={async () => {
