@@ -10,6 +10,7 @@
 
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import type { CandidateIntelligenceInput, CandidateIntelligenceOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a senior executive career strategist. You've reviewed 10,000+ executive resumes. Your job is to extract a structured profile from a resume, surfacing not just what's written but what's IMPLIED.
@@ -80,17 +81,26 @@ export async function runCandidateIntelligence(
   input: CandidateIntelligenceInput,
   signal?: AbortSignal,
 ): Promise<CandidateIntelligenceOutput> {
-  const response = await llm.chat({
-    model: MODEL_MID,
-    system: SYSTEM_PROMPT,
-    messages: [
-      { role: 'user', content: `Parse this resume into a structured candidate profile:\n\n${input.resume_text}` },
-    ],
-    max_tokens: 4096,
-    signal,
-  });
+  const messages = [
+    { role: 'user' as const, content: `Parse this resume into a structured candidate profile:\n\n${input.resume_text}` },
+  ];
 
-  const parsed = repairJSON<CandidateIntelligenceOutput>(response.text);
+  // Attempt with retry — JSON parse failures from LLMs are transient
+  let parsed: CandidateIntelligenceOutput | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await llm.chat({
+      model: MODEL_MID,
+      system: SYSTEM_PROMPT,
+      messages,
+      max_tokens: 8192,
+      signal,
+    });
+
+    parsed = repairJSON<CandidateIntelligenceOutput>(response.text);
+    if (parsed) break;
+    logger.warn({ attempt, snippet: response.text.substring(0, 200) }, 'Candidate Intelligence: retrying after unparseable response');
+  }
+
   if (!parsed) throw new Error('Candidate Intelligence agent returned unparseable response');
 
   // Guardrail: never allow placeholder names
