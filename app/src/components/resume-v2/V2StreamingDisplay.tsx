@@ -25,6 +25,8 @@ import { GapAnalysisCard } from './cards/GapAnalysisCard';
 import { NarrativeStrategyCard } from './cards/NarrativeStrategyCard';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
 import { ScoresCard } from './cards/ScoresCard';
+import { KeywordScoreDashboard } from './cards/KeywordScoreDashboard';
+import type { LiveScores } from '@/hooks/useLiveScoring';
 import { InlineEditToolbar } from './InlineEditToolbar';
 import { DiffView } from './DiffView';
 import { AddContextCard } from './AddContextCard';
@@ -44,7 +46,7 @@ interface V2StreamingDisplayProps {
   undoCount: number;
   redoCount: number;
   onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string) => void;
-  onAcceptEdit: () => void;
+  onAcceptEdit: (editedText: string) => void;
   onRejectEdit: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -52,6 +54,8 @@ interface V2StreamingDisplayProps {
   isRerunning: boolean;
   strategyApprovals: StrategyApprovals;
   onStrategyChange: (approvals: StrategyApprovals) => void;
+  liveScores: LiveScores | null;
+  isScoring: boolean;
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -91,6 +95,7 @@ export function V2StreamingDisplay({
   onRequestEdit, onAcceptEdit, onRejectEdit, onUndo, onRedo,
   onAddContext, isRerunning,
   strategyApprovals, onStrategyChange,
+  liveScores, isScoring,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -272,22 +277,16 @@ export function V2StreamingDisplay({
             {/* Scores (show when assembly is complete) */}
             {data.assembly && (
               <div className="mb-4">
-                <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />
-              </div>
-            )}
-
-            {/* Pending edit diff view */}
-            {pendingEdit && (
-              <div className="mb-4">
-                <DiffView edit={pendingEdit} onAccept={onAcceptEdit} onReject={onRejectEdit} />
-              </div>
-            )}
-
-            {/* Editing spinner */}
-            {isEditing && (
-              <div className="flex items-center gap-2 mb-4 text-xs text-white/40">
-                <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
-                AI is editing...
+                {isComplete ? (
+                  <KeywordScoreDashboard
+                    pipelineScores={data.assembly.scores}
+                    liveScores={liveScores}
+                    quickWins={data.assembly.quick_wins}
+                    isScoring={isScoring}
+                  />
+                ) : (
+                  <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />
+                )}
               </div>
             )}
 
@@ -312,6 +311,21 @@ export function V2StreamingDisplay({
                   onTextSelect={canEdit ? handleTextSelect : undefined}
                 />
               </GlassCard>
+            )}
+
+            {/* Editing spinner — below resume so user sees it inline */}
+            {isEditing && (
+              <div className="flex items-center gap-2 mt-4 text-xs text-white/40">
+                <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
+                AI is editing...
+              </div>
+            )}
+
+            {/* Pending edit diff view — below resume, auto-scrolls into view */}
+            {pendingEdit && (
+              <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+                <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={onAcceptEdit} onReject={onRejectEdit} />
+              </div>
             )}
           </section>
         )}

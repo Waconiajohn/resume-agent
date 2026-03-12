@@ -55,11 +55,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
     }
   }, [data.assembly, setInitialScores]);
 
-  // Wrap acceptEdit to trigger rescore
-  const acceptEdit = useCallback(() => {
-    rawAcceptEdit();
-    // After the edit is accepted, the editableResume will be updated via setEditableResume.
-    // We need to trigger a rescore on the next render when editableResume changes.
+  const acceptEdit = useCallback((editedText: string) => {
+    rawAcceptEdit(editedText);
   }, [rawAcceptEdit]);
 
   // Trigger rescore whenever editableResume changes (i.e., after accepting an edit or undo/redo)
@@ -157,23 +154,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
         )}
       </div>
 
-      {/* Live score detail bar (when available) */}
-      {isComplete && liveScores && liveScores.keywords_missing.length > 0 && (
-        <div className="px-4 py-1.5 border-b border-white/[0.04] bg-white/[0.01]">
-          <div className="flex items-center gap-2 text-xs text-white/40">
-            <span className="text-white/30">Missing:</span>
-            <div className="flex flex-wrap gap-1">
-              {liveScores.keywords_missing.slice(0, 5).map((kw, i) => (
-                <span key={i} className="rounded bg-[#f0b8b8]/10 border border-[#f0b8b8]/15 px-1.5 py-0.5 text-[10px] text-[#f0b8b8]/70">{kw}</span>
-              ))}
-              {liveScores.keywords_missing.length > 5 && (
-                <span className="text-[10px] text-white/25">+{liveScores.keywords_missing.length - 5} more</span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Streaming display with inline editing */}
       <V2StreamingDisplay
         data={data}
@@ -195,6 +175,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
         isRerunning={isStarting}
         strategyApprovals={strategyApprovals}
         onStrategyChange={setStrategyApprovals}
+        liveScores={liveScores}
+        isScoring={isScoring}
       />
     </div>
   );

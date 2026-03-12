@@ -93,7 +93,7 @@ export function useInlineEdit(
     }
   }, [accessToken, sessionId, resume, isEditing, jobDescription]);
 
-  const acceptEdit = useCallback(() => {
+  const acceptEdit = useCallback((editedReplacement?: string) => {
     if (!pendingEdit || !resume) return;
 
     // Push current state to undo stack
@@ -104,7 +104,8 @@ export function useInlineEdit(
     setRedoCount(0);
 
     // Apply the edit
-    const updated = applyTextReplacement(resume, pendingEdit.originalText, pendingEdit.replacement);
+    const replacement = editedReplacement !== undefined ? editedReplacement : pendingEdit.replacement;
+    const updated = applyTextReplacement(resume, pendingEdit.originalText, replacement);
     onResumeUpdate(updated);
     setPendingEdit(null);
   }, [pendingEdit, resume, onResumeUpdate]);

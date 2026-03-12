@@ -2,13 +2,14 @@
  * DiffView — Shows original vs replacement text with Accept/Reject
  */
 
+import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import type { PendingEdit } from '@/hooks/useInlineEdit';
 
 interface DiffViewProps {
   edit: PendingEdit;
-  onAccept: () => void;
+  onAccept: (editedText: string) => void;
   onReject: () => void;
 }
 
@@ -23,6 +24,8 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
+  const [editedText, setEditedText] = useState(edit.replacement);
+
   return (
     <GlassCard className="p-4 border-[#afc4ff]/20">
       <div className="flex items-center justify-between mb-3">
@@ -42,7 +45,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
           </button>
           <button
             type="button"
-            onClick={onAccept}
+            onClick={() => onAccept(editedText)}
             className="flex items-center gap-1 rounded-lg bg-[#b5dec2]/15 px-2.5 py-1 text-xs font-medium text-[#b5dec2] hover:bg-[#b5dec2]/25 transition-colors"
             aria-label="Accept edit"
           >
@@ -61,8 +64,27 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
 
         {/* Replacement */}
         <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.03] p-3">
-          <div className="mb-1.5 text-[10px] font-medium text-[#b5dec2]/60 uppercase tracking-wider">Replacement</div>
-          <p className="text-sm text-white/80 leading-relaxed">{edit.replacement}</p>
+          <div className="mb-1.5 flex items-center gap-2">
+            <span className="text-[10px] font-medium text-[#b5dec2]/60 uppercase tracking-wider">Replacement</span>
+            {editedText !== edit.replacement && (
+              <>
+                <span className="text-[10px] text-[#afc4ff]/70">(edited)</span>
+                <button
+                  type="button"
+                  onClick={() => setEditedText(edit.replacement)}
+                  className="text-[10px] text-white/30 hover:text-white/50 transition-colors"
+                >
+                  Reset
+                </button>
+              </>
+            )}
+          </div>
+          <textarea
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            className="w-full resize-y min-h-[4.5rem] bg-transparent text-sm text-white/80 leading-relaxed focus:outline-none"
+            rows={Math.max(3, editedText.split('\n').length + 1)}
+          />
         </div>
       </div>
     </GlassCard>

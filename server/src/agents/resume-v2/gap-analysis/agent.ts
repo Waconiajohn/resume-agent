@@ -34,6 +34,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   "requirements": [
     {
       "requirement": "what the job requires",
+      "source": "job_description|benchmark",
       "importance": "must_have|important|nice_to_have",
       "classification": "strong|partial|missing",
       "evidence": ["specific evidence from the candidate's background"],
@@ -62,6 +63,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
 }
 
 RULES:
+- source: 'job_description' if the requirement comes from the JD's core_competencies or strategic responsibilities. 'benchmark' if the requirement comes from what the benchmark candidate would have but the JD doesn't explicitly state.
 - Every requirement from the job gets classified (strong/partial/missing).
 - For STRONG matches: provide the evidence. No strategy needed.
 - For PARTIAL matches: provide evidence AND a creative strategy to strengthen the positioning.

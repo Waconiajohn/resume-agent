@@ -131,6 +131,7 @@ export interface GapStrategy {
 
 export interface RequirementGap {
   requirement: string;
+  source: 'job_description' | 'benchmark';
   importance: 'must_have' | 'important' | 'nice_to_have';
   classification: GapClassification;
   evidence: string[];
