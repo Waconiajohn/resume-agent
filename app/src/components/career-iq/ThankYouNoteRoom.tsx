@@ -22,6 +22,9 @@ import {
   ChevronUp,
   Sparkles,
   RotateCcw,
+  Clock,
+  Hash,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -29,6 +32,174 @@ import { useThankYouNote, type InterviewerInput } from '@/hooks/useThankYouNote'
 import { usePriorResult } from '@/hooks/usePriorResult';
 import { supabase } from '@/lib/supabase';
 import { markdownToHtml } from '@/lib/markdown';
+
+// --- Delivery timing recommendation helpers ---
+
+interface DeliveryRecommendation {
+  label: string;
+  urgency: 'high' | 'medium' | 'low';
+  color: string;
+  bg: string;
+  border: string;
+}
+
+function getDeliveryRecommendation(interviewType: string): DeliveryRecommendation {
+  switch (interviewType) {
+    case 'onsite':
+    case 'panel':
+      return {
+        label: 'Send within 2 hours',
+        urgency: 'high',
+        color: 'text-[#f0d99f]',
+        bg: 'bg-[#f0d99f]/10',
+        border: 'border-[#f0d99f]/20',
+      };
+    case 'video':
+      return {
+        label: 'Send within 4 hours',
+        urgency: 'medium',
+        color: 'text-[#afc4ff]',
+        bg: 'bg-[#afc4ff]/10',
+        border: 'border-[#afc4ff]/20',
+      };
+    case 'phone':
+    default:
+      return {
+        label: 'Send same day',
+        urgency: 'low',
+        color: 'text-[#b5dec2]',
+        bg: 'bg-[#b5dec2]/10',
+        border: 'border-[#b5dec2]/20',
+      };
+  }
+}
+
+// Detect approximate tone from note content
+function detectNoteTone(content: string): { label: string; color: string } {
+  const warmWords = /\b(enjoyed|delightful|wonderful|pleasure|warm|appreciate|grateful|exciting|excited)\b/gi;
+  const boldWords = /\b(confident|compelling|strong|proven|demonstrated|decisive|strategic)\b/gi;
+  const formalWords = /\b(sincerely|appreciate|regarding|professional|respectfully|conversation|discussion)\b/gi;
+
+  const warmCount = (content.match(warmWords) || []).length;
+  const boldCount = (content.match(boldWords) || []).length;
+  const formalCount = (content.match(formalWords) || []).length;
+
+  if (warmCount >= boldCount && warmCount >= formalCount) {
+    return { label: 'Warm', color: 'text-[#b5dec2]' };
+  }
+  if (boldCount >= warmCount && boldCount >= formalCount) {
+    return { label: 'Confident', color: 'text-[#f0d99f]' };
+  }
+  return { label: 'Professional', color: 'text-[#afc4ff]' };
+}
+
+// --- Individual note card in the output ---
+
+interface NoteCardProps {
+  title: string;
+  content: string;
+  interviewType: string;
+}
+
+function NoteCard({ title, content, interviewType }: NoteCardProps) {
+  const [copied, setCopied] = useState(false);
+
+  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+  const readTime = Math.max(1, Math.round(wordCount / 200));
+  const delivery = getDeliveryRecommendation(interviewType);
+  const tone = detectNoteTone(content);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, [content]);
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+      {/* Note header */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+        <div className="flex items-center gap-2">
+          <Mail className="h-3.5 w-3.5 text-[#A396E2]" />
+          <span className="text-[13px] font-semibold text-white/80">{title}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Delivery timing badge */}
+          <span className={cn(
+            'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium border',
+            delivery.color, delivery.bg, delivery.border,
+          )}>
+            <Zap className="h-2.5 w-2.5" />
+            {delivery.label}
+          </span>
+          {/* Tone indicator */}
+          <span className={cn(
+            'rounded-md px-1.5 py-0.5 text-[10px] border bg-white/[0.04] border-white/[0.06]',
+            tone.color,
+          )}>
+            {tone.label}
+          </span>
+          {/* Word count */}
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+            <Hash className="h-2.5 w-2.5" />
+            {wordCount}w
+          </span>
+          {/* Read time */}
+          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40">
+            <Clock className="h-2.5 w-2.5" />
+            ~{readTime}m read
+          </span>
+          {/* Copy */}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={cn(
+              'flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] border transition-all',
+              copied
+                ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+            )}
+          >
+            {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
+      {/* Note body */}
+      <div className="px-5 py-4">
+        <p className="text-[13px] text-white/70 leading-relaxed whitespace-pre-wrap">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+// --- Parse individual notes from markdown report ---
+
+function parseNoteCards(report: string): { title: string; content: string }[] {
+  const cards: { title: string; content: string }[] = [];
+  const lines = report.split('\n');
+  let current: { title: string; lines: string[] } | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith('## ')) {
+      if (current) {
+        const content = current.lines.join('\n').trim();
+        if (content) cards.push({ title: current.title, content });
+      }
+      current = { title: line.replace(/^## /, '').trim(), lines: [] };
+    } else if (current) {
+      current.lines.push(line);
+    }
+  }
+  if (current) {
+    const content = current.lines.join('\n').trim();
+    if (content) cards.push({ title: current.title, content });
+  }
+
+  return cards;
+}
 
 // --- Interviewer card ---
 
@@ -87,7 +258,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(index); }}
-              className="p-1 rounded-lg text-white/20 hover:text-red-400/70 hover:bg-red-400/5 transition-colors"
+              className="p-1 rounded-lg text-white/20 hover:text-[#f0b8b8]/70 hover:bg-[#f0b8b8]/5 transition-colors"
               aria-label="Remove interviewer"
             >
               <Trash2 size={13} />
@@ -204,8 +375,8 @@ function ActivityFeed({
           <div className="rounded-xl bg-[#A396E2]/10 p-3">
             <Mail size={20} className="text-[#A396E2]" />
           </div>
-          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#57CDA4]/20 border-2 border-[#57CDA4]/40 flex items-center justify-center">
-            <Loader2 size={8} className="text-[#57CDA4] animate-spin" />
+          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#b5dec2]/20 border-2 border-[#b5dec2]/40 flex items-center justify-center">
+            <Loader2 size={8} className="text-[#b5dec2] animate-spin" />
           </div>
         </div>
         <div>
@@ -250,30 +421,35 @@ function ReportView({
   qualityScore,
   company,
   role,
+  interviewType,
   onReset,
 }: {
   report: string;
   qualityScore: number | null;
   company: string;
   role: string;
+  interviewType: string;
   onReset: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
 
-  const handleCopy = useCallback(async () => {
+  const handleCopyAll = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(report);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
     } catch { /* ignore */ }
   }, [report]);
 
   const scoreColor =
     qualityScore !== null && qualityScore >= 80
-      ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
+      ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
       : qualityScore !== null && qualityScore >= 60
       ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-      : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20';
+      : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20';
+
+  const noteCards = parseNoteCards(report);
+  const hasParsedCards = noteCards.length > 0;
 
   return (
     <div className="space-y-6">
@@ -293,41 +469,80 @@ function ReportView({
             Quality {qualityScore}%
           </div>
         )}
-        <GlassButton variant="ghost" onClick={handleCopy} size="sm">
-          {copied ? <Check size={13} className="mr-1.5 text-[#57CDA4]" /> : <Copy size={13} className="mr-1.5" />}
-          {copied ? 'Copied!' : 'Copy'}
+        <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
+          {copiedAll ? <Check size={13} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={13} className="mr-1.5" />}
+          {copiedAll ? 'Copied!' : 'Copy All'}
         </GlassButton>
       </div>
 
-      {/* Report card */}
-      <GlassCard className="p-8 relative overflow-hidden">
+      {/* Report card header */}
+      <GlassCard className="px-5 py-4 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-80 h-80 rounded-full bg-[#A396E2]/[0.03] blur-3xl pointer-events-none" />
-
-        <div className="flex items-center gap-4 mb-8">
-          <div className="rounded-xl bg-[#57CDA4]/10 p-3">
-            <CheckCircle2 size={20} className="text-[#57CDA4]" />
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-[#b5dec2]/10 p-2.5">
+            <CheckCircle2 size={18} className="text-[#b5dec2]" />
           </div>
           <div>
-            <h2 className="text-[17px] font-semibold text-white/90">Thank You Notes — {company}</h2>
-            <p className="text-[13px] text-white/40 mt-0.5">{role}</p>
+            <h2 className="text-[16px] font-semibold text-white/90">Thank You Notes — {company}</h2>
+            <p className="text-[12px] text-white/40 mt-0.5">{role}</p>
           </div>
         </div>
-
-        <div
-          className="prose prose-invert prose-sm max-w-none
-            prose-headings:text-white/85 prose-headings:font-semibold
-            prose-h1:text-[18px] prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
-            prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3
-            prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2
-            prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
-            prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-            prose-strong:text-white/75
-            prose-em:text-white/50
-            prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-white/45 prose-blockquote:italic
-            prose-hr:border-white/[0.08]"
-          dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
-        />
       </GlassCard>
+
+      {/* Quality bar */}
+      {qualityScore !== null && (
+        <GlassCard className="px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] text-white/40">Note Quality</span>
+            <span className={cn(
+              'text-[11px] font-semibold',
+              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+            )}>
+              {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Good' : 'Needs Work'}
+            </span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+              )}
+              style={{ width: `${qualityScore}%` }}
+            />
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Per-note cards or fallback prose */}
+      {hasParsedCards ? (
+        <div className="space-y-3">
+          {noteCards.map((card, i) => (
+            <NoteCard
+              key={i}
+              title={card.title}
+              content={card.content}
+              interviewType={interviewType}
+            />
+          ))}
+        </div>
+      ) : (
+        <GlassCard className="p-8 relative overflow-hidden">
+          <div
+            className="prose prose-invert prose-sm max-w-none
+              prose-headings:text-white/85 prose-headings:font-semibold
+              prose-h1:text-[18px] prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+              prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3
+              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2
+              prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
+              prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
+              prose-strong:text-white/75
+              prose-em:text-white/50
+              prose-blockquote:border-[#A396E2]/30 prose-blockquote:text-white/45 prose-blockquote:italic
+              prose-hr:border-white/[0.08]"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
+          />
+        </GlassCard>
+      )}
     </div>
   );
 }
@@ -457,6 +672,7 @@ export function ThankYouNoteRoom() {
           qualityScore={qualityScore}
           company={company}
           role={role}
+          interviewType={interviewType}
           onReset={handleReset}
         />
       </div>
@@ -495,8 +711,8 @@ export function ThankYouNoteRoom() {
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f87171]" />
-            <span className="text-[13px] text-[#f87171]">{error}</span>
+            <AlertCircle size={18} className="text-[#f0b8b8]" />
+            <span className="text-[13px] text-[#f0b8b8]">{error}</span>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
             <ArrowLeft size={14} className="mr-1.5" />
@@ -518,7 +734,7 @@ export function ThankYouNoteRoom() {
         <div>
           <h1 className="text-xl font-semibold text-white/90">Thank You Note Writer</h1>
           <p className="text-[13px] text-white/40 leading-relaxed mt-1">
-            Generate personalized, high-impact thank you notes for every interviewer — tailored to what you discussed.
+            Generate personalized, high-impact thank you notes for every interviewer — referencing specific moments, reinforcing your value, and closing with forward momentum.
           </p>
         </div>
       </div>
@@ -563,7 +779,7 @@ export function ThankYouNoteRoom() {
           Loading your resume...
         </div>
       ) : resumeLoaded ? (
-        <div className="flex items-center gap-2 text-[12px] text-[#57CDA4]/70">
+        <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
           <CheckCircle2 size={12} />
           Resume loaded from your profile
         </div>
@@ -645,6 +861,21 @@ export function ThankYouNoteRoom() {
             </div>
           </div>
         </div>
+
+        {/* Delivery timing hint */}
+        {interviewType && (
+          <div className={cn(
+            'flex items-center gap-2 rounded-xl px-4 py-2.5 border text-[12px]',
+            getDeliveryRecommendation(interviewType).bg,
+            getDeliveryRecommendation(interviewType).border,
+            getDeliveryRecommendation(interviewType).color,
+          )}>
+            <Clock size={12} className="flex-shrink-0" />
+            <span>
+              Recommended send time: <span className="font-semibold">{getDeliveryRecommendation(interviewType).label}</span> after the interview
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Section 2: Interviewers */}
@@ -679,7 +910,7 @@ export function ThankYouNoteRoom() {
 
       {/* Error */}
       {formError && (
-        <div className="flex items-center gap-2 text-[13px] text-[#f87171] bg-[#f87171]/5 border border-[#f87171]/15 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-[13px] text-[#f0b8b8] bg-[#f0b8b8]/5 border border-[#f0b8b8]/15 rounded-xl px-4 py-3">
           <AlertCircle size={14} className="flex-shrink-0" />
           {formError}
         </div>
@@ -688,7 +919,7 @@ export function ThankYouNoteRoom() {
       {/* Submit */}
       <div className="flex items-center justify-between">
         <p className="text-[12px] text-white/25">
-          Notes will be personalized to each interviewer based on your conversation.
+          Notes will reference specific moments and close with forward momentum.
         </p>
         <GlassButton
           variant="primary"

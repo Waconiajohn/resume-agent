@@ -13,6 +13,12 @@ import {
   ChevronRight,
   Minus,
   Plus,
+  TrendingUp,
+  Wrench,
+  BarChart3,
+  Lightbulb,
+  Tag,
+  Bookmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -57,7 +63,7 @@ function ActivityFeed({
           const opacity = age === 0 ? 'text-white/70' : age <= 2 ? 'text-white/50' : age <= 5 ? 'text-white/35' : 'text-white/20';
           return (
             <div key={msg.id} className="flex items-start gap-2.5 py-0.5">
-              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#57CDA4]' : 'bg-white/20')} />
+              <div className={cn('h-1.5 w-1.5 rounded-full mt-1.5 flex-shrink-0', age === 0 ? 'bg-[#b5dec2]' : 'bg-white/20')} />
               <span className={cn('text-[12px] leading-relaxed transition-colors', opacity)}>{msg.message}</span>
             </div>
           );
@@ -109,7 +115,7 @@ function CaseStudySlider({
             onClick={() => onChange(n)}
             className={cn(
               'flex-1 h-2 rounded-full transition-all',
-              n <= value ? 'bg-[#57CDA4]/60' : 'bg-white/[0.08]',
+              n <= value ? 'bg-[#b5dec2]/60' : 'bg-white/[0.08]',
             )}
           />
         ))}
@@ -119,6 +125,282 @@ function CaseStudySlider({
       </p>
     </div>
   );
+}
+
+// --- Metric highlight chip ---
+
+interface MetricChip {
+  label: string;
+  value: string;
+}
+
+function MetricHighlight({ metric }: { metric: MetricChip }) {
+  return (
+    <div className="flex flex-col items-center rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] px-4 py-3 min-w-[80px]">
+      <span className="text-[20px] font-bold text-[#b5dec2] leading-none">{metric.value}</span>
+      <span className="text-[10px] text-white/40 mt-1 text-center leading-tight">{metric.label}</span>
+    </div>
+  );
+}
+
+// --- Parse metrics from text ---
+
+function extractMetrics(text: string): MetricChip[] {
+  const metrics: MetricChip[] = [];
+  // Match patterns like: $X.XM, X%, Xx, $XB, X months, X weeks, team of X
+  const patterns: { regex: RegExp; label: string }[] = [
+    { regex: /\$(\d+(?:\.\d+)?[MBK]?)\s*(?:in\s+)?(?:revenue|savings|growth|ARR|pipeline)/gi, label: 'Revenue/Savings' },
+    { regex: /(\d+(?:\.\d+)?%)\s*(?:increase|growth|reduction|improvement|churn|conversion|retention)/gi, label: 'Improvement' },
+    { regex: /(\d+)\s*(?:months?|weeks?)\s*(?:to|ahead|under|early)/gi, label: 'Timeline' },
+    { regex: /team\s+(?:of\s+)?(\d+)/gi, label: 'Team Size' },
+    { regex: /(\d+x)\s*(?:faster|growth|increase|improvement)/gi, label: 'Multiplier' },
+  ];
+
+  for (const { regex, label } of patterns) {
+    let match: RegExpExecArray | null;
+    regex.lastIndex = 0;
+    while ((match = regex.exec(text)) !== null && metrics.length < 4) {
+      const value = match[1];
+      if (value && !metrics.some((m) => m.value === value)) {
+        metrics.push({ value, label });
+      }
+    }
+    if (metrics.length >= 4) break;
+  }
+
+  return metrics.slice(0, 4);
+}
+
+// --- Parse skill/industry tags from text ---
+
+function extractTags(text: string): string[] {
+  const tagPatterns = [
+    /\b(supply chain|digital transformation|go-to-market|product-led growth|enterprise sales|data analytics|cloud migration|AI|machine learning|ERP|CRM|SaaS|P&L|M&A|post-merger integration|turnaround|cost reduction|revenue growth|customer success|workforce transformation)\b/gi,
+  ];
+
+  const found = new Set<string>();
+  for (const pattern of tagPatterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null && found.size < 5) {
+      found.add(match[0].toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()));
+    }
+  }
+  return Array.from(found).slice(0, 5);
+}
+
+// --- Structured case study card ---
+
+interface CaseStudyCardSection {
+  type: 'challenge' | 'approach' | 'results' | 'unique';
+  label: string;
+  content: string;
+  icon: React.ElementType;
+  color: string;
+  border: string;
+}
+
+const SECTION_CONFIG: Omit<CaseStudyCardSection, 'content'>[] = [
+  { type: 'challenge', label: 'Challenge', icon: AlertCircle, color: 'text-[#f0d99f]', border: 'border-[#f0d99f]/15' },
+  { type: 'approach', label: 'Approach', icon: Wrench, color: 'text-[#afc4ff]', border: 'border-[#afc4ff]/15' },
+  { type: 'results', label: 'Results', icon: TrendingUp, color: 'text-[#b5dec2]', border: 'border-[#b5dec2]/15' },
+  { type: 'unique', label: 'What Made This Unique', icon: Lightbulb, color: 'text-[#f0d99f]', border: 'border-[#f0d99f]/15' },
+];
+
+function parseCaseStudySections(content: string): Partial<Record<CaseStudyCardSection['type'], string>> {
+  const sections: Partial<Record<CaseStudyCardSection['type'], string>> = {};
+
+  // Try to parse H3 sub-sections within a case study
+  const lines = content.split('\n');
+  let currentSection: CaseStudyCardSection['type'] | null = null;
+  let buffer: string[] = [];
+
+  const sectionKeywords: Record<string, CaseStudyCardSection['type']> = {
+    situation: 'challenge',
+    challenge: 'challenge',
+    context: 'challenge',
+    approach: 'approach',
+    action: 'approach',
+    task: 'approach',
+    result: 'results',
+    results: 'results',
+    impact: 'results',
+    outcome: 'results',
+    'what made': 'unique',
+    unique: 'unique',
+    lesson: 'unique',
+  };
+
+  for (const line of lines) {
+    if (line.startsWith('### ') || line.startsWith('**')) {
+      // Save previous
+      if (currentSection && buffer.length > 0) {
+        sections[currentSection] = buffer.join('\n').trim();
+        buffer = [];
+      }
+      const heading = line.replace(/^#{1,3}\s*\*{0,2}/, '').replace(/\*{0,2}:?$/, '').trim().toLowerCase();
+      for (const [keyword, type] of Object.entries(sectionKeywords)) {
+        if (heading.includes(keyword)) {
+          currentSection = type;
+          break;
+        }
+      }
+    } else if (currentSection) {
+      buffer.push(line);
+    }
+  }
+
+  if (currentSection && buffer.length > 0) {
+    sections[currentSection] = buffer.join('\n').trim();
+  }
+
+  return sections;
+}
+
+interface StructuredCaseStudyCardProps {
+  title: string;
+  content: string;
+  onAddToPortfolio?: (title: string, content: string) => void;
+}
+
+function StructuredCaseStudyCard({ title, content, onAddToPortfolio }: StructuredCaseStudyCardProps) {
+  const [copied, setCopied] = useState(false);
+  const [addedToPortfolio, setAddedToPortfolio] = useState(false);
+
+  const sections = parseCaseStudySections(content);
+  const metrics = extractMetrics(content);
+  const tags = extractTags(content);
+  const hasSections = Object.keys(sections).length >= 2;
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, [content]);
+
+  const handleAddToPortfolio = useCallback(() => {
+    onAddToPortfolio?.(title, content);
+    setAddedToPortfolio(true);
+    setTimeout(() => setAddedToPortfolio(false), 2000);
+  }, [title, content, onAddToPortfolio]);
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+      {/* Card header */}
+      <div className="flex items-start justify-between px-5 py-4 border-b border-white/[0.06] bg-white/[0.01]">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="rounded-lg bg-[#b5dec2]/10 p-1.5 flex-shrink-0">
+            <BookOpen size={14} className="text-[#b5dec2]" />
+          </div>
+          <h3 className="text-[14px] font-semibold text-white/85 truncate">{title}</h3>
+        </div>
+        <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={cn(
+              'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] border transition-all',
+              copied
+                ? 'bg-[#b5dec2]/10 border-[#b5dec2]/20 text-[#b5dec2]'
+                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+            )}
+          >
+            {copied ? <Check size={10} /> : <Copy size={10} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={handleAddToPortfolio}
+            className={cn(
+              'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] border transition-all',
+              addedToPortfolio
+                ? 'bg-[#afc4ff]/10 border-[#afc4ff]/20 text-[#afc4ff]'
+                : 'bg-white/[0.04] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]',
+            )}
+          >
+            <Bookmark size={10} />
+            {addedToPortfolio ? 'Added' : 'Portfolio'}
+          </button>
+        </div>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Metric highlights (if found) */}
+        {metrics.length > 0 && (
+          <div className="flex gap-3 flex-wrap">
+            {metrics.map((m, i) => (
+              <MetricHighlight key={i} metric={m} />
+            ))}
+          </div>
+        )}
+
+        {/* Structured narrative sections or raw content */}
+        {hasSections ? (
+          <div className="space-y-3">
+            {SECTION_CONFIG.map(({ type, label, icon: Icon, color, border }) => {
+              const sectionContent = sections[type];
+              if (!sectionContent) return null;
+              return (
+                <div key={type} className={cn('rounded-lg border p-3.5', border, 'bg-white/[0.01]')}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className={cn('h-3 w-3', color)} />
+                    <span className={cn('text-[10px] font-semibold uppercase tracking-wider', color)}>
+                      {label}
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-white/65 leading-relaxed whitespace-pre-wrap">{sectionContent}</p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-[13px] text-white/65 leading-relaxed whitespace-pre-wrap">{content}</p>
+        )}
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <Tag className="h-3 w-3 text-white/25 flex-shrink-0" />
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-md px-1.5 py-0.5 text-[10px] bg-white/[0.04] border border-white/[0.06] text-white/40"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Parse case studies from markdown report ---
+
+function parseCaseStudies(report: string): { title: string; content: string }[] {
+  const studies: { title: string; content: string }[] = [];
+  const lines = report.split('\n');
+  let current: { title: string; lines: string[] } | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith('## ')) {
+      if (current) {
+        const content = current.lines.join('\n').trim();
+        if (content) studies.push({ title: current.title, content });
+      }
+      current = { title: line.replace(/^## /, '').trim(), lines: [] };
+    } else if (current) {
+      current.lines.push(line);
+    }
+  }
+  if (current) {
+    const content = current.lines.join('\n').trim();
+    if (content) studies.push({ title: current.title, content });
+  }
+
+  return studies;
 }
 
 // --- Report view ---
@@ -132,23 +414,31 @@ function ReportView({
   qualityScore: number | null;
   onReset: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [portfolioCount, setPortfolioCount] = useState(0);
 
-  const handleCopy = useCallback(async () => {
+  const handleCopyAll = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(report);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
     } catch { /* ignore */ }
   }, [report]);
+
+  const handleAddToPortfolio = useCallback(() => {
+    setPortfolioCount((c) => c + 1);
+  }, []);
+
+  const caseStudies = parseCaseStudies(report);
+  const hasParsedStudies = caseStudies.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-[#57CDA4]/15 to-[#98b3ff]/10 p-2.5 border border-[#57CDA4]/20">
-            <BookOpen size={18} className="text-[#57CDA4]" />
+          <div className="rounded-xl bg-gradient-to-br from-[#b5dec2]/15 to-[#98b3ff]/10 p-2.5 border border-[#b5dec2]/20">
+            <BookOpen size={18} className="text-[#b5dec2]" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-white/90">Case Study Portfolio</h2>
@@ -156,21 +446,26 @@ function ReportView({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {portfolioCount > 0 && (
+            <span className="rounded-md px-2 py-0.5 text-[11px] bg-[#afc4ff]/10 border border-[#afc4ff]/20 text-[#afc4ff]">
+              {portfolioCount} added to portfolio
+            </span>
+          )}
           {qualityScore !== null && (
             <div className={cn(
               'text-[12px] font-semibold px-3 py-1.5 rounded-full border',
               qualityScore >= 80
-                ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
+                ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
                 : qualityScore >= 60
                 ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-                : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20',
+                : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20',
             )}>
               Quality {qualityScore}%
             </div>
           )}
-          <GlassButton variant="ghost" onClick={handleCopy} size="sm">
-            {copied ? <Check size={14} className="mr-1.5 text-[#57CDA4]" /> : <Copy size={14} className="mr-1.5" />}
-            {copied ? 'Copied' : 'Copy All'}
+          <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
+            {copiedAll ? <Check size={14} className="mr-1.5 text-[#b5dec2]" /> : <Copy size={14} className="mr-1.5" />}
+            {copiedAll ? 'Copied' : 'Copy All'}
           </GlassButton>
           <GlassButton variant="ghost" onClick={onReset} size="sm">
             <RotateCcw size={14} className="mr-1.5" />
@@ -179,23 +474,60 @@ function ReportView({
         </div>
       </div>
 
-      {/* Report content */}
-      <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
-        <div
-          className="prose prose-invert prose-sm max-w-none
-            prose-headings:text-white/85 prose-headings:font-semibold
-            prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
-            prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#57CDA4]/90
-            prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
-            prose-p:text-white/65 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
-            prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
-            prose-strong:text-white/80
-            prose-em:text-[#f0d99f]/80
-            prose-blockquote:border-[#57CDA4]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#57CDA4]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
-            prose-hr:border-white/[0.06] prose-hr:my-6"
-          dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
-        />
-      </GlassCard>
+      {/* Quality bar */}
+      {qualityScore !== null && (
+        <GlassCard className="px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] text-white/40">Portfolio Quality</span>
+            <span className={cn(
+              'text-[11px] font-semibold',
+              qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
+            )}>
+              {qualityScore >= 80 ? 'Consulting-Grade' : qualityScore >= 60 ? 'Strong' : 'Needs Work'}
+            </span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                qualityScore >= 80 ? 'bg-[#b5dec2]/60' : qualityScore >= 60 ? 'bg-[#f0d99f]/60' : 'bg-[#f0b8b8]/60',
+              )}
+              style={{ width: `${qualityScore}%` }}
+            />
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Structured case study cards or fallback prose */}
+      {hasParsedStudies ? (
+        <div className="space-y-4">
+          {caseStudies.map((study, i) => (
+            <StructuredCaseStudyCard
+              key={i}
+              title={study.title}
+              content={study.content}
+              onAddToPortfolio={handleAddToPortfolio}
+            />
+          ))}
+        </div>
+      ) : (
+        <GlassCard className="p-8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+          <div
+            className="prose prose-invert prose-sm max-w-none
+              prose-headings:text-white/85 prose-headings:font-semibold
+              prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
+              prose-h2:text-[15px] prose-h2:mt-7 prose-h2:mb-3 prose-h2:text-[#b5dec2]/90
+              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
+              prose-p:text-white/65 prose-p:text-[13px] prose-p:leading-relaxed prose-p:my-2
+              prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
+              prose-strong:text-white/80
+              prose-em:text-[#f0d99f]/80
+              prose-blockquote:border-[#b5dec2]/30 prose-blockquote:text-white/45 prose-blockquote:bg-[#b5dec2]/[0.03] prose-blockquote:rounded-r-lg prose-blockquote:py-1
+              prose-hr:border-white/[0.06] prose-hr:my-6"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
+          />
+        </GlassCard>
+      )}
     </div>
   );
 }
@@ -303,8 +635,8 @@ export function CaseStudyRoom() {
               <div key={stage} className="flex items-center gap-3">
                 <div className={cn(
                   'flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all',
-                  isActive ? 'bg-[#57CDA4]/15 text-[#57CDA4] border border-[#57CDA4]/25'
-                    : isDone ? 'bg-[#57CDA4]/10 text-[#57CDA4]/60 border border-[#57CDA4]/15'
+                  isActive ? 'bg-[#b5dec2]/15 text-[#b5dec2] border border-[#b5dec2]/25'
+                    : isDone ? 'bg-[#b5dec2]/10 text-[#b5dec2]/60 border border-[#b5dec2]/15'
                     : 'bg-white/[0.04] text-white/25 border border-white/[0.06]',
                 )}>
                   {isActive && <Loader2 size={10} className="animate-spin" />}
@@ -320,14 +652,14 @@ export function CaseStudyRoom() {
         {/* Activity feed */}
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
           <div className="flex items-center gap-2 mb-5">
-            <div className="rounded-lg bg-[#57CDA4]/10 p-2">
-              <Loader2 size={16} className="text-[#57CDA4] animate-spin" />
+            <div className="rounded-lg bg-[#b5dec2]/10 p-2">
+              <Loader2 size={16} className="text-[#b5dec2] animate-spin" />
             </div>
             <div>
               <h3 className="text-[14px] font-semibold text-white/80">
                 {currentStage ? STAGE_LABELS[currentStage] ?? currentStage : 'Starting...'}
               </h3>
-              <p className="text-[12px] text-white/35">Extracting your most impactful achievements</p>
+              <p className="text-[12px] text-white/35">Building compelling stories from your achievements</p>
             </div>
           </div>
           <ActivityFeed messages={activityMessages} currentStage={currentStage} />
@@ -351,11 +683,11 @@ export function CaseStudyRoom() {
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold text-white/90">Case Study Generator</h1>
         </div>
-        <GlassCard className="p-6 border-[#f87171]/20">
+        <GlassCard className="p-6 border-[#f0b8b8]/20">
           <div className="flex items-start gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f87171] flex-shrink-0 mt-0.5" />
+            <AlertCircle size={18} className="text-[#f0b8b8] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-[13px] text-[#f87171] font-medium">Generation failed</p>
+              <p className="text-[13px] text-[#f0b8b8] font-medium">Generation failed</p>
               <p className="text-[12px] text-white/40 mt-0.5">{error}</p>
             </div>
           </div>
@@ -372,12 +704,12 @@ export function CaseStudyRoom() {
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
       {/* Room header */}
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-[#57CDA4]/15 to-[#98b3ff]/10 p-2.5 border border-[#57CDA4]/20">
-          <BookOpen size={20} className="text-[#57CDA4]" />
+        <div className="rounded-xl bg-gradient-to-br from-[#b5dec2]/15 to-[#98b3ff]/10 p-2.5 border border-[#b5dec2]/20">
+          <BookOpen size={20} className="text-[#b5dec2]" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-white/90">Case Study Generator</h1>
-          <p className="text-[13px] text-white/40">Transform your achievements into consulting-grade case studies — the kind that close executive interviews</p>
+          <p className="text-[13px] text-white/40">Transform your achievements into compelling business stories — structured with metrics, narrative arc, and what only you could have done</p>
         </div>
       </div>
       <ContextLoadedBadge
@@ -417,7 +749,7 @@ export function CaseStudyRoom() {
       {/* Resume section */}
       <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles size={15} className="text-[#57CDA4]" />
+          <Sparkles size={15} className="text-[#b5dec2]" />
           <h2 className="text-[14px] font-semibold text-white/75">Your Resume</h2>
         </div>
 
@@ -428,7 +760,7 @@ export function CaseStudyRoom() {
           </div>
         ) : resumeText.length > 50 ? (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-[#57CDA4]/70">
+            <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
               <Check size={12} />
               Resume loaded — {Math.round(resumeText.length / 5)} words
             </div>
@@ -451,7 +783,7 @@ export function CaseStudyRoom() {
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste your full resume text here..."
               rows={6}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#57CDA4]/40 focus:ring-2 focus:ring-[#57CDA4]/10 transition-all"
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
             />
           </div>
         )}
@@ -463,7 +795,7 @@ export function CaseStudyRoom() {
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-6">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 mb-2">
-              <Target size={15} className="text-[#57CDA4]" />
+              <Target size={15} className="text-[#b5dec2]" />
               <h2 className="text-[14px] font-semibold text-white/75">Focus Areas <span className="text-[11px] font-normal text-white/30">optional</span></h2>
             </div>
             <label className="text-[12px] font-semibold text-white/50 uppercase tracking-wider">What to emphasize</label>
@@ -472,7 +804,7 @@ export function CaseStudyRoom() {
               onChange={(e) => setFocusAreas(e.target.value)}
               placeholder="e.g. Cost reduction, team leadership, digital transformation, supply chain optimization..."
               rows={3}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#57CDA4]/40 focus:ring-2 focus:ring-[#57CDA4]/10 transition-all"
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#b5dec2]/40 focus:ring-2 focus:ring-[#b5dec2]/10 transition-all"
             />
           </div>
 
@@ -482,7 +814,7 @@ export function CaseStudyRoom() {
         {/* Right — Target context */}
         <GlassCard className="p-6 bg-gradient-to-br from-white/[0.04] to-white/[0.02] flex flex-col gap-5">
           <div className="flex items-center gap-2 mb-1">
-            <Target size={15} className="text-[#98b3ff]" />
+            <BarChart3 size={15} className="text-[#98b3ff]" />
             <h2 className="text-[14px] font-semibold text-white/75">Target Context <span className="text-[11px] font-normal text-white/30">optional</span></h2>
           </div>
           <p className="text-[12px] text-white/35 -mt-3">Tailor the case studies for a specific role or industry</p>
@@ -509,17 +841,18 @@ export function CaseStudyRoom() {
           </div>
 
           {/* What you'll get */}
-          <div className="rounded-xl border border-[#57CDA4]/15 bg-[#57CDA4]/[0.04] p-4 mt-auto">
-            <p className="text-[11px] font-semibold text-[#57CDA4]/70 uppercase tracking-wider mb-2">What you'll get</p>
+          <div className="rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4 mt-auto">
+            <p className="text-[11px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider mb-2">What you'll get</p>
             <ul className="space-y-1">
               {[
-                'Situation, Task, Action, Result structure',
-                'Specific metrics and quantified outcomes',
-                'Strategic framing for executive audiences',
-                'Ready to use in interviews and proposals',
+                'Challenge → Approach → Results → Impact structure',
+                'Specific metrics with before/after context',
+                'What Made This Unique section',
+                'Industry and skill tags',
+                'Ready for interviews, proposals, and portfolio',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2 text-[11px] text-white/40">
-                  <Check size={10} className="text-[#57CDA4]/60 mt-0.5 flex-shrink-0" />
+                  <Check size={10} className="text-[#b5dec2]/60 mt-0.5 flex-shrink-0" />
                   {item}
                 </li>
               ))}
@@ -539,7 +872,7 @@ export function CaseStudyRoom() {
           disabled={!canSubmit}
           className={cn(
             'px-6 py-3 text-[14px] font-medium rounded-xl',
-            'bg-gradient-to-r from-[#57CDA4]/20 to-[#98b3ff]/15 hover:from-[#57CDA4]/30 hover:to-[#98b3ff]/25',
+            'bg-gradient-to-r from-[#b5dec2]/20 to-[#98b3ff]/15 hover:from-[#b5dec2]/30 hover:to-[#98b3ff]/25',
             !canSubmit && 'opacity-40 cursor-not-allowed',
           )}
         >
