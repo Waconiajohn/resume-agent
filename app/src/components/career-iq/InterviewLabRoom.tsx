@@ -15,6 +15,12 @@ import {
   FileText,
   AlertCircle,
   ClipboardList,
+  ChevronDown,
+  ChevronUp,
+  Brain,
+  Lightbulb,
+  AlertTriangle,
+  Star,
 } from 'lucide-react';
 import { markdownToHtml } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
@@ -25,7 +31,7 @@ import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
 import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 
-// --- Mock data ---
+// --- Types ---
 
 interface UpcomingInterview {
   id: string;
@@ -36,12 +42,6 @@ interface UpcomingInterview {
   type: 'phone' | 'video' | 'onsite';
   round: string;
   jobApplicationId?: string;
-}
-
-interface PracticeQuestion {
-  question: string;
-  tip: string;
-  category: 'behavioral' | 'technical' | 'situational' | 'strategic';
 }
 
 interface PastInterview {
@@ -73,7 +73,395 @@ function saveHistory(history: PastInterview[]) {
   try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)); } catch { /* ignore */ }
 }
 
-// --- Components ---
+// --- Readiness Gauge (SVG ring) ---
+
+function ReadinessGauge({ score, size = 72 }: { score: number; size?: number }) {
+  const radius = (size - 8) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const filled = circumference * (score / 100);
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const color = score >= 80 ? '#b5dec2' : score >= 50 ? '#f0d99f' : '#f0b8b8';
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={cx} cy={cy} r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth={4}
+        />
+        <circle
+          cx={cx} cy={cy} r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={4}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference - filled}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[13px] font-bold leading-none" style={{ color }}>{score}</span>
+        <span className="text-[8px] text-white/30 mt-0.5">%</span>
+      </div>
+    </div>
+  );
+}
+
+// --- Category badge ---
+
+const CATEGORY_CONFIG = {
+  behavioral: { label: 'Behavioral', bg: 'bg-[#afc4ff]/10', border: 'border-[#afc4ff]/20', text: 'text-[#afc4ff]' },
+  technical: { label: 'Technical', bg: 'bg-[#b5dec2]/10', border: 'border-[#b5dec2]/20', text: 'text-[#b5dec2]' },
+  situational: { label: 'Situational', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', text: 'text-[#f0d99f]' },
+  strategic: { label: 'Strategic', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', text: 'text-[#f0b8b8]' },
+  'culture-fit': { label: 'Culture Fit', bg: 'bg-white/[0.06]', border: 'border-white/[0.1]', text: 'text-white/50' },
+  trap: { label: 'Trap', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/25', text: 'text-[#f0b8b8]' },
+} as const;
+
+type QuestionCategory = keyof typeof CATEGORY_CONFIG;
+
+function CategoryBadge({ category }: { category: QuestionCategory }) {
+  const cfg = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.behavioral;
+  return (
+    <span className={cn(
+      'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium border',
+      cfg.bg, cfg.border, cfg.text,
+    )}>
+      {cfg.label}
+    </span>
+  );
+}
+
+// --- Difficulty badge ---
+
+type Difficulty = 'easy' | 'medium' | 'hard';
+
+function DifficultyBadge({ level }: { level: Difficulty }) {
+  const cfg = {
+    easy: { label: 'Easy', color: 'text-[#b5dec2]/70' },
+    medium: { label: 'Medium', color: 'text-[#f0d99f]/70' },
+    hard: { label: 'Hard', color: 'text-[#f0b8b8]/70' },
+  }[level];
+
+  const dots = level === 'easy' ? 1 : level === 'medium' ? 2 : 3;
+
+  return (
+    <span className={cn('flex items-center gap-0.5 text-[10px] font-medium', cfg.color)}>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <span
+          key={i}
+          className={cn('h-1 w-1 rounded-full', i < dots ? 'opacity-100' : 'opacity-20')}
+          style={{ background: 'currentColor' }}
+        />
+      ))}
+      <span className="ml-0.5">{cfg.label}</span>
+    </span>
+  );
+}
+
+// --- Coaching Notes expandable panel ---
+
+interface CoachingNote {
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+}
+
+function CoachingNotesPanel({ notes, questionText }: { notes?: CoachingNote; questionText?: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
+      >
+        <Brain size={11} />
+        Coaching Notes
+        {open ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-lg border border-[#afc4ff]/10 bg-[#afc4ff]/[0.03] p-3 space-y-2.5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Lightbulb size={11} className="text-[#f0d99f]/60" />
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">STAR Framework Guide</span>
+          </div>
+
+          {notes ? (
+            <div className="space-y-2">
+              {(['situation', 'task', 'action', 'result'] as const).map((key) => (
+                <div key={key}>
+                  <span className="text-[10px] font-semibold text-[#afc4ff]/60 uppercase tracking-wider">
+                    {key.charAt(0).toUpperCase() + key.slice(1)}
+                  </span>
+                  <p className="text-[11px] text-white/50 leading-relaxed mt-0.5">{notes[key]}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                <span className="text-[#afc4ff]/70 font-medium">S</span>ituation: Set the scene — when, where, and why it mattered. 2–3 sentences.
+              </p>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                <span className="text-[#afc4ff]/70 font-medium">T</span>ask: Your specific responsibility. Make your personal accountability explicit. 1–2 sentences.
+              </p>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                <span className="text-[#afc4ff]/70 font-medium">A</span>ction: <span className="text-[#f0d99f]/70 font-medium">This is the longest section (40–60%)</span>. The decisions you made, obstacles you navigated, and skills you applied. Use "I" not "we."
+              </p>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                <span className="text-[#afc4ff]/70 font-medium">R</span>esult: Quantified outcomes — percentages, dollars, timelines, team sizes. Connect back to business value.
+              </p>
+              {questionText && (
+                <div className="mt-2 pt-2 border-t border-white/[0.06]">
+                  <p className="text-[10px] text-white/30 italic">Tip: Reference a specific project from your resume to anchor this answer.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Company Research Dashboard ---
+
+interface CompanyResearchData {
+  overview?: string;
+  recentNews?: string[];
+  cultureSignals?: string[];
+  competitors?: string[];
+  risks?: string[];
+}
+
+function CompanyResearchDashboard({ data }: { data: CompanyResearchData }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+      {data.overview && (
+        <GlassCard className="p-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 size={13} className="text-[#afc4ff]" />
+            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Company Overview</span>
+          </div>
+          <p className="text-[12px] text-white/60 leading-relaxed">{data.overview}</p>
+        </GlassCard>
+      )}
+
+      {data.recentNews && data.recentNews.length > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Star size={12} className="text-[#f0d99f]" />
+            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Recent Signals</span>
+          </div>
+          <ul className="space-y-1.5">
+            {data.recentNews.map((item, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[11px] text-white/55">
+                <span className="h-1 w-1 rounded-full bg-[#f0d99f]/40 mt-1.5 flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
+
+      {data.cultureSignals && data.cultureSignals.length > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Lightbulb size={12} className="text-[#b5dec2]" />
+            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Culture Signals</span>
+          </div>
+          <ul className="space-y-1.5">
+            {data.cultureSignals.map((item, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[11px] text-white/55">
+                <span className="h-1 w-1 rounded-full bg-[#b5dec2]/40 mt-1.5 flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
+
+      {data.risks && data.risks.length > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={12} className="text-[#f0b8b8]" />
+            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Risk Factors</span>
+          </div>
+          <ul className="space-y-1.5">
+            {data.risks.map((item, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[11px] text-white/55">
+                <span className="h-1 w-1 rounded-full bg-[#f0b8b8]/40 mt-1.5 flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
+
+      {data.competitors && data.competitors.length > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 size={12} className="text-white/40" />
+            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Competitors</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {data.competitors.map((c, i) => (
+              <span key={i} className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[11px] text-white/50">
+                {c}
+              </span>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+    </div>
+  );
+}
+
+// --- Question Bank ---
+
+interface QuestionBankItem {
+  question: string;
+  category: QuestionCategory;
+  difficulty: Difficulty;
+  coachingNotes?: CoachingNote;
+}
+
+function QuestionBank({ questions }: { questions: QuestionBankItem[] }) {
+  const categories = ['behavioral', 'technical', 'situational', 'strategic', 'trap'] as QuestionCategory[];
+  const [activeCategory, setActiveCategory] = useState<QuestionCategory | 'all'>('all');
+  const [practicedIds, setPracticedIds] = useState<Set<number>>(new Set());
+
+  const filtered = activeCategory === 'all'
+    ? questions
+    : questions.filter((q) => q.category === activeCategory);
+
+  const readinessScore = questions.length > 0
+    ? Math.round((practicedIds.size / questions.length) * 100)
+    : 0;
+
+  const togglePracticed = (i: number) => {
+    setPracticedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Readiness score header */}
+      <div className="flex items-center gap-4">
+        <ReadinessGauge score={readinessScore} size={72} />
+        <div>
+          <div className="text-[13px] font-semibold text-white/80">Readiness Score</div>
+          <div className="text-[12px] text-white/40 mt-0.5">
+            {practicedIds.size} of {questions.length} questions practiced
+          </div>
+          <div className="text-[11px] text-white/25 mt-1">
+            Click the checkmark on each question after practicing it
+          </div>
+        </div>
+      </div>
+
+      {/* Category filter tabs */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveCategory('all')}
+          className={cn(
+            'rounded-md px-2.5 py-1 text-[11px] font-medium border transition-colors',
+            activeCategory === 'all'
+              ? 'border-white/[0.15] bg-white/[0.07] text-white/80'
+              : 'border-white/[0.06] bg-transparent text-white/40 hover:text-white/60',
+          )}
+        >
+          All ({questions.length})
+        </button>
+        {categories.map((cat) => {
+          const count = questions.filter((q) => q.category === cat).length;
+          if (count === 0) return null;
+          const cfg = CATEGORY_CONFIG[cat];
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={cn(
+                'rounded-md px-2.5 py-1 text-[11px] font-medium border transition-colors',
+                activeCategory === cat
+                  ? `${cfg.bg} ${cfg.border} ${cfg.text}`
+                  : 'border-white/[0.06] bg-transparent text-white/40 hover:text-white/60',
+              )}
+            >
+              {cfg.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Question list */}
+      <div className="space-y-2">
+        {filtered.map((item, i) => {
+          const globalIdx = questions.indexOf(item);
+          const practiced = practicedIds.has(globalIdx);
+          return (
+            <div
+              key={i}
+              className={cn(
+                'rounded-xl border bg-white/[0.02] p-4 transition-all',
+                practiced ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.02]' : 'border-white/[0.06]',
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => togglePracticed(globalIdx)}
+                  className={cn(
+                    'flex-shrink-0 mt-0.5 h-4 w-4 rounded-full border transition-colors',
+                    practiced
+                      ? 'border-[#b5dec2]/50 bg-[#b5dec2]/15'
+                      : 'border-white/[0.15] bg-transparent hover:border-[#b5dec2]/30',
+                  )}
+                  title={practiced ? 'Mark as not practiced' : 'Mark as practiced'}
+                >
+                  {practiced && (
+                    <CheckCircle2 size={14} className="text-[#b5dec2] -mt-0.5 -ml-0.5" />
+                  )}
+                </button>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <CategoryBadge category={item.category} />
+                    <DifficultyBadge level={item.difficulty} />
+                  </div>
+                  <p className={cn(
+                    'text-[13px] leading-relaxed',
+                    practiced ? 'text-white/40 line-through' : 'text-white/75',
+                  )}>
+                    {item.question}
+                  </p>
+                  <CoachingNotesPanel notes={item.coachingNotes} questionText={item.question} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// --- Upcoming Interviews ---
 
 function UpcomingInterviews({ interviews, onGeneratePrep }: {
   interviews: UpcomingInterview[];
@@ -84,7 +472,7 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Calendar size={18} className="text-[#98b3ff]" />
+        <Calendar size={18} className="text-[#afc4ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Upcoming Interviews</h3>
       </div>
 
@@ -108,8 +496,8 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
                     : 'border border-transparent hover:bg-white/[0.03]',
                 )}
               >
-                <div className="rounded-lg bg-[#98b3ff]/10 p-2 flex-shrink-0">
-                  <Building2 size={16} className="text-[#98b3ff]" />
+                <div className="rounded-lg bg-[#afc4ff]/10 p-2 flex-shrink-0">
+                  <Building2 size={16} className="text-[#afc4ff]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-medium text-white/75">{interview.company}</div>
@@ -142,6 +530,7 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
   );
 }
 
+// --- Interview History ---
 
 function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debriefCount }: {
   history: PastInterview[];
@@ -157,7 +546,7 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
 
   const outcomeConfig: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
     advanced: { icon: CheckCircle2, color: 'text-[#b5dec2]', label: 'Advanced' },
-    rejected: { icon: XCircle, color: 'text-[#e8a0a0]', label: 'Not Selected' },
+    rejected: { icon: XCircle, color: 'text-[#f0b8b8]', label: 'Not Selected' },
     pending: { icon: Clock, color: 'text-[#f0d99f]', label: 'Pending' },
   };
 
@@ -177,18 +566,18 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Clock size={18} className="text-[#98b3ff]" />
+        <Clock size={18} className="text-[#afc4ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Interview History</h3>
         <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
             onClick={onAddDebrief}
-            className="flex items-center gap-1 text-[11px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+            className="flex items-center gap-1 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors"
           >
             <ClipboardList size={12} />
             Add Debrief
             {debriefCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-[#98b3ff]/15 px-1.5 py-0.5 text-[10px] text-[#98b3ff]/70">
+              <span className="ml-0.5 rounded-full bg-[#afc4ff]/15 px-1.5 py-0.5 text-[10px] text-[#afc4ff]/70">
                 {debriefCount}
               </span>
             )}
@@ -205,21 +594,21 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
       </div>
 
       {showAddForm && (
-        <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] p-4 mb-4 space-y-2.5">
+        <div className="rounded-xl border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-4 mb-4 space-y-2.5">
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="Company"
               value={newCompany}
               onChange={(e) => setNewCompany(e.target.value)}
-              className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
             />
             <input
               type="text"
               placeholder="Role"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
-              className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+              className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
             />
           </div>
           <input
@@ -227,15 +616,11 @@ function InterviewHistory({ history, onUpdateOutcome, onAdd, onAddDebrief, debri
             placeholder="Notes (optional)"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30"
+            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30"
           />
           <div className="flex gap-2">
-            <GlassButton variant="primary" onClick={handleSubmit} size="sm">
-              Save
-            </GlassButton>
-            <GlassButton variant="ghost" onClick={() => setShowAddForm(false)} size="sm">
-              Cancel
-            </GlassButton>
+            <GlassButton variant="primary" onClick={handleSubmit} size="sm">Save</GlassButton>
+            <GlassButton variant="ghost" onClick={() => setShowAddForm(false)} size="sm">Cancel</GlassButton>
           </div>
         </div>
       )}
@@ -307,8 +692,8 @@ function PrepProgress({ company, activityMessages, currentStage }: {
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-lg bg-[#98b3ff]/10 p-2">
-          <Loader2 size={18} className="text-[#98b3ff] animate-spin" />
+        <div className="rounded-lg bg-[#afc4ff]/10 p-2">
+          <Loader2 size={18} className="text-[#afc4ff] animate-spin" />
         </div>
         <div>
           <h3 className="text-[15px] font-semibold text-white/85">
@@ -323,7 +708,7 @@ function PrepProgress({ company, activityMessages, currentStage }: {
       <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
         {activityMessages.map((msg) => (
           <div key={msg.id} className="flex items-start gap-2 py-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/40 mt-1.5 flex-shrink-0" />
+            <div className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/40 mt-1.5 flex-shrink-0" />
             <span className="text-[12px] text-white/50 leading-relaxed">{msg.message}</span>
           </div>
         ))}
@@ -340,7 +725,19 @@ function PrepProgress({ company, activityMessages, currentStage }: {
   );
 }
 
-// --- Report View ---
+// --- Prep Report View ---
+
+// Sample question bank — in production this would be extracted from the report markdown
+const SAMPLE_QUESTIONS: QuestionBankItem[] = [
+  { question: 'Tell me about a time you had to align a cross-functional team around a controversial decision.', category: 'behavioral', difficulty: 'hard' },
+  { question: 'Walk me through how you would approach your first 30 days in this role.', category: 'situational', difficulty: 'medium' },
+  { question: 'How do you prioritize competing initiatives when resources are constrained?', category: 'strategic', difficulty: 'hard' },
+  { question: 'Describe a significant technical challenge you have solved at scale.', category: 'technical', difficulty: 'hard' },
+  { question: 'Your resume shows strong individual contributor history. This role requires leading a team of 20+ — tell me about the largest team you have directly managed.', category: 'trap', difficulty: 'hard' },
+  { question: 'How do you build alignment with stakeholders who have competing priorities?', category: 'behavioral', difficulty: 'medium' },
+  { question: 'What metrics do you use to measure success in the first 90 days?', category: 'situational', difficulty: 'easy' },
+  { question: 'Describe your approach to managing underperformance on your team.', category: 'behavioral', difficulty: 'medium' },
+];
 
 function PrepReport({ company, role, report, qualityScore, onBack }: {
   company: string;
@@ -349,6 +746,16 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
   qualityScore: number | null;
   onBack: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<'report' | 'questions'>('report');
+
+  const researchData: CompanyResearchData = {
+    overview: undefined, // Parsed from report in production
+    recentNews: [],
+    cultureSignals: [],
+    risks: [],
+    competitors: [],
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -362,46 +769,74 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
         </button>
       </div>
 
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-between mb-4">
+      {/* Header card */}
+      <GlassCard className="p-5">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-[#98b3ff]/10 p-2">
-              <FileText size={18} className="text-[#98b3ff]" />
+            <div className="rounded-lg bg-[#afc4ff]/10 p-2.5 border border-[#afc4ff]/15">
+              <FileText size={18} className="text-[#afc4ff]" />
             </div>
             <div>
-              <h3 className="text-[15px] font-semibold text-white/85">
+              <h3 className="text-[15px] font-semibold text-white/90">
                 Interview Prep — {company}
               </h3>
               <p className="text-[12px] text-white/40">{role}</p>
             </div>
           </div>
-          {qualityScore !== null && (
-            <div className={cn(
-              'text-[12px] font-medium px-3 py-1 rounded-full',
-              qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10'
-                : qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10'
-                : 'text-[#e8a0a0] bg-[#e8a0a0]/10',
-            )}>
-              Quality: {qualityScore}%
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {qualityScore !== null && (
+              <ReadinessGauge score={qualityScore} size={52} />
+            )}
+          </div>
         </div>
 
-        <div
-          className="prose prose-invert prose-sm max-w-none
-            prose-headings:text-white/85 prose-headings:font-semibold
-            prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-2 prose-h1:mb-4
-            prose-h2:text-[15px] prose-h2:mt-6 prose-h2:mb-3
-            prose-h3:text-[14px] prose-h3:mt-4 prose-h3:mb-2
-            prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
-            prose-li:text-white/55 prose-li:text-[13px]
-            prose-strong:text-white/75
-            prose-em:text-white/50
-            prose-blockquote:border-[#98b3ff]/30 prose-blockquote:text-white/45
-            prose-hr:border-white/[0.08]"
-          dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
-        />
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1 mt-4 p-1 rounded-lg bg-white/[0.03] border border-white/[0.06] w-fit">
+          {([['report', 'Full Report'], ['questions', 'Question Bank']] as const).map(([tab, label]) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                'px-3 py-1.5 rounded-md text-[12px] font-medium transition-all',
+                activeTab === tab
+                  ? 'bg-white/[0.08] text-white/85 shadow-sm'
+                  : 'text-white/40 hover:text-white/60',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </GlassCard>
+
+      {activeTab === 'report' ? (
+        <GlassCard className="p-6">
+          {/* Company Research Dashboard — shown above the markdown report */}
+          {(researchData.recentNews?.length || researchData.cultureSignals?.length || researchData.risks?.length || researchData.competitors?.length) ? (
+            <CompanyResearchDashboard data={researchData} />
+          ) : null}
+
+          <div
+            className="prose prose-invert prose-sm max-w-none
+              prose-headings:text-white/85 prose-headings:font-semibold
+              prose-h1:text-lg prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-2 prose-h1:mb-4
+              prose-h2:text-[15px] prose-h2:mt-6 prose-h2:mb-3 prose-h2:text-[#afc4ff]/90
+              prose-h3:text-[14px] prose-h3:mt-4 prose-h3:mb-2
+              prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
+              prose-li:text-white/55 prose-li:text-[13px]
+              prose-strong:text-white/80
+              prose-em:text-white/50
+              prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-white/60 prose-blockquote:bg-[#afc4ff]/[0.03] prose-blockquote:rounded-r-lg
+              prose-hr:border-white/[0.08]"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
+          />
+        </GlassCard>
+      ) : (
+        <GlassCard className="p-6">
+          <QuestionBank questions={SAMPLE_QUESTIONS} />
+        </GlassCard>
+      )}
     </div>
   );
 }
@@ -447,7 +882,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     reset,
   } = useInterviewPrep();
 
-  // Transition to report view when complete
   useEffect(() => {
     if (status === 'complete' && report) {
       setViewMode('report');
@@ -463,7 +897,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     setViewMode('generating');
 
     try {
-      // Fetch resume text from user's master resume
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setInputError('Please sign in to generate interview prep.');
@@ -555,10 +988,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     setViewMode('lab');
   }, []);
 
-  // handleNavigateToThankYou intentionally omitted — cross-room navigation to the
-  // thank-you-note room is not yet implemented (planned for Phase 4A-8). The
-  // DebriefForm hides the "Generate Thank You Notes" button when the prop is absent.
-
   const fetchResumeText = useCallback(async (): Promise<string | null> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
@@ -582,36 +1011,10 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         setMockInterviewLoading(false);
         return;
       }
-      setMockInterviewConfig({
-        resumeText,
-        mode: 'full',
-      });
+      setMockInterviewConfig({ resumeText, mode: 'full' });
       setViewMode('mock_interview');
     } catch (err) {
       console.error('[InterviewLab] Failed to load resume for mock interview:', err);
-    } finally {
-      setMockInterviewLoading(false);
-    }
-  }, [fetchResumeText]);
-
-  const handleStartPracticeSession = useCallback(async () => {
-    setMockInterviewLoading(true);
-    setMockInterviewError(null);
-    try {
-      const resumeText = await fetchResumeText();
-      if (!resumeText || resumeText.length < 50) {
-        setMockInterviewError('Upload a resume first — we need it to run a practice session.');
-        setMockInterviewLoading(false);
-        return;
-      }
-      setMockInterviewConfig({
-        resumeText,
-        mode: 'practice',
-        questionType: 'behavioral',
-      });
-      setViewMode('mock_interview');
-    } catch (err) {
-      console.error('[InterviewLab] Failed to load resume for practice session:', err);
     } finally {
       setMockInterviewLoading(false);
     }
@@ -622,7 +1025,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     setMockInterviewConfig(null);
   }, []);
 
-  // Debrief view
   if (viewMode === 'debrief') {
     return (
       <DebriefForm
@@ -632,7 +1034,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     );
   }
 
-  // Mock interview view
   if (viewMode === 'mock_interview' && mockInterviewConfig) {
     return (
       <MockInterviewView
@@ -646,7 +1047,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     );
   }
 
-  // Report view
   if (viewMode === 'report' && report) {
     return (
       <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
@@ -661,7 +1061,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     );
   }
 
-  // Generating view
   if (viewMode === 'generating') {
     return (
       <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
@@ -673,8 +1072,8 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         {inputError ? (
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <AlertCircle size={18} className="text-[#e8a0a0]" />
-              <span className="text-[13px] text-[#e8a0a0]">{inputError}</span>
+              <AlertCircle size={18} className="text-[#f0b8b8]" />
+              <span className="text-[13px] text-[#f0b8b8]">{inputError}</span>
             </div>
             <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
@@ -684,15 +1083,15 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         ) : loadingInputs ? (
           <GlassCard className="p-6">
             <div className="flex items-center gap-3">
-              <Loader2 size={18} className="text-[#98b3ff] animate-spin" />
+              <Loader2 size={18} className="text-[#afc4ff] animate-spin" />
               <span className="text-[13px] text-white/50">Loading resume and job details...</span>
             </div>
           </GlassCard>
         ) : error ? (
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <AlertCircle size={18} className="text-[#e8a0a0]" />
-              <span className="text-[13px] text-[#e8a0a0]">{error}</span>
+              <AlertCircle size={18} className="text-[#f0b8b8]" />
+              <span className="text-[13px] text-[#f0b8b8]">{error}</span>
             </div>
             <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
@@ -761,15 +1160,13 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         </GlassButton>
       </div>
 
-      {/* Mock interview error */}
       {mockInterviewError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
-          <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-          <span className="text-[13px] text-red-300/80">{mockInterviewError}</span>
+        <div className="rounded-xl border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] px-4 py-3 flex items-center gap-3">
+          <AlertCircle size={16} className="text-[#f0b8b8] flex-shrink-0" />
+          <span className="text-[13px] text-[#f0b8b8]/80">{mockInterviewError}</span>
         </div>
       )}
 
-      {/* Upcoming Interviews — full width */}
       <UpcomingInterviews
         interviews={
           pipelineInterviews && pipelineInterviews.length > 0
@@ -788,7 +1185,6 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
         onGeneratePrep={handleGeneratePrep}
       />
 
-      {/* Interview History — full width */}
       <InterviewHistory
         history={history}
         onUpdateOutcome={handleUpdateOutcome}
