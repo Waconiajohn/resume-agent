@@ -26,9 +26,14 @@ YOUR CREATIVE AUTHORITY:
 - You choose the voice, rhythm, and flow of the document
 - You are a WRITER, not an executor following instructions
 
+YOUR NORTH STAR:
+The Why Me story is not a reference document — it is your north star. Every section of this resume must reinforce the narrative arc it establishes. A hiring manager who reads the resume cover to cover should feel the same cumulative story as someone who reads the Why Me story. If a section feels disconnected from the narrative, reframe it.
+
 YOUR GUARDRAILS:
-- The Narrative Strategy provides your strategic direction — follow it
+- The Narrative Strategy provides your strategic direction — follow it with discipline
+- The Why Me story establishes the arc — every section must reinforce it
 - The Gap Analysis tells you what to emphasize and how to position gaps
+- The gap_positioning_map (when provided) tells you WHERE to surface gap strategies and how to justify them narratively — use it
 - The Resume Rules are your formatting bible — follow them exactly
 - NEVER fabricate experience or metrics the candidate cannot defend
 - Mark ALL AI-enhanced content with is_new: true (content not directly from original resume)
@@ -82,6 +87,25 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   ],
   "certifications": ["list"]
 }
+
+SECTION-BY-SECTION NARRATIVE GUIDANCE:
+
+Executive Summary:
+- OPEN with the narrative positioning, not generic accomplishments
+- The first sentence should immediately establish who this person is through the lens of the Why Me narrative angle
+- Accomplishments come second — after the reader knows WHY this candidate is the one
+- Do not open with "Results-driven leader" or any equivalent. Open with the positioning.
+
+Core Competencies:
+- Group them to reinforce the narrative themes, not just as a keyword dump
+- Use the competency_themes from the Narrative Strategy to cluster them
+- The grouping should reflect the unique combination from the narrative
+
+Experience Bullets:
+- Before writing each bullet, ask: "Does this reinforce why this person is THE candidate for this role?"
+- If a bullet doesn't reinforce the narrative, reframe it so it does — without fabricating
+- Every bullet should show agency, scale, and impact — not just activity
+- If the gap_positioning_map specifies where to surface a gap strategy, execute it in that role's bullets
 
 CRITICAL RULES:
 1. is_new = true for ANY content you wrote, rephrased, or enhanced beyond the original resume
@@ -182,10 +206,37 @@ function buildUserMessage(input: ResumeWriterInput): string {
 
   parts.push(
     '',
-    '## WHY ME STORY (for tone reference — do not copy verbatim into resume)',
+    '## WHY ME STORY — YOUR NORTH STAR',
+    '(This narrative arc must be reinforced in every section. Do not copy verbatim — let it shape every framing decision.)',
     input.narrative.why_me_story.slice(0, 2000),
+  );
+
+  if (input.narrative.unique_differentiators && input.narrative.unique_differentiators.length > 0) {
+    parts.push(
+      '',
+      '## UNIQUE DIFFERENTIATORS (what sets this candidate apart — reinforce these throughout)',
+      ...input.narrative.unique_differentiators.map(d => `- ${d}`),
+    );
+  }
+
+  if (input.narrative.gap_positioning_map && input.narrative.gap_positioning_map.length > 0) {
+    parts.push(
+      '',
+      '## GAP POSITIONING MAP (where and how to surface each gap strategy in the resume)',
+    );
+    for (const entry of input.narrative.gap_positioning_map) {
+      parts.push(
+        `- Requirement: ${entry.requirement}`,
+        `  Where to feature: ${entry.where_to_feature}`,
+        `  How to frame it: ${entry.narrative_positioning}`,
+        `  Justification: ${entry.narrative_justification}`,
+      );
+    }
+  }
+
+  parts.push(
     '',
-    'Now write the complete resume. Every bullet must show impact. Every section must reinforce the narrative. Mark is_new correctly.',
+    'Now write the complete resume. Every section reinforces the Why Me narrative. Every bullet answers: "Does this prove why I am THE candidate?" Mark is_new correctly.',
   );
 
   return parts.join('\n');

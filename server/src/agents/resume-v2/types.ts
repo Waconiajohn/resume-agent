@@ -169,20 +169,39 @@ export interface NarrativeStrategyInput {
     requirement: string;
     strategy: GapStrategy;
   }>;
+  /** Differentiators from the Benchmark Candidate agent — raw material for the unique combination angle */
+  benchmark_differentiators?: string[];
+}
+
+export interface GapPositioningMapEntry {
+  requirement: string;
+  narrative_positioning: string;
+  where_to_feature: string;
+  narrative_justification: string;
 }
 
 export interface NarrativeStrategyOutput {
   /** Primary positioning narrative (e.g., "Enterprise Transformation Leader") */
   primary_narrative: string;
+  /** Rationale for the chosen positioning angle */
+  narrative_angle_rationale: string;
   supporting_themes: string[];
   /** Branded title line for the resume header */
   branded_title: string;
+  /** Why this person cares about this work — grounded in their history */
+  narrative_origin: string;
+  /** 3-5 specific differentiators unique to this candidate — not generic strengths */
+  unique_differentiators: string[];
   /** Full "Why Me" positioning story */
   why_me_story: string;
   /** Concise interview version of the Why Me story */
   why_me_concise: string;
   /** The single best verbal line for the candidate */
   why_me_best_line: string;
+  /** Where and how to surface gap strategies in the resume, with narrative justification */
+  gap_positioning_map: GapPositioningMapEntry[];
+  /** 3-5 story prompts for interviews that reinforce the narrative */
+  interview_talking_points: string[];
   /** How to frame each section given the narrative */
   section_guidance: {
     summary_angle: string;

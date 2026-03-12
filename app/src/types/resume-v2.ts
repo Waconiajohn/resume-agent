@@ -115,6 +115,13 @@ export interface GapAnalysis {
   }>;
 }
 
+export interface GapPositioningMapEntry {
+  requirement: string;
+  narrative_positioning: string;
+  where_to_feature: string;
+  narrative_justification: string;
+}
+
 export interface NarrativeStrategy {
   primary_narrative: string;
   supporting_themes: string[];
@@ -128,6 +135,12 @@ export interface NarrativeStrategy {
     accomplishment_priorities: string[];
     experience_framing: Record<string, string>;
   };
+  // New fields — optional for backward compatibility
+  narrative_angle_rationale?: string;
+  narrative_origin?: string;
+  unique_differentiators?: string[];
+  gap_positioning_map?: GapPositioningMapEntry[];
+  interview_talking_points?: string[];
 }
 
 export interface ResumeBullet {

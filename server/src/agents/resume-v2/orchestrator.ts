@@ -116,6 +116,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       candidate: candidateIntel,
       job_intelligence: jobIntel,
       approved_strategies: allApproved,
+      benchmark_differentiators: benchmark.differentiators,
     }, signal);
 
     state.narrative_strategy = narrative;
