@@ -227,10 +227,10 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Resume Workshop')).toBeInTheDocument();
+    expect(screen.getByText('Resume Builder')).toBeInTheDocument();
     expect(screen.getByText('LinkedIn Studio')).toBeInTheDocument();
     expect(screen.getByText('Job Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Networking Hub')).toBeInTheDocument();
+    expect(screen.getByText('Smart Referrals')).toBeInTheDocument();
     expect(screen.getByText('Interview Lab')).toBeInTheDocument();
     expect(screen.getByText('Financial Wellness')).toBeInTheDocument();
     expect(screen.getByText('Live Sessions')).toBeInTheDocument();
@@ -240,8 +240,8 @@ describe('Sidebar', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
-    // Resume Workshop is gated
-    const resumeButton = screen.getByText('Resume Workshop').closest('button');
+    // Resume Builder is gated
+    const resumeButton = screen.getByText('Resume Builder').closest('button');
     expect(resumeButton).toBeDisabled();
     // Dashboard is not gated
     const dashboardButton = screen.getByText('Dashboard').closest('button');
@@ -256,7 +256,7 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
     // Gated rooms should have title with "Complete your Why-Me story to unlock"
-    const resumeButton = screen.getByText('Resume Workshop').closest('button');
+    const resumeButton = screen.getByText('Resume Builder').closest('button');
     expect(resumeButton?.getAttribute('title')).toContain('Complete your Why-Me story to unlock');
   });
 
@@ -264,7 +264,7 @@ describe('Sidebar', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="refining" />,
     );
-    const resumeButton = screen.getByText('Resume Workshop').closest('button');
+    const resumeButton = screen.getByText('Resume Builder').closest('button');
     expect(resumeButton).not.toBeDisabled();
     const linkedinButton = screen.getByText('LinkedIn Studio').closest('button');
     expect(linkedinButton).not.toBeDisabled();
@@ -274,7 +274,7 @@ describe('Sidebar', () => {
     render(
       <Sidebar activeRoom="resume" onNavigate={vi.fn()} dashboardState="strong" />,
     );
-    const resumeButton = screen.getByText('Resume Workshop').closest('button');
+    const resumeButton = screen.getByText('Resume Builder').closest('button');
     expect(resumeButton?.className).toContain('bg-white');
   });
 
@@ -283,7 +283,7 @@ describe('Sidebar', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="strong" />,
     );
-    fireEvent.click(screen.getByText('Resume Workshop'));
+    fireEvent.click(screen.getByText('Resume Builder'));
     expect(onNavigate).toHaveBeenCalledWith('resume');
   });
 
@@ -292,7 +292,7 @@ describe('Sidebar', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="new-user" />,
     );
-    fireEvent.click(screen.getByText('Resume Workshop'));
+    fireEvent.click(screen.getByText('Resume Builder'));
     expect(onNavigate).not.toHaveBeenCalled();
   });
 });

@@ -29,6 +29,7 @@ import {
 } from '../lib/ni/job-matches-store.js';
 import { generateBooleanSearch, getBooleanSearch } from '../lib/ni/boolean-search.js';
 import { runCsvImportPipeline, runCareerScrape } from '../lib/ni/import-service.js';
+import { crossReferenceReferralOpportunities } from '../lib/ni/referral-cross-ref.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { CsvUploadResponse } from '../lib/ni/types.js';
@@ -295,7 +296,26 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   return c.json({ scrape_log_id: logId }, 202);
 });
 
-ni.get('/scrape/status/:id', rateLimitMiddleware(60, 60_000), async (c) => {
+// ─── Referral Opportunities ──────────────────────────────────────────────────
+
+ni.get('/referral-opportunities', rateLimitMiddleware(30, 60_000), async (c) => {
+  const userId = c.get('user').id;
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10) || 50, 200);
+  const offset = parseInt(c.req.query('offset') ?? '0', 10) || 0;
+
+  try {
+    const opportunities = await crossReferenceReferralOpportunities(userId, { limit, offset });
+    return c.json({ opportunities });
+  } catch (err) {
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err), userId },
+      'referral-opportunities: query failed',
+    );
+    return c.json({ error: 'Failed to fetch referral opportunities' }, 500);
+  }
+});
+
+ni.get('/scrape/status/:id', rateLimitMiddleware(30, 60_000), async (c) => {
   const userId = c.get('user').id;
   const logId = c.req.param('id');
 

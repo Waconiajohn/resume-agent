@@ -64,8 +64,8 @@ describe('ProductCatalogGrid', () => {
     expect(onNavigate).toHaveBeenCalledWith(activeProduct.route);
   });
 
-  it('catalog has at least 22 entries', () => {
-    expect(PRODUCT_CATALOG.length).toBeGreaterThanOrEqual(22);
+  it('catalog has at least 13 entries', () => {
+    expect(PRODUCT_CATALOG.length).toBeGreaterThanOrEqual(13);
   });
 
   it('includes financial category products', () => {
@@ -75,7 +75,7 @@ describe('ProductCatalogGrid', () => {
 
   // --- Org chart / theme group tests ---
 
-  it('renders 6 theme group labels', () => {
+  it('renders 4 theme group labels', () => {
     render(<ProductCatalogGrid onNavigate={vi.fn()} />);
     for (const group of TOOL_GROUPS) {
       expect(screen.getByText(group.label)).toBeInTheDocument();

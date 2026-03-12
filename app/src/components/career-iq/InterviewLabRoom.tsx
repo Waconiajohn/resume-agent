@@ -21,6 +21,7 @@ import {
   Lightbulb,
   AlertTriangle,
   Star,
+  Mail,
 } from 'lucide-react';
 import { markdownToHtml } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ import { supabase } from '@/lib/supabase';
 import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
 import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
+import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 
 // --- Types ---
 
@@ -847,7 +849,7 @@ interface InterviewLabRoomProps {
   pipelineInterviews?: PipelineInterviewCard[];
 }
 
-type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
+type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview' | 'thank-you';
 
 interface MockInterviewConfig {
   resumeText: string;
@@ -1025,6 +1027,22 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
     setMockInterviewConfig(null);
   }, []);
 
+  if (viewMode === 'thank-you') {
+    return (
+      <div className="flex flex-col gap-4 p-6 max-w-[1400px] mx-auto">
+        <button
+          type="button"
+          onClick={() => setViewMode('lab')}
+          className="flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium w-fit"
+        >
+          <ArrowLeft size={14} />
+          Back to Interview Lab
+        </button>
+        <ThankYouNoteRoom />
+      </div>
+    );
+  }
+
   if (viewMode === 'debrief') {
     return (
       <DebriefForm
@@ -1145,19 +1163,29 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
             className="mt-2"
           />
         </div>
-        <GlassButton
-          variant="primary"
-          onClick={() => void handleStartMockInterview()}
-          disabled={mockInterviewLoading}
-          className="flex-shrink-0 text-[13px]"
-        >
-          {mockInterviewLoading ? (
-            <Loader2 size={14} className="mr-1.5 animate-spin" />
-          ) : (
-            <Mic size={14} className="mr-1.5" />
-          )}
-          Start Mock Interview
-        </GlassButton>
+        <div className="flex gap-2 flex-shrink-0">
+          <GlassButton
+            variant="ghost"
+            onClick={() => setViewMode('thank-you')}
+            className="text-[13px]"
+          >
+            <Mail size={14} className="mr-1.5" />
+            Thank You Notes
+          </GlassButton>
+          <GlassButton
+            variant="primary"
+            onClick={() => void handleStartMockInterview()}
+            disabled={mockInterviewLoading}
+            className="text-[13px]"
+          >
+            {mockInterviewLoading ? (
+              <Loader2 size={14} className="mr-1.5 animate-spin" />
+            ) : (
+              <Mic size={14} className="mr-1.5" />
+            )}
+            Start Mock Interview
+          </GlassButton>
+        </div>
       </div>
 
       {mockInterviewError && (

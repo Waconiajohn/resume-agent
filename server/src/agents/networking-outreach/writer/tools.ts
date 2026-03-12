@@ -125,6 +125,17 @@ function buildContextBlock(state: NetworkingOutreachState): string {
     }
   }
 
+  // Referral context
+  if (state.referral_context) {
+    const rc = state.referral_context;
+    parts.push('\n## Referral Context');
+    parts.push(`Company: ${rc.company_name}`);
+    parts.push(`Job Title: ${rc.job_title}`);
+    if (rc.match_score != null) parts.push(`Match Score: ${rc.match_score}%`);
+    if (rc.bonus_amount) parts.push(`Referral Bonus: ${rc.bonus_currency ?? 'USD'} ${rc.bonus_amount}`);
+    parts.push('Note: Use this context to craft a referral request that frames mutual benefit.');
+  }
+
   // Platform context (Why-Me story, positioning strategy)
   if (state.platform_context?.why_me_story) {
     const wm = state.platform_context.why_me_story;
@@ -743,6 +754,141 @@ Return JSON:
   },
 };
 
+// ─── Tool: write_referral_request ───────────────────────────────────
+
+const writeReferralRequestTool: NetworkingOutreachTool = {
+  name: 'write_referral_request',
+  description:
+    'Write a referral request message for when the target\'s company has a referral bonus program. ' +
+    'Frames the request as mutual benefit. Must be ≤500 characters. ' +
+    'Only call this when referral_context is populated in state.',
+  model_tier: 'primary',
+  input_schema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+  async execute(_input, ctx) {
+    const state = ctx.getState();
+
+    if (!state.referral_context) {
+      return JSON.stringify({
+        success: false,
+        error: 'No referral_context in state. This tool is only for referral opportunities.',
+      });
+    }
+
+    if (!state.target_analysis || !state.common_ground) {
+      return JSON.stringify({
+        success: false,
+        error: 'Missing required state: target_analysis and common_ground.',
+      });
+    }
+
+    ctx.emit({ type: 'message_progress', message_type: 'referral_request', status: 'drafting' });
+
+    const contextBlock = buildContextBlock(state);
+
+    const usedHooks = (state.messages ?? []).flatMap(m => m.personalization_hooks);
+    const usedHooksStr = usedHooks.length > 0
+      ? `\n\nPERSONALIZATION HOOKS ALREADY USED (do NOT repeat these):\n${usedHooks.map(h => `- ${h}`).join('\n')}`
+      : '';
+
+    const rc = state.referral_context;
+
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      max_tokens: 2048,
+      system: `You are a LinkedIn outreach writer for senior executives (45+).
+
+${NETWORKING_OUTREACH_RULES}
+
+You have the following data:
+
+${contextBlock}
+
+Return ONLY valid JSON.`,
+      messages: [{
+        role: 'user',
+        content: `Write a Referral Request message for the outreach sequence.
+
+The target's company (${rc.company_name}) has a referral bonus program${rc.bonus_amount ? ` (${rc.bonus_currency ?? 'USD'} ${rc.bonus_amount})` : ''}. The candidate is a strong match for the ${rc.job_title} role${rc.match_score ? ` (${rc.match_score}% match)` : ''}.
+
+HARD REQUIREMENTS:
+- Maximum 500 characters
+- Frame as mutual benefit — both parties gain from a referral
+- Reference the SPECIFIC job title and why the candidate fits
+- Never lead with the bonus money amount
+- Give an easy out: "No pressure if the timing isn't right"
+- Tone: confident peer seeing a mutual opportunity, not desperate job seeker
+- Must contain at least ONE specific personalization hook
+- Use a NEW hook not used in previous messages${usedHooksStr}
+
+Return JSON:
+{
+  "body": "the referral request message (≤500 chars)",
+  "personalization_hooks": ["specific NEW hook used in this message"]
+}`,
+      }],
+    });
+
+    let result;
+    try {
+      result = JSON.parse(repairJSON(response.text) ?? response.text);
+    } catch {
+      result = { body: response.text.trim().slice(0, 500), personalization_hooks: [] };
+    }
+
+    const body = String(result.body ?? '').trim();
+    const personalizationHooks: string[] = Array.isArray(result.personalization_hooks)
+      ? result.personalization_hooks.map(String)
+      : [];
+    const charCount = body.length;
+
+    // Quality scoring
+    let qualityScore = 100;
+    if (charCount > 500) qualityScore -= 25;
+    if (personalizationHooks.length === 0) qualityScore -= 20;
+    const repeatedHooks = personalizationHooks.filter(h =>
+      usedHooks.some(used => used.toLowerCase() === h.toLowerCase())
+    );
+    if (repeatedHooks.length > 0) qualityScore -= 15;
+    // Anti-patterns specific to referral requests
+    if (/you get \$[\d,]+/i.test(body)) qualityScore -= 25; // leading with money
+    if (/put in a good word/i.test(body)) qualityScore -= 15; // vague
+    if (/any openings/i.test(body)) qualityScore -= 20; // generic
+    if (charCount < 80) qualityScore -= 15;
+    qualityScore = Math.max(0, qualityScore);
+
+    const message: OutreachMessage = {
+      type: 'referral_request',
+      subject: '',
+      body,
+      char_count: charCount,
+      personalization_hooks: personalizationHooks,
+      timing: MESSAGE_TIMING.referral_request,
+      quality_score: qualityScore,
+    };
+
+    if (!state.messages) state.messages = [];
+    const existingIdx = state.messages.findIndex(m => m.type === 'referral_request');
+    if (existingIdx >= 0) {
+      state.messages[existingIdx] = message;
+    } else {
+      state.messages.push(message);
+    }
+
+    ctx.emit({ type: 'message_progress', message_type: 'referral_request', status: 'complete' });
+
+    return JSON.stringify({
+      success: true,
+      message_type: 'referral_request',
+      char_count: charCount,
+      quality_score: qualityScore,
+    });
+  },
+};
+
 // ─── Tool: assemble_sequence ────────────────────────────────────────
 
 const assembleSequenceTool: NetworkingOutreachTool = {
@@ -1042,6 +1188,7 @@ export const writerTools: NetworkingOutreachTool[] = [
   writeFollowUpTool,
   writeValueOfferTool,
   writeMeetingRequestTool,
+  writeReferralRequestTool,
   assembleSequenceTool,
   generateThreeWaysTool,
 ];

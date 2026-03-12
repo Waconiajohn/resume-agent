@@ -3,9 +3,7 @@ import {
   LayoutDashboard,
   FileText,
   Linkedin,
-  Calendar,
   Search,
-  Users,
   Mic,
   Heart,
   Video,
@@ -14,11 +12,10 @@ import {
   Lock,
   DollarSign,
   User,
-  BookOpen,
-  Mail,
   Sparkles,
   Target,
   Network,
+  FileEdit,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { DashboardState } from './useWhyMeStory';
@@ -27,19 +24,20 @@ export type CareerIQRoom =
   | 'dashboard'
   | 'resume'
   | 'linkedin'
-  | 'content-calendar'
   | 'jobs'
   | 'networking'
   | 'interview'
   | 'salary-negotiation'
   | 'executive-bio'
-  | 'case-study'
-  | 'thank-you-note'
   | 'personal-brand'
   | 'ninety-day-plan'
-  | 'network-intelligence'
   | 'financial'
-  | 'learning';
+  | 'learning'
+  // Legacy IDs — redirect to merged rooms in CareerIQScreen
+  | 'content-calendar'
+  | 'case-study'
+  | 'thank-you-note'
+  | 'network-intelligence';
 
 interface SidebarProps {
   activeRoom: CareerIQRoom;
@@ -59,38 +57,29 @@ const ROOM_GROUPS: RoomGroup[] = [
     label: 'Your Foundation',
     rooms: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Your daily briefing', gated: false },
-      { id: 'resume', label: 'Resume Workshop', icon: FileText, description: 'Create & optimize resumes', gated: true },
-    ],
-  },
-  {
-    label: 'Documents & Writing',
-    rooms: [
-      { id: 'executive-bio', label: 'Executive Bio', icon: User, description: 'Speaker, board & LinkedIn bios', gated: true },
-      { id: 'case-study', label: 'Case Studies', icon: BookOpen, description: 'Consulting-grade narratives', gated: true },
-      { id: 'thank-you-note', label: 'Thank You Notes', icon: Mail, description: 'Post-interview follow-ups', gated: true },
+      { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'AI-powered resume tailored to every job', gated: true },
     ],
   },
   {
     label: 'LinkedIn & Brand',
     rooms: [
-      { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile optimization & analytics', gated: true },
-      { id: 'content-calendar', label: 'Content Calendar', icon: Calendar, description: '30-day LinkedIn posting plan', gated: true },
+      { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile, content & calendar', gated: true },
       { id: 'personal-brand', label: 'Personal Brand', icon: Sparkles, description: 'Brand audit & positioning', gated: true },
+      { id: 'executive-bio', label: 'Executive Documents', icon: FileEdit, description: 'Bios & case studies', gated: true },
     ],
   },
   {
-    label: 'Job Search & Network',
+    label: 'Job Search & Networking',
     rooms: [
-      { id: 'jobs', label: 'Job Command Center', icon: Search, description: 'Matches, search & pipeline', gated: true },
-      { id: 'networking', label: 'Networking Hub', icon: Users, description: 'Contacts & outreach', gated: true },
-      { id: 'network-intelligence', label: 'Network Intelligence', icon: Network, description: 'Map & grow your network', gated: true },
+      { id: 'jobs', label: 'Job Command Center', icon: Search, description: 'Matches, pipeline & momentum', gated: true },
+      { id: 'networking', label: 'Smart Referrals', icon: Network, description: 'Connections, referrals & outreach', gated: true },
     ],
   },
   {
     label: 'Interview & Offers',
     rooms: [
-      { id: 'interview', label: 'Interview Lab', icon: Mic, description: 'Prep, mock & history', gated: true },
-      { id: 'salary-negotiation', label: 'Salary Negotiation', icon: DollarSign, description: 'Market benchmarks & strategy', gated: true },
+      { id: 'interview', label: 'Interview Lab', icon: Mic, description: 'Prep, mock, debrief & follow-up', gated: true },
+      { id: 'salary-negotiation', label: 'Salary & Negotiation', icon: DollarSign, description: 'Benchmarks, scripts & simulation', gated: true },
       { id: 'ninety-day-plan', label: '90-Day Plan', icon: Target, description: 'First 90 days roadmap', gated: true },
     ],
   },
@@ -98,7 +87,7 @@ const ROOM_GROUPS: RoomGroup[] = [
 
 /** Utility rooms shown below a divider — not part of the journey groups */
 const UTILITY_ROOMS: RoomGroup['rooms'] = [
-  { id: 'financial', label: 'Financial Wellness', icon: Heart, description: 'Retirement & planning', gated: true },
+  { id: 'financial', label: 'Financial Wellness', icon: Heart, description: 'Retirement & planner matching', gated: true },
   { id: 'learning', label: 'Live Sessions', icon: Video, description: 'Coaching, replays & office hours', gated: false },
 ];
 

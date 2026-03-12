@@ -132,6 +132,65 @@ function titleMatchesTargets(jobTitle: string, targetTitles: string[]): boolean 
   return computeMatchScore(jobTitle, targetTitles) >= 40;
 }
 
+// ─── Referral bonus detection ─────────────────────────────────────────────────
+
+/**
+ * Regex patterns that signal a referral bonus mention in job description text.
+ * Listed in decreasing specificity — the first match wins for amount extraction.
+ */
+const REFERRAL_MENTION_PATTERNS: RegExp[] = [
+  /referral\s+bonus/i,
+  /referral\s+program/i,
+  /employee\s+referral/i,
+  /refer\s+a\s+friend/i,
+  /referral\s+reward/i,
+];
+
+/**
+ * Patterns used to extract a dollar amount from text near a referral mention.
+ * Tries to capture "$X,XXX", "$XK", "$X.XK" style values.
+ */
+const AMOUNT_EXTRACTION_PATTERNS: RegExp[] = [
+  /\$\s*(\d{1,3}(?:,\d{3})+)/,      // $X,XXX or $XX,XXX
+  /\$\s*(\d+(?:\.\d+)?)\s*[kK]/,    // $5K, $10k, $7.5k
+  /\$\s*(\d{3,})/,                   // $5000 bare digits
+];
+
+/**
+ * Detect whether a job description text mentions a referral bonus program
+ * and attempt to extract the dollar amount if present.
+ *
+ * @param text - Raw job description or posting text
+ * @returns `{ detected: true, amount?: string }` or `{ detected: false }`
+ */
+export function detectReferralBonusInText(
+  text: string,
+): { detected: boolean; amount?: string } {
+  if (!text) return { detected: false };
+
+  const hasMention = REFERRAL_MENTION_PATTERNS.some((pattern) => pattern.test(text));
+  if (!hasMention) return { detected: false };
+
+  // Attempt to extract a dollar amount from the surrounding text
+  for (const amountPattern of AMOUNT_EXTRACTION_PATTERNS) {
+    const match = amountPattern.exec(text);
+    if (match) {
+      const rawValue = match[1];
+      // Normalize "K" shorthand amounts to full dollar values
+      if (/[kK]/.test(match[0])) {
+        const numeric = parseFloat(rawValue);
+        if (!isNaN(numeric)) {
+          const dollars = Math.round(numeric * 1_000);
+          return { detected: true, amount: `$${dollars.toLocaleString('en-US')}` };
+        }
+      }
+      return { detected: true, amount: `$${rawValue}` };
+    }
+  }
+
+  return { detected: true };
+}
+
 // ─── Referral bonus lookup ────────────────────────────────────────────────────
 
 async function hasReferralProgram(companyId: string): Promise<boolean> {

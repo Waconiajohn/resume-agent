@@ -6,20 +6,32 @@ const VALID_ROOMS = new Set<string>([
   'dashboard',
   'resume',
   'linkedin',
-  'content-calendar',
   'jobs',
   'networking',
   'interview',
   'salary-negotiation',
   'executive-bio',
-  'case-study',
-  'thank-you-note',
   'personal-brand',
   'ninety-day-plan',
-  'network-intelligence',
   'financial',
   'learning',
+  // Legacy IDs — still accepted, redirected to merged rooms
+  'content-calendar',
+  'case-study',
+  'thank-you-note',
+  'network-intelligence',
 ]);
+
+/**
+ * Legacy room IDs that have been absorbed into other rooms.
+ * When navigated to, they redirect to their parent room.
+ */
+const LEGACY_REDIRECTS: Record<string, CareerIQRoom> = {
+  'content-calendar': 'linkedin',
+  'case-study': 'executive-bio',
+  'thank-you-note': 'interview',
+  'network-intelligence': 'networking',
+};
 
 /**
  * Rooms whose server-side feature flags are disabled by default.
@@ -30,20 +42,20 @@ const VALID_ROOMS = new Set<string>([
  */
 const COMING_SOON_ROOMS = new Set<string>([
   'linkedin',
-  'content-calendar',
   'networking',
   'interview',
   'salary-negotiation',
   'executive-bio',
-  'case-study',
-  'thank-you-note',
   'personal-brand',
   'ninety-day-plan',
-  'network-intelligence',
 ]);
 
 function toValidRoom(value: string | undefined): CareerIQRoom {
-  if (value && VALID_ROOMS.has(value)) return value as CareerIQRoom;
+  if (!value) return 'dashboard';
+  // Redirect legacy room IDs to their merged parent
+  const redirect = LEGACY_REDIRECTS[value];
+  if (redirect) return redirect;
+  if (VALID_ROOMS.has(value)) return value as CareerIQRoom;
   return 'dashboard';
 }
 import { DashboardHome } from './DashboardHome';
@@ -66,15 +78,11 @@ const ResumeWorkshopRoom = lazy(() => import('./ResumeWorkshopRoom').then(m => (
 const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then(m => ({ default: m.LinkedInStudioRoom })));
 const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then(m => ({ default: m.JobCommandCenterRoom })));
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then(m => ({ default: m.InterviewLabRoom })));
-const NetworkingHubRoom = lazy(() => import('./NetworkingHubRoom').then(m => ({ default: m.NetworkingHubRoom })));
-const ContentCalendarRoom = lazy(() => import('./ContentCalendarRoom').then(m => ({ default: m.ContentCalendarRoom })));
 const SalaryNegotiationRoom = lazy(() => import('./SalaryNegotiationRoom').then(m => ({ default: m.SalaryNegotiationRoom })));
-const ExecutiveBioRoom = lazy(() => import('./ExecutiveBioRoom').then(m => ({ default: m.ExecutiveBioRoom })));
-const CaseStudyRoom = lazy(() => import('./CaseStudyRoom').then(m => ({ default: m.CaseStudyRoom })));
-const ThankYouNoteRoom = lazy(() => import('./ThankYouNoteRoom').then(m => ({ default: m.ThankYouNoteRoom })));
 const PersonalBrandRoom = lazy(() => import('./PersonalBrandRoom').then(m => ({ default: m.PersonalBrandRoom })));
 const NinetyDayPlanRoom = lazy(() => import('./NinetyDayPlanRoom').then(m => ({ default: m.NinetyDayPlanRoom })));
-const NetworkIntelligenceRoom = lazy(() => import('./NetworkIntelligenceRoom').then(m => ({ default: m.NetworkIntelligenceRoom })));
+const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then(m => ({ default: m.SmartReferralsRoom })));
+const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then(m => ({ default: m.ExecutiveDocumentsRoom })));
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then(m => ({ default: m.RoomPlaceholder })));
 const CoachDrawer = lazy(() => import('./CoachDrawer').then(m => ({ default: m.CoachDrawer })));
 
@@ -324,11 +332,6 @@ export function CareerIQScreen({
       return <LinkedInStudioRoom signals={signals} whyMeClarity={story.colleaguesCameForWhat} />;
     }
 
-    // Content Calendar room
-    if (activeRoom === 'content-calendar') {
-      return <ContentCalendarRoom />;
-    }
-
     // Job Command Center room
     if (activeRoom === 'jobs') {
       return <JobCommandCenterRoom onNavigate={onNavigate} onNavigateRoom={handleRoomNavigate} />;
@@ -339,9 +342,9 @@ export function CareerIQScreen({
       return <InterviewLabRoom pipelineInterviews={pipelineInterviews} />;
     }
 
-    // Networking Hub room
+    // Smart Referrals room (merged NI + Networking Hub)
     if (activeRoom === 'networking') {
-      return <NetworkingHubRoom />;
+      return <SmartReferralsRoom />;
     }
 
     // Salary Negotiation room
@@ -349,19 +352,9 @@ export function CareerIQScreen({
       return <SalaryNegotiationRoom />;
     }
 
-    // Executive Bio room
+    // Executive Documents room (merged Bio + Case Study)
     if (activeRoom === 'executive-bio') {
-      return <ExecutiveBioRoom />;
-    }
-
-    // Case Study room
-    if (activeRoom === 'case-study') {
-      return <CaseStudyRoom />;
-    }
-
-    // Thank You Note room
-    if (activeRoom === 'thank-you-note') {
-      return <ThankYouNoteRoom />;
+      return <ExecutiveDocumentsRoom />;
     }
 
     // Personal Brand room
@@ -372,11 +365,6 @@ export function CareerIQScreen({
     // 90-Day Plan room
     if (activeRoom === 'ninety-day-plan') {
       return <NinetyDayPlanRoom />;
-    }
-
-    // Network Intelligence room
-    if (activeRoom === 'network-intelligence') {
-      return <NetworkIntelligenceRoom />;
     }
 
     // Other rooms

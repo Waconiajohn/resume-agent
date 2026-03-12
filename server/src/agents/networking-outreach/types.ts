@@ -49,7 +49,8 @@ export type OutreachMessageType =
   | 'follow_up_1'
   | 'follow_up_2'
   | 'value_offer'
-  | 'meeting_request';
+  | 'meeting_request'
+  | 'referral_request';
 
 /** All message types in sequence order */
 export const MESSAGE_SEQUENCE: OutreachMessageType[] = [
@@ -67,6 +68,7 @@ export const MESSAGE_TYPE_LABELS: Record<OutreachMessageType, string> = {
   follow_up_2: 'Follow-Up #2',
   value_offer: 'Value Offer',
   meeting_request: 'Meeting Request',
+  referral_request: 'Referral Request',
 };
 
 /** Recommended delays between messages */
@@ -76,6 +78,7 @@ export const MESSAGE_TIMING: Record<OutreachMessageType, string> = {
   follow_up_2: '5-7 days after follow-up #1',
   value_offer: '7-10 days after follow-up #2',
   meeting_request: '3-5 days after value offer',
+  referral_request: 'After establishing rapport — replace or follow value offer',
 };
 
 // ─── Outreach Message ───────────────────────────────────────────────
@@ -223,6 +226,15 @@ export interface NetworkingOutreachState extends BaseState {
 
   /** User feedback for sequence revision (set when user requests changes at sequence_review gate) */
   revision_feedback?: string;
+
+  /** Referral context populated when the target's company has a referral bonus program */
+  referral_context?: {
+    company_name: string;
+    bonus_amount: string | null;
+    bonus_currency: string | null;
+    job_title: string;
+    match_score: number | null;
+  };
 }
 
 // ─── SSE Events ─────────────────────────────────────────────────────

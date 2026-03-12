@@ -13,9 +13,11 @@ import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import type { CareerIQRoom } from './Sidebar';
 
 const VALID_ROOMS: readonly CareerIQRoom[] = [
-  'dashboard', 'resume', 'linkedin', 'content-calendar', 'jobs', 'networking',
-  'interview', 'salary-negotiation', 'executive-bio', 'case-study', 'thank-you-note',
-  'personal-brand', 'ninety-day-plan', 'network-intelligence', 'financial', 'learning',
+  'dashboard', 'resume', 'linkedin', 'jobs', 'networking',
+  'interview', 'salary-negotiation', 'executive-bio',
+  'personal-brand', 'ninety-day-plan', 'financial', 'learning',
+  // Legacy IDs still accepted for redirect
+  'content-calendar', 'case-study', 'thank-you-note', 'network-intelligence',
 ];
 
 function toValidRoom(value: string | null): CareerIQRoom | null {

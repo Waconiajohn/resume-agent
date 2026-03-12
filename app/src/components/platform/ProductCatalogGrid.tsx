@@ -20,27 +20,17 @@ const TOOL_GROUPS: ToolGroup[] = [
   {
     label: 'LinkedIn & Brand',
     icon: '🔗',
-    productIds: ['linkedin-optimizer', 'linkedin-editor', 'linkedin-content', 'content-calendar', 'personal-brand-audit'],
+    productIds: ['linkedin-studio', 'personal-brand-audit', 'executive-documents'],
   },
   {
-    label: 'Job Search & Network',
+    label: 'Job Search & Networking',
     icon: '🎯',
-    productIds: ['job-command-center', 'job-applier', 'networking-hub', 'network-intelligence', 'momentum-tracker'],
+    productIds: ['job-command-center', 'smart-referrals', 'job-applier'],
   },
   {
     label: 'Interview & Offers',
     icon: '🎤',
-    productIds: ['interview-prep', 'mock-interview', 'interview-debrief', 'salary-negotiation', 'counter-offer-sim'],
-  },
-  {
-    label: 'Documents & Writing',
-    icon: '📝',
-    productIds: ['executive-bio', 'case-study-generator', 'thank-you-note', '90-day-plan'],
-  },
-  {
-    label: 'Financial & Planning',
-    icon: '💰',
-    productIds: ['retirement-bridge', 'planner-handoff', 'b2b-admin'],
+    productIds: ['interview-lab', 'salary-negotiation', '90-day-plan', 'financial-wellness'],
   },
 ];
 
@@ -154,17 +144,16 @@ function OrgConnectorLines() {
       <div className="flex justify-center">
         <div className="w-px h-6 bg-gradient-to-b from-indigo-400/25 to-[rgba(152,179,255,0.15)]" />
       </div>
-      {/* Horizontal bar spanning 3 columns with drop points */}
+      {/* Horizontal bar spanning 4 columns with drop points */}
       <div className="mx-auto max-w-7xl px-4">
         <div className="relative h-6">
           {/* Horizontal line */}
-          <div className="absolute top-0 left-[16.67%] right-[16.67%] h-px bg-[rgba(152,179,255,0.15)]" />
-          {/* Left drop */}
-          <div className="absolute top-0 left-[16.67%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
-          {/* Center drop */}
-          <div className="absolute top-0 left-1/2 w-px h-6 bg-[rgba(152,179,255,0.15)]" />
-          {/* Right drop */}
-          <div className="absolute top-0 right-[16.67%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
+          <div className="absolute top-0 left-[12.5%] right-[12.5%] h-px bg-[rgba(152,179,255,0.15)]" />
+          {/* 4 drop points at 12.5%, 37.5%, 62.5%, 87.5% */}
+          <div className="absolute top-0 left-[12.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
+          <div className="absolute top-0 left-[37.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
+          <div className="absolute top-0 left-[62.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
+          <div className="absolute top-0 right-[12.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
         </div>
       </div>
     </div>
@@ -221,7 +210,7 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
       <CoachHeroCard userName={userName} onOpenCoach={onOpenCoach} />
       <OrgConnectorLines />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4 lg:mt-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4 lg:mt-0">
         {TOOL_GROUPS.map(group => (
           <ThemeGroupCard key={group.label} group={group} onNavigate={onNavigate} />
         ))}

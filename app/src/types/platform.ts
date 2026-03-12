@@ -30,12 +30,47 @@ export interface ProductDefinition {
 }
 
 export const PRODUCT_CATALOG: ProductDefinition[] = [
-  // --- Career ---
+  // ─── YOUR FOUNDATION ───
+  {
+    id: 'onboarding-assessment',
+    slug: 'onboarding',
+    name: 'Career Profile',
+    shortDescription: 'Review & update your career profile, strengths, and goals',
+    longDescription:
+      'A structured intake assessment that surfaces your professional strengths, career goals, and financial context through carefully designed questions. Builds a confidential client profile that personalizes every tool in the platform to your unique situation.',
+    icon: '🎯',
+    status: 'active',
+    route: '/onboarding',
+    category: 'career',
+    features: [
+      {
+        title: 'Intelligent Question Design',
+        description:
+          'Adaptive assessment questions that surface your strengths, priorities, and career stage without feeling like a form.',
+      },
+      {
+        title: 'Financial Segment Detection',
+        description:
+          'Infers your financial context from indirect signals — no intrusive questions — so recommendations are grounded in your real constraints.',
+      },
+      {
+        title: 'Client Profile Construction',
+        description:
+          'Builds a persistent profile that every platform tool reads from, ensuring consistent, personalized guidance across your entire search.',
+      },
+      {
+        title: 'Career Direction Clarity',
+        description:
+          'Identifies your target role type, preferred industries, and non-negotiables to focus your search on roles where you are genuinely competitive.',
+      },
+    ],
+    ctaLabel: 'Start Assessment',
+  },
   {
     id: 'resume-strategist',
     slug: 'resume',
-    name: 'Resume Strategist',
-    shortDescription: 'AI-powered resume positioning for executive roles',
+    name: 'Resume Builder',
+    shortDescription: 'AI-powered resume tailored to every job you apply for',
     longDescription:
       'Three AI agents collaborate to transform your resume into a strategic positioning document. The Strategist researches your market and identifies competitive advantages. The Craftsman writes each section with your authentic voice. The Producer ensures ATS compliance across 5 major systems.',
     icon: '\u{1F4C4}',
@@ -101,395 +136,43 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     ],
     ctaLabel: 'Write Cover Letter',
   },
+
+  // ─── LINKEDIN & BRAND ───
   {
-    id: 'interview-prep',
-    slug: 'interview-prep',
-    name: 'Interview Prep Coach',
-    shortDescription: 'Practice answers using your real experience and positioning',
-    longDescription:
-      'Prepares you for interviews by generating likely questions from the JD, then coaching you through STAR-format answers drawn from your verified evidence library.',
-    icon: '\u{1F3AF}',
-    status: 'active',
-    route: '/career-iq?room=interview',
-    category: 'interview',
-    features: [
-      {
-        title: 'JD-Driven Questions',
-        description:
-          'Generates interview questions based on the specific role requirements and company context.',
-      },
-      {
-        title: 'Evidence-Backed Answers',
-        description:
-          'Coaches you to structure answers using real accomplishments from your evidence library.',
-      },
-      {
-        title: 'Behavioral & Technical',
-        description:
-          'Covers behavioral, situational, and role-specific technical questions for complete preparation.',
-      },
-      {
-        title: 'Confidence Scoring',
-        description:
-          'Rates your answer strength and suggests improvements before the real interview.',
-      },
-    ],
-    ctaLabel: 'Start Practice Session',
-  },
-  {
-    id: 'linkedin-optimizer',
+    id: 'linkedin-studio',
     slug: 'linkedin',
-    name: 'LinkedIn Optimizer',
-    shortDescription: 'Align your LinkedIn profile with your resume positioning',
+    name: 'LinkedIn Studio',
+    shortDescription: 'Profile optimization, content creation, and posting calendar',
     longDescription:
-      'Optimizes your LinkedIn headline, summary, and experience sections to align with your resume positioning strategy, maximizing recruiter visibility and inbound opportunities.',
+      'Your complete LinkedIn command center. Optimize your headline, summary, and experience sections for recruiter visibility. Generate thought-leadership posts from your real expertise. Plan a 30-day content calendar aligned to your positioning strategy.',
     icon: '\u{1F4BC}',
     status: 'active',
     route: '/career-iq?room=linkedin',
     category: 'career',
     features: [
       {
-        title: 'Headline Optimization',
+        title: 'Profile Optimization',
         description:
-          'Crafts a keyword-rich headline that signals your target role and unique value proposition.',
+          'Rewrites your headline, About, and experience sections to align with your resume positioning and maximize recruiter search visibility.',
       },
       {
-        title: 'Summary Alignment',
+        title: 'Content Creation',
         description:
-          'Writes an About section that reinforces your resume positioning without duplicating it.',
+          'Generates high-impact LinkedIn posts that position you as a thought leader — derived from your real expertise, not recycled advice.',
       },
       {
-        title: 'Experience Consistency',
+        title: 'Content Calendar',
         description:
-          'Ensures your LinkedIn experience entries complement rather than contradict your resume.',
+          'A personalized 30-day posting plan with hooks, full body copy, CTAs, and optimized hashtags — ready to copy and publish.',
       },
       {
-        title: 'Keyword Coverage',
+        title: 'Keyword Integration',
         description:
-          'Identifies high-value search terms recruiters use and weaves them naturally into your profile.',
+          'Weaves recruiter search terms naturally throughout your profile and content to maximize visibility without keyword stuffing.',
       },
     ],
-    ctaLabel: 'Optimize Profile',
+    ctaLabel: 'Open LinkedIn Studio',
   },
-  {
-    id: 'content-calendar',
-    slug: 'content-calendar',
-    name: 'Content Calendar',
-    shortDescription: '30-day LinkedIn posting plan based on your expertise',
-    longDescription:
-      'Generates a personalized 30-day LinkedIn content calendar from your resume and positioning strategy. Each post includes a hook, full body, CTA, and hashtags — ready to copy and publish.',
-    icon: '\u{1F4C5}',
-    status: 'active',
-    route: '/career-iq?room=content-calendar',
-    category: 'writing',
-    features: [
-      {
-        title: 'Position-Aligned Themes',
-        description:
-          'Content themes are derived from your benchmark profile and target role, not generic advice.',
-      },
-      {
-        title: '7 Content Types',
-        description:
-          'Thought leadership, storytelling, how-to, case studies, industry insight, and more.',
-      },
-      {
-        title: 'Copy-Ready Posts',
-        description:
-          'Full post body with hook, content, CTA, and optimized hashtags — no editing required.',
-      },
-      {
-        title: 'Quality Scoring',
-        description:
-          'Each post is rated for resonance, specificity, and positioning alignment before delivery.',
-      },
-    ],
-    ctaLabel: 'Generate Calendar',
-  },
-  {
-    id: 'job-command-center',
-    slug: 'jobs',
-    name: 'Job Command Center',
-    shortDescription: 'Track, search, and manage your full job pipeline',
-    longDescription:
-      'Central hub for your active job search. Track applications through every pipeline stage, surface AI-matched job opportunities, and get coaching nudges to keep momentum.',
-    icon: '\u{1F50D}',
-    status: 'active',
-    route: '/career-iq?room=jobs',
-    category: 'career',
-    features: [
-      {
-        title: 'Pipeline Kanban',
-        description:
-          'Drag-and-drop application tracking from Research through Offer — with stage-specific action prompts.',
-      },
-      {
-        title: 'AI Job Matching',
-        description:
-          'Surfaces roles that match your positioning profile, not just keyword searches.',
-      },
-      {
-        title: 'Momentum Alerts',
-        description:
-          'Flags applications that have gone cold and recommends next steps to re-engage.',
-      },
-      {
-        title: 'Cross-Tool Integration',
-        description:
-          'Automatically links resume sessions, cover letters, and interview prep to each application.',
-      },
-    ],
-    ctaLabel: 'Open Command Center',
-  },
-  {
-    id: 'job-applier',
-    slug: 'job-applier',
-    name: 'Job Applier',
-    shortDescription: 'Chrome extension that auto-fills job applications with your tailored resume',
-    longDescription:
-      'A Chrome extension that detects when you are on a job application page and auto-fills the form using your CareerIQ tailored resume. Supports Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS. Uses a 4-tier field detection strategy — ATS-specific selectors, label matching, attribute matching, and AI inference — to fill every field accurately, including resume PDF upload.',
-    icon: '\u{1F680}',
-    status: 'active',
-    route: '/tools/job-applier',
-    category: 'career',
-    externalUrl: 'https://chromewebstore.google.com',
-    features: [
-      {
-        title: '6 ATS Platforms',
-        description:
-          'Auto-fills applications on Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS — the platforms used by 90%+ of employers.',
-      },
-      {
-        title: '4-Tier Field Detection',
-        description:
-          'ATS-specific selectors, label matching, attribute matching, and AI inference work together so every field gets filled, even on custom forms.',
-      },
-      {
-        title: 'Resume PDF Upload',
-        description:
-          'Automatically uploads your tailored resume PDF to file input fields — no manual download and re-upload required.',
-      },
-      {
-        title: 'Tailored Per Job',
-        description:
-          'Pulls the resume CareerIQ tailored for this specific job, not a generic master resume. Each application gets the right version automatically.',
-      },
-    ],
-    ctaLabel: 'Get Chrome Extension',
-  },
-  {
-    id: 'networking-hub',
-    slug: 'networking',
-    name: 'Networking Hub',
-    shortDescription: 'AI-generated outreach sequences for every target contact',
-    longDescription:
-      'Apply the Rule of Four: reach out to four people at every target company before the interview starts. AI writes personalized LinkedIn outreach sequences so warm referrals replace cold applications.',
-    icon: '\u{1F91D}',
-    status: 'active',
-    route: '/career-iq?room=networking',
-    category: 'networking',
-    features: [
-      {
-        title: 'AI Outreach Generator',
-        description:
-          'Personalized multi-message sequences for hiring managers, team leads, peers, and recruiters.',
-      },
-      {
-        title: 'Rule of Four Tracker',
-        description:
-          'For each application, track outreach progress across the four key contact roles.',
-      },
-      {
-        title: 'Template Library',
-        description:
-          'Proven templates for warm introductions, direct outreach, follow-ups, and recruiter intros.',
-      },
-      {
-        title: 'Recruiter CRM',
-        description:
-          'Track executive recruiters working in your space — keep them warm across your search.',
-      },
-    ],
-    ctaLabel: 'Open Networking Hub',
-  },
-  // --- Planning ---
-  {
-    id: 'salary-negotiation',
-    slug: 'salary-negotiation',
-    name: 'Salary Negotiation',
-    shortDescription: 'Script and strategy for every negotiation scenario',
-    longDescription:
-      'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts for the initial counter, silence management, and multi-offer navigation.',
-    icon: '\u{1F4B0}',
-    status: 'active',
-    route: '/career-iq?room=salary-negotiation',
-    category: 'planning',
-    features: [
-      {
-        title: 'Market Benchmarking',
-        description:
-          'Compares your offer against live comp data for your role, seniority, and geography.',
-      },
-      {
-        title: 'Negotiation Scripts',
-        description:
-          'Word-for-word language for countering, anchoring high, and navigating silence without caving.',
-      },
-      {
-        title: 'Total Comp Analysis',
-        description:
-          'Beyond base: equity, bonus, PTO, signing bonus, and benefits valued in a single comparable number.',
-      },
-      {
-        title: 'Scenario Planner',
-        description:
-          'Pre-plans responses to every counter-offer scenario so you are never caught off guard.',
-      },
-    ],
-    ctaLabel: 'Build Negotiation Strategy',
-  },
-  {
-    id: '90-day-plan',
-    slug: '90-day-plan',
-    name: '90-Day Plan Generator',
-    shortDescription: 'Structured first-90-days plan tailored to your new role',
-    longDescription:
-      'Generates a role-specific 30-60-90 day plan that demonstrates strategic thinking in interviews and accelerates onboarding after you land the job. Built from the JD, company context, and your positioning.',
-    icon: '\u{1F5FA}\uFE0F',
-    status: 'active',
-    route: '/career-iq?room=ninety-day-plan',
-    category: 'planning',
-    features: [
-      {
-        title: 'JD-Aligned Priorities',
-        description:
-          'Plan milestones map directly to the role\'s stated success criteria and stakeholder expectations.',
-      },
-      {
-        title: 'Interview-Ready Format',
-        description:
-          'Structured for use as a leave-behind or final-round presentation — shows strategic thinking.',
-      },
-      {
-        title: 'Three-Phase Structure',
-        description:
-          'Listen & learn (days 1-30), assess & align (days 31-60), lead & execute (days 61-90).',
-      },
-      {
-        title: 'Quick Wins Identification',
-        description:
-          'Surfaces early wins that build credibility before tackling the longer transformation agenda.',
-      },
-    ],
-    ctaLabel: 'Generate 90-Day Plan',
-  },
-  // --- Writing ---
-  {
-    id: 'executive-bio',
-    slug: 'executive-bio',
-    name: 'Executive Bio Generator',
-    shortDescription: 'Polished executive bios for speaking, boards, and press',
-    longDescription:
-      'Generates a versatile executive biography from your resume and positioning strategy. Produces short, medium, and long versions for conference programs, board profiles, media kits, and LinkedIn.',
-    icon: '\u{1F4DD}',
-    status: 'active',
-    route: '/career-iq?room=executive-bio',
-    category: 'writing',
-    features: [
-      {
-        title: 'Three-Length Versions',
-        description:
-          'Tweet-length, paragraph, and full-page bios generated simultaneously from one input.',
-      },
-      {
-        title: 'Positioning-Consistent',
-        description:
-          'Voice and positioning align with your resume strategy — no conflicting narratives.',
-      },
-      {
-        title: 'Audience Variants',
-        description:
-          'Generates board, media, speaking, and investor-audience variants from a single run.',
-      },
-      {
-        title: 'Third-Person Voice',
-        description:
-          'Authoritative third-person narrative with your authentic accomplishments, no puffery.',
-      },
-    ],
-    ctaLabel: 'Generate Executive Bio',
-  },
-  {
-    id: 'case-study-generator',
-    slug: 'case-study',
-    name: 'Case Study Generator',
-    shortDescription: 'Structured case studies from your biggest career wins',
-    longDescription:
-      'Turns your raw accomplishments into publication-ready case studies. Structures each win in the Problem-Action-Result format with quantified outcomes, ready for portfolios, proposals, and board presentations.',
-    icon: '\u{1F4CA}',
-    status: 'active',
-    route: '/career-iq?room=case-study',
-    category: 'writing',
-    features: [
-      {
-        title: 'Problem-Action-Result Framework',
-        description:
-          'Structured narrative that makes every win credible and instantly understandable.',
-      },
-      {
-        title: 'Quantified Outcomes',
-        description:
-          'Guides you to surface the metrics that make the impact concrete and compelling.',
-      },
-      {
-        title: 'Multiple Formats',
-        description:
-          'Outputs one-page PDF, slide-ready summary, and paragraph for proposal sections.',
-      },
-      {
-        title: 'Portfolio Integration',
-        description:
-          'Case studies link to your master evidence library for reuse across applications.',
-      },
-    ],
-    ctaLabel: 'Create Case Study',
-  },
-  {
-    id: 'thank-you-note',
-    slug: 'thank-you-note',
-    name: 'Thank You Note Writer',
-    shortDescription: 'Post-interview thank you notes that reinforce your candidacy',
-    longDescription:
-      'Generates personalized thank you notes for every interviewer within minutes of a conversation. Ties each note to a specific insight from the conversation, reinforcing your key differentiators.',
-    icon: '\u{1F48C}',
-    status: 'active',
-    route: '/career-iq?room=thank-you-note',
-    category: 'writing',
-    features: [
-      {
-        title: 'Conversation-Specific',
-        description:
-          'References real discussion points from your interview so each note feels personal, not templated.',
-      },
-      {
-        title: 'Differentiator Reinforcement',
-        description:
-          'Subtly reiterates your top 1-2 positioning points without being repetitive or sycophantic.',
-      },
-      {
-        title: 'Tone Matching',
-        description:
-          'Adjusts formality for the audience — VP vs. HR vs. peer — in the same generation run.',
-      },
-      {
-        title: 'Same-Day Delivery',
-        description:
-          'Fast enough to send within hours of the interview while the conversation is still fresh.',
-      },
-    ],
-    ctaLabel: 'Write Thank You Note',
-  },
-  // --- Intelligence ---
   {
     id: 'personal-brand-audit',
     slug: 'personal-brand-audit',
@@ -526,297 +209,260 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     ctaLabel: 'Audit My Brand',
   },
   {
-    id: 'network-intelligence',
-    slug: 'network-intelligence',
-    name: 'Network Intelligence',
-    shortDescription: 'Find warm referral paths into every target company',
+    id: 'executive-documents',
+    slug: 'executive-bio',
+    name: 'Executive Documents',
+    shortDescription: 'Professional bios and consulting-grade case studies',
     longDescription:
-      'Upload your LinkedIn connections and we map open positions to companies where you have existing contacts. Surface job matches, identify warm referral paths, and prioritize applications where your network gives you an inside track.',
-    icon: '\u{1F310}',
+      'Generate polished executive biographies for speaking engagements, board profiles, and media kits — plus structured case studies that turn your biggest career wins into publication-ready narratives with quantified outcomes.',
+    icon: '\u{1F4DD}',
     status: 'active',
-    route: '/career-iq?room=network-intelligence',
-    category: 'intelligence',
+    route: '/career-iq?room=executive-bio',
+    category: 'writing',
     features: [
       {
-        title: 'Connection Mapping',
+        title: 'Executive Bios',
+        description:
+          'Tweet-length, paragraph, and full-page bios generated simultaneously — board, media, speaking, and investor variants.',
+      },
+      {
+        title: 'Case Studies',
+        description:
+          'Structured Problem-Action-Result narratives with quantified outcomes, ready for portfolios and proposals.',
+      },
+      {
+        title: 'Positioning-Consistent',
+        description:
+          'Voice and positioning align with your resume strategy — no conflicting narratives across documents.',
+      },
+      {
+        title: 'Multiple Formats',
+        description:
+          'One-page PDF, slide-ready summary, and paragraph format for proposal sections and presentations.',
+      },
+    ],
+    ctaLabel: 'Create Documents',
+  },
+
+  // ─── JOB SEARCH & NETWORKING ───
+  {
+    id: 'job-command-center',
+    slug: 'jobs',
+    name: 'Job Command Center',
+    shortDescription: 'Search, match, pipeline, and daily momentum tracking',
+    longDescription:
+      'Central hub for your active job search. Track applications through every pipeline stage, surface AI-matched job opportunities, monitor your search velocity, and get coaching nudges to keep momentum.',
+    icon: '\u{1F50D}',
+    status: 'active',
+    route: '/career-iq?room=jobs',
+    category: 'career',
+    features: [
+      {
+        title: 'Pipeline Kanban',
+        description:
+          'Drag-and-drop application tracking from Research through Offer — with stage-specific action prompts.',
+      },
+      {
+        title: 'AI Job Matching',
+        description:
+          'Surfaces roles that match your positioning profile, not just keyword searches.',
+      },
+      {
+        title: 'Momentum Tracking',
+        description:
+          'Weekly velocity scores, activity logging, and coaching nudges that flag when your search pace is dropping.',
+      },
+      {
+        title: 'Cross-Tool Integration',
+        description:
+          'Automatically links resume sessions, cover letters, and interview prep to each application.',
+      },
+    ],
+    ctaLabel: 'Open Command Center',
+  },
+  {
+    id: 'smart-referrals',
+    slug: 'networking',
+    name: 'Smart Referrals',
+    shortDescription: 'Import connections, find jobs at their companies, referral bonuses, and AI outreach',
+    longDescription:
+      'Upload your LinkedIn connections and we map open positions to companies where you have existing contacts. Surface referral bonus opportunities, generate personalized outreach sequences, and track your networking across every target company.',
+    icon: '\u{1F310}',
+    status: 'active',
+    route: '/career-iq?room=networking',
+    category: 'networking',
+    features: [
+      {
+        title: 'Connection Import & Mapping',
         description:
           'Imports your full LinkedIn network and organizes contacts by company for fast referral discovery.',
       },
       {
-        title: 'Job Match Surfacing',
+        title: 'Referral Opportunities',
         description:
-          'Identifies open positions at companies where you have first- or second-degree connections.',
+          'Cross-references your connections with companies offering referral bonuses — mutual benefit outreach built in.',
       },
       {
-        title: 'Referral Path Scoring',
+        title: 'AI Outreach Sequences',
         description:
-          'Ranks target companies by connection strength so you focus energy where it will have the most impact.',
+          'Personalized multi-message sequences for hiring managers, team leads, peers, and recruiters using the Rule of Four.',
       },
       {
-        title: 'Target Title Tracking',
+        title: 'Career Page Scanner',
         description:
-          'Set your target roles once and continuously surface matching positions across your network.',
+          'Scrapes target company career pages and matches open roles against your positioning profile.',
       },
     ],
-    ctaLabel: 'Map My Network',
+    ctaLabel: 'Open Smart Referrals',
   },
-  // --- Onboarding ---
   {
-    id: 'onboarding-assessment',
-    slug: 'onboarding',
-    name: 'Onboarding Assessment',
-    shortDescription: 'Personalized career assessment that maps your strengths and financial context',
+    id: 'job-applier',
+    slug: 'job-applier',
+    name: 'Job Applier',
+    shortDescription: 'Chrome extension that auto-fills job applications with your tailored resume',
     longDescription:
-      'A structured intake assessment that surfaces your professional strengths, career goals, and financial context through carefully designed questions. Builds a confidential client profile that personalizes every tool in the platform to your unique situation.',
-    icon: '🎯',
+      'A Chrome extension that detects when you are on a job application page and auto-fills the form using your CareerIQ tailored resume. Supports Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS.',
+    icon: '\u{1F680}',
     status: 'active',
-    route: '/onboarding',
+    route: '/tools/job-applier',
     category: 'career',
+    externalUrl: 'https://chromewebstore.google.com',
     features: [
       {
-        title: 'Intelligent Question Design',
+        title: '6 ATS Platforms',
         description:
-          'Adaptive assessment questions that surface your strengths, priorities, and career stage without feeling like a form.',
+          'Auto-fills applications on Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS.',
       },
       {
-        title: 'Financial Segment Detection',
+        title: '4-Tier Field Detection',
         description:
-          'Infers your financial context from indirect signals — no intrusive questions — so recommendations are grounded in your real constraints.',
+          'ATS-specific selectors, label matching, attribute matching, and AI inference work together so every field gets filled.',
       },
       {
-        title: 'Client Profile Construction',
+        title: 'Resume PDF Upload',
         description:
-          'Builds a persistent profile that every platform tool reads from, ensuring consistent, personalized guidance across your entire search.',
+          'Automatically uploads your tailored resume PDF to file input fields — no manual download and re-upload required.',
       },
       {
-        title: 'Career Direction Clarity',
+        title: 'Tailored Per Job',
         description:
-          'Identifies your target role type, preferred industries, and non-negotiables to focus your search on roles where you are genuinely competitive.',
+          'Pulls the resume CareerIQ tailored for this specific job, not a generic master resume.',
       },
     ],
-    ctaLabel: 'Start Assessment',
+    ctaLabel: 'Get Chrome Extension',
   },
-  // --- Interview ---
+
+  // ─── INTERVIEW & OFFERS ───
   {
-    id: 'mock-interview',
-    slug: 'mock-interview',
-    name: 'Mock Interview',
-    shortDescription: 'Practice real interviews with AI-powered feedback and scoring',
+    id: 'interview-lab',
+    slug: 'interview',
+    name: 'Interview Lab',
+    shortDescription: 'Prep, practice, debrief, and follow-up all in one place',
     longDescription:
-      'Simulates realistic interview scenarios using role-specific questions drawn from the JD and company context. The AI plays a calibrated interviewer and coaches you through stronger STAR-format answers after each response.',
-    icon: '🎤',
+      'Your complete interview command center. Prepare with JD-driven question banks, practice in realistic mock interviews with AI feedback, debrief immediately after real interviews, and generate personalized thank-you notes — all in one place.',
+    icon: '\u{1F3AF}',
     status: 'active',
     route: '/career-iq?room=interview',
     category: 'interview',
     features: [
       {
-        title: 'Role-Specific Question Sets',
+        title: 'Interview Prep',
         description:
-          'Questions are generated from the actual job description and company intelligence, not generic interview banks.',
+          'JD-driven question generation with evidence-backed STAR-format answer coaching from your real accomplishments.',
       },
       {
-        title: 'Real-Time Answer Feedback',
+        title: 'Mock Interviews',
         description:
-          'Immediate scoring on specificity, structure, and evidence quality after each response, with targeted suggestions.',
+          'Realistic practice sessions with real-time scoring on specificity, structure, and evidence quality.',
       },
       {
-        title: 'STAR Framework Coaching',
+        title: 'Post-Interview Debrief',
         description:
-          'Guides you to build complete Situation-Task-Action-Result answers using real accomplishments from your evidence library.',
+          'Structured analysis of what went well, missed opportunities, and targeted prep for the next round.',
       },
       {
-        title: 'Confidence Scoring',
+        title: 'Thank You Notes',
         description:
-          'Rates your overall readiness for the real interview and tracks improvement across practice sessions.',
+          'Personalized follow-up notes for every interviewer that reinforce your key differentiators.',
       },
     ],
-    ctaLabel: 'Begin Practice',
-  },
-  // --- Writing ---
-  {
-    id: 'linkedin-content',
-    slug: 'linkedin-content',
-    name: 'LinkedIn Content Writer',
-    shortDescription: 'Individual LinkedIn posts crafted from your expertise and positioning',
-    longDescription:
-      'Generates high-impact individual LinkedIn posts that position you as a thought leader in your field. Each post is derived from your real expertise and aligned to your strategic positioning — not recycled career advice.',
-    icon: '✍️',
-    status: 'active',
-    route: '/career-iq?room=linkedin',
-    category: 'writing',
-    features: [
-      {
-        title: 'Thought Leadership Angles',
-        description:
-          'Surfaces insights from your own experience and translates them into posts that demonstrate genuine expertise.',
-      },
-      {
-        title: 'Engagement Hook Engineering',
-        description:
-          'Opens with a proven hook structure that stops the scroll and earns the read without clickbait tactics.',
-      },
-      {
-        title: 'Positioning Alignment',
-        description:
-          'Every post reinforces your target role positioning so your content and your resume tell the same story.',
-      },
-      {
-        title: 'Hashtag Optimization',
-        description:
-          'Selects hashtags based on reach data for your specific niche — not the most popular tags, the most relevant ones.',
-      },
-    ],
-    ctaLabel: 'Write a Post',
+    ctaLabel: 'Open Interview Lab',
   },
   {
-    id: 'linkedin-editor',
-    slug: 'linkedin-editor',
-    name: 'LinkedIn Profile Editor',
-    shortDescription: 'Section-by-section LinkedIn profile editing with positioning alignment',
+    id: 'salary-negotiation',
+    slug: 'salary-negotiation',
+    name: 'Salary & Negotiation',
+    shortDescription: 'Market benchmarks, negotiation scripts, and counter-offer simulation',
     longDescription:
-      'Works through your LinkedIn profile section by section — headline, About, experience, skills — rewriting each to align with your strategic positioning. The result is a profile that recruiter searches surface and hiring managers take seriously.',
-    icon: '✏️',
-    status: 'active',
-    route: '/career-iq?room=linkedin',
-    category: 'career',
-    features: [
-      {
-        title: 'Headline Optimization',
-        description:
-          'Rewrites your headline to pack your target role, unique value, and top keyword into 220 characters.',
-      },
-      {
-        title: 'Summary Alignment',
-        description:
-          'Crafts an About section that extends your resume positioning without duplicating it word for word.',
-      },
-      {
-        title: 'Experience Section Editing',
-        description:
-          'Rewrites each role entry to complement your resume — consistent scope, consistent accomplishments, no contradictions.',
-      },
-      {
-        title: 'Keyword Integration',
-        description:
-          'Weaves recruiter search terms naturally throughout your profile to maximize visibility without keyword stuffing.',
-      },
-    ],
-    ctaLabel: 'Edit My Profile',
-  },
-  // --- Interview ---
-  {
-    id: 'interview-debrief',
-    slug: 'interview-debrief',
-    name: 'Interview Debrief',
-    shortDescription: 'Post-interview analysis to improve your performance for the next round',
-    longDescription:
-      'Structured debrief session immediately after an interview while details are fresh. Analyzes what went well, where you left value on the table, and what signals you should read into — then builds a targeted prep plan for the next round.',
-    icon: '📋',
-    status: 'active',
-    route: '/career-iq?room=interview',
-    category: 'interview',
-    features: [
-      {
-        title: 'Performance Assessment',
-        description:
-          'Evaluates your answers for strength of evidence, positioning consistency, and missed opportunities.',
-      },
-      {
-        title: 'Improvement Targeting',
-        description:
-          'Identifies the two or three specific areas where better preparation would have the highest impact on next-round success.',
-      },
-      {
-        title: 'Next Round Preparation',
-        description:
-          'Builds a focused prep plan based on what this round revealed about the hiring team\'s priorities.',
-      },
-      {
-        title: 'Signal Reading',
-        description:
-          'Helps you interpret interviewer behavior, question patterns, and tone shifts to gauge where you stand.',
-      },
-    ],
-    ctaLabel: 'Debrief This Interview',
-  },
-  // --- Planning ---
-  {
-    id: 'counter-offer-sim',
-    slug: 'counter-offer-sim',
-    name: 'Counter-Offer Simulation',
-    shortDescription: 'Simulate negotiation scenarios before the real conversation',
-    longDescription:
-      'Runs you through realistic counter-offer scenarios so you walk into the real negotiation having already rehearsed every response. Builds your leverage map, scripts your opening move, and prepares you for the most common pushbacks.',
-    icon: '⚖️',
+      'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts and runs you through realistic counter-offer scenarios so you walk in fully prepared.',
+    icon: '\u{1F4B0}',
     status: 'active',
     route: '/career-iq?room=salary-negotiation',
     category: 'planning',
     features: [
       {
-        title: 'Scenario Modeling',
+        title: 'Market Benchmarking',
         description:
-          'Simulates the full range of employer responses — accept, partial counter, hard no — so nothing catches you off guard.',
+          'Compares your offer against live comp data for your role, seniority, and geography.',
       },
       {
-        title: 'Response Scripting',
+        title: 'Negotiation Scripts',
         description:
-          'Generates word-for-word language for your counter, your silence, and your walk-away threshold.',
+          'Word-for-word language for countering, anchoring high, and navigating silence without caving.',
       },
       {
-        title: 'Leverage Analysis',
+        title: 'Counter-Offer Simulation',
         description:
-          'Maps your actual leverage points — competing offers, market data, internal demand — and teaches you to use them effectively.',
+          'Rehearse the full range of employer responses — accept, partial counter, hard no — so nothing catches you off guard.',
       },
       {
-        title: 'Outcome Prediction',
+        title: 'Total Comp Analysis',
         description:
-          'Estimates the likely outcome range for each scenario based on your inputs and negotiation strategy.',
+          'Beyond base: equity, bonus, PTO, signing bonus, and benefits valued in a single comparable number.',
       },
     ],
-    ctaLabel: 'Run a Simulation',
+    ctaLabel: 'Build Negotiation Strategy',
   },
-  // --- Intelligence ---
   {
-    id: 'momentum-tracker',
-    slug: 'momentum',
-    name: 'Momentum Tracker',
-    shortDescription: 'Track your job search velocity and get coaching nudges to stay on track',
+    id: '90-day-plan',
+    slug: '90-day-plan',
+    name: '90-Day Plan',
+    shortDescription: 'Structured first-90-days plan tailored to your new role',
     longDescription:
-      'Monitors the cadence of your job search activity — applications sent, outreach made, interviews scheduled — and provides weekly momentum scores with coaching nudges to prevent the stalls that sink most searches.',
-    icon: '📈',
+      'Generates a role-specific 30-60-90 day plan that demonstrates strategic thinking in interviews and accelerates onboarding after you land the job. Built from the JD, company context, and your positioning.',
+    icon: '\u{1F5FA}\uFE0F',
     status: 'active',
-    route: '/career-iq?room=dashboard',
-    category: 'intelligence',
+    route: '/career-iq?room=ninety-day-plan',
+    category: 'planning',
     features: [
       {
-        title: 'Activity Tracking',
+        title: 'JD-Aligned Priorities',
         description:
-          'Logs applications, outreach, interviews, and follow-ups in one place to give you a real picture of your search pace.',
+          'Plan milestones map directly to the role\'s stated success criteria and stakeholder expectations.',
       },
       {
-        title: 'Momentum Scoring',
+        title: 'Interview-Ready Format',
         description:
-          'Weekly score quantifies your search velocity and flags when your pace is dropping below the level needed to hit your timeline.',
+          'Structured for use as a leave-behind or final-round presentation — shows strategic thinking.',
       },
       {
-        title: 'Weekly Goal Setting',
+        title: 'Three-Phase Structure',
         description:
-          'Sets realistic weekly activity targets based on your timeline, role type, and the conversion rates typical for your market.',
+          'Listen & learn (days 1-30), assess & align (days 31-60), lead & execute (days 61-90).',
       },
       {
-        title: 'Coaching Nudges',
+        title: 'Quick Wins Identification',
         description:
-          'Context-aware prompts that identify exactly where your funnel is leaking and suggest the highest-leverage action to take next.',
+          'Surfaces early wins that build credibility before tackling the longer transformation agenda.',
       },
     ],
-    ctaLabel: 'Track My Momentum',
+    ctaLabel: 'Generate 90-Day Plan',
   },
-  // --- Financial ---
   {
-    id: 'retirement-bridge',
-    slug: 'retirement-bridge',
-    name: 'Retirement Bridge',
-    shortDescription: 'Retirement readiness assessment with fiduciary-grade financial planning guidance',
+    id: 'financial-wellness',
+    slug: 'financial',
+    name: 'Financial Wellness',
+    shortDescription: 'Retirement readiness assessment and fiduciary planner matching',
     longDescription:
       'A seven-dimension retirement readiness assessment that evaluates your financial, health, social, and psychological preparedness. Provides fiduciary-grade guidance and matches you with qualified financial planners for a warm, documented handoff.',
     icon: '🏦',
@@ -835,9 +481,9 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Produces a composite readiness score across all dimensions with specific, actionable recommendations for each gap.',
       },
       {
-        title: 'Planner Matching',
+        title: 'Planner Matching & Handoff',
         description:
-          'Qualifies and matches you with fiduciary-certified financial planners based on your specific situation and needs.',
+          'Qualifies and matches you with fiduciary-certified financial planners, then generates a detailed handoff document so session one goes straight to strategy.',
       },
       {
         title: 'Fiduciary Guardrails',
@@ -846,76 +492,5 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       },
     ],
     ctaLabel: 'Assess My Readiness',
-  },
-  // --- Coming Soon ---
-  {
-    id: 'b2b-admin',
-    slug: 'b2b-admin',
-    name: 'B2B Admin Portal',
-    shortDescription: 'Enterprise outplacement portal for HR teams managing career transitions',
-    longDescription:
-      'A dedicated admin portal for HR and talent teams managing large-scale outplacement programs. Provides seat management, cohort tracking, engagement reporting, and white-label branding for enterprise deployments.',
-    icon: '🏢',
-    status: 'coming_soon',
-    route: '/b2b',
-    category: 'planning',
-    features: [
-      {
-        title: 'Seat Management',
-        description:
-          'Provision, transfer, and revoke platform seats for outplacement cohorts with full audit trail.',
-      },
-      {
-        title: 'Cohort Tracking',
-        description:
-          'Monitor progress across groups of candidates — by division, layoff date, or program tier — in a single dashboard.',
-      },
-      {
-        title: 'Engagement Reporting',
-        description:
-          'Detailed reporting on tool usage, session completion, and placement outcomes to demonstrate program ROI.',
-      },
-      {
-        title: 'White-Label Branding',
-        description:
-          'Deploy the platform under your company brand — custom logo, colors, and domain — for a seamless employee experience.',
-      },
-    ],
-    ctaLabel: 'Request Enterprise Access',
-  },
-  {
-    id: 'planner-handoff',
-    slug: 'planner-handoff',
-    name: 'Planner Handoff',
-    shortDescription: 'Warm introductions to qualified financial planners matched to your needs',
-    longDescription:
-      'A structured warm handoff process that connects you with a pre-qualified, fiduciary-certified financial planner. Generates a detailed handoff document summarizing your financial situation so your first planner meeting skips the intake and goes straight to strategy.',
-    icon: '🤝',
-    status: 'coming_soon',
-    route: '/career-iq',
-    category: 'financial',
-    features: [
-      {
-        title: 'Planner Qualification',
-        description:
-          'Every matched planner passes a five-gate qualification check covering fiduciary status, credentials, and specialty alignment.',
-      },
-      {
-        title: 'Needs Matching',
-        description:
-          'Matches you to planners whose specialty areas align with your specific financial situation and goals.',
-      },
-      {
-        title: 'Warm Handoff Documents',
-        description:
-          'Generates a structured briefing document for your planner so session one focuses on your strategy, not your background.',
-      },
-      {
-        title: 'Fiduciary Verification',
-        description:
-          'Independently verifies fiduciary status and current credentials before any referral is made.',
-      },
-    ],
-    ctaLabel: 'Find a Planner',
   },
 ];

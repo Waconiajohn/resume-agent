@@ -217,10 +217,35 @@ Follow-up cadence (authoritative — all rules use these timings):
 - Never send more than 3 follow-ups in a sequence. Beyond 3, you become a nuisance, not a peer.
 - If the target responds at any point, BREAK the sequence and engage authentically.`;
 
+// ─── Rule 9: Referral Outreach ───────────────────────────────────────
+
+export const RULE_9_REFERRAL_OUTREACH = `## RULE 9 — REFERRAL OUTREACH
+
+When the candidate has identified a company with a referral bonus program and has a connection there, the outreach sequence can include a referral request message.
+
+Key principles:
+1. **Mutual benefit framing** — Lead with the fact that both parties benefit. The connection earns a referral bonus; the candidate gets an inside referral.
+2. **Never lead with the money** — The referral bonus is mentioned as a secondary benefit, not the primary motivation for reaching out.
+3. **Established rapport first** — A referral request should only come AFTER the connection request has been accepted and at least one meaningful exchange has occurred. Never cold-ask for a referral.
+4. **Specificity** — Reference the specific job title and why you're a strong fit. Generic "any openings" requests signal desperation.
+5. **Easy out** — Always give them a graceful way to decline: "If the timing isn't right or it doesn't feel like a fit, no worries at all."
+6. **Gratitude, not entitlement** — Frame it as asking a favor, not claiming a right.
+
+Tone: Confident peer who sees a mutual opportunity — not a desperate job seeker begging for a referral.
+
+Example framing:
+"I noticed [Company] has a [Job Title] opening that aligns closely with my [specific experience]. I understand [Company] has a referral program — if you think I'd be a strong fit based on what you know of my background, I'd be grateful for a referral. It could be a win for both of us. No pressure at all if the timing isn't right."
+
+What to NEVER do:
+- "I hear you get $X,000 for referring someone" (crass)
+- "Can you put in a good word for me?" (vague, passive)
+- Ask for a referral in the first message (too aggressive)
+- Make it sound like you're doing THEM a favor by letting them refer you`;
+
 // ─── Combined System Prompt Injection ───────────────────────────────
 
 /**
- * All 9 rules concatenated for injection into the Writer's system prompt.
+ * All 10 rules concatenated for injection into the Writer's system prompt.
  */
 export const NETWORKING_OUTREACH_RULES = [
   RULE_0_PHILOSOPHY,
@@ -232,4 +257,5 @@ export const NETWORKING_OUTREACH_RULES = [
   RULE_6_TONE,
   RULE_7_SELF_REVIEW,
   RULE_8_SPECIFICITY,
+  RULE_9_REFERRAL_OUTREACH,
 ].join('\n\n---\n\n');

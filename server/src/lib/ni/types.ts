@@ -172,6 +172,23 @@ export interface BooleanSearchResult {
   generatedAt: string;
 }
 
+// ─── Referral Cross-Reference ─────────────────────────────────────────────────
+
+export interface ReferralOpportunity {
+  job_match_id: string;
+  job_title: string;
+  job_url: string | null;
+  job_location: string | null;
+  match_score: number | null;
+  company_id: string;
+  company_name: string;
+  bonus_amount: string | null;
+  bonus_currency: string | null;
+  program_url: string | null;
+  connections: { first_name: string; last_name: string; position: string | null }[];
+  connection_count: number;
+}
+
 // ─── Career Page Scraper ──────────────────────────────────────────────────────
 
 export interface CompanyInfo {
