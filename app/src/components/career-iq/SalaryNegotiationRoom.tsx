@@ -317,18 +317,18 @@ interface ScenarioCard {
 const COUNTER_SCENARIOS: ScenarioCard[] = [
   {
     scenario: 'Budget constraint',
-    employer_says: '"We'd love to match what you're asking, but the budget band for this role doesn\'t allow it."',
-    recommended_response: '"I understand the band constraint. Could we explore making it work through a first-year bonus guarantee, an accelerated equity vest, or an earlier performance review? I want to find a path that works for both of us."',
+    employer_says: `"We'd love to match what you're asking, but the budget band for this role doesn't allow it."`,
+    recommended_response: `"I understand the band constraint. Could we explore making it work through a first-year bonus guarantee, an accelerated equity vest, or an earlier performance review? I want to find a path that works for both of us."`,
   },
   {
     scenario: 'Already at the top of the band',
-    employer_says: '"Your ask is actually above the top of our band for this role."',
-    recommended_response: '"I appreciate the transparency. Given the scope of what you\'ve described — particularly [specific element] — I\'d welcome a conversation about whether there\'s flexibility in the title, reporting structure, or total package. I want to make this work."',
+    employer_says: `"Your ask is actually above the top of our band for this role."`,
+    recommended_response: `"I appreciate the transparency. Given the scope of what you've described — particularly [specific element] — I'd welcome a conversation about whether there's flexibility in the title, reporting structure, or total package. I want to make this work."`,
   },
   {
     scenario: 'Asking about your current comp',
-    employer_says: '"Can you share what you\'re currently making?"',
-    recommended_response: '"I\'d prefer to focus on what this role requires and what the market supports for this level. I\'m confident we can find a number that works — what\'s the range you had in mind for this position?"',
+    employer_says: `"Can you share what you're currently making?"`,
+    recommended_response: `"I'd prefer to focus on what this role requires and what the market supports for this level. I'm confident we can find a number that works — what's the range you had in mind for this position?"`,
   },
 ];
 
