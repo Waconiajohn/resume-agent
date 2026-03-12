@@ -79,7 +79,7 @@ function PhaseProgressTracker({ activePhase }: { activePhase?: number }) {
           <div
             className={cn(
               'h-8 w-8 rounded-full border-2 flex items-center justify-center text-[11px] font-bold transition-all duration-500',
-              activePhase === undefined || i <= (activePhase ?? 2)
+              activePhase !== undefined && i <= activePhase
                 ? `${phase.bg} ${phase.border} ${phase.color}`
                 : 'bg-white/[0.03] border-white/[0.08] text-white/30',
             )}
@@ -466,7 +466,9 @@ export function NinetyDayPlanRoom() {
     activityMessages,
     error,
     currentStage,
+    stakeholderReviewData,
     startPipeline,
+    respondToGate,
     reset,
   } = useNinetyDayPlan();
 
@@ -560,6 +562,53 @@ export function NinetyDayPlanRoom() {
           targetCompany={targetCompany}
           onReset={handleReset}
         />
+      </div>
+    );
+  }
+
+  // Stakeholder review gate — pipeline paused awaiting user confirmation
+  if (status === 'stakeholder_review') {
+    const stakeholderCount = Array.isArray(stakeholderReviewData?.stakeholder_map)
+      ? stakeholderReviewData.stakeholder_map.length
+      : 0;
+    const quickWinCount = Array.isArray(stakeholderReviewData?.quick_wins)
+      ? stakeholderReviewData.quick_wins.length
+      : 0;
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <div>
+          <h1 className="text-xl font-semibold text-white/90">90-Day Plan Generator</h1>
+          <p className="text-[13px] text-white/40 mt-1">
+            Stakeholder map ready for review
+          </p>
+        </div>
+        <GlassCard className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <CheckCircle2 size={18} className="text-[#b5dec2]" />
+            <h3 className="text-[15px] font-semibold text-white/85">Research Complete</h3>
+          </div>
+          <p className="text-[13px] text-white/55 mb-4 leading-relaxed">
+            The researcher mapped{' '}
+            <span className="text-white/80 font-medium">{stakeholderCount} stakeholder{stakeholderCount !== 1 ? 's' : ''}</span>{' '}
+            and identified{' '}
+            <span className="text-white/80 font-medium">{quickWinCount} quick win{quickWinCount !== 1 ? 's' : ''}</span>{' '}
+            for your first 30 days. Click below to begin writing your 90-day plan.
+          </p>
+          <div className="flex gap-3">
+            <GlassButton
+              variant="primary"
+              onClick={() => void respondToGate('stakeholder_review', true)}
+              className="text-[13px] px-5 py-2.5"
+            >
+              <Map size={14} className="mr-1.5" />
+              Write My 90-Day Plan
+            </GlassButton>
+            <GlassButton variant="ghost" onClick={handleReset} size="sm">
+              <ArrowLeft size={13} className="mr-1.5" />
+              Cancel
+            </GlassButton>
+          </div>
+        </GlassCard>
       </div>
     );
   }

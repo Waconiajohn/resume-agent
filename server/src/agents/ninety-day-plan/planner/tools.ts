@@ -262,6 +262,13 @@ const write30DayPlanTool: PlannerTool = {
       activity_count: phase.key_activities.length,
     });
 
+    ctx.emit({
+      type: 'phase_complete',
+      phase: 30,
+      title: phase.title,
+      milestone_count: phase.milestones.length,
+    });
+
     return JSON.stringify({
       success: true,
       phase: 30,
@@ -345,9 +352,9 @@ ${phase1Context}`;
 
     ctx.emit({
       type: 'phase_complete',
-      phase: 30,
-      title: phase1?.title ?? 'Listen & Learn',
-      milestone_count: phase1?.milestones.length ?? 0,
+      phase: 60,
+      title: phase.title,
+      milestone_count: phase.milestones.length,
     });
 
     return JSON.stringify({
@@ -438,9 +445,9 @@ ${priorContext}`;
 
     ctx.emit({
       type: 'phase_complete',
-      phase: 60,
-      title: phase2?.title ?? 'Contribute & Build',
-      milestone_count: phase2?.milestones.length ?? 0,
+      phase: 90,
+      title: phase.title,
+      milestone_count: phase.milestones.length,
     });
 
     return JSON.stringify({
@@ -683,15 +690,6 @@ Return JSON:
     scratchpad.quality_score = qualityScore;
     state.final_report = report;
     state.quality_score = qualityScore;
-
-    // Emit phase_complete for Phase 3
-    const phase3 = phases.find((p) => p.phase === 90);
-    ctx.emit({
-      type: 'phase_complete',
-      phase: 90,
-      title: phase3?.title ?? 'Lead & Deliver',
-      milestone_count: phase3?.milestones.length ?? 0,
-    });
 
     ctx.emit({
       type: 'transparency',

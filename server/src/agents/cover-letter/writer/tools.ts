@@ -28,8 +28,8 @@ const writeLetterTool: CoverLetterTool = {
     properties: {
       tone: {
         type: 'string',
-        enum: ['professional', 'conversational', 'enthusiastic'],
-        description: 'Desired tone for the letter (default: professional)',
+        enum: ['formal', 'conversational', 'bold'],
+        description: 'Desired tone for the letter (default: formal)',
       },
     },
     required: [],
@@ -44,7 +44,7 @@ const writeLetterTool: CoverLetterTool = {
       return { error: 'Missing letter plan or input data. Analyst must run first.' };
     }
 
-    const tone = String(input.tone ?? 'professional');
+    const tone = String(input.tone ?? state.tone ?? 'formal');
 
     const platformCtx = state.platform_context;
     const positioningStrategy = platformCtx?.positioning_strategy

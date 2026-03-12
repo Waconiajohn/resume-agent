@@ -242,6 +242,7 @@ export function useCoverLetter(accessToken: string | null) {
       resumeText: string,
       jobDescription: string,
       companyName: string,
+      tone: 'formal' | 'conversational' | 'bold' = 'formal',
     ): Promise<boolean> => {
       if (statusRef.current !== 'idle') return false;
       if (!accessToken) return false;
@@ -272,6 +273,7 @@ export function useCoverLetter(accessToken: string | null) {
             resume_text: resumeText,
             job_description: jobDescription,
             company_name: companyName,
+            tone,
           }),
         });
 

@@ -529,7 +529,11 @@ export function DebriefForm({
 
   const isValid = companyName.trim().length > 0 && roleTitle.trim().length > 0;
 
-  // Build a combined follow-up string from structured items for DB storage
+  // Build a combined follow-up string from structured items for DB storage.
+  // Also serializes performance dimension scores and sentiment signals here because
+  // the InterviewDebrief DB type has no dedicated columns for them yet.
+  // TODO: Add performance_scores (JSONB) and sentiment_items (JSONB) columns to
+  // interview_debriefs table so these can be stored and queried properly.
   const buildFollowUpString = () => {
     const lines = followUpItems.map((item) => {
       const prefix = item.priority === 'urgent' ? '[URGENT]' : item.priority === 'important' ? '[IMPORTANT]' : '';
@@ -539,10 +543,42 @@ export function DebriefForm({
     return lines.join('\n');
   };
 
+  // Serialize performance scores into what_went_well/what_went_poorly enrichment.
+  // These fields have no dedicated DB columns yet — scores are appended as structured
+  // text so the data is preserved until schema columns are added.
+  const buildPerformanceAnnotation = () => {
+    const dims = [
+      { label: 'Communication', score: commScore },
+      { label: 'Technical Depth', score: technicalScore },
+      { label: 'Cultural Fit', score: cultureFitScore },
+      { label: 'Enthusiasm', score: enthusiasmScore },
+    ];
+    return `\n\n[Performance Scores: ${dims.map((d) => `${d.label}=${d.score}/5`).join(', ')}]`;
+  };
+
+  const buildSentimentAnnotation = () => {
+    if (sentimentItems.length === 0) return '';
+    const lines = sentimentItems.map((s) => `[${s.signal.toUpperCase()}] ${s.observation}`);
+    return `\n\n[Interviewer Sentiment Signals:\n${lines.join('\n')}]`;
+  };
+
   const handleSave = async () => {
     if (!isValid) return;
     setSaving(true);
+
+    // H7+H13: performance scores and sentiment items have no dedicated DB columns.
+    // They are serialized into the text fields below as structured annotations until
+    // a schema migration adds performance_scores (JSONB) and sentiment_items (JSONB).
+    // eslint-disable-next-line no-console
+    console.warn(
+      'DebriefForm: performance dimension scores and sentiment items are serialized into text fields. ' +
+      'Add performance_scores and sentiment_items JSONB columns to interview_debriefs to store them natively.',
+    );
+
     try {
+      const performanceAnnotation = buildPerformanceAnnotation();
+      const sentimentAnnotation = buildSentimentAnnotation();
+
       const result = await onSave({
         job_application_id: initialJobApplicationId,
         company_name: companyName.trim(),
@@ -550,8 +586,12 @@ export function DebriefForm({
         interview_date: interviewDate,
         interview_type: interviewType,
         overall_impression: overallImpression,
-        what_went_well: whatWentWell,
-        what_went_poorly: whatWentPoorly,
+        what_went_well: whatWentWell
+          ? `${whatWentWell}${performanceAnnotation}`
+          : performanceAnnotation.trim(),
+        what_went_poorly: whatWentPoorly
+          ? `${whatWentPoorly}${sentimentAnnotation}`
+          : sentimentAnnotation.trim() || whatWentPoorly,
         questions_asked: questionsAsked.map((q) => q.trim()).filter(Boolean),
         interviewer_notes: interviewerNotes.filter((n) => n.name.trim().length > 0),
         company_signals: companySignals,

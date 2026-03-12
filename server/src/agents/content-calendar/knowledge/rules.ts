@@ -182,11 +182,14 @@ What this means in practice:
 - Every post must be traceable to one of these themes. If a post could have been written by any executive in any industry, it is not specific enough.
 - The candidate should become known for something specific. The content calendar should make it clear, over 30 days, what they own intellectually in their space.
 
-Content mix mandate (enforced):
-- **40% Thought Leadership** — The candidate's authoritative perspective on issues in their domain. This is where positioning is established.
-- **30% Engagement content** — Comments, reactions, questions that invite dialogue and build relationships. Engagement posts keep the algorithm warm between high-effort posts.
-- **20% Personal Stories** — Specific career experiences that humanize the candidate and make the positioning narrative feel earned, not claimed.
-- **10% Industry News** — Curated insights on sector trends that demonstrate market awareness. The candidate adds commentary — does not just share links.
+Content mix (use the detailed breakdown from RULE 1 as the authoritative guide):
+- **20-25% Thought Leadership** — The candidate's authoritative perspective on issues in their domain. This is where positioning is established.
+- **15-20% Storytelling / Personal Stories** — Specific career experiences that humanize the candidate and make the positioning narrative feel earned, not claimed.
+- **15-20% Industry Insight** — Curated insights on sector trends that demonstrate market awareness. The candidate adds commentary — does not just share links.
+- **10-15% How-To** — Practical expertise demonstrations.
+- **10-15% Case Study** — Before/after stories that prove results with evidence.
+- **10-15% Engagement** — Questions, polls, and hot takes that invite dialogue and keep the algorithm warm between high-effort posts.
+- **5-10% Career Lesson** — Humanizing moments that round out the executive's public persona.
 
 If a positioning strategy or Why Me narrative is available in the platform context, weave its core themes into at least 40% of posts directly (not just generically). The LinkedIn presence should feel like a public extension of the resume's positioning narrative.
 
@@ -204,7 +207,7 @@ Hook standards for this calendar:
 - The best hooks for executives: a counterintuitive claim, a specific data point from their career, or the opening line of a story with tension.
 
 Optimal posting times for executive LinkedIn audiences:
-- **Tuesday through Thursday, 7-9 AM** in the candidate's primary timezone — this is when executive LinkedIn audiences are most active (morning commute / early desk time)
+- **Tuesday through Thursday, 7:30-8:30 AM** in the candidate's primary timezone — this is when executive LinkedIn audiences are most active (morning commute / early desk time)
 - **Friday at 10-11 AM** — slightly later due to lighter morning schedules and pre-weekend browsing
 - **Never Monday** — engagement on Monday is measurably lower as professionals are catching up on the week
 - Never post on weekends for professional executive content

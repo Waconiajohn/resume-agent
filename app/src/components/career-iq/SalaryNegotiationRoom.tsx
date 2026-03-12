@@ -101,7 +101,9 @@ function SalaryRangeBar({
   };
 
   const positionPct = (val: number) => {
-    const pct = ((val - min) / (max - min)) * 100;
+    // Guard against division by zero when min === max (e.g. single data point)
+    const range = max - min;
+    const pct = range > 0 ? ((val - min) / range) * 100 : 50;
     return Math.max(2, Math.min(98, pct));
   };
 

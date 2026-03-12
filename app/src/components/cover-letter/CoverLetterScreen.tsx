@@ -349,7 +349,7 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
           return;
         }
 
-        const ok = await startPipeline(sessionId, data.resumeText, data.jobDescription, data.companyName);
+        const ok = await startPipeline(sessionId, data.resumeText, data.jobDescription, data.companyName, data.tone);
         if (ok) {
           setPhase('running');
         }

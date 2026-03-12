@@ -26,6 +26,7 @@ const startSchema = z.object({
   resume_text: z.string().min(50).max(100_000),
   job_description: z.string().min(1).max(50_000),
   company_name: z.string().min(1).max(200),
+  tone: z.enum(['formal', 'conversational', 'bold']).optional().default('formal'),
 });
 
 export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLetterSSEEvent>({

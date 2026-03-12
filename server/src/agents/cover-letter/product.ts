@@ -106,6 +106,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
       user_id: userId,
       current_stage: 'analysis',
       platform_context: input.platform_context as CoverLetterState['platform_context'],
+      tone: (input.tone as CoverLetterState['tone']) ?? 'formal',
       // Input data will be parsed by the analyst agent's tools
       resume_data: undefined,
       jd_analysis: undefined,
@@ -168,10 +169,13 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
 
       if (agentName === 'writer') {
         const plan = state.letter_plan;
+        const tone = state.tone ?? 'formal';
         const parts = [
           'Write a professional cover letter based on the analysis plan.',
           '',
           plan ? `## Letter Plan\n${JSON.stringify(plan, null, 2)}` : '',
+          '',
+          `Tone requested by the user: **${tone}**. Pass this value as the tone parameter when calling write_letter.`,
           '',
           'Call write_letter to generate the letter, then review_letter to check quality.',
         ];

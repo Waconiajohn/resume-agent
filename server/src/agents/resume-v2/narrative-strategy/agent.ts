@@ -200,7 +200,7 @@ export async function runNarrativeStrategy(
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userMessage }],
-    max_tokens: 8192,
+    max_tokens: 16384,
     signal,
   });
 

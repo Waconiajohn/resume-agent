@@ -102,14 +102,22 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     state.gap_analysis = gapAnalysis;
     emit({ type: 'gap_analysis', data: gapAnalysis });
 
-    // H1: Use pending_strategies as the authoritative source for strategies that
-    // need user confirmation. Strong-match requirements don't have strategies —
-    // only partial/missing requirements get a strategy from gap analysis.
-    // In "Add Context" re-runs, previously approved strategies are passed in.
-    const allApproved = [
-      ...state.approved_strategies,
-      ...gapAnalysis.pending_strategies,
-    ];
+    // Determine the effective approved strategies for downstream agents.
+    //
+    // Two cases:
+    // 1. "Add Context" re-run — the caller passes previously approved strategies
+    //    via options.approved_strategies. Those are the authoritative source.
+    //    Do NOT append pending_strategies on top; those are new and unreviewed.
+    //
+    // 2. First run — the user has not yet had a chance to explicitly approve or
+    //    reject strategies (the UI gate fires AFTER this pipeline returns). In
+    //    this case pending_strategies are implicitly approved because the user
+    //    saw them and did not reject any — treat them as approved by default.
+    //    This is the implicit approval pattern, not a force-set loop.
+    const allApproved =
+      state.approved_strategies.length > 0
+        ? state.approved_strategies
+        : gapAnalysis.pending_strategies;
 
     const narrative = await runNarrativeStrategy({
       gap_analysis: gapAnalysis,

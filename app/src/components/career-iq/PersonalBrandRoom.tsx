@@ -414,7 +414,7 @@ function ReportView({
   // Parse dimension scores from report markdown (the agent writes them as a table)
   // We use the qualityScore as a proxy for overall, and derive dimension scores from the report text
   const dimensionScores = useMemo((): DimensionScores | null => {
-    if (!qualityScore) return null;
+    if (qualityScore == null) return null;
     // Try to extract scores from the markdown report
     const scorePattern = /\|\s*([\w &]+)\s*\|\s*(\d+)\/100/g;
     const extracted: Record<string, number> = {};
@@ -641,7 +641,9 @@ export function PersonalBrandRoom() {
     activityMessages,
     error,
     currentStage,
+    findingsReviewData,
     startPipeline,
+    respondToGate,
     reset,
   } = usePersonalBrand();
 
@@ -727,6 +729,47 @@ export function PersonalBrandRoom() {
           findings={findings}
           onReset={handleReset}
         />
+      </div>
+    );
+  }
+
+  // Findings review gate — pipeline paused awaiting user confirmation
+  if (status === 'findings_review') {
+    const findingCount = findingsReviewData?.findings.length ?? findings.length;
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <div>
+          <h1 className="text-xl font-semibold text-white/90">Personal Brand Audit</h1>
+          <p className="text-[13px] text-white/40 mt-1">
+            Audit findings ready for review
+          </p>
+        </div>
+        <GlassCard className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <CheckCircle2 size={18} className="text-[#b5dec2]" />
+            <h3 className="text-[15px] font-semibold text-white/85">Audit Complete</h3>
+          </div>
+          <p className="text-[13px] text-white/55 mb-6 leading-relaxed">
+            {findingCount > 0
+              ? `The audit identified ${findingCount} finding${findingCount !== 1 ? 's' : ''} across your brand sources. Click below to generate recommendations and your full report.`
+              : 'The audit is complete. Click below to generate your recommendations and full report.'}
+          </p>
+          <FindingsSummary findings={findings} />
+          <div className="mt-6 flex gap-3">
+            <GlassButton
+              variant="primary"
+              onClick={() => void respondToGate('findings_review', true)}
+              className="text-[13px] px-5 py-2.5"
+            >
+              <Sparkles size={14} className="mr-1.5" />
+              Generate Recommendations
+            </GlassButton>
+            <GlassButton variant="ghost" onClick={handleReset} size="sm">
+              <ArrowLeft size={13} className="mr-1.5" />
+              Cancel
+            </GlassButton>
+          </div>
+        </GlassCard>
       </div>
     );
   }

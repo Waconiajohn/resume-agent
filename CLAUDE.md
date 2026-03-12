@@ -245,6 +245,25 @@ If confidence drops below 7:
 3. Review the current story's acceptance criteria
 4. State what drifted and correct course
 
+### Post-Implementation Review (Before Declaring "Done")
+
+After completing any batch of implementation work — whether a single story, multiple stories, or autonomous agent work — Claude MUST run a semantic review pass before declaring the work complete. This catches logic bugs, data flow gaps, and semantic errors that TypeScript compilation cannot detect.
+
+Review checklist:
+1. **Data flow completeness** — Does every UI input reach the backend? Does every backend response reach the UI?
+2. **Edge cases** — Division by zero, empty arrays, null/undefined vs falsy (e.g., `!score` hides score of 0)
+3. **Business logic correctness** — Are approvals, gates, and state transitions doing what the user expects?
+4. **Event timing** — Are SSE events emitted at the right moment, not one step early/late?
+5. **Enum/constant alignment** — Do frontend and backend use the same string values?
+6. **Initialization** — Are arrays, objects, and accumulators initialized before first use?
+7. **Resource limits** — Are `max_tokens`, `max_rounds`, `slice()` limits sufficient for real-world data?
+
+For autonomous/subagent work: each agent MUST run this review on its own output before completing. The orchestrating session MUST also run a cross-agent review after merging.
+
+### Pre-Commit Hook (Automated)
+
+A Claude Code hook at `.claude/hooks/pre-commit-check.sh` runs automatically before every `git commit`. It compiles both `app/` and `server/` with `tsc --noEmit` and blocks the commit if either fails. This is enforced by `.claude/settings.json` — do not remove or bypass it.
+
 ### Session End Protocol
 
 Before ending any session, Claude MUST:

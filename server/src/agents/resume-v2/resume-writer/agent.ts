@@ -149,6 +149,47 @@ export async function runResumeWriter(
   return parsed;
 }
 
+/**
+ * Looks up the experience framing for a company name using progressive fuzzy matching.
+ * Tries: (1) exact match, (2) case-insensitive match, (3) one name includes the other.
+ * Logs a warning when falling back to fuzzy match so drift is visible in server logs.
+ */
+function lookupExperienceFraming(
+  framingMap: Record<string, string>,
+  companyName: string,
+): string | undefined {
+  // 1. Exact match
+  if (framingMap[companyName] !== undefined) {
+    return framingMap[companyName];
+  }
+
+  const normalizedTarget = companyName.toLowerCase();
+
+  for (const key of Object.keys(framingMap)) {
+    const normalizedKey = key.toLowerCase();
+
+    // 2. Case-insensitive match
+    if (normalizedKey === normalizedTarget) {
+      console.warn(
+        `[ResumeWriter] experience_framing fuzzy match (case-insensitive): ` +
+        `resume company="${companyName}" matched framing key="${key}"`,
+      );
+      return framingMap[key];
+    }
+
+    // 3. Substring includes match (either direction)
+    if (normalizedKey.includes(normalizedTarget) || normalizedTarget.includes(normalizedKey)) {
+      console.warn(
+        `[ResumeWriter] experience_framing fuzzy match (includes): ` +
+        `resume company="${companyName}" matched framing key="${key}"`,
+      );
+      return framingMap[key];
+    }
+  }
+
+  return undefined;
+}
+
 function buildUserMessage(input: ResumeWriterInput): string {
   const parts: string[] = [
     '## YOUR STRATEGIC DIRECTION',
@@ -176,8 +217,13 @@ function buildUserMessage(input: ResumeWriterInput): string {
     for (const bullet of exp.bullets) {
       parts.push(`  - ${bullet}`);
     }
-    // Add experience framing from narrative strategy
-    const framing = input.narrative.section_guidance.experience_framing[exp.company];
+    // Add experience framing from narrative strategy using fuzzy company name lookup.
+    // The LLM may return slightly different company names (e.g. "Acme Corp" vs "Acme"),
+    // so fall back through: exact → case-insensitive → substring-includes.
+    const framing = lookupExperienceFraming(
+      input.narrative.section_guidance.experience_framing,
+      exp.company,
+    );
     if (framing) {
       parts.push(`  [FRAMING GUIDANCE: ${framing}]`);
     }
@@ -208,7 +254,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     '',
     '## WHY ME STORY — YOUR NORTH STAR',
     '(This narrative arc must be reinforced in every section. Do not copy verbatim — let it shape every framing decision.)',
-    input.narrative.why_me_story.slice(0, 2000),
+    input.narrative.why_me_story.slice(0, 6000),
   );
 
   if (input.narrative.unique_differentiators && input.narrative.unique_differentiators.length > 0) {

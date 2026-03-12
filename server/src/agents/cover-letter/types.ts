@@ -54,6 +54,9 @@ export interface CoverLetterState extends BaseState {
 
   /** User-supplied revision feedback from the letter_review gate */
   revision_feedback?: string;
+
+  /** Tone selected by the user on the intake form */
+  tone?: 'formal' | 'conversational' | 'bold';
 }
 
 // ─── SSE Events ───────────────────────────────────────────────────────

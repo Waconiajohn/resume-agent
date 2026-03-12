@@ -364,6 +364,9 @@ Rules:
       recommendation: String(f.recommendation ?? ''),
     }));
 
+    if (!Array.isArray(scratchpad.all_findings)) {
+      scratchpad.all_findings = [];
+    }
     (scratchpad.all_findings as AuditFinding[]).push(...findings);
 
     for (const finding of findings) {
@@ -510,6 +513,9 @@ Rules:
       recommendation: String(f.recommendation ?? ''),
     }));
 
+    if (!Array.isArray(scratchpad.all_findings)) {
+      scratchpad.all_findings = [];
+    }
     (scratchpad.all_findings as AuditFinding[]).push(...findings);
 
     for (const finding of findings) {

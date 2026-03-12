@@ -55,22 +55,25 @@ export const RULE_2_FOLLOW_UPS = `## RULE 2 — FOLLOW-UP MESSAGES
 
 Follow-ups build the relationship after the connection is accepted. Each follow-up has a distinct purpose and escalates the relationship gradually.
 
-Follow-Up #1 (3-5 days after acceptance):
+Follow-Up #1 (3 days after acceptance):
 - Thank them for connecting — brief and warm, not effusive
 - Share ONE specific insight or observation related to their work or industry
 - Keep it short (50-100 words). Don't overwhelm with a wall of text on first real message.
 - Ask ONE low-commitment question that shows genuine interest in their perspective
 
-Follow-Up #2 (5-7 days later):
+Follow-Up #2 (1 week after Follow-Up #1):
 - Reference your previous exchange or their recent activity
 - Share something of value: an article, a framework, a data point relevant to their interests
 - Begin positioning your expertise naturally — not as a pitch, but as context for why you found this valuable
 - Still 75-125 words. Continue building, not selling.
 
+Value Offer (2 weeks after Follow-Up #2):
+- This is the centerpiece of the sequence (see RULE 3 for full guidance)
+- After 3 attempts with no response, stop. Move on. Beyond 3 messages, you become a nuisance, not a peer.
+
 Timing rules:
 - Never send follow-ups on weekends or before 8 AM / after 6 PM in the target's timezone
-- If they respond at any point, STOP the sequence and engage in genuine conversation
-- If they don't respond after follow-up #2, the value offer is your last best shot before pausing`;
+- If they respond at any point, STOP the sequence and engage in genuine conversation`;
 
 // ─── Rule 3: Value Offer ────────────────────────────────────────────
 
@@ -206,7 +209,7 @@ Lead with value — what can the candidate offer THIS specific person, not what 
 
 GUARDRAIL: Never suggest mass-messaging or templated outreach. Every message in this sequence must feel personally crafted for this specific individual. If the same message could be copy-pasted to 10 different people with only the name changed, it is not personalized enough — it is spam.
 
-Follow-up cadence mandate:
+Follow-up cadence (authoritative — all rules use these timings):
 - Follow-up #1: 3 days after connection acceptance
 - Follow-up #2: 1 week after Follow-up #1
 - Value offer: 2 weeks after Follow-up #2

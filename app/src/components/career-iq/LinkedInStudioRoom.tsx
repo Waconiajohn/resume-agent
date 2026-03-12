@@ -751,47 +751,31 @@ const SECTION_SCORE_CONFIG: {
 function SectionScoreCards({ qualityScore }: { qualityScore: number | null }) {
   if (qualityScore === null) return null;
 
-  // Derive approximate section scores from the overall score (present as estimates)
-  const sectionScores = SECTION_SCORE_CONFIG.map((cfg) => ({
-    ...cfg,
-    score: Math.min(100, Math.max(40, qualityScore + Math.floor(Math.random() * 0 - 0))),
-  }));
+  // The optimizer returns a single overall quality score — per-section scores are not
+  // available from the backend. Show the overall score once with a clear label rather
+  // than repeating the same number across four cards and implying false per-section data.
+  const scoreColor =
+    qualityScore >= 80
+      ? 'text-[#b5dec2]'
+      : qualityScore >= 60
+      ? 'text-[#f0d99f]'
+      : 'text-[#f0b8b8]';
+  const borderColor =
+    qualityScore >= 80
+      ? 'border-[#b5dec2]/15'
+      : qualityScore >= 60
+      ? 'border-[#f0d99f]/15'
+      : 'border-[#f0b8b8]/15';
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {sectionScores.map((section) => {
-        const SectionIcon = section.icon;
-        const scoreColor =
-          section.score >= 80
-            ? 'text-[#b5dec2]'
-            : section.score >= 60
-            ? 'text-[#f0d99f]'
-            : 'text-[#f0b8b8]';
-        const borderColor =
-          section.score >= 80
-            ? 'border-[#b5dec2]/15'
-            : section.score >= 60
-            ? 'border-[#f0d99f]/15'
-            : 'border-[#f0b8b8]/15';
-        return (
-          <div
-            key={section.key}
-            className={cn(
-              'rounded-xl border bg-white/[0.02] p-3',
-              borderColor,
-            )}
-          >
-            <div className="flex items-center gap-1.5 mb-2">
-              <SectionIcon size={12} className={scoreColor} />
-              <span className="text-[11px] font-medium text-white/60">{section.label}</span>
-            </div>
-            <div className={cn('text-[22px] font-bold tabular-nums mb-0.5', scoreColor)}>
-              {section.score}
-            </div>
-            <p className="text-[10px] text-white/30 leading-tight">{section.description}</p>
-          </div>
-        );
-      })}
+    <div className={cn('rounded-xl border bg-white/[0.02] p-4 flex items-center gap-4', borderColor)}>
+      <div className={cn('text-[32px] font-bold tabular-nums', scoreColor)}>{qualityScore}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-medium text-white/60 mb-0.5">Overall Profile Score</p>
+        <p className="text-[11px] text-white/30 leading-tight">
+          Run the Profile Editor to generate optimized content for each section and improve this score.
+        </p>
+      </div>
     </div>
   );
 }
