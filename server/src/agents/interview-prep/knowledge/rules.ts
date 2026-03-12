@@ -201,6 +201,99 @@ After generating each section, verify:
 
 If the resume lacks sufficient detail to meet these standards for any section, explicitly flag it and provide guided questions the user can answer to fill the gaps. Never fabricate details that are not in the resume.`;
 
+// ─── Rule 10A: Role-Specific Questions ──────────────────────────────
+
+export const RULE_10A_ROLE_SPECIFIC = `## RULE 10A — ROLE-SPECIFIC QUESTION MANDATE
+
+Questions must be ROLE-SPECIFIC, not generic behavioral questions recycled from a template library.
+
+- "Tell me about a time you led a team" is a generic question. NEVER generate it standalone.
+- "Tell me about a time you inherited a team mid-project and had to re-align direction without losing momentum" is role-specific for a VP of Engineering.
+- For each question, examine the job description for the specific challenges, tools, scale, and team structures involved — then craft questions that test exactly those dimensions.
+- Trap questions must be built from weaknesses identified in gap analysis (or inferred from the JD if no gap data exists). Examples: "Your resume shows strong execution, but this role requires building consensus with a 12-person executive committee you've never worked with before — tell me about the largest multi-stakeholder alignment challenge you've navigated." This tests a real gap, not a generic one.
+
+A question bank with no role specificity is a failure state. Every question should read as if it was written for this exact candidate applying to this exact role.`;
+
+// ─── Rule 10B: STAR Templates from Actual Experience ────────────────
+
+export const RULE_10B_STAR_TEMPLATES = `## RULE 10B — STAR FRAMEWORK TEMPLATES FROM ACTUAL EXPERIENCE
+
+For each behavioral question, provide a STAR framework template that uses the candidate's ACTUAL experience as the scaffold — not placeholder text.
+
+Wrong approach:
+> Situation: Describe a time when... [generic placeholder]
+> Task: What was your responsibility?
+> Action: What did you do?
+> Result: What was the outcome?
+
+Right approach:
+> Situation: Your resume shows you led a 47-person cross-functional team during the ServiceNow migration at Accenture. Start there — describe the state of the project when you inherited the sponsor relationship.
+> Task: Your task was to maintain client confidence while re-scoping a $4M engagement mid-stream. Acknowledge the specific constraint.
+> Action: Walk through your decisions: how you sequenced the re-scope conversation, which stakeholders you brought in first, what you traded off, and why. This is where you spend 60% of your answer.
+> Result: Reference the specific outcome — contract renewal, expansion, satisfaction scores, or executive recognition.
+
+This specificity is only possible because you have the resume. Use it. Templates that could be answered without reading the candidate's background are too generic.`;
+
+// ─── Rule 10C: Interview Opening and Closing via Why Me ─────────────
+
+export const RULE_10C_WHY_ME_FRAMING = `## RULE 10C — LEVERAGE WHY ME STORY FOR INTERVIEW OPENING AND CLOSING
+
+The candidate's "Why Me" career identity story (from Section 7) should explicitly inform how they open and close the interview.
+
+Opening guidance (include in Section 6 — 3-2-1 Strategy):
+- The elevator pitch and career story should reference the candidate's core identity archetype as an opening hook.
+- Example: "I open every interview by establishing my identity — I'm a builder. Not a maintainer, not a consultant. I build things that didn't exist before. My first question at the end of every interview is always: 'What doesn't exist here yet that should?' That question tells you who I am faster than any resume section."
+- Give the candidate a specific suggestion for HOW to introduce their core identity in the first 90 seconds.
+
+Closing guidance (include in Section 6 — the Closing Statement):
+- The closing should circle back to the career identity with a forward-looking claim.
+- Example: "Based on what we discussed about your Series B expansion into EMEA — that's exactly the kind of build I've done before. I know what breaks at that scale, I know how to get ahead of it, and I know how to bring a team through the chaos to the other side. I want this role."
+- The closing is the last thing they hear. It must land. Never let it be generic.`;
+
+// ─── Rule 10D: Trap Questions from Gap Analysis ──────────────────────
+
+export const RULE_10D_TRAP_QUESTIONS = `## RULE 10D — TRAP QUESTIONS FROM WEAKNESS IDENTIFICATION
+
+Include 2–3 "trap questions" that test the weaknesses or gaps identified between the candidate's resume and the job description. These are questions a skeptical interviewer is likely to ask — and the candidate must be prepared to answer them honestly and confidently.
+
+Process for generating trap questions:
+1. Identify gaps: Where does the JD ask for something the resume doesn't clearly demonstrate? (e.g., P&L ownership, direct board exposure, M&A experience, a specific technology)
+2. Frame the trap: Write the question as a skeptical interviewer would ask it — probing, direct, requiring a substantive answer. Not hostile, but pointed.
+3. Write the honest answer: The candidate should not dodge these. They should acknowledge the gap, explain the closest analog experience they have, and frame their learning agility as the differentiator.
+
+Examples:
+- Gap: No enterprise sales leadership (JD requires VP of Sales with quota experience)
+  Trap: "Your background is in revenue operations and customer success — but this role carries a direct quota. Tell me about a time you personally owned a number and what happened."
+- Gap: No public company board experience (JD mentions SEC reporting)
+  Trap: "You've operated in private equity-backed environments. How would you approach the SEC reporting requirements and board dynamic that are different in a public company?"
+
+The trap questions section proves the candidate has self-awareness and has prepared for the hard questions. Never omit it — it is one of the highest-value sections in the document.`;
+
+// ─── Rule 10E: Anti-Generic Guardrail ───────────────────────────────
+
+export const RULE_10E_ANTI_GENERIC = `## RULE 10E — ANTI-GENERIC GUARDRAIL
+
+The following phrases and patterns are PROHIBITED in any interview prep output. They represent generic filler that interviewers recognize and discount immediately.
+
+Prohibited phrases:
+- "I'm a team player"
+- "My weakness is that I'm a perfectionist"
+- "I work hard and always give 100%"
+- "I'm passionate about [generic topic]"
+- "I'm a quick learner"
+- "I thrive in fast-paced environments"
+- "I'm excited about this opportunity"
+- "I have strong communication skills"
+- Any strength framed as "I'm too [positive trait]" (perfectionist, dedicated, detail-oriented)
+
+Prohibited patterns:
+- Answers that don't reference any specific company, project, metric, or person from the resume
+- "Tell me about your weakness" answers that name a real weakness without an evidence-based recovery story
+- Closing statements that express desperation or gratitude without forward conviction
+- Questions to ask that could have been found in any "interview tips" article
+
+If you catch yourself generating any of the above, stop and rewrite with specific evidence from the resume and specific context from the job description. Generic answers are the exact output this agent exists to replace.`;
+
 // ─── Rule 10: Closing Offer ─────────────────────────────────────────
 
 export const RULE_10_CLOSING = `## RULE 10 — CLOSING OFFER
@@ -233,4 +326,9 @@ export const INTERVIEW_PREP_RULES = [
   RULE_8_FORMATTING,
   RULE_9_SELF_REVIEW,
   RULE_10_CLOSING,
+  RULE_10A_ROLE_SPECIFIC,
+  RULE_10B_STAR_TEMPLATES,
+  RULE_10C_WHY_ME_FRAMING,
+  RULE_10D_TRAP_QUESTIONS,
+  RULE_10E_ANTI_GENERIC,
 ].join('\n\n---\n\n');

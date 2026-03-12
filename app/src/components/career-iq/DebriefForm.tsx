@@ -12,6 +12,13 @@ import {
   ChevronDown,
   ChevronUp,
   Send,
+  CheckSquare,
+  AlertTriangle,
+  TrendingUp,
+  Users,
+  MessageSquare,
+  Zap,
+  Flag,
 } from 'lucide-react';
 
 export interface DebriefFormProps {
@@ -32,9 +39,300 @@ function getTodayDateString(): string {
 }
 
 const INPUT_CLASS =
-  'rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30';
+  'rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:border-[#afc4ff]/30';
 
 const LABEL_CLASS = 'text-[11px] font-medium text-white/40 uppercase tracking-wider mb-1.5 block';
+
+// --- Performance dimension score (mini bar gauge) ---
+
+type ScoreLevel = 1 | 2 | 3 | 4 | 5;
+
+const SCORE_LABELS: Record<ScoreLevel, string> = {
+  1: 'Poor',
+  2: 'Weak',
+  3: 'Average',
+  4: 'Strong',
+  5: 'Excellent',
+};
+
+const SCORE_COLORS: Record<ScoreLevel, string> = {
+  1: '#f0b8b8',
+  2: '#f0b8b8',
+  3: '#f0d99f',
+  4: '#b5dec2',
+  5: '#b5dec2',
+};
+
+function PerformanceScoreSelector({
+  label,
+  icon,
+  value,
+  onChange,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  value: ScoreLevel;
+  onChange: (v: ScoreLevel) => void;
+}) {
+  const color = SCORE_COLORS[value];
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="text-white/40">{icon}</span>
+          <span className="text-[12px] font-medium text-white/60">{label}</span>
+        </div>
+        <span className="text-[11px] font-medium" style={{ color }}>{SCORE_LABELS[value]}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        {([1, 2, 3, 4, 5] as ScoreLevel[]).map((level) => (
+          <button
+            key={level}
+            type="button"
+            onClick={() => onChange(level)}
+            className={cn(
+              'flex-1 h-2 rounded-full transition-all',
+              level <= value ? 'opacity-100' : 'opacity-15',
+            )}
+            style={{ backgroundColor: level <= value ? color : 'rgba(255,255,255,0.2)' }}
+            title={SCORE_LABELS[level]}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Follow-up action item with priority ---
+
+type FollowUpPriority = 'urgent' | 'important' | 'normal';
+
+interface FollowUpItem {
+  text: string;
+  priority: FollowUpPriority;
+  done: boolean;
+}
+
+const PRIORITY_CONFIG: Record<FollowUpPriority, { label: string; bg: string; border: string; text: string }> = {
+  urgent: { label: 'Urgent', bg: 'bg-[#f0b8b8]/10', border: 'border-[#f0b8b8]/20', text: 'text-[#f0b8b8]' },
+  important: { label: 'Important', bg: 'bg-[#f0d99f]/10', border: 'border-[#f0d99f]/20', text: 'text-[#f0d99f]' },
+  normal: { label: 'Normal', bg: 'bg-white/[0.04]', border: 'border-white/[0.08]', text: 'text-white/40' },
+};
+
+function FollowUpChecklist({
+  items,
+  onChange,
+}: {
+  items: FollowUpItem[];
+  onChange: (items: FollowUpItem[]) => void;
+}) {
+  const [newText, setNewText] = useState('');
+  const [newPriority, setNewPriority] = useState<FollowUpPriority>('normal');
+
+  const addItem = () => {
+    if (!newText.trim()) return;
+    onChange([...items, { text: newText.trim(), priority: newPriority, done: false }]);
+    setNewText('');
+    setNewPriority('normal');
+  };
+
+  const toggleDone = (i: number) => {
+    onChange(items.map((item, idx) => idx === i ? { ...item, done: !item.done } : item));
+  };
+
+  const removeItem = (i: number) => {
+    onChange(items.filter((_, idx) => idx !== i));
+  };
+
+  const setPriority = (i: number, priority: FollowUpPriority) => {
+    onChange(items.map((item, idx) => idx === i ? { ...item, priority } : item));
+  };
+
+  return (
+    <div className="space-y-2">
+      {items.length === 0 && (
+        <p className="text-[12px] text-white/25 py-1">No actions yet — add the key next steps below.</p>
+      )}
+
+      {items.map((item, i) => {
+        const cfg = PRIORITY_CONFIG[item.priority];
+        return (
+          <div key={i} className={cn(
+            'flex items-start gap-2.5 rounded-lg border p-2.5 transition-all',
+            item.done ? 'border-white/[0.04] bg-transparent opacity-50' : `${cfg.bg} ${cfg.border}`,
+          )}>
+            <button
+              type="button"
+              onClick={() => toggleDone(i)}
+              className={cn(
+                'flex-shrink-0 mt-0.5 h-4 w-4 rounded border transition-colors',
+                item.done
+                  ? 'border-[#b5dec2]/40 bg-[#b5dec2]/15'
+                  : 'border-white/[0.2] bg-transparent hover:border-[#b5dec2]/40',
+              )}
+            >
+              {item.done && (
+                <CheckSquare size={14} className="text-[#b5dec2] -mt-0.5 -ml-0.5" />
+              )}
+            </button>
+            <div className="flex-1 min-w-0">
+              <span className={cn('text-[12px]', item.done ? 'text-white/30 line-through' : 'text-white/70')}>
+                {item.text}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {(['urgent', 'important', 'normal'] as FollowUpPriority[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(i, p)}
+                  className={cn(
+                    'rounded px-1.5 py-0.5 text-[9px] font-medium border transition-colors',
+                    item.priority === p
+                      ? `${PRIORITY_CONFIG[p].bg} ${PRIORITY_CONFIG[p].border} ${PRIORITY_CONFIG[p].text}`
+                      : 'border-transparent text-white/20 hover:text-white/40',
+                  )}
+                >
+                  {PRIORITY_CONFIG[p].label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => removeItem(i)}
+                className="ml-1 text-white/20 hover:text-[#f0b8b8]/60 transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="flex items-center gap-2 pt-1">
+        <input
+          type="text"
+          placeholder="Add a follow-up action..."
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
+          className={cn(INPUT_CLASS, 'flex-1')}
+        />
+        <select
+          value={newPriority}
+          onChange={(e) => setNewPriority(e.target.value as FollowUpPriority)}
+          className={cn(INPUT_CLASS, 'w-28')}
+        >
+          <option value="normal">Normal</option>
+          <option value="important">Important</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <button
+          type="button"
+          onClick={addItem}
+          className="flex items-center gap-1 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
+        >
+          <Plus size={12} />
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- Sentiment analysis summary ---
+
+type SentimentSignal = 'positive' | 'neutral' | 'concerning';
+
+interface SentimentItem {
+  signal: SentimentSignal;
+  observation: string;
+}
+
+const SENTIMENT_CONFIG: Record<SentimentSignal, { bg: string; border: string; text: string; dot: string }> = {
+  positive: { bg: 'bg-[#b5dec2]/[0.05]', border: 'border-[#b5dec2]/15', text: 'text-[#b5dec2]/80', dot: 'bg-[#b5dec2]' },
+  neutral: { bg: 'bg-white/[0.02]', border: 'border-white/[0.06]', text: 'text-white/50', dot: 'bg-white/30' },
+  concerning: { bg: 'bg-[#f0b8b8]/[0.04]', border: 'border-[#f0b8b8]/12', text: 'text-[#f0b8b8]/70', dot: 'bg-[#f0b8b8]' },
+};
+
+function SentimentSummary({
+  items,
+  onChange,
+}: {
+  items: SentimentItem[];
+  onChange: (items: SentimentItem[]) => void;
+}) {
+  const [newObservation, setNewObservation] = useState('');
+  const [newSignal, setNewSignal] = useState<SentimentSignal>('neutral');
+
+  const addItem = () => {
+    if (!newObservation.trim()) return;
+    onChange([...items, { signal: newSignal, observation: newObservation.trim() }]);
+    setNewObservation('');
+    setNewSignal('neutral');
+  };
+
+  const removeItem = (i: number) => {
+    onChange(items.filter((_, idx) => idx !== i));
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-white/35 leading-relaxed">
+        How did the interviewer likely perceive you? Add signals you picked up — body language, energy shifts, follow-up questions.
+      </p>
+
+      {items.length === 0 && (
+        <p className="text-[12px] text-white/25 py-1">No signals recorded yet.</p>
+      )}
+
+      {items.map((item, i) => {
+        const cfg = SENTIMENT_CONFIG[item.signal];
+        return (
+          <div key={i} className={cn('flex items-start gap-2.5 rounded-lg border p-2.5', cfg.bg, cfg.border)}>
+            <span className={cn('h-1.5 w-1.5 rounded-full flex-shrink-0 mt-1.5', cfg.dot)} />
+            <span className={cn('flex-1 text-[12px] leading-relaxed', cfg.text)}>{item.observation}</span>
+            <button
+              type="button"
+              onClick={() => removeItem(i)}
+              className="flex-shrink-0 text-white/20 hover:text-[#f0b8b8]/60 transition-colors"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        );
+      })}
+
+      <div className="flex items-center gap-2 pt-1">
+        <input
+          type="text"
+          placeholder="e.g. They leaned forward when I described the P&L turnaround..."
+          value={newObservation}
+          onChange={(e) => setNewObservation(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
+          className={cn(INPUT_CLASS, 'flex-1')}
+        />
+        <select
+          value={newSignal}
+          onChange={(e) => setNewSignal(e.target.value as SentimentSignal)}
+          className={cn(INPUT_CLASS, 'w-28')}
+        >
+          <option value="positive">Positive</option>
+          <option value="neutral">Neutral</option>
+          <option value="concerning">Concerning</option>
+        </select>
+        <button
+          type="button"
+          onClick={addItem}
+          className="flex items-center gap-1 text-[11px] text-[#afc4ff]/60 hover:text-[#afc4ff] transition-colors px-2 py-1.5 rounded-lg border border-[#afc4ff]/20 hover:border-[#afc4ff]/40"
+        >
+          <Plus size={12} />
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // --- Impression button ---
 
@@ -109,7 +407,7 @@ function InterviewerCard({ note, index, onChange, onRemove }: InterviewerCardPro
         <button
           type="button"
           onClick={() => onRemove(index)}
-          className="text-white/20 hover:text-[#e8a0a0]/60 transition-colors"
+          className="text-white/20 hover:text-[#f0b8b8]/60 transition-colors"
           aria-label="Remove interviewer"
         >
           <X size={13} />
@@ -197,17 +495,28 @@ export function DebriefForm({
   ]);
   const [companySignals, setCompanySignals] = useState('');
   const [followUpActions, setFollowUpActions] = useState('');
+
+  // Performance dimensions (new)
+  const [commScore, setCommScore] = useState<ScoreLevel>(3);
+  const [technicalScore, setTechnicalScore] = useState<ScoreLevel>(3);
+  const [cultureFitScore, setCultureFitScore] = useState<ScoreLevel>(3);
+  const [enthusiasmScore, setEnthusiasmScore] = useState<ScoreLevel>(3);
+
+  // Structured follow-up checklist (new)
+  const [followUpItems, setFollowUpItems] = useState<FollowUpItem[]>([]);
+
+  // Sentiment analysis (new)
+  const [sentimentItems, setSentimentItems] = useState<SentimentItem[]>([]);
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Questions list handlers
   const addQuestion = () => setQuestionsAsked((prev) => [...prev, '']);
   const removeQuestion = (i: number) =>
     setQuestionsAsked((prev) => prev.filter((_, idx) => idx !== i));
   const updateQuestion = (i: number, value: string) =>
     setQuestionsAsked((prev) => prev.map((q, idx) => (idx === i ? value : q)));
 
-  // Interviewer notes handlers
   const addInterviewer = () =>
     setInterviewerNotes((prev) => [
       ...prev,
@@ -219,6 +528,16 @@ export function DebriefForm({
     setInterviewerNotes((prev) => prev.map((n, idx) => (idx === i ? note : n)));
 
   const isValid = companyName.trim().length > 0 && roleTitle.trim().length > 0;
+
+  // Build a combined follow-up string from structured items for DB storage
+  const buildFollowUpString = () => {
+    const lines = followUpItems.map((item) => {
+      const prefix = item.priority === 'urgent' ? '[URGENT]' : item.priority === 'important' ? '[IMPORTANT]' : '';
+      return prefix ? `${prefix} ${item.text}` : item.text;
+    });
+    if (followUpActions.trim()) lines.push(followUpActions.trim());
+    return lines.join('\n');
+  };
 
   const handleSave = async () => {
     if (!isValid) return;
@@ -236,9 +555,8 @@ export function DebriefForm({
         questions_asked: questionsAsked.map((q) => q.trim()).filter(Boolean),
         interviewer_notes: interviewerNotes.filter((n) => n.name.trim().length > 0),
         company_signals: companySignals,
-        follow_up_actions: followUpActions,
+        follow_up_actions: buildFollowUpString(),
       });
-      // Only show saved state if onSave returned a truthy value (not null/undefined)
       if (result !== null && result !== undefined) {
         setSaved(true);
       }
@@ -254,16 +572,30 @@ export function DebriefForm({
     }
   };
 
+  // Overall performance score for display
+  const avgScore = Math.round((commScore + technicalScore + cultureFitScore + enthusiasmScore) / 4);
+  const avgColor = avgScore >= 4 ? '#b5dec2' : avgScore === 3 ? '#f0d99f' : '#f0b8b8';
+  const avgLabel = avgScore >= 4 ? 'Strong' : avgScore === 3 ? 'Average' : 'Needs Work';
+
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[900px] mx-auto">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white/90">Post-Interview Debrief</h1>
-        <p className="text-[13px] text-white/40">
-          Capture what happened while it's fresh. This feeds your thank you notes and helps refine future prep.
-        </p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-lg font-semibold text-white/90">Post-Interview Debrief</h1>
+          <p className="text-[13px] text-white/40">
+            Capture what happened while it's fresh. This feeds your thank you notes and helps refine future prep.
+          </p>
+        </div>
+        {/* Overall performance badge */}
+        <div className="flex-shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-center">
+          <div className="text-[20px] font-bold" style={{ color: avgColor }}>{avgScore}/5</div>
+          <div className="text-[10px] font-medium mt-0.5" style={{ color: avgColor }}>{avgLabel}</div>
+          <div className="text-[9px] text-white/25 mt-0.5">Overall</div>
+        </div>
       </div>
 
-      {/* Company + Role */}
+      {/* Interview Details */}
       <GlassCard className="p-5 space-y-4">
         <h3 className="text-[13px] font-semibold text-white/70">Interview Details</h3>
         <div className="flex gap-3">
@@ -288,7 +620,6 @@ export function DebriefForm({
             />
           </div>
         </div>
-
         <div className="flex gap-3">
           <div className="flex-1">
             <label className={LABEL_CLASS}>Interview Date</label>
@@ -343,9 +674,43 @@ export function DebriefForm({
             current={overallImpression}
             icon={<ThumbsDown size={16} />}
             label="Negative"
-            color="text-[#e8a0a0]"
-            activeClass="border-[#e8a0a0]/30 bg-[#e8a0a0]/[0.06] text-[#e8a0a0]"
+            color="text-[#f0b8b8]"
+            activeClass="border-[#f0b8b8]/30 bg-[#f0b8b8]/[0.06] text-[#f0b8b8]"
             onClick={setOverallImpression}
+          />
+        </div>
+      </GlassCard>
+
+      {/* Performance dimensions */}
+      <GlassCard className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[13px] font-semibold text-white/70">Performance by Dimension</h3>
+          <span className="text-[11px] text-white/30">Rate how you performed in each area</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <PerformanceScoreSelector
+            label="Communication"
+            icon={<MessageSquare size={13} />}
+            value={commScore}
+            onChange={setCommScore}
+          />
+          <PerformanceScoreSelector
+            label="Technical Depth"
+            icon={<TrendingUp size={13} />}
+            value={technicalScore}
+            onChange={setTechnicalScore}
+          />
+          <PerformanceScoreSelector
+            label="Cultural Fit"
+            icon={<Users size={13} />}
+            value={cultureFitScore}
+            onChange={setCultureFitScore}
+          />
+          <PerformanceScoreSelector
+            label="Enthusiasm"
+            icon={<Zap size={13} />}
+            value={enthusiasmScore}
+            onChange={setEnthusiasmScore}
           />
         </div>
       </GlassCard>
@@ -353,26 +718,54 @@ export function DebriefForm({
       {/* What went well / poorly */}
       <GlassCard className="p-5 space-y-4">
         <h3 className="text-[13px] font-semibold text-white/70">Performance Reflection</h3>
-        <div>
-          <label className={LABEL_CLASS}>What went well</label>
+
+        <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.03] p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <ThumbsUp size={12} className="text-[#b5dec2]/70" />
+            <label className="text-[11px] font-semibold text-[#b5dec2]/70 uppercase tracking-wider">What went well</label>
+          </div>
           <textarea
             placeholder="Moments of strong rapport, questions you nailed, stories that landed..."
             value={whatWentWell}
             onChange={(e) => setWhatWentWell(e.target.value)}
             rows={3}
-            className={cn(INPUT_CLASS, 'w-full resize-none')}
+            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[#b5dec2]/10')}
           />
         </div>
-        <div>
-          <label className={LABEL_CLASS}>What could have gone better</label>
+
+        <div className="rounded-lg border border-[#f0d99f]/12 bg-[#f0d99f]/[0.02] p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Minus size={12} className="text-[#f0d99f]/70" />
+            <label className="text-[11px] font-semibold text-[#f0d99f]/70 uppercase tracking-wider">What could have gone better</label>
+          </div>
           <textarea
             placeholder="Stumbling points, questions you were unprepared for, missed opportunities..."
             value={whatWentPoorly}
             onChange={(e) => setWhatWentPoorly(e.target.value)}
             rows={3}
-            className={cn(INPUT_CLASS, 'w-full resize-none')}
+            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[#f0d99f]/10')}
           />
         </div>
+
+        <div className="rounded-lg border border-[#f0b8b8]/12 bg-[#f0b8b8]/[0.02] p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <AlertTriangle size={12} className="text-[#f0b8b8]/70" />
+            <label className="text-[11px] font-semibold text-[#f0b8b8]/70 uppercase tracking-wider">Red flags or concerns</label>
+          </div>
+          <textarea
+            placeholder="Anything that might have raised a concern for the interviewer — be honest..."
+            value={companySignals}
+            onChange={(e) => setCompanySignals(e.target.value)}
+            rows={2}
+            className={cn(INPUT_CLASS, 'w-full resize-none bg-transparent border-[#f0b8b8]/10')}
+          />
+        </div>
+      </GlassCard>
+
+      {/* Sentiment analysis */}
+      <GlassCard className="p-5 space-y-3">
+        <h3 className="text-[13px] font-semibold text-white/70">How They Likely Perceived You</h3>
+        <SentimentSummary items={sentimentItems} onChange={setSentimentItems} />
       </GlassCard>
 
       {/* Questions asked */}
@@ -392,7 +785,7 @@ export function DebriefForm({
                 <button
                   type="button"
                   onClick={() => removeQuestion(i)}
-                  className="text-white/20 hover:text-[#e8a0a0]/60 transition-colors flex-shrink-0"
+                  className="text-white/20 hover:text-[#f0b8b8]/60 transition-colors flex-shrink-0"
                   aria-label="Remove question"
                 >
                   <X size={14} />
@@ -437,23 +830,19 @@ export function DebriefForm({
         </div>
       </GlassCard>
 
-      {/* Company signals + follow-up */}
-      <GlassCard className="p-5 space-y-4">
-        <h3 className="text-[13px] font-semibold text-white/70">Intelligence & Next Steps</h3>
-        <div>
-          <label className={LABEL_CLASS}>Company Signals</label>
-          <textarea
-            placeholder="Any signals about timeline, headcount freeze, culture dynamics, decision process?"
-            value={companySignals}
-            onChange={(e) => setCompanySignals(e.target.value)}
-            rows={3}
-            className={cn(INPUT_CLASS, 'w-full resize-none')}
-          />
+      {/* Follow-up actions checklist */}
+      <GlassCard className="p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Flag size={14} className="text-[#afc4ff]/60" />
+          <h3 className="text-[13px] font-semibold text-white/70">Follow-Up Actions</h3>
         </div>
-        <div>
-          <label className={LABEL_CLASS}>Follow-up Actions</label>
+        <FollowUpChecklist items={followUpItems} onChange={setFollowUpItems} />
+
+        {/* Free-form fallback */}
+        <div className="pt-1 border-t border-white/[0.04]">
+          <label className={cn(LABEL_CLASS, 'mt-2')}>Additional Notes</label>
           <textarea
-            placeholder="Send thank you notes, research a topic they raised, follow up in X days..."
+            placeholder="Any other follow-ups or context..."
             value={followUpActions}
             onChange={(e) => setFollowUpActions(e.target.value)}
             rows={2}
@@ -461,6 +850,19 @@ export function DebriefForm({
           />
         </div>
       </GlassCard>
+
+      {/* Thank you note CTA (shown when interviewer names are present) */}
+      {interviewerNotes.some((n) => n.name.trim().length > 0) && !saved && (
+        <div className="rounded-xl border border-[#afc4ff]/15 bg-[#afc4ff]/[0.03] p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-medium text-white/70">Ready to write thank you notes?</p>
+            <p className="text-[11px] text-white/35 mt-0.5">
+              Save the debrief first, then generate personalized thank you notes for each interviewer.
+            </p>
+          </div>
+          <Send size={16} className="text-[#afc4ff]/40 flex-shrink-0" />
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex items-center gap-3">
