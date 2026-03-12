@@ -12,7 +12,7 @@
  * - Age awareness protects executives 45+ from systemic bias
  */
 
-import { AGE_AWARENESS_RULES } from '../../knowledge/resume-guide.js';
+import { AGE_AWARENESS_RULES } from '../../shared-knowledge.js';
 
 // ─── Rule 0: Cover Letter Philosophy ────────────────────────────────
 

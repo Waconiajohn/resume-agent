@@ -9,7 +9,7 @@ import type { AgentConfig } from '../../runtime/agent-protocol.js';
 import { registerAgent } from '../../runtime/agent-registry.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
-import { AGE_AWARENESS_RULES } from '../../knowledge/resume-guide.js';
+import { AGE_AWARENESS_RULES } from '../../shared-knowledge.js';
 import { analystTools } from './tools.js';
 
 export const analystConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = {

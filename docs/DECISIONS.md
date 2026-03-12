@@ -547,4 +547,27 @@ Plain JSON Schema objects (`{ type: 'object', properties: {...}, required: [...]
 - No migration needed for existing agents.
 - When CLAUDE.md or agent notes mention "Zod schemas," this refers to output validation only.
 - The `agents/schemas/` directory in the Resume Builder stores output-validation schemas — this is the correct placement for any new Zod schemas added to other agents.
+
+## ADR-042: Resume Agent v2 — 10-Agent Rebuild
+**Date:** 2026-03-11
+**Status:** accepted
+
+**Context:**
+The current 3-agent resume pipeline (Strategist/Craftsman/Producer) treats AI like an assembly-line worker. A cheap orchestrator LLM decides what tools to call, questions come out generic, stages flash by unreadable, and the pipeline produces inferior results to a single well-crafted ChatGPT prompt. The panel-based UX with 11 panel types, approval gates, and section-by-section review creates friction without adding value.
+
+**Decision:**
+Replace the entire resume pipeline with a 10-agent architecture: Job Intelligence, Candidate Intelligence, Benchmark Candidate (parallel) → Gap Analysis → Narrative Strategy (sequential) → Resume Writer → Truth Verification + ATS Optimization + Executive Tone (parallel) → Resume Assembly. Two-field intake (resume + JD). Streaming accumulation UX replacing panels. Inline AI editing on the resume document. "Add Context" text box replacing the positioning interview.
+
+Keep: agent runtime (`agents/runtime/`), SSE infrastructure, model routing, product route factory, all non-resume platform code, Glass design system, export libs, auth.
+Delete: `agents/strategist/`, `agents/craftsman/`, `agents/producer/`, `agents/coordinator.ts`, `agents/resume/`, all supporting agent files, all 11 panel components, pipeline-specific hooks/types.
+Modify: `LiveResumeDocument.tsx` (inline editing), `useAgent.ts` (streaming), `App.tsx` (new routing).
+
+**Reasoning:**
+Each agent in the new system owns one clear responsibility and uses a quality prompt with full context — not a tool-calling loop driven by a cheap orchestrator. The Gap Analysis Agent creatively closes gaps (inferring budgets, reframing adjacent skills). The Resume Writer Agent produces a complete document in one pass. The streaming UX shows output accumulating (like ChatGPT) instead of flashing panel transitions. The platform infrastructure (runtime, routes, auth, design system, other products) is sound and stays.
+
+**Consequences:**
+- Complete rewrite of the resume product layer — no incremental migration
+- All current resume pipeline tests become invalid (they test deleted code)
+- Design blueprint: `docs/obsidian/30_Specs & Designs/Resume Agent v2 — Design Blueprint.md`
+- Other products (Coach, Onboarding, Retirement Bridge, Job Command Center) are unaffected
 - The scaffold skill remains the authoritative generator for new tools — it produces JSON Schema for `input_schema` by design.

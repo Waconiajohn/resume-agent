@@ -31,11 +31,7 @@ vi.mock('../lib/feature-flags.js', () => ({
   get FF_REDIS_RATE_LIMIT() {
     return ffRedisRateLimit;
   },
-  FF_BLUEPRINT_APPROVAL: true,
   FF_REDIS_BUS: false,
-  QUESTIONNAIRE_FLAGS: {},
-  GUIDED_SUGGESTIONS_ENABLED: true,
-  isQuestionnaireEnabled: vi.fn(() => false),
 }));
 
 // ─── imports (after mocks) ────────────────────────────────────────────────────

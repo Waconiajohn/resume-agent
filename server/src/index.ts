@@ -6,7 +6,7 @@ import path from 'node:path';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
-import { pipeline, getPipelineRouteStats, flushAllQueuedPanelPersists } from './routes/resume-pipeline.js';
+import { resumeV2Pipeline, getV2PipelineRouteStats } from './routes/resume-v2-pipeline.js';
 import { workflow } from './routes/workflow.js';
 import { billing } from './routes/billing.js';
 import { admin } from './routes/admin.js';
@@ -259,7 +259,7 @@ app.get('/metrics', (c) => {
 
   const memUsage = process.memoryUsage();
   const sessionStats = getSessionRouteStats();
-  const pipelineStats = getPipelineRouteStats();
+  const pipelineStats = getV2PipelineRouteStats();
   const rateLimitStats = getRateLimitStats();
   const authCacheStats = getAuthCacheStats();
   const requestStats = getRequestMetrics();
@@ -296,7 +296,7 @@ app.get('/metrics', (c) => {
 
 app.route('/api/sessions', sessions);
 app.route('/api/resumes', resumes);
-app.route('/api/pipeline', pipeline);
+app.route('/api/pipeline', resumeV2Pipeline);
 app.route('/api/workflow', workflow);
 app.route('/api/billing', billing);
 app.route('/api/admin', admin);
@@ -358,17 +358,10 @@ function shutdown(signal: string) {
 
   const flushTasks = Promise.allSettled([
     releaseAllLocks(),
-    flushAllQueuedPanelPersists(),
+    Promise.resolve(0), // Resume pipeline v2 flush will go here
     flushSentry(2000),
   ]).then((results) => {
-    const panelFlush = results[1];
-    if (panelFlush.status === 'fulfilled') {
-      logger.info({ flushed_panel_persists: panelFlush.value }, 'Completed shutdown flush tasks');
-    } else {
-      logger.warn({
-        error: panelFlush.reason instanceof Error ? panelFlush.reason.message : String(panelFlush.reason),
-      }, 'Panel persist flush failed during shutdown');
-    }
+    logger.info('Completed shutdown flush tasks');
   }).catch((err) => {
     logger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Shutdown flush tasks failed');
   });

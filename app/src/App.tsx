@@ -6,7 +6,7 @@ import { Header } from '@/components/Header';
 import { AuthGate } from '@/components/AuthGate';
 import { LandingScreen } from '@/components/LandingScreen';
 import { CoachScreen } from '@/components/CoachScreen';
-import { PipelineIntakeForm } from '@/components/PipelineIntakeForm';
+// PipelineIntakeForm — legacy intake, replaced by V2IntakeForm in resume-v2
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SalesPage } from '@/components/SalesPage';
 import { PricingPage } from '@/components/PricingPage';
@@ -16,12 +16,13 @@ import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
+import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
 
 const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then(m => ({ default: m.CoachDrawer })));
 
-type View = 'landing' | 'intake' | 'coach' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq';
+type View = 'landing' | 'coach' | 'resume-v2' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq';
 
 export default function App() {
   const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
@@ -36,7 +37,6 @@ export default function App() {
     error: sessionError,
     listSessions,
     listResumes,
-    createSession,
     getDefaultResume,
     getResumeById,
     loadSession,
@@ -46,7 +46,6 @@ export default function App() {
     saveResumeAsBase,
     sendMessage,
     setCurrentSession,
-    startPipeline,
     respondToGate,
     getSessionResume,
     getSessionCoverLetter,
@@ -95,7 +94,6 @@ export default function App() {
   const [toolSlug, setToolSlug] = useState<string | undefined>(undefined);
   const [initialRoom, setInitialRoom] = useState<string | undefined>(undefined);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
-  const [intakeLoading, setIntakeLoading] = useState(false);
   const [toolsCoachOpen, setToolsCoachOpen] = useState(false);
 
 
@@ -174,7 +172,7 @@ export default function App() {
   );
 
   const handleNewSession = useCallback(async () => {
-    setView('intake');
+    setView('resume-v2');
     setIntakeInitialResumeText('');
     setIntakeDefaultResumeId(null);
     void listResumes();
@@ -184,58 +182,6 @@ export default function App() {
       setIntakeDefaultResumeId(defaultResume.id);
     }
   }, [getDefaultResume, listResumes]);
-
-  const handleLoadSavedResumeForIntake = useCallback(
-    async (resumeId: string) => {
-      const resume = await getResumeById(resumeId);
-      if (!resume?.raw_text?.trim()) return null;
-      return resume.raw_text;
-    },
-    [getResumeById],
-  );
-
-  const handleIntakeSubmit = useCallback(
-    async (data: {
-      resumeText: string;
-      jobDescription: string;
-      companyName: string;
-      workflowMode: 'fast_draft' | 'balanced' | 'deep_dive';
-      minimumEvidenceTarget: number;
-      resumePriority: 'authentic' | 'ats' | 'impact' | 'balanced';
-      seniorityDelta: 'same' | 'one_up' | 'big_jump' | 'step_back';
-    }) => {
-      setIntakeLoading(true);
-      try {
-        const s = await createSession(intakeDefaultResumeId ?? undefined);
-        if (!s) {
-          setIntakeLoading(false);
-          return;
-        }
-
-        const started = await startPipeline(
-          s.id,
-          data.resumeText,
-          data.jobDescription,
-          data.companyName,
-          data.workflowMode,
-          data.minimumEvidenceTarget,
-          data.resumePriority,
-          data.seniorityDelta,
-        );
-        if (!started) {
-          await deleteSession(s.id);
-          setIntakeLoading(false);
-          return;
-        }
-
-        setView('coach');
-        setIntakeLoading(false);
-      } catch {
-        setIntakeLoading(false);
-      }
-    },
-    [createSession, startPipeline, intakeDefaultResumeId, deleteSession],
-  );
 
   const handleResumeSession = useCallback(
     async (sessionId: string) => {
@@ -387,13 +333,13 @@ export default function App() {
       }
       return;
     }
-    const validViews: View[] = ['landing', 'intake', 'coach', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter', 'career-iq'];
+    const validViews: View[] = ['landing', 'coach', 'resume-v2', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter', 'career-iq'];
     const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
     setView(newView);
     const paths: Record<View, string> = {
       landing: '/app',
-      intake: '/app',
       coach: '/app',
+      'resume-v2': '/app',
       pricing: '/pricing',
       billing: '/billing',
       affiliate: '/affiliate',
@@ -481,19 +427,6 @@ export default function App() {
         />
       )}
 
-      {view === 'intake' && (
-        <PipelineIntakeForm
-          onSubmit={handleIntakeSubmit}
-          onBack={() => setView('landing')}
-          loading={intakeLoading}
-          initialResumeText={intakeInitialResumeText}
-          defaultResumeId={intakeDefaultResumeId}
-          savedResumes={resumes}
-          onLoadSavedResume={handleLoadSavedResumeForIntake}
-          error={sessionError}
-        />
-      )}
-
       {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && !hasLiveWorkspaceState && (
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
@@ -536,6 +469,13 @@ export default function App() {
           liveWorkflowReplan={workflowReplan}
           pipelineActivity={pipelineActivity}
           onReconnectStream={reconnectStreamNow}
+        />
+      )}
+
+      {view === 'resume-v2' && (
+        <V2ResumeScreen
+          accessToken={accessToken}
+          onBack={() => setView('landing')}
         />
       )}
 

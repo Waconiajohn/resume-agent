@@ -11,7 +11,7 @@ import { registerAgent } from '../../runtime/agent-registry.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { ExecutiveBioState, ExecutiveBioSSEEvent } from '../types.js';
 import { EXECUTIVE_BIO_RULES } from '../knowledge/rules.js';
-import { AGE_AWARENESS_RULES } from '../../knowledge/resume-guide.js';
+import { AGE_AWARENESS_RULES } from '../../shared-knowledge.js';
 import { writerTools } from './tools.js';
 
 export const writerConfig: AgentConfig<ExecutiveBioState, ExecutiveBioSSEEvent> = {

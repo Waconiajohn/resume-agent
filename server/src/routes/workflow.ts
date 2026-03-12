@@ -17,7 +17,9 @@ import {
   isWorkflowNodeKey,
   workflowNodeFromStage,
 } from '../lib/workflow-nodes.js';
-import { STALE_PIPELINE_MS, pipeline as pipelineRouter } from './resume-pipeline.js';
+// Resume pipeline v2 — pipeline router will be re-wired in Sprint V2-2
+const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes
+const pipelineRouter = new Hono(); // stub — v2 pipeline not yet wired
 import {
   asRecord,
   questionnaireAnalytics,
