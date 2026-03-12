@@ -12,6 +12,7 @@
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import type { BenchmarkCandidateInput, BenchmarkCandidateOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are the hiring manager for this role. You have been searching for the perfect candidate for 6 months. You've interviewed 50 people and none of them were right. Now describe EXACTLY who you're looking for.
@@ -71,6 +72,7 @@ export async function runBenchmarkCandidate(
     ...input.job_intelligence.hidden_hiring_signals.map(s => `- ${s}`),
   ].join('\n');
 
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
@@ -82,6 +84,30 @@ export async function runBenchmarkCandidate(
   });
 
   const parsed = repairJSON<BenchmarkCandidateOutput>(response.text);
-  if (!parsed) throw new Error('Benchmark Candidate agent returned unparseable response');
-  return parsed;
+  if (parsed) return parsed;
+
+  // Attempt 2: retry with explicit JSON-only instruction
+  logger.warn(
+    { rawSnippet: response.text.substring(0, 500) },
+    'Benchmark Candidate: first attempt unparseable, retrying with stricter prompt',
+  );
+
+  const retry = await llm.chat({
+    model: MODEL_PRIMARY,
+    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    messages: [
+      { role: 'user', content: `${SYSTEM_PROMPT}\n\nBuild the ideal candidate profile for this role:\n\n${jobContext}` },
+    ],
+    max_tokens: 4096,
+    signal,
+  });
+
+  const retryParsed = repairJSON<BenchmarkCandidateOutput>(retry.text);
+  if (retryParsed) return retryParsed;
+
+  logger.error(
+    { rawSnippet: retry.text.substring(0, 500) },
+    'Benchmark Candidate: both attempts returned unparseable response',
+  );
+  throw new Error('Benchmark Candidate agent returned unparseable response after 2 attempts');
 }

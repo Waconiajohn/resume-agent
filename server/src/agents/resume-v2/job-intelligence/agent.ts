@@ -9,6 +9,7 @@
 
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import type { JobIntelligenceInput, JobIntelligenceOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a senior executive recruiter who has placed 500+ candidates at the VP/C-suite level. Your job is to deconstruct a job description and extract what the hiring manager ACTUALLY wants — not what HR wrote.
@@ -53,6 +54,7 @@ export async function runJobIntelligence(
   input: JobIntelligenceInput,
   signal?: AbortSignal,
 ): Promise<JobIntelligenceOutput> {
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_MID,
     system: SYSTEM_PROMPT,
@@ -64,6 +66,30 @@ export async function runJobIntelligence(
   });
 
   const parsed = repairJSON<JobIntelligenceOutput>(response.text);
-  if (!parsed) throw new Error('Job Intelligence agent returned unparseable response');
-  return parsed;
+  if (parsed) return parsed;
+
+  // Attempt 2: retry with explicit JSON-only instruction
+  logger.warn(
+    { rawSnippet: response.text.substring(0, 500) },
+    'Job Intelligence: first attempt unparseable, retrying with stricter prompt',
+  );
+
+  const retry = await llm.chat({
+    model: MODEL_MID,
+    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    messages: [
+      { role: 'user', content: `${SYSTEM_PROMPT}\n\nAnalyze this job description:\n\n${input.job_description}` },
+    ],
+    max_tokens: 4096,
+    signal,
+  });
+
+  const retryParsed = repairJSON<JobIntelligenceOutput>(retry.text);
+  if (retryParsed) return retryParsed;
+
+  logger.error(
+    { rawSnippet: retry.text.substring(0, 500) },
+    'Job Intelligence: both attempts returned unparseable response',
+  );
+  throw new Error('Job Intelligence agent returned unparseable response after 2 attempts');
 }

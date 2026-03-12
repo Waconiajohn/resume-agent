@@ -10,6 +10,7 @@
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import type { TruthVerificationInput, TruthVerificationOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a fact-checker for executive resumes. Your job: verify that EVERY claim in this resume can be traced to the candidate's original resume or structured profile data.
@@ -55,20 +56,42 @@ export async function runTruthVerification(
 ): Promise<TruthVerificationOutput> {
   const resumeText = formatDraftForVerification(input);
 
+  const userMessage = `## Resume Draft to Verify\n\n${resumeText}\n\n## Original Resume (source of truth)\n\n${input.original_resume}\n\nVerify every claim in the draft against the original resume.`;
+
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: `## Resume Draft to Verify\n\n${resumeText}\n\n## Original Resume (source of truth)\n\n${input.original_resume}\n\nVerify every claim in the draft against the original resume.`,
-    }],
+    messages: [{ role: 'user', content: userMessage }],
     max_tokens: 8192,
     signal,
   });
 
   const parsed = repairJSON<TruthVerificationOutput>(response.text);
-  if (!parsed) throw new Error('Truth Verification agent returned unparseable response');
-  return parsed;
+  if (parsed) return parsed;
+
+  // Attempt 2: retry with explicit JSON-only instruction
+  logger.warn(
+    { rawSnippet: response.text.substring(0, 500) },
+    'Truth Verification: first attempt unparseable, retrying with stricter prompt',
+  );
+
+  const retry = await llm.chat({
+    model: MODEL_PRIMARY,
+    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+    max_tokens: 8192,
+    signal,
+  });
+
+  const retryParsed = repairJSON<TruthVerificationOutput>(retry.text);
+  if (retryParsed) return retryParsed;
+
+  logger.error(
+    { rawSnippet: retry.text.substring(0, 500) },
+    'Truth Verification: both attempts returned unparseable response',
+  );
+  throw new Error('Truth Verification agent returned unparseable response after 2 attempts');
 }
 
 function formatDraftForVerification(input: TruthVerificationInput): string {

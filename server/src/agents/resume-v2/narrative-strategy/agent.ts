@@ -12,6 +12,7 @@
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import type { NarrativeStrategyInput, NarrativeStrategyOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a master brand strategist and narrative architect who has positioned 500+ executives for career transitions. You create the narrative that makes a hiring manager say "this is the one" before they finish reading the first page.
@@ -196,6 +197,7 @@ export async function runNarrativeStrategy(
 ): Promise<NarrativeStrategyOutput> {
   const userMessage = buildUserMessage(input);
 
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
@@ -205,8 +207,30 @@ export async function runNarrativeStrategy(
   });
 
   const parsed = repairJSON<NarrativeStrategyOutput>(response.text);
-  if (!parsed) throw new Error('Narrative Strategy agent returned unparseable response');
-  return parsed;
+  if (parsed) return parsed;
+
+  // Attempt 2: retry with explicit JSON-only instruction
+  logger.warn(
+    { rawSnippet: response.text.substring(0, 500) },
+    'Narrative Strategy: first attempt unparseable, retrying with stricter prompt',
+  );
+
+  const retry = await llm.chat({
+    model: MODEL_PRIMARY,
+    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+    max_tokens: 16384,
+    signal,
+  });
+
+  const retryParsed = repairJSON<NarrativeStrategyOutput>(retry.text);
+  if (retryParsed) return retryParsed;
+
+  logger.error(
+    { rawSnippet: retry.text.substring(0, 500) },
+    'Narrative Strategy: both attempts returned unparseable response',
+  );
+  throw new Error('Narrative Strategy agent returned unparseable response after 2 attempts');
 }
 
 function buildUserMessage(input: NarrativeStrategyInput): string {

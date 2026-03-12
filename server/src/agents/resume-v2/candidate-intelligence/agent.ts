@@ -81,27 +81,46 @@ export async function runCandidateIntelligence(
   input: CandidateIntelligenceInput,
   signal?: AbortSignal,
 ): Promise<CandidateIntelligenceOutput> {
-  const messages = [
-    { role: 'user' as const, content: `Parse this resume into a structured candidate profile:\n\n${input.resume_text}` },
-  ];
+  // Attempt 1
+  const response = await llm.chat({
+    model: MODEL_MID,
+    system: SYSTEM_PROMPT,
+    messages: [
+      { role: 'user' as const, content: `Parse this resume into a structured candidate profile:\n\n${input.resume_text}` },
+    ],
+    max_tokens: 8192,
+    signal,
+  });
 
-  // Attempt with retry — JSON parse failures from LLMs are transient
-  let parsed: CandidateIntelligenceOutput | null = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const response = await llm.chat({
+  let parsed = repairJSON<CandidateIntelligenceOutput>(response.text);
+
+  if (!parsed) {
+    // Attempt 2: retry with explicit JSON-only instruction
+    logger.warn(
+      { rawSnippet: response.text.substring(0, 500) },
+      'Candidate Intelligence: first attempt unparseable, retrying with stricter prompt',
+    );
+
+    const retry = await llm.chat({
       model: MODEL_MID,
-      system: SYSTEM_PROMPT,
-      messages,
+      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      messages: [
+        { role: 'user' as const, content: `${SYSTEM_PROMPT}\n\nParse this resume into a structured candidate profile:\n\n${input.resume_text}` },
+      ],
       max_tokens: 8192,
       signal,
     });
 
-    parsed = repairJSON<CandidateIntelligenceOutput>(response.text);
-    if (parsed) break;
-    logger.warn({ attempt, snippet: response.text.substring(0, 200) }, 'Candidate Intelligence: retrying after unparseable response');
-  }
+    parsed = repairJSON<CandidateIntelligenceOutput>(retry.text);
 
-  if (!parsed) throw new Error('Candidate Intelligence agent returned unparseable response');
+    if (!parsed) {
+      logger.error(
+        { rawSnippet: retry.text.substring(0, 500) },
+        'Candidate Intelligence: both attempts returned unparseable response',
+      );
+      throw new Error('Candidate Intelligence agent returned unparseable response after 2 attempts');
+    }
+  }
 
   // Guardrail: never allow placeholder names
   if (!parsed.contact?.name || parsed.contact.name.toLowerCase().includes('john doe')) {

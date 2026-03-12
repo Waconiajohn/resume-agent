@@ -9,6 +9,7 @@
 
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import { BANNED_PHRASES } from '../knowledge/resume-rules.js';
 import type { ExecutiveToneInput, ExecutiveToneOutput } from '../types.js';
 
@@ -50,20 +51,42 @@ export async function runExecutiveTone(
 ): Promise<ExecutiveToneOutput> {
   const resumeText = formatDraftForTone(input);
 
+  const userMessage = `Audit this resume for executive tone:\n\n${resumeText}`;
+
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_MID,
     system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: `Audit this resume for executive tone:\n\n${resumeText}`,
-    }],
+    messages: [{ role: 'user', content: userMessage }],
     max_tokens: 4096,
     signal,
   });
 
   const parsed = repairJSON<ExecutiveToneOutput>(response.text);
-  if (!parsed) throw new Error('Executive Tone agent returned unparseable response');
-  return parsed;
+  if (parsed) return parsed;
+
+  // Attempt 2: retry with explicit JSON-only instruction
+  logger.warn(
+    { rawSnippet: response.text.substring(0, 500) },
+    'Executive Tone: first attempt unparseable, retrying with stricter prompt',
+  );
+
+  const retry = await llm.chat({
+    model: MODEL_MID,
+    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+    max_tokens: 4096,
+    signal,
+  });
+
+  const retryParsed = repairJSON<ExecutiveToneOutput>(retry.text);
+  if (retryParsed) return retryParsed;
+
+  logger.error(
+    { rawSnippet: retry.text.substring(0, 500) },
+    'Executive Tone: both attempts returned unparseable response',
+  );
+  throw new Error('Executive Tone agent returned unparseable response after 2 attempts');
 }
 
 function formatDraftForTone(input: ExecutiveToneInput): string {

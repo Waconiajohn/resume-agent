@@ -13,6 +13,7 @@
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import type { GapAnalysisInput, GapAnalysisOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a $3,000/engagement executive resume strategist. Your specialty: finding creative, TRUTHFUL ways to close gaps between what a candidate has and what a job requires.
@@ -78,6 +79,7 @@ export async function runGapAnalysis(
 ): Promise<GapAnalysisOutput> {
   const userMessage = buildUserMessage(input);
 
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
@@ -87,8 +89,30 @@ export async function runGapAnalysis(
   });
 
   const parsed = repairJSON<GapAnalysisOutput>(response.text);
-  if (!parsed) throw new Error('Gap Analysis agent returned unparseable response');
-  return parsed;
+  if (parsed) return parsed;
+
+  // Attempt 2: retry with explicit JSON-only instruction
+  logger.warn(
+    { rawSnippet: response.text.substring(0, 500) },
+    'Gap Analysis: first attempt unparseable, retrying with stricter prompt',
+  );
+
+  const retry = await llm.chat({
+    model: MODEL_PRIMARY,
+    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+    max_tokens: 8192,
+    signal,
+  });
+
+  const retryParsed = repairJSON<GapAnalysisOutput>(retry.text);
+  if (retryParsed) return retryParsed;
+
+  logger.error(
+    { rawSnippet: retry.text.substring(0, 500) },
+    'Gap Analysis: both attempts returned unparseable response',
+  );
+  throw new Error('Gap Analysis agent returned unparseable response after 2 attempts');
 }
 
 function buildUserMessage(input: GapAnalysisInput): string {

@@ -12,6 +12,7 @@
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import { getResumeRulesPrompt } from '../knowledge/resume-rules.js';
 import type { ResumeWriterInput, ResumeDraftOutput } from '../types.js';
 
@@ -123,6 +124,7 @@ export async function runResumeWriter(
 ): Promise<ResumeDraftOutput> {
   const userMessage = buildUserMessage(input);
 
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
@@ -131,8 +133,33 @@ export async function runResumeWriter(
     signal,
   });
 
-  const parsed = repairJSON<ResumeDraftOutput>(response.text);
-  if (!parsed) throw new Error('Resume Writer agent returned unparseable response');
+  let parsed = repairJSON<ResumeDraftOutput>(response.text);
+
+  if (!parsed) {
+    // Attempt 2: retry with explicit JSON-only instruction
+    logger.warn(
+      { rawSnippet: response.text.substring(0, 500) },
+      'Resume Writer: first attempt unparseable, retrying with stricter prompt',
+    );
+
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      max_tokens: 8192,
+      signal,
+    });
+
+    parsed = repairJSON<ResumeDraftOutput>(retry.text);
+
+    if (!parsed) {
+      logger.error(
+        { rawSnippet: retry.text.substring(0, 500) },
+        'Resume Writer: both attempts returned unparseable response',
+      );
+      throw new Error('Resume Writer agent returned unparseable response after 2 attempts');
+    }
+  }
 
   // Guardrail: ensure contact info is from candidate, not a placeholder
   if (!parsed.header?.name || parsed.header.name.toLowerCase().includes('john doe')) {

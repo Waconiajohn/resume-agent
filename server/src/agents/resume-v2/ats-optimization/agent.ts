@@ -10,6 +10,7 @@
 
 import { llm, MODEL_LIGHT } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import logger from '../../../lib/logger.js';
 import type { ATSOptimizationInput, ATSOptimizationOutput } from '../types.js';
 
 const SYSTEM_PROMPT = `You are an ATS (Applicant Tracking System) optimization specialist. You know exactly how resume parsing algorithms work and how to maximize keyword match scores WITHOUT making the resume sound like a keyword-stuffed mess.
@@ -46,20 +47,42 @@ export async function runATSOptimization(
     .map(c => `[${c.importance}] ${c.competency}`)
     .join('\n');
 
+  const userMessage = `## Resume to Analyze\n\n${resumeText}\n\n## JD Keywords\n${keywords}\n\n## Required Competencies\n${competencies}\n\nScore this resume's ATS match and suggest improvements.`;
+
+  // Attempt 1
   const response = await llm.chat({
     model: MODEL_LIGHT,
     system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: `## Resume to Analyze\n\n${resumeText}\n\n## JD Keywords\n${keywords}\n\n## Required Competencies\n${competencies}\n\nScore this resume's ATS match and suggest improvements.`,
-    }],
+    messages: [{ role: 'user', content: userMessage }],
     max_tokens: 4096,
     signal,
   });
 
   const parsed = repairJSON<ATSOptimizationOutput>(response.text);
-  if (!parsed) throw new Error('ATS Optimization agent returned unparseable response');
-  return parsed;
+  if (parsed) return parsed;
+
+  // Attempt 2: retry with explicit JSON-only instruction
+  logger.warn(
+    { rawSnippet: response.text.substring(0, 500) },
+    'ATS Optimization: first attempt unparseable, retrying with stricter prompt',
+  );
+
+  const retry = await llm.chat({
+    model: MODEL_LIGHT,
+    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+    max_tokens: 4096,
+    signal,
+  });
+
+  const retryParsed = repairJSON<ATSOptimizationOutput>(retry.text);
+  if (retryParsed) return retryParsed;
+
+  logger.error(
+    { rawSnippet: retry.text.substring(0, 500) },
+    'ATS Optimization: both attempts returned unparseable response',
+  );
+  throw new Error('ATS Optimization agent returned unparseable response after 2 attempts');
 }
 
 function formatDraftForATS(input: ATSOptimizationInput): string {
