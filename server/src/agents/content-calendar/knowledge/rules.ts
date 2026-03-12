@@ -171,10 +171,52 @@ After generating the full calendar, verify:
 
 Never fabricate achievements, metrics, or stories. Every post must be traceable to real experience from the resume or positioning data.`;
 
+// ─── Rule 8: Positioning Narrative Reinforcement ────────────────────
+
+export const RULE_8_POSITIONING = `## RULE 8 — POSITIONING NARRATIVE REINFORCEMENT
+
+Every post in the calendar must reinforce the candidate's positioning narrative. They are not posting content — they are building a public brand that makes them the obvious choice for their target role.
+
+What this means in practice:
+- Before generating any post, identify the candidate's core positioning themes from the resume or positioning strategy. These themes are the BACKBONE of the content calendar.
+- Every post must be traceable to one of these themes. If a post could have been written by any executive in any industry, it is not specific enough.
+- The candidate should become known for something specific. The content calendar should make it clear, over 30 days, what they own intellectually in their space.
+
+Content mix mandate (enforced):
+- **40% Thought Leadership** — The candidate's authoritative perspective on issues in their domain. This is where positioning is established.
+- **30% Engagement content** — Comments, reactions, questions that invite dialogue and build relationships. Engagement posts keep the algorithm warm between high-effort posts.
+- **20% Personal Stories** — Specific career experiences that humanize the candidate and make the positioning narrative feel earned, not claimed.
+- **10% Industry News** — Curated insights on sector trends that demonstrate market awareness. The candidate adds commentary — does not just share links.
+
+If a positioning strategy or Why Me narrative is available in the platform context, weave its core themes into at least 40% of posts directly (not just generically). The LinkedIn presence should feel like a public extension of the resume's positioning narrative.
+
+GUARDRAIL: Never suggest posting about job search directly. No 'open to new opportunities' posts. No 'excited to announce I'm exploring new roles.' Position the candidate as an active, engaged industry leader who is fully employed and selective — even if that is not literally true. The goal is to attract inbound, not broadcast need.`;
+
+// ─── Rule 9: Hook Optimization for LinkedIn Algorithm ────────────────
+
+export const RULE_9_HOOKS = `## RULE 9 — HOOK OPTIMIZATION AND POSTING TIMING
+
+The first line of every post is the most important line. LinkedIn truncates after approximately 210 characters with a "...see more" link. Getting the click is mandatory — posts that are not expanded rarely drive engagement.
+
+Hook standards for this calendar:
+- Every post must have a HOOK in the first line that earns the expand click. This is non-negotiable.
+- The hook must be specific to the candidate's expertise — generic opener hooks (common on LinkedIn) no longer work with an executive audience.
+- The best hooks for executives: a counterintuitive claim, a specific data point from their career, or the opening line of a story with tension.
+
+Optimal posting times for executive LinkedIn audiences:
+- **Tuesday through Thursday, 7-9 AM** in the candidate's primary timezone — this is when executive LinkedIn audiences are most active (morning commute / early desk time)
+- **Friday at 10-11 AM** — slightly later due to lighter morning schedules and pre-weekend browsing
+- **Never Monday** — engagement on Monday is measurably lower as professionals are catching up on the week
+- Never post on weekends for professional executive content
+
+For each post in the calendar, specify a concrete posting time (e.g., "Tuesday 7:45 AM ET") that follows these guidelines. This makes the calendar actionable, not theoretical.
+
+The 2-line rule: The first 2 lines of every post (before "see more") must independently create enough curiosity or resonance to earn the expand. Test each post's opening 2 lines in isolation — if they don't compel engagement on their own, rewrite them.`;
+
 // ─── Combined System Prompt Injection ───────────────────────────────
 
 /**
- * All 8 rules concatenated for injection into the Writer's system prompt.
+ * All 10 rules concatenated for injection into the Writer's system prompt.
  */
 export const CONTENT_CALENDAR_RULES = [
   RULE_0_PHILOSOPHY,
@@ -185,4 +227,6 @@ export const CONTENT_CALENDAR_RULES = [
   RULE_5_SCHEDULE,
   RULE_6_ENGAGEMENT,
   RULE_7_SELF_REVIEW,
+  RULE_8_POSITIONING,
+  RULE_9_HOOKS,
 ].join('\n\n---\n\n');

@@ -19,6 +19,8 @@ import {
   RotateCcw,
   Bell,
   Plus,
+  Zap,
+  Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -78,9 +80,9 @@ interface OutreachPrefill {
 
 type OutreachStatus = 'not_started' | 'messaged';
 
-const STATUS_CONFIG: Record<OutreachStatus, { label: string; color: string }> = {
-  not_started: { label: 'Not Started', color: 'text-white/30 bg-white/[0.04]' },
-  messaged: { label: 'Contacted', color: 'text-[#98b3ff] bg-[#98b3ff]/10' },
+const STATUS_CONFIG: Record<OutreachStatus, { label: string; color: string; borderColor: string }> = {
+  not_started: { label: 'Not Started', color: 'text-white/30 bg-white/[0.04]', borderColor: 'border-white/[0.06]' },
+  messaged: { label: 'Contacted', color: 'text-[#afc4ff] bg-[#afc4ff]/10', borderColor: 'border-[#afc4ff]/15' },
 };
 
 function deriveOutreachStatus(contact: NetworkingContact): OutreachStatus {
@@ -277,8 +279,9 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
                           )}
                           <span
                             className={cn(
-                              'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                              'text-[10px] font-medium px-1.5 py-0.5 rounded-md border',
                               status.color,
+                              status.borderColor,
                             )}
                           >
                             {status.label}
@@ -328,6 +331,74 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
   );
 }
 
+// --- Follow-Up Timeline ---
+
+const FOLLOWUP_TIMELINE_STEPS = [
+  { label: 'Connection Request', day: 0, description: 'First contact — specific reason for connecting' },
+  { label: 'Follow-Up #1', day: 3, description: 'Share one insight, ask one question' },
+  { label: 'Follow-Up #2', day: 10, description: 'Provide value — resource, intro, or perspective' },
+  { label: 'Value Offer', day: 24, description: 'Specific, tangible value tailored to them' },
+  { label: 'Stop', day: 0, description: 'No response after 3 attempts — move on gracefully' },
+];
+
+function FollowUpTimeline({ hasReport }: { hasReport: boolean }) {
+  return (
+    <GlassCard className="p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Clock size={14} className="text-[#afc4ff]" />
+        <span className="text-[12px] font-semibold text-white/70">Follow-Up Cadence</span>
+        <span className="ml-auto text-[10px] text-white/25">Best practice</span>
+      </div>
+      <div className="relative">
+        {/* Vertical line */}
+        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/[0.06]" />
+        <div className="space-y-4">
+          {FOLLOWUP_TIMELINE_STEPS.map((step, idx) => {
+            const isStop = step.label === 'Stop';
+            return (
+              <div key={step.label} className="flex items-start gap-3 relative">
+                <div className={cn(
+                  'w-3.5 h-3.5 rounded-full border flex-shrink-0 mt-0.5 flex items-center justify-center',
+                  isStop
+                    ? 'border-[#f0b8b8]/40 bg-[#f0b8b8]/10'
+                    : hasReport && idx === 0
+                    ? 'border-[#b5dec2]/40 bg-[#b5dec2]/20'
+                    : 'border-white/[0.15] bg-white/[0.04]',
+                )}>
+                  {isStop ? (
+                    <Minus size={6} className="text-[#f0b8b8]/60" />
+                  ) : (
+                    <div className={cn(
+                      'w-1.5 h-1.5 rounded-full',
+                      hasReport && idx === 0 ? 'bg-[#b5dec2]' : 'bg-white/20',
+                    )} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn(
+                      'text-[11px] font-medium',
+                      isStop ? 'text-[#f0b8b8]/70' : 'text-white/65',
+                    )}>
+                      {step.label}
+                    </span>
+                    {step.day > 0 && (
+                      <span className="text-[10px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
+                        Day {step.day}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-white/30 mt-0.5 leading-tight">{step.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
 // --- GeneratedMessages (shows last AI-generated outreach sequence) ---
 
 interface GeneratedMessagesProps {
@@ -349,12 +420,16 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
   return (
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-2">
-        <MessageSquare size={18} className="text-[#98b3ff]" />
+        <MessageSquare size={18} className="text-[#afc4ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Generated Sequence</h3>
         {qualityScore != null && (
           <span className={cn(
-            'ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full',
-            qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' : 'text-red-400 bg-red-400/10',
+            'ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md border',
+            qualityScore >= 80
+              ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/15'
+              : qualityScore >= 60
+              ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/15'
+              : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/15',
           )}>
             Quality: {qualityScore}%
           </span>
@@ -362,12 +437,13 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
       </div>
 
       {!report && (
-        <div className="py-6 text-center">
+        <div className="py-6 text-center space-y-2">
+          <Zap size={24} className="text-white/10 mx-auto" />
           <p className="text-[12px] text-white/30 leading-relaxed">
-            Click <span className="text-[#98b3ff]/60 font-medium">Message</span> next to any Rule of Four contact to generate a personalized outreach sequence. AI-generated messages will appear here.
+            Click <span className="text-[#afc4ff]/60 font-medium">Message</span> next to any Rule of Four contact to generate a personalized outreach sequence.
           </p>
-          <p className="text-[11px] text-white/20 mt-2">
-            Each sequence includes a connection request, 2 follow-ups, a value offer, and a meeting request.
+          <p className="text-[11px] text-white/20 leading-relaxed">
+            Each sequence includes a connection request, follow-ups, a value offer, and a meeting request — all personalized to the specific contact.
           </p>
         </div>
       )}
@@ -375,10 +451,16 @@ function GeneratedMessages({ report, qualityScore, messageCount }: GeneratedMess
       {report && (
         <div className="space-y-3 mt-2">
           {messageCount != null && (
-            <p className="text-[11px] text-white/30">{messageCount} messages in sequence</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-white/30">{messageCount} messages</span>
+              <span className="text-[10px] text-white/20">·</span>
+              <span className="text-[10px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md border border-[#afc4ff]/10">
+                Personalized sequence
+              </span>
+            </div>
           )}
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 max-h-[380px] overflow-y-auto">
-            <pre className="text-[12px] text-white/60 leading-relaxed whitespace-pre-wrap font-sans">
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 max-h-[380px] overflow-y-auto">
+            <pre className="text-[12px] text-white/65 leading-relaxed whitespace-pre-wrap font-sans">
               {report}
             </pre>
           </div>
@@ -1057,7 +1139,7 @@ export function NetworkingHubRoom() {
         onGenerateMessage={handleGenerateMessage}
       />
 
-      {/* Generated Outreach Messages + Weekly Activity side-by-side */}
+      {/* Generated Outreach Messages + Follow-Up Timeline + Weekly Activity */}
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-[3] min-w-0">
           <GeneratedMessages
@@ -1066,7 +1148,8 @@ export function NetworkingHubRoom() {
             messageCount={outreachState?.messageCount ?? null}
           />
         </div>
-        <div className="flex-[2]">
+        <div className="flex-[2] flex flex-col gap-6">
+          <FollowUpTimeline hasReport={!!outreachState?.report} />
           <WeeklyActivity contacts={networkingContacts.contacts ?? []} />
         </div>
       </div>

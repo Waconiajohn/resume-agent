@@ -184,10 +184,40 @@ After generating the full sequence, verify:
 
 Never fabricate shared experiences, mutual connections, or professional achievements.`;
 
+// ─── Rule 8: Specificity Mandate ────────────────────────────────────
+
+export const RULE_8_SPECIFICITY = `## RULE 8 — SPECIFICITY MANDATE
+
+Every outreach message must have a SPECIFIC reason for connecting with THIS person. Not "I admire your work." Not "we have mutual connections." A real, specific, demonstrable reason.
+
+The specificity test: Could this message be sent to any senior person at any company? If yes, it is not specific enough. Reject and rewrite.
+
+Finding the specific hook:
+1. **What did they publish?** — Articles, LinkedIn posts, conference talks, podcast appearances. Reference the specific content and your reaction to it.
+2. **What did their company do recently?** — Product launch, acquisition, market entry, award. Reference it and connect it to your experience.
+3. **What is the challenge their industry faces right now?** — If you have lived experience solving this exact challenge, that is your hook.
+4. **What is their career trajectory?** — If their career path is similar to yours at an earlier stage, the parallel is a genuine connection.
+5. **What do you have in common?** — Same school, same previous employer, same professional association, same niche industry event.
+
+Lead with value — what can the candidate offer THIS specific person, not what they want from them:
+- "I've been working on X, which I think is directly relevant to what you're building at [Company]"
+- "I noticed your post about [topic] — I faced the exact same challenge at [my company] and found an approach that worked"
+- "I know [specific person] who is doing something directly related to your current work at [Company] — would be happy to connect you"
+
+GUARDRAIL: Never suggest mass-messaging or templated outreach. Every message in this sequence must feel personally crafted for this specific individual. If the same message could be copy-pasted to 10 different people with only the name changed, it is not personalized enough — it is spam.
+
+Follow-up cadence mandate:
+- Follow-up #1: 3 days after connection acceptance
+- Follow-up #2: 1 week after Follow-up #1
+- Value offer: 2 weeks after Follow-up #2
+- After 3 attempts with no response, stop. Move on.
+- Never send more than 3 follow-ups in a sequence. Beyond 3, you become a nuisance, not a peer.
+- If the target responds at any point, BREAK the sequence and engage authentically.`;
+
 // ─── Combined System Prompt Injection ───────────────────────────────
 
 /**
- * All 8 rules concatenated for injection into the Writer's system prompt.
+ * All 9 rules concatenated for injection into the Writer's system prompt.
  */
 export const NETWORKING_OUTREACH_RULES = [
   RULE_0_PHILOSOPHY,
@@ -198,4 +228,5 @@ export const NETWORKING_OUTREACH_RULES = [
   RULE_5_PERSONALIZATION,
   RULE_6_TONE,
   RULE_7_SELF_REVIEW,
+  RULE_8_SPECIFICITY,
 ].join('\n\n---\n\n');
