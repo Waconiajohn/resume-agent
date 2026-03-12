@@ -17,6 +17,12 @@ import {
   Calendar,
   UserCheck,
   RotateCcw,
+  Trophy,
+  MessageSquare,
+  ChevronRight,
+  Zap,
+  Flag,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -25,13 +31,111 @@ import { usePriorResult } from '@/hooks/usePriorResult';
 import { supabase } from '@/lib/supabase';
 import { markdownToHtml } from '@/lib/markdown';
 
-// --- Phase badges ---
+// --- Phase configuration ---
 
 const PHASES = [
-  { days: 'Days 1–30', label: 'Listen & Learn', color: 'text-[#98b3ff] bg-[#98b3ff]/10 border-[#98b3ff]/20' },
-  { days: 'Days 31–60', label: 'Align & Plan', color: 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20' },
-  { days: 'Days 61–90', label: 'Execute & Win', color: 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20' },
+  {
+    days: 'Days 1–30',
+    label: 'Listen & Learn',
+    theme: 'Absorb context and build relationships',
+    color: 'text-[#afc4ff]',
+    bg: 'bg-[#afc4ff]/10',
+    border: 'border-[#afc4ff]/15',
+    accent: '#afc4ff',
+    dot: 'bg-[#afc4ff]',
+  },
+  {
+    days: 'Days 31–60',
+    label: 'Contribute & Build',
+    theme: 'Execute quick wins and build confidence',
+    color: 'text-[#b5dec2]',
+    bg: 'bg-[#b5dec2]/10',
+    border: 'border-[#b5dec2]/15',
+    accent: '#b5dec2',
+    dot: 'bg-[#b5dec2]',
+  },
+  {
+    days: 'Days 61–90',
+    label: 'Lead & Deliver',
+    theme: 'Drive strategy and deliver results',
+    color: 'text-[#f0d99f]',
+    bg: 'bg-[#f0d99f]/10',
+    border: 'border-[#f0d99f]/15',
+    accent: '#f0d99f',
+    dot: 'bg-[#f0d99f]',
+  },
 ];
+
+// --- Progress tracker ---
+
+function PhaseProgressTracker({ activePhase }: { activePhase?: number }) {
+  return (
+    <div className="relative flex items-center justify-between px-2 py-4">
+      {/* Connecting line */}
+      <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-px bg-white/[0.06]" />
+
+      {PHASES.map((phase, i) => (
+        <div key={phase.label} className="relative flex flex-col items-center gap-2 z-10">
+          <div
+            className={cn(
+              'h-8 w-8 rounded-full border-2 flex items-center justify-center text-[11px] font-bold transition-all duration-500',
+              activePhase === undefined || i <= (activePhase ?? 2)
+                ? `${phase.bg} ${phase.border} ${phase.color}`
+                : 'bg-white/[0.03] border-white/[0.08] text-white/30',
+            )}
+          >
+            {i + 1}
+          </div>
+          <div className="text-center">
+            <div className={cn('text-[10px] font-semibold', phase.color)}>{phase.days}</div>
+            <div className="text-[9px] text-white/40 mt-0.5">{phase.label}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Score ring ---
+
+function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
+  const radius = (size - 12) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const filled = (score / 100) * circumference;
+  const color = score >= 80 ? '#b5dec2' : score >= 60 ? '#f0d99f' : '#f0b8b8';
+  const label = score >= 80 ? 'Strong' : score >= 60 ? 'Good' : 'Developing';
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.05)"
+          strokeWidth={6}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={6}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference - filled}
+          strokeLinecap="round"
+          className="transition-all duration-700"
+        />
+      </svg>
+      <div className="flex flex-col items-center -mt-[68px] mb-8">
+        <span className="text-[20px] font-bold text-white/90">{score}</span>
+        <span className="text-[9px] text-white/40 uppercase tracking-wider">{label}</span>
+      </div>
+    </div>
+  );
+}
 
 // --- Activity feed ---
 
@@ -63,21 +167,22 @@ function ActivityFeed({
       ? currentStage
       : 'Starting...';
 
-  const displayName = targetRole && targetCompany
-    ? `${targetRole} at ${targetCompany}`
-    : targetRole || targetCompany || 'your new role';
+  const displayName =
+    targetRole && targetCompany
+      ? `${targetRole} at ${targetCompany}`
+      : targetRole || targetCompany || 'your new role';
 
   return (
     <GlassCard className="p-8 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-72 h-72 rounded-full bg-[#98b3ff]/[0.04] blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-0 w-72 h-72 rounded-full bg-[#afc4ff]/[0.04] blur-3xl pointer-events-none" />
 
       <div className="flex items-center gap-4 mb-8">
         <div className="relative">
-          <div className="rounded-xl bg-[#98b3ff]/10 p-3">
-            <Map size={20} className="text-[#98b3ff]" />
+          <div className="rounded-xl bg-[#afc4ff]/10 p-3">
+            <Map size={20} className="text-[#afc4ff]" />
           </div>
-          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#57CDA4]/20 border-2 border-[#57CDA4]/40 flex items-center justify-center">
-            <Loader2 size={8} className="text-[#57CDA4] animate-spin" />
+          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#b5dec2]/20 border-2 border-[#b5dec2]/40 flex items-center justify-center">
+            <Loader2 size={8} className="text-[#b5dec2] animate-spin" />
           </div>
         </div>
         <div>
@@ -88,20 +193,10 @@ function ActivityFeed({
         </div>
       </div>
 
-      {/* Phase preview pills */}
-      <div className="flex gap-3 mb-6">
-        {PHASES.map((phase) => (
-          <div
-            key={phase.days}
-            className={cn('flex-1 rounded-xl border px-3 py-2 text-center', phase.color)}
-          >
-            <div className="text-[11px] font-semibold">{phase.days}</div>
-            <div className="text-[10px] opacity-70 mt-0.5">{phase.label}</div>
-          </div>
-        ))}
-      </div>
+      {/* Phase progress */}
+      <PhaseProgressTracker />
 
-      <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 mt-4">
         {activityMessages.length === 0 ? (
           <div className="text-center py-10">
             <Loader2 size={24} className="text-white/20 mx-auto mb-3 animate-spin" />
@@ -111,12 +206,8 @@ function ActivityFeed({
           activityMessages.map((msg, i) => {
             const opacity = Math.max(0.3, 1 - (activityMessages.length - 1 - i) * 0.08);
             return (
-              <div
-                key={msg.id}
-                className="flex items-start gap-3 py-1.5"
-                style={{ opacity }}
-              >
-                <div className="h-1.5 w-1.5 rounded-full bg-[#98b3ff]/50 mt-2 flex-shrink-0" />
+              <div key={msg.id} className="flex items-start gap-3 py-1.5" style={{ opacity }}>
+                <div className="h-1.5 w-1.5 rounded-full bg-[#afc4ff]/50 mt-2 flex-shrink-0" />
                 <span className="text-[13px] text-white/60 leading-relaxed">{msg.message}</span>
               </div>
             );
@@ -125,6 +216,32 @@ function ActivityFeed({
         <div ref={bottomRef} />
       </div>
     </GlassCard>
+  );
+}
+
+// --- Phase card ---
+
+function PhaseCard({ phase, index }: { phase: (typeof PHASES)[number]; index: number }) {
+  return (
+    <div
+      className={cn(
+        'rounded-xl border px-5 py-4',
+        phase.bg,
+        phase.border,
+      )}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <div
+          className={cn('h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold', phase.bg, phase.border, 'border')}
+          style={{ color: phase.accent }}
+        >
+          {index + 1}
+        </div>
+        <span className={cn('text-[12px] font-semibold', phase.color)}>{phase.days}</span>
+      </div>
+      <div className="text-[13px] font-semibold text-white/85">{phase.label}</div>
+      <div className="text-[11px] text-white/45 mt-0.5 leading-relaxed">{phase.theme}</div>
+    </div>
   );
 }
 
@@ -150,18 +267,21 @@ function ReportView({
       await navigator.clipboard.writeText(report);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [report]);
 
   const scoreColor =
     qualityScore !== null && qualityScore >= 80
-      ? 'text-[#57CDA4] bg-[#57CDA4]/10 border-[#57CDA4]/20'
+      ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
       : qualityScore !== null && qualityScore >= 60
       ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20'
-      : 'text-[#f87171] bg-[#f87171]/10 border-[#f87171]/20';
+      : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/20';
 
   return (
     <div className="space-y-6">
+      {/* Top bar */}
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -178,76 +298,152 @@ function ReportView({
           </div>
         )}
         <GlassButton variant="ghost" onClick={handleCopy} size="sm">
-          {copied ? <Check size={13} className="mr-1.5 text-[#57CDA4]" /> : <Copy size={13} className="mr-1.5" />}
+          {copied ? (
+            <Check size={13} className="mr-1.5 text-[#b5dec2]" />
+          ) : (
+            <Copy size={13} className="mr-1.5" />
+          )}
           {copied ? 'Copied!' : 'Copy Plan'}
         </GlassButton>
       </div>
 
-      {/* Phase overview */}
-      <div className="grid grid-cols-3 gap-3">
-        {PHASES.map((phase) => (
-          <div
-            key={phase.days}
-            className={cn(
-              'rounded-2xl border px-4 py-3 text-center',
-              phase.color,
-            )}
-          >
-            <div className="text-[13px] font-semibold">{phase.days}</div>
-            <div className="text-[12px] opacity-75 mt-0.5">{phase.label}</div>
+      {/* Header card */}
+      <GlassCard className="p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[#afc4ff]/[0.04] blur-3xl pointer-events-none" />
+        <div className="flex items-start gap-4">
+          <div className="rounded-xl bg-[#afc4ff]/10 p-3 flex-shrink-0">
+            <Map size={20} className="text-[#afc4ff]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[18px] font-semibold text-white/90">90-Day Success Plan</h2>
+            <p className="text-[13px] text-white/50 mt-0.5">
+              {targetRole}
+              {targetCompany ? ` — ${targetCompany}` : ''}
+            </p>
+          </div>
+          {qualityScore !== null && (
+            <div className="flex-shrink-0">
+              <ScoreRing score={qualityScore} size={72} />
+            </div>
+          )}
+        </div>
+      </GlassCard>
+
+      {/* Phase timeline */}
+      <div className="space-y-2">
+        <h3 className="text-[11px] font-semibold text-white/35 uppercase tracking-wider px-1">
+          Three-Phase Roadmap
+        </h3>
+        <div className="grid grid-cols-3 gap-3">
+          {PHASES.map((phase, i) => (
+            <PhaseCard key={phase.label} phase={phase} index={i} />
+          ))}
+        </div>
+        <PhaseProgressTracker activePhase={2} />
+      </div>
+
+      {/* Quick wins callout */}
+      <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.03] px-5 py-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap size={14} className="text-[#f0d99f]" />
+          <span className="text-[12px] font-semibold text-[#f0d99f]">First-Week Priority</span>
+        </div>
+        <p className="text-[12px] text-white/50 leading-relaxed">
+          Your plan includes specific quick wins designed to demonstrate competence in the first 30 days — without reorganizing the team or pushing premature change. Listen first, earn trust, then lead.
+        </p>
+      </div>
+
+      {/* Key sections legend */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { icon: Users, label: 'Stakeholder Map', desc: 'Who to meet, in what order', color: 'text-[#afc4ff]', bg: 'bg-[#afc4ff]/10' },
+          { icon: Trophy, label: 'Quick Wins', desc: 'Early impact opportunities', color: 'text-[#b5dec2]', bg: 'bg-[#b5dec2]/10' },
+          { icon: Flag, label: 'Measurable Milestones', desc: 'Observable success markers', color: 'text-[#f0d99f]', bg: 'bg-[#f0d99f]/10' },
+          { icon: MessageSquare, label: 'Manager Talking Points', desc: 'How to frame the plan upward', color: 'text-[#afc4ff]', bg: 'bg-[#afc4ff]/10' },
+        ].map(({ icon: Icon, label, desc, color, bg }) => (
+          <div key={label} className="flex items-start gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+            <div className={cn('rounded-lg p-1.5 flex-shrink-0', bg)}>
+              <Icon size={12} className={color} />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-white/70">{label}</div>
+              <div className="text-[10px] text-white/35 mt-0.5">{desc}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Report card */}
+      {/* Full plan prose */}
       <GlassCard className="p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-[#98b3ff]/[0.03] blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-[#afc4ff]/[0.03] blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-4 mb-8">
-          <div className="rounded-xl bg-[#98b3ff]/10 p-3">
-            <Map size={20} className="text-[#98b3ff]" />
-          </div>
-          <div>
-            <h2 className="text-[17px] font-semibold text-white/90">90-Day Success Plan</h2>
-            <p className="text-[13px] text-white/40 mt-0.5">
-              {targetRole}{targetCompany ? ` — ${targetCompany}` : ''}
-            </p>
-          </div>
+        <div className="flex items-center gap-3 mb-6">
+          <ChevronRight size={14} className="text-[#afc4ff]/60" />
+          <span className="text-[12px] font-semibold text-white/40 uppercase tracking-wider">Full Strategic Plan</span>
         </div>
 
         <div
           className="prose prose-invert prose-sm max-w-none
             prose-headings:text-white/85 prose-headings:font-semibold
             prose-h1:text-[18px] prose-h1:border-b prose-h1:border-white/[0.08] prose-h1:pb-3 prose-h1:mb-5
-            prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3
-            prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2
+            prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3 prose-h2:text-[#afc4ff]/80
+            prose-h3:text-[13px] prose-h3:mt-5 prose-h3:mb-2 prose-h3:text-white/70
             prose-p:text-white/60 prose-p:text-[13px] prose-p:leading-relaxed
             prose-li:text-white/55 prose-li:text-[13px] prose-li:leading-relaxed
             prose-strong:text-white/75
             prose-em:text-white/50
-            prose-blockquote:border-[#98b3ff]/30 prose-blockquote:text-white/45 prose-blockquote:italic
-            prose-hr:border-white/[0.08]"
+            prose-blockquote:border-[#afc4ff]/30 prose-blockquote:text-white/45 prose-blockquote:italic
+            prose-hr:border-white/[0.08]
+            prose-table:text-[12px] prose-table:text-white/60
+            prose-th:text-white/50 prose-th:font-semibold prose-th:border-white/[0.08]
+            prose-td:border-white/[0.06]"
           dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
         />
       </GlassCard>
+
+      {/* Guardrail reminder */}
+      <div className="rounded-xl border border-[#f0b8b8]/15 bg-[#f0b8b8]/[0.03] px-5 py-4">
+        <div className="flex items-start gap-3">
+          <ShieldAlert size={14} className="text-[#f0b8b8] mt-0.5 flex-shrink-0" />
+          <p className="text-[12px] text-white/45 leading-relaxed">
+            <span className="text-[#f0b8b8]/80 font-semibold">Guardrail: </span>
+            Avoid reorganizing the team in the first 30 days. This is the single most common mistake new executives make. Build trust and earn the right to drive organizational change first.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
 // --- Field label component ---
 
-function FieldLabel({ label, required, optional, htmlFor }: { label: string; required?: boolean; optional?: boolean; htmlFor?: string }) {
+function FieldLabel({
+  label,
+  required,
+  optional,
+  htmlFor,
+}: {
+  label: string;
+  required?: boolean;
+  optional?: boolean;
+  htmlFor?: string;
+}) {
   return (
-    <label htmlFor={htmlFor} className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">
+    <label
+      htmlFor={htmlFor}
+      className="block text-[11px] font-semibold text-white/40 uppercase tracking-wider mb-1.5"
+    >
       {label}
-      {required && <span className="text-[#98b3ff]/60 ml-1">*</span>}
-      {optional && <span className="text-white/20 normal-case font-normal ml-1">(optional)</span>}
+      {required && <span className="text-[#afc4ff]/60 ml-1">*</span>}
+      {optional && (
+        <span className="text-white/20 normal-case font-normal ml-1">(optional)</span>
+      )}
     </label>
   );
 }
 
 const INPUT_CLASS =
-  'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors';
+  'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors';
 
 // --- Main component ---
 
@@ -275,7 +471,10 @@ export function NinetyDayPlanRoom() {
   } = useNinetyDayPlan();
 
   const isPipelineActive = status === 'connecting' || status === 'running';
-  const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{ report_markdown?: string; quality_score?: number }>({
+  const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{
+    report_markdown?: string;
+    quality_score?: number;
+  }>({
     productSlug: 'ninety-day-plan',
     skip: isPipelineActive,
   });
@@ -286,7 +485,9 @@ export function NinetyDayPlanRoom() {
     async function loadResume() {
       setLoadingResume(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user || cancelled) return;
         const { data } = await supabase
           .from('master_resumes')
@@ -299,22 +500,34 @@ export function NinetyDayPlanRoom() {
           resumeRef.current = data.raw_text;
           setResumeLoaded(true);
         }
-      } catch { /* ignore */ } finally {
+      } catch {
+        /* ignore */
+      } finally {
         if (!cancelled) setLoadingResume(false);
       }
     }
     void loadResume();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = useCallback(async () => {
     setFormError(null);
 
-    if (!targetRole.trim()) { setFormError('Role title is required.'); return; }
-    if (!targetCompany.trim()) { setFormError('Company name is required.'); return; }
+    if (!targetRole.trim()) {
+      setFormError('Role title is required.');
+      return;
+    }
+    if (!targetCompany.trim()) {
+      setFormError('Company name is required.');
+      return;
+    }
     const resolvedResume = resumeRef.current || manualResumeText.trim();
     if (!resolvedResume) {
-      setFormError('Resume text is required. Paste your resume below or complete the Resume Strategist to auto-load it.');
+      setFormError(
+        'Resume text is required. Paste your resume below or complete the Resume Strategist to auto-load it.',
+      );
       return;
     }
 
@@ -357,7 +570,9 @@ export function NinetyDayPlanRoom() {
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
           <h1 className="text-xl font-semibold text-white/90">90-Day Plan Generator</h1>
-          <p className="text-[13px] text-white/40 mt-1">Building your stakeholder map and phased success plan</p>
+          <p className="text-[13px] text-white/40 mt-1">
+            Building your stakeholder map and phased success plan
+          </p>
         </div>
         <ActivityFeed
           activityMessages={activityMessages}
@@ -384,8 +599,8 @@ export function NinetyDayPlanRoom() {
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <AlertCircle size={18} className="text-[#f87171]" />
-            <span className="text-[13px] text-[#f87171]">{error}</span>
+            <AlertCircle size={18} className="text-[#f0b8b8]" />
+            <span className="text-[13px] text-[#f0b8b8]">{error}</span>
           </div>
           <GlassButton variant="ghost" onClick={handleReset} size="sm">
             <ArrowLeft size={14} className="mr-1.5" />
@@ -401,13 +616,14 @@ export function NinetyDayPlanRoom() {
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
       {/* Header */}
       <div className="flex gap-3">
-        <div className="rounded-xl bg-[#98b3ff]/10 p-2.5 self-start shrink-0">
-          <Map size={20} className="text-[#98b3ff]" />
+        <div className="rounded-xl bg-[#afc4ff]/10 p-2.5 self-start shrink-0">
+          <Map size={20} className="text-[#afc4ff]" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-white/90">90-Day Plan Generator</h1>
           <p className="text-[13px] text-white/40 leading-relaxed mt-1">
-            Generate a tailored 90-day success plan with stakeholder map, quick wins, and phased milestones for your new role.
+            Generate a role-specific 90-day success plan with stakeholder map, quick wins, and
+            phased milestones — built around your narrative, not a generic template.
           </p>
         </div>
       </div>
@@ -445,33 +661,42 @@ export function NinetyDayPlanRoom() {
         </GlassCard>
       )}
 
-      {/* Phase overview */}
-      <div className="grid grid-cols-3 gap-3">
-        {PHASES.map((phase) => (
-          <div
-            key={phase.days}
-            className={cn(
-              'rounded-2xl border px-4 py-3 text-center',
-              phase.color,
-            )}
-          >
-            <div className="text-[13px] font-semibold">{phase.days}</div>
-            <div className="text-[12px] opacity-70 mt-0.5">{phase.label}</div>
-          </div>
-        ))}
+      {/* Three-phase overview */}
+      <div className="space-y-3">
+        <h2 className="text-[11px] font-semibold text-white/35 uppercase tracking-wider">
+          Your plan will follow three phases
+        </h2>
+        <div className="grid grid-cols-3 gap-3">
+          {PHASES.map((phase, i) => (
+            <PhaseCard key={phase.label} phase={phase} index={i} />
+          ))}
+        </div>
       </div>
 
       {/* Resume status */}
-      <div className={cn(
-        'flex items-center gap-2 text-[12px]',
-        loadingResume ? 'text-white/30' : resumeLoaded ? 'text-[#57CDA4]/70' : 'text-[#f0d99f]/70',
-      )}>
+      <div
+        className={cn(
+          'flex items-center gap-2 text-[12px]',
+          loadingResume
+            ? 'text-white/30'
+            : resumeLoaded
+            ? 'text-[#b5dec2]/70'
+            : 'text-[#f0d99f]/70',
+        )}
+      >
         {loadingResume ? (
-          <><Loader2 size={12} className="animate-spin" /> Loading resume from your profile...</>
+          <>
+            <Loader2 size={12} className="animate-spin" /> Loading resume from your profile...
+          </>
         ) : resumeLoaded ? (
-          <><CheckCircle2 size={12} /> Resume loaded — plan will be tailored to your background</>
+          <>
+            <CheckCircle2 size={12} /> Resume loaded — plan will be tailored to your background
+          </>
         ) : (
-          <><AlertCircle size={12} /> No resume found — paste below or complete the Resume Strategist to auto-load</>
+          <>
+            <AlertCircle size={12} /> No resume found — paste below or complete the Resume
+            Strategist to auto-load
+          </>
         )}
       </div>
 
@@ -482,14 +707,14 @@ export function NinetyDayPlanRoom() {
           onChange={(e) => setManualResumeText(e.target.value)}
           placeholder="Paste your resume text here..."
           rows={5}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:ring-2 focus:ring-[#98b3ff]/20 focus:border-[#98b3ff]/30 transition-colors resize-none leading-relaxed"
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] text-white/80 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#afc4ff]/40 focus:ring-2 focus:ring-[#afc4ff]/20 focus:border-[#afc4ff]/30 transition-colors resize-none leading-relaxed"
         />
       )}
 
       {/* Section 1: Role details */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Briefcase size={16} className="text-[#98b3ff]" />
+          <Briefcase size={16} className="text-[#afc4ff]" />
           <h2 className="text-[15px] font-semibold text-white/80">Role Details</h2>
           <div className="flex-1 h-px bg-white/[0.06]" />
         </div>
@@ -535,7 +760,7 @@ export function NinetyDayPlanRoom() {
       {/* Section 2: Reporting structure */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <UserCheck size={16} className="text-[#57CDA4]" />
+          <UserCheck size={16} className="text-[#b5dec2]" />
           <h2 className="text-[15px] font-semibold text-white/80">Reporting Structure</h2>
           <div className="flex-1 h-px bg-white/[0.06]" />
           <span className="text-[11px] text-white/25">optional — improves stakeholder map</span>
@@ -569,13 +794,31 @@ export function NinetyDayPlanRoom() {
 
       {/* What you'll get */}
       <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-white/[0.01] px-5 py-4">
-        <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-3">What you will get</p>
+        <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-3">
+          What you will get
+        </p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { icon: Users, text: 'Stakeholder map with engagement priorities', color: 'text-[#A396E2]' },
-            { icon: Target, text: 'Quick wins for the first 30 days', color: 'text-[#57CDA4]' },
-            { icon: Calendar, text: 'Three-phase milestone roadmap', color: 'text-[#98b3ff]' },
-            { icon: Building2, text: 'Culture and relationship-building tactics', color: 'text-[#f0d99f]' },
+            {
+              icon: Users,
+              text: 'Stakeholder map with engagement priorities and talking points',
+              color: 'text-[#afc4ff]',
+            },
+            {
+              icon: Target,
+              text: 'Quick wins that build credibility without overstepping',
+              color: 'text-[#b5dec2]',
+            },
+            {
+              icon: Calendar,
+              text: 'Three-phase milestone roadmap with measurable outcomes',
+              color: 'text-[#afc4ff]',
+            },
+            {
+              icon: Building2,
+              text: 'Manager talking points to frame your plan upward',
+              color: 'text-[#f0d99f]',
+            },
           ].map(({ icon: Icon, text, color }) => (
             <div key={text} className="flex items-start gap-2">
               <Icon size={13} className={cn(color, 'mt-0.5 flex-shrink-0')} />
@@ -587,7 +830,7 @@ export function NinetyDayPlanRoom() {
 
       {/* Error */}
       {formError && (
-        <div className="flex items-center gap-2 text-[13px] text-[#f87171] bg-[#f87171]/5 border border-[#f87171]/15 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-[13px] text-[#f0b8b8] bg-[#f0b8b8]/5 border border-[#f0b8b8]/15 rounded-xl px-4 py-3">
           <AlertCircle size={14} className="flex-shrink-0" />
           {formError}
         </div>
@@ -596,7 +839,7 @@ export function NinetyDayPlanRoom() {
       {/* Submit */}
       <div className="flex items-center justify-between">
         <p className="text-[12px] text-white/25">
-          Plan will be tailored to your background and the specific role context.
+          Plan is role-specific — leverages your positioning narrative, not a generic template.
         </p>
         <GlassButton
           variant="primary"

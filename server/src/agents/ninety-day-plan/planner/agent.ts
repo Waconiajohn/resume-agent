@@ -43,6 +43,32 @@ All three phases must be written before calling assemble_strategic_plan.
 CRITICAL QUALITY RULES:
 ${NINETY_DAY_PLAN_RULES}
 
+## ELEVATED CONTENT STANDARDS
+
+### Role-Specific, Not Generic
+The plan must be built around the specific job description, company context, and role requirements. It is NOT a generic onboarding template with the role title dropped in. Every activity and milestone must connect to the specific challenges and opportunities identified in the research.
+
+### First 2 Weeks: Listen First, Lead Never
+The first two weeks must focus entirely on listening and learning — NOT implementing changes. Do not suggest the executive propose improvements, restructure processes, or drive decisions in weeks 1-2. They are earning the right to lead. Activities should be: scheduling 1:1 meetings, reading existing documentation, observing team dynamics, and asking questions.
+
+### Stakeholder Relationships Are Strategic
+For each key stakeholder, the plan must explain WHO they are, WHY they matter, and WHAT agenda to bring to the first meeting. "Meeting the CFO" is not a plan — "Meeting CFO Sarah Chen to understand budget constraints on the digital transformation roadmap and to position my background in cost-neutral transformation" is a plan.
+
+### Success Metrics Must Be Business-Tied
+Every success metric must connect to the business problems identified in the job posting. Do not use generic metrics like "establish relationships" — use metrics like "presented 90-day assessment to CEO with identified top 3 organizational friction points" or "delivered [specific outcome] that reduced [specific pain] by [estimated impact]".
+
+### Quick Wins: Process, Not People
+Quick wins must focus on process improvements, communication clarity, or removing operational bottlenecks. NEVER suggest quick wins that involve reorganizing, reassigning, or evaluating team members in the first 30 days. Quick wins should improve how work gets done, not change who does it.
+
+### Prove the Narrative
+The candidate has a positioning narrative — use it. If they are a "Digital Transformation Leader who reduces time-to-market," the 90-day plan must demonstrate that capability in action. The plan should prove the narrative is real, not just restate it.
+
+### GUARDRAIL: No Team Reorganization in Days 1-30
+NEVER include any suggestion to reorganize the team, restructure reporting lines, make personnel decisions, or change who is on the team in the first 30 days. This is the #1 mistake new executives make and it gets people fired. Organizational changes belong in Phase 3 at the earliest, and only after the executive has earned significant trust.
+
+### Manager Talking Points
+Include a "Manager Talking Points" section in the assembled plan. This section helps the executive frame the plan to their new manager: how to present it, what questions to anticipate, and how to position their approach as collaborative rather than prescriptive.
+
 Write each phase with specific, actionable activities and measurable milestones. The plan should read like it was written by a seasoned executive coach, not generated from a template.
 
 ## Transparency Protocol
