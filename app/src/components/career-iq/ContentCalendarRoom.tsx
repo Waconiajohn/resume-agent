@@ -13,6 +13,12 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
+  Zap,
+  Target,
+  BookOpen,
+  TrendingUp,
+  MessageSquare,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
@@ -21,14 +27,62 @@ import { supabase } from '@/lib/supabase';
 
 // --- Content type labels & colors ---
 
-const CONTENT_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-  thought_leadership: { label: 'Thought Leadership', color: 'text-[#98b3ff] bg-[#98b3ff]/10' },
-  storytelling: { label: 'Storytelling', color: 'text-[#f0d99f] bg-[#f0d99f]/10' },
-  engagement: { label: 'Engagement', color: 'text-[#b5dec2] bg-[#b5dec2]/10' },
-  industry_insight: { label: 'Industry Insight', color: 'text-[#c4a8e0] bg-[#c4a8e0]/10' },
-  how_to: { label: 'How-To', color: 'text-[#f0b8b8] bg-[#f0b8b8]/10' },
-  case_study: { label: 'Case Study', color: 'text-[#98d4e8] bg-[#98d4e8]/10' },
-  career_lesson: { label: 'Career Lesson', color: 'text-[#d4c098] bg-[#d4c098]/10' },
+const CONTENT_TYPE_CONFIG: Record<string, {
+  label: string;
+  color: string;
+  borderColor: string;
+  icon: React.ComponentType<{ size: number; className?: string }>;
+  pillarPct: number;
+}> = {
+  thought_leadership: {
+    label: 'Thought Leadership',
+    color: 'text-[#afc4ff] bg-[#afc4ff]/10',
+    borderColor: 'border-[#afc4ff]/20',
+    icon: Zap,
+    pillarPct: 40,
+  },
+  storytelling: {
+    label: 'Personal Story',
+    color: 'text-[#f0d99f] bg-[#f0d99f]/10',
+    borderColor: 'border-[#f0d99f]/20',
+    icon: BookOpen,
+    pillarPct: 20,
+  },
+  engagement: {
+    label: 'Engagement',
+    color: 'text-[#b5dec2] bg-[#b5dec2]/10',
+    borderColor: 'border-[#b5dec2]/20',
+    icon: MessageSquare,
+    pillarPct: 30,
+  },
+  industry_insight: {
+    label: 'Industry Insight',
+    color: 'text-[#c4a8e0] bg-[#c4a8e0]/10',
+    borderColor: 'border-[#c4a8e0]/20',
+    icon: Globe,
+    pillarPct: 10,
+  },
+  how_to: {
+    label: 'How-To',
+    color: 'text-[#f0b8b8] bg-[#f0b8b8]/10',
+    borderColor: 'border-[#f0b8b8]/20',
+    icon: Target,
+    pillarPct: 0,
+  },
+  case_study: {
+    label: 'Case Study',
+    color: 'text-[#98d4e8] bg-[#98d4e8]/10',
+    borderColor: 'border-[#98d4e8]/20',
+    icon: TrendingUp,
+    pillarPct: 0,
+  },
+  career_lesson: {
+    label: 'Career Lesson',
+    color: 'text-[#d4c098] bg-[#d4c098]/10',
+    borderColor: 'border-[#d4c098]/20',
+    icon: BookOpen,
+    pillarPct: 0,
+  },
 };
 
 // --- Components ---
@@ -55,7 +109,14 @@ function ActivityFeed({ messages }: { messages: Array<{ id: string; message: str
 function PostCard({ day, day_of_week, content_type, hook, body, hashtags, posting_time, quality_score }: StructuredPost) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const typeConfig = CONTENT_TYPE_CONFIG[content_type] ?? { label: content_type, color: 'text-white/60 bg-white/5' };
+  const typeConfig = CONTENT_TYPE_CONFIG[content_type] ?? {
+    label: content_type,
+    color: 'text-white/60 bg-white/5',
+    borderColor: 'border-white/[0.06]',
+    icon: FileText,
+    pillarPct: 0,
+  };
+  const TypeIcon = typeConfig.icon;
 
   const fullPost = `${body}\n\n${hashtags.map((h) => `#${h}`).join(' ')}`;
 
@@ -65,60 +126,142 @@ function PostCard({ day, day_of_week, content_type, hook, body, hashtags, postin
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const scoreColor = quality_score >= 80
+    ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/15'
+    : quality_score >= 60
+    ? 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/15'
+    : 'text-[#f0b8b8] bg-[#f0b8b8]/10 border-[#f0b8b8]/15';
+
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-      <div className="flex items-center justify-between mb-2">
+    <div className={cn('rounded-xl border bg-white/[0.02] p-3 transition-all', typeConfig.borderColor)}>
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-white/30 font-medium tabular-nums">Day {day}</span>
+          <span className="text-[10px] font-medium text-white/25 tabular-nums uppercase tracking-wide">
+            Day {day}
+          </span>
           <span className="text-[10px] text-white/20 capitalize">{day_of_week}</span>
-          <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', typeConfig.color)}>
+          <span className={cn(
+            'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md border',
+            typeConfig.color,
+            typeConfig.borderColor,
+          )}>
+            <TypeIcon size={9} />
             {typeConfig.label}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn(
-            'text-[10px] px-1.5 py-0.5 rounded-full',
-            quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
-            quality_score >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
-            'text-[#f0b8b8] bg-[#f0b8b8]/10',
-          )}>
+          {posting_time && (
+            <span className="flex items-center gap-1 text-[10px] text-white/25">
+              <Clock size={9} />
+              {posting_time}
+            </span>
+          )}
+          <span className={cn('text-[10px] px-1.5 py-0.5 rounded-md border', scoreColor)}>
             {quality_score}%
           </span>
-          <button type="button" onClick={handleCopy} className="text-white/30 hover:text-white/60 transition-colors">
+          <button type="button" onClick={handleCopy} className="text-white/30 hover:text-white/60 transition-colors p-0.5">
             {copied ? <Check size={12} className="text-[#b5dec2]" /> : <Copy size={12} />}
           </button>
         </div>
       </div>
 
-      {/* Hook preview */}
-      <p className="text-[12px] text-white/70 leading-relaxed line-clamp-2 mb-1.5">{hook}</p>
+      {/* Hook — always visible, bold */}
+      <p className="text-[13px] font-medium text-white/80 leading-snug line-clamp-2 mb-2">{hook}</p>
 
       {/* Expand toggle */}
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-[10px] text-[#98b3ff]/60 hover:text-[#98b3ff] transition-colors"
+        className="flex items-center gap-1 text-[10px] text-[#afc4ff]/50 hover:text-[#afc4ff] transition-colors"
       >
         {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         {expanded ? 'Collapse' : 'Full post'}
       </button>
 
       {expanded && (
-        <div className="mt-2 space-y-2">
-          <p className="text-[11px] text-white/55 leading-relaxed whitespace-pre-line">{body}</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Hash size={10} className="text-white/20" />
-            {hashtags.map((tag) => (
-              <span key={tag} className="text-[10px] text-[#98b3ff]/50">#{tag}</span>
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Clock size={10} className="text-white/20" />
-            <span className="text-[10px] text-white/30">{posting_time}</span>
-          </div>
+        <div className="mt-3 space-y-3 border-t border-white/[0.04] pt-3">
+          <p className="text-[12px] text-white/60 leading-relaxed whitespace-pre-line">{body}</p>
+          {hashtags.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Hash size={10} className="text-white/20 flex-shrink-0" />
+              {hashtags.map((tag) => (
+                <span key={tag} className="text-[10px] text-[#afc4ff]/50 bg-[#afc4ff]/[0.06] px-1.5 py-0.5 rounded-md">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+// --- Content Pillars Visualization ---
+
+function ContentPillarsBar({ posts }: { posts: StructuredPost[] }) {
+  if (posts.length === 0) return null;
+
+  const counts: Record<string, number> = {};
+  for (const post of posts) {
+    counts[post.content_type] = (counts[post.content_type] ?? 0) + 1;
+  }
+
+  const pillars = Object.entries(CONTENT_TYPE_CONFIG)
+    .filter(([key]) => counts[key] && counts[key] > 0)
+    .map(([key, cfg]) => ({
+      key,
+      label: cfg.label,
+      color: cfg.color,
+      borderColor: cfg.borderColor,
+      icon: cfg.icon,
+      count: counts[key] ?? 0,
+      pct: Math.round(((counts[key] ?? 0) / posts.length) * 100),
+      targetPct: cfg.pillarPct,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return (
+    <GlassCard className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Target size={14} className="text-[#afc4ff]" />
+        <span className="text-[12px] font-semibold text-white/70">Content Pillars</span>
+        <span className="ml-auto text-[10px] text-white/30">{posts.length} posts planned</span>
+      </div>
+      <div className="space-y-2">
+        {pillars.map((pillar) => {
+          const PillarIcon = pillar.icon;
+          const onTarget = pillar.targetPct === 0 || Math.abs(pillar.pct - pillar.targetPct) <= 10;
+          return (
+            <div key={pillar.key} className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-36 flex-shrink-0">
+                <PillarIcon size={11} className={cn(pillar.color.split(' ')[0])} />
+                <span className="text-[11px] text-white/50 truncate">{pillar.label}</span>
+              </div>
+              <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500',
+                    onTarget ? 'bg-[#b5dec2]/60' : 'bg-[#f0d99f]/60',
+                  )}
+                  style={{ width: `${pillar.pct}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 w-20 flex-shrink-0 text-right justify-end">
+                <span className={cn('text-[10px] font-medium tabular-nums', pillar.color.split(' ')[0])}>
+                  {pillar.pct}%
+                </span>
+                {pillar.targetPct > 0 && (
+                  <span className="text-[9px] text-white/20">/{pillar.targetPct}%</span>
+                )}
+                <span className="text-[10px] text-white/25 tabular-nums">{pillar.count}p</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </GlassCard>
   );
 }
 
@@ -249,6 +392,9 @@ export function ContentCalendarRoom() {
       {/* Calendar view */}
       {posts.length > 0 && (
         <>
+          {/* Content Pillars visualization */}
+          <ContentPillarsBar posts={posts} />
+
           {/* View toggle */}
           <div className="flex items-center gap-2">
             <button
@@ -276,7 +422,10 @@ export function ContentCalendarRoom() {
           {viewMode === 'week' ? (
             weeks.map((weekPosts, weekIdx) => (
               <GlassCard key={weekIdx} className="p-4">
-                <h3 className="text-[13px] font-semibold text-white/60 mb-3">Week {weekIdx + 1}</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[12px] font-semibold text-white/60">Week {weekIdx + 1}</span>
+                  <span className="text-[10px] text-white/30">{weekPosts.length} posts</span>
+                </div>
                 <div className="space-y-2">
                   {weekPosts.map((post) => (
                     <PostCard key={post.day} {...post} />

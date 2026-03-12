@@ -129,10 +129,62 @@ After generating each section, verify:
 
 Never fabricate experience, metrics, or credentials. Optimize the presentation of what is real.`;
 
+// ─── Rule 8: Positioning Statement Mandate ───────────────────────────
+
+export const RULE_8_POSITIONING = `## RULE 8 — POSITIONING STATEMENT MANDATE
+
+The LinkedIn headline must be a POSITIONING STATEMENT, not a job title. A job title tells people what you did. A positioning statement tells them what you ARE and why it matters.
+
+Why this matters:
+- Recruiters scan 6-8 profiles at once. "VP of Operations" is invisible. "I turn around broken supply chains — 3 turnarounds, $40M recovered" is not.
+- The positioning statement is drawn directly from the candidate's Why Me narrative. This is not a creative exercise — it is a strategic translation.
+- If a Why Me clarity narrative exists in the platform context, it MUST be the foundation of the headline. Do not ignore it.
+
+Structure of a great positioning headline:
+1. The outcome you create ("I turn around underperforming supply chains")
+2. The proof point ("3 turnarounds, $40M+ recovered margin")
+3. The keyword anchor ("VP Operations | Manufacturing")
+
+The About section is the candidate's Why Me story adapted for LinkedIn's conversational tone:
+- The Why Me story belongs here in its fullest form — the career identity narrative, the pattern of what they're called in to do, what colleagues and leaders depend on them for
+- LinkedIn allows first-person narrative — use it. This is not a resume. Write it as the person would speak it at a senior executive dinner conversation.
+- If a Why Me story or clarity narrative exists in the platform context, translate it here — do not paraphrase vaguely, surface the actual differentiators.
+
+The Featured section should showcase 2-3 specific accomplishments that reinforce the positioning narrative:
+- Each featured item should be tied to a proof point from the career
+- Featured items should be the kind of work that makes a recruiter say "this is exactly the kind of person we need"
+- If the resume has strong section content, the featured items should echo the highest-impact items
+
+GUARDRAIL: Never use '#OpenToWork' framing, 'seeking opportunities,' 'in transition,' or any language that positions the candidate as a job seeker. Position as a thought leader and in-demand executive — someone who is being sought, not seeking.`;
+
+// ─── Rule 9: LinkedIn Search Algorithm Optimization ──────────────────
+
+export const RULE_9_ALGORITHM = `## RULE 9 — LINKEDIN SEARCH ALGORITHM OPTIMIZATION
+
+LinkedIn's search algorithm (LinkedIn Recruiter) uses specific signals to rank profiles. Optimizing for these signals dramatically increases recruiter discovery.
+
+Key algorithm factors:
+1. **Keyword match** — The most heavily weighted factor. Target keywords must appear in the headline, About, and current experience title. Exact match beats synonym match.
+2. **Profile completeness** — LinkedIn penalizes incomplete profiles. All sections must be filled: headline, About, experience (all roles), skills (50 max), education.
+3. **Recency of activity** — Profiles with recent posts and activity rank higher. Mention this to the candidate but do not fabricate activity.
+4. **Connection proximity** — 2nd-degree connections rank higher than 3rd-degree. This cannot be optimized through content, but keyword density can compensate.
+5. **Skills endorsements** — Top 3 skills are most visible. Order skills by relevance to target role, not by endorsement count.
+
+Optimize for LinkedIn's search algorithm by:
+- Including industry keywords NATURALLY — not stuffed. The goal is a keyword density that reads as authentic expertise, not a keyword list.
+- Using both full terms AND abbreviations: "Supply Chain Management" AND "SCM" in the same section reads naturally and captures both search variants.
+- Placing the highest-priority keywords in the HEADLINE and first 300 characters of the About section — these are the most heavily indexed fields.
+- Ensuring the most recent experience title matches or closely mirrors the target role title — this is the highest-weighted single field in LinkedIn Recruiter search.
+
+What NOT to do:
+- Do not place a keyword block at the bottom of the About section — LinkedIn's algorithm has been updated to detect and discount this pattern, and recruiters find it off-putting.
+- Do not use niche abbreviations that recruiters do not search for.
+- Do not sacrifice readability for keyword density — a natural profile that ranks 8th but converts 80% of viewers beats a keyword-stuffed profile that ranks 3rd but converts 20%.`;
+
 // ─── Combined System Prompt Injection ────────────────────────────────
 
 /**
- * All 8 rules concatenated for injection into the Writer's system prompt.
+ * All 10 rules concatenated for injection into the Writer's system prompt.
  */
 export const LINKEDIN_OPTIMIZER_RULES = [
   RULE_0_AUDIENCE,
@@ -143,4 +195,6 @@ export const LINKEDIN_OPTIMIZER_RULES = [
   RULE_5_CONSISTENCY,
   RULE_6_RECRUITER,
   RULE_7_SELF_REVIEW,
+  RULE_8_POSITIONING,
+  RULE_9_ALGORITHM,
 ].join('\n\n---\n\n');
