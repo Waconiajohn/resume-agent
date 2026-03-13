@@ -31,8 +31,9 @@ OUTPUT FORMAT: Return valid JSON:
 }
 
 RULES:
+- Match multi-word PHRASES, not just single keywords. "cross-functional collaboration" counts as one phrase.
 - match_score = (keywords_found / total_important_keywords) × 100, where total_important_keywords = keywords_found + keywords_missing
-- Only count must-have and important keywords, not nice-to-haves
+- Only count must-have and important phrases/keywords, not nice-to-haves
 - natural_phrasing: suggest ACTUAL resume text that incorporates the keyword naturally
 - formatting_issues: flag anything that would trip up ATS parsing (tables, multi-column, images, unusual section headers)
 - Readability for humans comes FIRST — keyword optimization second`;

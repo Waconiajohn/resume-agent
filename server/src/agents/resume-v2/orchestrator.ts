@@ -27,6 +27,9 @@ import type {
   V2PipelineState,
   V2PipelineSSEEvent,
   GapStrategy,
+  PreScores,
+  GapCoachingCard,
+  GapAnalysisOutput,
 } from './types.js';
 
 export type EmitFn = (event: V2PipelineSSEEvent) => void;
@@ -42,6 +45,10 @@ export interface RunPipelineOptions {
   approved_strategies?: Array<{ requirement: string; strategy: GapStrategy }>;
   /** Additional context from user */
   user_context?: string;
+  /** User responses to gap coaching cards (from gate) */
+  gap_coaching_responses?: Array<{ requirement: string; action: 'approve' | 'context' | 'skip'; user_context?: string }>;
+  /** Pre-computed baseline scores (passed on re-run) */
+  pre_scores?: PreScores;
 }
 
 export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2PipelineState> {
@@ -78,6 +85,23 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'job_intelligence', data: jobIntel });
     emit({ type: 'candidate_intelligence', data: candidateIntel });
 
+    // ─── Pre-scores: baseline ATS match on original resume ─────────
+    if (!options.pre_scores) {
+      const jdKeywords = jobIntel.language_keywords.map(k => k.toLowerCase());
+      const resumeLower = options.resume_text.toLowerCase();
+      const found = jdKeywords.filter(k => resumeLower.includes(k));
+      const missing = jdKeywords.filter(k => !resumeLower.includes(k));
+      const preScores: PreScores = {
+        ats_match: jdKeywords.length > 0 ? Math.round((found.length / jdKeywords.length) * 100) : 0,
+        keywords_found: found,
+        keywords_missing: missing,
+      };
+      state.pre_scores = preScores;
+      emit({ type: 'pre_scores', data: preScores });
+    } else {
+      state.pre_scores = options.pre_scores;
+    }
+
     // Agent 3 depends on Agent 1
     const benchmark = await runBenchmarkCandidate({ job_intelligence: jobIntel }, signal);
     state.benchmark_candidate = benchmark;
@@ -102,22 +126,62 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     state.gap_analysis = gapAnalysis;
     emit({ type: 'gap_analysis', data: gapAnalysis });
 
+    // ─── Gap Coaching: build coaching cards from pending strategies ──
+    if (gapAnalysis.pending_strategies.length > 0 && !options.gap_coaching_responses) {
+      const coachingCards: GapCoachingCard[] = gapAnalysis.pending_strategies.map(ps => {
+        // Find the matching requirement for classification/importance
+        const req = gapAnalysis.requirements.find(r => r.requirement === ps.requirement);
+        return {
+          requirement: ps.requirement,
+          importance: req?.importance ?? 'important',
+          classification: req?.classification ?? 'partial',
+          ai_reasoning: ps.strategy.ai_reasoning ?? `I found adjacent experience that could work for "${ps.requirement}": ${ps.strategy.real_experience}`,
+          proposed_strategy: ps.strategy.positioning,
+          inferred_metric: ps.strategy.inferred_metric,
+          inference_rationale: ps.strategy.inference_rationale,
+          evidence_found: req?.evidence ?? [],
+        };
+      });
+      emit({ type: 'gap_coaching', data: coachingCards });
+    }
+
     // Determine the effective approved strategies for downstream agents.
     //
-    // Two cases:
-    // 1. "Add Context" re-run — the caller passes previously approved strategies
-    //    via options.approved_strategies. Those are the authoritative source.
-    //    Do NOT append pending_strategies on top; those are new and unreviewed.
-    //
-    // 2. First run — the user has not yet had a chance to explicitly approve or
-    //    reject strategies (the UI gate fires AFTER this pipeline returns). In
-    //    this case pending_strategies are implicitly approved because the user
-    //    saw them and did not reject any — treat them as approved by default.
-    //    This is the implicit approval pattern, not a force-set loop.
-    const allApproved =
-      state.approved_strategies.length > 0
-        ? state.approved_strategies
-        : gapAnalysis.pending_strategies;
+    // Three cases:
+    // 1. "Add Context" re-run — caller passes previously approved strategies via options.approved_strategies.
+    // 2. Gap coaching responses — user approved/skipped/provided context for each strategy.
+    // 3. First run — pending_strategies are implicitly approved by default.
+    let allApproved: Array<{ requirement: string; strategy: GapStrategy }>;
+
+    if (state.approved_strategies.length > 0) {
+      // Case 1: Re-run with pre-approved strategies
+      allApproved = state.approved_strategies;
+    } else if (options.gap_coaching_responses && options.gap_coaching_responses.length > 0) {
+      // Case 2: User responded to gap coaching
+      state.gap_coaching_responses = options.gap_coaching_responses;
+      allApproved = [];
+      for (const response of options.gap_coaching_responses) {
+        const ps = gapAnalysis.pending_strategies.find(s => s.requirement === response.requirement);
+        if (!ps) continue;
+
+        if (response.action === 'approve') {
+          allApproved.push(ps);
+        } else if (response.action === 'context' && response.user_context) {
+          // User provided additional context — enrich the strategy
+          allApproved.push({
+            requirement: ps.requirement,
+            strategy: {
+              ...ps.strategy,
+              real_experience: `${ps.strategy.real_experience}. Additional context from candidate: ${response.user_context}`,
+            },
+          });
+        }
+        // 'skip' — not included in allApproved
+      }
+    } else {
+      // Case 3: First run — implicit approval
+      allApproved = gapAnalysis.pending_strategies;
+    }
 
     const narrative = await runNarrativeStrategy({
       gap_analysis: gapAnalysis,
@@ -185,7 +249,14 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     const assemblyStart = Date.now();
 
-    const assembled = runAssembly({ draft, truth_verification: truth, ats_optimization: ats, executive_tone: tone });
+    const assembled = runAssembly({
+      draft,
+      truth_verification: truth,
+      ats_optimization: ats,
+      executive_tone: tone,
+      gap_analysis: gapAnalysis,
+      pre_scores: state.pre_scores,
+    });
     state.final_resume = assembled;
 
     emit({ type: 'assembly_complete', data: assembled });

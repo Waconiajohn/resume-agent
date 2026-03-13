@@ -43,7 +43,8 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
         "real_experience": "what the candidate actually has that's adjacent",
         "positioning": "how to phrase it on the resume",
         "inferred_metric": "$3M+ payroll budget (optional — only if inferring a number)",
-        "inference_rationale": "team of 40 × $85K avg = $3.4M, backed off to $3M+ (optional)"
+        "inference_rationale": "team of 40 × $85K avg = $3.4M, backed off to $3M+ (optional)",
+        "ai_reasoning": "2-3 sentence conversational explanation for the candidate. Write as if you're coaching them: explain what you found, why it's relevant, and what math/logic supports it. Example: 'I noticed you managed a team of 40 at Company X. At roughly $85K average compensation, that's approximately $3.4M in payroll alone. I've backed this off to $3M+ so you can comfortably defend the number in an interview.'"
       }
     }
   ],
@@ -57,7 +58,8 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
         "real_experience": "what they actually have",
         "positioning": "proposed resume phrasing",
         "inferred_metric": "conservative number if applicable",
-        "inference_rationale": "the math/logic"
+        "inference_rationale": "the math/logic",
+        "ai_reasoning": "2-3 sentence conversational explanation for the candidate. Write as if you're coaching them: explain what you found, why it's relevant, and what math/logic supports it. Example: 'I noticed you managed a team of 40 at Company X. At roughly $85K average compensation, that's approximately $3.4M in payroll alone. I've backed this off to $3M+ so you can comfortably defend the number in an interview.'"
       }
     }
   ]
@@ -70,6 +72,7 @@ RULES:
 - For PARTIAL matches: provide evidence AND a creative strategy to strengthen the positioning.
 - For MISSING matches: provide a creative strategy if ANY adjacent experience exists. If truly missing, put it in critical_gaps.
 - pending_strategies: include ALL strategies for partial/missing requirements. These go to the user for approval before being used in the resume.
+- ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Write as a coaching conversation — explain your reasoning to the candidate. Show your math. Be specific about what evidence you found and why it works. This text will be shown directly to the user.
 - coverage_score: percentage of must_have + important requirements that are strong or have viable strategies.
 - Be honest about critical_gaps — don't stretch beyond what's defensible.`;
 

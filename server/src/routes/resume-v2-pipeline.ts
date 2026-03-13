@@ -150,6 +150,45 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
   return c.json({ session_id: sessionId, status: 'started' });
 });
 
+// ─── POST /:sessionId/respond-gaps ──────────────────────────────────
+
+const gapResponseSchema = z.object({
+  responses: z.array(z.object({
+    requirement: z.string().min(1),
+    action: z.enum(['approve', 'context', 'skip']),
+    user_context: z.string().optional(),
+  })),
+});
+
+resumeV2Pipeline.post('/:sessionId/respond-gaps', authMiddleware, rateLimitMiddleware(10, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 50_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = gapResponseSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  logger.info({ session_id: sessionId, response_count: parsed.data.responses.length }, 'Gap coaching responses received');
+
+  return c.json({ status: 'received', responses: parsed.data.responses });
+});
+
 // ─── GET /:sessionId/stream ──────────────────────────────────────────
 
 resumeV2Pipeline.get('/:sessionId/stream', authMiddleware, async (c) => {
@@ -359,15 +398,16 @@ resumeV2Pipeline.post('/:sessionId/rescore', authMiddleware, rateLimitMiddleware
 Return valid JSON only:
 {
   "ats_score": 82,
-  "keywords_found": ["keyword1", "keyword2"],
-  "keywords_missing": ["keyword3"],
+  "keywords_found": ["phrase or keyword 1", "phrase 2"],
+  "keywords_missing": ["missing phrase 1"],
   "top_suggestions": ["Add X to Y section", "Include Z in competencies"]
 }
 
 RULES:
 - ats_score = (keywords_found / total_important_keywords) × 100
 - Only count must-have and important keywords, not nice-to-haves
-- top_suggestions: max 3, most impactful improvements`,
+- top_suggestions: max 3, most impactful improvements
+- Match multi-word PHRASES (2-4 words), not just single keywords`,
       messages: [{
         role: 'user',
         content: `RESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}\n\nScore the ATS match.`,
@@ -391,5 +431,81 @@ RULES:
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: sessionId, error: message }, 'ATS rescore failed');
     return c.json({ error: 'Rescore failed', message }, 500);
+  }
+});
+
+// ─── POST /:sessionId/integrate-keyword ─────────────────────────────
+
+const integrateKeywordSchema = z.object({
+  keyword: z.string().min(1, 'Keyword is required'),
+  resume_text: z.string().min(50, 'Resume text is required'),
+  job_description: z.string().min(50, 'Job description is required'),
+});
+
+resumeV2Pipeline.post('/:sessionId/integrate-keyword', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 200_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = integrateKeywordSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const { keyword, resume_text, job_description } = parsed.data;
+
+  logger.info({ session_id: sessionId, keyword }, 'Keyword integration requested');
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_MID,
+      system: `You are an expert resume editor. You will receive a resume, a job description, and a missing keyword/phrase.
+
+Your job: find the SINGLE BEST bullet point or sentence in the resume to naturally incorporate this keyword/phrase. Rewrite ONLY that one bullet to include the keyword naturally — it should read fluently, not keyword-stuffed.
+
+Return valid JSON only:
+{
+  "original_text": "the exact original bullet/sentence you're modifying",
+  "revised_text": "the rewritten version with the keyword naturally integrated",
+  "section": "which section the bullet is in (e.g., 'Professional Experience - Company Name')",
+  "explanation": "one sentence explaining why this placement works"
+}`,
+      messages: [{
+        role: 'user',
+        content: `MISSING KEYWORD/PHRASE: "${keyword}"\n\nRESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}\n\nFind the best place to integrate this keyword naturally.`,
+      }],
+      max_tokens: 1024,
+    });
+
+    const result = repairJSON<{
+      original_text: string;
+      revised_text: string;
+      section: string;
+      explanation: string;
+    }>(response.text);
+
+    if (!result) {
+      return c.json({ error: 'Integration failed — unparseable response' }, 500);
+    }
+
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ session_id: sessionId, keyword, error: message }, 'Keyword integration failed');
+    return c.json({ error: 'Integration failed', message }, 500);
   }
 });

@@ -11,6 +11,8 @@ import type {
   AssemblyInput,
   AssemblyOutput,
   ResumeDraftOutput,
+  PositioningAssessment,
+  PositioningAssessmentEntry,
 } from '../types.js';
 
 export function runAssembly(input: AssemblyInput): AssemblyOutput {
@@ -22,6 +24,11 @@ export function runAssembly(input: AssemblyInput): AssemblyOutput {
   // Compute quick wins from all verification agents
   const quick_wins = computeQuickWins(input);
 
+  // Build positioning assessment if gap analysis data is available
+  const positioning_assessment = input.gap_analysis
+    ? buildPositioningAssessment(input)
+    : undefined;
+
   return {
     final_resume,
     scores: {
@@ -30,6 +37,7 @@ export function runAssembly(input: AssemblyInput): AssemblyOutput {
       tone: executive_tone.tone_score,
     },
     quick_wins,
+    positioning_assessment,
   };
 }
 
@@ -125,4 +133,102 @@ function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
   }
 
   return quickWins;
+}
+
+/**
+ * Build a positioning assessment by cross-referencing gap analysis requirements
+ * with the actual resume bullets that address them.
+ */
+function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment {
+  const { gap_analysis, draft, ats_optimization, pre_scores } = input;
+  if (!gap_analysis) {
+    return {
+      summary: 'Positioning assessment unavailable — gap analysis data missing.',
+      requirement_map: [],
+      before_score: 0,
+      after_score: ats_optimization.match_score,
+      strategies_applied: [],
+    };
+  }
+
+  const requirement_map: PositioningAssessmentEntry[] = [];
+  const strategies_applied: string[] = [];
+
+  for (const req of gap_analysis.requirements) {
+    // Find bullets that address this requirement
+    const addressed_by: Array<{ section: string; bullet_text: string }> = [];
+
+    for (const exp of draft.professional_experience) {
+      for (const bullet of exp.bullets) {
+        if (bullet.addresses_requirements.some(r =>
+          r.toLowerCase().includes(req.requirement.toLowerCase()) ||
+          req.requirement.toLowerCase().includes(r.toLowerCase())
+        )) {
+          addressed_by.push({
+            section: `${exp.title} at ${exp.company}`,
+            bullet_text: bullet.text,
+          });
+        }
+      }
+    }
+
+    // Check selected accomplishments too
+    for (const acc of draft.selected_accomplishments) {
+      if (acc.addresses_requirements.some(r =>
+        r.toLowerCase().includes(req.requirement.toLowerCase()) ||
+        req.requirement.toLowerCase().includes(r.toLowerCase())
+      )) {
+        addressed_by.push({
+          section: 'Selected Accomplishments',
+          bullet_text: acc.content,
+        });
+      }
+    }
+
+    // Determine status
+    let status: 'strong' | 'repositioned' | 'gap';
+    let strategy_used: string | undefined;
+
+    if (req.classification === 'strong') {
+      status = 'strong';
+    } else if (req.strategy) {
+      status = addressed_by.length > 0 ? 'repositioned' : 'gap';
+      strategy_used = req.strategy.positioning;
+      if (req.strategy.inference_rationale) {
+        strategies_applied.push(`${req.requirement}: ${req.strategy.inference_rationale}`);
+      } else {
+        strategies_applied.push(`${req.requirement}: ${req.strategy.positioning}`);
+      }
+    } else {
+      status = 'gap';
+    }
+
+    requirement_map.push({
+      requirement: req.requirement,
+      importance: req.importance,
+      status,
+      addressed_by,
+      strategy_used,
+    });
+  }
+
+  const strong_count = requirement_map.filter(r => r.status === 'strong').length;
+  const repositioned_count = requirement_map.filter(r => r.status === 'repositioned').length;
+  const gap_count = requirement_map.filter(r => r.status === 'gap').length;
+  const total = requirement_map.length;
+
+  const before_score = pre_scores?.ats_match ?? 0;
+  const after_score = ats_optimization.match_score;
+
+  const summary = `Your resume directly addresses ${strong_count} of ${total} key requirements. ` +
+    (repositioned_count > 0 ? `For ${repositioned_count} requirement${repositioned_count > 1 ? 's' : ''} where you had partial experience, we repositioned adjacent expertise. ` : '') +
+    (gap_count > 0 ? `${gap_count} requirement${gap_count > 1 ? 's' : ''} ${gap_count > 1 ? 'are' : 'is a'} genuine gap${gap_count > 1 ? 's' : ''} we've acknowledged transparently.` : 'No critical gaps remain.');
+
+  return {
+    summary,
+    requirement_map,
+    before_score,
+    after_score,
+    strategies_applied,
+  };
 }

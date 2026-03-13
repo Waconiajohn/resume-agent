@@ -127,6 +127,12 @@ export interface GapStrategy {
   inferred_metric?: string;
   /** Explanation of the math/logic behind the inference */
   inference_rationale?: string;
+  /**
+   * Conversational explanation for the user — WHY this adjacent experience works.
+   * Written as if the AI is coaching the candidate through the gap.
+   * 2-3 sentences, natural language, showing the reasoning.
+   */
+  ai_reasoning?: string;
 }
 
 export interface RequirementGap {
@@ -341,11 +347,29 @@ export interface ExecutiveToneOutput {
 
 // ─── Agent 10: Resume Assembly ───────────────────────────────────────
 
+export interface PositioningAssessmentEntry {
+  requirement: string;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  status: 'strong' | 'repositioned' | 'gap';
+  addressed_by: Array<{ section: string; bullet_text: string }>;
+  strategy_used?: string;
+}
+
+export interface PositioningAssessment {
+  summary: string;
+  requirement_map: PositioningAssessmentEntry[];
+  before_score: number;
+  after_score: number;
+  strategies_applied: string[];
+}
+
 export interface AssemblyInput {
   draft: ResumeDraftOutput;
   truth_verification: TruthVerificationOutput;
   ats_optimization: ATSOptimizationOutput;
   executive_tone: ExecutiveToneOutput;
+  gap_analysis?: GapAnalysisOutput;
+  pre_scores?: PreScores;
 }
 
 export interface AssemblyOutput {
@@ -362,6 +386,40 @@ export interface AssemblyOutput {
     description: string;
     impact: 'high' | 'medium' | 'low';
   }>;
+  /** Narrative assessment mapping resume to JD requirements */
+  positioning_assessment?: PositioningAssessment;
+}
+
+// ─── Pre-Scores (before optimization baseline) ──────────────────
+
+export interface PreScores {
+  ats_match: number;
+  keywords_found: string[];
+  keywords_missing: string[];
+}
+
+// ─── Gap Coaching (AI coaching conversation for gaps) ────────────
+
+export interface GapCoachingCard {
+  requirement: string;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  classification: GapClassification;
+  /** Conversational AI explanation of why adjacent experience works */
+  ai_reasoning: string;
+  /** Proposed strategy text for the resume */
+  proposed_strategy: string;
+  /** Inferred number if applicable */
+  inferred_metric?: string;
+  /** Math/logic behind inference */
+  inference_rationale?: string;
+  /** What real experience was found */
+  evidence_found: string[];
+}
+
+export interface GapCoachingResponse {
+  requirement: string;
+  action: 'approve' | 'context' | 'skip';
+  user_context?: string;
 }
 
 // ─── Orchestrator State ──────────────────────────────────────────────
@@ -397,11 +455,17 @@ export interface V2PipelineState {
   executive_tone?: ExecutiveToneOutput;
   final_resume?: AssemblyOutput;
 
+  // Pre-optimization baseline scores
+  pre_scores?: PreScores;
+
   // User decisions
   approved_strategies: Array<{
     requirement: string;
     strategy: GapStrategy;
   }>;
+
+  // Gap coaching responses from user
+  gap_coaching_responses?: GapCoachingResponse[];
 
   // Tracking
   token_usage: {
@@ -419,7 +483,9 @@ export type V2PipelineSSEEvent =
   | { type: 'job_intelligence'; data: JobIntelligenceOutput }
   | { type: 'candidate_intelligence'; data: CandidateIntelligenceOutput }
   | { type: 'benchmark_candidate'; data: BenchmarkCandidateOutput }
+  | { type: 'pre_scores'; data: PreScores }
   | { type: 'gap_analysis'; data: GapAnalysisOutput }
+  | { type: 'gap_coaching'; data: GapCoachingCard[] }
   | { type: 'narrative_strategy'; data: NarrativeStrategyOutput }
   | { type: 'resume_draft'; data: ResumeDraftOutput }
   | { type: 'verification_complete'; data: {

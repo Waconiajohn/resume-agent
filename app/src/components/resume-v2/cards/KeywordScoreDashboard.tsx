@@ -8,6 +8,9 @@ export interface KeywordScoreDashboardProps {
   liveScores: LiveScores | null;
   quickWins: QuickWin[];
   isScoring?: boolean;
+  onIntegrateKeyword?: (keyword: string) => void;
+  isIntegrating?: boolean;
+  integratingKeyword?: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -102,6 +105,9 @@ export function KeywordScoreDashboard({
   liveScores,
   quickWins,
   isScoring = false,
+  onIntegrateKeyword,
+  isIntegrating = false,
+  integratingKeyword = null,
 }: KeywordScoreDashboardProps) {
   // The displayed ATS score: prefer live (post-edit) score, fall back to pipeline score
   const displayAts = liveScores?.ats_score ?? pipelineScores.ats_match;
@@ -213,20 +219,42 @@ export function KeywordScoreDashboard({
               </span>
             </div>
             <div className="flex flex-wrap gap-1">
-              {keywordsMissing.map((kw, i) => (
-                <span
-                  key={i}
-                  className="rounded-md px-1.5 py-0.5 text-[10px] leading-4"
-                  style={{
-                    color: '#f0b8b8',
-                    backgroundColor: 'rgba(240,184,184,0.10)',
-                    border: '1px solid rgba(240,184,184,0.20)',
-                  }}
-                >
-                  {kw}
-                </span>
-              ))}
+              {keywordsMissing.map((kw, i) => {
+                const isActive = integratingKeyword === kw;
+                return onIntegrateKeyword ? (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => onIntegrateKeyword(kw)}
+                    disabled={isIntegrating}
+                    className="rounded-md px-1.5 py-0.5 text-[10px] leading-4 transition-colors hover:bg-[rgba(240,184,184,0.20)] disabled:opacity-50 cursor-pointer"
+                    style={{
+                      color: '#f0b8b8',
+                      backgroundColor: isActive ? 'rgba(240,184,184,0.25)' : 'rgba(240,184,184,0.10)',
+                      border: `1px solid ${isActive ? 'rgba(240,184,184,0.40)' : 'rgba(240,184,184,0.20)'}`,
+                    }}
+                    title={`Click to integrate "${kw}" into your resume`}
+                  >
+                    {isActive && isIntegrating ? '...' : kw}
+                  </button>
+                ) : (
+                  <span
+                    key={i}
+                    className="rounded-md px-1.5 py-0.5 text-[10px] leading-4"
+                    style={{
+                      color: '#f0b8b8',
+                      backgroundColor: 'rgba(240,184,184,0.10)',
+                      border: '1px solid rgba(240,184,184,0.20)',
+                    }}
+                  >
+                    {kw}
+                  </span>
+                );
+              })}
             </div>
+            {onIntegrateKeyword && keywordsMissing.length > 0 && (
+              <div className="mt-1 text-[10px] text-white/25">Click a missing keyword to integrate it</div>
+            )}
           </div>
         </div>
       )}

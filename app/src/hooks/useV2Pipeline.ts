@@ -21,6 +21,8 @@ const INITIAL_DATA: V2PipelineData = {
   candidateIntelligence: null,
   benchmarkCandidate: null,
   gapAnalysis: null,
+  gapCoachingCards: null,
+  preScores: null,
   narrativeStrategy: null,
   resumeDraft: null,
   assembly: null,
@@ -69,6 +71,12 @@ export function useV2Pipeline(accessToken: string | null) {
 
         case 'gap_analysis':
           return { ...prev, gapAnalysis: event.data };
+
+        case 'pre_scores':
+          return { ...prev, preScores: event.data };
+
+        case 'gap_coaching':
+          return { ...prev, gapCoachingCards: event.data };
 
         case 'narrative_strategy':
           return { ...prev, narrativeStrategy: event.data };
@@ -180,6 +188,54 @@ export function useV2Pipeline(accessToken: string | null) {
     }
   }, [accessToken, isStarting, connectSSE]);
 
+  const respondToGapCoaching = useCallback(async (responses: Array<{ requirement: string; action: 'approve' | 'context' | 'skip'; user_context?: string }>) => {
+    if (!accessToken || !data.sessionId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/pipeline/${data.sessionId}/respond-gaps`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ responses }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        const msg = (body as { error?: string }).error ?? 'Failed to submit gap responses';
+        setData(prev => ({ ...prev, error: msg }));
+      }
+    } catch (err) {
+      setData(prev => ({ ...prev, error: err instanceof Error ? err.message : 'Failed to submit gap responses' }));
+    }
+  }, [accessToken, data.sessionId]);
+
+  const integrateKeyword = useCallback(async (keyword: string, resumeText: string, jobDescription: string): Promise<{
+    original_text: string;
+    revised_text: string;
+    section: string;
+    explanation: string;
+  } | null> => {
+    if (!accessToken || !data.sessionId) return null;
+
+    try {
+      const response = await fetch(`${API_BASE}/pipeline/${data.sessionId}/integrate-keyword`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ keyword, resume_text: resumeText, job_description: jobDescription }),
+      });
+
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }, [accessToken, data.sessionId]);
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setData(INITIAL_DATA);
@@ -196,5 +252,7 @@ export function useV2Pipeline(accessToken: string | null) {
     error: data.error,
     start,
     reset,
+    respondToGapCoaching,
+    integrateKeyword,
   };
 }

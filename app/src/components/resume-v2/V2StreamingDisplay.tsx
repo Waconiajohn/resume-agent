@@ -16,12 +16,15 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, FileText, Shield, Undo2, Redo2 } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import type { V2PipelineData, V2Stage, ResumeDraft } from '@/types/resume-v2';
+import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { StrategyApprovals } from './cards/GapAnalysisCard';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { JobIntelligenceCard } from './cards/JobIntelligenceCard';
 import { CandidateIntelligenceCard } from './cards/CandidateIntelligenceCard';
 import { BenchmarkCandidateCard } from './cards/BenchmarkCandidateCard';
 import { GapAnalysisCard } from './cards/GapAnalysisCard';
+import { GapCoachingCardList } from './cards/GapCoachingCard';
+import { PositioningAssessmentCard } from './cards/PositioningAssessmentCard';
 import { NarrativeStrategyCard } from './cards/NarrativeStrategyCard';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
 import { ScoresCard } from './cards/ScoresCard';
@@ -56,6 +59,10 @@ interface V2StreamingDisplayProps {
   onStrategyChange: (approvals: StrategyApprovals) => void;
   liveScores: LiveScores | null;
   isScoring: boolean;
+  gapCoachingCards: GapCoachingCardType[] | null;
+  onRespondGapCoaching: (responses: GapCoachingResponse[]) => void;
+  preScores: PreScores | null;
+  onIntegrateKeyword?: (keyword: string) => void;
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -96,6 +103,7 @@ export function V2StreamingDisplay({
   onAddContext, isRerunning,
   strategyApprovals, onStrategyChange,
   liveScores, isScoring,
+  gapCoachingCards, onRespondGapCoaching, preScores, onIntegrateKeyword,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -233,6 +241,15 @@ export function V2StreamingDisplay({
                   />
                 </GlassCard>
               )}
+              {gapCoachingCards && gapCoachingCards.length > 0 && (
+                <GlassCard className="p-5">
+                  <GapCoachingCardList
+                    key={gapCoachingCards.length}
+                    cards={gapCoachingCards}
+                    onRespond={onRespondGapCoaching}
+                  />
+                </GlassCard>
+              )}
               {data.narrativeStrategy && (
                 <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} /></GlassCard>
               )}
@@ -283,6 +300,7 @@ export function V2StreamingDisplay({
                     liveScores={liveScores}
                     quickWins={data.assembly.quick_wins}
                     isScoring={isScoring}
+                    onIntegrateKeyword={onIntegrateKeyword}
                   />
                 ) : (
                   <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />
@@ -333,6 +351,14 @@ export function V2StreamingDisplay({
         {/* ─── Completion ─────────────────────────────────────── */}
         {isComplete && data.assembly && (
           <div className="space-y-4">
+            {data.assembly.positioning_assessment && (
+              <PositioningAssessmentCard
+                assessment={data.assembly.positioning_assessment}
+                preScores={preScores}
+                companyName={data.jobIntelligence?.company_name}
+                roleTitle={data.jobIntelligence?.role_title}
+              />
+            )}
             <div className="flex items-center gap-2 rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] px-4 py-3 text-sm text-[#b5dec2]/90" role="status">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               Resume complete. Select any text above to edit with AI.

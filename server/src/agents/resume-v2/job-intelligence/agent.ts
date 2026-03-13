@@ -38,7 +38,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
   "business_problems": ["what problems this hire is expected to solve"],
   "cultural_signals": ["what the culture feels like based on language"],
   "hidden_hiring_signals": ["what they're NOT saying but clearly need"],
-  "language_keywords": ["exact phrases/terms from the JD for ATS matching"],
+  "language_keywords": ["exact multi-word phrases as they appear in the JD — prefer 2-4 word phrases like 'cross-functional collaboration', 'P&L ownership', 'enterprise SaaS'. Include single words only when the phrase IS one word."],
   "industry": "industry/sector"
 }
 
@@ -46,7 +46,7 @@ RULES:
 - Extract the company name from the JD. If not present, use "Not specified".
 - Classify competencies by importance: must_have = explicitly required or repeated, important = mentioned with emphasis, nice_to_have = listed but not emphasized.
 - Hidden hiring signals: infer what they need but didn't write (e.g., if they list 15 tools, they probably need someone to consolidate the tech stack).
-- Language keywords: extract EXACT phrases as written in the JD — these are ATS matching targets.
+- Language keywords: extract EXACT multi-word phrases as written in the JD (2-4 words preferred). Examples: "cross-functional collaboration", "P&L ownership", "enterprise SaaS", "change management". Single words are acceptable only when the concept is genuinely one word (e.g., "Salesforce", "Python"). These are ATS matching targets.
 - Business problems: what's broken or missing that this hire fixes?
 - Be specific, not generic. "Revenue growth" is useless. "$50M ARR to $100M" is useful.`;
 

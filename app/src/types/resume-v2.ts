@@ -91,6 +91,7 @@ export interface GapStrategy {
   positioning: string;
   inferred_metric?: string;
   inference_rationale?: string;
+  ai_reasoning?: string;
 }
 
 export type GapClassification = 'strong' | 'partial' | 'missing';
@@ -113,6 +114,53 @@ export interface GapAnalysis {
     requirement: string;
     strategy: GapStrategy;
   }>;
+}
+
+// ─── Gap Coaching (AI coaching conversation) ─────────────────────
+
+export interface GapCoachingCard {
+  requirement: string;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  classification: GapClassification;
+  ai_reasoning: string;
+  proposed_strategy: string;
+  inferred_metric?: string;
+  inference_rationale?: string;
+  evidence_found: string[];
+}
+
+export type GapCoachingAction = 'approve' | 'context' | 'skip';
+
+export interface GapCoachingResponse {
+  requirement: string;
+  action: GapCoachingAction;
+  user_context?: string;
+}
+
+// ─── Pre-Scores (baseline before optimization) ───────────────────
+
+export interface PreScores {
+  ats_match: number;
+  keywords_found: string[];
+  keywords_missing: string[];
+}
+
+// ─── Positioning Assessment ──────────────────────────────────────
+
+export interface PositioningAssessmentEntry {
+  requirement: string;
+  importance: 'must_have' | 'important' | 'nice_to_have';
+  status: 'strong' | 'repositioned' | 'gap';
+  addressed_by: Array<{ section: string; bullet_text: string }>;
+  strategy_used?: string;
+}
+
+export interface PositioningAssessment {
+  summary: string;
+  requirement_map: PositioningAssessmentEntry[];
+  before_score: number;
+  after_score: number;
+  strategies_applied: string[];
 }
 
 export interface GapPositioningMapEntry {
@@ -201,6 +249,7 @@ export interface AssemblyResult {
   final_resume: ResumeDraft;
   scores: VerificationScores;
   quick_wins: QuickWin[];
+  positioning_assessment?: PositioningAssessment;
 }
 
 // ─── Pipeline State (accumulated in the frontend) ───────────────────
@@ -212,6 +261,8 @@ export interface V2PipelineData {
   candidateIntelligence: CandidateIntelligence | null;
   benchmarkCandidate: BenchmarkCandidate | null;
   gapAnalysis: GapAnalysis | null;
+  gapCoachingCards: GapCoachingCard[] | null;
+  preScores: PreScores | null;
   narrativeStrategy: NarrativeStrategy | null;
   resumeDraft: ResumeDraft | null;
   assembly: AssemblyResult | null;
@@ -228,9 +279,12 @@ export type V2SSEEvent =
   | { type: 'candidate_intelligence'; data: CandidateIntelligence }
   | { type: 'benchmark_candidate'; data: BenchmarkCandidate }
   | { type: 'gap_analysis'; data: GapAnalysis }
+  | { type: 'pre_scores'; data: PreScores }
+  | { type: 'gap_coaching'; data: GapCoachingCard[] }
   | { type: 'narrative_strategy'; data: NarrativeStrategy }
   | { type: 'resume_draft'; data: ResumeDraft }
   | { type: 'verification_complete' }  // Scores come through assembly_complete
   | { type: 'assembly_complete'; data: AssemblyResult }
   | { type: 'pipeline_complete'; session_id: string }
-  | { type: 'pipeline_error'; stage: V2Stage; error: string };
+  | { type: 'pipeline_error'; stage: V2Stage; error: string }
+  | { type: 'transparency'; message: string; stage: V2Stage };
