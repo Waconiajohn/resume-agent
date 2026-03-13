@@ -107,15 +107,25 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
     requestEdit(targetBullet, section, 'add_keywords', `Naturally integrate this specific keyword/phrase into the text: "${keyword}"`);
   }, [currentResume, requestEdit]);
 
+  // Track the resume from the previous run so the WhatChangedCard can diff it
+  const [previousResume, setPreviousResume] = useState<ResumeDraft | null>(null);
+
   const handleAddContext = useCallback((userContext: string) => {
+    // Snapshot the current resume before the re-run so we can show what changed
+    setPreviousResume(editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null);
     setEditableResume(null);
     resetHistory();
     void start(resumeText, jobDescription, userContext);
-  }, [start, resumeText, jobDescription, resetHistory]);
+  }, [start, resumeText, jobDescription, resetHistory, editableResume, data.assembly, data.resumeDraft]);
+
+  const handleDismissChanges = useCallback(() => {
+    setPreviousResume(null);
+  }, []);
 
   const handleStartOver = useCallback(() => {
     reset();
     setEditableResume(null);
+    setPreviousResume(null);
     setResumeText('');
     setJobDescription('');
   }, [reset]);
@@ -198,6 +208,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
         onRespondGapCoaching={handleGapCoachingRespond}
         preScores={data.preScores}
         onIntegrateKeyword={handleIntegrateKeyword}
+        previousResume={previousResume}
+        onDismissChanges={handleDismissChanges}
       />
     </div>
   );

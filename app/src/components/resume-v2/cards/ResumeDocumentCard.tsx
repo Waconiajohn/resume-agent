@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { Lightbulb } from 'lucide-react';
 import type { ResumeDraft } from '@/types/resume-v2';
+import { scrollToAuditRow } from '../useStrategyThread';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
@@ -69,9 +71,18 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
           <SectionHeading>Selected Accomplishments</SectionHeading>
           <ul className="space-y-2">
             {resume.selected_accomplishments.map((a, i) => (
-              <li key={i} className="text-sm text-white/75 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-2 before:h-1.5 before:w-1.5 before:rounded-full before:bg-[#afc4ff]/40">
+              <li
+                key={i}
+                className="text-sm text-white/75 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-2 before:h-1.5 before:w-1.5 before:rounded-full before:bg-[#afc4ff]/40"
+                {...(a.addresses_requirements.length > 0
+                  ? { 'data-addresses': JSON.stringify(a.addresses_requirements) }
+                  : {})}
+              >
                 {a.is_new && <NewMarker />}
                 {a.content}
+                {a.addresses_requirements.length > 0 && (
+                  <StrategyTooltip requirements={a.addresses_requirements} />
+                )}
               </li>
             ))}
           </ul>
@@ -97,9 +108,18 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
                 )}
                 <ul className="mt-2 space-y-1.5">
                   {exp.bullets.map((bullet, j) => (
-                    <li key={j} className="text-sm text-white/70 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-white/25">
+                    <li
+                      key={j}
+                      className="text-sm text-white/70 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-white/25"
+                      {...(bullet.addresses_requirements.length > 0
+                        ? { 'data-addresses': JSON.stringify(bullet.addresses_requirements) }
+                        : {})}
+                    >
                       {bullet.is_new && <NewMarker />}
                       {bullet.text}
+                      {bullet.addresses_requirements.length > 0 && (
+                        <StrategyTooltip requirements={bullet.addresses_requirements} />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -151,6 +171,55 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
         </section>
       )}
     </div>
+  );
+}
+
+function StrategyTooltip({ requirements }: { requirements: string[] }) {
+  const [show, setShow] = useState(false);
+
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (requirements.length > 0) {
+      scrollToAuditRow(requirements[0]);
+    }
+  }
+
+  return (
+    <span
+      className="relative inline-flex items-center ml-1.5 align-middle"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <button
+        type="button"
+        onClick={handleClick}
+        aria-label={`View strategy audit for: ${requirements[0] ?? 'requirement'}`}
+        className="flex items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 rounded"
+      >
+        <Lightbulb
+          className={`h-3 w-3 transition-colors duration-150 ${
+            show ? 'text-[#afc4ff]/80' : 'text-[#afc4ff]/40'
+          } hover:text-[#afc4ff]/80`}
+        />
+      </button>
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-max max-w-[260px] bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 shadow-xl pointer-events-none">
+          <span className="block text-[10px] uppercase tracking-wider text-white/40 mb-1.5">
+            Addresses:
+          </span>
+          <span className="flex flex-col gap-1">
+            {requirements.map((req, i) => (
+              <span
+                key={i}
+                className="text-[11px] text-white/70 bg-white/[0.06] rounded px-1.5 py-0.5"
+              >
+                {req}
+              </span>
+            ))}
+          </span>
+        </span>
+      )}
+    </span>
   );
 }
 

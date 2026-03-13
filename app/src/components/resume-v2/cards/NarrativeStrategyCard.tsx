@@ -1,7 +1,11 @@
-import { Compass } from 'lucide-react';
+import { Compass, Lightbulb, Target, MessageCircle } from 'lucide-react';
 import type { NarrativeStrategy } from '@/types/resume-v2';
 
 export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
+  const experienceFramingEntries = data.section_guidance.experience_framing
+    ? Object.entries(data.section_guidance.experience_framing)
+    : [];
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -39,6 +43,117 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         <div className="text-xs font-medium text-[#b5dec2]/70 mb-1">Your Best Line</div>
         <p className="text-sm text-white/80 italic">&ldquo;{data.why_me_best_line}&rdquo;</p>
       </div>
+
+      {/* Narrative Rationale */}
+      {data.narrative_angle_rationale && (
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-3 flex gap-3">
+          <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#f0d99f]/60" />
+          <p className="text-xs text-white/60 leading-relaxed">{data.narrative_angle_rationale}</p>
+        </div>
+      )}
+
+      {/* Unique Differentiators */}
+      {data.unique_differentiators && data.unique_differentiators.length > 0 && (
+        <div>
+          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">What Sets You Apart</h4>
+          <div className="flex flex-wrap gap-1.5">
+            {data.unique_differentiators.map((diff, i) => (
+              <span
+                key={i}
+                className="rounded-full border border-[#afc4ff]/15 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-xs text-[#afc4ff]/80"
+              >
+                {diff}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Section Guidance */}
+      <details>
+        <summary className="text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
+          How Your Resume Will Be Framed
+        </summary>
+        <div className="mt-3 space-y-4 pl-1">
+
+          {/* Summary Angle */}
+          {data.section_guidance.summary_angle && (
+            <div>
+              <h5 className="mb-1.5 text-xs font-medium text-white/60 uppercase tracking-wider">Summary Angle</h5>
+              <p className="text-xs text-white/60 leading-relaxed">{data.section_guidance.summary_angle}</p>
+            </div>
+          )}
+
+          {/* Competency Themes */}
+          {data.section_guidance.competency_themes && data.section_guidance.competency_themes.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Target className="h-3 w-3 text-white/40" />
+                <h5 className="text-xs font-medium text-white/60 uppercase tracking-wider">Competency Themes</h5>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {data.section_guidance.competency_themes.map((theme, i) => (
+                  <span
+                    key={i}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/55"
+                  >
+                    {theme}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Accomplishment Priorities */}
+          {data.section_guidance.accomplishment_priorities && data.section_guidance.accomplishment_priorities.length > 0 && (
+            <div>
+              <h5 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">Accomplishment Priorities</h5>
+              <ol className="space-y-1.5 list-none">
+                {data.section_guidance.accomplishment_priorities.map((priority, i) => (
+                  <li key={i} className="flex gap-2.5">
+                    <span className="shrink-0 text-xs text-white/30 font-mono w-4 text-right">{i + 1}.</span>
+                    <span className="text-xs text-white/60 leading-relaxed">{priority}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Experience Framing */}
+          {experienceFramingEntries.length > 0 && (
+            <div>
+              <h5 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">Experience Framing</h5>
+              <div className="space-y-2.5">
+                {experienceFramingEntries.map(([company, framing], i) => (
+                  <div key={i} className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+                    <div className="text-xs font-medium text-white/70 mb-1">{company}</div>
+                    <div className="text-xs text-white/50 leading-relaxed">{framing}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </details>
+
+      {/* Interview Talking Points */}
+      {data.interview_talking_points && data.interview_talking_points.length > 0 && (
+        <details>
+          <summary className="flex items-center gap-1.5 text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
+            <MessageCircle className="h-3 w-3" />
+            Prepare for These Conversations
+          </summary>
+          <div className="mt-3 space-y-2 pl-1">
+            {data.interview_talking_points.map((point, i) => (
+              <div key={i} className="flex gap-2.5">
+                <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-white/20" />
+                <p className="text-xs text-white/60 leading-relaxed">{point}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

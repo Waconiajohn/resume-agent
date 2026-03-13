@@ -92,7 +92,10 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
   // Collapsed summary after responding
   if (isResponded) {
     return (
-      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 flex items-center gap-3">
+      <div
+        className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 flex items-center gap-3"
+        data-coaching-requirement={card.requirement}
+      >
         {classificationIcon(card.classification)}
         <span className="flex-1 min-w-0 text-sm text-white/50 truncate">{card.requirement}</span>
         <span className={`text-xs shrink-0 ${actionColor(state.action!)}`}>
@@ -104,7 +107,10 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div
+      className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden"
+      data-coaching-requirement={card.requirement}
+    >
       {/* Header */}
       <div className="flex items-start gap-2.5 px-4 pt-4 pb-3">
         <div className="mt-0.5">{classificationIcon(card.classification)}</div>

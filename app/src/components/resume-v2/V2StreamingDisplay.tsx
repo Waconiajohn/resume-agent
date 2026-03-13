@@ -24,6 +24,7 @@ import { BenchmarkCandidateCard } from './cards/BenchmarkCandidateCard';
 import { GapAnalysisCard } from './cards/GapAnalysisCard';
 import { GapCoachingCardList } from './cards/GapCoachingCard';
 import { PositioningAssessmentCard } from './cards/PositioningAssessmentCard';
+import { StrategyAuditCard } from './cards/StrategyAuditCard';
 import { NarrativeStrategyCard } from './cards/NarrativeStrategyCard';
 import { StrategyPlacementCard } from './cards/StrategyPlacementCard';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
@@ -34,6 +35,7 @@ import { InlineEditToolbar } from './InlineEditToolbar';
 import { DiffView } from './DiffView';
 import { AddContextCard } from './AddContextCard';
 import { ExportBar } from './ExportBar';
+import { WhatChangedCard } from './cards/WhatChangedCard';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -61,6 +63,9 @@ interface V2StreamingDisplayProps {
   onRespondGapCoaching: (responses: GapCoachingResponse[]) => void;
   preScores: PreScores | null;
   onIntegrateKeyword?: (keyword: string) => void;
+  /** Resume from the previous run — when present, show the WhatChanged card after re-run completes */
+  previousResume?: ResumeDraft | null;
+  onDismissChanges?: () => void;
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -101,6 +106,7 @@ export function V2StreamingDisplay({
   onAddContext, isRerunning,
   liveScores, isScoring,
   gapCoachingCards, onRespondGapCoaching, preScores, onIntegrateKeyword,
+  previousResume, onDismissChanges,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -259,6 +265,15 @@ export function V2StreamingDisplay({
           <AddContextCard onSubmit={onAddContext} loading={isRerunning} />
         )}
 
+        {/* ─── What Changed (after re-run, before resume) ─────── */}
+        {isComplete && previousResume && displayResume && onDismissChanges && (
+          <WhatChangedCard
+            previousResume={previousResume}
+            currentResume={displayResume}
+            onDismiss={onDismissChanges}
+          />
+        )}
+
         {/* ─── Stage 3+4+5: Resume ────────────────────────────── */}
         {hasResume && (
           <section aria-label="Your resume">
@@ -348,6 +363,12 @@ export function V2StreamingDisplay({
         {/* ─── Completion ─────────────────────────────────────── */}
         {isComplete && data.assembly && (
           <div className="space-y-4">
+            {data.assembly.positioning_assessment && data.gapAnalysis && (
+              <StrategyAuditCard
+                positioningAssessment={data.assembly.positioning_assessment}
+                gapAnalysis={data.gapAnalysis}
+              />
+            )}
             {data.assembly.positioning_assessment && (
               <PositioningAssessmentCard
                 assessment={data.assembly.positioning_assessment}
