@@ -8,7 +8,7 @@ import type { CareerIQRoom } from './Sidebar';
 const PIPELINE_STAGES = ['Discovered', 'Applied', 'Interviewing', 'Offer', 'Accepted'] as const;
 type PipelineStage = typeof PIPELINE_STAGES[number];
 
-interface PipelineCard {
+export interface PipelineCard {
   id: string;
   company: string;
   role: string;
@@ -60,6 +60,8 @@ const STAGE_COLORS: Record<PipelineStage, string> = {
 
 interface ZoneYourPipelineProps {
   onNavigateRoom?: (room: CareerIQRoom) => void;
+  /** When provided, skip Supabase fetch and render these cards (demo mode). */
+  mockCards?: PipelineCard[];
 }
 
 function CompanyInitials({ company }: { company: string }) {
@@ -143,14 +145,20 @@ function PipelineCardItem({
   );
 }
 
-export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
+export function ZoneYourPipeline({ onNavigateRoom, mockCards }: ZoneYourPipelineProps) {
   const [cards, setCards] = useState<PipelineCard[]>([]);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
   const [loaded, setLoaded] = useState(false);
   const draggedCardId = useRef<string | null>(null);
+  const isDemo = !!mockCards;
 
-  // Load from Supabase on mount
+  // Load from Supabase on mount (skip in demo mode)
   useEffect(() => {
+    if (mockCards) {
+      setCards(mockCards);
+      setLoaded(true);
+      return;
+    }
     let cancelled = false;
     async function load() {
       try {
@@ -175,7 +183,7 @@ export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [mockCards]);
 
   const handleDragStart = useCallback((_e: React.DragEvent, cardId: string) => {
     draggedCardId.current = cardId;
@@ -205,6 +213,9 @@ export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
       ),
     );
 
+    // Skip persistence in demo mode
+    if (isDemo) return;
+
     // Persist to Supabase
     const dbStage = STAGE_TO_DB[targetStage];
     supabase
@@ -229,6 +240,9 @@ export function ZoneYourPipeline({ onNavigateRoom }: ZoneYourPipelineProps) {
   const handleArchive = useCallback((cardId: string) => {
     // Optimistic remove
     setCards((prev) => prev.filter((c) => c.id !== cardId));
+
+    // Skip persistence in demo mode
+    if (isDemo) return;
 
     // Persist archive to Supabase
     supabase

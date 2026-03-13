@@ -3,6 +3,10 @@ import { GlassCard } from '@/components/GlassCard';
 import { PRODUCT_CATALOG } from '@/types/platform';
 import type { ProductDefinition } from '@/types/platform';
 
+function isRealName(name: string): boolean {
+  return name.length > 0 && !name.includes('@') && name !== 'there';
+}
+
 /* ─── Theme Groups ─── */
 
 interface ToolGroup {
@@ -93,74 +97,6 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
   );
 }
 
-/* ─── Coach Hero Card ─── */
-
-function isRealName(name: string): boolean {
-  return name.length > 0 && !name.includes('@') && name !== 'there';
-}
-
-function CoachHeroCard({ userName, onOpenCoach }: { userName?: string; onOpenCoach?: () => void }) {
-  const firstName = userName?.split(' ')[0] || '';
-  const displayName = isRealName(firstName) ? `AI ${firstName}` : 'AI Coach';
-
-  return (
-    <div className="flex justify-center mb-2">
-      <GlassCard className="p-5 sm:p-6 max-w-sm w-full text-center border-indigo-500/20">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-indigo-600/30 border-2 border-indigo-400/30 flex items-center justify-center">
-            <span className="text-sm font-bold text-indigo-300">AI</span>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-bold text-white/95">{displayName}</h2>
-            <p className="text-sm text-white/50 mt-0.5">Your Virtual Career Coach</p>
-          </div>
-
-          <p className="text-xs text-white/40 leading-relaxed max-w-xs">
-            I orchestrate all {PRODUCT_CATALOG.length} tools below to guide your career transition. Ask me what to do next.
-          </p>
-
-          {onOpenCoach && (
-            <button
-              type="button"
-              onClick={onOpenCoach}
-              className="mt-1 px-5 py-2 rounded-full bg-indigo-600/40 border border-indigo-400/30 text-sm font-medium text-indigo-200 hover:bg-indigo-600/60 hover:border-indigo-400/50 transition-all duration-200"
-            >
-              Talk to {displayName}
-            </button>
-          )}
-        </div>
-      </GlassCard>
-    </div>
-  );
-}
-
-/* ─── Connector Lines (hero → groups) ─── */
-
-function OrgConnectorLines() {
-  return (
-    <div className="hidden lg:block" aria-hidden="true">
-      {/* Vertical stem from hero */}
-      <div className="flex justify-center">
-        <div className="w-px h-6 bg-gradient-to-b from-indigo-400/25 to-[rgba(152,179,255,0.15)]" />
-      </div>
-      {/* Grid-aligned horizontal bar + drop lines matching the 4-column gap-6 grid below */}
-      <div className="mx-auto max-w-7xl px-4">
-        <div className="relative grid grid-cols-4 gap-6 h-6">
-          {/* Horizontal connector across all columns */}
-          <div className="absolute top-0 inset-x-0 h-px bg-[rgba(152,179,255,0.15)]" />
-          {/* 4 vertical drop lines, each centered in its grid cell */}
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className="flex justify-center">
-              <div className="w-px h-6 bg-[rgba(152,179,255,0.15)]" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Theme Group Card ─── */
 
 function ThemeGroupCard({ group, onNavigate }: { group: ToolGroup; onNavigate: (route: string) => void }) {
@@ -200,13 +136,26 @@ function ThemeGroupCard({ group, onNavigate }: { group: ToolGroup; onNavigate: (
 /* ─── Main Component ─── */
 
 export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: ProductCatalogGridProps) {
+  const firstName = userName?.split(' ')[0] || '';
+  const coachLabel = isRealName(firstName) ? `AI ${firstName}` : 'AI Coach';
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="sr-only">AI Career Tools</h1>
-      <CoachHeroCard userName={userName} onOpenCoach={onOpenCoach} />
-      <OrgConnectorLines />
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-lg font-semibold text-white/90">AI Career Tools</h1>
+        {onOpenCoach && (
+          <button
+            type="button"
+            onClick={onOpenCoach}
+            className="flex items-center gap-2 rounded-full bg-indigo-600/30 border border-indigo-400/25 px-4 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-600/50 hover:border-indigo-400/40 transition-all duration-200"
+          >
+            <span className="w-6 h-6 rounded-full bg-indigo-600/50 border border-indigo-400/30 flex items-center justify-center text-[10px] font-bold text-indigo-300">AI</span>
+            Chat with {coachLabel}
+          </button>
+        )}
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4 lg:mt-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {TOOL_GROUPS.map(group => (
           <ThemeGroupCard key={group.label} group={group} onNavigate={onNavigate} />
         ))}

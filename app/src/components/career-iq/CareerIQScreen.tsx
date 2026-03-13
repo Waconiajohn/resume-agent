@@ -59,7 +59,6 @@ function toValidRoom(value: string | undefined): CareerIQRoom {
   return 'dashboard';
 }
 import { DashboardHome } from './DashboardHome';
-import { WelcomeState } from './WelcomeState';
 import { WhyMeEngine } from './WhyMeEngine';
 import { LivePulseStrip } from './LivePulseStrip';
 import { MobileBriefing } from './MobileBriefing';
@@ -70,6 +69,64 @@ import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
 import { supabase } from '@/lib/supabase';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
 import type { RealFeedEvent } from './ZoneAgentFeed';
+import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
+import type { MomentumSummary } from '@/hooks/useMomentum';
+import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
+
+/* ─── Mock data for dashboard preview (demo mode) ─── */
+
+const MOCK_SIGNALS: WhyMeSignals = {
+  clarity: 'green',
+  alignment: 'green',
+  differentiation: 'yellow',
+};
+
+const MOCK_DASHBOARD_STATE: DashboardState = 'strong';
+
+const MOCK_SESSIONS: ResumeSession[] = [
+  { id: 'mock-1', company_name: 'Google', created_at: new Date(Date.now() - 2 * 86400000).toISOString(), pipeline_stage: 'completed' },
+  { id: 'mock-2', company_name: 'Microsoft', created_at: new Date(Date.now() - 5 * 86400000).toISOString(), pipeline_stage: 'completed' },
+  { id: 'mock-3', company_name: 'Amazon', created_at: new Date(Date.now() - 1 * 86400000).toISOString(), pipeline_stage: 'in_progress' },
+];
+
+const MOCK_COVER_LETTERS: CoverLetterSession[] = [
+  { id: 'mock-cl-1', company_name: 'Google', created_at: new Date(Date.now() - 1.5 * 86400000).toISOString(), pipeline_status: 'complete' },
+  { id: 'mock-cl-2', company_name: 'Stripe', created_at: new Date(Date.now() - 3 * 86400000).toISOString(), pipeline_status: 'complete' },
+];
+
+const MOCK_MOMENTUM: MomentumSummary = {
+  current_streak: 5,
+  longest_streak: 12,
+  total_activities: 47,
+  this_week_activities: 8,
+  recent_wins: [
+    { id: 'w1', activity_type: 'resume_completed', metadata: { company: 'Google' }, created_at: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'w2', activity_type: 'cover_letter_completed', metadata: { company: 'Google' }, created_at: new Date(Date.now() - 1.5 * 86400000).toISOString() },
+    { id: 'w3', activity_type: 'job_applied', metadata: { company: 'Stripe' }, created_at: new Date(Date.now() - 3 * 86400000).toISOString() },
+  ],
+};
+
+import type { PipelineCard } from './ZoneYourPipeline';
+
+const MOCK_PIPELINE_CARDS: PipelineCard[] = [
+  { id: 'mp-1', company: 'Google', role: 'Sr. Program Manager', stage: 'Interviewing', daysSinceMovement: 1, hasNewActivity: true },
+  { id: 'mp-2', company: 'Microsoft', role: 'Principal PM', stage: 'Applied', daysSinceMovement: 3, hasNewActivity: false },
+  { id: 'mp-3', company: 'Amazon', role: 'Sr. TPM', stage: 'Discovered', daysSinceMovement: 0, hasNewActivity: true },
+  { id: 'mp-4', company: 'Stripe', role: 'Head of Operations', stage: 'Applied', daysSinceMovement: 5, hasNewActivity: false },
+  { id: 'mp-5', company: 'Salesforce', role: 'VP Engineering', stage: 'Offer', daysSinceMovement: 0, hasNewActivity: true },
+  { id: 'mp-6', company: 'Netflix', role: 'Director, Program Mgmt', stage: 'Discovered', daysSinceMovement: 2, hasNewActivity: false },
+  { id: 'mp-7', company: 'Meta', role: 'Sr. Director, Ops', stage: 'Interviewing', daysSinceMovement: 4, hasNewActivity: false },
+];
+
+const MOCK_COACH_REC: CoachRecommendation = {
+  action: 'Review your tailored resume for the Amazon Sr. Program Manager role — it was just completed.',
+  product: 'Resume Workshop',
+  room: 'resume',
+  urgency: 'immediate',
+  phase: 'active_search',
+  phase_label: 'Active Job Search',
+  rationale: 'You have 3 active applications and your Amazon resume just finished. Review it while the context is fresh, then submit your application today.',
+};
 
 // Lazy-load room components for code splitting
 const LiveSessionsRoom = lazy(() => import('./LiveSessionsRoom').then(m => ({ default: m.LiveSessionsRoom })));
@@ -274,31 +331,29 @@ export function CareerIQScreen({
       return <RoomPlaceholder room={activeRoom} />;
     }
 
-    // State 1: New user — show welcome
-    if (dashboardState === 'new-user' && activeRoom === 'dashboard') {
-      return <WelcomeState userName={userName} onStartWhyMe={handleStartWhyMe} />;
-    }
-
     // Dashboard home with all 4 zones
+    // When user has no real data (new-user), show mock data preview so they can see what a full dashboard looks like
     if (activeRoom === 'dashboard') {
+      const isDemo = dashboardState === 'new-user';
       return (
         <DashboardHome
           userName={userName}
-          signals={signals}
-          dashboardState={dashboardState}
+          signals={isDemo ? MOCK_SIGNALS : signals}
+          dashboardState={isDemo ? MOCK_DASHBOARD_STATE : dashboardState}
           onNavigateRoom={handleRoomNavigate}
           onRefineWhyMe={handleStartWhyMe}
-          hasResumeSessions={sessions.length > 0}
-          sessionCount={sessions.length}
-          recentSessions={sessions}
-          coverLetterSessions={coverLetterSessions}
-          momentum={momentum}
-          momentumLoading={momentumLoading}
+          hasResumeSessions={isDemo ? true : sessions.length > 0}
+          sessionCount={isDemo ? MOCK_SESSIONS.length : sessions.length}
+          recentSessions={isDemo ? MOCK_SESSIONS : sessions}
+          coverLetterSessions={isDemo ? MOCK_COVER_LETTERS : coverLetterSessions}
+          momentum={isDemo ? MOCK_MOMENTUM : momentum}
+          momentumLoading={isDemo ? false : momentumLoading}
           nudges={nudges}
           onDismissNudge={dismissNudge}
           onOpenCoach={() => setCoachDrawerOpen(true)}
-          coachRecommendation={coachRec}
-          coachLoading={coachLoading}
+          coachRecommendation={isDemo ? MOCK_COACH_REC : coachRec}
+          coachLoading={isDemo ? false : coachLoading}
+          mockPipelineCards={isDemo ? MOCK_PIPELINE_CARDS : undefined}
         />
       );
     }

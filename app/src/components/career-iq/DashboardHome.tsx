@@ -1,5 +1,5 @@
 import { ZoneYourDay } from './ZoneYourDay';
-import { ZoneYourPipeline } from './ZoneYourPipeline';
+import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
 import { ZoneAgentFeed, type RealFeedEvent } from './ZoneAgentFeed';
 import { ZoneYourSignals } from './ZoneYourSignals';
 import { MomentumCard } from './MomentumCard';
@@ -45,6 +45,7 @@ interface DashboardHomeProps {
   onOpenCoach?: () => void;
   coachRecommendation?: CoachRecommendation | null;
   coachLoading?: boolean;
+  mockPipelineCards?: PipelineCard[];
 }
 
 const NUDGE_DISMISS_KEY = 'careeriq_nudge_dismissed';
@@ -61,7 +62,7 @@ function saveDismissed(dismissed: Record<string, boolean>) {
   try { localStorage.setItem(NUDGE_DISMISS_KEY, JSON.stringify(dismissed)); } catch { /* ignore */ }
 }
 
-export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge, onOpenCoach, coachRecommendation, coachLoading = false }: DashboardHomeProps) {
+export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge, onOpenCoach, coachRecommendation, coachLoading = false, mockPipelineCards }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | undefined>(undefined);
   const [pipelineStatsError, setPipelineStatsError] = useState<string | null>(null);
@@ -231,7 +232,7 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
 
       {/* Zone 2 + 3: Pipeline (60%) + Agent Feed (40%) */}
       <div className="flex gap-6 flex-col lg:flex-row">
-        <ZoneYourPipeline onNavigateRoom={onNavigateRoom} />
+        <ZoneYourPipeline onNavigateRoom={onNavigateRoom} mockCards={mockPipelineCards} />
         <ZoneAgentFeed onNavigateRoom={onNavigateRoom} realEvents={feedEvents} />
       </div>
 
