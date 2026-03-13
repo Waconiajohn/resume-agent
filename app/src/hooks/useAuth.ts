@@ -67,6 +67,21 @@ export function useAuth() {
     return { error };
   };
 
+  const updateProfile = async (data: { firstName: string; lastName: string }) => {
+    const fullName = `${data.firstName} ${data.lastName}`;
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: fullName, first_name: data.firstName, last_name: data.lastName },
+    });
+    if (!error) {
+      // Refresh user state so displayName updates immediately
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        setUser(sessionData.session.user);
+      }
+    }
+    return { error };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -83,6 +98,7 @@ export function useAuth() {
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
+    updateProfile,
     signOut,
   };
 }

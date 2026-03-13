@@ -180,11 +180,6 @@ function ThemeGroupCard({ group, onNavigate }: { group: ToolGroup; onNavigate: (
 
   return (
     <div className="flex flex-col">
-      {/* Vertical connector from above — desktop only */}
-      <div className="hidden lg:flex justify-center" aria-hidden="true">
-        <div className="w-px h-6 bg-[rgba(152,179,255,0.15)]" />
-      </div>
-
       <GlassCard className="p-4 flex-1">
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.06]">
           <span className="text-lg" aria-hidden="true">{group.icon}</span>

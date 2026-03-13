@@ -5,16 +5,37 @@ import { PipelineProgressBar } from './PipelineProgressBar';
 
 interface HeaderProps {
   email?: string;
+  displayName?: string;
   onSignOut: () => void;
+  onUpdateProfile?: (data: { firstName: string; lastName: string }) => Promise<{ error: unknown }>;
   pipelineStage?: string | null;
   isProcessing?: boolean;
   sessionComplete?: boolean;
   onNavigate?: (view: string) => void;
 }
 
-export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionComplete, onNavigate }: HeaderProps) {
+export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelineStage, isProcessing, sessionComplete, onNavigate }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameFirst, setNameFirst] = useState('');
+  const [nameLast, setNameLast] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
   const menuPanelRef = useRef<HTMLDivElement>(null);
+
+  const startEditName = () => {
+    const parts = (displayName ?? '').split(' ');
+    setNameFirst(parts[0] || '');
+    setNameLast(parts.slice(1).join(' ') || '');
+    setEditingName(true);
+  };
+
+  const saveNameEdit = async () => {
+    if (!onUpdateProfile || !nameFirst.trim()) return;
+    setNameSaving(true);
+    await onUpdateProfile({ firstName: nameFirst.trim(), lastName: nameLast.trim() });
+    setNameSaving(false);
+    setEditingName(false);
+  };
 
   // Close menu on Escape key
   useEffect(() => {
@@ -118,7 +139,41 @@ export function Header({ email, onSignOut, pipelineStage, isProcessing, sessionC
         {/* Desktop user controls — hidden below lg */}
         {email && (
           <div className="hidden lg:flex items-center gap-3">
-            <span className="text-xs text-white/55">{email}</span>
+            {editingName ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={nameFirst}
+                  onChange={(e) => setNameFirst(e.target.value)}
+                  placeholder="First"
+                  className="w-20 rounded border border-white/[0.15] bg-white/[0.05] px-2 py-1 text-xs text-white/80 outline-none focus:border-white/[0.3]"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
+                />
+                <input
+                  type="text"
+                  value={nameLast}
+                  onChange={(e) => setNameLast(e.target.value)}
+                  placeholder="Last"
+                  className="w-20 rounded border border-white/[0.15] bg-white/[0.05] px-2 py-1 text-xs text-white/80 outline-none focus:border-white/[0.3]"
+                  onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
+                />
+                <button onClick={() => void saveNameEdit()} disabled={nameSaving || !nameFirst.trim()} className="rounded px-2 py-1 text-xs text-[#afc4ff] hover:bg-white/[0.06] disabled:opacity-50">
+                  {nameSaving ? '...' : 'Save'}
+                </button>
+                <button onClick={() => setEditingName(false)} className="rounded px-1.5 py-1 text-xs text-white/40 hover:bg-white/[0.06]">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={startEditName}
+                className="text-xs text-white/55 hover:text-white/80 transition-colors"
+                title="Click to edit your name"
+              >
+                {displayName || email}
+              </button>
+            )}
             <GlassButton variant="ghost" size="sm" onClick={onSignOut} className="h-8" aria-label="Sign out" title="Sign out">
               <LogOut className="h-4 w-4" aria-hidden="true" />
             </GlassButton>

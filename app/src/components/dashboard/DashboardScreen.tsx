@@ -8,12 +8,9 @@ import type { MasterResume, MasterResumeListItem, FinalResume } from '@/types/re
 // and replaced as stories 7-11 are implemented.
 import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
-import { EvidenceLibraryTab } from '@/components/dashboard/EvidenceLibraryTab';
-
 const TABS = [
   { id: 'sessions', label: 'Session History' },
   { id: 'master_resume', label: 'Master Resume' },
-  { id: 'evidence_library', label: 'Evidence Library' },
 ];
 
 export interface DashboardScreenProps {
@@ -68,7 +65,7 @@ export function DashboardScreen({
       <GlassCard className="p-6">
         <div className="mb-6">
           <h1 className="mb-1 text-xl font-semibold text-white/90">Dashboard</h1>
-          <p className="text-sm text-white/50">Manage your resume sessions, master resume, and evidence library.</p>
+          <p className="text-sm text-white/50">Manage your resume sessions and master resume.</p>
         </div>
 
         {error && (
@@ -103,17 +100,11 @@ export function DashboardScreen({
               onSetDefaultResume={onSetDefaultResume}
               onDeleteResume={onDeleteResume}
               onGetResumeHistory={onGetResumeHistory}
+              sessions={sessions}
             />
           )}
 
-          {activeTab === 'evidence_library' && (
-            <EvidenceLibraryTab
-              resumes={resumes}
-              onGetDefaultResume={onGetDefaultResume}
-              onGetResumeById={onGetResumeById}
-              onUpdateMasterResume={onUpdateMasterResume}
-            />
-          )}
+          {/* Evidence Library merged into Master Resume tab */}
         </div>
       </GlassCard>
     </div>

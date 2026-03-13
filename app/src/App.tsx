@@ -25,7 +25,7 @@ const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then
 type View = 'landing' | 'coach' | 'resume-v2' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq';
 
 export default function App() {
-  const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } =
+  const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, updateProfile, signOut } =
     useAuth();
   const accessToken = session?.access_token ?? null;
   const {
@@ -385,7 +385,9 @@ export default function App() {
       <div className="h-screen bg-surface">
         <Header
           email={user.email}
+          displayName={displayName}
           onSignOut={handleSignOut}
+          onUpdateProfile={updateProfile}
           pipelineStage={view === 'coach' ? (pipelineStage ?? currentPhase) : null}
           isProcessing={view === 'coach' ? isProcessing : false}
           sessionComplete={view === 'coach' ? (sessionComplete ?? false) : false}

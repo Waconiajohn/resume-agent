@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ExperienceCard } from '@/components/dashboard/ExperienceCard';
 import { SkillsCategoryCard } from '@/components/dashboard/SkillsCategoryCard';
 import { EditableField } from '@/components/dashboard/EditableField';
-import type { MasterResume, MasterResumeListItem, MasterResumeExperience } from '@/types/resume';
+import type { MasterResume, MasterResumeListItem, MasterResumeExperience, MasterResumeEvidenceItem } from '@/types/resume';
+import type { CoachSession } from '@/types/session';
+
+const SOURCE_BADGE: Record<MasterResumeEvidenceItem['source'], { label: string; classes: string }> = {
+  crafted: { label: 'Crafted', classes: 'bg-[#afc4ff]/20 text-[#afc4ff] border-[#afc4ff]/30' },
+  upgraded: { label: 'Upgraded', classes: 'bg-[#b5dec2]/20 text-[#b5dec2] border-[#b5dec2]/30' },
+  interview: { label: 'Interview', classes: 'bg-[#f0d99f]/20 text-[#f0d99f] border-[#f0d99f]/30' },
+};
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -27,6 +36,42 @@ interface MasterResumeTabProps {
   onSetDefaultResume: (id: string) => Promise<boolean>;
   onDeleteResume: (id: string) => Promise<boolean>;
   onGetResumeHistory: (id: string) => Promise<Array<{ id: string; changes_summary: string; created_at: string }>>;
+  sessions?: CoachSession[];
+}
+
+/** Match evidence items to experience entries by looking up the session's company_name */
+function buildEvidenceByCompany(
+  evidence: MasterResumeEvidenceItem[],
+  experience: MasterResumeExperience[],
+  sessions: CoachSession[],
+): { byRole: Map<number, MasterResumeEvidenceItem[]>; unmatched: MasterResumeEvidenceItem[] } {
+  const sessionMap = new Map(sessions.map(s => [s.id, s]));
+  const byRole = new Map<number, MasterResumeEvidenceItem[]>();
+  const unmatched: MasterResumeEvidenceItem[] = [];
+
+  for (const item of evidence) {
+    const session = sessionMap.get(item.source_session_id);
+    const companyName = session?.company_name?.toLowerCase().trim();
+    let matched = false;
+
+    if (companyName) {
+      const roleIndex = experience.findIndex(
+        r => r.company.toLowerCase().trim() === companyName,
+      );
+      if (roleIndex >= 0) {
+        const existing = byRole.get(roleIndex) ?? [];
+        existing.push(item);
+        byRole.set(roleIndex, existing);
+        matched = true;
+      }
+    }
+
+    if (!matched) {
+      unmatched.push(item);
+    }
+  }
+
+  return { byRole, unmatched };
 }
 
 export function MasterResumeTab({
@@ -39,6 +84,7 @@ export function MasterResumeTab({
   onSetDefaultResume,
   onDeleteResume,
   onGetResumeHistory,
+  sessions = [],
 }: MasterResumeTabProps) {
   const [resume, setResume] = useState<MasterResume | null>(null);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
@@ -119,6 +165,16 @@ export function MasterResumeTab({
     if (!draft) return;
     const experience = draft.experience.filter((_, i) => i !== index);
     setDraft({ ...draft, experience });
+  };
+
+  const deleteEvidence = async (evidenceIndex: number) => {
+    if (!resume) return;
+    const updatedItems = resume.evidence_items.filter((_, i) => i !== evidenceIndex);
+    const updated = await onUpdateMasterResume(resume.id, { evidence_items: updatedItems });
+    if (updated) {
+      setResume(updated);
+      setDraft(structuredClone(updated));
+    }
   };
 
   const updateSkillCategory = (oldCategory: string, newCategory: string, skills: string[]) => {
@@ -260,23 +316,93 @@ export function MasterResumeTab({
             />
           </GlassCard>
 
-          {/* Experience */}
-          {draft.experience.length > 0 && (
-            <div>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Experience</h3>
-              <div className="space-y-2">
-                {draft.experience.map((role, i) => (
-                  <ExperienceCard
-                    key={i}
-                    role={role}
-                    isEditing={isEditing}
-                    onEdit={(updated) => updateExperience(i, updated)}
-                    onDelete={isEditing ? () => deleteExperience(i) : undefined}
-                  />
-                ))}
+          {/* Experience + Evidence */}
+          {draft.experience.length > 0 && (() => {
+            const { byRole, unmatched } = buildEvidenceByCompany(
+              resume?.evidence_items ?? [],
+              draft.experience,
+              sessions,
+            );
+            return (
+              <div>
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Experience</h3>
+                <div className="space-y-2">
+                  {draft.experience.map((role, i) => {
+                    const roleEvidence = byRole.get(i) ?? [];
+                    return (
+                      <div key={i}>
+                        <ExperienceCard
+                          role={role}
+                          isEditing={isEditing}
+                          onEdit={(updated) => updateExperience(i, updated)}
+                          onDelete={isEditing ? () => deleteExperience(i) : undefined}
+                        />
+                        {roleEvidence.length > 0 && (
+                          <div className="ml-4 mt-1 mb-2 space-y-1">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/35">Evidence ({roleEvidence.length})</span>
+                            {roleEvidence.map((item) => {
+                              const originalIndex = (resume?.evidence_items ?? []).indexOf(item);
+                              const badge = SOURCE_BADGE[item.source] ?? SOURCE_BADGE.crafted;
+                              return (
+                                <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2">
+                                  <p className="flex-1 min-w-0 text-xs leading-relaxed text-white/70">{item.text}</p>
+                                  <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium', badge.classes)}>
+                                    {badge.label}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => void deleteEvidence(originalIndex)}
+                                    className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/25 transition-colors hover:text-[#f0b8b8]"
+                                    aria-label="Delete evidence"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Unmatched evidence */}
+                {unmatched.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/35">Unassigned Evidence ({unmatched.length})</h3>
+                    <div className="space-y-1">
+                      {unmatched.map((item) => {
+                        const originalIndex = (resume?.evidence_items ?? []).indexOf(item);
+                        const badge = SOURCE_BADGE[item.source] ?? SOURCE_BADGE.crafted;
+                        return (
+                          <div key={originalIndex} className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2">
+                            <p className="flex-1 min-w-0 text-xs leading-relaxed text-white/70">{item.text}</p>
+                            <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium', badge.classes)}>
+                              {badge.label}
+                            </span>
+                            {item.category && (
+                              <span className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/45">
+                                {item.category}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => void deleteEvidence(originalIndex)}
+                              className="shrink-0 inline-flex items-center justify-center rounded-md p-1 text-white/25 transition-colors hover:text-[#f0b8b8]"
+                              aria-label="Delete evidence"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Skills */}
           {Object.keys(draft.skills).length > 0 && (
