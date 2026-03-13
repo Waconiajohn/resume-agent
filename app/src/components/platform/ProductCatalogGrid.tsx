@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { PRODUCT_CATALOG } from '@/types/platform';
 import type { ProductDefinition } from '@/types/platform';
+import { WeeklyScheduleStrip } from '@/components/career-iq/WeeklyScheduleStrip';
 
 function isRealName(name: string): boolean {
   return name.length > 0 && !name.includes('@') && name !== 'there';
@@ -153,6 +154,10 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
             Chat with {coachLabel}
           </button>
         )}
+      </div>
+
+      <div className="mb-6">
+        <WeeklyScheduleStrip />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

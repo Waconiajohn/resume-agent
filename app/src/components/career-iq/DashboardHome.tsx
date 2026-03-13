@@ -13,6 +13,7 @@ import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { MomentumSummary, CoachingNudge } from '@/hooks/useMomentum';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import { CoachSpotlight } from './CoachSpotlight';
+import { WeeklyScheduleStrip } from './WeeklyScheduleStrip';
 
 interface PipelineStats {
   total: number;
@@ -164,6 +165,9 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
         onOpenCoach={onOpenCoach}
       />
 
+      {/* Weekly live session schedule */}
+      <WeeklyScheduleStrip />
+
       {/* Contextual nudge */}
       {showResumeNudge && (
         <GlassCard className="px-4 py-3 flex items-center gap-3 border-[#98b3ff]/15 bg-[#98b3ff]/[0.04]">
@@ -228,6 +232,7 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
         signals={signals}
         dashboardState={dashboardState}
         onRefineWhyMe={onRefineWhyMe}
+        onNavigateRoom={onNavigateRoom}
       />
 
       {/* Zone 2 + 3: Pipeline (60%) + Agent Feed (40%) */}

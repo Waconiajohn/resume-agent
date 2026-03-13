@@ -109,13 +109,13 @@ const MOCK_MOMENTUM: MomentumSummary = {
 import type { PipelineCard } from './ZoneYourPipeline';
 
 const MOCK_PIPELINE_CARDS: PipelineCard[] = [
-  { id: 'mp-1', company: 'Google', role: 'Sr. Program Manager', stage: 'Interviewing', daysSinceMovement: 1, hasNewActivity: true },
+  { id: 'mp-1', company: 'Google', role: 'Sr. Program Manager', stage: 'Interviewing', daysSinceMovement: 1, hasNewActivity: true, interviewRound: 2, scheduledDate: new Date(Date.now() + 3 * 86400000).toISOString() },
   { id: 'mp-2', company: 'Microsoft', role: 'Principal PM', stage: 'Applied', daysSinceMovement: 3, hasNewActivity: false },
   { id: 'mp-3', company: 'Amazon', role: 'Sr. TPM', stage: 'Discovered', daysSinceMovement: 0, hasNewActivity: true },
   { id: 'mp-4', company: 'Stripe', role: 'Head of Operations', stage: 'Applied', daysSinceMovement: 5, hasNewActivity: false },
   { id: 'mp-5', company: 'Salesforce', role: 'VP Engineering', stage: 'Offer', daysSinceMovement: 0, hasNewActivity: true },
   { id: 'mp-6', company: 'Netflix', role: 'Director, Program Mgmt', stage: 'Discovered', daysSinceMovement: 2, hasNewActivity: false },
-  { id: 'mp-7', company: 'Meta', role: 'Sr. Director, Ops', stage: 'Interviewing', daysSinceMovement: 4, hasNewActivity: false },
+  { id: 'mp-7', company: 'Meta', role: 'Sr. Director, Ops', stage: 'Interviewing', daysSinceMovement: 4, hasNewActivity: false, interviewRound: 3, scheduledDate: new Date(Date.now() + 5 * 86400000).toISOString() },
 ];
 
 const MOCK_COACH_REC: CoachRecommendation = {

@@ -15,6 +15,8 @@ export interface PipelineCard {
   stage: PipelineStage;
   daysSinceMovement: number;
   hasNewActivity: boolean;
+  interviewRound?: number;
+  scheduledDate?: string;
 }
 
 const STAGE_DB_MAP: Record<string, PipelineStage> = {
@@ -48,6 +50,21 @@ function toCard(row: { id: string; company: string; title: string; pipeline_stag
     daysSinceMovement: days,
     hasNewActivity: days <= 1,
   };
+}
+
+const ORDINAL_SUFFIXES = ['th', 'st', 'nd', 'rd'] as const;
+function ordinal(n: number): string {
+  const v = n % 100;
+  return `${n}${ORDINAL_SUFFIXES[(v - 20) % 10] ?? ORDINAL_SUFFIXES[v] ?? ORDINAL_SUFFIXES[0]}`;
+}
+
+function formatScheduledDate(dateStr: string): string | null {
+  const date = new Date(dateStr);
+  const now = new Date();
+  if (date.getTime() > now.getTime()) {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return null;
 }
 
 const STAGE_COLORS: Record<PipelineStage, string> = {
@@ -112,8 +129,15 @@ function PipelineCardItem({
               <span className="h-1.5 w-1.5 rounded-full bg-[#98b3ff] flex-shrink-0 animate-pulse" />
             )}
           </div>
-          <div className="text-[11px] text-white/45 truncate mt-0.5">
-            {card.role}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[11px] text-white/45 truncate">
+              {card.role}
+            </span>
+            {card.stage === 'Interviewing' && card.interviewRound != null && (
+              <span className="flex-shrink-0 rounded bg-[#f0d99f]/15 border border-[#f0d99f]/20 px-1.5 py-px text-[9px] font-medium text-[#f0d99f]/80">
+                {ordinal(card.interviewRound)}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -133,7 +157,13 @@ function PipelineCardItem({
 
       <div className="flex items-center gap-2 mt-2.5 text-[11px] text-white/35">
         <Clock size={11} />
-        <span>{card.daysSinceMovement === 0 ? 'Today' : `${card.daysSinceMovement}d ago`}</span>
+        <span>
+          {card.scheduledDate && formatScheduledDate(card.scheduledDate)
+            ? formatScheduledDate(card.scheduledDate)
+            : card.daysSinceMovement === 0
+              ? 'Today'
+              : `${card.daysSinceMovement}d ago`}
+        </span>
         {isStale && (
           <span className="flex items-center gap-1 text-[#f0d99f] ml-auto">
             <MessageCircle size={11} />

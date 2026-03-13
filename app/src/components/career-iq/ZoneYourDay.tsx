@@ -3,12 +3,14 @@ import { GlassButton } from '@/components/GlassButton';
 import { Sparkles, ArrowRight, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WhyMeSignals, SignalLevel, DashboardState } from './useWhyMeStory';
+import type { CareerIQRoom } from './Sidebar';
 
 interface ZoneYourDayProps {
   userName: string;
   signals: WhyMeSignals;
   dashboardState: DashboardState;
   onRefineWhyMe?: () => void;
+  onNavigateRoom?: (room: CareerIQRoom) => void;
 }
 
 function getRotatingInsight(state: DashboardState): string {
@@ -18,13 +20,13 @@ function getRotatingInsight(state: DashboardState): string {
   if (state === 'refining') {
     return 'Your Why-Me story is taking shape. Strengthen your signals and every agent will produce sharper results.';
   }
-  return 'Your signals are strong. Keep refining your Why-Me story to sharpen every agent\'s output.';
+  return 'Your signals are strong — time to find roles that match your positioning.';
 }
 
 const ACTIONS_BY_STATE: Record<DashboardState, string> = {
   'new-user': 'Define your Why-Me story',
   refining: 'Refine your Why-Me story',
-  strong: 'Explore new opportunities',
+  strong: 'Find matching roles',
 };
 
 function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
@@ -41,7 +43,7 @@ function SignalDot({ level, label }: { level: SignalLevel; label: string }) {
   );
 }
 
-export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe }: ZoneYourDayProps) {
+export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe, onNavigateRoom }: ZoneYourDayProps) {
   const displayName = userName || 'there';
 
   return (
@@ -60,7 +62,7 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe }
             <GlassButton
               variant="primary"
               className="group"
-              onClick={onRefineWhyMe}
+              onClick={dashboardState === 'strong' ? () => onNavigateRoom?.('jobs') : onRefineWhyMe}
             >
               {ACTIONS_BY_STATE[dashboardState]}
               <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-0.5" />
