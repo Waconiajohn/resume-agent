@@ -140,7 +140,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         },
       };
 
-      await supabaseAdmin
+      const { error: snapshotError } = await supabaseAdmin
         .from('coach_sessions')
         .update({
           pipeline_status: 'complete',
@@ -148,6 +148,10 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
           tailored_sections: pipelineSnapshot as unknown as Record<string, unknown>,
         })
         .eq('id', sessionId);
+
+      if (snapshotError) {
+        logger.error({ session_id: sessionId, error: snapshotError }, 'Failed to persist v2 pipeline snapshot');
+      }
 
       totalCompleted++;
     } catch (error) {

@@ -571,3 +571,40 @@ Each agent in the new system owns one clear responsibility and uses a quality pr
 - Design blueprint: `docs/obsidian/30_Specs & Designs/Resume Agent v2 — Design Blueprint.md`
 - Other products (Coach, Onboarding, Retirement Bridge, Job Command Center) are unaffected
 - The scaffold skill remains the authoritative generator for new tools — it produces JSON Schema for `input_schema` by design.
+
+## ADR-043: Stateless LLM Utility Endpoints in Route Handlers
+**Date:** 2026-03-13
+**Status:** accepted
+
+**Context:**
+The platform's Agent-First Architecture Mandate states that every feature, workflow, and data pipeline must maximize agent autonomy. The mandate is explicit: "If a new feature doesn't fit cleanly into an existing agent's domain, propose a new agent first. Do not write procedural code as a workaround." This rule exists to prevent LLM logic from leaking into procedural route handlers, which destroys adaptability, reasoning depth, and inter-agent composability.
+
+However, a class of product feature has emerged that is genuinely incompatible with the agent runtime model: lightweight, stateless analysis utilities embedded in product toolboxes. The LinkedIn Studio's recruiter simulator (`POST /api/linkedin-tools/recruiter-sim`) and writing analyzer (`POST /api/linkedin-tools/writing-analyzer`) are the canonical examples. Both are instant-feedback tools: the user submits text, receives a structured JSON analysis, and the interaction is complete. There is no session, no conversation history, no tool-calling loop, no multi-step reasoning, and no downstream pipeline dependency.
+
+Forcing either endpoint into the agent runtime would require instantiating an `AgentContext`, a `ProductConfig`, and a `runAgentLoop` call — infrastructure that adds latency, complexity, and cost overhead with zero improvement in output quality. The agent loop earns its overhead by enabling multi-round reasoning, tool selection autonomy, and inter-agent communication. None of those capabilities are relevant when the entire workflow is: receive text → call LLM once → parse JSON → return.
+
+**Decision:**
+Direct `llm.chat()` calls are permitted inside Hono route handlers for stateless, single-LLM-call utility endpoints, provided ALL of the following conditions are true simultaneously:
+
+1. **No session state.** The endpoint does not read from or write to any session, pipeline state, or `PipelineState` object. It takes its entire input from the request body.
+2. **Single LLM call.** Exactly one `llm.chat()` call per request. No chained calls, no conditional second calls, no retry loops with different prompts.
+3. **No tool calling.** The LLM call uses no tools and no function/tool schemas. The model is instructed to return structured JSON directly via its system prompt.
+4. **No multi-step reasoning.** The prompt does not ask the model to reason across multiple phases, compare documents, or synthesize inputs from prior LLM calls.
+5. **Structured JSON response only.** The endpoint returns a typed, validated JSON object. The response is terminal — it is not fed into any other agent or pipeline stage.
+6. **MODEL_LIGHT tier.** The call uses `MODEL_LIGHT` (the fastest, cheapest model tier). If the analysis requires `MODEL_MID` or above, that is a signal the work is complex enough to belong in an agent tool.
+
+The reference implementation is `server/src/routes/linkedin-tools.ts`: two endpoints, each making one `MODEL_LIGHT` call with a structured JSON prompt, `repairJSON` parsing, typed fallback on parse failure, and a flat `try/catch` with `logger.error`. No state, no tools, no loop.
+
+**Reasoning:**
+The Agent-First Mandate exists to prevent reasoning and decision-making from being hard-coded into procedural application logic. The mandate is violated when a route handler encodes sequencing decisions, conditional branching across LLM calls, or multi-phase reasoning that should belong to an autonomous agent. None of those conditions apply to a single-call utility endpoint.
+
+Wrapping a single `llm.chat()` call in an agent runtime would be architectural theater: the overhead of `AgentContext`, `ProductConfig`, `runAgentLoop`, and an `onComplete` handler would exist solely to satisfy a mandate designed for situations that don't apply. Good architecture applies constraints where they prevent harm. A single-call endpoint has no multi-step reasoning to protect, no state to corrupt, and no agent autonomy to suppress. The agent runtime adds nothing and costs latency, memory, and code complexity.
+
+The six conditions above define the exact boundary. They are not guidelines — they are hard gates. If any condition is not met, the work belongs in an agent tool, not a route handler. The purpose of the conditions is to make the exception narrow enough that it cannot be stretched to justify agent-like logic living in routes.
+
+**Consequences:**
+- `server/src/routes/linkedin-tools.ts` is the only current file operating under this exception. Both of its endpoints satisfy all six conditions.
+- Any developer adding a new utility endpoint must verify all six conditions before choosing the route-handler pattern. If a second LLM call is ever needed (e.g., "if the score is below 40, also call a remediation analyzer"), the endpoint must be migrated to an agent tool. There is no "almost stateless" exception.
+- This ADR does NOT authorize: multi-call chains in routes, any use of `MODEL_MID` or above in routes without a separate ADR, passing route handler results into a pipeline or agent as structured state, or adding tool schemas to a route-level LLM call.
+- Future utility endpoints in other product toolboxes (e.g., a LinkedIn headline scorer, a cover letter tone checker) may follow this pattern if and only if all six conditions are satisfied at the time of implementation and remain satisfied as the endpoint evolves.
+- If an endpoint built under this exception later requires a second LLM call or session context, it MUST be refactored into an agent tool before that capability is added. No gradual expansion of route-handler LLM logic is permitted.

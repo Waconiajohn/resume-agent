@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type Stripe from 'stripe';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { createPromoCode, listPromoCodes } from '../lib/stripe-promos.js';
@@ -131,6 +132,14 @@ admin.get('/promo-codes', async (c) => {
 // Grant or update a feature override for a specific user.
 // Body: { user_id, feature_key, feature_value, granted_by?, expires_at? }
 // ---------------------------------------------------------------------------
+const featureOverrideSchema = z.object({
+  user_id: z.string().min(1, 'user_id is required'),
+  feature_key: z.string().min(1, 'feature_key is required'),
+  feature_value: z.record(z.string(), z.unknown()),
+  granted_by: z.string().optional(),
+  expires_at: z.string().optional(),
+});
+
 admin.post('/feature-overrides', async (c) => {
   let body: unknown;
   try {
@@ -139,28 +148,22 @@ admin.post('/feature-overrides', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const { user_id, feature_key, feature_value, granted_by, expires_at } =
-    body as Record<string, unknown>;
+  const parsed = featureOverrideSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
 
-  if (typeof user_id !== 'string' || !user_id.trim()) {
-    return c.json({ error: 'user_id is required' }, 400);
-  }
-  if (typeof feature_key !== 'string' || !feature_key.trim()) {
-    return c.json({ error: 'feature_key is required' }, 400);
-  }
-  if (!feature_value || typeof feature_value !== 'object') {
-    return c.json({ error: 'feature_value must be a JSON object' }, 400);
-  }
+  const { user_id, feature_key, feature_value, granted_by, expires_at } = parsed.data;
 
   const { error } = await supabaseAdmin
     .from('user_feature_overrides')
     .upsert(
       {
-        user_id: user_id.trim(),
-        feature_key: feature_key.trim(),
-        feature_value: feature_value as Record<string, unknown>,
-        granted_by: typeof granted_by === 'string' ? granted_by : 'admin',
-        expires_at: typeof expires_at === 'string' ? expires_at : null,
+        user_id,
+        feature_key,
+        feature_value,
+        granted_by: granted_by ?? 'admin',
+        expires_at: expires_at ?? null,
       },
       { onConflict: 'user_id,feature_key' },
     );

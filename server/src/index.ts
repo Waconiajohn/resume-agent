@@ -54,9 +54,13 @@ import logger from './lib/logger.js';
 import { initSentry, captureError, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
 import { FF_RESUME_V2 } from './lib/feature-flags.js';
+import { createRedisBusIfConfigured, type RedisBus } from './agents/runtime/redis-bus.js';
+import { setAgentBus } from './agents/runtime/bus-factory.js';
+import { startHotReload, stopHotReload } from './agents/runtime/hot-reload.js';
 
 const app = new Hono();
 let shuttingDown = false;
+let redisBus: RedisBus | null = null;
 
 // Initialize Sentry error tracking (no-op if SENTRY_DSN not set)
 initSentry();
@@ -363,10 +367,13 @@ function shutdown(signal: string) {
   shuttingDown = true;
   logger.info({ signal }, 'Graceful shutdown initiated');
 
+  stopHotReload();
+
   const flushTasks = Promise.allSettled([
     releaseAllLocks(),
     Promise.resolve(0), // TODO: drain active v2 pipeline sessions before exit (ticket: INFRA-drain-v2)
     flushSentry(2000),
+    redisBus ? redisBus.disconnect() : Promise.resolve(),
   ]).then((results) => {
     logger.info('Completed shutdown flush tasks');
   }).catch((err) => {
@@ -408,6 +415,8 @@ export function startServer() {
     logger.warn(w);
   }
 
+  startHotReload();
+
   server = serve({ fetch: app.fetch, port });
   logger.info({ port }, `Server running at http://localhost:${port}`);
 
@@ -435,7 +444,17 @@ function isMainModule(): boolean {
 }
 
 if (isMainModule()) {
-  startServer();
+  createRedisBusIfConfigured().then((bus) => {
+    if (bus) {
+      redisBus = bus;
+      setAgentBus(bus as unknown as import('./agents/runtime/agent-bus.js').AgentBus);
+      logger.info('RedisBus active — agent messages routed via Redis');
+    }
+    startServer();
+  }).catch((err) => {
+    logger.error({ err }, 'Redis bus init failed — falling back to in-memory bus');
+    startServer();
+  });
 }
 
 export { app };

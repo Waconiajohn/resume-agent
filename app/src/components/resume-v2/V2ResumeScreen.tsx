@@ -57,6 +57,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   // Load a historical V2 session on mount
   const [sessionLoadAttempted, setSessionLoadAttempted] = useState(false);
+  const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
   useEffect(() => {
     if (!initialSessionId || sessionLoadAttempted) return;
     setSessionLoadAttempted(true);
@@ -65,6 +66,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       if (result) {
         setResumeText(result.resume_text);
         setJobDescription(result.job_description);
+      } else {
+        setSessionLoadError('Failed to load session. It may have expired or belong to a different account.');
       }
     })();
   }, [initialSessionId, sessionLoadAttempted, loadSession]);
@@ -152,7 +155,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       <V2IntakeForm
         onSubmit={handleSubmit}
         loading={isStarting}
-        error={error}
+        error={sessionLoadError ?? error}
         initialResumeText={initialResumeText}
       />
     );

@@ -27,6 +27,7 @@ import {
 } from '../../lib/pipeline-metrics.js';
 import { runAgentLoop } from './agent-loop.js';
 import { AgentBus } from './agent-bus.js';
+import { getAgentBus } from './bus-factory.js';
 import type { AgentMessage, BaseState, BaseEvent } from './agent-protocol.js';
 import type { CreateContextParams } from './agent-context.js';
 import type { ProductConfig, RuntimeParams, InterAgentHandler } from './product-config.js';
@@ -159,7 +160,7 @@ export async function runProductPipeline<
   const timer = makeStageTimer();
 
   // ── Agent bus ───────────────────────────────────────────────────
-  const bus = new AgentBus();
+  const bus = getAgentBus();
 
   try {
     // ── Execute each agent phase in order ──────────────────────────

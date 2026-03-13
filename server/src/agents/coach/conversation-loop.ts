@@ -11,6 +11,7 @@
 
 import { runAgentLoop, FINAL_TEXT_KEY, type RunAgentParams } from '../runtime/agent-loop.js';
 import { AgentBus } from '../runtime/agent-bus.js';
+import { getAgentBus } from '../runtime/bus-factory.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { getLatestUserContext, listUserContextByType } from '../../lib/platform-context.js';
 import type { ChatMessage } from '../../lib/llm-provider.js';
@@ -75,7 +76,7 @@ export async function runConversationTurn(params: ConversationTurnParams): Promi
   );
 
   // 7. Run agent loop
-  const bus = new AgentBus();
+  const bus = getAgentBus();
   const loopParams: RunAgentParams<CoachState, CoachSSEEvent> = {
     config: { ...config, system_prompt: systemPrompt },
     contextParams: {
