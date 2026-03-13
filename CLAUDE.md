@@ -47,24 +47,88 @@ This platform is built around AI agents. This is not a preference — it is the 
 
 **If a new feature doesn't fit cleanly into an existing agent's domain, propose a new agent first. Do not write procedural code as a workaround.**
 
-### Current Agent Roster (Resume Agent — Cornerstone Product)
+### Current Agent Roster — 19 Products, 44 Agents
 
-| Agent | Domain |
-|-------|--------|
-| Resume Strategist | Candidate understanding, market research, positioning strategy |
-| Resume Craftsman | Section writing, self-review, iterative revision |
-| Resume Producer | Quality assurance, template selection, ATS compliance, document production |
+The platform has **44 deployed agents** across **19 products**. This is the authoritative roster. If you are building a new agent, check this table first.
 
-This app is the cornerstone of a **33-agent platform**. Every agent built here sets the pattern for the platform. Build them right.
+#### Resume V2 Pipeline (10 agents) — `agents/resume-v2/`
+The cornerstone product. Function-based agents sequenced by `orchestrator.ts`. Always on.
+
+| # | Agent | Domain | Model |
+|---|-------|--------|-------|
+| 1 | Job Intelligence | Extract structured requirements from JD | MID |
+| 2 | Candidate Intelligence | Extract candidate background from resume | MID |
+| 3 | Benchmark Candidate | Build ideal hire archetype from JD | PRIMARY |
+| 4 | Gap Analysis | Identify gaps + creative positioning strategies | PRIMARY |
+| 5 | Narrative Strategy | Design resume narrative and positioning angle | PRIMARY |
+| 6 | Resume Writer | Write all resume sections | PRIMARY |
+| 7 | Truth Verification | Verify claims against original resume | PRIMARY |
+| 8 | ATS Optimization | Keyword/phrase matching and compliance | LIGHT |
+| 9 | Executive Tone | Polish language, remove AI-speak and filler | MID |
+| 10 | Assembly | Merge verification fixes, compute scores (deterministic) | None |
+
+#### Platform Coaching — `agents/coach/`
+| Agent | Domain | Model |
+|-------|--------|-------|
+| Virtual Coach | 8-phase coaching journey orchestrator, client context, pipeline dispatch (14 tools) | MID |
+
+#### Document Cluster
+
+| Product | Agents | Location | Feature Flag |
+|---------|--------|----------|-------------|
+| Cover Letter | Analyst → Writer | `agents/cover-letter/` | FF_COVER_LETTER |
+| Executive Bio | Writer | `agents/executive-bio/` | FF_EXECUTIVE_BIO |
+| Thank You Note | Writer | `agents/thank-you-note/` | FF_THANK_YOU_NOTE |
+| Case Study | Analyst → Writer | `agents/case-study/` | FF_CASE_STUDY |
+
+#### LinkedIn Cluster
+
+| Product | Agents | Location | Feature Flag |
+|---------|--------|----------|-------------|
+| LinkedIn Optimizer | Analyzer → Writer | `agents/linkedin-optimizer/` | FF_LINKEDIN_OPTIMIZER |
+| LinkedIn Editor | Editor | `agents/linkedin-editor/` | FF_LINKEDIN_EDITOR |
+| LinkedIn Content | Strategist → Writer | `agents/linkedin-content/` | FF_LINKEDIN_CONTENT |
+
+#### Job Discovery Cluster
+
+| Product | Agents | Location | Feature Flag |
+|---------|--------|----------|-------------|
+| Job Finder | Searcher → Ranker | `agents/job-finder/` | FF_JOB_FINDER |
+| Job Tracker | Analyst → Writer | `agents/job-tracker/` | FF_JOB_TRACKER |
+| Networking Outreach | Researcher → Writer | `agents/networking-outreach/` | FF_NETWORKING_OUTREACH |
+
+#### Interview & Negotiation Cluster
+
+| Product | Agents | Location | Feature Flag |
+|---------|--------|----------|-------------|
+| Interview Prep | Researcher → Writer + Mock Interviewer (simulation) | `agents/interview-prep/` | FF_INTERVIEW_PREP |
+| Salary Negotiation | Researcher → Strategist + Employer (simulation) | `agents/salary-negotiation/` | FF_SALARY_NEGOTIATION |
+
+#### Professional Development Cluster
+
+| Product | Agents | Location | Feature Flag |
+|---------|--------|----------|-------------|
+| 90-Day Plan | Researcher → Planner | `agents/ninety-day-plan/` | FF_NINETY_DAY_PLAN |
+| Content Calendar | Strategist → Writer | `agents/content-calendar/` | FF_CONTENT_CALENDAR |
+| Personal Brand Audit | Auditor → Advisor | `agents/personal-brand/` | FF_PERSONAL_BRAND_AUDIT |
+
+#### Onboarding & Financial Cluster
+
+| Product | Agents | Location | Feature Flag |
+|---------|--------|----------|-------------|
+| Onboarding Assessment | Assessor (gate-based questionnaire) | `agents/onboarding/` | FF_ONBOARDING |
+| Retirement Bridge | Assessor (7-dimension + planner warm handoff) | `agents/retirement-bridge/` | FF_RETIREMENT_BRIDGE |
+
+**Patterns:** Most products follow a 2-agent pipeline (research/analyze → write/produce). Simulation agents (Mock Interviewer, Employer) are gate-based interactive. Resume V2 is function-based; all others use the AgentConfig/registerAgent protocol.
 
 ### Platform Service Lines (Full Scope)
 
 The platform serves four lines, each powered by its own agent layer:
 
-- **Career Coaching** — Resume writer, job board, LinkedIn profile builder, LinkedIn networker, interview prep, salary negotiation
-- **Outplacement** — Employer-sponsored career transition services
-- **Recruiting** — AI-driven talent matching and sourcing
-- **Retirement Planning** — Financial wellness and planning (RIA-integrated)
+- **Career Coaching** — Resume (v2), cover letter, exec bio, thank you notes, case studies, LinkedIn (optimizer/editor/content), interview prep, salary negotiation, networking outreach, 90-day plan, content calendar, personal brand audit, job finder, job tracker
+- **Outplacement** — Employer-sponsored career transition services (B2B admin portal + white-label)
+- **Recruiting** — AI-driven talent matching and sourcing (planned)
+- **Retirement Planning** — Financial wellness and planning via Retirement Bridge agent (RIA-integrated)
 
 When building features, consider cross-agent utility. A tool built for the Resume Strategist may serve the LinkedIn Profile agent. Design for reuse.
 
