@@ -447,6 +447,160 @@ Total: 234 new tests.
 
 ---
 
+## Sprint CL1: Cover Letter Polish — DONE
+
+**Goal:** Add DOCX/PDF export to the cover letter modal and waitlist integration on product landing pages.
+**Status:** DONE — Session 78
+
+### Story CL1-1: Cover Letter Export Formats [SMALL] — DONE
+- **As a** user viewing a completed cover letter
+- **I want to** download it as DOCX or PDF (not just TXT and Copy)
+- **So that** I can submit it in professional formats
+- **Acceptance Criteria:**
+  - [x] `SessionCoverLetterModal.tsx` — DOCX and PDF export buttons alongside existing Copy and TXT
+  - [x] Imports `exportCoverLetterPdf`, `exportCoverLetterDocx`, `downloadCoverLetterAsText` from `@/lib/export-cover-letter`
+  - [x] Button labels: Copy, TXT, PDF, DOCX
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Story CL1-2: Waitlist on Product Landing Pages [SMALL] — DONE
+- **As a** user visiting a coming_soon product page
+- **I want to** join a waitlist
+- **So that** I'm notified when the product launches
+- **Acceptance Criteria:**
+  - [x] `useWaitlist.ts` — `submit(email, productSlug?)` extended with `source: productSlug`
+  - [x] `ProductLandingPage.tsx` — `WaitlistForm` sub-component for coming_soon products
+  - [x] Glass morphism styling matching page aesthetic
+  - [x] Success/error states displayed
+  - [x] `cd app && npx tsc --noEmit` passes
+
+---
+
+## Sprint NH1: Networking Hub Enhancements — DONE
+
+**Goal:** Add overdue contact detection, NI import, and import result feedback to the Networking Hub.
+**Status:** DONE — Session 78
+
+### Story NH1-1: Overdue Contacts Endpoint [MEDIUM] — DONE
+- **As a** user managing my networking contacts
+- **I want to** see which contacts are overdue for follow-up
+- **So that** I can prioritize my outreach
+- **Acceptance Criteria:**
+  - [x] `server/src/routes/networking-contacts.ts` — GET /overdue endpoint returns contacts past their follow-up date
+  - [x] `app/src/hooks/useNetworkingContacts.ts` — `fetchOverdue` method added
+  - [x] `cd server && npx tsc --noEmit` passes
+
+### Story NH1-2: NI Import [MEDIUM] — DONE
+- **As a** user with connections from Networking Intelligence
+- **I want to** import them into my CRM contacts
+- **So that** I can manage all my connections in one place
+- **Acceptance Criteria:**
+  - [x] `server/src/routes/networking-contacts.ts` — POST /ni-import endpoint with dedup by email and ni_connection_id
+  - [x] `app/src/hooks/useNetworkingContacts.ts` — `importFromNI` method added
+  - [x] `app/src/components/career-iq/NetworkingHubRoom.tsx` — NI import button and result banner
+  - [x] Tests: `server/src/__tests__/networking-nh1-endpoints.test.ts`, `app/src/components/career-iq/__tests__/NetworkingHubRoom-nh1.test.tsx`
+  - [x] `cd server && npx tsc --noEmit` passes
+  - [x] `cd app && npx tsc --noEmit` passes
+
+---
+
+## Sprint EI1: Emotional Intelligence Layer — DONE
+
+**Goal:** Verify existing momentum/coaching infrastructure, extract resource library to data file, extract AskCoachForm to reusable component.
+**Status:** DONE — Session 78
+
+### Story EI1-1: Momentum System [VERIFIED EXISTING]
+- Fully implemented: DB table, backend routes, service, frontend hook, MomentumCard, integration into CareerIQScreen and DashboardHome.
+- No new work required.
+
+### Story EI1-2: Cognitive Reframing [VERIFIED EXISTING]
+- Fully implemented: detectStalls, generateCoachingMessage, CoachingNudgeBar, stall check integration.
+- No new work required.
+
+### Story EI1-3: Resource Library Extraction [SMALL] — DONE
+- **Acceptance Criteria:**
+  - [x] `app/src/data/resource-library.ts` — 16 resources across 8 categories with `content_type` and `content` fields
+  - [x] `LiveSessionsRoom.tsx` refactored to import from data file (removed ~350 lines of inline data)
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Story EI1-4: AskCoachForm Component [SMALL] — DONE
+- **Acceptance Criteria:**
+  - [x] `app/src/components/career-iq/AskCoachForm.tsx` — standalone reusable component
+  - [x] Exports `CoachingRequest`, `CoachTopic`, `CoachUrgency` types
+  - [x] `onSubmitted` callback prop, `initialContext` prop for pre-population
+  - [x] `LiveSessionsRoom.tsx` refactored to use extracted component
+  - [x] `cd app && npx tsc --noEmit` passes
+
+---
+
+## Sprint IP1+SN1: Interview Prep & Salary Negotiation Integration — DONE
+
+**Goal:** Wire pipeline card CTAs from Kanban into Interview Prep and Salary Negotiation rooms.
+**Status:** DONE — Session 79
+
+### Story IP1-1 through IP1-3: Mock Interview, Debrief, Practice Mode [VERIFIED EXISTING]
+- All fully implemented in prior sprints.
+
+### Story IP1-4: Kanban Integration (Interviewing Stage) [SMALL] — DONE
+- **Acceptance Criteria:**
+  - [x] `ZoneYourPipeline.tsx` — `onInterviewPrepClick` prop, "Prepare for this interview?" button on Interviewing cards
+  - [x] `CareerIQScreen.tsx` — handler navigates to interview room with card data
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Story SN1-1: Counter-Offer Simulation [VERIFIED EXISTING]
+- Fully implemented in prior sprint.
+
+### Story SN1-2: Kanban Trigger (Offer Stage) [SMALL] — DONE
+- **Acceptance Criteria:**
+  - [x] `ZoneYourPipeline.tsx` — `onNegotiationPrepClick` prop, "Prepare your negotiation?" button on Offer cards
+  - [x] `SalaryNegotiationRoom.tsx` — `prefillCompany`/`prefillRole`/`onPrefillConsumed` props
+  - [x] `CareerIQScreen.tsx` — handler sets prefill state and navigates
+  - [x] `cd app && npx tsc --noEmit` passes
+
+---
+
+## Sprint PX1: Platform Infrastructure — DONE
+
+**Goal:** Build Redis bus adapter, agent hot-reload, cross-product auth, admin dashboard, and DB-driven product catalog.
+**Status:** DONE — Session 81
+
+### Story PX1-1: Redis/NATS Bus Adapter [MEDIUM] — DONE
+- **Acceptance Criteria:**
+  - [x] `server/src/agents/runtime/redis-bus.ts` — `RedisBus` class with same interface as `AgentBus`
+  - [x] ioredis pub/sub with exponential backoff, 5s connect timeout, automatic in-memory fallback
+  - [x] `createRedisBusIfConfigured()` factory reads `REDIS_BUS_URL`
+  - [x] `cd server && npx tsc --noEmit` passes
+
+### Story PX1-2: Agent Hot-Reload [SMALL] — DONE
+- **Acceptance Criteria:**
+  - [x] `server/src/agents/runtime/hot-reload.ts` — development-only fs.watch watcher
+  - [x] Guarded by `NODE_ENV=development` + `HOT_RELOAD=true`
+  - [x] 300ms debounce, pipeline-aware deferral
+  - [x] `cd server && npx tsc --noEmit` passes
+
+### Story PX1-3: Cross-Product Auth [MEDIUM] — DONE
+- **Acceptance Criteria:**
+  - [x] `server/src/middleware/product-auth.ts` — `requireTier(productSlug)` factory
+  - [x] 25+ product slug → tier mapping
+  - [x] HTTP 403 with upgrade guidance on denial, fails open on DB errors
+  - [x] `cd server && npx tsc --noEmit` passes
+
+### Story PX1-4: Admin Dashboard [MEDIUM] — DONE
+- **Acceptance Criteria:**
+  - [x] `server/src/routes/admin.ts` — stats, errors, sessions endpoints
+  - [x] `app/src/components/admin/AdminDashboard.tsx` — key-based auth, 3 tabs
+  - [x] `app/src/App.tsx` — admin view routing
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Story PX1-5: DB-Driven Product Catalog [MEDIUM] — DONE
+- **Acceptance Criteria:**
+  - [x] `supabase/migrations/20260313120000_products_catalog.sql` — products table with RLS, seeds
+  - [x] `server/src/routes/products.ts` — GET /api/products, GET /api/products/:slug
+  - [x] `app/src/hooks/useProductCatalog.ts` — API fetch with static fallback
+  - [x] `cd server && npx tsc --noEmit` passes
+  - [x] `cd app && npx tsc --noEmit` passes
+
+---
+
 ## Epic Complete
 
 All sprints delivered. The Resume Agent v2 10-agent pipeline is fully built end-to-end: backend agents, orchestrator, SSE streaming, frontend intake/display/editing/export, gap coaching UX, strategy transparency, test coverage, and session persistence.

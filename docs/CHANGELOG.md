@@ -78,6 +78,41 @@
 ### Known Issues
 - `interview` and `salary-negotiation` are still in `COMING_SOON_ROOMS` — the CTAs navigate to those rooms but users will see the Coming Soon placeholder until the feature flags are enabled in production.
 
+## 2026-03-13 — Session 78b
+**Sprint:** CL1, NH1, EI1 | **Stories:** Cover Letter Polish, Networking Hub, Emotional Intelligence
+**Summary:** Three platform enhancement sprints — cover letter DOCX/PDF export, networking hub overdue contacts + NI import, emotional intelligence resource library extraction + AskCoachForm component.
+
+### Changes Made
+
+**Sprint CL1: Cover Letter Polish (2 stories)**
+- `app/src/components/dashboard/SessionCoverLetterModal.tsx` — Added DOCX and PDF export buttons; imports from `@/lib/export-cover-letter` instead of `@/lib/export`
+- `app/src/hooks/useWaitlist.ts` — Extended `submit(email, productSlug?)` with `source: productSlug`
+- `app/src/components/platform/ProductLandingPage.tsx` — Added `WaitlistForm` sub-component for `coming_soon` products
+
+**Sprint NH1: Networking Hub (2 stories)**
+- `server/src/routes/networking-contacts.ts` — Added GET /overdue and POST /ni-import endpoints with dedup by email and ni_connection_id
+- `app/src/hooks/useNetworkingContacts.ts` — Added `fetchOverdue` and `importFromNI` methods
+- `app/src/components/career-iq/NetworkingHubRoom.tsx` — NI import button and result banner
+- `server/src/__tests__/networking-nh1-endpoints.test.ts` — NEW: dedup logic tests
+- `app/src/components/career-iq/__tests__/NetworkingHubRoom-nh1.test.tsx` — NEW: import UI tests
+
+**Sprint EI1: Emotional Intelligence (2 stories, 2 verified existing)**
+- `app/src/data/resource-library.ts` — NEW: 16 resources across 8 categories extracted from LiveSessionsRoom
+- `app/src/components/career-iq/AskCoachForm.tsx` — NEW: standalone reusable coaching request form
+- `app/src/components/career-iq/LiveSessionsRoom.tsx` — Refactored: removed ~350 lines of inline resource/form code, now imports from extracted modules
+
+### Decisions Made
+- Cover letter export uses existing `export-cover-letter.ts` utilities (already built for inline export)
+- Waitlist source tracks product slug for per-product interest analytics
+- NI import deduplicates by both email (case-insensitive) and ni_connection_id to prevent duplicates
+- Resource library data file uses `icon_name` strings mapped to lucide icons at render time (no component serialization)
+- AskCoachForm exports types (`CoachingRequest`, `CoachTopic`, `CoachUrgency`) for reuse across rooms
+
+### Known Issues
+- None introduced.
+
+---
+
 ## 2026-03-13 — Session 78
 **Sprint:** P1 | **Stories:** Session Persistence & Resumption
 **Summary:** V2 pipeline now saves full agent outputs to DB on completion. Users can load completed V2 sessions from the dashboard, with full UI rendering, inline editing, and re-run capability.

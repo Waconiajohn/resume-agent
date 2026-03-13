@@ -118,7 +118,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <span className="text-sm font-medium text-white/90 leading-snug">{card.requirement}</span>
             {importanceBadge(card.importance)}
-            {(card as any).previously_approved && (
+            {card.previously_approved && (
               <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide bg-[#b5dec2]/10 text-[#b5dec2]/60 border border-[#b5dec2]/15">
                 Previously approved
               </span>
