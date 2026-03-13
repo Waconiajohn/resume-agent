@@ -6,13 +6,16 @@ import { Sparkles } from 'lucide-react';
 
 interface AuthGateProps {
   onSignIn: (email: string, password: string) => Promise<{ error: unknown }>;
-  onSignUp: (email: string, password: string) => Promise<{ error: unknown }>;
+  onSignUp: (email: string, password: string, metadata?: { firstName: string; lastName: string; phone?: string }) => Promise<{ error: unknown }>;
   onGoogleSignIn: () => Promise<{ error: unknown }>;
 }
 
 export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,7 +26,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
     setLoading(true);
 
     const { error } = isSignUp
-      ? await onSignUp(email, password)
+      ? await onSignUp(email, password, { firstName, lastName, phone: phone || undefined })
       : await onSignIn(email, password);
 
     if (error) {
@@ -44,6 +47,50 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isSignUp && (
+            <>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label htmlFor="auth-first-name" className="sr-only">First name</label>
+                  <GlassInput
+                    id="auth-first-name"
+                    name="firstName"
+                    type="text"
+                    autoComplete="given-name"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="auth-last-name" className="sr-only">Last name</label>
+                  <GlassInput
+                    id="auth-last-name"
+                    name="lastName"
+                    type="text"
+                    autoComplete="family-name"
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="auth-phone" className="sr-only">Phone number</label>
+                <GlassInput
+                  id="auth-phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="Phone (optional)"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </>
+          )}
           <div>
             <label htmlFor="auth-email" className="sr-only">Email address</label>
             <GlassInput
@@ -64,7 +111,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
               id="auth-password"
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

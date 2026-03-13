@@ -66,7 +66,32 @@ resumes.get('/', async (c) => {
     return c.json({ error: 'Failed to load resumes' }, 500);
   }
 
-  return c.json({ resumes: data });
+  // Enrich with company_name and job_title from linked coach_sessions
+  const sessionIds = (data ?? [])
+    .map(r => r.source_session_id)
+    .filter((id): id is string => typeof id === 'string');
+
+  let sessionMap = new Map<string, { company_name: string | null; job_title: string | null }>();
+  if (sessionIds.length > 0) {
+    const { data: sessions } = await supabaseAdmin
+      .from('coach_sessions')
+      .select('id, company_name, job_title')
+      .in('id', sessionIds);
+    if (sessions) {
+      sessionMap = new Map(sessions.map(s => [s.id, { company_name: s.company_name, job_title: s.job_title }]));
+    }
+  }
+
+  const enriched = (data ?? []).map(r => {
+    const session = r.source_session_id ? sessionMap.get(r.source_session_id) : undefined;
+    return {
+      ...r,
+      company_name: session?.company_name ?? null,
+      job_title: session?.job_title ?? null,
+    };
+  });
+
+  return c.json({ resumes: enriched });
 });
 
 // GET /resumes/default — Get user's default base resume (or most recent fallback)

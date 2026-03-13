@@ -60,6 +60,8 @@ export interface MasterResumeListItem {
   version: number;
   is_default?: boolean;
   source_session_id?: string | null;
+  company_name?: string | null;
+  job_title?: string | null;
   created_at: string;
   updated_at: string;
 }

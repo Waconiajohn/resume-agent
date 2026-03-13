@@ -212,34 +212,32 @@ export function LandingScreen({
               </p>
             </GlassCard>
           ) : (
-            <div className="space-y-2">
-              {resumes.map((resume) => (
-                <GlassCard key={resume.id} className="p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 text-left">
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className="text-xs text-white/70">Version {resume.version}</span>
-                        {resume.is_default && (
-                          <span className="rounded-full border border-white/[0.16] bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/78">
-                            Default
-                          </span>
-                        )}
-                      </div>
-                      <p className="line-clamp-2 text-xs text-white/50">
-                        {(resume.summary ?? '').trim() || 'No summary preview available'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
+            <GlassCard className="p-2">
+              {resumes.map((resume) => {
+                const title = [resume.company_name, resume.job_title].filter(Boolean).join(' — ')
+                  || `Base Resume v${resume.version}`;
+                return (
+                  <div
+                    key={resume.id}
+                    className="flex items-center gap-2 py-2 px-2 border-b border-white/[0.06] last:border-0"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-xs text-white/70">{title}</span>
+                    {resume.is_default && (
+                      <span className="shrink-0 rounded-full border border-white/[0.16] bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/78">
+                        Default
+                      </span>
+                    )}
+                    <div className="flex shrink-0 items-center gap-0.5">
                       {!resume.is_default && (
                         <button
                           type="button"
                           onClick={() => void handleSetDefault(resume.id)}
                           disabled={busyResumeId === resume.id}
-                          className="inline-flex items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white/85 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex items-center justify-center rounded-md p-1 text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white/85 disabled:cursor-not-allowed disabled:opacity-50"
                           aria-label="Set as default base resume"
                           title="Set as default"
                         >
-                          <Star className="h-4 w-4" />
+                          <Star className="h-3.5 w-3.5" />
                         </button>
                       )}
                       <button
@@ -254,17 +252,17 @@ export function LandingScreen({
                           });
                         }}
                         disabled={busyResumeId === resume.id}
-                        className="inline-flex items-center justify-center rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/75 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center justify-center rounded-md p-1 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/75 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Delete base resume"
                         title="Delete"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
-                </GlassCard>
-              ))}
-            </div>
+                );
+              })}
+            </GlassCard>
           )}
         </div>
 

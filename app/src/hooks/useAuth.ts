@@ -40,8 +40,25 @@ export function useAuth() {
     return { error };
   };
 
-  const signUpWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+  const signUpWithEmail = async (
+    email: string,
+    password: string,
+    metadata?: { firstName: string; lastName: string; phone?: string },
+  ) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: metadata
+        ? {
+            data: {
+              full_name: `${metadata.firstName} ${metadata.lastName}`,
+              first_name: metadata.firstName,
+              last_name: metadata.lastName,
+              phone: metadata.phone,
+            },
+          }
+        : undefined,
+    });
     return { error };
   };
 

@@ -105,10 +105,10 @@ function CoachHeroCard({ userName, onOpenCoach }: { userName?: string; onOpenCoa
 
   return (
     <div className="flex justify-center mb-2">
-      <GlassCard className="p-6 sm:p-8 max-w-md w-full text-center border-indigo-500/20">
+      <GlassCard className="p-5 sm:p-6 max-w-sm w-full text-center border-indigo-500/20">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-indigo-600/30 border-2 border-indigo-400/30 flex items-center justify-center">
-            <span className="text-xl font-bold text-indigo-300">AI</span>
+          <div className="w-12 h-12 rounded-full bg-indigo-600/30 border-2 border-indigo-400/30 flex items-center justify-center">
+            <span className="text-sm font-bold text-indigo-300">AI</span>
           </div>
 
           <div>
@@ -144,16 +144,17 @@ function OrgConnectorLines() {
       <div className="flex justify-center">
         <div className="w-px h-6 bg-gradient-to-b from-indigo-400/25 to-[rgba(152,179,255,0.15)]" />
       </div>
-      {/* Horizontal bar spanning 4 columns with drop points */}
+      {/* Grid-aligned horizontal bar + drop lines matching the 4-column gap-6 grid below */}
       <div className="mx-auto max-w-7xl px-4">
-        <div className="relative h-6">
-          {/* Horizontal line */}
-          <div className="absolute top-0 left-[12.5%] right-[12.5%] h-px bg-[rgba(152,179,255,0.15)]" />
-          {/* 4 drop points at 12.5%, 37.5%, 62.5%, 87.5% */}
-          <div className="absolute top-0 left-[12.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
-          <div className="absolute top-0 left-[37.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
-          <div className="absolute top-0 left-[62.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
-          <div className="absolute top-0 right-[12.5%] w-px h-6 bg-[rgba(152,179,255,0.15)]" />
+        <div className="relative grid grid-cols-4 gap-6 h-6">
+          {/* Horizontal connector across all columns */}
+          <div className="absolute top-0 inset-x-0 h-px bg-[rgba(152,179,255,0.15)]" />
+          {/* 4 vertical drop lines, each centered in its grid cell */}
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="flex justify-center">
+              <div className="w-px h-6 bg-[rgba(152,179,255,0.15)]" />
+            </div>
+          ))}
         </div>
       </div>
     </div>
