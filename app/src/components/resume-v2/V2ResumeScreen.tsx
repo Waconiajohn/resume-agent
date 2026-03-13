@@ -15,7 +15,6 @@ import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
 import type { ResumeDraft, GapCoachingResponse } from '@/types/resume-v2';
-import type { StrategyApprovals } from './cards/GapAnalysisCard';
 
 interface V2ResumeScreenProps {
   accessToken: string | null;
@@ -36,7 +35,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
   // Store inputs for inline edit context and re-runs
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
-  const [strategyApprovals, setStrategyApprovals] = useState<StrategyApprovals>({});
 
   const {
     pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -92,7 +90,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
     }
 
     setEditableResume(null);
-    setStrategyApprovals({});
     resetHistory();
     void start(resumeText, jobDescription, contextParts.length > 0 ? contextParts.join('\n') : undefined);
   }, [start, resumeText, jobDescription, resetHistory]);
@@ -111,28 +108,16 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
   }, [currentResume, requestEdit]);
 
   const handleAddContext = useCallback((userContext: string) => {
-    // Include rejected strategies so the pipeline knows what to skip
-    const rejected = Object.entries(strategyApprovals)
-      .filter(([, approved]) => approved === false)
-      .map(([req]) => req);
-
-    const contextParts = [userContext];
-    if (rejected.length > 0) {
-      contextParts.push(`\nDo NOT use these positioning strategies (user rejected them): ${rejected.join('; ')}`);
-    }
-
     setEditableResume(null);
-    setStrategyApprovals({});
     resetHistory();
-    void start(resumeText, jobDescription, contextParts.join('\n'));
-  }, [start, resumeText, jobDescription, strategyApprovals, resetHistory]);
+    void start(resumeText, jobDescription, userContext);
+  }, [start, resumeText, jobDescription, resetHistory]);
 
   const handleStartOver = useCallback(() => {
     reset();
     setEditableResume(null);
     setResumeText('');
     setJobDescription('');
-    setStrategyApprovals({});
   }, [reset]);
 
   if (!isPipelineActive) {
@@ -207,8 +192,6 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
         onRedo={redo}
         onAddContext={handleAddContext}
         isRerunning={isStarting}
-        strategyApprovals={strategyApprovals}
-        onStrategyChange={setStrategyApprovals}
         liveScores={liveScores}
         isScoring={isScoring}
         gapCoachingCards={data.gapCoachingCards}

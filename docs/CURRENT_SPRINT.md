@@ -6,6 +6,175 @@
 
 ---
 
+## Sprint G1: Gap Coaching UX Overhaul
+
+**Goal:** Unify the gap strategy approval flow into a single conversational coaching experience, surface strategy placement before writing, and ensure re-runs re-emit coaching cards.
+**Status:** Not started
+
+### Story G1-1: Unify Strategy Approval Flow [LARGE]
+- **As a** user reviewing my gap analysis
+- **I want to** see one clear coaching conversation for each gap strategy
+- **So that** I'm not confused by two different approval UIs that behave differently
+- **Acceptance Criteria:**
+  - [ ] Remove thumbs up/down toggles from `GapAnalysisCard.tsx` — card becomes display-only (coverage score, requirement counts, classification breakdown)
+  - [ ] `GapCoachingCardList.tsx` becomes the single source of truth for strategy approval
+  - [ ] `strategyApprovals` state in `V2ResumeScreen` removed — no longer needed
+  - [ ] `GapAnalysisCard` no longer accepts `onStrategyChange` or `approvals` props
+  - [ ] Gap coaching responses flow directly to orchestrator (already works)
+  - [ ] When no pending strategies exist, GapAnalysisCard shows "Perfect match — no positioning strategies needed" message
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Large (touches GapAnalysisCard, GapCoachingCardList, V2StreamingDisplay, V2ResumeScreen)
+- **Dependencies:** None
+
+### Story G1-2: Enhance Coaching Card with Full Context [MEDIUM]
+- **As a** user reviewing a gap strategy
+- **I want to** see the evidence, inferred metrics, and reasoning all in one clear coaching card
+- **So that** I understand exactly why this strategy was suggested and can make an informed decision
+- **Acceptance Criteria:**
+  - [ ] `evidence_found` chips displayed prominently (currently hidden)
+  - [ ] `inference_rationale` shown below inferred metric with math explanation
+  - [ ] AI reasoning bubble uses larger, more readable typography
+  - [ ] Card shows requirement importance badge (must_have/important/nice_to_have) with color coding
+  - [ ] "What this means for your resume" — brief plain-language explanation of what approving does
+  - [ ] Skip action includes tooltip: "This gap won't be addressed on your resume. That's OK — your baseline is strong."
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Medium
+- **Dependencies:** G1-1
+
+### Story G1-3: Strategy Placement Preview [MEDIUM]
+- **As a** user who approved gap strategies
+- **I want to** see WHERE my approved strategies will appear in the resume before it's written
+- **So that** I know what to expect and can course-correct before the AI writes
+- **Acceptance Criteria:**
+  - [ ] New `StrategyPlacementCard.tsx` component renders after Narrative Strategy completes
+  - [ ] Displays `gap_positioning_map` from `NarrativeStrategyOutput`: requirement → section/role → narrative framing
+  - [ ] Shows approved strategies mapped to specific resume sections (e.g., "Enterprise CRM → Professional Experience, Acme Corp, bullets 2-3")
+  - [ ] `narrative_justification` shown as coaching explanation for each placement
+  - [ ] Card is informational (no user action required) — visual confirmation before writing begins
+  - [ ] Emitted as part of `narrative_strategy` SSE event (data already available, just not rendered)
+  - [ ] Glass morphism styling: `border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]` (green tint — "approved and placed")
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Medium
+- **Dependencies:** G1-1
+
+### Story G1-4: Re-emit Coaching Cards on Context Re-run [MEDIUM]
+- **As a** user who added context and triggered a re-run
+- **I want to** see updated coaching cards for any new or changed strategies
+- **So that** I can approve/reject strategies based on my new context instead of implicit re-approval
+- **Acceptance Criteria:**
+  - [ ] Backend: Orchestrator always emits `gap_coaching` SSE event when `pending_strategies.length > 0`, regardless of `options.gap_coaching_responses`
+  - [ ] Frontend: `V2StreamingDisplay` clears previous coaching card state on re-run
+  - [ ] User sees fresh coaching cards with updated evidence from their added context
+  - [ ] Previously-approved strategies show "Previously approved" badge but still allow re-evaluation
+  - [ ] Pipeline pauses for coaching gate on re-run (same as first run)
+  - [ ] `cd server && npx tsc --noEmit` passes
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Medium
+- **Dependencies:** G1-1
+
+### Story G1-5: Rejection Guidance & Edge Cases [SMALL]
+- **As a** user who rejects all strategies or provides vague context
+- **I want to** understand the implications and get helpful guidance
+- **So that** I make informed decisions without dead ends
+- **Acceptance Criteria:**
+  - [ ] When all strategies skipped: show summary card "Your resume will highlight your direct matches — no inferred positioning will be used. You can add context anytime to unlock new strategies."
+  - [ ] When user adds context < 20 chars: show "Be specific — mention job titles, team sizes, budget amounts, or project outcomes"
+  - [ ] Context textarea shows 3 example prompts as placeholder: "e.g., 'I managed a $6M annual budget for cloud infrastructure at Company X'"
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Small
+- **Dependencies:** G1-1
+
+## Out of Scope (Sprint G1)
+- Strategy audit after writing (Sprint G2)
+- Inline strategy highlighting on resume document (Sprint G2)
+- Backend agent changes (prompts, model routing) — agents are solid
+- Tests (separate sprint, tracked as tech debt)
+
+---
+
+## Sprint G2: Strategy Transparency & Feedback Loop
+
+**Goal:** After the resume is written, show users exactly how their approved strategies became resume content. Close the feedback loop from coaching → placement → final bullet.
+**Status:** Not started — depends on G1
+
+### Story G2-1: Strategy Audit Card [LARGE]
+- **As a** user viewing my completed resume
+- **I want to** see which resume bullets came from my approved gap strategies
+- **So that** I can verify strategies were integrated correctly and know what to prepare for in interviews
+- **Acceptance Criteria:**
+  - [ ] New `StrategyAuditCard.tsx` — appears after resume completion, before export
+  - [ ] Maps each approved strategy to the bullet(s) that address it using `addresses_requirements` from `ResumeBullet` + `positioning_assessment` from Assembly
+  - [ ] Each entry shows: Requirement → Strategy Used → Resulting Bullet (with section context)
+  - [ ] Status indicators: "Positioned" (strategy used), "Direct Match" (no strategy needed), "Gap" (requirement not addressed)
+  - [ ] Entries with `strategy_used` have a subtle green accent thread connecting strategy to bullet
+  - [ ] Expandable: collapsed shows counts ("4 positioned, 6 direct matches, 1 gap"), expanded shows full mapping
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Large
+- **Dependencies:** G1-3
+
+### Story G2-2: Resume Bullet Strategy Markers [MEDIUM]
+- **As a** user reading my resume
+- **I want to** see which bullets were enhanced by AI gap strategies vs. taken from my original resume
+- **So that** I know exactly what's new and can prepare to defend those claims
+- **Acceptance Criteria:**
+  - [ ] Bullets with `is_new: true` show a subtle `(New)` marker (already partially implemented)
+  - [ ] Bullets that address a gap requirement show a small strategy icon (e.g., compass or lightbulb) on hover
+  - [ ] Hovering the strategy icon shows a tooltip: "This bullet addresses: [requirement]. Strategy: [positioning]"
+  - [ ] `addresses_requirements` data displayed as subtle tags below each bullet on hover
+  - [ ] Color coding: `#b5dec2` (green) for direct matches, `#afc4ff` (blue) for repositioned, `#f0d99f` (yellow) for partial
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Medium
+- **Dependencies:** G2-1
+
+### Story G2-3: Narrative Positioning Transparency [MEDIUM]
+- **As a** user reviewing my positioning strategy
+- **I want to** see how the narrative angle will be reinforced across my resume
+- **So that** I understand the strategic logic before the resume is written
+- **Acceptance Criteria:**
+  - [ ] Enhance `NarrativeStrategyCard` to show `section_guidance` — how each section will be framed
+  - [ ] Show `why_me_story` (full), `why_me_concise` (interview version), and `why_me_best_line` (soundbite) in expandable sections
+  - [ ] Show `unique_differentiators` as highlight chips
+  - [ ] `narrative_angle_rationale` displayed as coaching explanation
+  - [ ] Interview talking points shown as a "Prepare for These Questions" section
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Medium
+- **Dependencies:** None (can parallel with G2-1)
+
+### Story G2-4: Strategy Thread Animation [SMALL]
+- **As a** user
+- **I want to** visually trace how a gap strategy flows from coaching → placement → bullet
+- **So that** the connection between AI coaching and the final resume is tangible
+- **Acceptance Criteria:**
+  - [ ] When user clicks a strategy in the Strategy Audit Card, the corresponding coaching card scrolls into view with a brief highlight animation
+  - [ ] When user clicks a positioned bullet in the resume, the Strategy Audit Card highlights the corresponding entry
+  - [ ] Smooth scroll + 300ms glow animation using `border-[#afc4ff]/40` → `border-[#afc4ff]/10` fade
+  - [ ] Uses `scrollIntoView({ behavior: 'smooth', block: 'center' })` + CSS transition
+  - [ ] No external animation libraries — CSS transitions only
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Small
+- **Dependencies:** G2-1, G2-2
+
+### Story G2-5: "What Changed" Diff on Re-run [SMALL]
+- **As a** user who re-ran with additional context
+- **I want to** see what changed in my resume compared to the previous version
+- **So that** I know the impact of my added context
+- **Acceptance Criteria:**
+  - [ ] After re-run completes, show a summary card: "Changes from your added context"
+  - [ ] List new bullets added, bullets modified, strategies added/removed
+  - [ ] Use existing `DiffView.tsx` pattern for before/after on modified bullets
+  - [ ] Card dismissible after review
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Estimated complexity:** Small
+- **Dependencies:** G1-4
+
+## Out of Scope (Sprint G2)
+- Backend prompt changes
+- Gap strategy approval by category (gap vs. improvement)
+- ATS score breakdown per strategy
+- Tests (separate sprint)
+
+---
+
 ## Sprint V2-1: Tear Down + Foundation — DONE
 
 **Goal:** Remove the old pipeline, define the new agent interfaces, build the first 3 analysis agents.

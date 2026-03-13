@@ -127,6 +127,8 @@ export interface GapCoachingCard {
   inferred_metric?: string;
   inference_rationale?: string;
   evidence_found: string[];
+  /** True when this strategy was approved in a previous run (e.g. "Add Context" re-run) */
+  previously_approved?: boolean;
 }
 
 export type GapCoachingAction = 'approve' | 'context' | 'skip';

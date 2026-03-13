@@ -112,6 +112,11 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <span className="text-sm font-medium text-white/90 leading-snug">{card.requirement}</span>
             {importanceBadge(card.importance)}
+            {(card as any).previously_approved && (
+              <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide bg-[#b5dec2]/10 text-[#b5dec2]/60 border border-[#b5dec2]/15">
+                Previously approved
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -127,7 +132,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           <div className="text-[10px] font-medium text-[#afc4ff]/60 uppercase tracking-wider mb-1">
             AI Coach
           </div>
-          <p className="text-sm text-white/70 leading-relaxed">{card.ai_reasoning}</p>
+          <p className="text-[15px] text-white/70 leading-[1.65]">{card.ai_reasoning}</p>
         </div>
       </div>
 
@@ -244,12 +249,22 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           type="button"
           disabled={disabled}
           onClick={() => onChange({ action: 'skip', showContextInput: false })}
+          title="This gap won't be addressed on your resume. That's OK — your direct matches are strong."
           className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white/35 border border-transparent hover:text-white/55 hover:border-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ml-auto"
           aria-label={`Skip gap for: ${card.requirement}`}
         >
           <SkipForward className="h-3.5 w-3.5" />
-          Skip — it's a real gap
+          Skip — leave unaddressed
         </button>
+      </div>
+
+      {/* What this means */}
+      <div className="px-4 pb-3 -mt-1">
+        <p className="text-[11px] text-white/25 leading-relaxed">
+          {card.classification === 'missing'
+            ? 'Approving lets the AI position adjacent experience to address this gap on your resume.'
+            : 'Approving lets the AI strengthen how this requirement is presented using your related experience.'}
+        </p>
       </div>
     </div>
   );
@@ -342,6 +357,16 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
           <p className="text-center text-xs text-white/30 mt-2">
             Review all {cards.length} gaps to continue
           </p>
+        )}
+        {allResponded && cardStates.every(s => s.action === 'skip') && (
+          <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 mt-3">
+            <p className="text-sm text-white/60">
+              Your resume will highlight your direct matches — no inferred positioning will be used.
+            </p>
+            <p className="text-xs text-white/35 mt-1">
+              You can add context anytime to unlock new strategies.
+            </p>
+          </div>
         )}
       </div>
     </div>

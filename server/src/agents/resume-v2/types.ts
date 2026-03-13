@@ -414,6 +414,8 @@ export interface GapCoachingCard {
   inference_rationale?: string;
   /** What real experience was found */
   evidence_found: string[];
+  /** True when this strategy was approved in a previous run (e.g. "Add Context" re-run) */
+  previously_approved?: boolean;
 }
 
 export interface GapCoachingResponse {

@@ -127,10 +127,16 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     emit({ type: 'gap_analysis', data: gapAnalysis });
 
     // ─── Gap Coaching: build coaching cards from pending strategies ──
-    if (gapAnalysis.pending_strategies.length > 0 && !options.gap_coaching_responses) {
+    // Always emit cards when strategies are present — including on "Add Context" re-runs.
+    // The previously_approved flag lets the frontend indicate which strategies were
+    // already approved so the user knows they can confirm quickly.
+    if (gapAnalysis.pending_strategies.length > 0) {
       const coachingCards: GapCoachingCard[] = gapAnalysis.pending_strategies.map(ps => {
         // Find the matching requirement for classification/importance
         const req = gapAnalysis.requirements.find(r => r.requirement === ps.requirement);
+        const previouslyApproved = options.gap_coaching_responses?.find(
+          r => r.requirement === ps.requirement && r.action === 'approve',
+        );
         return {
           requirement: ps.requirement,
           importance: req?.importance ?? 'important',
@@ -140,6 +146,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
           inferred_metric: ps.strategy.inferred_metric,
           inference_rationale: ps.strategy.inference_rationale,
           evidence_found: req?.evidence ?? [],
+          previously_approved: !!previouslyApproved,
         };
       });
       emit({ type: 'gap_coaching', data: coachingCards });

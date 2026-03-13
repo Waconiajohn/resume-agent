@@ -50,22 +50,22 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
         Tell us about experience, skills, or accomplishments the AI missed. Examples:
       </p>
       <ul className="text-xs text-white/35 mb-3 space-y-1 pl-3">
-        <li>&ldquo;I managed a $6M annual budget at CWT but never put it on my resume&rdquo;</li>
-        <li>&ldquo;My HubSpot experience is comparable to what they want with Salesforce&rdquo;</li>
-        <li>&ldquo;I led the offshore transition — that's the centralization experience they're looking for&rdquo;</li>
+        <li>&ldquo;I managed a $6M annual budget at CWT — never put it on my resume&rdquo;</li>
+        <li>&ldquo;My team of 40 at Acme Corp handled all APAC operations — that's the international scope they want&rdquo;</li>
+        <li>&ldquo;I led the Salesforce-to-HubSpot migration — similar CRM platform expertise they're asking for&rdquo;</li>
       </ul>
 
       <textarea
         value={context}
         onChange={(e) => setContext(e.target.value)}
-        placeholder="What did we miss?"
+        placeholder="Be specific — mention job titles, team sizes, budget amounts, or project outcomes..."
         rows={4}
         disabled={loading}
         className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white/90 placeholder:text-white/30 outline-none focus:border-[#afc4ff]/40 disabled:opacity-50 resize-y mb-1"
       />
       <p className="text-xs text-white/30 mb-2">
         {context.trim().length < 20 && context.length > 0
-          ? `${20 - context.trim().length} more characters needed`
+          ? `Be specific — ${20 - context.trim().length} more characters needed`
           : '\u00a0'}
       </p>
 

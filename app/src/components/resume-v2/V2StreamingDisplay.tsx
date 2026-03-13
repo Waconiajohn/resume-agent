@@ -17,7 +17,6 @@ import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, FileText, Shiel
 import { GlassCard } from '../GlassCard';
 import type { V2PipelineData, V2Stage, ResumeDraft } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
-import type { StrategyApprovals } from './cards/GapAnalysisCard';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { JobIntelligenceCard } from './cards/JobIntelligenceCard';
 import { CandidateIntelligenceCard } from './cards/CandidateIntelligenceCard';
@@ -26,6 +25,7 @@ import { GapAnalysisCard } from './cards/GapAnalysisCard';
 import { GapCoachingCardList } from './cards/GapCoachingCard';
 import { PositioningAssessmentCard } from './cards/PositioningAssessmentCard';
 import { NarrativeStrategyCard } from './cards/NarrativeStrategyCard';
+import { StrategyPlacementCard } from './cards/StrategyPlacementCard';
 import { ResumeDocumentCard } from './cards/ResumeDocumentCard';
 import { ScoresCard } from './cards/ScoresCard';
 import { KeywordScoreDashboard } from './cards/KeywordScoreDashboard';
@@ -55,8 +55,6 @@ interface V2StreamingDisplayProps {
   onRedo: () => void;
   onAddContext: (context: string) => void;
   isRerunning: boolean;
-  strategyApprovals: StrategyApprovals;
-  onStrategyChange: (approvals: StrategyApprovals) => void;
   liveScores: LiveScores | null;
   isScoring: boolean;
   gapCoachingCards: GapCoachingCardType[] | null;
@@ -101,7 +99,6 @@ export function V2StreamingDisplay({
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
   onRequestEdit, onAcceptEdit, onRejectEdit, onUndo, onRedo,
   onAddContext, isRerunning,
-  strategyApprovals, onStrategyChange,
   liveScores, isScoring,
   gapCoachingCards, onRespondGapCoaching, preScores, onIntegrateKeyword,
 }: V2StreamingDisplayProps) {
@@ -233,12 +230,7 @@ export function V2StreamingDisplay({
             <div className="space-y-4">
               {data.gapAnalysis && (
                 <GlassCard className="p-5">
-                  <GapAnalysisCard
-                    data={data.gapAnalysis}
-                    approvals={strategyApprovals}
-                    onStrategyChange={onStrategyChange}
-                    isComplete={isComplete}
-                  />
+                  <GapAnalysisCard data={data.gapAnalysis} />
                 </GlassCard>
               )}
               {gapCoachingCards && gapCoachingCards.length > 0 && (
@@ -252,6 +244,11 @@ export function V2StreamingDisplay({
               )}
               {data.narrativeStrategy && (
                 <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} /></GlassCard>
+              )}
+              {data.narrativeStrategy?.gap_positioning_map && data.narrativeStrategy.gap_positioning_map.length > 0 && (
+                <GlassCard className="p-5 border-[#b5dec2]/15">
+                  <StrategyPlacementCard positioningMap={data.narrativeStrategy.gap_positioning_map} />
+                </GlassCard>
               )}
             </div>
           </section>
