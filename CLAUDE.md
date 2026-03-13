@@ -47,9 +47,9 @@ This platform is built around AI agents. This is not a preference — it is the 
 
 **If a new feature doesn't fit cleanly into an existing agent's domain, propose a new agent first. Do not write procedural code as a workaround.**
 
-### Current Agent Roster — 19 Products, 44 Agents
+### Current Agent Roster — 19 Products, 42 Agents
 
-The platform has **44 deployed agents** across **19 products**. This is the authoritative roster. If you are building a new agent, check this table first.
+The platform has **42 deployed agents** across **19 products**. This is the authoritative roster. If you are building a new agent, check this table first.
 
 #### Resume V2 Pipeline (10 agents) — `agents/resume-v2/`
 The cornerstone product. Function-based agents sequenced by `orchestrator.ts`. Always on.
