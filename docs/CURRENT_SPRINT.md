@@ -95,75 +95,75 @@
 ## Sprint G2: Strategy Transparency & Feedback Loop
 
 **Goal:** After the resume is written, show users exactly how their approved strategies became resume content. Close the feedback loop from coaching → placement → final bullet.
-**Status:** In progress
+**Status:** DONE — committed adedd5b
 
-### Story G2-1: Strategy Audit Card [LARGE] — in progress
+### Story G2-1: Strategy Audit Card [LARGE] — DONE
 - **As a** user viewing my completed resume
 - **I want to** see which resume bullets came from my approved gap strategies
 - **So that** I can verify strategies were integrated correctly and know what to prepare for in interviews
 - **Acceptance Criteria:**
-  - [ ] New `StrategyAuditCard.tsx` — appears after resume completion, before export
-  - [ ] Maps each approved strategy to the bullet(s) that address it using `addresses_requirements` from `ResumeBullet` + `positioning_assessment` from Assembly
-  - [ ] Each entry shows: Requirement → Strategy Used → Resulting Bullet (with section context)
-  - [ ] Status indicators: "Positioned" (strategy used), "Direct Match" (no strategy needed), "Gap" (requirement not addressed)
-  - [ ] Entries with `strategy_used` have a subtle green accent thread connecting strategy to bullet
-  - [ ] Expandable: collapsed shows counts ("4 positioned, 6 direct matches, 1 gap"), expanded shows full mapping
-  - [ ] `cd app && npx tsc --noEmit` passes
+  - [x] New `StrategyAuditCard.tsx` — appears after resume completion, before export
+  - [x] Maps each approved strategy to the bullet(s) that address it using `addresses_requirements` from `ResumeBullet` + `positioning_assessment` from Assembly
+  - [x] Each entry shows: Requirement → Strategy Used → Resulting Bullet (with section context)
+  - [x] Status indicators: "Positioned" (strategy used), "Direct Match" (no strategy needed), "Gap" (requirement not addressed)
+  - [x] Entries with `strategy_used` have a subtle green accent thread connecting strategy to bullet
+  - [x] Expandable: collapsed shows counts ("4 positioned, 6 direct matches, 1 gap"), expanded shows full mapping
+  - [x] `cd app && npx tsc --noEmit` passes
 - **Estimated complexity:** Large
 - **Dependencies:** G1-3
 
-### Story G2-2: Resume Bullet Strategy Markers [MEDIUM]
+### Story G2-2: Resume Bullet Strategy Markers [MEDIUM] — DONE
 - **As a** user reading my resume
 - **I want to** see which bullets were enhanced by AI gap strategies vs. taken from my original resume
 - **So that** I know exactly what's new and can prepare to defend those claims
 - **Acceptance Criteria:**
-  - [ ] Bullets with `is_new: true` show a subtle `(New)` marker (already partially implemented)
-  - [ ] Bullets that address a gap requirement show a small strategy icon (e.g., compass or lightbulb) on hover
-  - [ ] Hovering the strategy icon shows a tooltip: "This bullet addresses: [requirement]. Strategy: [positioning]"
-  - [ ] `addresses_requirements` data displayed as subtle tags below each bullet on hover
-  - [ ] Color coding: `#b5dec2` (green) for direct matches, `#afc4ff` (blue) for repositioned, `#f0d99f` (yellow) for partial
-  - [ ] `cd app && npx tsc --noEmit` passes
+  - [x] Bullets with `is_new: true` show a subtle `(New)` marker (already partially implemented)
+  - [x] Bullets that address a gap requirement show a small strategy icon (e.g., compass or lightbulb) on hover
+  - [x] Hovering the strategy icon shows a tooltip: "This bullet addresses: [requirement]. Strategy: [positioning]"
+  - [x] `addresses_requirements` data displayed as subtle tags below each bullet on hover
+  - [x] Color coding: `#b5dec2` (green) for direct matches, `#afc4ff` (blue) for repositioned, `#f0d99f` (yellow) for partial
+  - [x] `cd app && npx tsc --noEmit` passes
 - **Estimated complexity:** Medium
 - **Dependencies:** G2-1
 
-### Story G2-3: Narrative Positioning Transparency [MEDIUM] — in progress
+### Story G2-3: Narrative Positioning Transparency [MEDIUM] — DONE
 - **As a** user reviewing my positioning strategy
 - **I want to** see how the narrative angle will be reinforced across my resume
 - **So that** I understand the strategic logic before the resume is written
 - **Acceptance Criteria:**
-  - [ ] Enhance `NarrativeStrategyCard` to show `section_guidance` — how each section will be framed
-  - [ ] Show `why_me_story` (full), `why_me_concise` (interview version), and `why_me_best_line` (soundbite) in expandable sections
-  - [ ] Show `unique_differentiators` as highlight chips
-  - [ ] `narrative_angle_rationale` displayed as coaching explanation
-  - [ ] Interview talking points shown as a "Prepare for These Questions" section
-  - [ ] `cd app && npx tsc --noEmit` passes
+  - [x] Enhance `NarrativeStrategyCard` to show `section_guidance` — how each section will be framed
+  - [x] Show `why_me_story` (full), `why_me_concise` (interview version), and `why_me_best_line` (soundbite) in expandable sections
+  - [x] Show `unique_differentiators` as highlight chips
+  - [x] `narrative_angle_rationale` displayed as coaching explanation
+  - [x] Interview talking points shown as a "Prepare for These Questions" section
+  - [x] `cd app && npx tsc --noEmit` passes
 - **Estimated complexity:** Medium
 - **Dependencies:** None (can parallel with G2-1)
 
-### Story G2-4: Strategy Thread Animation [SMALL]
+### Story G2-4: Strategy Thread Animation [SMALL] — DONE
 - **As a** user
 - **I want to** visually trace how a gap strategy flows from coaching → placement → bullet
 - **So that** the connection between AI coaching and the final resume is tangible
 - **Acceptance Criteria:**
-  - [ ] When user clicks a strategy in the Strategy Audit Card, the corresponding coaching card scrolls into view with a brief highlight animation
-  - [ ] When user clicks a positioned bullet in the resume, the Strategy Audit Card highlights the corresponding entry
-  - [ ] Smooth scroll + 300ms glow animation using `border-[#afc4ff]/40` → `border-[#afc4ff]/10` fade
-  - [ ] Uses `scrollIntoView({ behavior: 'smooth', block: 'center' })` + CSS transition
-  - [ ] No external animation libraries — CSS transitions only
-  - [ ] `cd app && npx tsc --noEmit` passes
+  - [x] When user clicks a strategy in the Strategy Audit Card, the corresponding coaching card scrolls into view with a brief highlight animation
+  - [x] When user clicks a positioned bullet in the resume, the Strategy Audit Card highlights the corresponding entry
+  - [x] Smooth scroll + 300ms glow animation using `border-[#afc4ff]/40` → `border-[#afc4ff]/10` fade
+  - [x] Uses `scrollIntoView({ behavior: 'smooth', block: 'center' })` + CSS transition
+  - [x] No external animation libraries — CSS transitions only
+  - [x] `cd app && npx tsc --noEmit` passes
 - **Estimated complexity:** Small
 - **Dependencies:** G2-1, G2-2
 
-### Story G2-5: "What Changed" Diff on Re-run [SMALL] — in progress
+### Story G2-5: "What Changed" Diff on Re-run [SMALL] — DONE
 - **As a** user who re-ran with additional context
 - **I want to** see what changed in my resume compared to the previous version
 - **So that** I know the impact of my added context
 - **Acceptance Criteria:**
-  - [ ] After re-run completes, show a summary card: "Changes from your added context"
-  - [ ] List new bullets added, bullets modified, strategies added/removed
-  - [ ] Use existing `DiffView.tsx` pattern for before/after on modified bullets
-  - [ ] Card dismissible after review
-  - [ ] `cd app && npx tsc --noEmit` passes
+  - [x] After re-run completes, show a summary card: "Changes from your added context"
+  - [x] List new bullets added, bullets modified, strategies added/removed
+  - [x] Use existing `DiffView.tsx` pattern for before/after on modified bullets
+  - [x] Card dismissible after review
+  - [x] `cd app && npx tsc --noEmit` passes
 - **Estimated complexity:** Small
 - **Dependencies:** G1-4
 
