@@ -339,12 +339,80 @@
 
 ---
 
+---
+
+## Sprint T1: V2 Test Coverage — DONE
+
+**Goal:** Add comprehensive test coverage for the V2 pipeline — assembly, orchestrator, all 9 LLM agents, and frontend gap coaching cards.
+**Status:** DONE — committed 73f93e4
+
+- [x] T1-1: Assembly agent tests (47 tests)
+- [x] T1-2: Orchestrator tests (77 tests)
+- [x] T1-3: All 9 LLM agent tests (58 tests)
+- [x] T1-4: Frontend gap coaching card tests (52 tests)
+
+Total: 234 new tests.
+
+---
+
+## Sprint P1: Session Persistence & Resumption — DONE
+
+**Goal:** Save full V2 pipeline data to DB so completed sessions can be loaded from the dashboard, enabling users to revisit, edit, and re-run historical V2 resumes.
+**Status:** DONE
+
+### Story P1-1: Save Full V2 Pipeline Data [MEDIUM] — DONE
+- **As a** system
+- **I want to** persist all agent outputs (not just final_resume) when a V2 pipeline completes
+- **So that** completed sessions can be fully hydrated in the V2 UI later
+- **Acceptance Criteria:**
+  - [x] `resume-v2-pipeline.ts` saves `{ version: 'v2', pipeline_data: {...}, inputs: {...} }` to `tailored_sections` JSONB
+  - [x] Pipeline data includes: jobIntelligence, candidateIntelligence, benchmarkCandidate, gapAnalysis, preScores, narrativeStrategy, resumeDraft, assembly
+  - [x] Inputs (resume_text, job_description) saved alongside for re-run capability
+  - [x] `cd server && npx tsc --noEmit` passes
+
+### Story P1-2: Enhance GET Result Endpoint [SMALL] — DONE
+- **As a** frontend client
+- **I want to** fetch full V2 pipeline data from `GET /:sessionId/result`
+- **So that** loaded sessions render the complete V2 streaming display
+- **Acceptance Criteria:**
+  - [x] Endpoint detects `version: 'v2'` and returns `{ version, pipeline_data, inputs }`
+  - [x] Legacy sessions still return `{ result: ... }` for backward compatibility
+  - [x] `cd server && npx tsc --noEmit` passes
+
+### Story P1-3: Add loadSession to useV2Pipeline [MEDIUM] — DONE
+- **As a** frontend component
+- **I want to** call `loadSession(sessionId)` to hydrate V2PipelineData from a completed session
+- **So that** historical sessions render identically to live-streamed ones
+- **Acceptance Criteria:**
+  - [x] `useV2Pipeline` exports `loadSession(sessionId): Promise<{ resume_text, job_description } | false>`
+  - [x] On success: hydrates all V2PipelineData fields, sets isComplete=true
+  - [x] Returns saved inputs for re-run capability
+  - [x] Returns false for non-V2 or incomplete sessions
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Story P1-4: Route V2 Sessions from Dashboard [MEDIUM] — DONE
+- **As a** user on the dashboard
+- **I want to** click a V2 session and see the full V2 resume view
+- **So that** I can review, edit, and re-run historical V2 resumes
+- **Acceptance Criteria:**
+  - [x] `handleResumeSession` in App.tsx detects `product_type === 'resume_v2'` and routes to V2 screen
+  - [x] V2ResumeScreen accepts `initialSessionId` prop, loads session on mount
+  - [x] Loaded session seeds resumeText + jobDescription for re-run and inline edit context
+  - [x] "New Resume" / startOver clears loaded session state
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Out of Scope (Sprint P1)
+- Gap coaching card persistence (coaching is a live interaction, not saved)
+- Session comparison / diff between historical runs
+- Stage messages / timeline replay from history
+
+---
+
 ## Epic Complete
 
-All 3 sprints (V2-1, V2-2, V2-3) are delivered. The Resume Agent v2 10-agent pipeline is fully built end-to-end: backend agents, orchestrator, SSE streaming, frontend intake/display/editing/export.
+All sprints delivered. The Resume Agent v2 10-agent pipeline is fully built end-to-end: backend agents, orchestrator, SSE streaming, frontend intake/display/editing/export, gap coaching UX, strategy transparency, test coverage, and session persistence.
 
 ### Known Tech Debt (Separate Sprints)
-- **Zero test coverage** for all 10 V2 agents and orchestrator
 - No feature flag gating (V2 is always-on, no A/B against old pipeline)
 - No prompt versioning or generation analytics
 - Legacy Coach view infrastructure still present (used by other products)
@@ -356,4 +424,3 @@ All 3 sprints (V2-1, V2-2, V2-3) are delivered. The Resume Agent v2 10-agent pip
 - Redis/distributed bus
 - Other products (Coach, LinkedIn, Job Command Center) — untouched
 - E2E test suite rebuild
-- Unit tests for V2 agents

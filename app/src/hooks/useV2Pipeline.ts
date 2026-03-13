@@ -236,6 +236,58 @@ export function useV2Pipeline(accessToken: string | null) {
     }
   }, [accessToken, data.sessionId]);
 
+  const loadSession = useCallback(async (sessionId: string): Promise<{ resume_text: string; job_description: string } | false> => {
+    if (!accessToken) return false;
+
+    try {
+      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/result`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!response.ok) return false;
+
+      const body = await response.json() as {
+        version?: string;
+        pipeline_data?: {
+          jobIntelligence: V2PipelineData['jobIntelligence'];
+          candidateIntelligence: V2PipelineData['candidateIntelligence'];
+          benchmarkCandidate: V2PipelineData['benchmarkCandidate'];
+          gapAnalysis: V2PipelineData['gapAnalysis'];
+          preScores: V2PipelineData['preScores'];
+          narrativeStrategy: V2PipelineData['narrativeStrategy'];
+          resumeDraft: V2PipelineData['resumeDraft'];
+          assembly: V2PipelineData['assembly'];
+        };
+        inputs?: { resume_text: string; job_description: string };
+      };
+
+      if (body.version !== 'v2' || !body.pipeline_data) return false;
+
+      const pd = body.pipeline_data;
+      setData({
+        sessionId,
+        stage: 'complete',
+        jobIntelligence: pd.jobIntelligence ?? null,
+        candidateIntelligence: pd.candidateIntelligence ?? null,
+        benchmarkCandidate: pd.benchmarkCandidate ?? null,
+        gapAnalysis: pd.gapAnalysis ?? null,
+        gapCoachingCards: null, // Not persisted — coaching is a live interaction
+        preScores: pd.preScores ?? null,
+        narrativeStrategy: pd.narrativeStrategy ?? null,
+        resumeDraft: pd.resumeDraft ?? null,
+        assembly: pd.assembly ?? null,
+        error: null,
+        stageMessages: [],
+      });
+      setIsComplete(true);
+      setIsConnected(false);
+
+      return body.inputs ?? { resume_text: '', job_description: '' };
+    } catch {
+      return false;
+    }
+  }, [accessToken]);
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setData(INITIAL_DATA);
@@ -252,6 +304,7 @@ export function useV2Pipeline(accessToken: string | null) {
     error: data.error,
     start,
     reset,
+    loadSession,
     respondToGapCoaching,
     integrateKeyword,
   };

@@ -20,10 +20,12 @@ interface V2ResumeScreenProps {
   accessToken: string | null;
   onBack: () => void;
   initialResumeText?: string;
+  /** Load a completed V2 session from history */
+  initialSessionId?: string;
 }
 
-export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2ResumeScreenProps) {
-  const { data, isConnected, isComplete, isStarting, error, start, reset, respondToGapCoaching, integrateKeyword } = useV2Pipeline(accessToken);
+export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialSessionId }: V2ResumeScreenProps) {
+  const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, respondToGapCoaching, integrateKeyword } = useV2Pipeline(accessToken);
 
   // Track the editable resume separately — starts as the pipeline output,
   // then gets mutated by inline edits
@@ -52,6 +54,20 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
       setInitialScores(data.assembly.scores.ats_match);
     }
   }, [data.assembly, setInitialScores]);
+
+  // Load a historical V2 session on mount
+  const [sessionLoadAttempted, setSessionLoadAttempted] = useState(false);
+  useEffect(() => {
+    if (!initialSessionId || sessionLoadAttempted) return;
+    setSessionLoadAttempted(true);
+    void (async () => {
+      const result = await loadSession(initialSessionId);
+      if (result) {
+        setResumeText(result.resume_text);
+        setJobDescription(result.job_description);
+      }
+    })();
+  }, [initialSessionId, sessionLoadAttempted, loadSession]);
 
   const acceptEdit = useCallback((editedText: string) => {
     rawAcceptEdit(editedText);
@@ -128,6 +144,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText }: V2Res
     setPreviousResume(null);
     setResumeText('');
     setJobDescription('');
+    setSessionLoadAttempted(false);
   }, [reset]);
 
   if (!isPipelineActive) {

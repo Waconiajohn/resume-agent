@@ -157,6 +157,7 @@ export default function App() {
   }, []);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
+  const [v2SessionId, setV2SessionId] = useState<string | null>(null);
   const hasLiveWorkspaceState = Boolean(
     currentSession
     && (
@@ -173,6 +174,7 @@ export default function App() {
 
   const handleNewSession = useCallback(async () => {
     setView('resume-v2');
+    setV2SessionId(null);
     setIntakeInitialResumeText('');
     setIntakeDefaultResumeId(null);
     void listResumes();
@@ -185,10 +187,17 @@ export default function App() {
 
   const handleResumeSession = useCallback(
     async (sessionId: string) => {
+      // Check if this is a V2 session — route to V2 screen instead of coach
+      const session = sessions.find(s => s.id === sessionId);
+      if (session?.product_type === 'resume_v2') {
+        setV2SessionId(sessionId);
+        setView('resume-v2');
+        return;
+      }
       await loadSession(sessionId);
       setView('coach');
     },
-    [loadSession],
+    [loadSession, sessions],
   );
 
   const handleDeleteSession = useCallback(
@@ -477,8 +486,9 @@ export default function App() {
       {view === 'resume-v2' && (
         <V2ResumeScreen
           accessToken={accessToken}
-          onBack={() => setView('landing')}
+          onBack={() => { setV2SessionId(null); setView('landing'); }}
           initialResumeText={intakeInitialResumeText}
+          initialSessionId={v2SessionId ?? undefined}
         />
       )}
 

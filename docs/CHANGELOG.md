@@ -1,5 +1,70 @@
 # Changelog — Resume Agent
 
+## 2026-03-13 — Session 78
+**Sprint:** P1 | **Stories:** Session Persistence & Resumption
+**Summary:** V2 pipeline now saves full agent outputs to DB on completion. Users can load completed V2 sessions from the dashboard, with full UI rendering, inline editing, and re-run capability.
+
+### Changes Made
+- `server/src/routes/resume-v2-pipeline.ts` — Save full pipeline snapshot (`{ version: 'v2', pipeline_data, inputs }`) to `tailored_sections` JSONB on completion instead of just `final_resume`. Enhanced GET result endpoint to detect v2 format and return full data with backward compat.
+- `app/src/hooks/useV2Pipeline.ts` — Added `loadSession(sessionId)` method that fetches from GET endpoint, hydrates V2PipelineData, returns saved inputs for re-run context.
+- `app/src/components/resume-v2/V2ResumeScreen.tsx` — Added `initialSessionId` prop, loads session on mount via `loadSession`, seeds resumeText/jobDescription from saved inputs.
+- `app/src/App.tsx` — `handleResumeSession` detects `product_type === 'resume_v2'` and routes to V2ResumeScreen with sessionId. Added `v2SessionId` state.
+- `docs/CURRENT_SPRINT.md` — Added Sprint P1 with all stories marked DONE.
+
+### Decisions Made
+- Reuse `tailored_sections` JSONB column (already exists) with `version: 'v2'` discriminator rather than adding a new column or migration
+- Gap coaching cards NOT persisted — coaching is a live conversational interaction, not meaningful to replay from history
+- Inputs (resume_text, job_description) saved alongside pipeline data to enable re-runs from historical sessions
+
+### Known Issues
+- Stage messages / timeline not replayed from history (stages show as instantly complete)
+- No gap coaching cards visible on loaded sessions (by design — would need re-computation)
+
+---
+
+## 2026-03-13 — Session 77
+**Sprint:** G1, G2, T1 | **Stories:** Gap Coaching UX Overhaul + Strategy Transparency + V2 Test Coverage
+**Summary:** Three sprints delivered — unified gap coaching approval flow, full strategy transparency from coaching through resume bullets, and 234 new tests for the V2 pipeline.
+
+### Changes Made
+
+**Sprint G1: Gap Coaching UX Overhaul (5 stories)**
+- `app/src/components/resume-v2/cards/GapAnalysisCard.tsx` — Made display-only; removed thumbs up/down toggles, strategyApprovals props, "strong match" message for high coverage
+- `app/src/components/resume-v2/cards/GapCoachingCard.tsx` — Enhanced as single source of truth; larger AI reasoning text, "What this means" explainer, skip tooltip, previously_approved badge
+- `app/src/components/resume-v2/cards/StrategyPlacementCard.tsx` — NEW: shows WHERE approved strategies will appear in resume before writing
+- `app/src/components/resume-v2/cards/AddContextCard.tsx` — Improved placeholder text, actionable examples, character count guidance
+- `app/src/components/resume-v2/V2ResumeScreen.tsx` — Removed strategyApprovals state, simplified handleAddContext
+- `app/src/components/resume-v2/V2StreamingDisplay.tsx` — Removed strategyApprovals props, added StrategyPlacementCard rendering
+- `server/src/agents/resume-v2/orchestrator.ts` — Always emits coaching cards on re-run, previously_approved flag
+- `server/src/agents/resume-v2/types.ts` + `app/src/types/resume-v2.ts` — Added previously_approved to GapCoachingCard
+
+**Sprint G2: Strategy Transparency & Feedback Loop (5 stories)**
+- `app/src/components/resume-v2/cards/StrategyAuditCard.tsx` — NEW: maps approved strategies to resulting resume bullets post-writing
+- `app/src/components/resume-v2/cards/WhatChangedCard.tsx` — NEW: diff summary after context re-run (fuzzy Jaccard matching)
+- `app/src/components/resume-v2/cards/NarrativeStrategyCard.tsx` — Added narrative rationale, unique differentiators, section guidance, interview talking points
+- `app/src/components/resume-v2/cards/ResumeDocumentCard.tsx` — Added strategy hover tooltips (Lightbulb icon) on bullets with addresses_requirements
+- `app/src/components/resume-v2/cards/GapCoachingCard.tsx` — Added data-coaching-requirement attribute for thread animation
+- `app/src/components/resume-v2/useStrategyThread.ts` — NEW: scroll-to-highlight utility for strategy threading
+- `app/src/index.css` — Added strategy-glow keyframe animation
+- `app/src/components/resume-v2/V2ResumeScreen.tsx` — Added previousResume state for WhatChanged tracking
+- `app/src/components/resume-v2/V2StreamingDisplay.tsx` — Integrated StrategyAuditCard, WhatChangedCard, previousResume props
+
+**Sprint T1: V2 Test Coverage (4 stories, 234 tests)**
+- `server/src/__tests__/resume-v2-assembly.test.ts` — NEW: 47 tests for deterministic Assembly agent
+- `server/src/__tests__/resume-v2-orchestrator.test.ts` — NEW: 77 tests for orchestrator flow, events, strategy approval
+- `server/src/__tests__/resume-v2-agents.test.ts` — NEW: 58 tests for all 9 LLM agents (parse, retry, error, abort)
+- `app/src/components/resume-v2/__tests__/gap-coaching-cards.test.tsx` — NEW: 52 tests for G1+G2 frontend components
+
+### Test Results
+- New V2 tests: 234 passing (182 server + 52 app)
+- Both tsc clean (app + server)
+
+### Decisions Made
+- GapAnalysisCard is now display-only — GapCoachingCardList is the single approval UI
+- Strategy thread animation uses CSS-only (no external libs) with data attributes for DOM targeting
+- WhatChangedCard uses Jaccard word-overlap for fuzzy bullet matching (threshold 0.50)
+- Assembly agent gets deepest test coverage (47 tests) since it's the most complex pure logic
+
 ## 2026-03-10 — Session 76
 **Sprint:** A1 | **Story:** A1-A5 (Agent Intelligence Enhancement)
 **Summary:** Deep audit and enrichment of all agent prompts — injected coaching philosophy, activated emotional baseline, established Why Me throughline, created rules files for 3 underserved agents, strengthened 3 analytical tool prompts.

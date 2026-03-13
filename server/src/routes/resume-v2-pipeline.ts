@@ -119,15 +119,33 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         user_context,
       });
 
-      // Persist the final assembled result so clients can retrieve it on reconnect
-      // via GET /:sessionId/result. Stored in tailored_sections (repurposed as
-      // pipeline_result for v2 sessions) since it's an existing JSONB column.
+      // Persist the full pipeline data so the V2 UI can hydrate from history.
+      // Stored in tailored_sections (JSONB) with a version marker so the GET
+      // endpoint can distinguish v2 payloads from legacy AssemblyOutput.
+      const pipelineSnapshot = {
+        version: 'v2' as const,
+        pipeline_data: {
+          jobIntelligence: result.job_intelligence ?? null,
+          candidateIntelligence: result.candidate_intelligence ?? null,
+          benchmarkCandidate: result.benchmark_candidate ?? null,
+          gapAnalysis: result.gap_analysis ?? null,
+          preScores: result.pre_scores ?? null,
+          narrativeStrategy: result.narrative_strategy ?? null,
+          resumeDraft: result.resume_draft ?? null,
+          assembly: result.final_resume ?? null,
+        },
+        inputs: {
+          resume_text,
+          job_description,
+        },
+      };
+
       await supabaseAdmin
         .from('coach_sessions')
         .update({
           pipeline_status: 'complete',
           pipeline_stage: 'complete',
-          tailored_sections: result.final_resume as unknown as Record<string, unknown>,
+          tailored_sections: pipelineSnapshot as unknown as Record<string, unknown>,
         })
         .eq('id', sessionId);
 
@@ -259,7 +277,18 @@ resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
     return c.json({ error: 'Pipeline not yet complete', status: session.pipeline_status }, 409);
   }
 
-  return c.json({ result: session.tailored_sections });
+  // Detect v2 pipeline snapshot vs legacy AssemblyOutput
+  const stored = session.tailored_sections as Record<string, unknown> | null;
+  if (stored && stored.version === 'v2') {
+    return c.json({
+      version: 'v2',
+      pipeline_data: stored.pipeline_data,
+      inputs: stored.inputs,
+    });
+  }
+
+  // Legacy fallback — just the assembly result
+  return c.json({ result: stored });
 });
 
 // ─── POST /:sessionId/edit ───────────────────────────────────────────
