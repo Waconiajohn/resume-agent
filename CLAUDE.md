@@ -83,6 +83,314 @@ When a new agent is needed:
 **Never create agent-like functionality inside a route, utility, or coordinator. Agents own their domains.**
 
 ---
+AGENT INTEGRITY MANDATE
+The architecture is already correct. The threat is implementation drift.
+When sub-agents build or modify agents, they default to procedural patterns that
+suffocate the app's AI agents. This section defines exactly what those anti-patterns
+look like, what the correct patterns look like, and what the hard rules are.
+Read this before touching any agent file.
+
+The Core Risk: What Goes Wrong in Coding Sessions
+Claude Code sub-agents, when implementing a new agent or modifying an existing one,
+will instinctively:
+
+Add numbered step sequences inside buildAgentMessage — hardcoding which tools to
+call and in what order
+Add hard throws in validateAfterAgent for every missing field — making the pipeline
+brittle and killing graceful degradation
+Bloat the coordinator with sequencing logic — moving decisions out of agents and into
+the orchestrator
+Write tool execute() functions that embed multi-step reasoning loops — duplicating
+the agent loop's job inside a single tool call
+
+Every one of these is an architecture violation. Each one is a decision that belongs
+to the LLM being stripped away and handed to a for loop.
+
+The Runtime Contract (Read This First)
+Understanding what the runtime already provides prevents re-implementing it incorrectly.
+agent-loop.ts runs the agent. It:
+
+Sends system prompt + tools + current message to the LLM
+Executes whatever tools the LLM calls, in the order the LLM decides
+Loops until the LLM returns text without tool calls (agent is done) or hits max_rounds
+Supports parallel-safe tools via parallel_safe_tools[]
+Handles per-round and overall timeouts, retries, and context compaction automatically
+
+The LLM is the sequencer. The loop gives it tools. The LLM decides the order.
+product-coordinator.ts sequences agents. It:
+
+Calls buildAgentMessage() to give the agent its initial message
+Runs runAgentLoop() — one call, one agent, fully autonomous
+Calls phase.onComplete() to transfer scratchpad → state after agent finishes
+Evaluates gates and pauses for user input
+Never makes content decisions
+
+buildAgentMessage() provides context, not commands. It answers:
+
+"What data does this agent need to do its job?"
+NOT "What tools should this agent call in what order?"
+
+system_prompt defines the agent's identity, domain, and goals. It may describe
+a typical workflow as guidance (e.g., "usually you'll want to call X before Y"), but
+the LLM is free to deviate. It is not a script.
+validateAfterAgent() is a safety net for critical pipeline dependencies only.
+It is NOT a completeness checklist for every field.
+
+Pattern Reference: CORRECT vs. INCORRECT
+buildAgentMessage — Context Provider, Not Commander
+❌ WRONG — Numbered step sequence:
+typescriptbuildAgentMessage: (agentName, state) => {
+  if (agentName === 'analyzer') {
+    return [
+      'Analyze this LinkedIn profile.',
+      '',
+      '1. Call parse_resume_inputs with the resume text',
+      '2. Call analyze_profile_strength with the parsed data',
+      '3. Call identify_gaps to find missing sections',
+      '4. Call emit_transparency after each step',
+    ].join('\n');
+  }
+}
+This hardcodes tool call sequence in application code. The agent will follow it
+mechanically. It cannot adapt, skip redundant steps, or respond intelligently to
+intermediate results.
+✅ CORRECT — Context with goal:
+typescriptbuildAgentMessage: (agentName, state) => {
+  if (agentName === 'analyzer') {
+    return [
+      'Analyze this LinkedIn profile for optimization opportunities.',
+      '',
+      '## Profile',
+      state.linkedin_profile_text,
+      '',
+      '## Target Role',
+      state.target_role ?? 'Not specified',
+      '',
+      'Identify the most impactful improvements across all sections.',
+    ].join('\n');
+  }
+}
+The agent receives the data it needs. The agent decides how to use its tools.
+✅ ALSO CORRECT — Single tool hint for a two-phase interaction:
+typescriptbuildAgentMessage: (agentName, state) => {
+  if (agentName === 'assessor_questions') {
+    return [
+      'Conduct a retirement readiness assessment for this person.',
+      '',
+      state.platform_context?.client_profile
+        ? `## Client Profile\n${JSON.stringify(state.platform_context.client_profile, null, 2)}`
+        : '## Context\nNo prior profile. Generate questions for a general executive in transition.',
+      '',
+      'Call emit_transparency to let the user know you are preparing their questions, ' +
+        'then call generate_assessment_questions to create 5-7 personalized questions.',
+    ].join('\n');
+  }
+}
+A single tool hint is acceptable when the agent's entire first-phase job is exactly
+one tool call. Do not expand this to multiple tools.
+The test: If you find yourself writing 1., 2., 3. or "First call X, then call Y,
+then call Z" — stop. Rewrite as a context block with a goal statement.
+
+validateAfterAgent — Safety Net, Not Completeness Gate
+❌ WRONG — Throws for every missing field:
+typescriptvalidateAfterAgent: (agentName, state) => {
+  if (agentName === 'analyzer') {
+    if (!state.profile_strength) throw new Error('Missing profile_strength');
+    if (!state.gap_list) throw new Error('Missing gap_list');
+    if (!state.keyword_coverage) throw new Error('Missing keyword_coverage');
+    if (!state.section_scores) throw new Error('Missing section_scores');
+  }
+}
+This makes the pipeline brittle. One graceful degradation (e.g., the agent couldn't
+determine keyword coverage on a sparse profile) becomes a fatal error.
+✅ CORRECT — Only throws for critical pipeline dependencies:
+typescriptvalidateAfterAgent: (agentName, state) => {
+  if (agentName === 'analyzer') {
+    if (!state.profile_analysis) {
+      // The writer cannot run without ANY analysis output
+      throw new Error('Analyzer did not produce profile_analysis — writer cannot proceed');
+    }
+  }
+}
+The question is: "Can the next agent still do its job if this field is missing?"
+If yes → log a warning, continue. If no → throw.
+When to use validateAfterAgent:
+
+The next agent will crash or produce nonsense without this specific field
+The field represents the entire output of the agent (not one of many outputs)
+The agent had the data it needed to produce this field (not a case of sparse input)
+
+When NOT to use validateAfterAgent:
+
+To verify every scratchpad key was written
+To enforce completeness of optional analysis outputs
+As a substitute for graceful degradation in tool execute() functions
+
+
+onComplete — Scratchpad → State Transfer
+✅ CORRECT — Transfer what's needed, guard against re-transfer:
+typescriptonComplete: (scratchpad, state) => {
+  if (scratchpad.profile_analysis && !state.profile_analysis) {
+    state.profile_analysis = scratchpad.profile_analysis as ProfileAnalysis;
+  }
+  if (Array.isArray(scratchpad.gap_list) && state.gap_list.length === 0) {
+    state.gap_list = scratchpad.gap_list as GapItem[];
+  }
+}
+Guard with !state.field or state.field.length === 0 to prevent re-runs from
+overwriting approved state.
+❌ WRONG — Writes directly to state from inside a tool execute():
+typescript// Inside a tool's execute() function:
+ctx.updateState({ profile_analysis: parsed, gap_list: gaps });
+Tools write to ctx.scratchpad. State transfer happens in onComplete.
+The only exception: tools that need state to be visible to other tools
+within the same agent round (rare; document it explicitly if done).
+
+system_prompt — Identity and Guidance, Not Script
+✅ CORRECT workflow description:
+## YOUR WORKFLOW
+
+You typically proceed like this:
+1. Call emit_transparency to let the user know you're working
+2. Call analyze_profile to assess the current state
+3. Use identify_gaps to find improvement opportunities
+4. Call present_findings when you have enough to show the user
+
+Adapt as needed based on what you find. If the profile is missing a section
+entirely, skip the gap analysis for that section and note it in your findings.
+The word "typically" and "adapt as needed" preserve agent autonomy. Numbered
+lists in system prompts are guidance, not commands, because the LLM's context
+includes the full conversation and can override them based on tool results.
+❌ WRONG in system prompt (sequential commands):
+You MUST do these steps in this exact order:
+Step 1: Call parse_resume_inputs. Do not proceed until this completes.
+Step 2: Call analyze_profile_strength with the result from Step 1.
+Step 3: ONLY THEN call identify_gaps.
+"MUST", "Do not proceed until", "ONLY THEN" — these turn a language model into
+a state machine. Remove them.
+
+Tool execute() Functions — One Job Per Tool
+✅ CORRECT — Tool does one thing, returns structured result:
+typescriptasync execute(input, ctx) {
+  const response = await llm.chat({ model: MODEL_MID, ... });
+  const parsed = JSON.parse(repairJSON(response.text) ?? response.text);
+  ctx.scratchpad.gap_analysis = parsed;
+  return { gaps_found: parsed.gaps.length, signal: parsed.overall_signal };
+}
+❌ WRONG — Tool embeds a reasoning loop:
+typescriptasync execute(input, ctx) {
+  // Step 1: Parse
+  const parseResponse = await llm.chat({ model: MODEL_LIGHT, ... });
+  const parsed = JSON.parse(parseResponse.text);
+
+  // Step 2: Analyze
+  const analysisResponse = await llm.chat({ model: MODEL_MID, ... });
+  const analysis = JSON.parse(analysisResponse.text);
+
+  // Step 3: Synthesize
+  const synthResponse = await llm.chat({ model: MODEL_PRIMARY, ... });
+  return JSON.parse(synthResponse.text);
+}
+Three LLM calls chained in a single tool execute() is three agents compressed
+into one tool. Split into three tools. Let the agent loop sequence them.
+The only valid multi-LLM-call pattern in a tool execute() is when the second
+call depends on the first call's raw output in a way that cannot be broken out
+(e.g., a parse-then-validate pattern on untrusted input). Even then, it should
+be two tools unless the calls are tightly coupled.
+
+Gates — Belong in ProductConfig, Not Elsewhere
+✅ CORRECT — Gate defined in ProductConfig agents[]:
+typescriptagents: [
+  {
+    name: 'writer',
+    config: writerConfig,
+    gates: [
+      {
+        name: 'sequence_review',
+        condition: (state) => state.outreach_sequence !== undefined,
+        onResponse: (response, state) => {
+          // Process user feedback
+        },
+        requiresRerun: (state) => state.revision_feedback !== undefined,
+      },
+    ],
+  },
+]
+❌ WRONG — Gate logic leaking into system prompt:
+## GATE PROTOCOL
+When you finish writing, you MUST call present_to_user and then wait.
+Do not call any other tools after present_to_user. The pipeline will pause
+and resume when the user responds.
+The agent does not need to know about gates. It calls present_to_user
+(which calls waitForUser internally). The coordinator handles the rest.
+The only valid gate reference in a system prompt is a brief factual note
+about the interaction model (see the retirement assessor example — it describes
+what happens at the gate, not how to manage it).
+
+Hard Rules — Non-Negotiable
+These rules have no exceptions. Any code that violates them must be refactored.
+Rule 1: buildAgentMessage provides context, not procedure.
+No numbered tool sequences. No "First call X, then call Y." The message answers
+"what data does this agent need?" — not "what should this agent do step by step?"
+Rule 2: validateAfterAgent throws only for critical pipeline dependencies.
+If removing a throw wouldn't cause the next agent to fail completely, the throw
+does not belong. Warn instead:
+typescriptif (!state.secondary_output) {
+  logger.warn({ agentName }, 'Secondary output missing — downstream agent will have reduced context');
+}
+Rule 3: Tools write to ctx.scratchpad. State transfer happens in onComplete.
+No ctx.updateState() calls from inside tool execute() unless explicitly necessary
+and documented. The exception: interactive tools that gate on state values visible
+to other tools in the same round.
+Rule 4: A tool execute() makes at most one LLM call.
+If a feature requires multiple sequential LLM calls, that is multiple tools.
+The agent loop sequences them. Not a single tool's execute().
+Rule 5: Gates are declared in ProductConfig.agents[].gates. Nowhere else.
+No gate management in system prompts. No waitForUser calls outside of tool
+execute() functions. No gate conditions in coordinator logic added outside
+the standard GateDef structure.
+Rule 6: The coordinator sequences agents. Agents do not sequence each other.
+No agent should call runAgentLoop on another agent. No agent should know about
+the pipeline order. Inter-agent communication happens through the AgentBus
+(ctx.sendMessage()) or through shared state read in buildAgentMessage.
+
+Applying the Guardian: Pre-Implementation Checklist
+Before writing any agent file (agent.ts, tools.ts, product.ts), answer each:
+AGENT INTEGRITY CHECK:
+□ buildAgentMessage: Does it contain numbered steps or tool call sequences? → REMOVE
+□ buildAgentMessage: Does it provide the data the agent needs to decide? → GOOD
+□ validateAfterAgent: Does it throw for anything other than "next agent cannot run"? → REMOVE
+□ validateAfterAgent: Does each throw represent a true pipeline dependency? → GOOD
+□ Tool execute(): Does any tool make 2+ sequential LLM calls? → SPLIT INTO MULTIPLE TOOLS
+□ Tool execute(): Does any tool call ctx.updateState()? → MOVE TO onComplete unless documented
+□ system_prompt: Does it use "MUST", "Step N:", "ONLY THEN"? → REPLACE WITH "typically"
+□ Gates: Are any gates defined outside ProductConfig.agents[].gates? → MOVE THEM
+□ Agent count: Am I adding logic to the coordinator that an agent should own? → CREATE AN AGENT
+
+Known Existing Violations (Tolerated, Not to Be Replicated)
+The following patterns exist in the current codebase and are tolerated as legacy.
+They MUST NOT be replicated in new agents or when refactoring existing ones.
+
+| Location | Violation | Status |
+|----------|-----------|--------|
+| linkedin-optimizer/product.ts buildAgentMessage | Numbered tool sequences in analyzer/writer messages | Tolerated — refactor in backlog |
+| personal-brand/product.ts buildAgentMessage | Dynamic toolOrder array injected as instructions | Tolerated — refactor in backlog |
+| networking-outreach/product.ts buildAgentMessage | Numbered sequences in researcher/writer messages | Tolerated — refactor in backlog |
+| retirement-bridge/product.ts buildAgentMessage (assessor_evaluation) | "Call evaluate_readiness... then call build_readiness_summary" | Tolerated — minimal (2 tools, natural sequence) |
+| Multiple validateAfterAgent blocks | Throws for fields that don't gate the next agent | Tolerated — audit in backlog |
+The standard for new work is the retirement assessor (assessor_questions phase). It provides
+rich context, a single tool hint for a gate-adjacent workflow, emotional tone guidance, and
+injection-safe data framing. It does not enumerate a tool sequence beyond the gated phase.
+
+The Self-Test
+After writing any agent implementation, read the agent's buildAgentMessage output aloud
+as if you are instructing a human researcher. Ask:
+
+"Am I telling them what to figure out, or what steps to take?"
+
+If the answer is "what steps to take" — rewrite it as "what to figure out."
+The agent is the reasoning layer. The runtime is the execution layer. The coordinator is the
+sequencing layer. Keep them separate.
 
 ## 🚫 LEGACY REPO RULE — NON-NEGOTIABLE
 
