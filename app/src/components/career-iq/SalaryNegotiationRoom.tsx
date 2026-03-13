@@ -733,12 +733,36 @@ interface CounterOfferConfig {
 
 // --- Main component ---
 
-export function SalaryNegotiationRoom() {
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+interface SalaryNegotiationRoomProps {
+  /** Company name pre-filled from a pipeline Offer card (SN1-2). */
+  prefillCompany?: string;
+  /** Role pre-filled from a pipeline Offer card (SN1-2). */
+  prefillRole?: string;
+  /** Called once after the prefill values have been applied to the form. */
+  onPrefillConsumed?: () => void;
+}
+
+export function SalaryNegotiationRoom({ prefillCompany, prefillRole, onPrefillConsumed }: SalaryNegotiationRoomProps = {}) {
+  const [form, setForm] = useState<FormState>(() => ({
+    ...DEFAULT_FORM,
+    offerCompany: prefillCompany ?? '',
+    offerRole: prefillRole ?? '',
+  }));
   const [resumeText, setResumeText] = useState('');
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [counterOfferConfig, setCounterOfferConfig] = useState<CounterOfferConfig | null>(null);
+
+  // SN1-2: Notify parent that prefill data was consumed so it can clear its state.
+  // The form was already initialized with the prefill values in the useState initializer
+  // above, so this effect only needs to fire the callback once on mount.
+  const prefillConsumedRef = useRef(false);
+  useEffect(() => {
+    if (!prefillConsumedRef.current && (prefillCompany != null || prefillRole != null)) {
+      prefillConsumedRef.current = true;
+      onPrefillConsumed?.();
+    }
+  }, [prefillCompany, prefillRole, onPrefillConsumed]);
 
   const {
     status,

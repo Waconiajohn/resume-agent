@@ -5,8 +5,10 @@ import { SessionCoverLetterModal } from '../components/dashboard/SessionCoverLet
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock('../lib/export', () => ({
-  downloadAsText: vi.fn(),
+vi.mock('../lib/export-cover-letter', () => ({
+  downloadCoverLetterAsText: vi.fn(),
+  exportCoverLetterPdf: vi.fn(),
+  exportCoverLetterDocx: vi.fn(),
 }));
 
 const SESSION_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
@@ -86,7 +88,7 @@ describe('SessionCoverLetterModal', () => {
       expect(screen.getByText(/dear hiring manager/i)).toBeTruthy();
     });
     expect(screen.getByText('Copy')).toBeTruthy();
-    expect(screen.getByText('Download TXT')).toBeTruthy();
+    expect(screen.getByText('TXT')).toBeTruthy();
   });
 
   it('does not render Copy and Download buttons in loading state', () => {
@@ -95,7 +97,7 @@ describe('SessionCoverLetterModal', () => {
     });
     render(<SessionCoverLetterModal {...props} />);
     expect(screen.queryByText('Copy')).toBeNull();
-    expect(screen.queryByText('Download TXT')).toBeNull();
+    expect(screen.queryByText('TXT')).toBeNull();
   });
 
   it('calls onClose when the X button is clicked', async () => {
@@ -122,18 +124,15 @@ describe('SessionCoverLetterModal', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('calls downloadAsText with correct filename on Download click', async () => {
-    const { downloadAsText } = await import('../lib/export');
+  it('calls downloadCoverLetterAsText with letter text on TXT click', async () => {
+    const { downloadCoverLetterAsText } = await import('../lib/export-cover-letter');
     const props = makeProps();
     render(<SessionCoverLetterModal {...props} />);
     await waitFor(() => {
       expect(screen.getByText(/dear hiring manager/i)).toBeTruthy();
     });
-    fireEvent.click(screen.getByText('Download TXT'));
-    expect(downloadAsText).toHaveBeenCalledWith(
-      LETTER_TEXT,
-      expect.stringContaining('cover-letter-'),
-    );
+    fireEvent.click(screen.getByText('TXT'));
+    expect(downloadCoverLetterAsText).toHaveBeenCalledWith(LETTER_TEXT);
   });
 
   it('renders the modal title', () => {

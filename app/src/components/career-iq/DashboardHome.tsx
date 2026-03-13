@@ -47,6 +47,10 @@ interface DashboardHomeProps {
   coachRecommendation?: CoachRecommendation | null;
   coachLoading?: boolean;
   mockPipelineCards?: PipelineCard[];
+  /** Called when user clicks "Prepare for this interview?" on an Interviewing pipeline card. */
+  onInterviewPrepClick?: (card: PipelineCard) => void;
+  /** Called when user clicks "Prepare your negotiation?" on an Offer pipeline card. */
+  onNegotiationPrepClick?: (card: PipelineCard) => void;
 }
 
 const NUDGE_DISMISS_KEY = 'careeriq_nudge_dismissed';
@@ -63,7 +67,7 @@ function saveDismissed(dismissed: Record<string, boolean>) {
   try { localStorage.setItem(NUDGE_DISMISS_KEY, JSON.stringify(dismissed)); } catch { /* ignore */ }
 }
 
-export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge, onOpenCoach, coachRecommendation, coachLoading = false, mockPipelineCards }: DashboardHomeProps) {
+export function DashboardHome({ userName, signals, dashboardState, onNavigateRoom, onRefineWhyMe, hasResumeSessions, sessionCount, recentSessions, coverLetterSessions, momentum, momentumLoading = false, nudges = [], onDismissNudge, onOpenCoach, coachRecommendation, coachLoading = false, mockPipelineCards, onInterviewPrepClick, onNegotiationPrepClick }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | undefined>(undefined);
   const [pipelineStatsError, setPipelineStatsError] = useState<string | null>(null);
@@ -237,7 +241,12 @@ export function DashboardHome({ userName, signals, dashboardState, onNavigateRoo
 
       {/* Zone 2 + 3: Pipeline (60%) + Agent Feed (40%) */}
       <div className="flex gap-6 flex-col lg:flex-row">
-        <ZoneYourPipeline onNavigateRoom={onNavigateRoom} mockCards={mockPipelineCards} />
+        <ZoneYourPipeline
+          onNavigateRoom={onNavigateRoom}
+          mockCards={mockPipelineCards}
+          onInterviewPrepClick={onInterviewPrepClick}
+          onNegotiationPrepClick={onNegotiationPrepClick}
+        />
         <ZoneAgentFeed onNavigateRoom={onNavigateRoom} realEvents={feedEvents} />
       </div>
 

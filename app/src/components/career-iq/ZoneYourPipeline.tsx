@@ -79,6 +79,10 @@ interface ZoneYourPipelineProps {
   onNavigateRoom?: (room: CareerIQRoom) => void;
   /** When provided, skip Supabase fetch and render these cards (demo mode). */
   mockCards?: PipelineCard[];
+  /** Called when user clicks "Prepare for this interview?" on an Interviewing card. */
+  onInterviewPrepClick?: (card: PipelineCard) => void;
+  /** Called when user clicks "Prepare your negotiation?" on an Offer card. */
+  onNegotiationPrepClick?: (card: PipelineCard) => void;
 }
 
 function CompanyInitials({ company }: { company: string }) {
@@ -99,12 +103,18 @@ function PipelineCardItem({
   card,
   onDragStart,
   onArchive,
+  onInterviewPrepClick,
+  onNegotiationPrepClick,
 }: {
   card: PipelineCard;
   onDragStart: (e: React.DragEvent, cardId: string) => void;
   onArchive: (cardId: string) => void;
+  onInterviewPrepClick?: (card: PipelineCard) => void;
+  onNegotiationPrepClick?: (card: PipelineCard) => void;
 }) {
   const isStale = card.daysSinceMovement >= 7;
+  const showInterviewCta = card.stage === 'Interviewing' && !!onInterviewPrepClick;
+  const showNegotiationCta = card.stage === 'Offer' && !!onNegotiationPrepClick;
 
   return (
     <div
@@ -171,11 +181,41 @@ function PipelineCardItem({
           </span>
         )}
       </div>
+
+      {/* Contextual CTA — shown only when callback is wired and stage matches */}
+      {showInterviewCta && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onInterviewPrepClick?.(card); }}
+          className={cn(
+            'mt-2.5 w-full rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.04]',
+            'px-2.5 py-1.5 text-[10px] font-medium text-[#f0d99f]/70',
+            'hover:border-[#f0d99f]/35 hover:bg-[#f0d99f]/[0.08] hover:text-[#f0d99f] transition-colors',
+            'cursor-pointer',
+          )}
+        >
+          Prepare for this interview?
+        </button>
+      )}
+      {showNegotiationCta && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onNegotiationPrepClick?.(card); }}
+          className={cn(
+            'mt-2.5 w-full rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04]',
+            'px-2.5 py-1.5 text-[10px] font-medium text-[#b5dec2]/70',
+            'hover:border-[#b5dec2]/35 hover:bg-[#b5dec2]/[0.08] hover:text-[#b5dec2] transition-colors',
+            'cursor-pointer',
+          )}
+        >
+          Prepare your negotiation?
+        </button>
+      )}
     </div>
   );
 }
 
-export function ZoneYourPipeline({ onNavigateRoom, mockCards }: ZoneYourPipelineProps) {
+export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepClick, onNegotiationPrepClick }: ZoneYourPipelineProps) {
   const [cards, setCards] = useState<PipelineCard[]>([]);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -360,6 +400,8 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards }: ZoneYourPipeline
                       card={card}
                       onDragStart={handleDragStart}
                       onArchive={handleArchive}
+                      onInterviewPrepClick={onInterviewPrepClick}
+                      onNegotiationPrepClick={onNegotiationPrepClick}
                     />
                   ))}
                   {stageCards.length === 0 && (

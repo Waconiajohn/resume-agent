@@ -502,3 +502,141 @@ networkingContacts.get(
     }
   },
 );
+
+// ─── GET /overdue — Contacts past their follow-up date ───────────────────────
+
+networkingContacts.get(
+  '/overdue',
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const now = new Date().toISOString();
+
+    try {
+      const { data: contacts, error } = await supabaseAdmin
+        .from('networking_contacts')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('next_followup_at', 'is', null)
+        .lt('next_followup_at', now)
+        .order('next_followup_at', { ascending: true });
+
+      if (error) {
+        logger.error({ error: error.message, userId: user.id }, 'GET /overdue: query failed');
+        return c.json({ error: 'Failed to fetch overdue contacts' }, 500);
+      }
+
+      return c.json({ contacts: contacts ?? [], count: contacts?.length ?? 0 });
+    } catch (err) {
+      logger.error(
+        { error: err instanceof Error ? err.message : String(err), userId: user.id },
+        'GET /overdue: unexpected error',
+      );
+      return c.json({ error: 'Internal server error' }, 500);
+    }
+  },
+);
+
+// ─── POST /ni-import — Import contacts from Network Intelligence ──────────────
+// Fetches the user's client_connections from NI and creates/updates
+// networking_contacts with source deduplication on email or linkedin_url.
+
+networkingContacts.post(
+  '/ni-import',
+  rateLimitMiddleware(5, 60_000),
+  async (c) => {
+    const user = c.get('user');
+
+    try {
+      // Fetch all NI connections for this user
+      const { data: niConnections, error: niError } = await supabaseAdmin
+        .from('client_connections')
+        .select('id, first_name, last_name, email, company_raw, position')
+        .eq('user_id', user.id)
+        .limit(500);
+
+      if (niError) {
+        logger.error({ error: niError.message, userId: user.id }, 'POST /ni-import: NI query failed');
+        return c.json({ error: 'Failed to fetch Network Intelligence connections' }, 500);
+      }
+
+      if (!niConnections || niConnections.length === 0) {
+        return c.json({ imported: 0, skipped: 0, message: 'No Network Intelligence connections found.' });
+      }
+
+      // Fetch existing contacts for deduplication (email + ni_connection_id)
+      const { data: existingContacts, error: existingError } = await supabaseAdmin
+        .from('networking_contacts')
+        .select('id, email, ni_connection_id')
+        .eq('user_id', user.id);
+
+      if (existingError) {
+        logger.error({ error: existingError.message, userId: user.id }, 'POST /ni-import: existing contacts query failed');
+        return c.json({ error: 'Failed to check existing contacts' }, 500);
+      }
+
+      const existingEmails = new Set(
+        (existingContacts ?? []).map((c) => c.email?.toLowerCase()).filter(Boolean),
+      );
+      const existingNiIds = new Set(
+        (existingContacts ?? []).map((c) => c.ni_connection_id).filter(Boolean),
+      );
+
+      const toInsert: Array<Record<string, unknown>> = [];
+
+      for (const conn of niConnections) {
+        // Skip if already imported by NI ID
+        if (existingNiIds.has(conn.id)) continue;
+
+        // Skip if email already exists in contacts
+        if (conn.email && existingEmails.has(conn.email.toLowerCase())) continue;
+
+        toInsert.push({
+          user_id: user.id,
+          name: `${conn.first_name} ${conn.last_name}`.trim(),
+          title: conn.position ?? null,
+          company: conn.company_raw ?? null,
+          email: conn.email ?? null,
+          relationship_type: 'other',
+          relationship_strength: 1,
+          tags: [],
+          ni_connection_id: conn.id,
+        });
+      }
+
+      if (toInsert.length === 0) {
+        return c.json({
+          imported: 0,
+          skipped: niConnections.length,
+          message: 'All connections are already in your CRM.',
+        });
+      }
+
+      const { error: insertError } = await supabaseAdmin
+        .from('networking_contacts')
+        .insert(toInsert);
+
+      if (insertError) {
+        logger.error({ error: insertError.message, userId: user.id }, 'POST /ni-import: bulk insert failed');
+        return c.json({ error: 'Failed to import contacts' }, 500);
+      }
+
+      logger.info(
+        { imported: toInsert.length, skipped: niConnections.length - toInsert.length, userId: user.id },
+        'POST /ni-import: import complete',
+      );
+
+      return c.json({
+        imported: toInsert.length,
+        skipped: niConnections.length - toInsert.length,
+        message: `Imported ${toInsert.length} new contact${toInsert.length !== 1 ? 's' : ''} from Network Intelligence.`,
+      });
+    } catch (err) {
+      logger.error(
+        { error: err instanceof Error ? err.message : String(err), userId: user.id },
+        'POST /ni-import: unexpected error',
+      );
+      return c.json({ error: 'Internal server error' }, 500);
+    }
+  },
+);

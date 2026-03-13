@@ -239,6 +239,18 @@ export const FF_LINKEDIN_CONTENT = envBool('FF_LINKEDIN_CONTENT', false);
 export const FF_LINKEDIN_EDITOR = envBool('FF_LINKEDIN_EDITOR', false);
 
 /**
+ * FF_LINKEDIN_TOOLS — Enable the LinkedIn Studio utility tool endpoints.
+ *
+ * Provides stateless POST endpoints:
+ *   /api/linkedin-tools/recruiter-sim    — Recruiter search simulator
+ *   /api/linkedin-tools/writing-analyzer — Writing quality analyzer
+ *
+ * When false (default), /api/linkedin-tools/* returns 404.
+ * Set FF_LINKEDIN_TOOLS=true in server/.env to activate.
+ */
+export const FF_LINKEDIN_TOOLS = envBool('FF_LINKEDIN_TOOLS', false);
+
+/**
  * FF_NETWORKING_CRM — Enable the Networking CRM CRUD routes.
  *
  * When false (default), /api/networking/* returns 404.

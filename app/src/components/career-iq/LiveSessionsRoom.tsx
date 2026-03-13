@@ -18,12 +18,12 @@ import {
   BookOpen,
   Search,
   Headphones,
-  CheckCircle,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
-import { API_BASE } from '@/lib/api';
+import React, { useState, useMemo } from 'react';
+import { AskCoachForm } from './AskCoachForm';
+import { RESOURCE_LIBRARY, RESOURCE_CATEGORIES, type Resource } from '@/data/resource-library';
 
 // --- Mock data ---
 
@@ -398,99 +398,41 @@ function OfficeHours() {
 
 // --- Resource Library ---
 
-interface Resource {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  readTime: string;
-  icon: typeof BookOpen;
+/**
+ * Maps icon_name strings from the resource-library data file to lucide-react
+ * components. Falls back to BookOpen for any unrecognized name.
+ */
+function ResourceIcon({ name, size }: { name: string; size: number }) {
+  const iconMap: Record<string, LucideIcon> = {
+    FileText,
+    Star,
+    Lightbulb,
+    BookOpen,
+    Headphones,
+    Search,
+    ArrowRight,
+    MessageSquare,
+  };
+  const Icon = iconMap[name] ?? BookOpen;
+  return <Icon size={size} className="text-white/40 group-hover:text-white/60" />;
 }
-
-const RESOURCES: Resource[] = [
-  {
-    id: 'r1',
-    title: 'The 1% Problem: Why Your Resume Misrepresents You',
-    description: 'Most executives\' resumes capture only 1% of their professional experience. Learn how to identify the hidden 99% through structured self-reflection.',
-    category: 'Resume Strategy',
-    readTime: '5 min',
-    icon: FileText,
-  },
-  {
-    id: 'r2',
-    title: 'Building Your Benchmark Candidate Profile',
-    description: 'For every role you target, there\'s an ideal candidate profile. Learn how to reverse-engineer it and position yourself as that benchmark — the standard everyone else is measured against.',
-    category: 'Positioning',
-    readTime: '7 min',
-    icon: Star,
-  },
-  {
-    id: 'r3',
-    title: 'The Five Emotional Phases of Career Transition',
-    description: 'From shock to acceptance: understanding the emotional arc of job loss and career change. Practical strategies for each phase based on 19 years of executive coaching.',
-    category: 'Emotional Intelligence',
-    readTime: '6 min',
-    icon: Headphones,
-  },
-  {
-    id: 'r4',
-    title: 'Hidden Job Boards: Where 80% Don\'t Look',
-    description: 'Google Job Board aggregates every job site, LinkedIn hidden postings get 1/100th the applicants, and Facebook Groups connect you to local hiring managers. Here\'s how to use them.',
-    category: 'Job Search',
-    readTime: '4 min',
-    icon: Search,
-  },
-  {
-    id: 'r5',
-    title: 'The Multi-Channel Application Protocol',
-    description: 'Apply where found, apply on the company site, find the hiring manager on LinkedIn, connect with a personalized message. Four steps that quadruple your response rate.',
-    category: 'Job Search',
-    readTime: '5 min',
-    icon: ArrowRight,
-  },
-  {
-    id: 'r6',
-    title: 'Age as an Asset: Positioning Experience Correctly',
-    description: 'Traditional advice says hide your age. Better advice: position your 20+ years as exactly what makes you the benchmark candidate. Here\'s how to make experience work for you.',
-    category: 'Positioning',
-    readTime: '6 min',
-    icon: Lightbulb,
-  },
-  {
-    id: 'r7',
-    title: 'Salary Negotiation: Never Give a Number First',
-    description: 'Anchor around value delivery, not salary history. Total compensation matters more than base. Practice the uncomfortable silence. Three techniques that change the conversation.',
-    category: 'Negotiation',
-    readTime: '5 min',
-    icon: MessageSquare,
-  },
-  {
-    id: 'r8',
-    title: 'Your LinkedIn Headline Is Your Most Valuable Real Estate',
-    description: 'It appears in search results, connection requests, and every comment you leave. Replace your job title with your Why-Me statement — and watch engagement change.',
-    category: 'LinkedIn',
-    readTime: '4 min',
-    icon: BookOpen,
-  },
-];
-
-const RESOURCE_CATEGORIES = Array.from(new Set(RESOURCES.map(r => r.category)));
 
 function ResourceLibrary() {
   const [filter, setFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    let result = RESOURCES;
+  const filtered = useMemo<Resource[]>(() => {
+    let result = RESOURCE_LIBRARY;
     if (selectedCategory) {
-      result = result.filter(r => r.category === selectedCategory);
+      result = result.filter((r) => r.category === selectedCategory);
     }
     if (filter.trim()) {
       const q = filter.toLowerCase();
-      result = result.filter(r =>
-        r.title.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q),
+      result = result.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.description.toLowerCase().includes(q) ||
+          r.category.toLowerCase().includes(q),
       );
     }
     return result;
@@ -501,10 +443,10 @@ function ResourceLibrary() {
       <div className="flex items-center gap-2 mb-4">
         <BookOpen size={16} className="text-[#98b3ff]" />
         <h3 className="text-[14px] font-semibold text-white/80">Resource Library</h3>
-        <span className="text-[11px] text-white/30 ml-auto">{RESOURCES.length} articles</span>
+        <span className="text-[11px] text-white/30 ml-auto">{RESOURCE_LIBRARY.length} resources</span>
       </div>
 
-      {/* Search + filter */}
+      {/* Search */}
       <div className="flex gap-2 mb-4">
         <div className="flex-1 relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
@@ -556,194 +498,34 @@ function ResourceLibrary() {
             No resources match your search.
           </div>
         )}
-        {filtered.map((resource) => {
-          const Icon = resource.icon;
-          return (
-            <div
-              key={resource.id}
-              className="group flex items-start gap-3 rounded-xl px-3 py-3 hover:bg-white/[0.03] transition-colors cursor-pointer"
-            >
-              <div className="rounded-lg bg-white/[0.05] p-2 flex-shrink-0 group-hover:bg-white/[0.08] transition-colors">
-                <Icon size={14} className="text-white/40 group-hover:text-white/60" />
+        {filtered.map((resource) => (
+          <div
+            key={resource.id}
+            className="group flex items-start gap-3 rounded-xl px-3 py-3 hover:bg-white/[0.03] transition-colors cursor-pointer"
+          >
+            <div className="rounded-lg bg-white/[0.05] p-2 flex-shrink-0 group-hover:bg-white/[0.08] transition-colors">
+              <ResourceIcon name={resource.icon_name} size={14} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-medium text-white/70 group-hover:text-white/85 transition-colors">
+                {resource.title}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-white/70 group-hover:text-white/85 transition-colors">
-                  {resource.title}
-                </div>
-                <div className="text-[11px] text-white/35 mt-1 leading-relaxed line-clamp-2">
-                  {resource.description}
-                </div>
-                <div className="flex items-center gap-2 mt-1.5 text-[10px] text-white/25">
-                  <span className="rounded-full border border-white/[0.08] px-2 py-0.5">{resource.category}</span>
-                  <span><Clock size={9} className="inline mr-0.5" />{resource.readTime}</span>
-                </div>
+              <div className="text-[11px] text-white/35 mt-1 leading-relaxed line-clamp-2">
+                {resource.description}
+              </div>
+              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-white/25">
+                <span className="rounded-full border border-white/[0.08] px-2 py-0.5">
+                  {resource.category}
+                </span>
+                <span className="capitalize">{resource.content_type}</span>
+                <span>
+                  <Clock size={9} className="inline mr-0.5" />
+                  {resource.read_time}
+                </span>
               </div>
             </div>
-          );
-        })}
-      </div>
-    </GlassCard>
-  );
-}
-
-// --- Ask a Coach ---
-
-const COACH_TOPICS = [
-  { value: 'resume_help', label: 'Resume Strategy' },
-  { value: 'interview_prep', label: 'Interview Preparation' },
-  { value: 'salary_negotiation', label: 'Salary Negotiation' },
-  { value: 'career_direction', label: 'Career Direction' },
-  { value: 'emotional_support', label: 'Emotional Support' },
-  { value: 'other', label: 'Other' },
-] as const;
-
-function AskACoach() {
-  const [topic, setTopic] = useState('');
-  const [description, setDescription] = useState('');
-  const [urgency, setUrgency] = useState<'low' | 'normal' | 'high'>('normal');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async () => {
-    if (!topic || !description.trim()) return;
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        setError('Not authenticated');
-        setSubmitting(false);
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/momentum/coaching-requests`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ topic, description: description.trim(), urgency }),
-      });
-
-      if (!res.ok) {
-        setError('Failed to submit request. Please try again.');
-        setSubmitting(false);
-        return;
-      }
-
-      setSubmitted(true);
-      setSubmitting(false);
-    } catch {
-      setError('Something went wrong. Please try again.');
-      setSubmitting(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <GlassCard className="p-5">
-        <div className="flex flex-col items-center gap-3 py-4">
-          <div className="rounded-full bg-[#b5dec2]/10 p-3">
-            <CheckCircle size={24} className="text-[#b5dec2]" />
           </div>
-          <div className="text-center">
-            <div className="text-[14px] font-medium text-white/80">Request Submitted</div>
-            <div className="text-[12px] text-white/40 mt-1">
-              A career coach will review your request and respond within 1-2 business days.
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => { setSubmitted(false); setTopic(''); setDescription(''); setUrgency('normal'); }}
-            className="text-[12px] text-[#98b3ff] hover:text-[#98b3ff]/80 transition-colors mt-2"
-          >
-            Submit another request
-          </button>
-        </div>
-      </GlassCard>
-    );
-  }
-
-  return (
-    <GlassCard className="p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <HelpCircle size={16} className="text-[#f0d99f]" />
-        <h3 className="text-[14px] font-semibold text-white/80">Ask a Coach</h3>
-      </div>
-      <p className="text-[12px] text-white/40 mb-4">
-        Need personalized guidance? Submit a question and a career coach will respond within 1-2 business days.
-      </p>
-
-      <div className="space-y-3">
-        {/* Topic selector */}
-        <div>
-          <label className="text-[11px] text-white/35 uppercase tracking-wide mb-1.5 block">Topic</label>
-          <select
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 appearance-none"
-          >
-            <option value="" className="bg-[#1a1a2e]">Select a topic...</option>
-            {COACH_TOPICS.map((t) => (
-              <option key={t.value} value={t.value} className="bg-[#1a1a2e]">{t.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="text-[11px] text-white/35 uppercase tracking-wide mb-1.5 block">Your Question</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe what you need help with..."
-            rows={3}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/70 placeholder:text-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/40 focus:border-[#98b3ff]/30 resize-none"
-          />
-        </div>
-
-        {/* Urgency */}
-        <div>
-          <label className="text-[11px] text-white/35 uppercase tracking-wide mb-1.5 block">Urgency</label>
-          <div className="flex gap-2">
-            {(['low', 'normal', 'high'] as const).map((u) => (
-              <button
-                key={u}
-                type="button"
-                onClick={() => setUrgency(u)}
-                className={cn(
-                  'flex-1 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-colors border',
-                  urgency === u
-                    ? u === 'high'
-                      ? 'bg-red-400/10 text-red-300 border-red-400/20'
-                      : u === 'low'
-                        ? 'bg-[#b5dec2]/10 text-[#b5dec2] border-[#b5dec2]/20'
-                        : 'bg-[#98b3ff]/10 text-[#98b3ff] border-[#98b3ff]/20'
-                    : 'bg-white/[0.03] text-white/40 border-white/[0.06] hover:text-white/60',
-                )}
-              >
-                {u.charAt(0).toUpperCase() + u.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {error && (
-          <div className="text-[12px] text-red-400/80 bg-red-400/[0.06] border border-red-400/15 rounded-lg px-3 py-2">
-            {error}
-          </div>
-        )}
-
-        {/* Submit */}
-        <GlassButton
-          onClick={handleSubmit}
-          disabled={!topic || !description.trim() || submitting}
-          className="w-full text-[13px]"
-        >
-          {submitting ? 'Submitting...' : 'Submit Request'}
-        </GlassButton>
+        ))}
       </div>
     </GlassCard>
   );
@@ -784,7 +566,7 @@ export function LiveSessionsRoom() {
           <ResourceLibrary />
         </div>
         <div className="flex-[2] min-w-0">
-          <AskACoach />
+          <AskCoachForm />
         </div>
       </div>
     </div>

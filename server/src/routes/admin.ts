@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { createPromoCode, listPromoCodes } from '../lib/stripe-promos.js';
 import { resetSessionRouteStateForTests } from './sessions.js';
+import { getPipelineMetrics } from '../lib/pipeline-metrics.js';
 import logger from '../lib/logger.js';
 
 /**
@@ -235,6 +236,122 @@ admin.post('/reset-rate-limits', (c) => {
   resetSessionRouteStateForTests();
   logger.info('Admin reset SSE rate-limit state');
   return c.json({ status: 'reset' });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/stats
+// Pipeline success/failure rates, average duration, average cost, and active sessions.
+// ---------------------------------------------------------------------------
+admin.get('/stats', async (c) => {
+  const metrics = getPipelineMetrics();
+
+  // Count active (non-terminal) pipeline sessions from DB
+  const { count: activeSessions, error: sessionError } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['pending', 'active', 'processing']);
+
+  if (sessionError) {
+    logger.warn({ err: sessionError }, 'admin/stats: could not fetch active session count');
+  }
+
+  const total = metrics.completions_total + metrics.errors_total;
+  const successRate = total > 0
+    ? Math.round((metrics.completions_total / total) * 10000) / 100
+    : null;
+
+  return c.json({
+    pipeline: {
+      completions_total: metrics.completions_total,
+      errors_total: metrics.errors_total,
+      success_rate_pct: successRate,
+      avg_duration_ms: metrics.avg_duration_ms,
+      avg_cost_usd: metrics.completions_total > 0
+        ? Math.round((metrics.llm_cost_estimate_total_usd / metrics.completions_total) * 10000) / 10000
+        : 0,
+      total_cost_usd: metrics.llm_cost_estimate_total_usd,
+      completions_by_domain: metrics.completions_by_domain,
+      errors_by_domain: metrics.errors_by_domain,
+    },
+    active_users_24h: metrics.active_users_24h,
+    active_sessions: activeSessions ?? 0,
+    generated_at: new Date().toISOString(),
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/errors?limit=50&offset=0
+// Recent pipeline errors with session_id, stage, error message, and timestamp.
+// ---------------------------------------------------------------------------
+admin.get('/errors', async (c) => {
+  const limitParam = Number.parseInt(c.req.query('limit') ?? '50', 10);
+  const offsetParam = Number.parseInt(c.req.query('offset') ?? '0', 10);
+  const limit = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 200 ? limitParam : 50;
+  const offset = Number.isFinite(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+
+  const { data, error, count } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id, status, product_type, error_message, updated_at', { count: 'exact' })
+    .eq('status', 'error')
+    .order('updated_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    logger.error({ err: error }, 'admin/errors: DB query failed');
+    return c.json({ error: 'Failed to fetch error sessions' }, 500);
+  }
+
+  return c.json({
+    errors: (data ?? []).map(row => ({
+      session_id: row.id,
+      user_id: row.user_id,
+      product_type: row.product_type,
+      error_message: row.error_message ?? null,
+      timestamp: row.updated_at,
+    })),
+    total: count ?? 0,
+    limit,
+    offset,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/sessions?limit=50&offset=0&status=all
+// List all sessions (not scoped to a user). Supports optional status filter.
+// ---------------------------------------------------------------------------
+admin.get('/sessions', async (c) => {
+  const limitParam = Number.parseInt(c.req.query('limit') ?? '50', 10);
+  const offsetParam = Number.parseInt(c.req.query('offset') ?? '0', 10);
+  const statusFilter = c.req.query('status');
+
+  const limit = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 200 ? limitParam : 50;
+  const offset = Number.isFinite(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+
+  let query = supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id, status, product_type, error_message, created_at, updated_at', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  const validStatuses = ['pending', 'active', 'processing', 'complete', 'error'] as const;
+  type ValidStatus = typeof validStatuses[number];
+  if (statusFilter && (validStatuses as readonly string[]).includes(statusFilter)) {
+    query = query.eq('status', statusFilter as ValidStatus);
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    logger.error({ err: error }, 'admin/sessions: DB query failed');
+    return c.json({ error: 'Failed to fetch sessions' }, 500);
+  }
+
+  return c.json({
+    sessions: data ?? [],
+    total: count ?? 0,
+    limit,
+    offset,
+  });
 });
 
 export { admin };

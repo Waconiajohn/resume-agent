@@ -39,9 +39,11 @@ import { b2bAdminRoutes } from './routes/b2b-admin.js';
 import { jobSearchRoutes } from './routes/job-search.js';
 import { watchlistRoutes } from './routes/watchlist.js';
 import { contentPostsRoutes } from './routes/content-posts.js';
+import { linkedInToolsRoutes } from './routes/linkedin-tools.js';
 import { extensionRoutes } from './routes/extension.js';
 import { coachRoutes } from './routes/coach.js';
 import { platformContextRoutes } from './routes/platform-context.js';
+import { products } from './routes/products.js';
 import { supabaseAdmin } from './lib/supabase.js';
 import { releaseAllLocks } from './lib/session-lock.js';
 import { getRateLimitStats } from './middleware/rate-limit.js';
@@ -332,9 +334,11 @@ app.route('/api/b2b', b2bAdminRoutes);
 app.route('/api/job-search', jobSearchRoutes);
 app.route('/api/watchlist', watchlistRoutes);
 app.route('/api/content-posts', contentPostsRoutes);
+app.route('/api/linkedin-tools', linkedInToolsRoutes);
 app.route('/api/extension', extensionRoutes);
 app.route('/api/coach', coachRoutes);
 app.route('/api/platform-context', platformContextRoutes);
+app.route('/api/products', products);
 
 app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);

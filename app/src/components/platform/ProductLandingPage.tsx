@@ -1,6 +1,9 @@
+import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
+import { useWaitlist } from '@/hooks/useWaitlist';
 import type { ProductDefinition } from '@/types/platform';
 
 interface ProductLandingPageProps {
@@ -8,8 +11,60 @@ interface ProductLandingPageProps {
   onNavigate: (route: string) => void;
 }
 
+function WaitlistForm({ productSlug }: { productSlug: string }) {
+  const { submit, status, error } = useWaitlist();
+  const [email, setEmail] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submit(email, productSlug);
+  };
+
+  if (status === 'success') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-[#b8f0c8]/90">
+        <Check className="h-4 w-4 shrink-0" />
+        You're on the list!
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          required
+          className={cn(
+            'h-9 flex-1 rounded-lg border border-white/[0.1] bg-white/[0.04]',
+            'px-3 text-sm text-white/80 placeholder:text-white/30',
+            'focus:border-white/[0.2] focus:outline-none focus:ring-0',
+            'transition-colors',
+          )}
+        />
+        <GlassButton
+          type="submit"
+          variant="ghost"
+          size="sm"
+          disabled={status === 'submitting'}
+          className="h-9 shrink-0"
+        >
+          {status === 'submitting' ? 'Joining…' : 'Join Waitlist'}
+        </GlassButton>
+      </div>
+      {error && (
+        <p className="text-xs text-[#f0b8b8]/80">{error}</p>
+      )}
+    </form>
+  );
+}
+
 export function ProductLandingPage({ product, onNavigate }: ProductLandingPageProps) {
   const isActive = product.status === 'active';
+  const isComingSoon = product.status === 'coming_soon';
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -25,7 +80,7 @@ export function ProductLandingPage({ product, onNavigate }: ProductLandingPagePr
         <span className="text-5xl" aria-label={`${product.name} icon`}>{product.icon}</span>
         <div>
           <h1 className="text-2xl font-semibold text-white/90">{product.name}</h1>
-          {product.status === 'coming_soon' && (
+          {isComingSoon && (
             <span className="mt-1 inline-block rounded-full bg-white/[0.07] border border-white/[0.1] px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/40">
               Coming Soon
             </span>
@@ -64,6 +119,11 @@ export function ProductLandingPage({ product, onNavigate }: ProductLandingPagePr
               {product.ctaLabel}
             </GlassButton>
           )
+        ) : isComingSoon ? (
+          <div className="w-full max-w-sm">
+            <p className="mb-3 text-sm text-white/50">Get notified when this launches:</p>
+            <WaitlistForm productSlug={product.slug} />
+          </div>
         ) : (
           <GlassButton variant="ghost" disabled>
             Coming Soon

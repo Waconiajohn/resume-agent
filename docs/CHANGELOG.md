@@ -1,5 +1,83 @@
 # Changelog — Resume Agent
 
+## 2026-03-13 — Session 81
+**Sprint:** PX1 | **Stories:** PX1-1 through PX1-5
+**Summary:** Platform Infrastructure Sprint PX1 — implemented Redis pub/sub bus adapter with in-memory fallback (PX1-1), agent hot-reload watcher for development (PX1-2), cross-product tier-based authorization middleware (PX1-3), admin dashboard with pipeline stats/errors/sessions endpoints and React frontend (PX1-4), and DB-driven product catalog with API route + frontend hook with static fallback (PX1-5).
+
+### Changes Made
+- `server/src/agents/runtime/redis-bus.ts` — New `RedisBus` class implementing the same interface as `AgentBus`. Uses ioredis pub/sub with separate pub/sub clients. Exponential backoff with jitter, 5s connect timeout, automatic fallback to in-memory `AgentBus` if Redis is unavailable. `createRedisBusIfConfigured()` factory reads `REDIS_BUS_URL` env var.
+- `server/src/agents/runtime/hot-reload.ts` — Development-only file watcher. Activated by `HOT_RELOAD=true` + `NODE_ENV=development`. Watches all agent subdirectories with 300ms debounce, defers reload notices if a pipeline is mid-execution, provides `registerPipelineTracker` and `startHotReload`/`stopHotReload` exports.
+- `server/src/middleware/product-auth.ts` — `requireTier(productSlug)` middleware factory. `PRODUCT_TIER_REQUIREMENTS` map defines tier gates per product slug. `planToTier()` maps Supabase plan_id to `free | pro | enterprise`. Returns HTTP 403 with `{ error: 'Upgrade required', required_tier, upgrade_url: '/pricing' }` on denial. Fails open on DB errors. Also exports `checkProductAccess()` for programmatic use.
+- `server/src/routes/admin.ts` — Added three new endpoints: `GET /api/admin/stats` (pipeline metrics + active session count from DB), `GET /api/admin/errors` (paginated error sessions), `GET /api/admin/sessions` (paginated all sessions with optional status filter). Added `getPipelineMetrics` import.
+- `server/src/routes/products.ts` — New route `GET /api/products` (full catalog, public, 5min cache) and `GET /api/products/:slug` (single product lookup). Reads from `products` table.
+- `server/src/index.ts` — Imported and registered `products` route at `/api/products`.
+- `supabase/migrations/20260313120000_products_catalog.sql` — Creates `products` table with RLS (public read, service-role write), `moddatetime` trigger, indexes. Seeds all 13 current platform products from the static catalog.
+- `app/src/components/admin/AdminDashboard.tsx` — React admin dashboard with key-based auth (sessionStorage), three tabs (Stats/Errors/Sessions), stat cards, paginated tables. Admin key stored in `sessionStorage` only.
+- `app/src/hooks/useProductCatalog.ts` — `useProductCatalog()` hook fetches `/api/products`, merges with static `PRODUCT_CATALOG` for display fields, 5-minute in-memory cache, falls back to static catalog on API error.
+- `app/src/App.tsx` — Added `admin` to `View` type, `/admin` path detection in URL handlers, `AdminDashboard` import and render for `view === 'admin'`.
+
+### Decisions Made
+- RedisBus uses pub/sub (not Redis Streams) for simplicity — matches the in-memory bus semantics exactly. Streams would be needed for durable, resumable delivery (deferred to ADR when horizontal scaling is actually required).
+- Hot-reload emits log notices only — does not perform live module replacement. Node ESM module cache is not patchable without `vm.Module`; developer still restarts the server to apply changes.
+- `requireTier` is opt-in per route — existing routes are not modified. No breaking changes to existing behavior.
+- Admin dashboard uses `ADMIN_API_KEY` bearer token pattern consistent with existing admin routes — no new auth mechanism introduced.
+- Product catalog API is public (no auth) and cached for 5 minutes — the catalog is not sensitive data.
+- Static catalog remains the authoritative fallback; API data enriches name/description/icon/status/tier from DB but defers display fields (routes, features, CTAs) to the static definitions.
+
+### Known Issues
+- None introduced. Pre-existing test failures in networking-nh1-endpoints and ProductCatalogGrid are unrelated.
+
+### Next Steps
+- Set `HOT_RELOAD=true` in server/.env to activate file watcher during development.
+- Set `REDIS_BUS_URL` in server/.env when Redis is available to activate the Redis bus.
+- Apply the products migration to the database: `supabase db push`.
+- Apply `requireTier` to specific product routes as products roll out to tiered plans.
+
+---
+
+## 2026-03-13 — Session 80
+**Sprint:** LS1 | **Stories:** LS1-1 through LS1-4
+**Summary:** LinkedIn Studio Sprint LS1 — verified post generator (LS1-1) was already built, added Series Planner view to Calendar tab (LS1-2), implemented Recruiter Search Simulator and Writing Analyzer server endpoints + UI components (LS1-3), added Tools tab to unified LinkedInStudioRoom shell (LS1-4).
+
+### Changes Made
+- `server/src/routes/linkedin-tools.ts` — New stateless route file with POST /recruiter-sim (MODEL_LIGHT, returns visibility score, keyword matches/gaps, rank assessment) and POST /writing-analyzer (MODEL_LIGHT, returns tone, readability, engagement, hook quality, AI risk). Feature-flagged via FF_LINKEDIN_TOOLS.
+- `server/src/lib/feature-flags.ts` — Added FF_LINKEDIN_TOOLS flag (default false).
+- `server/src/index.ts` — Imported and registered linkedInToolsRoutes at /api/linkedin-tools.
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — Added SeriesPlanner component (grouped view of structured posts by content type, expandable individual posts with copy), RecruiterSimulator component (stateless form + result card with rank badge, keyword chips), WritingAnalyzer component (text paste + context selector + score dashboard with strengths/improvements/hook rewrite), ToolsPanel component (selector for both tools). Added 'tools' tab to StudioTab union and tabs array. Calendar complete state now has a view toggle between Full Calendar and Series View. Added ChevronDown, Wrench icons to imports. Added StructuredPost and API_BASE imports.
+
+### Decisions Made
+- LS1-1 verified: PostComposer already handles single post generation end-to-end — no new work needed.
+- Series Planner lives inside ContentCalendar as a view toggle rather than a separate top-level tab — keeps calendar and series data co-located in the same useContentCalendar hook instance.
+- Tools endpoints are stateless (no session required) — single LLM call, return structured JSON.
+- FF_LINKEDIN_TOOLS defaults to false per platform convention — all features flag-gated.
+
+### Known Issues
+- None introduced.
+
+### Next Steps
+- Enable FF_LINKEDIN_TOOLS=true in server/.env to activate the endpoints for testing.
+- Consider adding series persistence (save approved posts to content_posts table from series view).
+
+---
+
+## 2026-03-13 — Session 79
+**Sprint:** IP1 + SN1 | **Stories:** IP1-1 through IP1-4, SN1-1, SN1-2
+**Summary:** Verified mock interview simulation (IP1-1), post-interview debrief (IP1-2), and practice mode (IP1-3) were already fully implemented. Counter-offer simulation (SN1-1) was already fully implemented. Implemented Kanban pipeline integration for IP1-4 and SN1-2: contextual CTAs on Interviewing/Offer stage pipeline cards that navigate to the correct rooms with pre-populated data.
+
+### Changes Made
+- `app/src/components/career-iq/ZoneYourPipeline.tsx` — Added `onInterviewPrepClick` and `onNegotiationPrepClick` props to `ZoneYourPipelineProps` and `PipelineCardItem`. Shows "Prepare for this interview?" CTA on Interviewing cards and "Prepare your negotiation?" CTA on Offer cards when the respective callbacks are wired.
+- `app/src/components/career-iq/DashboardHome.tsx` — Added `onInterviewPrepClick` and `onNegotiationPrepClick` props; threads them through to `ZoneYourPipeline`.
+- `app/src/components/career-iq/CareerIQScreen.tsx` — Added `salaryNegoPrefill` state, `handleInterviewPrepClick` and `handleNegotiationPrepClick` handlers. Interview handler optimistically inserts the card into `pipelineInterviews` and navigates. Negotiation handler sets prefill state and navigates. Passes callbacks to `DashboardHome` (disabled in demo mode). Passes prefill props to `SalaryNegotiationRoom`.
+- `app/src/components/career-iq/SalaryNegotiationRoom.tsx` — Added `SalaryNegotiationRoomProps` interface with `prefillCompany`, `prefillRole`, `onPrefillConsumed`. Form state initializer seeds company/role from prefill. `useEffect` fires `onPrefillConsumed` once on first render if prefill values are present.
+
+### Decisions Made
+- CTAs are suppressed in demo mode (when `isDemo` is true) so the mock pipeline cards on the dashboard don't show navigation prompts for users with no real data.
+- `SalaryNegotiationRoom` initializes form from prefill in the `useState` initializer (not an effect) so the fields are pre-populated before the first render — no flicker.
+- `prefillConsumedRef` prevents double-firing of `onPrefillConsumed` if props change between renders.
+
+### Known Issues
+- `interview` and `salary-negotiation` are still in `COMING_SOON_ROOMS` — the CTAs navigate to those rooms but users will see the Coming Soon placeholder until the feature flags are enabled in production.
+
 ## 2026-03-13 — Session 78
 **Sprint:** P1 | **Stories:** Session Persistence & Resumption
 **Summary:** V2 pipeline now saves full agent outputs to DB on completion. Users can load completed V2 sessions from the dashboard, with full UI rendering, inline editing, and re-run capability.

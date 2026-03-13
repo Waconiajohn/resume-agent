@@ -263,73 +263,9 @@ Conversation compaction now includes scratchpad section status summary. Model se
 
 ---
 
-## Epic: CareerIQ Phase 3A — Job Command Center
-Bible: Ch 7 (Job Search Ops). Port from Always-On-Contracts.
+## ~~Epic: CareerIQ Phase 3A — Job Command Center~~ COMPLETE (Sprints 57-59)
 
-### Story: 3A-1 Port Job Search Engine
-- **As a** user
-- **I want to** search 50+ job sources from CareerIQ
-- **So that** I don't need a separate tool for job discovery
-- **Acceptance Criteria:**
-  - [ ] Port unified-job-search from Deno edge function to Hono route
-  - [ ] Swap LLM provider to project standard
-  - [ ] Boolean search support
-  - [ ] Route at /api/jobs/search
-- **Estimated complexity:** Large
-- **Dependencies:** None
-
-### Story: 3A-2 Port AI Job Matcher
-- **As a** user
-- **I want to** have AI-powered job fit scoring
-- **So that** I can see how well each job matches my positioning
-- **Acceptance Criteria:**
-  - [ ] Port ai-job-matcher logic
-  - [ ] Score against positioning strategy from platform context
-  - [ ] Route at /api/jobs/match
-- **Estimated complexity:** Medium
-- **Dependencies:** 3A-1
-
-### Story: 3A-3 Port Kanban Pipeline Board
-- **As a** user
-- **I want to** have a drag-drop pipeline for tracking applications
-- **So that** I can manage my job search campaign visually
-- **Acceptance Criteria:**
-  - [ ] Port PipelineBoard, PipelineColumn, OpportunityCard
-  - [ ] Adapt types to CareerIQ schema
-  - [ ] DB table for pipeline_opportunities
-- **Estimated complexity:** Large
-- **Dependencies:** 3A-1
-
-### Story: 3A-4 NI Integration with Job Command Center
-- **As a** user
-- **I want to** have my network connections surface relevant job matches
-- **So that** CSV-imported connections lead to referral opportunities
-- **Acceptance Criteria:**
-  - [ ] NI company data feeds into job search results
-  - [ ] Referral bonus cross-reference shown on matching jobs
-- **Estimated complexity:** Medium
-- **Dependencies:** 3A-1, NI module (already built)
-
-### Story: 3A-5 Port Radar/Watchlist
-- **As a** user
-- **I want to** have automated job discovery and watchlist monitoring
-- **So that** new matching jobs surface without manual searching
-- **Acceptance Criteria:**
-  - [ ] Port useRadarSearch, useWatchlist
-  - [ ] Scheduled scan capability
-  - [ ] Notification when new matches found
-- **Estimated complexity:** Medium
-- **Dependencies:** 3A-1, 3A-2
-
-### Story: 3A-6 Daily Ops View
-- **As a** user
-- **I want to** have a daily routine view with real action items
-- **So that** I know exactly what to do each day of my job search
-- **Acceptance Criteria:**
-  - [ ] Port DailyOpsSection, useNextActions
-  - [ ] Actions sourced from pipeline data, follow-up reminders, application deadlines
-- **Estimated complexity:** Medium
-- **Dependencies:** 3A-3
+~~Multi-source job search API (JSearch + Adzuna), AI job matching, Kanban drag-drop pipeline, Radar search, Watchlist, Daily Ops. 18 stories, 228 tests. Routes: job-search.ts, job-finder.ts, job-tracker.ts, watchlist.ts. UI: JobCommandCenterRoom with 3-tab layout (Pipeline/Radar/Daily Ops). DB: job_listings, job_search_scans, job_search_results, watchlist_companies. FF_JOB_SEARCH.~~
 
 ---
 
@@ -571,3 +507,363 @@ Bible: Ch 8
 ## ~~Epic: CareerIQ Phase 7 — B2B Outplacement~~ COMPLETE (Sprint 51)
 
 ~~Admin portal, seat management, reporting, white-label. server/src/lib/b2b.ts (org/contract/seat/cohort CRUD + engagement metrics). server/src/routes/b2b-admin.ts (14 admin API endpoints). app/src/hooks/useB2BBranding.ts + B2BBrandingBanner (CSS custom properties for white-label). FF_B2B_OUTPLACEMENT, 1 DB migration (4 tables).~~
+
+---
+---
+
+# Sprint Plan — Remaining Backlog
+
+> **29 stories across 8 sprints.** Ordered by user value and dependency chain.
+> Sprints 1-3 are independent. Sprints 4-6 have cross-dependencies on Phase 3A (Kanban).
+> Sprint 7 requires Sprints 4-6. Sprint 8 is infrastructure (no user-facing features).
+
+---
+
+## Sprint CL1: Cover Letter Polish + Waitlist
+
+**Goal:** Close out cover letter product gaps and build the waitlist backend for coming-soon products.
+**Stories:** 2 | **Est. Size:** Medium
+
+### Story CL1-1: Cover Letter Dashboard Integration [MEDIUM]
+- **As a** user
+- **I want to** see my cover letter sessions in the dashboard and re-export them
+- **So that** I can revisit previous cover letters without regenerating
+- **Acceptance Criteria:**
+  - [ ] `DashboardSessionCard` routes `cover_letter` sessions to a preview/export view
+  - [ ] Cover letter text rendered in modal or dedicated screen
+  - [ ] Re-export to DOCX/PDF from dashboard
+  - [ ] `cd app && npx tsc --noEmit` passes
+
+### Story CL1-2: Full Waitlist Backend [MEDIUM]
+- **As a** product owner
+- **I want to** collect emails from users interested in coming-soon products
+- **So that** I can notify them when products launch
+- **Acceptance Criteria:**
+  - [ ] `waitlist_emails` table (already exists) — verify schema, add RLS
+  - [ ] `POST /api/waitlist` endpoint with email + product_slug
+  - [ ] Duplicate protection (upsert on email+product)
+  - [ ] Product landing pages call waitlist endpoint instead of no-op
+  - [ ] `cd server && npx tsc --noEmit` passes
+
+---
+
+## Sprint LI1: LinkedIn Optimizer v2 — Experience Rewriting
+
+**Goal:** Extend LinkedIn Optimizer to generate full experience section rewrites, not just headline/about/keywords.
+**Stories:** 3 | **Est. Size:** Medium
+
+### Story LI1-1: Experience Writer Tool Enhancement [MEDIUM]
+- **As a** user
+- **I want to** receive optimized experience bullet points for each role
+- **So that** my entire LinkedIn profile is professionally positioned
+- **Acceptance Criteria:**
+  - [ ] Enhanced `write_experience_entries` tool generates per-role bullet rewrites
+  - [ ] Each role: optimized title, achievement bullets with metrics, keyword integration
+  - [ ] Respects LinkedIn character limits per experience entry
+  - [ ] Self-review against STAR/CAR framework
+  - [ ] `cd server && npx tsc --noEmit` passes
+
+### Story LI1-2: Experience Section in Report [MEDIUM]
+- **As a** user
+- **I want to** see current vs. optimized experience entries side-by-side
+- **So that** I can copy the improved versions into LinkedIn
+- **Acceptance Criteria:**
+  - [ ] Report includes per-role comparison (current vs. optimized)
+  - [ ] LinkedInStudioRoom shows expandable experience cards
+  - [ ] Copy-to-clipboard per role
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Dependencies:** LI1-1
+
+### Story LI1-3: Experience Section Tests [SMALL]
+- **As a** developer
+- **I want to** test the experience rewriting feature
+- **So that** the v2 feature is regression-safe
+- **Acceptance Criteria:**
+  - [ ] Server tests for enhanced write_experience_entries tool
+  - [ ] App tests for experience card rendering
+- **Dependencies:** LI1-2
+
+---
+
+## Sprint LS1: LinkedIn Studio — Unified Workspace
+
+**Goal:** Unify all LinkedIn tools (Optimizer, Content Calendar, Post Composer, Series, Recruiter Sim) into a single tabbed workspace.
+**Stories:** 4 | **Est. Size:** Large
+
+### Story LS1-1: LinkedIn Post Generator [SMALL]
+- **As a** user
+- **I want to** generate LinkedIn posts from CareerIQ
+- **So that** I can create quality content without switching tools
+- **Acceptance Criteria:**
+  - [ ] Port generate-linkedin-post to Hono route / agent tool
+  - [ ] Swap LLM provider to project standard
+  - [ ] Connected to content calendar agent
+  - [ ] `cd server && npx tsc --noEmit` passes
+
+### Story LS1-2: Series Management [MEDIUM]
+- **As a** user
+- **I want to** plan and manage LinkedIn post series
+- **So that** I can maintain a coherent content narrative over time
+- **Acceptance Criteria:**
+  - [ ] Port SeriesDashboard, SeriesPlanner, useSeriesManagement
+  - [ ] Adapt to CareerIQ patterns and types
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Dependencies:** LS1-1
+
+### Story LS1-3: LinkedIn Tools — Recruiter Sim & Writing Analyzer [SMALL]
+- **As a** user
+- **I want to** simulate recruiter searches and analyze writing quality
+- **So that** I can optimize my profile for recruiter visibility
+- **Acceptance Criteria:**
+  - [ ] Port RecruiterSearchSimulator, HumanWritingAnalyzer
+  - [ ] Merge into LinkedIn Studio tabbed experience
+  - [ ] `cd app && npx tsc --noEmit` passes
+
+### Story LS1-4: Unified LinkedIn Studio Shell [MEDIUM]
+- **As a** user
+- **I want to** have one place for all LinkedIn activities
+- **So that** I can manage profile, content, and outreach from a single workspace
+- **Acceptance Criteria:**
+  - [ ] Tabbed experience: Profile Optimizer | Content Calendar | Post Composer | Series | Recruiter Sim | Writing Analyzer
+  - [ ] Section-by-section profile editing
+  - [ ] Cross-tab context sharing (positioning data flows between tabs)
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Dependencies:** LS1-1, LS1-2, LS1-3
+
+---
+
+## Sprint NH1: Networking Hub — CRM + Message Generation
+
+**Goal:** Build the networking CRM with contact management, AI message generation, and follow-up tracking. Integrates with Job Command Center pipeline.
+**Stories:** 5 | **Est. Size:** Large
+
+### Story NH1-1: Networking CRM [LARGE]
+- **As a** user
+- **I want to** have a CRM for managing networking contacts
+- **So that** I can track relationships and follow-up cadence in one place
+- **Acceptance Criteria:**
+  - [ ] Port NetworkingCRM, ContactsList, ContactDetailSheet, TouchpointLogger, FollowUpReminders
+  - [ ] Adapt to CareerIQ types
+  - [ ] DB tables with RLS
+  - [ ] `cd server && npx tsc --noEmit` and `cd app && npx tsc --noEmit` pass
+
+### Story NH1-2: Message Generators [MEDIUM]
+- **As a** user
+- **I want to** have AI-generated outreach messages for 7 networking scenarios
+- **So that** every message is personalized and professional
+- **Acceptance Criteria:**
+  - [ ] Port generate-networking-email and linkedin-networking-messages
+  - [ ] Swap LLM provider to project standard
+  - [ ] Route at /api/networking/generate
+  - [ ] `cd server && npx tsc --noEmit` passes
+
+### Story NH1-3: NI + CRM Integration [MEDIUM]
+- **As a** user
+- **I want to** have CSV-imported connections appear in my CRM
+- **So that** NI connections flow directly into relationship management
+- **Acceptance Criteria:**
+  - [ ] NI connections feed into CRM contact list
+  - [ ] Company data enriches contacts
+  - [ ] No duplicate contacts created
+- **Dependencies:** NH1-1
+
+### Story NH1-4: Rule of Four — Pipeline Integration [MEDIUM]
+- **As a** user
+- **I want to** have networking contacts linked to job applications
+- **So that** I can track relationship coverage per opportunity
+- **Acceptance Criteria:**
+  - [ ] Each pipeline application tracks associated contacts
+  - [ ] Rule of Four (4 contacts per application) tracking
+  - [ ] Referral pathway visualization
+- **Dependencies:** NH1-1, Phase 3A Kanban (built)
+
+### Story NH1-5: Follow-Up Cadence Tracking [SMALL]
+- **As a** user
+- **I want to** track sent/responded/due follow-ups
+- **So that** no relationship falls through the cracks
+- **Acceptance Criteria:**
+  - [ ] Touchpoint status tracking (sent / responded / overdue)
+  - [ ] Overdue reminders in Daily Ops
+  - [ ] Weekly touch counter
+- **Dependencies:** NH1-1
+
+---
+
+## Sprint IP1: Interview Prep Enhancement
+
+**Goal:** Mock interview simulation, post-interview debrief, practice mode, and Kanban integration.
+**Stories:** 4 | **Est. Size:** Large
+
+### Story IP1-1: Mock Interview Simulation [LARGE]
+- **As a** user
+- **I want to** practice interviews with AI simulation
+- **So that** I'm prepared for the real conversation before it happens
+- **Acceptance Criteria:**
+  - [ ] New sub-agent using gate pattern for rapid Q&A
+  - [ ] Supports behavioral, technical, situational question types
+  - [ ] Evaluates answers against STAR framework
+  - [ ] Timer, scoring, and feedback after each answer
+  - [ ] `cd server && npx tsc --noEmit` passes
+
+### Story IP1-2: Post-Interview Debrief [MEDIUM]
+- **As a** user
+- **I want to** have structured debrief capture after real interviews
+- **So that** my experience feeds into follow-up and future prep
+- **Acceptance Criteria:**
+  - [ ] Debrief form: what went well/poorly, questions asked, company signals
+  - [ ] Feeds into Thank You Note agent (pre-populates context)
+  - [ ] Stored as platform context for future prep sessions
+  - [ ] `cd app && npx tsc --noEmit` passes
+- **Dependencies:** Thank You Note agent (built)
+
+### Story IP1-3: Practice Mode [MEDIUM]
+- **As a** user
+- **I want to** practice individual questions with AI evaluation
+- **So that** I can sharpen specific weak areas without a full simulation
+- **Acceptance Criteria:**
+  - [ ] Single question presentation with timer
+  - [ ] AI scores answer on STAR completeness, relevance, impact
+  - [ ] Specific suggestions for improvement
+  - [ ] Question bank categorized by type
+  - [ ] `cd app && npx tsc --noEmit` passes
+
+### Story IP1-4: Kanban Integration [SMALL]
+- **As a** user
+- **I want to** have interview prep linked to my pipeline
+- **So that** prep, debrief, and follow-up are all connected to the opportunity
+- **Acceptance Criteria:**
+  - [ ] Interview stage in Kanban triggers prep suggestion
+  - [ ] Debrief links to application
+  - [ ] Prep reports accessible from opportunity card
+- **Dependencies:** Phase 3A Kanban (built)
+
+---
+
+## Sprint SN1: Salary Negotiation Enhancement
+
+**Goal:** Add counter-offer simulation and Kanban trigger for salary negotiation.
+**Stories:** 2 | **Est. Size:** Small-Medium
+
+### Story SN1-1: Counter-Offer Simulation [MEDIUM]
+- **As a** user
+- **I want to** practice negotiation with AI role-playing employer
+- **So that** I'm ready for every pushback scenario before the real conversation
+- **Acceptance Criteria:**
+  - [ ] User inputs offer; agent simulates employer pushback
+  - [ ] Multiple negotiation rounds supported (gate-based)
+  - [ ] Coaching on tactics after each round
+  - [ ] Summary of negotiation performance + recommended strategy
+  - [ ] `cd server && npx tsc --noEmit` passes
+
+### Story SN1-2: Kanban Trigger [SMALL]
+- **As a** user
+- **I want to** have salary negotiation prompted when pipeline reaches Offer stage
+- **So that** I'm reminded to prepare before accepting or countering
+- **Acceptance Criteria:**
+  - [ ] Kanban "Offer" stage triggers salary negotiation suggestion
+  - [ ] Pre-populated with company/role data from opportunity card
+- **Dependencies:** Phase 3A Kanban (built)
+
+---
+
+## Sprint EI1: Emotional Intelligence Layer
+
+**Goal:** Motivation system, cognitive reframing for stalled searches, resource library, and human coach escalation.
+**Stories:** 4 | **Est. Size:** Medium
+
+### Story EI1-1: Momentum System [MEDIUM]
+- **As a** user
+- **I want to** have activity streaks and win tracking
+- **So that** I stay motivated during a long job search
+- **Acceptance Criteria:**
+  - [ ] `user_momentum` table with streak tracking
+  - [ ] Pipeline progress metrics
+  - [ ] Wins celebrated in dashboard (applications sent, interviews scheduled, offers received)
+  - [ ] Streak display in Daily Ops and dashboard header
+  - [ ] `cd server && npx tsc --noEmit` passes
+
+### Story EI1-2: Cognitive Reframing [MEDIUM]
+- **As a** user
+- **I want to** receive targeted coaching when my search stalls
+- **So that** I get past psychological blocks, not just tactical ones
+- **Acceptance Criteria:**
+  - [ ] Detect stalled pipeline (no activity in 7+ days) or repeated rejections (3+ in a week)
+  - [ ] Coaching messages sourced from Ch 8 methodology
+  - [ ] Integrated into Daily Ops view as priority action
+  - [ ] Tone adapted via emotional baseline middleware
+- **Dependencies:** EI1-1, Phase 3A (built)
+
+### Story EI1-3: Resource Library [MEDIUM]
+- **As a** user
+- **I want to** have educational content organized by topic
+- **So that** I can deepen my skills in the areas that matter most
+- **Acceptance Criteria:**
+  - [ ] Content organized by Coaching Bible chapter topics
+  - [ ] Searchable by keyword
+  - [ ] Context-aware recommendations based on current pipeline stage
+  - [ ] `cd app && npx tsc --noEmit` passes
+
+### Story EI1-4: Ask a Coach — Human Escalation [SMALL]
+- **As a** user
+- **I want to** have a structured way to request human coaching
+- **So that** I can get expert help when AI isn't enough
+- **Acceptance Criteria:**
+  - [ ] Structured form: topic, urgency, context summary
+  - [ ] Triaged by topic
+  - [ ] Stored for coach review (DB table with RLS)
+  - [ ] Confirmation message with expected response time
+
+---
+
+## Sprint PX1: Platform Infrastructure
+
+**Goal:** Production hardening — distributed bus, admin monitoring, auth improvements, DB-driven catalog.
+**Stories:** 5 | **Est. Size:** Large (infrastructure-heavy, no direct user features)
+
+### Story PX1-1: Redis/NATS Bus Adapter [LARGE]
+- **As a** platform
+- **I want to** have a distributed message bus
+- **So that** agents can communicate across multiple server instances
+- **Acceptance Criteria:**
+  - [ ] Redis adapter implementing AgentBus interface
+  - [ ] Fallback to in-memory bus when Redis unavailable
+  - [ ] Connection pooling and reconnect logic
+  - [ ] Feature flag to toggle bus backend
+
+### Story PX1-2: Agent Hot-Reload [MEDIUM]
+- **As a** developer
+- **I want to** update agent configs without server restart
+- **So that** prompt changes and tool additions deploy instantly
+- **Acceptance Criteria:**
+  - [ ] File watcher on agent config directories
+  - [ ] Registry invalidation on change
+  - [ ] No in-flight pipeline disruption
+
+### Story PX1-3: Cross-Product Auth & Authorization [MEDIUM]
+- **As a** platform
+- **I want to** have product-level access control
+- **So that** subscription tiers can gate which products a user accesses
+- **Acceptance Criteria:**
+  - [ ] Middleware checks user subscription vs. product requirements
+  - [ ] Free tier, Pro tier, Enterprise tier product gating
+  - [ ] Graceful upgrade prompt on denied access
+
+### Story PX1-4: Platform Admin Dashboard [LARGE]
+- **As an** admin
+- **I want to** monitor agent performance and pipeline health
+- **So that** I can detect issues before users report them
+- **Acceptance Criteria:**
+  - [ ] Pipeline success/failure rates by product
+  - [ ] Average pipeline duration and token cost
+  - [ ] Active sessions and queue depth
+  - [ ] Error log viewer with stack traces
+
+### Story PX1-5: DB-Driven Product Catalog [SMALL]
+- **As a** platform
+- **I want to** move the product catalog from static constants to database
+- **So that** new products can be added without code deployment
+- **Acceptance Criteria:**
+  - [ ] `products` table with metadata (name, slug, description, feature_flag, status)
+  - [ ] API endpoint to list products (replaces static import)
+  - [ ] Admin CRUD for product entries
+  - [ ] Frontend catalog reads from API instead of constant

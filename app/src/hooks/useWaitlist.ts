@@ -5,7 +5,7 @@ export function useWaitlist() {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  async function submit(email: string) {
+  async function submit(email: string, productSlug?: string) {
     setStatus('submitting');
     setError(null);
 
@@ -19,7 +19,7 @@ export function useWaitlist() {
 
     const { error: dbError } = await supabase
       .from('waitlist_emails')
-      .insert({ email, source: 'sales_page' });
+      .insert({ email, source: productSlug ?? 'sales_page' });
     if (dbError) {
       setStatus('error');
       if (dbError.code === '23505') {

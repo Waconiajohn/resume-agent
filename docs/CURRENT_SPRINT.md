@@ -408,6 +408,45 @@ Total: 234 new tests.
 
 ---
 
+## Sprint LS1: LinkedIn Studio — Unified Workspace
+
+**Goal:** Enhance the unified LinkedIn Studio with a series management view, two new utility tools (Recruiter Search Simulator, Writing Analyzer), and a dedicated Tools tab.
+**Status:** DONE — Session 80
+
+### Story LS1-1: LinkedIn Post Generator [VERIFIED EXISTING]
+- Verified the PostComposer sub-component and linkedin-content agent pipeline already provide full single-post generation.
+- No new work required.
+
+### Story LS1-2: Series Management [DONE]
+- **Acceptance Criteria:**
+  - [x] Calendar tab in `LinkedInStudioRoom.tsx` gains a view toggle: "Full Calendar" vs "Series View"
+  - [x] `SeriesPlanner` component renders structured posts (from `useContentCalendar` `posts` array) grouped by content type
+  - [x] Each content type group shows post count and average quality score
+  - [x] Individual posts are collapsible — show hook, day, word count, type badge, quality badge in collapsed; full body + copy button when expanded
+  - [x] Empty state when no posts have been generated
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Story LS1-3: LinkedIn Tools — Recruiter Sim & Writing Analyzer [DONE]
+- **Acceptance Criteria:**
+  - [x] `server/src/routes/linkedin-tools.ts` created with POST /recruiter-sim and POST /writing-analyzer
+  - [x] Both endpoints use MODEL_LIGHT, are stateless, require auth
+  - [x] Feature-flagged via FF_LINKEDIN_TOOLS (default false)
+  - [x] Registered at /api/linkedin-tools in index.ts
+  - [x] `RecruiterSimulator` component: search terms input + optional profile sections, result shows visibility score (0-100), rank assessment badge, keyword matches/gaps chips, top recommendation, expandable explanation
+  - [x] `WritingAnalyzer` component: text paste area + context selector (post/headline/about/experience/comment), result shows overall score, authenticity, hook quality, engagement prediction, strengths, improvements, stronger opening suggestion
+  - [x] `cd server && npx tsc --noEmit` passes (no new errors)
+  - [x] `cd app && npx tsc --noEmit` passes
+
+### Story LS1-4: Unified LinkedIn Studio Shell [DONE]
+- **Acceptance Criteria:**
+  - [x] `StudioTab` type extended with 'tools' variant
+  - [x] New "Tools" tab added to the tab bar (Wrench icon)
+  - [x] `ToolsPanel` component renders tool selector (Recruiter Sim / Writing Analyzer) + active tool below
+  - [x] Tab routes to the correct sub-component
+  - [x] `cd app && npx tsc --noEmit` passes
+
+---
+
 ## Epic Complete
 
 All sprints delivered. The Resume Agent v2 10-agent pipeline is fully built end-to-end: backend agents, orchestrator, SSE streaming, frontend intake/display/editing/export, gap coaching UX, strategy transparency, test coverage, and session persistence.

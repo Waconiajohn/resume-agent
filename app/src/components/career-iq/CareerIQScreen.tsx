@@ -206,6 +206,8 @@ export function CareerIQScreen({
   const { summary: momentum, nudges, loading: momentumLoading, dismissNudge, checkStalls } = useMomentum();
   const { recommendation: coachRec, loading: coachLoading, refresh: refreshCoachRec } = useCoachRecommendation();
   const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
+  /** Pre-fill data forwarded from the pipeline Kanban to SalaryNegotiationRoom. */
+  const [salaryNegoPrefill, setSalaryNegoPrefill] = useState<{ company: string; role: string } | null>(null);
 
   // Check for stalled activity after initial load (non-blocking, 2s delay)
   useEffect(() => {
@@ -308,6 +310,23 @@ export function CareerIQScreen({
     refreshCoachRec();
   };
 
+  /** IP1-4: Navigate to Interview Lab when user clicks "Prepare for this interview?" */
+  const handleInterviewPrepClick = (card: PipelineCard) => {
+    handleRoomNavigate('interview');
+    // The InterviewLabRoom already loads Interviewing cards from Supabase via pipelineInterviews.
+    // Optimistically add this card to the pipelineInterviews list in case it isn't loaded yet.
+    setPipelineInterviews((prev) => {
+      if (prev.some((p) => p.id === card.id)) return prev;
+      return [{ id: card.id, company: card.company, role: card.role }, ...prev];
+    });
+  };
+
+  /** SN1-2: Navigate to Salary Negotiation when user clicks "Prepare your negotiation?" */
+  const handleNegotiationPrepClick = (card: PipelineCard) => {
+    setSalaryNegoPrefill({ company: card.company, role: card.role });
+    handleRoomNavigate('salary-negotiation');
+  };
+
   const handleStartWhyMe = () => setShowWhyMeEngine(true);
   const handleCloseWhyMe = () => setShowWhyMeEngine(false);
 
@@ -354,6 +373,8 @@ export function CareerIQScreen({
           coachRecommendation={isDemo ? MOCK_COACH_REC : coachRec}
           coachLoading={isDemo ? false : coachLoading}
           mockPipelineCards={isDemo ? MOCK_PIPELINE_CARDS : undefined}
+          onInterviewPrepClick={isDemo ? undefined : handleInterviewPrepClick}
+          onNegotiationPrepClick={isDemo ? undefined : handleNegotiationPrepClick}
         />
       );
     }
@@ -404,7 +425,13 @@ export function CareerIQScreen({
 
     // Salary Negotiation room
     if (activeRoom === 'salary-negotiation') {
-      return <SalaryNegotiationRoom />;
+      return (
+        <SalaryNegotiationRoom
+          prefillCompany={salaryNegoPrefill?.company}
+          prefillRole={salaryNegoPrefill?.role}
+          onPrefillConsumed={() => setSalaryNegoPrefill(null)}
+        />
+      );
     }
 
     // Executive Documents room (merged Bio + Case Study)

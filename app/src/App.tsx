@@ -17,12 +17,13 @@ import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
+import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
 
 const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then(m => ({ default: m.CoachDrawer })));
 
-type View = 'landing' | 'coach' | 'resume-v2' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq';
+type View = 'landing' | 'coach' | 'resume-v2' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq' | 'admin';
 
 export default function App() {
   const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, updateProfile, signOut } =
@@ -106,6 +107,7 @@ export default function App() {
     else if (path === '/dashboard') setView('dashboard');
     else if (path === '/cover-letter') setView('cover-letter');
     else if (path === '/career-iq') setView('career-iq');
+    else if (path === '/admin') setView('admin');
     else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
     else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
   }, []);
@@ -148,6 +150,7 @@ export default function App() {
       else if (path === '/dashboard') setView('dashboard');
       else if (path === '/cover-letter') setView('cover-letter');
       else if (path === '/career-iq') setView('career-iq');
+      else if (path === '/admin') setView('admin');
       else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
       else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
       else setView('landing');
@@ -342,7 +345,7 @@ export default function App() {
       }
       return;
     }
-    const validViews: View[] = ['landing', 'coach', 'resume-v2', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter', 'career-iq'];
+    const validViews: View[] = ['landing', 'coach', 'resume-v2', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter', 'career-iq', 'admin'];
     const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
     setView(newView);
     const paths: Record<View, string> = {
@@ -356,6 +359,7 @@ export default function App() {
       tools: '/tools',
       'cover-letter': '/cover-letter',
       'career-iq': '/career-iq',
+      admin: '/admin',
     };
     const newPath = paths[newView];
     if (newPath && window.location.pathname !== newPath) {
@@ -591,6 +595,10 @@ export default function App() {
           resumesLoading={resumesLoading}
           error={sessionError}
         />
+      )}
+
+      {view === 'admin' && (
+        <AdminDashboard />
       )}
       </div>
     </ErrorBoundary>

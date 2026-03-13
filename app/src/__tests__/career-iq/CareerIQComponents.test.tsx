@@ -493,7 +493,7 @@ describe('ZoneYourDay', () => {
         onRefineWhyMe={vi.fn()}
       />,
     );
-    expect(screen.getByText('Explore new opportunities')).toBeInTheDocument();
+    expect(screen.getByText('Find matching roles')).toBeInTheDocument();
   });
 
   it('strong state shows "Refine story" link', () => {

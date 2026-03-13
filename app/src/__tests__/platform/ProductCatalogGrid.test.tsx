@@ -4,6 +4,10 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { ProductCatalogGrid, TOOL_GROUPS } from '../../components/platform/ProductCatalogGrid';
 import { PRODUCT_CATALOG } from '../../types/platform';
 
+vi.mock('../../components/career-iq/WeeklyScheduleStrip', () => ({
+  WeeklyScheduleStrip: () => <div data-testid="weekly-schedule-strip" />,
+}));
+
 afterEach(() => cleanup());
 
 describe('ProductCatalogGrid', () => {
@@ -99,31 +103,30 @@ describe('ProductCatalogGrid', () => {
     }
   });
 
-  it('renders coach hero card with default name when no userName', () => {
-    render(<ProductCatalogGrid onNavigate={vi.fn()} />);
-    expect(screen.getByText('AI Coach')).toBeInTheDocument();
-    expect(screen.getByText('Your Virtual Career Coach')).toBeInTheDocument();
+  it('renders coach CTA with default label when no userName', () => {
+    render(<ProductCatalogGrid onNavigate={vi.fn()} onOpenCoach={vi.fn()} />);
+    expect(screen.getByText(/Chat with AI Coach/)).toBeInTheDocument();
   });
 
-  it('renders coach hero card with personalized name', () => {
-    render(<ProductCatalogGrid onNavigate={vi.fn()} userName="John Schrup" />);
-    expect(screen.getByText('AI John')).toBeInTheDocument();
+  it('renders coach CTA with personalized name', () => {
+    render(<ProductCatalogGrid onNavigate={vi.fn()} onOpenCoach={vi.fn()} userName="John Schrup" />);
+    expect(screen.getByText(/Chat with AI John/)).toBeInTheDocument();
   });
 
   it('falls back to "AI Coach" when userName is "there"', () => {
-    render(<ProductCatalogGrid onNavigate={vi.fn()} userName="there" />);
-    expect(screen.getByText('AI Coach')).toBeInTheDocument();
+    render(<ProductCatalogGrid onNavigate={vi.fn()} onOpenCoach={vi.fn()} userName="there" />);
+    expect(screen.getByText(/Chat with AI Coach/)).toBeInTheDocument();
   });
 
   it('falls back to "AI Coach" when userName contains @', () => {
-    render(<ProductCatalogGrid onNavigate={vi.fn()} userName="jjschrup@yahoo.com" />);
-    expect(screen.getByText('AI Coach')).toBeInTheDocument();
+    render(<ProductCatalogGrid onNavigate={vi.fn()} onOpenCoach={vi.fn()} userName="jjschrup@yahoo.com" />);
+    expect(screen.getByText(/Chat with AI Coach/)).toBeInTheDocument();
   });
 
   it('calls onOpenCoach when CTA button is clicked', () => {
     const onOpenCoach = vi.fn();
     render(<ProductCatalogGrid onNavigate={vi.fn()} onOpenCoach={onOpenCoach} userName="John" />);
-    const ctaButton = screen.getByRole('button', { name: /Talk to AI John/i });
+    const ctaButton = screen.getByRole('button', { name: /Chat with AI John/i });
     fireEvent.click(ctaButton);
     expect(onOpenCoach).toHaveBeenCalledTimes(1);
   });

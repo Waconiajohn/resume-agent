@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
-import { X, Copy, Download } from 'lucide-react';
+import { X, Copy, Download, FileText } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { downloadAsText } from '@/lib/export';
+import {
+  downloadCoverLetterAsText,
+  exportCoverLetterPdf,
+  exportCoverLetterDocx,
+} from '@/lib/export-cover-letter';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 interface SessionCoverLetterModalProps {
@@ -52,9 +56,19 @@ export function SessionCoverLetterModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
+  const handleDownloadTxt = () => {
     if (!letter) return;
-    downloadAsText(letter, `cover-letter-${sessionId.slice(0, 8)}.txt`);
+    downloadCoverLetterAsText(letter);
+  };
+
+  const handleDownloadPdf = () => {
+    if (!letter) return;
+    exportCoverLetterPdf(letter);
+  };
+
+  const handleDownloadDocx = () => {
+    if (!letter) return;
+    void exportCoverLetterDocx(letter);
   };
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -78,9 +92,17 @@ export function SessionCoverLetterModal({
                   <Copy className="h-3.5 w-3.5" />
                   {copied ? 'Copied!' : 'Copy'}
                 </GlassButton>
-                <GlassButton variant="ghost" size="sm" onClick={handleDownload} className="h-8 gap-1.5">
+                <GlassButton variant="ghost" size="sm" onClick={handleDownloadTxt} className="h-8 gap-1.5">
                   <Download className="h-3.5 w-3.5" />
-                  Download TXT
+                  TXT
+                </GlassButton>
+                <GlassButton variant="ghost" size="sm" onClick={handleDownloadPdf} className="h-8 gap-1.5">
+                  <Download className="h-3.5 w-3.5" />
+                  PDF
+                </GlassButton>
+                <GlassButton variant="ghost" size="sm" onClick={handleDownloadDocx} className="h-8 gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  DOCX
                 </GlassButton>
               </>
             )}
