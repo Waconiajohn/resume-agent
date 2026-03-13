@@ -14,7 +14,18 @@ import logger from '../../lib/logger.js';
 
 type MessageHandler = (msg: AgentMessage) => void;
 
-export class AgentBus {
+/** Public interface for the agent message bus (in-memory or Redis-backed). */
+export interface IAgentBus {
+  subscribe(key: string, handler: MessageHandler): void;
+  unsubscribe(key: string): void;
+  send(partial: Omit<AgentMessage, 'id' | 'timestamp'>): AgentMessage;
+  sendBroadcast(domain: string, partial: Omit<AgentMessage, 'id' | 'timestamp' | 'to'>): AgentMessage[];
+  listSubscribers(domain?: string): string[];
+  getLog(): readonly AgentMessage[];
+  reset(): void;
+}
+
+export class AgentBus implements IAgentBus {
   private handlers = new Map<string, MessageHandler>();
   private messageLog: AgentMessage[] = [];
 

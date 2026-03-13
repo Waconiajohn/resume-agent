@@ -34,8 +34,6 @@ import type { SavedCalendarReportFull } from '@/hooks/useContentCalendar';
 import { useContentPosts } from '@/hooks/useContentPosts';
 import { supabase } from '@/lib/supabase';
 import { SeriesPlanner } from './linkedin-studio/SeriesPlanner';
-import { RecruiterSimulator } from './linkedin-studio/RecruiterSimulator';
-import { WritingAnalyzer } from './linkedin-studio/WritingAnalyzer';
 import { ToolsPanel } from './linkedin-studio/ToolsPanel';
 import { ExperienceEntryCard } from './ExperienceEntryCard';
 import type { WhyMeSignals } from './useWhyMeStory';

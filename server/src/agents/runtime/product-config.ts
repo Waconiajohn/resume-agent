@@ -105,7 +105,7 @@ export interface InterAgentHandler<
       emit: (event: TEvent) => void;
       waitForUser: <T>(gate: string) => Promise<T>;
       signal: AbortSignal;
-      bus: import('./agent-bus.js').AgentBus;
+      bus: import('./agent-bus.js').IAgentBus;
       runAgentLoop: typeof import('./agent-loop.js').runAgentLoop;
     },
   ) => Promise<void>;

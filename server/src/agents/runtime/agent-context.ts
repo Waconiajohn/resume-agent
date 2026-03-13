@@ -9,7 +9,7 @@
  */
 
 import type { AgentContext, AgentIdentity, AgentMessage, BaseState, BaseEvent } from './agent-protocol.js';
-import type { AgentBus } from './agent-bus.js';
+import type { IAgentBus } from './agent-bus.js';
 
 export interface CreateContextParams<
   TState extends BaseState = BaseState,
@@ -21,7 +21,7 @@ export interface CreateContextParams<
   emit: (event: TEvent) => void;
   waitForUser: <T>(gate: string) => Promise<T>;
   signal: AbortSignal;
-  bus: AgentBus;
+  bus: IAgentBus;
   identity: AgentIdentity;
 }
 

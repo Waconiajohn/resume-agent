@@ -1,5 +1,37 @@
 # Changelog — Resume Agent
 
+## 2026-03-13 — Session 82
+**Sprint:** Remediation | **Story:** CLAUDE.md compliance audit fixes
+**Summary:** Fixed all violations found in the CLAUDE.md compliance audit of commits G1, G2, T1, P1, CL1-PX1. Extracted `IAgentBus` interface to eliminate unsafe cast, removed dead imports, added Zod trim validation, added session load error feedback, split LinkedInStudioRoom into components.
+
+### Changes Made
+- `server/src/agents/runtime/agent-bus.ts` — Extracted `IAgentBus` interface from `AgentBus` class public methods. `AgentBus` now `implements IAgentBus`. Exported from barrel.
+- `server/src/agents/runtime/bus-factory.ts` — Singleton typed as `IAgentBus` instead of `AgentBus` class. `setAgentBus()` and `getAgentBus()` both use the interface type.
+- `server/src/agents/runtime/product-config.ts` — `InterAgentHandler.handler` context `bus` field typed as `IAgentBus`.
+- `server/src/agents/runtime/product-coordinator.ts` — Import changed from `AgentBus` class to `type IAgentBus`. Function parameter updated.
+- `server/src/agents/runtime/agent-context.ts` — `CreateContextParams.bus` typed as `IAgentBus`.
+- `server/src/agents/runtime/index.ts` — Added `IAgentBus` to barrel export.
+- `server/src/index.ts` — Removed `as unknown as AgentBus` unsafe cast. `setAgentBus(bus)` now type-safe.
+- `server/src/agents/coach/conversation-loop.ts` — Removed dead `AgentBus` import (only `getAgentBus` used).
+- `server/src/routes/admin.ts` — Added `.trim()` to `user_id` and `feature_key` Zod schema fields.
+- `app/src/components/resume-v2/V2ResumeScreen.tsx` — Added `sessionLoadError` state, error displayed on intake form, cleared on submit/start-over.
+- `app/src/components/career-iq/LinkedInStudioRoom.tsx` — Removed dead `RecruiterSimulator` and `WritingAnalyzer` imports (only used by extracted `ToolsPanel`).
+- `app/src/components/resume-v2/cards/GapCoachingCard.tsx` — Removed `as any` cast (field already typed).
+- `docs/obsidian/10_Resume Agent/Status.md` — Updated with remediation status.
+
+### Decisions Made
+- `IAgentBus` is the canonical type for all bus consumers. The `AgentBus` class is used only for instantiation.
+- Dead imports cleaned proactively — no backward compatibility shims left behind.
+
+### Known Issues
+- 9 pre-existing test failures across app (6) and server (3) remain — separate cleanup sprint needed.
+
+### Next Steps
+- Fix pre-existing test failures.
+- E2E test rebuild for V2 pipeline.
+
+---
+
 ## 2026-03-13 — Session 81
 **Sprint:** PX1 | **Stories:** PX1-1 through PX1-5
 **Summary:** Platform Infrastructure Sprint PX1 — implemented Redis pub/sub bus adapter with in-memory fallback (PX1-1), agent hot-reload watcher for development (PX1-2), cross-product tier-based authorization middleware (PX1-3), admin dashboard with pipeline stats/errors/sessions endpoints and React frontend (PX1-4), and DB-driven product catalog with API route + frontend hook with static fallback (PX1-5).

@@ -133,8 +133,8 @@ admin.get('/promo-codes', async (c) => {
 // Body: { user_id, feature_key, feature_value, granted_by?, expires_at? }
 // ---------------------------------------------------------------------------
 const featureOverrideSchema = z.object({
-  user_id: z.string().min(1, 'user_id is required'),
-  feature_key: z.string().min(1, 'feature_key is required'),
+  user_id: z.string().trim().min(1, 'user_id is required'),
+  feature_key: z.string().trim().min(1, 'feature_key is required'),
   feature_value: z.record(z.string(), z.unknown()),
   granted_by: z.string().optional(),
   expires_at: z.string().optional(),

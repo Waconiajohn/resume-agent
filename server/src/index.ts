@@ -447,7 +447,7 @@ if (isMainModule()) {
   createRedisBusIfConfigured().then((bus) => {
     if (bus) {
       redisBus = bus;
-      setAgentBus(bus as unknown as import('./agents/runtime/agent-bus.js').AgentBus);
+      setAgentBus(bus);
       logger.info('RedisBus active — agent messages routed via Redis');
     }
     startServer();

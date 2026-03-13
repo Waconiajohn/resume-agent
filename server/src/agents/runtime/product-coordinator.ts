@@ -26,7 +26,7 @@ import {
   recordActiveUser,
 } from '../../lib/pipeline-metrics.js';
 import { runAgentLoop } from './agent-loop.js';
-import { AgentBus } from './agent-bus.js';
+import type { IAgentBus } from './agent-bus.js';
 import { getAgentBus } from './bus-factory.js';
 import type { AgentMessage, BaseState, BaseEvent } from './agent-protocol.js';
 import type { CreateContextParams } from './agent-context.js';
@@ -95,7 +95,7 @@ function subscribeInterAgentHandlers<
   TEvent extends BaseEvent,
 >(
   handlers: InterAgentHandler<TState, TEvent>[],
-  bus: AgentBus,
+  bus: IAgentBus,
   state: TState,
   emit: (event: TEvent) => void,
   waitForUser: <T>(gate: string) => Promise<T>,

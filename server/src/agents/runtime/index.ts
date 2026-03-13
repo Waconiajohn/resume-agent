@@ -3,7 +3,7 @@
  */
 
 export { runAgentLoop, type RunAgentParams } from './agent-loop.js';
-export { AgentBus } from './agent-bus.js';
+export { AgentBus, type IAgentBus } from './agent-bus.js';
 export { createAgentContext, type CreateContextParams, type ContextInternals } from './agent-context.js';
 export {
   type AgentIdentity,

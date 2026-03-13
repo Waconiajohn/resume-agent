@@ -89,6 +89,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setResumeText(rt);
     setJobDescription(jd);
     setEditableResume(null);
+    setSessionLoadError(null);
     resetHistory();
     void start(rt, jd);
   }, [start, resetHistory]);
@@ -148,6 +149,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setResumeText('');
     setJobDescription('');
     setSessionLoadAttempted(false);
+    setSessionLoadError(null);
   }, [reset]);
 
   if (!isPipelineActive) {
