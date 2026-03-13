@@ -267,9 +267,9 @@ describe('NetworkingHubRoom', () => {
 
   it('renders messaging method buttons', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getByText('Group Message')).toBeInTheDocument();
-    expect(screen.getByText('Connection Request')).toBeInTheDocument();
-    expect(screen.getByText('InMail')).toBeInTheDocument();
+    expect(screen.getAllByText('Group Message').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Connection Request').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('InMail').length).toBeGreaterThan(0);
   });
 
   it('does not show coaching bar when no rule-of-four groups', () => {

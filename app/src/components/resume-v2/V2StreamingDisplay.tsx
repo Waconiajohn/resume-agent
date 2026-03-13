@@ -13,7 +13,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, FileText, Shield, Undo2, Redo2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, FileText, Shield, Undo2, Redo2, ChevronDown } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import type { V2PipelineData, V2Stage, ResumeDraft } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
@@ -99,6 +99,46 @@ function StageBanner({ label, icon: Icon, stage, currentStage, isComplete }: {
   );
 }
 
+/** Thin divider that labels a new phase group */
+function PhaseDivider({ label }: { label: string }) {
+  return (
+    <div className="relative flex items-center gap-4 py-2 animate-[card-enter_500ms_ease-out_forwards]">
+      <div className="flex-1 border-t border-white/[0.06]" />
+      <span className="shrink-0 text-[11px] font-medium tracking-widest uppercase text-white/30 select-none">
+        {label}
+      </span>
+      <div className="flex-1 border-t border-white/[0.06]" />
+    </div>
+  );
+}
+
+/** Three-dot loading indicator for in-progress stages with no output yet */
+function StagePendingDots() {
+  return (
+    <div className="flex items-center gap-1.5 py-3 px-1" aria-label="Loading" role="status">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="inline-block h-1.5 w-1.5 rounded-full bg-[#afc4ff]/60 animate-[dot-bounce_1.4s_ease-in-out_infinite]"
+          style={{ animationDelay: `${i * 0.16}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Wraps a card in a fade-in + slide-up animation with a staggered delay */
+function AnimatedCard({ children, index = 0 }: { children: React.ReactNode; index?: number }) {
+  return (
+    <div
+      className="animate-[card-enter_500ms_ease-out_forwards] opacity-0"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -112,6 +152,9 @@ export function V2StreamingDisplay({
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
 
+  // Scroll-to-bottom pill state
+  const [showScrollPill, setShowScrollPill] = useState(false);
+
   // Toolbar position state
   const [toolbarPos, setToolbarPos] = useState<{ top: number; left: number; bottom: number } | null>(null);
   const [selectedText, setSelectedText] = useState('');
@@ -123,16 +166,36 @@ export function V2StreamingDisplay({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [data.stage, data.jobIntelligence, data.candidateIntelligence, data.benchmarkCandidate, data.gapAnalysis, data.narrativeStrategy, data.resumeDraft, data.assembly]);
 
-  // Detect user scroll-up to stop auto-scroll
+  // Detect user scroll-up: stop auto-scroll and show the "new content" pill
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const handleScroll = () => {
       const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
       userScrolledRef.current = !isAtBottom;
+      // Only show the pill when the user has scrolled up AND the pipeline is still running
+      setShowScrollPill(!isAtBottom && !isComplete);
     };
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
+  }, [isComplete]);
+
+  // Hide pill once pipeline completes
+  useEffect(() => {
+    if (isComplete) setShowScrollPill(false);
+  }, [isComplete]);
+
+  // Show pill when new content arrives below and user is scrolled up
+  useEffect(() => {
+    if (userScrolledRef.current && !isComplete) {
+      setShowScrollPill(true);
+    }
+  }, [data.stage, data.jobIntelligence, data.candidateIntelligence, data.benchmarkCandidate, data.gapAnalysis, data.narrativeStrategy, data.resumeDraft, data.assembly, isComplete]);
+
+  const scrollToBottom = useCallback(() => {
+    userScrolledRef.current = false;
+    setShowScrollPill(false);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   // Handle text selection in resume document
@@ -175,11 +238,55 @@ export function V2StreamingDisplay({
   const hasResume = displayResume !== null && displayResume !== undefined;
   const canEdit = isComplete && displayResume !== null && displayResume !== undefined;
 
+  // Determine which stage is currently loading but has no output yet
+  const currentStageIdx = STAGE_ORDER.indexOf(data.stage);
+  const analysisRunning = !isComplete && data.stage === 'analysis' && !hasAnalysis;
+  const strategyRunning = !isComplete && currentStageIdx >= STAGE_ORDER.indexOf('strategy') && !hasStrategy;
+  const resumeRunning = !isComplete && (data.stage === 'writing' || data.stage === 'verification' || data.stage === 'assembly') && !hasResume;
+
+  const canShowUndoBar = canEdit && (undoCount > 0 || redoCount > 0);
+
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto"
+      className="flex-1 overflow-y-auto relative"
     >
+      {/* Sticky undo/redo bar — only when editing history exists */}
+      {canShowUndoBar && (
+        <div className="sticky top-0 z-10 flex items-center gap-1 px-4 py-1.5 bg-[#0f141e]/80 backdrop-blur-md border-b border-white/[0.06]">
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={undoCount === 0}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
+            title="Undo"
+          >
+            <Undo2 className="h-3 w-3" />
+            <span>Undo</span>
+            {undoCount > 0 && (
+              <span className="rounded bg-white/[0.08] px-1 py-0.5 font-mono text-[10px] text-white/40">
+                {undoCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onRedo}
+            disabled={redoCount === 0}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
+            title="Redo"
+          >
+            <Redo2 className="h-3 w-3" />
+            <span>Redo</span>
+            {redoCount > 0 && (
+              <span className="rounded bg-white/[0.08] px-1 py-0.5 font-mono text-[10px] text-white/40">
+                {redoCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
       <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
         {/* Connection/processing banner */}
         {!isComplete && isConnected && (
@@ -212,188 +319,223 @@ export function V2StreamingDisplay({
         )}
 
         {/* ─── Stage 1: Analysis ──────────────────────────────── */}
-        {hasAnalysis && (
+        {(hasAnalysis || analysisRunning) && (
           <section aria-label="Analysis">
             <StageBanner label="What they're looking for — and what you bring" icon={Briefcase} stage="analysis" currentStage={data.stage} isComplete={isComplete} />
             <div className="space-y-4">
               {data.jobIntelligence && (
-                <GlassCard className="p-5"><JobIntelligenceCard data={data.jobIntelligence} /></GlassCard>
+                <AnimatedCard index={0}>
+                  <GlassCard className="p-5"><JobIntelligenceCard data={data.jobIntelligence} /></GlassCard>
+                </AnimatedCard>
               )}
               {data.candidateIntelligence && (
-                <GlassCard className="p-5"><CandidateIntelligenceCard data={data.candidateIntelligence} /></GlassCard>
+                <AnimatedCard index={1}>
+                  <GlassCard className="p-5"><CandidateIntelligenceCard data={data.candidateIntelligence} /></GlassCard>
+                </AnimatedCard>
               )}
               {data.benchmarkCandidate && (
-                <GlassCard className="p-5"><BenchmarkCandidateCard data={data.benchmarkCandidate} /></GlassCard>
+                <AnimatedCard index={2}>
+                  <GlassCard className="p-5"><BenchmarkCandidateCard data={data.benchmarkCandidate} /></GlassCard>
+                </AnimatedCard>
               )}
+              {analysisRunning && <StagePendingDots />}
             </div>
           </section>
         )}
 
         {/* ─── Stage 2: Strategy ──────────────────────────────── */}
-        {hasStrategy && (
-          <section aria-label="Positioning strategy">
-            <StageBanner label="Your positioning strategy" icon={Compass} stage="strategy" currentStage={data.stage} isComplete={isComplete} />
-            <div className="space-y-4">
-              {data.gapAnalysis && (
-                <GlassCard className="p-5">
-                  <GapAnalysisCard data={data.gapAnalysis} />
-                </GlassCard>
-              )}
-              {gapCoachingCards && gapCoachingCards.length > 0 && (
-                <GlassCard className="p-5">
-                  <GapCoachingCardList
-                    key={gapCoachingCards.length}
-                    cards={gapCoachingCards}
-                    onRespond={onRespondGapCoaching}
-                  />
-                </GlassCard>
-              )}
-              {data.narrativeStrategy && (
-                <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} /></GlassCard>
-              )}
-              {data.narrativeStrategy?.gap_positioning_map && data.narrativeStrategy.gap_positioning_map.length > 0 && (
-                <GlassCard className="p-5 border-[#b5dec2]/15">
-                  <StrategyPlacementCard positioningMap={data.narrativeStrategy.gap_positioning_map} />
-                </GlassCard>
-              )}
-            </div>
-          </section>
+        {(hasStrategy || strategyRunning) && (
+          <>
+            <PhaseDivider label="Strategy & Positioning" />
+            <section aria-label="Positioning strategy">
+              <StageBanner label="Your positioning strategy" icon={Compass} stage="strategy" currentStage={data.stage} isComplete={isComplete} />
+              <div className="space-y-4">
+                {data.gapAnalysis && (
+                  <AnimatedCard index={0}>
+                    <GlassCard className="p-5">
+                      <GapAnalysisCard data={data.gapAnalysis} />
+                    </GlassCard>
+                  </AnimatedCard>
+                )}
+                {gapCoachingCards && gapCoachingCards.length > 0 && (
+                  <AnimatedCard index={1}>
+                    <GlassCard className="p-5">
+                      <GapCoachingCardList
+                        key={gapCoachingCards.length}
+                        cards={gapCoachingCards}
+                        onRespond={onRespondGapCoaching}
+                      />
+                    </GlassCard>
+                  </AnimatedCard>
+                )}
+                {data.narrativeStrategy && (
+                  <AnimatedCard index={2}>
+                    <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} /></GlassCard>
+                  </AnimatedCard>
+                )}
+                {data.narrativeStrategy?.gap_positioning_map && data.narrativeStrategy.gap_positioning_map.length > 0 && (
+                  <AnimatedCard index={3}>
+                    <GlassCard className="p-5 border-[#b5dec2]/15">
+                      <StrategyPlacementCard positioningMap={data.narrativeStrategy.gap_positioning_map} />
+                    </GlassCard>
+                  </AnimatedCard>
+                )}
+                {strategyRunning && <StagePendingDots />}
+              </div>
+            </section>
+          </>
         )}
 
         {/* ─── Add Context (after strategy, when complete) ───── */}
         {isComplete && data.gapAnalysis && (
-          <AddContextCard onSubmit={onAddContext} loading={isRerunning} />
+          <AnimatedCard index={0}>
+            <AddContextCard onSubmit={onAddContext} loading={isRerunning} />
+          </AnimatedCard>
         )}
 
         {/* ─── What Changed (after re-run, before resume) ─────── */}
         {isComplete && previousResume && displayResume && onDismissChanges && (
-          <WhatChangedCard
-            previousResume={previousResume}
-            currentResume={displayResume}
-            onDismiss={onDismissChanges}
-          />
+          <AnimatedCard index={0}>
+            <WhatChangedCard
+              previousResume={previousResume}
+              currentResume={displayResume}
+              onDismiss={onDismissChanges}
+            />
+          </AnimatedCard>
         )}
 
         {/* ─── Stage 3+4+5: Resume ────────────────────────────── */}
-        {hasResume && (
-          <section aria-label="Your resume">
-            <StageBanner label="Your resume" icon={FileText} stage="writing" currentStage={data.stage} isComplete={isComplete} />
+        {(hasResume || resumeRunning) && (
+          <>
+            <PhaseDivider label="Your Resume" />
+            <section aria-label="Your resume">
+              <StageBanner label="Your resume" icon={FileText} stage="writing" currentStage={data.stage} isComplete={isComplete} />
 
-            {/* Undo/redo bar (only when editing is available) */}
-            {canEdit && (undoCount > 0 || redoCount > 0) && (
-              <div className="flex items-center gap-1 mb-3">
-                <button
-                  type="button"
-                  onClick={onUndo}
-                  disabled={undoCount === 0}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-white/50 hover:bg-white/[0.06] disabled:opacity-30"
-                  title="Undo"
-                >
-                  <Undo2 className="h-3 w-3" /> Undo
-                </button>
-                <button
-                  type="button"
-                  onClick={onRedo}
-                  disabled={redoCount === 0}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-white/50 hover:bg-white/[0.06] disabled:opacity-30"
-                  title="Redo"
-                >
-                  <Redo2 className="h-3 w-3" /> Redo
-                </button>
-              </div>
-            )}
-
-            {/* Scores (show when assembly is complete) */}
-            {data.assembly && (
-              <div className="mb-4">
-                {isComplete ? (
-                  <KeywordScoreDashboard
-                    pipelineScores={data.assembly.scores}
-                    liveScores={liveScores}
-                    quickWins={data.assembly.quick_wins}
-                    isScoring={isScoring}
-                    onIntegrateKeyword={onIntegrateKeyword}
-                  />
-                ) : (
-                  <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />
-                )}
-              </div>
-            )}
-
-            {/* Verification spinner (during pipeline) */}
-            {!isComplete && (data.stage === 'verification' || data.stage === 'assembly') && (
-              <div className="flex items-center gap-2 mb-4 text-xs text-white/40">
-                <Shield className="h-3 w-3" />
-                Verifying accuracy, ATS compliance, and tone...
-              </div>
-            )}
-
-            {/* Resume document */}
-            {displayResume && (
-              <GlassCard className="p-6">
-                {canEdit && (
-                  <div className="mb-4 text-xs text-white/30 border-b border-white/[0.04] pb-2">
-                    Select text to edit with AI
+              {/* Scores (show when assembly is complete) */}
+              {data.assembly && (
+                <AnimatedCard index={0}>
+                  <div className="mb-4">
+                    {isComplete ? (
+                      <KeywordScoreDashboard
+                        pipelineScores={data.assembly.scores}
+                        liveScores={liveScores}
+                        quickWins={data.assembly.quick_wins}
+                        isScoring={isScoring}
+                        onIntegrateKeyword={onIntegrateKeyword}
+                      />
+                    ) : (
+                      <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />
+                    )}
                   </div>
-                )}
-                <ResumeDocumentCard
-                  resume={displayResume}
-                  onTextSelect={canEdit ? handleTextSelect : undefined}
-                />
-              </GlassCard>
-            )}
+                </AnimatedCard>
+              )}
 
-            {/* Editing spinner — below resume so user sees it inline */}
-            {isEditing && (
-              <div className="flex items-center gap-2 mt-4 text-xs text-white/40">
-                <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
-                AI is editing...
-              </div>
-            )}
+              {/* Verification spinner (during pipeline) */}
+              {!isComplete && (data.stage === 'verification' || data.stage === 'assembly') && (
+                <div className="flex items-center gap-2 mb-4 text-xs text-white/40">
+                  <Shield className="h-3 w-3" />
+                  Verifying accuracy, ATS compliance, and tone...
+                </div>
+              )}
 
-            {/* Pending edit diff view — below resume, auto-scrolls into view */}
-            {pendingEdit && (
-              <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
-                <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={onAcceptEdit} onReject={onRejectEdit} />
-              </div>
-            )}
-          </section>
+              {/* Resume document */}
+              {displayResume && (
+                <AnimatedCard index={data.assembly ? 1 : 0}>
+                  <GlassCard className="p-6">
+                    {canEdit && (
+                      <div className="mb-4 text-xs text-white/30 border-b border-white/[0.04] pb-2">
+                        Select text to edit with AI
+                      </div>
+                    )}
+                    <ResumeDocumentCard
+                      resume={displayResume}
+                      onTextSelect={canEdit ? handleTextSelect : undefined}
+                    />
+                  </GlassCard>
+                </AnimatedCard>
+              )}
+
+              {/* Dots when resume stage is running but resume hasn't appeared yet */}
+              {resumeRunning && <StagePendingDots />}
+
+              {/* Editing spinner — below resume so user sees it inline */}
+              {isEditing && (
+                <div className="flex items-center gap-2 mt-4 text-xs text-white/40">
+                  <Loader2 className="h-3 w-3 motion-safe:animate-spin" />
+                  AI is editing...
+                </div>
+              )}
+
+              {/* Pending edit diff view — below resume, auto-scrolls into view */}
+              {pendingEdit && (
+                <div className="mt-4" ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+                  <DiffView key={pendingEdit.originalText + pendingEdit.section} edit={pendingEdit} onAccept={onAcceptEdit} onReject={onRejectEdit} />
+                </div>
+              )}
+            </section>
+          </>
         )}
 
         {/* ─── Completion ─────────────────────────────────────── */}
         {isComplete && data.assembly && (
-          <div className="space-y-4">
-            {data.assembly.positioning_assessment && data.gapAnalysis && (
-              <StrategyAuditCard
-                positioningAssessment={data.assembly.positioning_assessment}
-                gapAnalysis={data.gapAnalysis}
-              />
-            )}
-            {data.assembly.positioning_assessment && (
-              <PositioningAssessmentCard
-                assessment={data.assembly.positioning_assessment}
-                preScores={preScores}
-                companyName={data.jobIntelligence?.company_name}
-                roleTitle={data.jobIntelligence?.role_title}
-              />
-            )}
-            <div className="flex items-center gap-2 rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] px-4 py-3 text-sm text-[#b5dec2]/90" role="status">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              Resume complete. Select any text above to edit with AI.
+          <>
+            <PhaseDivider label="Assessment & Export" />
+            <div className="space-y-4">
+              {data.assembly.positioning_assessment && data.gapAnalysis && (
+                <AnimatedCard index={0}>
+                  <StrategyAuditCard
+                    positioningAssessment={data.assembly.positioning_assessment}
+                    gapAnalysis={data.gapAnalysis}
+                  />
+                </AnimatedCard>
+              )}
+              {data.assembly.positioning_assessment && (
+                <AnimatedCard index={1}>
+                  <PositioningAssessmentCard
+                    assessment={data.assembly.positioning_assessment}
+                    preScores={preScores}
+                    companyName={data.jobIntelligence?.company_name}
+                    roleTitle={data.jobIntelligence?.role_title}
+                  />
+                </AnimatedCard>
+              )}
+              <AnimatedCard index={2}>
+                <div className="flex items-center gap-2 rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] px-4 py-3 text-sm text-[#b5dec2]/90" role="status">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  Resume complete. Select any text above to edit with AI.
+                </div>
+              </AnimatedCard>
+              {displayResume && (
+                <AnimatedCard index={3}>
+                  <ExportBar
+                    resume={displayResume}
+                    companyName={data.jobIntelligence?.company_name}
+                    jobTitle={data.jobIntelligence?.role_title}
+                    atsScore={data.assembly.scores.ats_match}
+                  />
+                </AnimatedCard>
+              )}
             </div>
-            {displayResume && (
-              <ExportBar
-                resume={displayResume}
-                companyName={data.jobIntelligence?.company_name}
-                jobTitle={data.jobIntelligence?.role_title}
-                atsScore={data.assembly.scores.ats_match}
-              />
-            )}
-          </div>
+          </>
         )}
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Floating "scroll to bottom" pill */}
+      {showScrollPill && (
+        <div className="sticky bottom-6 flex justify-center pointer-events-none">
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-white/[0.12] bg-white/10 backdrop-blur-md px-3.5 py-1.5 text-xs font-medium text-white/70 shadow-lg hover:bg-white/[0.15] hover:text-white/90 transition-colors animate-[pill-appear_200ms_ease-out_forwards]"
+            aria-label="Scroll to new content"
+          >
+            <ChevronDown className="h-3 w-3" />
+            New content
+          </button>
+        </div>
+      )}
 
       {/* Floating toolbar */}
       {canEdit && (

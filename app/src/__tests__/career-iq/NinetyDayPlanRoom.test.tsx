@@ -106,7 +106,7 @@ describe('NinetyDayPlanRoom', () => {
   it('shows "What you will get" section in idle state', () => {
     render(<NinetyDayPlanRoom />);
     expect(screen.getByText('What you will get')).toBeInTheDocument();
-    expect(screen.getByText('Quick wins for the first 30 days')).toBeInTheDocument();
+    expect(screen.getByText('Quick wins that build credibility without overstepping')).toBeInTheDocument();
   });
 
   it('shows activity feed messages in running state', () => {

@@ -8,6 +8,11 @@ interface StrategyPlacementCardProps {
 export function StrategyPlacementCard({ positioningMap }: StrategyPlacementCardProps) {
   if (!positioningMap || positioningMap.length === 0) return null;
 
+  // Collect unique sections affected across all entries
+  const uniqueSections = Array.from(
+    new Set(positioningMap.map((e) => e.where_to_feature).filter(Boolean))
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -24,6 +29,25 @@ export function StrategyPlacementCard({ positioningMap }: StrategyPlacementCardP
           <PlacementRow key={i} entry={entry} />
         ))}
       </div>
+
+      {/* Mini resume outline — unique sections affected */}
+      {uniqueSections.length > 0 && (
+        <div className="pt-2 border-t border-white/[0.06]">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-white/30 mb-2">
+            Sections Affected
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {uniqueSections.map((section, i) => (
+              <span
+                key={i}
+                className="rounded-full border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] px-2.5 py-0.5 text-[11px] text-[#b5dec2]/70"
+              >
+                {section}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -31,9 +55,12 @@ export function StrategyPlacementCard({ positioningMap }: StrategyPlacementCardP
 function PlacementRow({ entry }: { entry: GapPositioningMapEntry }) {
   return (
     <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-      <div className="flex items-center gap-2 min-w-0">
+      {/* Requirement → Section with dashed connector */}
+      <div className="flex items-center gap-3 min-w-0">
         <span className="text-sm text-white/80 flex-1 min-w-0 truncate">{entry.requirement}</span>
-        <span className="text-white/25 shrink-0 select-none">&rarr;</span>
+        <div className="shrink-0 flex items-center gap-0 w-8">
+          <div className="flex-1 border-t border-dashed border-[#b5dec2]/30" />
+        </div>
         <span className="text-sm font-medium text-[#b5dec2]/80 shrink-0">{entry.where_to_feature}</span>
       </div>
 

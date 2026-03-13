@@ -4,10 +4,10 @@ import {
   X,
   Shuffle,
   ChevronDown,
-  ChevronRight,
   Target,
   Lightbulb,
   FileText,
+  ArrowRight,
 } from 'lucide-react';
 import { GlassCard } from '../../GlassCard';
 import type {
@@ -38,42 +38,17 @@ function importanceLabel(importance: PositioningAssessmentEntry['importance']): 
   }
 }
 
-function importanceStyle(
-  importance: PositioningAssessmentEntry['importance'],
-): { color: string; backgroundColor: string; border: string } {
-  switch (importance) {
-    case 'must_have':
-      return {
-        color: '#f0b8b8',
-        backgroundColor: 'rgba(240,184,184,0.10)',
-        border: '1px solid rgba(240,184,184,0.20)',
-      };
-    case 'important':
-      return {
-        color: '#f0d99f',
-        backgroundColor: 'rgba(240,217,159,0.10)',
-        border: '1px solid rgba(240,217,159,0.20)',
-      };
-    case 'nice_to_have':
-      return {
-        color: 'rgba(255,255,255,0.40)',
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.10)',
-      };
-  }
-}
+// ─── Status badge (filled pill) ────────────────────────────────────────────────
 
-// ─── Status indicator ──────────────────────────────────────────────────────────
-
-function StatusIndicator({ status }: { status: PositioningAssessmentEntry['status'] }) {
+function StatusBadge({ status }: { status: PositioningAssessmentEntry['status'] }) {
   switch (status) {
     case 'strong':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={{
             color: '#b5dec2',
-            backgroundColor: 'rgba(181,222,194,0.10)',
+            backgroundColor: 'rgba(181,222,194,0.15)',
             border: '1px solid rgba(181,222,194,0.20)',
           }}
         >
@@ -84,10 +59,10 @@ function StatusIndicator({ status }: { status: PositioningAssessmentEntry['statu
     case 'repositioned':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={{
             color: '#afc4ff',
-            backgroundColor: 'rgba(175,196,255,0.10)',
+            backgroundColor: 'rgba(175,196,255,0.15)',
             border: '1px solid rgba(175,196,255,0.20)',
           }}
         >
@@ -98,10 +73,10 @@ function StatusIndicator({ status }: { status: PositioningAssessmentEntry['statu
     case 'gap':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={{
             color: '#f0b8b8',
-            backgroundColor: 'rgba(240,184,184,0.10)',
+            backgroundColor: 'rgba(240,184,184,0.15)',
             border: '1px solid rgba(240,184,184,0.20)',
           }}
         >
@@ -112,14 +87,64 @@ function StatusIndicator({ status }: { status: PositioningAssessmentEntry['statu
   }
 }
 
+// ─── Importance badge (filled pill) ────────────────────────────────────────────
+
+function ImportanceBadge({ importance }: { importance: PositioningAssessmentEntry['importance'] }) {
+  switch (importance) {
+    case 'must_have':
+      return (
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
+          style={{
+            color: '#f0b8b8',
+            backgroundColor: 'rgba(240,184,184,0.15)',
+            border: '1px solid rgba(240,184,184,0.20)',
+          }}
+        >
+          {importanceLabel(importance)}
+        </span>
+      );
+    case 'important':
+      return (
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
+          style={{
+            color: '#f0d99f',
+            backgroundColor: 'rgba(240,217,159,0.15)',
+            border: '1px solid rgba(240,217,159,0.20)',
+          }}
+        >
+          {importanceLabel(importance)}
+        </span>
+      );
+    case 'nice_to_have':
+      return (
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
+          style={{
+            color: 'rgba(255,255,255,0.40)',
+            backgroundColor: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.10)',
+          }}
+        >
+          {importanceLabel(importance)}
+        </span>
+      );
+  }
+}
+
 // ─── Expandable requirement row ────────────────────────────────────────────────
 
-function RequirementRow({ entry }: { entry: PositioningAssessmentEntry }) {
+function RequirementRow({ entry, index }: { entry: PositioningAssessmentEntry; index: number }) {
   const [expanded, setExpanded] = useState(false);
-  const ChevronIcon = expanded ? ChevronDown : ChevronRight;
 
   return (
-    <div className="border border-white/[0.06] rounded-lg overflow-hidden">
+    <div
+      className={[
+        'border border-white/[0.06] rounded-lg overflow-hidden',
+        index % 2 === 1 ? 'bg-white/[0.02]' : '',
+      ].join(' ')}
+    >
       {/* Collapsed header */}
       <button
         type="button"
@@ -127,7 +152,13 @@ function RequirementRow({ entry }: { entry: PositioningAssessmentEntry }) {
         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
         aria-expanded={expanded}
       >
-        <ChevronIcon className="h-3 w-3 text-white/30 shrink-0" aria-hidden="true" />
+        <ChevronDown
+          className={[
+            'h-3 w-3 text-white/30 shrink-0 transition-transform duration-200',
+            expanded ? 'rotate-0' : '-rotate-90',
+          ].join(' ')}
+          aria-hidden="true"
+        />
 
         {/* Requirement text */}
         <span className="flex-1 min-w-0 text-xs text-white/75 leading-snug truncate">
@@ -135,21 +166,22 @@ function RequirementRow({ entry }: { entry: PositioningAssessmentEntry }) {
         </span>
 
         {/* Importance badge */}
-        <span
-          className="rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0"
-          style={importanceStyle(entry.importance)}
-        >
-          {importanceLabel(entry.importance)}
-        </span>
+        <ImportanceBadge importance={entry.importance} />
 
-        {/* Status indicator */}
-        <StatusIndicator status={entry.status} />
+        {/* Status badge */}
+        <StatusBadge status={entry.status} />
       </button>
 
-      {/* Expanded detail */}
-      {expanded && (
+      {/* Expanded detail — smooth max-height transition */}
+      <div
+        className={[
+          'transition-all duration-300 overflow-hidden',
+          expanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0',
+        ].join(' ')}
+        aria-hidden={!expanded}
+      >
         <div className="px-3 pb-3 pt-1 space-y-2 bg-white/[0.02] border-t border-white/[0.06]">
-          {/* Addressed by */}
+          {/* Addressed by — with quoted bullet text and left border accent */}
           {entry.addressed_by.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -162,7 +194,7 @@ function RequirementRow({ entry }: { entry: PositioningAssessmentEntry }) {
                 {entry.addressed_by.map((ref, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span
-                      className="mt-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium shrink-0"
+                      className="mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium shrink-0"
                       style={{
                         color: 'rgba(255,255,255,0.50)',
                         backgroundColor: 'rgba(255,255,255,0.06)',
@@ -171,9 +203,12 @@ function RequirementRow({ entry }: { entry: PositioningAssessmentEntry }) {
                     >
                       {ref.section}
                     </span>
-                    <span className="text-[11px] text-white/60 leading-relaxed">
-                      {ref.bullet_text}
-                    </span>
+                    <blockquote
+                      className="flex-1 border-l-2 pl-2 text-[11px] text-white/60 leading-relaxed italic"
+                      style={{ borderColor: 'rgba(175,196,255,0.25)' }}
+                    >
+                      &ldquo;{ref.bullet_text}&rdquo;
+                    </blockquote>
                   </li>
                 ))}
               </ul>
@@ -200,7 +235,71 @@ function RequirementRow({ entry }: { entry: PositioningAssessmentEntry }) {
             </div>
           )}
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Score delta visualization ─────────────────────────────────────────────────
+
+function ScoreDelta({
+  beforeScore,
+  afterScore,
+}: {
+  beforeScore: number;
+  afterScore: number;
+}) {
+  const delta = afterScore - beforeScore;
+  const isImprovement = delta >= 0;
+  const arrowColor = isImprovement ? '#b5dec2' : '#f0b8b8';
+  const afterColor = isImprovement ? '#b5dec2' : '#f0b8b8';
+  const deltaColor = isImprovement ? '#b5dec2' : '#f0b8b8';
+  const deltaBg = isImprovement ? 'rgba(181,222,194,0.10)' : 'rgba(240,184,184,0.10)';
+  const deltaBorder = isImprovement ? 'rgba(181,222,194,0.20)' : 'rgba(240,184,184,0.20)';
+
+  return (
+    <div
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5 mb-4"
+      style={{
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      {/* Before score with subtle background bar */}
+      <div className="relative flex flex-col items-center gap-0.5">
+        <span className="text-[9px] text-white/35 uppercase tracking-wide">Before</span>
+        <span className="text-base font-bold tabular-nums text-white/60 leading-none">
+          {beforeScore}<span className="text-[10px] font-normal text-white/30">%</span>
+        </span>
+      </div>
+
+      {/* Arrow */}
+      <ArrowRight
+        className="h-4 w-4 shrink-0"
+        style={{ color: arrowColor }}
+        aria-hidden="true"
+      />
+
+      {/* After score */}
+      <div className="relative flex flex-col items-center gap-0.5">
+        <span className="text-[9px] text-white/35 uppercase tracking-wide">After</span>
+        <span
+          className="text-base font-bold tabular-nums leading-none"
+          style={{ color: afterColor }}
+        >
+          {afterScore}<span className="text-[10px] font-normal" style={{ color: `${afterColor}99` }}>%</span>
+        </span>
+      </div>
+
+      {/* Delta badge */}
+      <span
+        className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+        style={{ color: deltaColor, backgroundColor: deltaBg, border: `1px solid ${deltaBorder}` }}
+        aria-label={`${isImprovement ? 'Improvement' : 'Decrease'} of ${Math.abs(delta)} percentage points`}
+      >
+        {delta > 0 ? '+' : ''}
+        {delta}pp
+      </span>
     </div>
   );
 }
@@ -218,10 +317,6 @@ export function PositioningAssessmentCard({
   // Compute score delta
   const beforeScore = preScores?.ats_match ?? assessment.before_score;
   const afterScore = assessment.after_score;
-  const delta = afterScore - beforeScore;
-  const deltaColor = delta >= 0 ? '#b5dec2' : '#f0b8b8';
-  const deltaBg = delta >= 0 ? 'rgba(181,222,194,0.10)' : 'rgba(240,184,184,0.10)';
-  const deltaBorder = delta >= 0 ? 'rgba(181,222,194,0.20)' : 'rgba(240,184,184,0.20)';
 
   // Build title
   let title = 'Positioning Assessment';
@@ -241,7 +336,7 @@ export function PositioningAssessmentCard({
   const gapCount = assessment.requirement_map.filter((r) => r.status === 'gap').length;
 
   return (
-    <GlassCard className="p-5">
+    <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
       {/* ── Title ───────────────────────────────────────────────── */}
       <div className="flex items-start gap-2 mb-4">
         <Target
@@ -255,42 +350,8 @@ export function PositioningAssessmentCard({
       {/* ── Summary narrative ────────────────────────────────────── */}
       <p className="text-xs text-white/60 leading-relaxed mb-4">{assessment.summary}</p>
 
-      {/* ── Score delta ──────────────────────────────────────────── */}
-      <div
-        className="flex items-center gap-3 rounded-lg px-3 py-2.5 mb-4"
-        style={{
-          backgroundColor: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-white/40">Original:</span>
-          <span className="font-semibold tabular-nums text-white/70">{beforeScore}%</span>
-        </div>
-
-        <span className="text-white/20" aria-hidden="true">
-          →
-        </span>
-
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-white/40">Optimized:</span>
-          <span
-            className="font-semibold tabular-nums"
-            style={{ color: delta >= 0 ? '#b5dec2' : '#f0b8b8' }}
-          >
-            {afterScore}%
-          </span>
-        </div>
-
-        <span
-          className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums"
-          style={{ color: deltaColor, backgroundColor: deltaBg, border: `1px solid ${deltaBorder}` }}
-          aria-label={`${delta >= 0 ? 'Improvement' : 'Decrease'} of ${Math.abs(delta)} percentage points`}
-        >
-          {delta > 0 ? '+' : ''}
-          {delta}
-        </span>
-      </div>
+      {/* ── Score delta visualization ─────────────────────────────── */}
+      <ScoreDelta beforeScore={beforeScore} afterScore={afterScore} />
 
       {/* ── Requirement map ──────────────────────────────────────── */}
       {assessment.requirement_map.length > 0 && (
@@ -319,7 +380,7 @@ export function PositioningAssessmentCard({
 
           <div className="space-y-1.5">
             {assessment.requirement_map.map((entry, i) => (
-              <RequirementRow key={i} entry={entry} />
+              <RequirementRow key={i} entry={entry} index={i} />
             ))}
           </div>
         </div>
@@ -334,11 +395,13 @@ export function PositioningAssessmentCard({
             className="flex items-center gap-1.5 w-full text-left mb-2 hover:opacity-80 transition-opacity"
             aria-expanded={strategiesOpen}
           >
-            {strategiesOpen ? (
-              <ChevronDown className="h-3 w-3 text-white/30" aria-hidden="true" />
-            ) : (
-              <ChevronRight className="h-3 w-3 text-white/30" aria-hidden="true" />
-            )}
+            <ChevronDown
+              className={[
+                'h-3 w-3 text-white/30 transition-transform duration-200',
+                strategiesOpen ? 'rotate-0' : '-rotate-90',
+              ].join(' ')}
+              aria-hidden="true"
+            />
             <Lightbulb className="h-3.5 w-3.5 text-[#f0d99f]" aria-hidden="true" />
             <span className="text-xs font-medium text-white/60">
               Strategies Applied
@@ -355,7 +418,13 @@ export function PositioningAssessmentCard({
             </span>
           </button>
 
-          {strategiesOpen && (
+          <div
+            className={[
+              'transition-all duration-300 overflow-hidden',
+              strategiesOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0',
+            ].join(' ')}
+            aria-hidden={!strategiesOpen}
+          >
             <ul className="space-y-1.5">
               {assessment.strategies_applied.map((strategy, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs">
@@ -368,7 +437,7 @@ export function PositioningAssessmentCard({
                 </li>
               ))}
             </ul>
-          )}
+          </div>
         </div>
       )}
     </GlassCard>

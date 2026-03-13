@@ -673,13 +673,13 @@ describe('write_letter tool execution', () => {
     expect(draft).toContain(state.letter_plan!.opening_hook);
   });
 
-  it('defaults tone to professional when not specified', async () => {
+  it('defaults tone to formal when not specified', async () => {
     const state = makeStateWithPlan();
     const ctx = makeMockGenericContext<CoverLetterState, CoverLetterSSEEvent>(state);
 
     const result = await tool.execute({}, ctx) as Record<string, unknown>;
 
-    expect(result.tone).toBe('professional');
+    expect(result.tone).toBe('formal');
   });
 
   it('returns error when letter_plan is missing', async () => {

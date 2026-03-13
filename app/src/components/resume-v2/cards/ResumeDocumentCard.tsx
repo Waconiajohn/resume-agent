@@ -30,25 +30,48 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
 
   return (
     <div
-      className="space-y-6 font-serif select-text cursor-text"
+      className="space-y-6 font-['Georgia','Times_New_Roman',serif] leading-relaxed select-text cursor-text"
       onMouseUp={handleMouseUp}
     >
       {/* Header */}
-      <div data-section="header" className="text-center border-b border-white/10 pb-4">
-        <h2 className="text-2xl font-bold text-white/95">{resume.header.name}</h2>
-        <p className="text-sm text-[#afc4ff] mt-1">{resume.header.branded_title}</p>
-        <div className="mt-2 flex items-center justify-center gap-3 text-xs text-white/50">
-          {resume.header.phone && <span>{resume.header.phone}</span>}
-          {resume.header.email && <span>{resume.header.email}</span>}
-          {resume.header.linkedin && <span>{resume.header.linkedin}</span>}
+      <div data-section="header" className="text-center border-b border-white/[0.12] pb-5">
+        <h2 className="text-2xl font-bold tracking-wide text-white/95">{resume.header.name}</h2>
+        <p className="text-base text-[#afc4ff]/80 font-medium tracking-wider uppercase mt-1.5">
+          {resume.header.branded_title}
+        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-xs text-white/50 sm:flex-row">
+          {resume.header.phone && (
+            <>
+              <span className="px-2 sm:first:pl-0">{resume.header.phone}</span>
+              {(resume.header.email || resume.header.linkedin) && (
+                <span className="hidden sm:inline text-white/20" aria-hidden="true">·</span>
+              )}
+            </>
+          )}
+          {resume.header.email && (
+            <>
+              <span className="px-2">{resume.header.email}</span>
+              {resume.header.linkedin && (
+                <span className="hidden sm:inline text-white/20" aria-hidden="true">·</span>
+              )}
+            </>
+          )}
+          {resume.header.linkedin && (
+            <span className="px-2">{resume.header.linkedin}</span>
+          )}
         </div>
       </div>
 
       {/* Executive Summary */}
       <section data-section="executive_summary">
         <SectionHeading>Executive Summary</SectionHeading>
-        <p className="text-sm text-white/75 leading-relaxed">
-          {resume.executive_summary.is_new && <NewMarker />}
+        <p
+          className={`text-sm leading-relaxed text-white/80 ${
+            resume.executive_summary.is_new
+              ? 'border-l-2 border-[#b5dec2]/40 pl-2'
+              : ''
+          }`}
+        >
           {resume.executive_summary.content}
         </p>
       </section>
@@ -59,7 +82,12 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
           <SectionHeading>Core Competencies</SectionHeading>
           <div className="flex flex-wrap gap-2">
             {resume.core_competencies.map((comp, i) => (
-              <span key={i} className="rounded border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-white/70">{comp}</span>
+              <span
+                key={i}
+                className="rounded border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-white/70"
+              >
+                {comp}
+              </span>
             ))}
           </div>
         </section>
@@ -70,21 +98,33 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
         <section data-section="selected_accomplishments">
           <SectionHeading>Selected Accomplishments</SectionHeading>
           <ul className="space-y-2">
-            {resume.selected_accomplishments.map((a, i) => (
-              <li
-                key={i}
-                className="text-sm text-white/75 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-2 before:h-1.5 before:w-1.5 before:rounded-full before:bg-[#afc4ff]/40"
-                {...(a.addresses_requirements.length > 0
-                  ? { 'data-addresses': JSON.stringify(a.addresses_requirements) }
-                  : {})}
-              >
-                {a.is_new && <NewMarker />}
-                {a.content}
-                {a.addresses_requirements.length > 0 && (
-                  <StrategyTooltip requirements={a.addresses_requirements} />
-                )}
-              </li>
-            ))}
+            {resume.selected_accomplishments.map((a, i) => {
+              const hasStrategy = a.addresses_requirements.length > 0;
+              return (
+                <li
+                  key={i}
+                  className={`text-sm text-white/80 leading-relaxed pl-4 relative ${
+                    a.is_new ? 'border-l-2 border-[#b5dec2]/40' : ''
+                  }`}
+                  {...(hasStrategy
+                    ? { 'data-addresses': JSON.stringify(a.addresses_requirements) }
+                    : {})}
+                >
+                  {/* Bullet dot — blue for strategy, neutral default */}
+                  <span
+                    className={`absolute left-0 top-[0.45em] h-1.5 w-1.5 rounded-full ${
+                      hasStrategy ? 'bg-[#afc4ff]/60' : 'bg-white/25'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  {a.is_new && <NewMarker />}
+                  {a.content}
+                  {hasStrategy && (
+                    <StrategyTooltip requirements={a.addresses_requirements} />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -98,30 +138,44 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
               <div key={i}>
                 <div className="flex items-baseline justify-between gap-2">
                   <div>
-                    <span className="text-sm font-semibold text-white/90">{exp.title}</span>
-                    <span className="text-sm text-white/50"> | {exp.company}</span>
+                    <span className="text-sm font-bold text-white/90">{exp.title}</span>
+                    <span className="text-sm text-white/50"> · {exp.company}</span>
                   </div>
-                  <span className="text-xs text-white/40 whitespace-nowrap">{exp.start_date} — {exp.end_date}</span>
+                  <span className="text-xs text-white/40 whitespace-nowrap shrink-0">
+                    {exp.start_date} — {exp.end_date}
+                  </span>
                 </div>
                 {exp.scope_statement && (
-                  <p className="mt-1 text-xs text-white/55 italic">{exp.scope_statement}</p>
+                  <p className="mt-1 text-xs text-white/50 italic pl-1">{exp.scope_statement}</p>
                 )}
                 <ul className="mt-2 space-y-1.5">
-                  {exp.bullets.map((bullet, j) => (
-                    <li
-                      key={j}
-                      className="text-sm text-white/70 leading-relaxed pl-4 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-white/25"
-                      {...(bullet.addresses_requirements.length > 0
-                        ? { 'data-addresses': JSON.stringify(bullet.addresses_requirements) }
-                        : {})}
-                    >
-                      {bullet.is_new && <NewMarker />}
-                      {bullet.text}
-                      {bullet.addresses_requirements.length > 0 && (
-                        <StrategyTooltip requirements={bullet.addresses_requirements} />
-                      )}
-                    </li>
-                  ))}
+                  {exp.bullets.map((bullet, j) => {
+                    const hasStrategy = bullet.addresses_requirements.length > 0;
+                    return (
+                      <li
+                        key={j}
+                        className={`text-sm text-white/80 leading-relaxed pl-4 relative ${
+                          bullet.is_new ? 'border-l-2 border-[#b5dec2]/40' : ''
+                        }`}
+                        {...(hasStrategy
+                          ? { 'data-addresses': JSON.stringify(bullet.addresses_requirements) }
+                          : {})}
+                      >
+                        {/* Bullet dot — blue (repositioned), green (direct), neutral */}
+                        <span
+                          className={`absolute left-0 top-[0.5em] h-1 w-1 rounded-full ${
+                            hasStrategy ? 'bg-[#afc4ff]/60' : 'bg-white/25'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        {bullet.is_new && <NewMarker />}
+                        {bullet.text}
+                        {hasStrategy && (
+                          <StrategyTooltip requirements={bullet.addresses_requirements} />
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -136,7 +190,10 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
           <div className="space-y-1">
             {resume.earlier_career.map((ec, i) => (
               <div key={i} className="flex items-baseline justify-between text-sm">
-                <span className="text-white/70">{ec.title} <span className="text-white/40">| {ec.company}</span></span>
+                <span className="text-white/70">
+                  {ec.title}{' '}
+                  <span className="text-white/40">· {ec.company}</span>
+                </span>
                 <span className="text-xs text-white/40">{ec.dates}</span>
               </div>
             ))}
@@ -150,7 +207,7 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
           <SectionHeading>Education</SectionHeading>
           <div className="space-y-1">
             {resume.education.map((edu, i) => (
-              <div key={i} className="text-sm text-white/70">
+              <div key={i} className="text-sm text-white/80">
                 {edu.degree} — {edu.institution}
                 {edu.year && <span className="text-white/40"> ({edu.year})</span>}
               </div>
@@ -163,7 +220,7 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
       {resume.certifications.length > 0 && (
         <section data-section="certifications">
           <SectionHeading>Certifications</SectionHeading>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
             {resume.certifications.map((cert, i) => (
               <span key={i} className="text-sm text-white/70">{cert}</span>
             ))}
@@ -202,20 +259,42 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
           } hover:text-[#afc4ff]/80`}
         />
       </button>
+
       {show && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-max max-w-[260px] bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 shadow-xl pointer-events-none">
-          <span className="block text-[10px] uppercase tracking-wider text-white/40 mb-1.5">
-            Addresses:
+        <span
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-max max-w-[280px] bg-[#0f141e]/95 backdrop-blur-md border border-white/[0.12] rounded-lg shadow-xl pointer-events-none"
+          role="tooltip"
+        >
+          {/* Tooltip header */}
+          <span className="block px-3 pt-2 pb-1.5 border-b border-white/[0.08]">
+            <span className="flex items-center gap-1.5">
+              <Lightbulb className="h-2.5 w-2.5 text-[#afc4ff]/60 shrink-0" aria-hidden="true" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-[#afc4ff]/70">
+                Strategy Applied
+              </span>
+            </span>
           </span>
-          <span className="flex flex-col gap-1">
+
+          {/* Requirements list */}
+          <span className="block px-3 pt-2 pb-2.5 space-y-1.5">
+            <span className="block text-[10px] uppercase tracking-wider text-white/35 mb-1">
+              Addresses:
+            </span>
             {requirements.map((req, i) => (
               <span
                 key={i}
-                className="text-[11px] text-white/70 bg-white/[0.06] rounded px-1.5 py-0.5"
+                className="flex items-start gap-1.5"
               >
-                {req}
+                <span
+                  className="mt-[3px] h-1.5 w-1.5 rounded-full bg-[#afc4ff]/50 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="text-[11px] text-white/75 leading-snug">{req}</span>
               </span>
             ))}
+            <span className="block mt-2 pt-2 border-t border-white/[0.07] text-[10px] text-white/35 italic">
+              Click to view in audit table
+            </span>
           </span>
         </span>
       )}
@@ -225,7 +304,7 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#afc4ff]/70 border-b border-white/[0.06] pb-1">
+    <h3 className="mb-3 text-xs font-bold tracking-[0.2em] uppercase text-white/70 border-b border-white/[0.12] pb-1 sm:text-[11px]">
       {children}
     </h3>
   );
@@ -233,7 +312,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 
 function NewMarker() {
   return (
-    <span className="inline-flex items-center rounded bg-[#afc4ff]/15 px-1 py-0.5 text-[9px] font-semibold text-[#afc4ff]/80 mr-1 align-middle border border-[#afc4ff]/20">
+    <span className="inline-flex items-center rounded bg-[#b5dec2]/10 px-1 py-0.5 text-[9px] font-semibold text-[#b5dec2]/70 mr-1 align-middle border border-[#b5dec2]/20">
       New
     </span>
   );

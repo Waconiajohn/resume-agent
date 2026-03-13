@@ -114,7 +114,7 @@ describe('Networking Outreach — Knowledge Rules', () => {
 
   it('RULE_2 covers follow-up messages with timing', () => {
     expect(RULE_2_FOLLOW_UPS).toContain('FOLLOW-UP');
-    expect(RULE_2_FOLLOW_UPS).toContain('3-5 days');
+    expect(RULE_2_FOLLOW_UPS).toContain('3 days after acceptance');
   });
 
   it('RULE_3 covers value offer types', () => {
@@ -142,10 +142,12 @@ describe('Networking Outreach — Knowledge Rules', () => {
     expect(RULE_7_SELF_REVIEW).toContain('Character limit test');
   });
 
-  it('NETWORKING_OUTREACH_RULES combines all 8 rules', () => {
+  it('NETWORKING_OUTREACH_RULES combines all 10 rules', () => {
     expect(NETWORKING_OUTREACH_RULES).toContain('RULE 0');
     expect(NETWORKING_OUTREACH_RULES).toContain('RULE 7');
-    expect(NETWORKING_OUTREACH_RULES.split('---').length).toBe(8);
+    expect(NETWORKING_OUTREACH_RULES).toContain('RULE 8');
+    expect(NETWORKING_OUTREACH_RULES).toContain('RULE 9');
+    expect(NETWORKING_OUTREACH_RULES.split('---').length).toBe(10);
   });
 });
 

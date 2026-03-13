@@ -58,6 +58,22 @@ export default {
           from: { opacity: '0', transform: 'translateX(12px)' },
           to: { opacity: '1', transform: 'translateX(0)' },
         },
+        'card-enter': {
+          from: { opacity: '0', transform: 'translateY(16px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'dot-bounce': {
+          '0%, 80%, 100%': { transform: 'scale(0.6)', opacity: '0.3' },
+          '40%': { transform: 'scale(1)', opacity: '1' },
+        },
+        'pill-appear': {
+          from: { opacity: '0', transform: 'translateX(-50%) translateY(8px)' },
+          to: { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
+        },
+        'score-ring-pulse': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.02)' },
+        },
       },
       animation: {
         'panel-enter': 'panel-enter 250ms ease-out',
@@ -70,6 +86,10 @@ export default {
         'progress-shimmer': 'progress-shimmer 1.5s ease-in-out infinite',
         'msg-in-left': 'msg-in-left 150ms ease-out',
         'msg-in-right': 'msg-in-right 150ms ease-out',
+        'card-enter': 'card-enter 500ms ease-out forwards',
+        'dot-bounce': 'dot-bounce 1.4s ease-in-out infinite',
+        'pill-appear': 'pill-appear 200ms ease-out forwards',
+        'score-ring-pulse': 'score-ring-pulse 1.4s ease-in-out infinite',
       },
     },
   },

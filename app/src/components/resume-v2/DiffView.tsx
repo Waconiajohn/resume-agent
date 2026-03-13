@@ -26,13 +26,17 @@ const ACTION_LABELS: Record<string, string> = {
 export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
   const [editedText, setEditedText] = useState(edit.replacement);
 
+  const actionLabel = ACTION_LABELS[edit.action] ?? 'Edited';
+
   return (
-    <GlassCard className="p-4 border-[#afc4ff]/20">
+    <GlassCard className="p-4 border-[#afc4ff]/20 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Section context label */}
+      <div className="mb-1.5 text-xs text-white/40">
+        {actionLabel}: {edit.section}
+      </div>
+
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-[#afc4ff]">{ACTION_LABELS[edit.action] ?? 'Edited'}</span>
-          <span className="text-xs text-white/40">in {edit.section}</span>
-        </div>
+        <span className="text-xs font-medium text-[#afc4ff]">{actionLabel}</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -55,7 +59,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Original */}
         <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
           <div className="mb-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider">Original</div>

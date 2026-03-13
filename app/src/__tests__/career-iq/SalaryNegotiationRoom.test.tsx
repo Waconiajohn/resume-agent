@@ -109,10 +109,12 @@ describe('SalaryNegotiationRoom', () => {
     expect(screen.getAllByText('Negotiation Playbook').length).toBeGreaterThan(0);
   });
 
-  it('shows quality score badge in complete state', () => {
+  it('shows confidence gauge and strategy in complete state', () => {
     vi.mocked(useSalaryNegotiation).mockReturnValue(completeState);
     render(<SalaryNegotiationRoom />);
-    expect(screen.getByText('Quality 88%')).toBeInTheDocument();
+    // The report view renders a confidence gauge (SVG) and the playbook heading
+    expect(screen.getAllByText('Negotiation Playbook').length).toBeGreaterThan(0);
+    expect(screen.getByText('Your personalized salary negotiation strategy')).toBeInTheDocument();
   });
 
   it('shows activity feed messages in running state', () => {

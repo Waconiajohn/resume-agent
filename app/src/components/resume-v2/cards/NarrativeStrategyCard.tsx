@@ -1,4 +1,5 @@
-import { Compass, Lightbulb, Target, MessageCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Compass, Lightbulb, Target, MessageCircle, Sparkles, Clipboard, Check } from 'lucide-react';
 import type { NarrativeStrategy } from '@/types/resume-v2';
 
 export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
@@ -26,10 +27,12 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         ))}
       </div>
 
-      {/* Why Me story */}
+      {/* Why Me story — pull-quote treatment */}
       <div>
         <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">Why You</h4>
-        <p className="text-sm text-white/70 leading-relaxed">{data.why_me_concise}</p>
+        <p className="text-lg leading-relaxed text-white/90 italic border-l-[3px] border-[#afc4ff]/40 pl-4">
+          {data.why_me_concise}
+        </p>
         {data.why_me_story && (
           <details className="mt-2">
             <summary className="text-xs text-white/40 cursor-pointer hover:text-white/60">Full positioning story</summary>
@@ -38,10 +41,13 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         )}
       </div>
 
-      {/* Best line */}
-      <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] px-4 py-3">
-        <div className="text-xs font-medium text-[#b5dec2]/70 mb-1">Your Best Line</div>
-        <p className="text-sm text-white/80 italic">&ldquo;{data.why_me_best_line}&rdquo;</p>
+      {/* Best line — premium quote box */}
+      <div className="bg-[#b5dec2]/[0.04] border border-[#b5dec2]/15 rounded-lg p-4 relative overflow-hidden">
+        <div className="absolute top-2 left-3 text-4xl leading-none text-[#b5dec2]/10 font-serif select-none" aria-hidden="true">
+          &ldquo;
+        </div>
+        <div className="text-xs font-medium text-[#b5dec2]/70 mb-2 relative z-10">Your Best Line</div>
+        <p className="text-sm text-white/80 italic relative z-10 pl-2">{data.why_me_best_line}</p>
       </div>
 
       {/* Narrative Rationale */}
@@ -52,7 +58,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         </div>
       )}
 
-      {/* Unique Differentiators */}
+      {/* Unique Differentiators — Sparkles chips */}
       {data.unique_differentiators && data.unique_differentiators.length > 0 && (
         <div>
           <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">What Sets You Apart</h4>
@@ -60,8 +66,9 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
             {data.unique_differentiators.map((diff, i) => (
               <span
                 key={i}
-                className="rounded-full border border-[#afc4ff]/15 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-xs text-[#afc4ff]/80"
+                className="flex items-center gap-1.5 bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-3 py-1 rounded-full text-xs text-[#afc4ff]/80"
               >
+                <Sparkles className="h-3 w-3 shrink-0" />
                 {diff}
               </span>
             ))}
@@ -137,7 +144,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
         </div>
       </details>
 
-      {/* Interview Talking Points */}
+      {/* Interview Talking Points — numbered with clipboard copy */}
       {data.interview_talking_points && data.interview_talking_points.length > 0 && (
         <details>
           <summary className="flex items-center gap-1.5 text-xs font-medium text-white/50 cursor-pointer hover:text-white/70 uppercase tracking-wider select-none">
@@ -146,14 +153,41 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
           </summary>
           <div className="mt-3 space-y-2 pl-1">
             {data.interview_talking_points.map((point, i) => (
-              <div key={i} className="flex gap-2.5">
-                <span className="shrink-0 mt-1 h-1 w-1 rounded-full bg-white/20" />
-                <p className="text-xs text-white/60 leading-relaxed">{point}</p>
-              </div>
+              <TalkingPoint key={i} index={i} point={point} />
             ))}
           </div>
         </details>
       )}
+    </div>
+  );
+}
+
+function TalkingPoint({ index, point }: { index: number; point: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(point).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="group flex gap-2.5 items-start">
+      <span className="shrink-0 mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-white/[0.06] text-[10px] font-mono text-white/40">
+        {index + 1}
+      </span>
+      <p className="flex-1 text-xs text-white/60 leading-relaxed">{point}</p>
+      <button
+        onClick={handleCopy}
+        aria-label="Copy talking point"
+        className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-white/60"
+      >
+        {copied
+          ? <Check className="h-3 w-3 text-[#b5dec2]" />
+          : <Clipboard className="h-3 w-3" />
+        }
+      </button>
     </div>
   );
 }

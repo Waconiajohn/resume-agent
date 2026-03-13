@@ -249,6 +249,32 @@ function computeChanges(prev: ResumeDraft, curr: ResumeDraft): ResumeChangeSet {
   };
 }
 
+// ─── Jump-to-section helper ───────────────────────────────────────────────────
+
+function JumpToSection({ sectionKey }: { sectionKey: string }) {
+  const handleClick = () => {
+    document
+      .querySelector(`[data-section="${sectionKey}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="text-[10px] text-[#afc4ff]/50 hover:text-[#afc4ff]/80 transition-colors shrink-0"
+      aria-label={`View ${sectionKey} in resume`}
+    >
+      View in resume ↓
+    </button>
+  );
+}
+
+const SECTION_KEY_MAP: Record<string, string> = {
+  'Core Competencies': 'core-competencies',
+  'Selected Accomplishments': 'selected-accomplishments',
+};
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function BulletLine({ change }: { change: BulletChange }) {
@@ -272,10 +298,16 @@ function ExperienceDiffSection({ diff }: { diff: SectionBulletDiff }) {
   const visibleChanges = diff.changes.filter(c => c.type !== 'unchanged');
   if (visibleChanges.length === 0) return null;
 
+  // Build a data-section key matching the pattern used in the resume renderer
+  const sectionKey = `experience-${diff.company.toLowerCase().replace(/\s+/g, '-')}`;
+
   return (
     <div className="space-y-1">
-      <div className="text-xs font-medium text-white/50">
-        {diff.company} — <span className="font-normal">{diff.title}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium text-white/50">
+          {diff.company} — <span className="font-normal">{diff.title}</span>
+        </div>
+        <JumpToSection sectionKey={sectionKey} />
       </div>
       <div className="space-y-1 pl-1">
         {diff.changes.map((c, i) => (
@@ -289,9 +321,14 @@ function ExperienceDiffSection({ diff }: { diff: SectionBulletDiff }) {
 function StringListDiff({ added, removed, label }: { added: string[]; removed: string[]; label: string }) {
   if (added.length === 0 && removed.length === 0) return null;
 
+  const sectionKey = SECTION_KEY_MAP[label];
+
   return (
     <div className="space-y-1">
-      <div className="text-xs font-medium text-white/50">{label}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium text-white/50">{label}</div>
+        {sectionKey && <JumpToSection sectionKey={sectionKey} />}
+      </div>
       <div className="space-y-1 pl-1">
         {removed.map((item, i) => (
           <div key={`r-${i}`} className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#f0b8b8]/[0.05]">
@@ -315,7 +352,10 @@ function SummaryDiffSection({ diff }: { diff: SummaryDiff }) {
 
   return (
     <div className="space-y-1">
-      <div className="text-xs font-medium text-white/50">Executive Summary</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium text-white/50">Executive Summary</div>
+        <JumpToSection sectionKey="executive-summary" />
+      </div>
       <div className="pl-1 space-y-1">
         <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#f0b8b8]/[0.05]">
           <span className="text-xs font-bold shrink-0 text-[#f0b8b8]" aria-hidden="true">−</span>
@@ -333,7 +373,7 @@ function SummaryDiffSection({ diff }: { diff: SummaryDiff }) {
 // ─── Main card ───────────────────────────────────────────────────────────────
 
 export function WhatChangedCard({ previousResume, currentResume, onDismiss }: WhatChangedCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => window.innerWidth >= 640);
 
   const changes = computeChanges(previousResume, currentResume);
   const hasAnyChange =

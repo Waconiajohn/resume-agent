@@ -32,7 +32,8 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [flipped, setFlipped] = useState(false);
 
-  // After render, check if toolbar would go above viewport — if so, flip below
+  // After render, check if toolbar would go above viewport — if so, flip below.
+  // Also clamp horizontal position so the toolbar never clips outside the viewport.
   useEffect(() => {
     if (!position || !toolbarRef.current) return;
     const toolbarHeight = toolbarRef.current.offsetHeight;
@@ -40,6 +41,17 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
     // Flip below selection if toolbar would go above viewport OR if selection top is above viewport
     setFlipped(position.top - toolbarHeight - MARGIN < 0 || position.top < MARGIN);
   }, [position]);
+
+  // Compute a viewport-safe left position for the toolbar.
+  // The toolbar is centered on position.left via translateX(-50%), so the raw center can
+  // be at most (window.innerWidth - toolbarWidth/2 - MARGIN) and at least (toolbarWidth/2 + MARGIN).
+  const getSafeLeft = (): number => {
+    if (!toolbarRef.current) return position?.left ?? 0;
+    const toolbarWidth = toolbarRef.current.offsetWidth;
+    const half = toolbarWidth / 2;
+    const MARGIN = 8;
+    return Math.max(half + MARGIN, Math.min(position?.left ?? 0, window.innerWidth - half - MARGIN));
+  };
 
   // Focus custom input when shown
   useEffect(() => {
@@ -85,7 +97,7 @@ export function InlineEditToolbar({ position, isEditing, onAction, onDismiss }: 
       className="fixed z-50 flex flex-col items-start gap-1 rounded-xl border border-white/[0.12] bg-[#0f141e]/95 backdrop-blur-xl px-1.5 py-1.5 shadow-2xl"
       style={{
         top: flipped ? position.bottom + 8 : position.top,
-        left: Math.max(8, Math.min(position.left, window.innerWidth - 8)),
+        left: getSafeLeft(),
         transform: flipped ? 'translateX(-50%)' : 'translate(-50%, -100%) translateY(-8px)',
       }}
       role="toolbar"

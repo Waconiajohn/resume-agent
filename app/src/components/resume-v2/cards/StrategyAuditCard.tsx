@@ -4,7 +4,6 @@ import {
   Shuffle,
   X,
   ChevronDown,
-  ChevronRight,
   Target,
   Lightbulb,
   FileText,
@@ -63,17 +62,17 @@ function importanceStyle(
   }
 }
 
-// ─── Status indicator ──────────────────────────────────────────────────────────
+// ─── Status badge (filled pill) ────────────────────────────────────────────────
 
-function StatusIndicator({ status }: { status: PositioningAssessmentEntry['status'] }) {
+function StatusBadge({ status }: { status: PositioningAssessmentEntry['status'] }) {
   switch (status) {
     case 'strong':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={{
             color: '#b5dec2',
-            backgroundColor: 'rgba(181,222,194,0.10)',
+            backgroundColor: 'rgba(181,222,194,0.15)',
             border: '1px solid rgba(181,222,194,0.20)',
           }}
         >
@@ -84,10 +83,10 @@ function StatusIndicator({ status }: { status: PositioningAssessmentEntry['statu
     case 'repositioned':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={{
             color: '#afc4ff',
-            backgroundColor: 'rgba(175,196,255,0.10)',
+            backgroundColor: 'rgba(175,196,255,0.15)',
             border: '1px solid rgba(175,196,255,0.20)',
           }}
         >
@@ -98,10 +97,10 @@ function StatusIndicator({ status }: { status: PositioningAssessmentEntry['statu
     case 'gap':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={{
             color: '#f0b8b8',
-            backgroundColor: 'rgba(240,184,184,0.10)',
+            backgroundColor: 'rgba(240,184,184,0.15)',
             border: '1px solid rgba(240,184,184,0.20)',
           }}
         >
@@ -124,7 +123,6 @@ interface AuditRow {
 function AuditRow({ row }: { row: AuditRow }) {
   const [expanded, setExpanded] = useState(false);
   const { entry, gapRequirement } = row;
-  const ChevronIcon = expanded ? ChevronDown : ChevronRight;
 
   const importance = gapRequirement?.importance ?? entry.importance;
 
@@ -140,7 +138,13 @@ function AuditRow({ row }: { row: AuditRow }) {
         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
         aria-expanded={expanded}
       >
-        <ChevronIcon className="h-3 w-3 text-white/30 shrink-0" aria-hidden="true" />
+        <ChevronDown
+          className={[
+            'h-3 w-3 text-white/30 shrink-0 transition-transform duration-200',
+            expanded ? 'rotate-0' : '-rotate-90',
+          ].join(' ')}
+          aria-hidden="true"
+        />
 
         {/* Requirement text */}
         <span className="flex-1 min-w-0 text-xs text-white/75 leading-snug truncate">
@@ -149,18 +153,24 @@ function AuditRow({ row }: { row: AuditRow }) {
 
         {/* Importance badge */}
         <span
-          className="rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+          className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
           style={importanceStyle(importance)}
         >
           {importanceLabel(importance)}
         </span>
 
-        {/* Status indicator */}
-        <StatusIndicator status={entry.status} />
+        {/* Status badge */}
+        <StatusBadge status={entry.status} />
       </button>
 
-      {/* Expanded detail */}
-      {expanded && (
+      {/* Expanded detail — smooth max-height transition */}
+      <div
+        className={[
+          'transition-all duration-300 overflow-hidden',
+          expanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0',
+        ].join(' ')}
+        aria-hidden={!expanded}
+      >
         <div className="px-3 pb-3 pt-1 space-y-2 bg-white/[0.02] border-t border-white/[0.06]">
           {/* Gap strategy (original positioning plan, from gap analysis) */}
           {entry.status === 'repositioned' && gapRequirement?.strategy && (
@@ -225,7 +235,7 @@ function AuditRow({ row }: { row: AuditRow }) {
                 {entry.addressed_by.map((ref, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span
-                      className="mt-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium shrink-0"
+                      className="mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium shrink-0"
                       style={{
                         color: 'rgba(255,255,255,0.50)',
                         backgroundColor: 'rgba(255,255,255,0.06)',
@@ -234,19 +244,21 @@ function AuditRow({ row }: { row: AuditRow }) {
                     >
                       {ref.section}
                     </span>
+                    {/* Quoted bullet text with left border accent */}
                     {(entry.status === 'repositioned' || entry.status === 'strong') ? (
                       <button
                         type="button"
                         onClick={() => scrollToBullet(entry.requirement)}
-                        className="text-[11px] text-white/60 leading-relaxed text-left hover:text-[#afc4ff]/80 transition-colors cursor-pointer underline-offset-2 hover:underline"
+                        className="flex-1 border-l-2 pl-2 text-[11px] text-white/60 leading-relaxed text-left hover:text-[#afc4ff]/80 transition-colors cursor-pointer"
+                        style={{ borderColor: 'rgba(175,196,255,0.30)' }}
                         title="Jump to this bullet in the resume"
                       >
-                        {ref.bullet_text}
+                        <span className="italic">&ldquo;{ref.bullet_text}&rdquo;</span>
                       </button>
                     ) : (
-                      <span className="text-[11px] text-white/60 leading-relaxed">
-                        {ref.bullet_text}
-                      </span>
+                      <blockquote className="flex-1 border-l-2 pl-2 text-[11px] text-white/50 leading-relaxed italic" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+                        &ldquo;{ref.bullet_text}&rdquo;
+                      </blockquote>
                     )}
                   </li>
                 ))}
@@ -261,7 +273,74 @@ function AuditRow({ row }: { row: AuditRow }) {
             </p>
           )}
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Visual stacked summary bar ────────────────────────────────────────────────
+
+function SummaryBar({
+  positionedCount,
+  directCount,
+  gapCount,
+}: {
+  positionedCount: number;
+  directCount: number;
+  gapCount: number;
+}) {
+  const total = positionedCount + directCount + gapCount;
+  if (total === 0) return null;
+
+  const positionedPct = (positionedCount / total) * 100;
+  const directPct = (directCount / total) * 100;
+  const gapPct = (gapCount / total) * 100;
+
+  return (
+    <div className="mt-3 space-y-1.5">
+      {/* Stacked bar */}
+      <div className="h-2 rounded-full overflow-hidden flex" aria-label="Strategy distribution bar">
+        {directCount > 0 && (
+          <div
+            className="h-full transition-all duration-500"
+            style={{ width: `${directPct}%`, backgroundColor: '#b5dec2' }}
+          />
+        )}
+        {positionedCount > 0 && (
+          <div
+            className="h-full transition-all duration-500"
+            style={{ width: `${positionedPct}%`, backgroundColor: '#afc4ff' }}
+          />
+        )}
+        {gapCount > 0 && (
+          <div
+            className="h-full transition-all duration-500"
+            style={{ width: `${gapPct}%`, backgroundColor: '#f0b8b8' }}
+          />
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {directCount > 0 && (
+          <span className="flex items-center gap-1 text-[10px]" style={{ color: '#b5dec2' }}>
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: '#b5dec2' }} aria-hidden="true" />
+            {directCount} direct
+          </span>
+        )}
+        {positionedCount > 0 && (
+          <span className="flex items-center gap-1 text-[10px]" style={{ color: '#afc4ff' }}>
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: '#afc4ff' }} aria-hidden="true" />
+            {positionedCount} positioned
+          </span>
+        )}
+        {gapCount > 0 && (
+          <span className="flex items-center gap-1 text-[10px]" style={{ color: '#f0b8b8' }}>
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: '#f0b8b8' }} aria-hidden="true" />
+            {gapCount} gap{gapCount !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -291,7 +370,7 @@ export function StrategyAuditCard({ positioningAssessment, gapAnalysis }: Strate
 
   return (
     <GlassCard
-      className="p-5"
+      className="p-5 animate-[card-enter_500ms_ease-out_forwards]"
       data-strategy-audit
     >
       {/* ── Header (always visible) ─────────────────────────────── */}
@@ -314,64 +393,36 @@ export function StrategyAuditCard({ positioningAssessment, gapAnalysis }: Strate
             How each gap strategy mapped to your resume bullets
           </p>
         </div>
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-white/30 shrink-0 mt-0.5" aria-hidden="true" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-white/30 shrink-0 mt-0.5" aria-hidden="true" />
-        )}
+        <ChevronDown
+          className={[
+            'h-3.5 w-3.5 text-white/30 shrink-0 mt-0.5 transition-transform duration-200',
+            expanded ? 'rotate-0' : '-rotate-90',
+          ].join(' ')}
+          aria-hidden="true"
+        />
       </button>
 
-      {/* ── Summary count badges (always visible) ───────────────── */}
-      <div className="flex items-center gap-2 mt-3" aria-label="Strategy audit summary">
-        {positionedCount > 0 && (
-          <span
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium"
-            style={{
-              color: '#afc4ff',
-              backgroundColor: 'rgba(175,196,255,0.10)',
-              border: '1px solid rgba(175,196,255,0.18)',
-            }}
-          >
-            <Shuffle className="h-2.5 w-2.5" aria-hidden="true" />
-            {positionedCount} positioned
-          </span>
-        )}
-        {directCount > 0 && (
-          <span
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium"
-            style={{
-              color: '#b5dec2',
-              backgroundColor: 'rgba(181,222,194,0.10)',
-              border: '1px solid rgba(181,222,194,0.18)',
-            }}
-          >
-            <CheckCircle2 className="h-2.5 w-2.5" aria-hidden="true" />
-            {directCount} direct match{directCount !== 1 ? 'es' : ''}
-          </span>
-        )}
-        {gapCount > 0 && (
-          <span
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium"
-            style={{
-              color: '#f0b8b8',
-              backgroundColor: 'rgba(240,184,184,0.10)',
-              border: '1px solid rgba(240,184,184,0.18)',
-            }}
-          >
-            <X className="h-2.5 w-2.5" aria-hidden="true" />
-            {gapCount} gap{gapCount !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+      {/* ── Visual summary bar (always visible) ─────────────────── */}
+      <SummaryBar
+        positionedCount={positionedCount}
+        directCount={directCount}
+        gapCount={gapCount}
+      />
 
-      {/* ── Expanded rows ────────────────────────────────────────── */}
-      {expanded && auditRows.length > 0 && (
-        <div className="mt-4 space-y-1.5">
+      {/* ── Expanded rows — smooth max-height transition ─────────── */}
+      <div
+        className={[
+          'transition-all duration-300 overflow-hidden',
+          expanded && auditRows.length > 0 ? 'max-h-[9999px] opacity-100 mt-4' : 'max-h-0 opacity-0',
+        ].join(' ')}
+        aria-hidden={!expanded}
+      >
+        <div className="space-y-1.5">
           {auditRows.map((row, i) => (
             <AuditRow key={i} row={row} />
           ))}
         </div>
-      )}
+      </div>
     </GlassCard>
   );
 }

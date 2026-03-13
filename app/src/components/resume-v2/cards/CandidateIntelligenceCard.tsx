@@ -3,9 +3,11 @@ import type { CandidateIntelligence } from '@/types/resume-v2';
 
 export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligence }) {
   return (
-    <div className="space-y-4">
+    <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 space-y-4">
       <div className="flex items-center gap-2">
-        <User className="h-4 w-4 text-[#b5dec2]" />
+        <div className="bg-[#b5dec2]/10 p-2 rounded-full">
+          <User className="h-4 w-4 text-[#b5dec2]" />
+        </div>
         <h3 className="text-sm font-semibold text-white/90">What You Bring</h3>
         <span className="ml-auto text-xs text-white/40">{data.contact.name}</span>
       </div>
@@ -51,11 +53,13 @@ export function CandidateIntelligenceCard({ data }: { data: CandidateIntelligenc
       {data.hidden_accomplishments.length > 0 && (
         <div>
           <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">Hidden Strengths We Found</h4>
-          <ul className="space-y-1">
-            {data.hidden_accomplishments.map((a, i) => (
-              <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
-            ))}
-          </ul>
+          <div className="border border-dashed border-[#f0d99f]/20 bg-[#f0d99f]/[0.02] rounded-lg p-3">
+            <ul className="space-y-1">
+              {data.hidden_accomplishments.map((a, i) => (
+                <li key={i} className="text-sm text-white/60 pl-3 relative before:absolute before:left-0 before:top-2 before:h-1 before:w-1 before:rounded-full before:bg-[#b5dec2]/50">{a}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </div>

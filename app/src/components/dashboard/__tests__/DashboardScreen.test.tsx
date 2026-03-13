@@ -84,11 +84,11 @@ afterEach(() => {
 });
 
 describe('DashboardScreen', () => {
-  it('renders with 3 tabs', () => {
+  it('renders with 2 tabs', () => {
     render(<DashboardScreen {...makeProps()} />);
     expect(screen.getByRole('button', { name: /session history/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /master resume/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /evidence library/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /evidence library/i })).not.toBeInTheDocument();
   });
 
   it('shows Session History tab content by default', () => {
@@ -107,12 +107,10 @@ describe('DashboardScreen', () => {
     expect(screen.queryByTestId('session-history-tab')).not.toBeInTheDocument();
   });
 
-  it('switches to Evidence Library tab on click', async () => {
+  it('Evidence Library tab is not present (merged into Master Resume)', () => {
     render(<DashboardScreen {...makeProps()} />);
-    fireEvent.click(screen.getByRole('button', { name: /evidence library/i }));
-    await waitFor(() => {
-      expect(screen.getByTestId('evidence-library-tab')).toBeInTheDocument();
-    });
+    expect(screen.queryByRole('button', { name: /evidence library/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('evidence-library-tab')).not.toBeInTheDocument();
   });
 
   it('switches back to Session History from another tab', async () => {
