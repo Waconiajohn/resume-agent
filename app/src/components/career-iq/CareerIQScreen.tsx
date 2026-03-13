@@ -334,7 +334,7 @@ export function CareerIQScreen({
     // Dashboard home with all 4 zones
     // When user has no real data (new-user), show mock data preview so they can see what a full dashboard looks like
     if (activeRoom === 'dashboard') {
-      const isDemo = dashboardState === 'new-user';
+      const isDemo = sessions.length === 0 && coverLetterSessions.length === 0;
       return (
         <DashboardHome
           userName={userName}
