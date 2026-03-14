@@ -594,8 +594,8 @@ test.describe('Smoke: Career IQ rooms', () => {
     await expect(sharedPage.getByRole('button', { name: /^Dashboard$/i })).toBeVisible();
   });
 
-  test('Resume Workshop room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Resume Workshop');
+  test('Resume Builder room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Resume Builder');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,
@@ -631,32 +631,40 @@ test.describe('Smoke: Career IQ rooms', () => {
     });
   });
 
-  test('Networking Hub room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Networking Hub');
+  test('Smart Referrals room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Smart Referrals');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,
     });
   });
 
-  test('Salary Negotiation room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Salary Negotiation');
+  test('Salary & Negotiation room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Salary & Negotiation');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,
     });
   });
 
-  test('Executive Bio room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Executive Bio');
+  test('Executive Documents room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Executive Documents');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,
     });
   });
 
-  test('Content Calendar room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Content Calendar');
+  test('Personal Brand room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Personal Brand');
+    await assertNoCrash(sharedPage);
+    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
+      timeout: 8_000,
+    });
+  });
+
+  test('90-Day Plan room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, '90-Day Plan');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,
@@ -673,14 +681,6 @@ test.describe('Smoke: Career IQ rooms', () => {
 
   test('Live Sessions room renders', async () => {
     await navigateToCareerIQRoom(sharedPage, 'Live Sessions');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('Network Intelligence room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Network Intelligence');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,

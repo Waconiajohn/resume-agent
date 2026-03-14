@@ -338,7 +338,7 @@ test.describe('V2 Pipeline: intake form', () => {
     // V2IntakeForm should be visible
     await expect(page.locator('#v2-resume')).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('#v2-jd')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole('button', { name: /Go/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Analyze and craft my resume/i })).toBeVisible();
   });
 
   test('submit button is disabled when fields are too short', async ({ page }) => {
@@ -347,7 +347,7 @@ test.describe('V2 Pipeline: intake form', () => {
     await waitForAuthenticatedShell(page);
     await page.getByRole('button', { name: /Start New Session/i }).click();
 
-    const goButton = page.getByRole('button', { name: /Go/i });
+    const goButton = page.getByRole('button', { name: /Analyze and craft my resume/i });
     await expect(goButton).toBeDisabled();
 
     // Type less than 50 chars in resume
@@ -362,7 +362,7 @@ test.describe('V2 Pipeline: intake form', () => {
     await waitForAuthenticatedShell(page);
     await page.getByRole('button', { name: /Start New Session/i }).click();
 
-    const goButton = page.getByRole('button', { name: /Go/i });
+    const goButton = page.getByRole('button', { name: /Analyze and craft my resume/i });
 
     // Fill with enough content
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
@@ -384,7 +384,7 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
     // Fill form and submit
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
     await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Go/i }).click();
+    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
 
     // After submit, the intake form should disappear and streaming display should appear.
     // The header bar shows "Senior Cloud Architect at TechVision Solutions"
@@ -399,7 +399,7 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
     await page.getByRole('button', { name: /Start New Session/i }).click();
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
     await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Go/i }).click();
+    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
 
     // Wait for pipeline to complete — all mock events stream in ~2.5s (25 events × 100ms)
     // The pipeline_complete event triggers isComplete=true
@@ -425,7 +425,7 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
     await page.getByRole('button', { name: /Start New Session/i }).click();
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
     await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Go/i }).click();
+    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
 
     // Wait for completion
     await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 15_000 });
@@ -445,7 +445,7 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
     await page.getByRole('button', { name: /Start New Session/i }).click();
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
     await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Go/i }).click();
+    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
 
     // Wait for completion
     await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 15_000 });
@@ -468,7 +468,7 @@ test.describe('V2 Pipeline: gap analysis interactions', () => {
     await page.getByRole('button', { name: /Start New Session/i }).click();
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
     await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Go/i }).click();
+    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
 
     // Wait for gap analysis
     await expect(page.getByText('Gap Analysis')).toBeVisible({ timeout: 10_000 });
@@ -489,7 +489,7 @@ test.describe('V2 Pipeline: inline editing', () => {
     await page.getByRole('button', { name: /Start New Session/i }).click();
     await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
     await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Go/i }).click();
+    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
     await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 15_000 });
   }
 

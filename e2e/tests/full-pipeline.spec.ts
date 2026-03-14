@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   REAL_RESUME_TEXT,
   REAL_JD_TEXT,
-  REAL_COMPANY_NAME,
 } from '../fixtures/real-resume-data';
-import { runPipelineToCompletion } from '../helpers/pipeline-responder';
 import { cleanupBeforeTest } from '../helpers/cleanup';
 
 test.describe('Full Pipeline E2E', () => {
@@ -13,7 +11,7 @@ test.describe('Full Pipeline E2E', () => {
     await cleanupBeforeTest();
   });
 
-  test('complete resume journey from intake to DOCX download', async ({
+  test('complete V2 resume journey from intake to PDF download', async ({
     page,
   }) => {
     // Capture browser console for debugging
@@ -29,12 +27,9 @@ test.describe('Full Pipeline E2E', () => {
     });
 
     // Capture failed network requests with response bodies
-    // (suppress workflow artifact 500s — pre-existing noise from unapplied migration)
     page.on('response', (response) => {
       if (response.status() >= 400) {
         const url = response.url();
-        // Skip workflow artifact endpoint 500s — table migration not applied
-        if (url.includes('/api/workflow/') && url.includes('/node/')) return;
         // eslint-disable-next-line no-console
         console.log(`[network] ${response.status()} ${url}`);
         if (url.includes('/api/')) {
@@ -59,96 +54,193 @@ test.describe('Full Pipeline E2E', () => {
       ).toBeVisible({ timeout: 15_000 });
     });
 
-    // Step 2: Start a new session
+    // Step 2: Start a new session — click the button to reach V2IntakeForm
     await test.step('Click Start New Session', async () => {
       await page.getByRole('button', { name: /Start New Session/i }).click();
-      await expect(page.locator('#resume-text')).toBeVisible({
-        timeout: 5_000,
+      // V2IntakeForm renders with #v2-resume textarea
+      await expect(page.locator('#v2-resume')).toBeVisible({
+        timeout: 10_000,
       });
     });
 
-    // Step 3: Fill intake form with real resume and JD
-    await test.step('Fill intake form and start session', async () => {
-      await page.locator('#resume-text').fill(REAL_RESUME_TEXT);
-      await page.locator('#job-description').fill(REAL_JD_TEXT);
-      await page.locator('#company-name').fill(REAL_COMPANY_NAME);
+    // Step 3: Fill the V2 intake form and submit
+    await test.step('Fill V2 intake form and submit', async () => {
+      await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
+      await page.locator('#v2-jd').fill(REAL_JD_TEXT);
 
+      // Submit button text: "Analyze and craft my resume"
       const submitBtn = page.getByRole('button', {
-        name: /Let's Get Started|Start Resume Session/i,
+        name: /Analyze and craft my resume/i,
       });
       await expect(submitBtn).toBeEnabled({ timeout: 2_000 });
       await submitBtn.click();
 
-      // Wait for the button to enter loading state
+      // Wait for loading state (button text changes to "Connecting...")
       await expect(
-        page.getByRole('button', { name: /Starting session/i }),
+        page.getByRole('button', { name: /Connecting/i }),
       )
         .toBeVisible({ timeout: 5_000 })
         .catch(() => {
           // eslint-disable-next-line no-console
-          console.log(
-            '[test] Did not see "Starting session..." loading state',
-          );
+          console.log('[test] Did not see "Connecting..." loading state — form may have transitioned quickly');
         });
 
       // If an error banner appears, fail early with a useful message
-      const errorBanner = page.locator(
-        '.text-red-100\\/90, [role="alert"]',
-      );
+      const errorBanner = page.locator('[role="alert"]').first();
       const hasError = await errorBanner.isVisible().catch(() => false);
       if (hasError) {
-        const errorText = await errorBanner.textContent();
+        const errorText = await errorBanner.textContent().catch(() => '');
         throw new Error(`Intake form error: ${errorText}`);
       }
     });
 
-    // Step 4: Wait for the coach screen to appear
-    await test.step('Wait for pipeline to connect', async () => {
-      // Wait for the intake form to disappear (view switched to coach)
-      await expect(page.locator('#resume-text')).not.toBeVisible({
-        timeout: 60_000,
+    // Step 4: Wait for the V2 streaming display to appear
+    // The intake form disappears when sessionId is set; the top bar with "Back" appears
+    await test.step('Wait for V2 streaming display to connect', async () => {
+      // #v2-resume disappears when pipeline starts
+      await expect(page.locator('#v2-resume')).not.toBeVisible({
+        timeout: 30_000,
       });
 
-      // Wait for the ChatDrawer icon button to confirm we're on the coach screen
+      // The top bar "Back" button confirms we are on the streaming screen
       await expect(
-        page.getByRole('button', { name: /open coach/i }),
+        page.getByRole('button', { name: /Back/i }),
       ).toBeVisible({ timeout: 30_000 });
 
-      // Wait for the context panel to appear (pipeline gate or panel content)
-      await expect(page.locator('[data-panel-root]').first()).toBeVisible({
-        timeout: 60_000, // 60s for first LLM response (was 5 min for Z.AI)
-      });
+      // Wait for first stage output — the analysis stage banner appears
+      // "What they're looking for" is the aria-label on the analysis section
+      await expect(
+        page.locator('section[aria-label="Analysis"]'),
+      ).toBeVisible({ timeout: 90_000 }); // 90s for first LLM response
     });
 
-    // Step 5: Run through all pipeline gates automatically
-    let pipelineDurationMs = 0;
-    await test.step('Complete all pipeline stages', async () => {
-      const pipelineStart = Date.now();
-      await runPipelineToCompletion(page);
-      pipelineDurationMs = Date.now() - pipelineStart;
-    });
+    // Step 5: Wait for strategy phase to produce gap coaching cards (if any),
+    // then respond to each one.
+    // NOTE: The V2 pipeline streams continuously — gap coaching cards appear
+    // mid-stream but the backend keeps writing. If the resume section appears
+    // before we can interact with coaching cards, we skip the coaching flow.
+    let pipelineStartMs = Date.now();
+    await test.step('Handle gap coaching cards (if present)', async () => {
+      pipelineStartMs = Date.now();
 
-    // Step 6: Verify completion panel and pipeline timing
-    await test.step('Verify completion panel', async () => {
-      await expect(page.getByText('Your Resume Is Ready!').first()).toBeVisible({
-        timeout: 10_000,
+      // Poll for either: gap coaching cards OR the resume section appearing.
+      // Gap coaching is optional — if all requirements are strong matches,
+      // no cards appear and the pipeline continues straight to writing.
+      const gapCoachingOrResume = page.locator(
+        '[data-coaching-requirement], section[aria-label="Your resume"]',
+      );
+
+      // Wait up to 4 minutes for strategy phase to complete (includes analysis)
+      await expect(gapCoachingOrResume.first()).toBeVisible({
+        timeout: 4 * 60_000,
       });
 
-      // Groq pipelines should complete within 5 minutes (typically ~2-3 min).
-      // This assertion catches regressions that significantly degrade performance.
+      // Check if the resume section already appeared (pipeline moved past coaching)
+      const resumeAlreadyVisible = await page
+        .locator('section[aria-label="Your resume"]')
+        .isVisible()
+        .catch(() => false);
+
+      if (resumeAlreadyVisible) {
+        // eslint-disable-next-line no-console
+        console.log('[test] Resume section already visible — pipeline streamed past gap coaching');
+        return;
+      }
+
+      // Check if gap coaching cards actually appeared
+      const coachingCards = page.locator('[data-coaching-requirement]');
+      const cardCount = await coachingCards.count();
+
+      if (cardCount > 0) {
+        // eslint-disable-next-line no-console
+        console.log(`[test] Found ${cardCount} gap coaching card(s) — approving all`);
+
+        // Click "Use this strategy" on each unapproved card.
+        // Cards that are already responded show a collapsed state, so we
+        // only click visible "Use this strategy" buttons.
+        for (let i = 0; i < cardCount; i++) {
+          const card = coachingCards.nth(i);
+          const approveBtn = card.getByRole('button', { name: /Use this strategy/i });
+          const isVisible = await approveBtn.isVisible().catch(() => false);
+          if (isVisible) {
+            await approveBtn.click();
+            // Brief pause for React state to settle before moving to next card
+            await page.waitForTimeout(300);
+          }
+        }
+
+        // After all cards are responded, the "Continue — Start Writing" button enables.
+        // Use DOM click as a fallback since the button may be below the viewport.
+        const continueBtn = page.getByRole('button', {
+          name: /Continue.*Start Writing/i,
+        });
+
+        // The continue button might not appear if the pipeline already completed
+        const continueBtnVisible = await continueBtn
+          .isVisible({ timeout: 5_000 })
+          .catch(() => false);
+
+        if (continueBtnVisible) {
+          await expect(continueBtn).toBeEnabled({ timeout: 10_000 });
+          await continueBtn.click();
+          // eslint-disable-next-line no-console
+          console.log('[test] Clicked "Continue — Start Writing" — pipeline re-running');
+        } else {
+          // Try DOM-level click as fallback (button may be offscreen)
+          const clicked = await page.evaluate(() => {
+            const btn = Array.from(document.querySelectorAll('button')).find(
+              (b) => /Continue.*Start Writing/i.test(b.textContent ?? ''),
+            );
+            if (btn && !btn.disabled) {
+              (btn as HTMLElement).click();
+              return true;
+            }
+            return false;
+          });
+
+          if (clicked) {
+            // eslint-disable-next-line no-console
+            console.log('[test] Clicked "Continue — Start Writing" via DOM — pipeline re-running');
+          } else {
+            // eslint-disable-next-line no-console
+            console.log('[test] Continue button not found/enabled — pipeline may have already completed');
+          }
+        }
+
+        // After continuing (or if pipeline already moved on), wait for resume section
+        await expect(
+          page.locator('section[aria-label="Your resume"]'),
+        ).toBeVisible({ timeout: 3 * 60_000 });
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('[test] No gap coaching cards — pipeline continuing to resume writing');
+      }
+    });
+
+    // Step 6: Wait for pipeline completion
+    // The completion status reads "Resume complete. Select any text above to edit with AI."
+    await test.step('Wait for pipeline completion', async () => {
+      await expect(
+        page.getByText(/Resume complete/i),
+      ).toBeVisible({ timeout: 5 * 60_000 }); // 5 min max for writing + assembly
+
+      const pipelineDurationMs = Date.now() - pipelineStartMs;
       const pipelineMinutes = pipelineDurationMs / 60_000;
+      // eslint-disable-next-line no-console
       console.log(`[test] Pipeline completed in ${pipelineMinutes.toFixed(1)} minutes`);
-      expect(pipelineDurationMs).toBeLessThan(5 * 60_000); // 5 min max
+
+      // Groq pipelines should complete within 5 minutes typically.
+      // This assertion catches severe performance regressions.
+      expect(pipelineDurationMs).toBeLessThan(7 * 60_000); // 7 min max (includes gap coaching re-run)
     });
 
-    // Step 7: Download resume (PDF — free tier; DOCX requires paid plan)
+    // Step 7: Verify ExportBar is visible and download PDF
     await test.step('Download PDF resume', async () => {
-      // Scroll the panel to make download buttons visible (zero-height layout workaround)
+      // Scroll to the bottom of the streaming display to bring ExportBar into view
       await page.evaluate(() => {
-        const panel = document.querySelector('[data-panel-root]');
-        if (panel) {
-          const scroll = panel.querySelector('[data-panel-scroll]') || panel;
-          scroll.scrollTo(0, scroll.scrollHeight);
+        const container = document.querySelector('.flex-1.overflow-y-auto');
+        if (container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
         }
       });
       await page.waitForTimeout(500);
@@ -157,14 +249,18 @@ test.describe('Full Pipeline E2E', () => {
         timeout: 30_000,
       });
 
-      // Use DOM click to bypass zero-height visibility issues
+      // Use DOM click to ensure we hit the button regardless of scroll position
       const clicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button'));
         const pdfBtn = buttons.find(
-          (b) => /Download PDF/i.test(b.getAttribute('aria-label') || '') ||
-                 /Download PDF/i.test(b.textContent?.trim() || ''),
+          (b) =>
+            /Download PDF/i.test(b.getAttribute('aria-label') ?? '') ||
+            /Download PDF/i.test(b.textContent?.trim() ?? ''),
         );
-        if (pdfBtn) { (pdfBtn as HTMLElement).click(); return true; }
+        if (pdfBtn) {
+          (pdfBtn as HTMLElement).click();
+          return true;
+        }
         return false;
       });
 
@@ -177,11 +273,14 @@ test.describe('Full Pipeline E2E', () => {
 
       const download = await downloadPromise;
 
-      expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+      expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
       await download.saveAs('test-results/downloaded-resume.pdf');
 
       const filePath = await download.path();
       expect(filePath).toBeTruthy();
+
+      // eslint-disable-next-line no-console
+      console.log(`[test] PDF downloaded: ${download.suggestedFilename()}`);
     });
   });
 });
