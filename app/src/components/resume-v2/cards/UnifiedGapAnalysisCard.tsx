@@ -1,0 +1,730 @@
+import { useState, useMemo } from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  MessageSquare,
+  Lightbulb,
+  Ruler,
+  SkipForward,
+  ArrowRight,
+  Minus,
+  Shield,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { importanceLabel, importanceStyle } from './shared-badges';
+import type {
+  GapAnalysis,
+  GapCoachingCard,
+  GapCoachingAction,
+  GapCoachingResponse,
+  GapClassification,
+  RequirementGap,
+  ResumeDraft,
+} from '@/types/resume-v2';
+import type { EditAction } from '@/hooks/useInlineEdit';
+
+// ─── Per-coaching-item state (mirrors GapCoachingCard pattern) ──────
+
+interface CoachingState {
+  action: GapCoachingAction | null;
+  contextText: string;
+  showContextInput: boolean;
+}
+
+// ─── Props ──────────────────────────────────────────────────────────
+
+interface UnifiedGapAnalysisCardProps {
+  gapAnalysis: GapAnalysis;
+  gapCoachingCards: GapCoachingCard[] | null;
+  companyName?: string;
+  roleTitle?: string;
+  onRespondGapCoaching: (responses: GapCoachingResponse[]) => void;
+  onRequestEdit?: (selectedText: string, section: string, action: EditAction, customInstruction?: string) => void;
+  currentResume?: ResumeDraft | null;
+  isComplete?: boolean;
+  disabled?: boolean;
+}
+
+// ─── Normalize requirement strings for lookup matching ──────────────
+
+function normalizeRequirement(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function classificationIcon(c: GapClassification) {
+  if (c === 'strong') return <CheckCircle2 className="h-3.5 w-3.5 text-[#b5dec2] shrink-0" />;
+  if (c === 'partial') return <AlertTriangle className="h-3.5 w-3.5 text-[#f0d99f] shrink-0" />;
+  return <XCircle className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />;
+}
+
+const SECTION_CONFIG = {
+  strong: {
+    accent: '#b5dec2',
+    label: "Where You're Strongly Qualified",
+    icon: CheckCircle2,
+  },
+  partial: {
+    accent: '#afc4ff',
+    label: "Where You're Partially Qualified",
+    icon: AlertTriangle,
+  },
+  missing: {
+    accent: '#f0b8b8',
+    label: 'Experience Gaps',
+    icon: XCircle,
+  },
+} as const;
+
+function findBestBullet(resume: ResumeDraft, realExperience: string): { text: string; section: string } | null {
+  const target = realExperience.toLowerCase();
+  let bestMatch: { text: string; section: string; score: number } | null = null;
+
+  for (const exp of resume.professional_experience) {
+    const section = `Professional Experience - ${exp.company}`;
+    for (const bullet of exp.bullets) {
+      const words = target.split(/\s+/);
+      const score = words.filter(w => bullet.text.toLowerCase().includes(w)).length / words.length;
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = { text: bullet.text, section, score };
+      }
+    }
+  }
+
+  // Fall back to first bullet if no reasonable match
+  if (!bestMatch && resume.professional_experience.length > 0) {
+    const first = resume.professional_experience[0];
+    if (first.bullets.length > 0) {
+      bestMatch = {
+        text: first.bullets[0].text,
+        section: `Professional Experience - ${first.company}`,
+        score: 0,
+      };
+    }
+  }
+
+  return bestMatch ? { text: bestMatch.text, section: bestMatch.section } : null;
+}
+
+// ─── Expandable requirement row ─────────────────────────────────────
+
+interface RequirementRowProps {
+  req: RequirementGap;
+  coaching: GapCoachingCard | undefined;
+  coachingState: CoachingState | undefined;
+  onCoachingChange: ((patch: Partial<CoachingState>) => void) | undefined;
+  onRequestEdit?: UnifiedGapAnalysisCardProps['onRequestEdit'];
+  currentResume?: ResumeDraft | null;
+  isComplete?: boolean;
+  classification: GapClassification;
+  disabled?: boolean;
+}
+
+function RequirementRow({
+  req, coaching, coachingState, onCoachingChange,
+  onRequestEdit, currentResume, isComplete, classification, disabled,
+}: RequirementRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const hasCoaching = coaching && coachingState && onCoachingChange;
+  const isResponded = coachingState?.action !== null && coachingState?.action !== undefined;
+
+  const handleApplyToResume = () => {
+    if (!onRequestEdit || !currentResume || !req.strategy) return;
+    const target = findBestBullet(currentResume, req.strategy.real_experience);
+    if (!target) return;
+    const label = classification === 'missing' ? 'safe resume language' : 'positioning';
+    onRequestEdit(
+      target.text,
+      target.section,
+      'custom',
+      `Naturally weave this ${label} into the text: "${req.strategy.positioning}". This addresses the job requirement: "${req.requirement}".`,
+    );
+  };
+
+  const handleStrengthen = () => {
+    if (!onRequestEdit || !currentResume || req.evidence.length === 0) return;
+    const target = findBestBullet(currentResume, req.evidence[0]);
+    if (!target) return;
+    onRequestEdit(target.text, target.section, 'strengthen');
+  };
+
+  const handleAddMetrics = () => {
+    if (!onRequestEdit || !currentResume || req.evidence.length === 0) return;
+    const target = findBestBullet(currentResume, req.evidence[0]);
+    if (!target) return;
+    onRequestEdit(target.text, target.section, 'add_metrics');
+  };
+
+  const accentColor = SECTION_CONFIG[classification].accent;
+
+  // Collapsed responded state for coaching items
+  if (hasCoaching && isResponded) {
+    const statusConfig = {
+      approve: { dot: <span className="h-2 w-2 rounded-full bg-[#b5dec2] shrink-0" />, label: 'Approved', color: 'text-[#b5dec2]' },
+      context: { dot: <MessageSquare className="h-3 w-3 text-[#afc4ff] shrink-0" />, label: 'Context added', color: 'text-[#afc4ff]' },
+      skip: { dot: <Minus className="h-3 w-3 text-white/30 shrink-0" />, label: 'Skipped', color: 'text-white/35' },
+    }[coachingState!.action!];
+
+    return (
+      <div
+        className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 flex items-center gap-3 transition-all duration-300"
+        data-coaching-requirement={req.requirement}
+      >
+        {statusConfig.dot}
+        <span className="flex-1 min-w-0 text-sm text-white/50 truncate">{req.requirement}</span>
+        <span className={cn('text-xs font-medium shrink-0', statusConfig.color)}>{statusConfig.label}</span>
+        <ChevronRight className="h-3.5 w-3.5 text-white/20 shrink-0" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-lg border border-white/[0.06] bg-white/[0.02] overflow-hidden transition-all duration-300"
+      data-coaching-requirement={req.requirement}
+    >
+      {/* Collapsed header */}
+      <button
+        type="button"
+        onClick={() => setExpanded(prev => !prev)}
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
+        aria-expanded={expanded}
+      >
+        <ChevronDown
+          className={cn(
+            'h-3 w-3 text-white/30 shrink-0 transition-transform duration-200',
+            expanded ? 'rotate-0' : '-rotate-90',
+          )}
+          aria-hidden="true"
+        />
+        {classificationIcon(classification)}
+        <span className="flex-1 min-w-0 text-sm text-white/80 leading-snug truncate">{req.requirement}</span>
+        <span
+          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase shrink-0"
+          style={importanceStyle(req.importance)}
+        >
+          {importanceLabel(req.importance)}
+        </span>
+        {coaching?.previously_approved && (
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30 shrink-0">
+            <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
+            Previously approved
+          </span>
+        )}
+      </button>
+
+      {/* Expanded content */}
+      <div
+        className={cn(
+          'overflow-hidden transition-all duration-300',
+          expanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0',
+        )}
+      >
+        <div className="px-4 pb-4 space-y-3">
+          {/* Evidence */}
+          {req.evidence.length > 0 && (
+            <div>
+              <div className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+                Your Relevant Experience
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {req.evidence.map((e, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs text-white/60 bg-white/[0.05] border border-white/[0.10]"
+                  >
+                    <CheckCircle2 className="h-2.5 w-2.5 text-[#b5dec2]/60 shrink-0" />
+                    {e}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI Coach reasoning (from coaching card) */}
+          {coaching?.ai_reasoning && (
+            <div className="flex gap-3">
+              <div className="shrink-0 mt-0.5 flex flex-col items-center gap-1">
+                <div className="h-7 w-7 rounded-full bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
+                </div>
+                <div className="w-px flex-1 bg-[#afc4ff]/10 min-h-[8px]" />
+              </div>
+              <div className="flex-1 relative">
+                <div
+                  className="absolute -left-[7px] top-[10px] w-0 h-0"
+                  style={{
+                    borderTop: '5px solid transparent',
+                    borderBottom: '5px solid transparent',
+                    borderRight: '7px solid rgba(175,196,255,0.08)',
+                  }}
+                />
+                <div className="rounded-xl border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3.5 py-3">
+                  <div className="text-[9px] font-bold text-[#afc4ff]/50 uppercase tracking-widest mb-1.5">
+                    AI Coach
+                  </div>
+                  <p className="text-[14px] text-white/75 leading-[1.7]">{coaching.ai_reasoning}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Strategy / positioning */}
+          {req.strategy && (
+            <div className="relative rounded-lg border bg-white/[0.03] pl-4 pr-3 py-2.5 overflow-hidden"
+              style={{ borderColor: `${accentColor}20` }}
+            >
+              <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-lg"
+                style={{ background: `linear-gradient(to bottom, ${accentColor}, transparent)` }}
+              />
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Lightbulb className="h-3 w-3 shrink-0" style={{ color: `${accentColor}B3` }} />
+                <span className="text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: `${accentColor}B3` }}
+                >
+                  {classification === 'missing' ? 'Safe Resume Language' : 'Resume Language to Add'}
+                </span>
+              </div>
+              <p className="text-sm text-white/75 leading-relaxed">{req.strategy.positioning}</p>
+
+              {req.strategy.inferred_metric && (
+                <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-start gap-1.5">
+                  <Ruler className="h-3 w-3 text-[#f0d99f]/60 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-xs text-[#f0d99f]/80">{req.strategy.inferred_metric}</span>
+                    {req.strategy.inference_rationale && (
+                      <span className="text-xs text-white/30 ml-1.5">— {req.strategy.inference_rationale}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Coaching context textarea */}
+          {hasCoaching && coachingState.showContextInput && (
+            <textarea
+              value={coachingState.contextText}
+              onChange={e => onCoachingChange({ contextText: e.target.value })}
+              disabled={disabled}
+              placeholder="Share any relevant experience, projects, or context that wasn't in your resume..."
+              rows={3}
+              className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label={`Additional context for: ${req.requirement}`}
+            />
+          )}
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            {/* Post-completion edit buttons (strong items) */}
+            {classification === 'strong' && isComplete && onRequestEdit && currentResume && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleStrengthen}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Strengthen
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddMetrics}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
+                >
+                  <Ruler className="h-3.5 w-3.5" />
+                  Add Metrics
+                </button>
+              </>
+            )}
+
+            {/* Coaching action buttons (partial/missing items) */}
+            {hasCoaching && !isResponded && (
+              <>
+                {/* Approve */}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onCoachingChange({ action: 'approve', showContextInput: false })}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label={`Approve strategy for: ${req.requirement}`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {classification === 'missing' ? 'Apply Safe Language' : 'Apply to Resume'}
+                </button>
+
+                {/* Context toggle/submit */}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    if (coachingState.showContextInput) {
+                      if (coachingState.contextText.trim()) {
+                        onCoachingChange({ action: 'context', showContextInput: false });
+                      }
+                    } else {
+                      onCoachingChange({ showContextInput: true });
+                    }
+                  }}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                    coachingState.showContextInput
+                      ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
+                      : 'bg-white/[0.04] text-white/60 border-white/[0.08] hover:bg-white/[0.07] hover:text-white/80',
+                  )}
+                  aria-label={
+                    coachingState.showContextInput
+                      ? `Submit context for: ${req.requirement}`
+                      : `Add context for: ${req.requirement}`
+                  }
+                  aria-expanded={coachingState.showContextInput}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {coachingState.showContextInput
+                    ? coachingState.contextText.trim() ? 'Submit context' : 'Type context above...'
+                    : 'I Have More Context'}
+                </button>
+
+                {/* Cancel context */}
+                {coachingState.showContextInput && (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onCoachingChange({ showContextInput: false, contextText: '' })}
+                    className="text-xs text-white/35 hover:text-white/55 transition-colors disabled:opacity-40 disabled:cursor-not-allowed px-1"
+                    aria-label="Cancel adding context"
+                  >
+                    Cancel
+                  </button>
+                )}
+
+                {/* Skip */}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onCoachingChange({ action: 'skip', showContextInput: false })}
+                  title="This gap won't be addressed on your resume."
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white/35 border border-transparent hover:text-white/55 hover:border-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                    !coachingState.showContextInput && 'ml-auto',
+                  )}
+                  aria-label={`Skip gap for: ${req.requirement}`}
+                >
+                  <SkipForward className="h-3.5 w-3.5" />
+                  Skip
+                </button>
+
+                {/* What this means */}
+                <p className="w-full text-[11px] text-white/25 leading-relaxed mt-1">
+                  {classification === 'missing'
+                    ? 'Approving lets the AI position adjacent experience to address this gap on your resume.'
+                    : 'Approving lets the AI strengthen how this requirement is presented using your related experience.'}
+                </p>
+              </>
+            )}
+
+            {/* Post-completion "Apply to Resume" for partial/missing (after pipeline done, if no coaching) */}
+            {!hasCoaching && isComplete && onRequestEdit && currentResume && req.strategy && classification !== 'strong' && (
+              <button
+                type="button"
+                onClick={handleApplyToResume}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+              >
+                <Lightbulb className="h-3.5 w-3.5" />
+                {classification === 'missing' ? 'Apply Safe Language' : 'Apply to Resume'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section group ──────────────────────────────────────────────────
+
+function SectionGroup({
+  classification,
+  requirements,
+  coachingLookup,
+  coachingStates,
+  onCoachingChange,
+  onRequestEdit,
+  currentResume,
+  isComplete,
+  disabled,
+}: {
+  classification: GapClassification;
+  requirements: RequirementGap[];
+  coachingLookup: Map<string, { card: GapCoachingCard; index: number }>;
+  coachingStates: CoachingState[];
+  onCoachingChange: (index: number, patch: Partial<CoachingState>) => void;
+  onRequestEdit?: UnifiedGapAnalysisCardProps['onRequestEdit'];
+  currentResume?: ResumeDraft | null;
+  isComplete?: boolean;
+  disabled?: boolean;
+}) {
+  if (requirements.length === 0) return null;
+
+  const config = SECTION_CONFIG[classification];
+  const Icon = config.icon;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: config.accent }} />
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: config.accent }}>
+          {config.label}
+        </span>
+        <span className="text-[10px] text-white/30 ml-1">({requirements.length})</span>
+      </div>
+      <div className="space-y-2">
+        {requirements.map((req, i) => {
+          const match = coachingLookup.get(normalizeRequirement(req.requirement));
+          return (
+            <RequirementRow
+              key={`${classification}-${i}`}
+              req={req}
+              coaching={match?.card}
+              coachingState={match ? coachingStates[match.index] : undefined}
+              onCoachingChange={match ? (patch) => onCoachingChange(match.index, patch) : undefined}
+              onRequestEdit={onRequestEdit}
+              currentResume={currentResume}
+              isComplete={isComplete}
+              classification={classification}
+              disabled={disabled}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ─────────────────────────────────────────────────
+
+export function UnifiedGapAnalysisCard({
+  gapAnalysis,
+  gapCoachingCards,
+  companyName,
+  roleTitle,
+  onRespondGapCoaching,
+  onRequestEdit,
+  currentResume,
+  isComplete,
+  disabled = false,
+}: UnifiedGapAnalysisCardProps) {
+  const strong = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'strong'), [gapAnalysis]);
+  const partial = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'partial'), [gapAnalysis]);
+  const missing = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'missing'), [gapAnalysis]);
+
+  // Build coaching lookup by normalized requirement name (tolerates whitespace/case variance)
+  const coachingLookup = useMemo(() => {
+    const map = new Map<string, { card: GapCoachingCard; index: number }>();
+    if (!gapCoachingCards) return map;
+    gapCoachingCards.forEach((card, index) => {
+      map.set(normalizeRequirement(card.requirement), { card, index });
+    });
+    return map;
+  }, [gapCoachingCards]);
+
+  // Coaching state tracking — reset is handled by `key` prop at call site
+  const [coachingStates, setCoachingStates] = useState<CoachingState[]>(() =>
+    (gapCoachingCards ?? []).map(() => ({ action: null, contextText: '', showContextInput: false })),
+  );
+
+  const hasCoaching = gapCoachingCards !== null && gapCoachingCards.length > 0;
+  const allResponded = hasCoaching && coachingStates.every(s => s.action !== null);
+  const respondedCount = coachingStates.filter(s => s.action !== null).length;
+
+  function patchCoachingState(index: number, patch: Partial<CoachingState>) {
+    setCoachingStates(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  }
+
+  function handleContinue() {
+    if (!gapCoachingCards) return;
+    const responses: GapCoachingResponse[] = gapCoachingCards.map((card, i) => {
+      const s = coachingStates[i];
+      const resp: GapCoachingResponse = {
+        requirement: card.requirement,
+        action: s.action ?? 'skip',
+      };
+      if (s.action === 'context' && s.contextText.trim()) {
+        resp.user_context = s.contextText.trim();
+      }
+      return resp;
+    });
+    onRespondGapCoaching(responses);
+  }
+
+  const title = companyName && roleTitle
+    ? `Your Alignment with ${companyName} — ${roleTitle}`
+    : 'Gap Analysis';
+
+  return (
+    <div className="space-y-6">
+      {/* Section A: Score Header */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-white/90">{title}</h3>
+          <span className="text-2xl font-bold text-white/90">{gapAnalysis.coverage_score}%</span>
+        </div>
+        <p className="text-sm text-white/60 mb-3">{gapAnalysis.strength_summary}</p>
+
+        {/* Stacked bar */}
+        {gapAnalysis.requirements.length > 0 && (
+          <div className="h-2.5 w-full rounded-full bg-white/[0.06] overflow-hidden flex">
+            {strong.length > 0 && (
+              <div
+                className="h-full bg-[#b5dec2] transition-all duration-700"
+                style={{ width: `${(strong.length / gapAnalysis.requirements.length) * 100}%` }}
+              />
+            )}
+            {partial.length > 0 && (
+              <div
+                className="h-full bg-[#afc4ff] transition-all duration-700"
+                style={{ width: `${(partial.length / gapAnalysis.requirements.length) * 100}%` }}
+              />
+            )}
+            {missing.length > 0 && (
+              <div
+                className="h-full bg-[#f0b8b8] transition-all duration-700"
+                style={{ width: `${(missing.length / gapAnalysis.requirements.length) * 100}%` }}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Legend */}
+        <div className="flex gap-4 text-xs mt-2">
+          <span className="flex items-center gap-1 text-[#b5dec2]"><CheckCircle2 className="h-3 w-3" /> {strong.length} strong</span>
+          <span className="flex items-center gap-1 text-[#afc4ff]"><AlertTriangle className="h-3 w-3" /> {partial.length} partial</span>
+          <span className="flex items-center gap-1 text-[#f0b8b8]"><XCircle className="h-3 w-3" /> {missing.length} gaps</span>
+        </div>
+      </div>
+
+      {/* Coaching progress bar */}
+      {hasCoaching && (
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Review Progress</span>
+            <span className="text-xs text-white/40">{respondedCount} / {gapCoachingCards!.length} reviewed</span>
+          </div>
+          <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
+              style={{ width: gapCoachingCards!.length > 0 ? `${(respondedCount / gapCoachingCards!.length) * 100}%` : '0%' }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Section B: Strong */}
+      <SectionGroup
+        classification="strong"
+        requirements={strong}
+        coachingLookup={coachingLookup}
+        coachingStates={coachingStates}
+        onCoachingChange={patchCoachingState}
+        onRequestEdit={onRequestEdit}
+        currentResume={currentResume}
+        isComplete={isComplete}
+        disabled={disabled}
+      />
+
+      {/* Section C: Partial */}
+      <SectionGroup
+        classification="partial"
+        requirements={partial}
+        coachingLookup={coachingLookup}
+        coachingStates={coachingStates}
+        onCoachingChange={patchCoachingState}
+        onRequestEdit={onRequestEdit}
+        currentResume={currentResume}
+        isComplete={isComplete}
+        disabled={disabled}
+      />
+
+      {/* Section D: Missing */}
+      <SectionGroup
+        classification="missing"
+        requirements={missing}
+        coachingLookup={coachingLookup}
+        coachingStates={coachingStates}
+        onCoachingChange={patchCoachingState}
+        onRequestEdit={onRequestEdit}
+        currentResume={currentResume}
+        isComplete={isComplete}
+        disabled={disabled}
+      />
+
+      {/* Section E: Critical Gaps */}
+      {gapAnalysis.critical_gaps.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />
+            <span className="text-[10px] font-semibold text-[#f0b8b8] uppercase tracking-wider">
+              Critical Gaps
+            </span>
+            <span className="text-[10px] text-white/30 ml-1">({gapAnalysis.critical_gaps.length})</span>
+          </div>
+          <div className="space-y-1.5">
+            {gapAnalysis.critical_gaps.map((gap, i) => (
+              <div
+                key={i}
+                className="rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.04] px-3 py-2 text-sm text-white/60"
+              >
+                {gap}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Continue button (coaching gate) */}
+      {hasCoaching && (
+        <div className="pt-2">
+          <button
+            type="button"
+            disabled={!allResponded || disabled}
+            onClick={handleContinue}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed',
+              allResponded && !disabled
+                ? 'bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35'
+                : 'border border-white/[0.06] text-white/30',
+            )}
+            aria-disabled={!allResponded || disabled}
+            aria-label="Continue to resume writing"
+          >
+            Continue — Start Writing
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          {!allResponded && (
+            <p className="text-center text-xs text-white/30 mt-2">
+              Review all {gapCoachingCards!.length} items to continue
+            </p>
+          )}
+          {allResponded && coachingStates.every(s => s.action === 'skip') && (
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 mt-3">
+              <p className="text-sm text-white/60">
+                Your resume will highlight your direct matches — no inferred positioning will be used.
+              </p>
+              <p className="text-xs text-white/35 mt-1">
+                You can add context anytime to unlock new strategies.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

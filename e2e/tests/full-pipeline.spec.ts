@@ -155,14 +155,25 @@ test.describe('Full Pipeline E2E', () => {
         // eslint-disable-next-line no-console
         console.log(`[test] Found ${cardCount} gap coaching card(s) — approving all`);
 
-        // Click "Use this strategy" on each unapproved card.
-        // Cards that are already responded show a collapsed state, so we
-        // only click visible "Use this strategy" buttons.
+        // Click approve on each unapproved card.
+        // New UnifiedGapAnalysisCard uses expandable rows — expand first, then click approve.
+        // Cards that are already responded show a collapsed state (no expand needed).
         for (let i = 0; i < cardCount; i++) {
           const card = coachingCards.nth(i);
-          const approveBtn = card.getByRole('button', { name: /Use this strategy/i });
-          const isVisible = await approveBtn.isVisible().catch(() => false);
-          if (isVisible) {
+          // Expand the row by clicking the chevron header button
+          const expandBtn = card.locator('button[aria-expanded]').first();
+          const expandVisible = await expandBtn.isVisible().catch(() => false);
+          if (expandVisible) {
+            const isExpanded = await expandBtn.getAttribute('aria-expanded');
+            if (isExpanded === 'false') {
+              await expandBtn.click();
+              await page.waitForTimeout(200);
+            }
+          }
+          // Click "Apply to Resume" or "Apply Safe Language" (replaces old "Use this strategy")
+          const approveBtn = card.getByRole('button', { name: /Apply to Resume|Apply Safe Language/i });
+          const approveVisible = await approveBtn.isVisible().catch(() => false);
+          if (approveVisible) {
             await approveBtn.click();
             // Brief pause for React state to settle before moving to next card
             await page.waitForTimeout(300);

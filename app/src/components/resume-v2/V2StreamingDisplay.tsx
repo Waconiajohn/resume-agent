@@ -21,8 +21,7 @@ import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { JobIntelligenceCard } from './cards/JobIntelligenceCard';
 import { CandidateIntelligenceCard } from './cards/CandidateIntelligenceCard';
 import { BenchmarkCandidateCard } from './cards/BenchmarkCandidateCard';
-import { GapAnalysisCard } from './cards/GapAnalysisCard';
-import { GapCoachingCardList } from './cards/GapCoachingCard';
+import { UnifiedGapAnalysisCard } from './cards/UnifiedGapAnalysisCard';
 import { PositioningAssessmentCard } from './cards/PositioningAssessmentCard';
 import { StrategyAuditCard } from './cards/StrategyAuditCard';
 import { NarrativeStrategyCard } from './cards/NarrativeStrategyCard';
@@ -353,17 +352,16 @@ export function V2StreamingDisplay({
                 {data.gapAnalysis && (
                   <AnimatedCard index={0}>
                     <GlassCard className="p-5">
-                      <GapAnalysisCard data={data.gapAnalysis} />
-                    </GlassCard>
-                  </AnimatedCard>
-                )}
-                {gapCoachingCards && gapCoachingCards.length > 0 && (
-                  <AnimatedCard index={1}>
-                    <GlassCard className="p-5">
-                      <GapCoachingCardList
-                        key={gapCoachingCards.length}
-                        cards={gapCoachingCards}
-                        onRespond={onRespondGapCoaching}
+                      <UnifiedGapAnalysisCard
+                        key={gapCoachingCards?.length ?? 0}
+                        gapAnalysis={data.gapAnalysis}
+                        gapCoachingCards={gapCoachingCards}
+                        companyName={data.jobIntelligence?.company_name}
+                        roleTitle={data.jobIntelligence?.role_title}
+                        onRespondGapCoaching={onRespondGapCoaching}
+                        onRequestEdit={canEdit ? onRequestEdit : undefined}
+                        currentResume={displayResume}
+                        isComplete={isComplete}
                       />
                     </GlassCard>
                   </AnimatedCard>
