@@ -405,7 +405,7 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
     // The pipeline_complete event triggers isComplete=true
 
     // Gap Analysis card should render with coverage score
-    await expect(page.getByText('Coverage: 78%')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('78%')).toBeVisible({ timeout: 10_000 });
 
     // Gap classifications should show
     await expect(page.getByText('AWS expertise')).toBeVisible({ timeout: 5_000 });
@@ -470,13 +470,13 @@ test.describe('V2 Pipeline: gap analysis interactions', () => {
     await page.locator('#v2-jd').fill(REAL_JD_TEXT);
     await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
 
-    // Wait for gap analysis
-    await expect(page.getByText('Gap Analysis')).toBeVisible({ timeout: 10_000 });
+    // Wait for gap analysis — title now includes company/role when available
+    await expect(page.getByText('Your Alignment with TechVision Solutions')).toBeVisible({ timeout: 10_000 });
 
-    // Summary counts
+    // Summary counts (new card uses "gaps" instead of "missing")
     await expect(page.getByText('1 strong')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('1 partial')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('1 missing')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('1 gaps')).toBeVisible({ timeout: 5_000 });
   });
 });
 
