@@ -40,15 +40,16 @@ export function AddContextCard({ onSubmit, loading }: AddContextCardProps) {
   return (
     <div>
       {/* Collapsed trigger */}
-      <button
-        type="button"
-        onClick={() => setIsExpanded(true)}
-        className="flex items-center gap-2 rounded-xl border border-dashed border-white/[0.12] bg-white/[0.02] px-4 py-3 text-sm text-white/50 hover:border-[#afc4ff]/30 hover:text-white/70 transition-colors w-full text-left"
-        aria-expanded={isExpanded}
-      >
-        <MessageSquarePlus className="h-4 w-4 shrink-0" />
-        Tell us what we missed — add context the AI didn't find in your resume
-      </button>
+      {!isExpanded && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded(true)}
+          className="flex items-center gap-2 rounded-xl border border-dashed border-white/[0.12] bg-white/[0.02] px-4 py-3 text-sm text-white/50 hover:border-[#afc4ff]/30 hover:text-white/70 transition-colors w-full text-left"
+        >
+          <MessageSquarePlus className="h-4 w-4 shrink-0" />
+          Tell us what we missed — add context the AI didn't find in your resume
+        </button>
+      )}
 
       {/* Expandable panel */}
       <div

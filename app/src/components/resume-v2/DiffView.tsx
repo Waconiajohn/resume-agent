@@ -29,7 +29,7 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
   const actionLabel = ACTION_LABELS[edit.action] ?? 'Edited';
 
   return (
-    <GlassCard className="p-4 border-[#afc4ff]/20 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <GlassCard className="p-4 border-[#afc4ff]/20 animate-[card-enter_300ms_ease-out_forwards] opacity-0">
       {/* Section context label */}
       <div className="mb-1.5 text-xs text-white/40">
         {actionLabel}: {edit.section}

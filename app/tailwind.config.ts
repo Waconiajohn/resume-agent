@@ -62,6 +62,10 @@ export default {
           from: { opacity: '0', transform: 'translateY(16px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
         'dot-bounce': {
           '0%, 80%, 100%': { transform: 'scale(0.6)', opacity: '0.3' },
           '40%': { transform: 'scale(1)', opacity: '1' },
@@ -90,6 +94,7 @@ export default {
         'dot-bounce': 'dot-bounce 1.4s ease-in-out infinite',
         'pill-appear': 'pill-appear 200ms ease-out forwards',
         'score-ring-pulse': 'score-ring-pulse 1.4s ease-in-out infinite',
+        'fade-in': 'fade-in 500ms ease-out forwards',
       },
     },
   },

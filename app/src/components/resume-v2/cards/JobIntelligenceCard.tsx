@@ -1,9 +1,10 @@
 import { Briefcase } from 'lucide-react';
+import { IMPORTANCE_LABELS } from './shared-badges';
 import type { JobIntelligence } from '@/types/resume-v2';
 
 export function JobIntelligenceCard({ data }: { data: JobIntelligence }) {
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 space-y-4">
+    <div className="animate-[card-enter_500ms_ease-out_forwards] opacity-0 space-y-4">
       <div className="flex items-center gap-2">
         <div className="bg-[#afc4ff]/10 p-2 rounded-full">
           <Briefcase className="h-4 w-4 text-[#afc4ff]" />
@@ -61,15 +62,9 @@ function ImportanceBadge({ importance }: { importance: string }) {
     nice_to_have: 'bg-white/10 text-white/50 border border-white/15 px-2 py-0.5 rounded-full text-[10px]',
   }[importance] ?? 'bg-white/10 text-white/50 border border-white/15 px-2 py-0.5 rounded-full text-[10px]';
 
-  const label = {
-    must_have: 'Must',
-    important: 'Imp',
-    nice_to_have: 'Nice',
-  }[importance] ?? importance;
-
   return (
     <span className={`inline-flex shrink-0 items-center font-medium ${styles}`}>
-      {label}
+      {IMPORTANCE_LABELS[importance] ?? importance}
     </span>
   );
 }

@@ -169,7 +169,7 @@ function TalkingPoint({ index, point }: { index: number; point: string }) {
     navigator.clipboard.writeText(point).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    }).catch(() => {});
   }
 
   return (
@@ -179,6 +179,7 @@ function TalkingPoint({ index, point }: { index: number; point: string }) {
       </span>
       <p className="flex-1 text-xs text-white/60 leading-relaxed">{point}</p>
       <button
+        type="button"
         onClick={handleCopy}
         aria-label="Copy talking point"
         className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-white/60"

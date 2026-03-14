@@ -131,7 +131,7 @@ function StagePendingDots() {
 function AnimatedCard({ children, index = 0 }: { children: React.ReactNode; index?: number }) {
   return (
     <div
-      className="animate-[card-enter_500ms_ease-out_forwards] opacity-0"
+      className="motion-safe:animate-[card-enter_500ms_ease-out_forwards] motion-safe:opacity-0"
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {children}

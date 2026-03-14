@@ -47,7 +47,7 @@ function importanceBadge(importance: GapCoachingCard['importance']) {
   if (importance === 'must_have') {
     return (
       <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-[#f0b8b8]/20 text-[#f0b8b8] border border-[#f0b8b8]/30">
-        Must have
+        Must Have
       </span>
     );
   }
@@ -60,7 +60,7 @@ function importanceBadge(importance: GapCoachingCard['importance']) {
   }
   return (
     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-white/10 text-white/60 border border-white/20">
-      Nice to have
+      Nice to Have
     </span>
   );
 }

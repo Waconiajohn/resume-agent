@@ -271,8 +271,8 @@ function JumpToSection({ sectionKey }: { sectionKey: string }) {
 }
 
 const SECTION_KEY_MAP: Record<string, string> = {
-  'Core Competencies': 'core-competencies',
-  'Selected Accomplishments': 'selected-accomplishments',
+  'Core Competencies': 'core_competencies',
+  'Selected Accomplishments': 'selected_accomplishments',
 };
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -298,8 +298,8 @@ function ExperienceDiffSection({ diff }: { diff: SectionBulletDiff }) {
   const visibleChanges = diff.changes.filter(c => c.type !== 'unchanged');
   if (visibleChanges.length === 0) return null;
 
-  // Build a data-section key matching the pattern used in the resume renderer
-  const sectionKey = `experience-${diff.company.toLowerCase().replace(/\s+/g, '-')}`;
+  // All experience entries share one section in the resume renderer
+  const sectionKey = 'professional_experience';
 
   return (
     <div className="space-y-1">
@@ -354,7 +354,7 @@ function SummaryDiffSection({ diff }: { diff: SummaryDiff }) {
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/50">Executive Summary</div>
-        <JumpToSection sectionKey="executive-summary" />
+        <JumpToSection sectionKey="executive_summary" />
       </div>
       <div className="pl-1 space-y-1">
         <div className="flex items-start gap-2 rounded px-2 py-1.5 bg-[#f0b8b8]/[0.05]">

@@ -3,7 +3,7 @@ import type { BenchmarkCandidate } from '@/types/resume-v2';
 
 export function BenchmarkCandidateCard({ data }: { data: BenchmarkCandidate }) {
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 space-y-4">
+    <div className="animate-[card-enter_500ms_ease-out_forwards] opacity-0 space-y-4">
       <div className="flex items-center gap-2">
         <div className="bg-[#f0d99f]/10 p-2 rounded-full">
           <Target className="h-4 w-4 text-[#f0d99f]" />

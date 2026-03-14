@@ -117,7 +117,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
           </div>
         </div>
 
-        <GlassCard className="animate-in fade-in duration-500 p-8">
+        <GlassCard className="animate-[fade-in_500ms_ease-out_forwards] opacity-0 p-8">
           {/* Error display */}
           {error && (
             <div
@@ -208,7 +208,7 @@ export function V2IntakeForm({ onSubmit, loading = false, error, initialResumeTe
                       : <Upload className="h-3 w-3" />
                     }
                     {jdFileLoading ? 'Reading file...' : 'Upload file'}
-                    <span className="text-white/30">.txt, .docx, .pdf</span>
+                    <span className="text-white/30">.txt, .docx, .pdf, .html</span>
                   </button>
                   {jdFileError && (
                     <p className="text-[10px] text-[#f0b8b8]" role="alert">{jdFileError}</p>

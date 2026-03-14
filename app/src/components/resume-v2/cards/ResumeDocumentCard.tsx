@@ -246,6 +246,8 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
       className="relative inline-flex items-center ml-1.5 align-middle"
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
+      onFocus={() => setShow(true)}
+      onBlur={() => setShow(false)}
     >
       <button
         type="button"

@@ -1,20 +1,12 @@
 import { useState } from 'react';
-import {
-  CheckCircle2,
-  X,
-  Shuffle,
-  ChevronDown,
-  Target,
-  Lightbulb,
-  FileText,
-  ArrowRight,
-} from 'lucide-react';
+import { ChevronDown, Target, Lightbulb, FileText, ArrowRight } from 'lucide-react';
 import { GlassCard } from '../../GlassCard';
 import type {
   PositioningAssessment,
   PositioningAssessmentEntry,
   PreScores,
 } from '@/types/resume-v2';
+import { StatusBadge, importanceLabel, importanceStyle } from './shared-badges';
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
@@ -25,112 +17,18 @@ export interface PositioningAssessmentCardProps {
   roleTitle?: string;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function importanceLabel(importance: PositioningAssessmentEntry['importance']): string {
-  switch (importance) {
-    case 'must_have':
-      return 'Must Have';
-    case 'important':
-      return 'Important';
-    case 'nice_to_have':
-      return 'Nice to Have';
-  }
-}
-
-// ─── Status badge (filled pill) ────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: PositioningAssessmentEntry['status'] }) {
-  switch (status) {
-    case 'strong':
-      return (
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
-          style={{
-            color: '#b5dec2',
-            backgroundColor: 'rgba(181,222,194,0.15)',
-            border: '1px solid rgba(181,222,194,0.20)',
-          }}
-        >
-          <CheckCircle2 className="h-2.5 w-2.5" aria-hidden="true" />
-          Strong
-        </span>
-      );
-    case 'repositioned':
-      return (
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
-          style={{
-            color: '#afc4ff',
-            backgroundColor: 'rgba(175,196,255,0.15)',
-            border: '1px solid rgba(175,196,255,0.20)',
-          }}
-        >
-          <Shuffle className="h-2.5 w-2.5" aria-hidden="true" />
-          Repositioned
-        </span>
-      );
-    case 'gap':
-      return (
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
-          style={{
-            color: '#f0b8b8',
-            backgroundColor: 'rgba(240,184,184,0.15)',
-            border: '1px solid rgba(240,184,184,0.20)',
-          }}
-        >
-          <X className="h-2.5 w-2.5" aria-hidden="true" />
-          Gap
-        </span>
-      );
-  }
-}
-
 // ─── Importance badge (filled pill) ────────────────────────────────────────────
 
 function ImportanceBadge({ importance }: { importance: PositioningAssessmentEntry['importance'] }) {
-  switch (importance) {
-    case 'must_have':
-      return (
-        <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
-          style={{
-            color: '#f0b8b8',
-            backgroundColor: 'rgba(240,184,184,0.15)',
-            border: '1px solid rgba(240,184,184,0.20)',
-          }}
-        >
-          {importanceLabel(importance)}
-        </span>
-      );
-    case 'important':
-      return (
-        <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
-          style={{
-            color: '#f0d99f',
-            backgroundColor: 'rgba(240,217,159,0.15)',
-            border: '1px solid rgba(240,217,159,0.20)',
-          }}
-        >
-          {importanceLabel(importance)}
-        </span>
-      );
-    case 'nice_to_have':
-      return (
-        <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
-          style={{
-            color: 'rgba(255,255,255,0.40)',
-            backgroundColor: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.10)',
-          }}
-        >
-          {importanceLabel(importance)}
-        </span>
-      );
-  }
+  const style = importanceStyle(importance);
+  return (
+    <span
+      className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
+      style={style}
+    >
+      {importanceLabel(importance)}
+    </span>
+  );
 }
 
 // ─── Expandable requirement row ────────────────────────────────────────────────
