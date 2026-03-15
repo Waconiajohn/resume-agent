@@ -103,7 +103,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     }
 
     // Agent 3 depends on Agent 1
-    const benchmark = await runBenchmarkCandidate({ job_intelligence: jobIntel }, signal);
+    const benchmark = await runBenchmarkCandidate({ job_intelligence: jobIntel }, signal, { session_id: options.session_id });
     state.benchmark_candidate = benchmark;
 
     emit({ type: 'benchmark_candidate', data: benchmark });
@@ -147,6 +147,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
           inference_rationale: ps.strategy.inference_rationale,
           evidence_found: req?.evidence ?? [],
           previously_approved: !!previouslyApproved,
+          interview_questions: ps.strategy.interview_questions,
         };
       });
       emit({ type: 'gap_coaching', data: coachingCards });

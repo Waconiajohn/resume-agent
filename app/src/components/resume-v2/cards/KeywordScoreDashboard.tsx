@@ -1,8 +1,9 @@
-import { Shield, Zap, ArrowUp, CheckCircle2 } from 'lucide-react';
+import { Shield, Zap, ArrowUp, CheckCircle2, Wrench } from 'lucide-react';
 import { GlassCard } from '../../GlassCard';
 import type { VerificationScores, QuickWin } from '@/types/resume-v2';
 import type { LiveScores } from '@/hooks/useLiveScoring';
 import { scoreColor, MiniRingGauge, ImpactDot } from './score-gauges';
+import { cn } from '@/lib/utils';
 
 export interface KeywordScoreDashboardProps {
   pipelineScores: VerificationScores;
@@ -12,7 +13,36 @@ export interface KeywordScoreDashboardProps {
   onIntegrateKeyword?: (keyword: string) => void;
   isIntegrating?: boolean;
   integratingKeyword?: string | null;
+  onQuickWinAction?: (description: string, impact: string) => void;
 }
+
+// ─── Quick win action detection ────────────────────────────────────────────────
+
+function hasActionablePrefix(description: string): boolean {
+  return (
+    description.startsWith('Fix:') ||
+    description.startsWith('Add missing keywords:') ||
+    description.startsWith('Remove banned phrases:')
+  );
+}
+
+const impactButtonStyle: Record<QuickWin['impact'], React.CSSProperties> = {
+  high: {
+    color: '#f0b8b8',
+    backgroundColor: 'rgba(240,184,184,0.12)',
+    border: '1px solid rgba(240,184,184,0.30)',
+  },
+  medium: {
+    color: '#f0d99f',
+    backgroundColor: 'rgba(240,217,159,0.12)',
+    border: '1px solid rgba(240,217,159,0.30)',
+  },
+  low: {
+    color: '#afc4ff',
+    backgroundColor: 'rgba(175,196,255,0.12)',
+    border: '1px solid rgba(175,196,255,0.30)',
+  },
+};
 
 // ─── SVG ring gauge ────────────────────────────────────────────────────────────
 
@@ -82,6 +112,7 @@ export function KeywordScoreDashboard({
   onIntegrateKeyword,
   isIntegrating = false,
   integratingKeyword = null,
+  onQuickWinAction,
 }: KeywordScoreDashboardProps) {
   // The displayed ATS score: prefer live (post-edit) score, fall back to pipeline score
   const displayAts = liveScores?.ats_score ?? pipelineScores.ats_match;
@@ -305,12 +336,29 @@ export function KeywordScoreDashboard({
             <span className="text-xs font-medium text-white/60">Quick Wins</span>
           </div>
           <ul className="space-y-1.5">
-            {quickWins.map((w, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs">
-                <ImpactDot impact={w.impact} />
-                <span className="text-white/60">{w.description}</span>
-              </li>
-            ))}
+            {quickWins.map((w, i) => {
+              const isActionable = onQuickWinAction && hasActionablePrefix(w.description);
+              return (
+                <li key={i} className="flex items-start gap-2 text-xs">
+                  <ImpactDot impact={w.impact} />
+                  <span className={cn('flex-1 text-white/60', isActionable && 'mr-1')}>
+                    {w.description}
+                  </span>
+                  {isActionable && (
+                    <button
+                      type="button"
+                      onClick={() => onQuickWinAction!(w.description, w.impact)}
+                      className="shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium leading-4 transition-opacity hover:opacity-80 cursor-pointer"
+                      style={impactButtonStyle[w.impact]}
+                      title="Apply this fix to your resume"
+                    >
+                      <Wrench className="h-2.5 w-2.5" aria-hidden="true" />
+                      Fix Now
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

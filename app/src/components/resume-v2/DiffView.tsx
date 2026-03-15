@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, Target, Briefcase } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import type { PendingEdit } from '@/hooks/useInlineEdit';
 
@@ -34,6 +34,23 @@ export function DiffView({ edit, onAccept, onReject }: DiffViewProps) {
       <div className="mb-1.5 text-xs text-white/40">
         {actionLabel}: {edit.section}
       </div>
+
+      {/* Edit context — shows what requirement this addresses */}
+      {edit.editContext?.requirement && (
+        <div className="mb-3 rounded-lg border border-[#afc4ff]/10 bg-[#afc4ff]/[0.03] px-3 py-2 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs text-[#afc4ff]/80">
+            <Target className="h-3 w-3 shrink-0" />
+            <span className="font-medium">Addresses:</span>
+            <span className="text-white/60">{edit.editContext.requirement}</span>
+          </div>
+          {edit.editContext.evidence && edit.editContext.evidence.length > 0 && (
+            <div className="flex items-start gap-1.5 text-xs">
+              <Briefcase className="h-3 w-3 text-[#b5dec2]/60 shrink-0 mt-0.5" />
+              <span className="text-white/40">Your experience: {edit.editContext.evidence.join('; ')}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium text-[#afc4ff]">{actionLabel}</span>

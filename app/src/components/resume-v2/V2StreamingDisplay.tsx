@@ -35,6 +35,10 @@ import { DiffView } from './DiffView';
 import { AddContextCard } from './AddContextCard';
 import { ExportBar } from './ExportBar';
 import { WhatChangedCard } from './cards/WhatChangedCard';
+import { PreScoreReportCard } from './cards/PreScoreReportCard';
+import { ScoringReportCard } from './cards/ScoringReportCard';
+import { HiringManagerReviewCard } from './cards/HiringManagerReviewCard';
+import type { HiringManagerReviewResult, HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -49,7 +53,7 @@ interface V2StreamingDisplayProps {
   editError: string | null;
   undoCount: number;
   redoCount: number;
-  onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string) => void;
+  onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: import('@/hooks/useInlineEdit').EditContext) => void;
   onAcceptEdit: (editedText: string) => void;
   onRejectEdit: () => void;
   onUndo: () => void;
@@ -65,6 +69,12 @@ interface V2StreamingDisplayProps {
   /** Resume from the previous run — when present, show the WhatChanged card after re-run completes */
   previousResume?: ResumeDraft | null;
   onDismissChanges?: () => void;
+  /** Hiring manager review */
+  hiringManagerResult?: HiringManagerReviewResult | null;
+  isHiringManagerLoading?: boolean;
+  hiringManagerError?: string | null;
+  onRequestHiringManagerReview?: () => void;
+  onApplyHiringManagerRecommendation?: (concern: HiringManagerConcern) => void;
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -146,6 +156,8 @@ export function V2StreamingDisplay({
   liveScores, isScoring,
   gapCoachingCards, onRespondGapCoaching, preScores, onIntegrateKeyword,
   previousResume, onDismissChanges,
+  hiringManagerResult, isHiringManagerLoading, hiringManagerError,
+  onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -320,7 +332,7 @@ export function V2StreamingDisplay({
         {/* ─── Stage 1: Analysis ──────────────────────────────── */}
         {(hasAnalysis || analysisRunning) && (
           <section aria-label="Analysis">
-            <StageBanner label="What they're looking for — and what you bring" icon={Briefcase} stage="analysis" currentStage={data.stage} isComplete={isComplete} />
+            <StageBanner label="Understanding the role and your background" icon={Briefcase} stage="analysis" currentStage={data.stage} isComplete={isComplete} />
             <div className="space-y-4">
               {data.jobIntelligence && (
                 <AnimatedCard index={0}>
@@ -347,7 +359,7 @@ export function V2StreamingDisplay({
           <>
             <PhaseDivider label="Strategy & Positioning" />
             <section aria-label="Positioning strategy">
-              <StageBanner label="Your positioning strategy" icon={Compass} stage="strategy" currentStage={data.stage} isComplete={isComplete} />
+              <StageBanner label="How we'll position you for this role" icon={Compass} stage="strategy" currentStage={data.stage} isComplete={isComplete} />
               <div className="space-y-4">
                 {data.gapAnalysis && (
                   <AnimatedCard index={0}>
@@ -362,8 +374,14 @@ export function V2StreamingDisplay({
                         onRequestEdit={canEdit ? onRequestEdit : undefined}
                         currentResume={displayResume}
                         isComplete={isComplete}
+                        positioningAssessment={data.assembly?.positioning_assessment}
                       />
                     </GlassCard>
+                  </AnimatedCard>
+                )}
+                {preScores && data.gapAnalysis && !isComplete && (
+                  <AnimatedCard index={1}>
+                    <PreScoreReportCard preScores={preScores} />
                   </AnimatedCard>
                 )}
                 {data.narrativeStrategy && (
@@ -407,7 +425,7 @@ export function V2StreamingDisplay({
           <>
             <PhaseDivider label="Your Resume" />
             <section aria-label="Your resume">
-              <StageBanner label="Your resume" icon={FileText} stage="writing" currentStage={data.stage} isComplete={isComplete} />
+              <StageBanner label="Your tailored resume" icon={FileText} stage="writing" currentStage={data.stage} isComplete={isComplete} />
 
               {/* Scores (show when assembly is complete) */}
               {data.assembly && (
@@ -432,7 +450,7 @@ export function V2StreamingDisplay({
               {!isComplete && (data.stage === 'verification' || data.stage === 'assembly') && (
                 <div className="flex items-center gap-2 mb-4 text-xs text-white/40">
                   <Shield className="h-3 w-3" />
-                  Verifying accuracy, ATS compliance, and tone...
+                  Checking every claim for accuracy and polishing the tone...
                 </div>
               )}
 
@@ -477,10 +495,15 @@ export function V2StreamingDisplay({
         {/* ─── Completion ─────────────────────────────────────── */}
         {isComplete && data.assembly && (
           <>
-            <PhaseDivider label="Assessment & Export" />
+            <PhaseDivider label="Results & Export" />
             <div className="space-y-4">
-              {data.assembly.positioning_assessment && data.gapAnalysis && (
+              {preScores && (
                 <AnimatedCard index={0}>
+                  <ScoringReportCard preScores={preScores} assembly={data.assembly} />
+                </AnimatedCard>
+              )}
+              {data.assembly.positioning_assessment && data.gapAnalysis && (
+                <AnimatedCard index={1}>
                   <StrategyAuditCard
                     positioningAssessment={data.assembly.positioning_assessment}
                     gapAnalysis={data.gapAnalysis}
@@ -488,7 +511,7 @@ export function V2StreamingDisplay({
                 </AnimatedCard>
               )}
               {data.assembly.positioning_assessment && (
-                <AnimatedCard index={1}>
+                <AnimatedCard index={2}>
                   <PositioningAssessmentCard
                     assessment={data.assembly.positioning_assessment}
                     preScores={preScores}
@@ -497,19 +520,33 @@ export function V2StreamingDisplay({
                   />
                 </AnimatedCard>
               )}
-              <AnimatedCard index={2}>
+              <AnimatedCard index={3}>
                 <div className="flex items-center gap-2 rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] px-4 py-3 text-sm text-[#b5dec2]/90" role="status">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  Resume complete. Select any text above to edit with AI.
+                  Your resume is ready! Select any text above to fine-tune with AI.
                 </div>
               </AnimatedCard>
               {displayResume && (
-                <AnimatedCard index={3}>
+                <AnimatedCard index={4}>
                   <ExportBar
                     resume={displayResume}
                     companyName={data.jobIntelligence?.company_name}
                     jobTitle={data.jobIntelligence?.role_title}
                     atsScore={data.assembly.scores.ats_match}
+                  />
+                </AnimatedCard>
+              )}
+              {/* Hiring Manager Review — final quality gate */}
+              {onRequestHiringManagerReview && data.jobIntelligence && (
+                <AnimatedCard index={5}>
+                  <HiringManagerReviewCard
+                    result={hiringManagerResult ?? null}
+                    isLoading={isHiringManagerLoading ?? false}
+                    error={hiringManagerError ?? null}
+                    companyName={data.jobIntelligence.company_name}
+                    roleTitle={data.jobIntelligence.role_title}
+                    onRequestReview={onRequestHiringManagerReview}
+                    onApplyRecommendation={onApplyHiringManagerRecommendation}
                   />
                 </AnimatedCard>
               )}
@@ -550,13 +587,13 @@ export function V2StreamingDisplay({
 
 function getStageMessage(stage: V2Stage): string {
   switch (stage) {
-    case 'intake': return 'Starting pipeline...';
-    case 'analysis': return 'Analyzing the job and your background...';
-    case 'strategy': return 'Building your positioning strategy...';
-    case 'writing': return 'Writing your resume...';
-    case 'verification': return 'Verifying accuracy, ATS compliance, and tone...';
-    case 'assembly': return 'Assembling final resume...';
-    case 'complete': return 'Complete';
-    default: return 'Processing...';
+    case 'intake': return 'Getting started...';
+    case 'analysis': return 'Reading the job description and learning about your background...';
+    case 'strategy': return 'Figuring out the best way to position you for this role...';
+    case 'writing': return 'Writing your tailored resume...';
+    case 'verification': return 'Double-checking every claim for accuracy and tone...';
+    case 'assembly': return 'Putting the finishing touches on your resume...';
+    case 'complete': return 'Your resume is ready';
+    default: return 'Working on it...';
   }
 }

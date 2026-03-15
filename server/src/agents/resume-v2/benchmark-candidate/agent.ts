@@ -11,6 +11,7 @@
  */
 
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
+import { queryWithFallback } from '../../../lib/perplexity.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import type { BenchmarkCandidateInput, BenchmarkCandidateOutput } from '../types.js';
@@ -31,7 +32,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
     {
       "area": "domain of achievement",
       "description": "what they accomplished",
-      "typical_metrics": "the numbers you'd expect to see"
+      "typical_metrics": "realistic metrics grounded in the industry research provided — do NOT invent specific numbers without basis"
     }
   ],
   "expected_leadership_scope": "team size, budget, P&L, geography they've managed",
@@ -46,16 +47,20 @@ RULES:
 - expected_achievements: include 5-8 achievements with realistic metrics for this seniority level and industry.
 - differentiators: what would make you pick THIS candidate over 4 other qualified people? Think about unique combinations of skills, unusual career arcs, or rare experience.
 - expected_certifications: list relevant ones but note which are truly required vs. nice-to-have.
-- This is a REALISTIC archetype. The person exists. They're currently employed somewhere and you're trying to recruit them.`;
+- This is a REALISTIC archetype. The person exists. They're currently employed somewhere and you're trying to recruit them.
+- typical_metrics: Ground every number in the INDUSTRY RESEARCH provided. If the research doesn't cover a specific metric area, say "varies by organization" rather than inventing a number.`;
 
 export async function runBenchmarkCandidate(
   input: BenchmarkCandidateInput,
   signal?: AbortSignal,
+  options?: { session_id?: string },
 ): Promise<BenchmarkCandidateOutput> {
+  const { role_title, company_name, industry, seniority_level } = input.job_intelligence;
+
   const jobContext = [
-    `Role: ${input.job_intelligence.role_title} at ${input.job_intelligence.company_name}`,
-    `Industry: ${input.job_intelligence.industry}`,
-    `Seniority: ${input.job_intelligence.seniority_level}`,
+    `Role: ${role_title} at ${company_name}`,
+    `Industry: ${industry}`,
+    `Seniority: ${seniority_level}`,
     '',
     'Core competencies required:',
     ...input.job_intelligence.core_competencies.map(
@@ -72,12 +77,47 @@ export async function runBenchmarkCandidate(
     ...input.job_intelligence.hidden_hiring_signals.map(s => `- ${s}`),
   ].join('\n');
 
+  // Research real industry metrics from Perplexity before asking the LLM to build the benchmark.
+  // Graceful degradation: if the research call fails for any reason, continue without it.
+  let industryResearchBlock = '';
+  try {
+    const researchQuery =
+      `What are typical achievements, metrics, and KPIs for a ${seniority_level} ${role_title} ` +
+      `in ${industry}? Include realistic numbers for team sizes, budgets, revenue impact, ` +
+      `cost savings, process improvements, and project scope.`;
+
+    const sessionId = options?.session_id ?? 'benchmark-candidate';
+    const researchText = await queryWithFallback(
+      sessionId,
+      [{ role: 'user', content: researchQuery }],
+      {
+        system: 'You are a compensation and career research analyst. Provide factual, data-grounded benchmarks. Be specific with numbers and ranges.',
+        prompt: researchQuery,
+      },
+    );
+
+    if (researchText.trim()) {
+      industryResearchBlock = `\n\nINDUSTRY RESEARCH (use these real benchmarks to ground your metrics — do not invent numbers):\n${researchText.trim()}`;
+      logger.info(
+        { role_title, seniority_level, industry },
+        'Benchmark Candidate: industry research retrieved from Perplexity',
+      );
+    }
+  } catch (err) {
+    logger.warn(
+      { error: err instanceof Error ? err.message : String(err), role_title, industry },
+      'Benchmark Candidate: industry research failed, proceeding without real-world metrics',
+    );
+  }
+
+  const userMessage = `Build the ideal candidate profile for this role:\n\n${jobContext}${industryResearchBlock}`;
+
   // Attempt 1
   const response = await llm.chat({
     model: MODEL_PRIMARY,
     system: SYSTEM_PROMPT,
     messages: [
-      { role: 'user', content: `Build the ideal candidate profile for this role:\n\n${jobContext}` },
+      { role: 'user', content: userMessage },
     ],
     max_tokens: 4096,
     signal,
@@ -96,7 +136,7 @@ export async function runBenchmarkCandidate(
     model: MODEL_PRIMARY,
     system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
     messages: [
-      { role: 'user', content: `${SYSTEM_PROMPT}\n\nBuild the ideal candidate profile for this role:\n\n${jobContext}` },
+      { role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` },
     ],
     max_tokens: 4096,
     signal,

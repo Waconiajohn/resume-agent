@@ -23,8 +23,9 @@ import type {
   GapClassification,
   RequirementGap,
   ResumeDraft,
+  PositioningAssessment,
 } from '@/types/resume-v2';
-import type { EditAction } from '@/hooks/useInlineEdit';
+import type { EditAction, EditContext } from '@/hooks/useInlineEdit';
 
 // ─── Per-coaching-item state (mirrors GapCoachingCard pattern) ──────
 
@@ -32,6 +33,8 @@ interface CoachingState {
   action: GapCoachingAction | null;
   contextText: string;
   showContextInput: boolean;
+  /** Per-question answers keyed by question index */
+  questionAnswers: Record<number, string>;
 }
 
 // ─── Props ──────────────────────────────────────────────────────────
@@ -42,16 +45,18 @@ interface UnifiedGapAnalysisCardProps {
   companyName?: string;
   roleTitle?: string;
   onRespondGapCoaching: (responses: GapCoachingResponse[]) => void;
-  onRequestEdit?: (selectedText: string, section: string, action: EditAction, customInstruction?: string) => void;
+  onRequestEdit?: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: EditContext) => void;
   currentResume?: ResumeDraft | null;
   isComplete?: boolean;
   disabled?: boolean;
+  /** Assembly positioning assessment — used to find the correct bullet for each requirement */
+  positioningAssessment?: PositioningAssessment | null;
 }
 
 // ─── Normalize requirement strings for lookup matching ──────────────
 
 function normalizeRequirement(s: string): string {
-  return s.trim().toLowerCase();
+  return s.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -65,12 +70,12 @@ function classificationIcon(c: GapClassification) {
 const SECTION_CONFIG = {
   strong: {
     accent: '#b5dec2',
-    label: "Where You're Strongly Qualified",
+    label: 'Strong Matches',
     icon: CheckCircle2,
   },
   partial: {
     accent: '#afc4ff',
-    label: "Where You're Partially Qualified",
+    label: 'Areas to Strengthen',
     icon: AlertTriangle,
   },
   missing: {
@@ -80,22 +85,44 @@ const SECTION_CONFIG = {
   },
 } as const;
 
-function findBestBullet(resume: ResumeDraft, realExperience: string): { text: string; section: string } | null {
-  const target = realExperience.toLowerCase();
+/**
+ * Find the bullet that addresses a requirement using the positioning assessment.
+ * Falls back to word-overlap matching only if positioning assessment is unavailable.
+ */
+function findBulletForRequirement(
+  requirement: string,
+  positioningAssessment: PositioningAssessment | null | undefined,
+  resume: ResumeDraft,
+): { text: string; section: string } | null {
+  // Use positioning assessment when available (authoritative mapping from Assembly agent)
+  if (positioningAssessment?.requirement_map) {
+    const reqLower = requirement.toLowerCase();
+    const entry = positioningAssessment.requirement_map.find(
+      r => r.requirement.toLowerCase() === reqLower ||
+           r.requirement.toLowerCase().includes(reqLower) ||
+           reqLower.includes(r.requirement.toLowerCase()),
+    );
+    if (entry?.addressed_by && entry.addressed_by.length > 0) {
+      const best = entry.addressed_by[0];
+      return { text: best.bullet_text, section: best.section };
+    }
+  }
+
+  // Fallback: find first bullet in resume that mentions the requirement
+  const reqWords = requirement.toLowerCase().split(/\s+/).filter(w => w.length > 3);
   let bestMatch: { text: string; section: string; score: number } | null = null;
 
   for (const exp of resume.professional_experience) {
     const section = `Professional Experience - ${exp.company}`;
     for (const bullet of exp.bullets) {
-      const words = target.split(/\s+/);
-      const score = words.filter(w => bullet.text.toLowerCase().includes(w)).length / words.length;
+      const bulletLower = bullet.text.toLowerCase();
+      const score = reqWords.filter(w => bulletLower.includes(w)).length / Math.max(reqWords.length, 1);
       if (!bestMatch || score > bestMatch.score) {
         bestMatch = { text: bullet.text, section, score };
       }
     }
   }
 
-  // Fall back to first bullet if no reasonable match
   if (!bestMatch && resume.professional_experience.length > 0) {
     const first = resume.professional_experience[0];
     if (first.bullets.length > 0) {
@@ -122,19 +149,28 @@ interface RequirementRowProps {
   isComplete?: boolean;
   classification: GapClassification;
   disabled?: boolean;
+  positioningAssessment?: PositioningAssessment | null;
 }
 
 function RequirementRow({
   req, coaching, coachingState, onCoachingChange,
   onRequestEdit, currentResume, isComplete, classification, disabled,
+  positioningAssessment,
 }: RequirementRowProps) {
   const [expanded, setExpanded] = useState(false);
   const hasCoaching = coaching && coachingState && onCoachingChange;
   const isResponded = coachingState?.action !== null && coachingState?.action !== undefined;
 
+  /** Build edit context from requirement data for intelligent edits */
+  const buildEditContext = (): EditContext => ({
+    requirement: req.requirement,
+    evidence: req.evidence.length > 0 ? req.evidence : undefined,
+    strategy: req.strategy?.positioning,
+  });
+
   const handleApplyToResume = () => {
     if (!onRequestEdit || !currentResume || !req.strategy) return;
-    const target = findBestBullet(currentResume, req.strategy.real_experience);
+    const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume);
     if (!target) return;
     const label = classification === 'missing' ? 'safe resume language' : 'positioning';
     onRequestEdit(
@@ -142,21 +178,22 @@ function RequirementRow({
       target.section,
       'custom',
       `Naturally weave this ${label} into the text: "${req.strategy.positioning}". This addresses the job requirement: "${req.requirement}".`,
+      buildEditContext(),
     );
   };
 
   const handleStrengthen = () => {
-    if (!onRequestEdit || !currentResume || req.evidence.length === 0) return;
-    const target = findBestBullet(currentResume, req.evidence[0]);
+    if (!onRequestEdit || !currentResume) return;
+    const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume);
     if (!target) return;
-    onRequestEdit(target.text, target.section, 'strengthen');
+    onRequestEdit(target.text, target.section, 'strengthen', undefined, buildEditContext());
   };
 
   const handleAddMetrics = () => {
-    if (!onRequestEdit || !currentResume || req.evidence.length === 0) return;
-    const target = findBestBullet(currentResume, req.evidence[0]);
+    if (!onRequestEdit || !currentResume) return;
+    const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume);
     if (!target) return;
-    onRequestEdit(target.text, target.section, 'add_metrics');
+    onRequestEdit(target.text, target.section, 'add_metrics', undefined, buildEditContext());
   };
 
   const accentColor = SECTION_CONFIG[classification].accent;
@@ -305,17 +342,41 @@ function RequirementRow({
             </div>
           )}
 
-          {/* Coaching context textarea */}
+          {/* Coaching context: structured questions or generic textarea */}
           {hasCoaching && coachingState.showContextInput && (
-            <textarea
-              value={coachingState.contextText}
-              onChange={e => onCoachingChange({ contextText: e.target.value })}
-              disabled={disabled}
-              placeholder="Share any relevant experience, projects, or context that wasn't in your resume..."
-              rows={3}
-              className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label={`Additional context for: ${req.requirement}`}
-            />
+            <div className="space-y-3">
+              {coaching.interview_questions && coaching.interview_questions.length > 0 ? (
+                /* Structured interview questions */
+                coaching.interview_questions.map((q, qi) => (
+                  <div key={qi} className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.03] px-3 py-2.5">
+                    <p className="text-sm text-white/80 leading-relaxed mb-1.5">{q.question}</p>
+                    <p className="text-[10px] text-white/30 mb-2 italic">{q.looking_for}</p>
+                    <textarea
+                      value={coachingState.questionAnswers[qi] ?? ''}
+                      onChange={e => onCoachingChange({
+                        questionAnswers: { ...coachingState.questionAnswers, [qi]: e.target.value },
+                      })}
+                      disabled={disabled}
+                      placeholder="Your answer..."
+                      rows={2}
+                      className="w-full rounded-md border border-[#afc4ff]/20 bg-white/[0.03] px-2.5 py-1.5 text-sm text-white/80 placeholder-white/20 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label={`Answer for: ${q.question}`}
+                    />
+                  </div>
+                ))
+              ) : (
+                /* Fallback: generic textarea */
+                <textarea
+                  value={coachingState.contextText}
+                  onChange={e => onCoachingChange({ contextText: e.target.value })}
+                  disabled={disabled}
+                  placeholder="Share any relevant experience, projects, or context that wasn't in your resume..."
+                  rows={3}
+                  className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label={`Additional context for: ${req.requirement}`}
+                />
+              )}
+            </div>
           )}
 
           {/* Action buttons */}
@@ -363,7 +424,10 @@ function RequirementRow({
                   disabled={disabled}
                   onClick={() => {
                     if (coachingState.showContextInput) {
-                      if (coachingState.contextText.trim()) {
+                      // Check for answers: structured questions or fallback textarea
+                      const hasAnswers = Object.values(coachingState.questionAnswers).some(a => a.trim());
+                      const hasText = coachingState.contextText.trim();
+                      if (hasAnswers || hasText) {
                         onCoachingChange({ action: 'context', showContextInput: false });
                       }
                     } else {
@@ -385,7 +449,9 @@ function RequirementRow({
                 >
                   <MessageSquare className="h-3.5 w-3.5" />
                   {coachingState.showContextInput
-                    ? coachingState.contextText.trim() ? 'Submit context' : 'Type context above...'
+                    ? (Object.values(coachingState.questionAnswers).some(a => a.trim()) || coachingState.contextText.trim())
+                      ? 'Submit context'
+                      : 'Answer above...'
                     : 'I Have More Context'}
                 </button>
 
@@ -394,7 +460,7 @@ function RequirementRow({
                   <button
                     type="button"
                     disabled={disabled}
-                    onClick={() => onCoachingChange({ showContextInput: false, contextText: '' })}
+                    onClick={() => onCoachingChange({ showContextInput: false, contextText: '', questionAnswers: {} })}
                     className="text-xs text-white/35 hover:text-white/55 transition-colors disabled:opacity-40 disabled:cursor-not-allowed px-1"
                     aria-label="Cancel adding context"
                   >
@@ -457,6 +523,7 @@ function SectionGroup({
   currentResume,
   isComplete,
   disabled,
+  positioningAssessment,
 }: {
   classification: GapClassification;
   requirements: RequirementGap[];
@@ -467,6 +534,7 @@ function SectionGroup({
   currentResume?: ResumeDraft | null;
   isComplete?: boolean;
   disabled?: boolean;
+  positioningAssessment?: PositioningAssessment | null;
 }) {
   if (requirements.length === 0) return null;
 
@@ -497,6 +565,7 @@ function SectionGroup({
               isComplete={isComplete}
               classification={classification}
               disabled={disabled}
+              positioningAssessment={positioningAssessment}
             />
           );
         })}
@@ -517,6 +586,7 @@ export function UnifiedGapAnalysisCard({
   currentResume,
   isComplete,
   disabled = false,
+  positioningAssessment,
 }: UnifiedGapAnalysisCardProps) {
   const strong = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'strong'), [gapAnalysis]);
   const partial = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'partial'), [gapAnalysis]);
@@ -534,7 +604,7 @@ export function UnifiedGapAnalysisCard({
 
   // Coaching state tracking — reset is handled by `key` prop at call site
   const [coachingStates, setCoachingStates] = useState<CoachingState[]>(() =>
-    (gapCoachingCards ?? []).map(() => ({ action: null, contextText: '', showContextInput: false })),
+    (gapCoachingCards ?? []).map(() => ({ action: null, contextText: '', showContextInput: false, questionAnswers: {} })),
   );
 
   const hasCoaching = gapCoachingCards !== null && gapCoachingCards.length > 0;
@@ -557,8 +627,21 @@ export function UnifiedGapAnalysisCard({
         requirement: card.requirement,
         action: s.action ?? 'skip',
       };
-      if (s.action === 'context' && s.contextText.trim()) {
-        resp.user_context = s.contextText.trim();
+      if (s.action === 'context') {
+        // Build context from structured Q&A pairs when available
+        const questions = card.interview_questions ?? [];
+        const qaParts: string[] = [];
+        for (const [idx, answer] of Object.entries(s.questionAnswers)) {
+          if (answer.trim()) {
+            const q = questions[Number(idx)];
+            qaParts.push(`Q: ${q?.question ?? 'Additional context'}\nA: ${answer.trim()}`);
+          }
+        }
+        if (qaParts.length > 0) {
+          resp.user_context = qaParts.join('\n\n');
+        } else if (s.contextText.trim()) {
+          resp.user_context = s.contextText.trim();
+        }
       }
       return resp;
     });
@@ -605,9 +688,9 @@ export function UnifiedGapAnalysisCard({
 
         {/* Legend */}
         <div className="flex gap-4 text-xs mt-2">
-          <span className="flex items-center gap-1 text-[#b5dec2]"><CheckCircle2 className="h-3 w-3" /> {strong.length} strong</span>
-          <span className="flex items-center gap-1 text-[#afc4ff]"><AlertTriangle className="h-3 w-3" /> {partial.length} partial</span>
-          <span className="flex items-center gap-1 text-[#f0b8b8]"><XCircle className="h-3 w-3" /> {missing.length} gaps</span>
+          <span className="flex items-center gap-1 text-[#b5dec2]"><CheckCircle2 className="h-3 w-3" /> {strong.length} strong match{strong.length !== 1 ? 'es' : ''}</span>
+          <span className="flex items-center gap-1 text-[#afc4ff]"><AlertTriangle className="h-3 w-3" /> {partial.length} to strengthen</span>
+          <span className="flex items-center gap-1 text-[#f0b8b8]"><XCircle className="h-3 w-3" /> {missing.length} gap{missing.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
@@ -638,6 +721,7 @@ export function UnifiedGapAnalysisCard({
         currentResume={currentResume}
         isComplete={isComplete}
         disabled={disabled}
+        positioningAssessment={positioningAssessment}
       />
 
       {/* Section C: Partial */}
@@ -651,6 +735,7 @@ export function UnifiedGapAnalysisCard({
         currentResume={currentResume}
         isComplete={isComplete}
         disabled={disabled}
+        positioningAssessment={positioningAssessment}
       />
 
       {/* Section D: Missing */}
@@ -664,6 +749,7 @@ export function UnifiedGapAnalysisCard({
         currentResume={currentResume}
         isComplete={isComplete}
         disabled={disabled}
+        positioningAssessment={positioningAssessment}
       />
 
       {/* Section E: Critical Gaps */}

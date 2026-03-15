@@ -351,6 +351,7 @@ describe('pipeline flow — agent invocation', () => {
     expect(mockRunBenchmarkCandidate).toHaveBeenCalledWith(
       expect.objectContaining({ job_intelligence: JOB_INTEL }),
       undefined,
+      expect.objectContaining({ session_id: expect.any(String) }),
     );
   });
 
@@ -1287,7 +1288,7 @@ describe('AbortSignal', () => {
 
     expect(mockRunJobIntelligence).toHaveBeenCalledWith(expect.anything(), controller.signal);
     expect(mockRunCandidateIntelligence).toHaveBeenCalledWith(expect.anything(), controller.signal);
-    expect(mockRunBenchmarkCandidate).toHaveBeenCalledWith(expect.anything(), controller.signal);
+    expect(mockRunBenchmarkCandidate).toHaveBeenCalledWith(expect.anything(), controller.signal, expect.anything());
     expect(mockRunGapAnalysis).toHaveBeenCalledWith(expect.anything(), controller.signal);
     expect(mockRunNarrativeStrategy).toHaveBeenCalledWith(expect.anything(), controller.signal);
     expect(mockRunResumeWriter).toHaveBeenCalledWith(expect.anything(), controller.signal);

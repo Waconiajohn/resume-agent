@@ -14,11 +14,20 @@ import type { ResumeDraft } from '@/types/resume-v2';
 
 export type EditAction = 'strengthen' | 'add_metrics' | 'shorten' | 'add_keywords' | 'rewrite' | 'custom' | 'not_my_voice';
 
+/** Context about the job requirement this edit addresses */
+export interface EditContext {
+  requirement?: string;
+  evidence?: string[];
+  strategy?: string;
+}
+
 export interface PendingEdit {
   section: string;
   originalText: string;
   replacement: string;
   action: EditAction;
+  /** Context about the requirement this edit addresses (shown in DiffView) */
+  editContext?: EditContext;
 }
 
 interface UndoEntry {
@@ -49,6 +58,7 @@ export function useInlineEdit(
     section: string,
     action: EditAction,
     customInstruction?: string,
+    editContext?: EditContext,
   ) => {
     if (!accessToken || !sessionId || !resume || isEditing) return;
 
@@ -58,6 +68,9 @@ export function useInlineEdit(
 
     try {
       const fullContext = resumeToPlainText(resume);
+      // Build section-only context when possible (much smaller than full resume)
+      const sectionContext = extractSectionContext(resume, section);
+
       const response = await fetch(`${API_BASE}/pipeline/${sessionId}/edit`, {
         method: 'POST',
         headers: {
@@ -71,6 +84,8 @@ export function useInlineEdit(
           full_resume_context: fullContext,
           job_description: jobDescription,
           custom_instruction: customInstruction,
+          section_context: sectionContext ?? undefined,
+          edit_context: editContext ?? undefined,
         }),
       });
 
@@ -85,6 +100,7 @@ export function useInlineEdit(
         originalText: selectedText,
         replacement: result.replacement,
         action,
+        editContext,
       });
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Edit failed');
@@ -156,7 +172,7 @@ export function useInlineEdit(
 }
 
 /** Convert structured resume to plain text for LLM context */
-function resumeToPlainText(r: ResumeDraft): string {
+export function resumeToPlainText(r: ResumeDraft): string {
   const parts: string[] = [
     `${r.header.name} | ${r.header.branded_title}`,
     r.header.email,
@@ -197,7 +213,58 @@ function resumeToPlainText(r: ResumeDraft): string {
     }
   }
 
+  if (r.certifications?.length) {
+    parts.push('');
+    parts.push('CERTIFICATIONS:');
+    parts.push(r.certifications.join(', '));
+  }
+
   return parts.join('\n');
+}
+
+/** Extract only the relevant section context (reduces ~5K tokens to ~500) */
+function extractSectionContext(r: ResumeDraft, section: string): string | null {
+  const sectionLower = section.toLowerCase();
+
+  // Executive Summary
+  if (sectionLower.includes('executive summary') || sectionLower.includes('summary')) {
+    return `EXECUTIVE SUMMARY:\n${r.executive_summary.content}`;
+  }
+
+  // Core Competencies
+  if (sectionLower.includes('core competencies') || sectionLower.includes('competencies')) {
+    return `CORE COMPETENCIES:\n${r.core_competencies.join(', ')}`;
+  }
+
+  // Selected Accomplishments
+  if (sectionLower.includes('selected accomplishments') || sectionLower.includes('accomplishments')) {
+    return `SELECTED ACCOMPLISHMENTS:\n${r.selected_accomplishments.map(a => `- ${a.content}`).join('\n')}`;
+  }
+
+  // Professional Experience — match by company name
+  for (const exp of r.professional_experience) {
+    if (sectionLower.includes(exp.company.toLowerCase())) {
+      const lines = [
+        `${exp.title} | ${exp.company} (${exp.start_date} - ${exp.end_date})`,
+        exp.scope_statement,
+        ...exp.bullets.map(b => `- ${b.text}`),
+      ];
+      return `PROFESSIONAL EXPERIENCE:\n${lines.join('\n')}`;
+    }
+  }
+
+  // Education
+  if (sectionLower.includes('education')) {
+    return `EDUCATION:\n${r.education.map(edu => `${edu.degree} - ${edu.institution}${edu.year ? ` (${edu.year})` : ''}`).join('\n')}`;
+  }
+
+  // Certifications
+  if (sectionLower.includes('certification') && r.certifications?.length) {
+    return `CERTIFICATIONS:\n${r.certifications.join(', ')}`;
+  }
+
+  // No match — return null, full context will be used
+  return null;
 }
 
 /** Apply a text replacement across all string fields in the resume */
@@ -206,10 +273,15 @@ function applyTextReplacement(resume: ResumeDraft, oldText: string, newText: str
 
   return {
     ...resume,
+    header: {
+      ...resume.header,
+      branded_title: replace(resume.header.branded_title),
+    },
     executive_summary: {
       ...resume.executive_summary,
       content: replace(resume.executive_summary.content),
     },
+    core_competencies: resume.core_competencies.map(replace),
     selected_accomplishments: resume.selected_accomplishments.map(a => ({
       ...a,
       content: replace(a.content),
@@ -222,5 +294,11 @@ function applyTextReplacement(resume: ResumeDraft, oldText: string, newText: str
         text: replace(b.text),
       })),
     })),
+    education: resume.education.map(edu => ({
+      ...edu,
+      degree: replace(edu.degree),
+      institution: replace(edu.institution),
+    })),
+    certifications: resume.certifications.map(replace),
   };
 }

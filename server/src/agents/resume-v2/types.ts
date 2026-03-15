@@ -133,6 +133,14 @@ export interface GapStrategy {
    * 2-3 sentences, natural language, showing the reasoning.
    */
   ai_reasoning?: string;
+  /** Targeted questions to surface hidden experience relevant to this gap */
+  interview_questions?: Array<{
+    question: string;
+    /** Why this question is relevant to the gap */
+    rationale: string;
+    /** What kind of answer would help (guides the user) */
+    looking_for: string;
+  }>;
 }
 
 export interface RequirementGap {
@@ -416,6 +424,12 @@ export interface GapCoachingCard {
   evidence_found: string[];
   /** True when this strategy was approved in a previous run (e.g. "Add Context" re-run) */
   previously_approved?: boolean;
+  /** Targeted questions to ask the user about this specific gap */
+  interview_questions?: Array<{
+    question: string;
+    rationale: string;
+    looking_for: string;
+  }>;
 }
 
 export interface GapCoachingResponse {

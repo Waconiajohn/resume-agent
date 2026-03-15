@@ -20,7 +20,7 @@ import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import { runV2Pipeline } from '../agents/resume-v2/orchestrator.js';
 import type { V2PipelineSSEEvent } from '../agents/resume-v2/types.js';
 import { llm } from '../lib/llm.js';
-import { MODEL_MID, MODEL_LIGHT } from '../lib/model-constants.js';
+import { MODEL_MID, MODEL_LIGHT, MODEL_PRIMARY } from '../lib/model-constants.js';
 import { repairJSON } from '../lib/json-repair.js';
 
 const startSchema = z.object({
@@ -32,6 +32,12 @@ const startSchema = z.object({
 const EDIT_ACTIONS = ['strengthen', 'add_metrics', 'shorten', 'add_keywords', 'rewrite', 'custom', 'not_my_voice'] as const;
 type EditAction = typeof EDIT_ACTIONS[number];
 
+const editContextSchema = z.object({
+  requirement: z.string().optional(),
+  evidence: z.array(z.string()).optional(),
+  strategy: z.string().optional(),
+}).optional();
+
 const editSchema = z.object({
   action: z.enum(EDIT_ACTIONS),
   selected_text: z.string().min(5, 'Selected text must be at least 5 characters'),
@@ -39,6 +45,10 @@ const editSchema = z.object({
   full_resume_context: z.string().min(1, 'Full resume context is required'),
   job_description: z.string().min(1, 'Job description is required'),
   custom_instruction: z.string().optional(),
+  /** Section-only context (reduces tokens when available) */
+  section_context: z.string().optional(),
+  /** Requirement/evidence/strategy context for intelligent edits */
+  edit_context: editContextSchema,
 });
 
 export const resumeV2Pipeline = new Hono();
@@ -303,13 +313,15 @@ function buildEditSystemPrompt(action: EditAction, customInstruction?: string): 
 You MUST respond with valid JSON in exactly this format:
 { "replacement": "<your improved text here>" }
 
-Do not include any explanation, preamble, or markdown. Only return the JSON object.`;
+Do not include any explanation, preamble, or markdown. Only return the JSON object.
+
+IMPORTANT: Never fabricate achievements, metrics, or claims. Every fact in the replacement must be traceable to the original text or surrounding resume context.`;
 
   const instructions: Record<EditAction, string> = {
-    strengthen: `Rewrite the selected text to be more impactful. Use stronger action verbs, sharper language, and executive-caliber voice. Eliminate weak qualifiers and passive constructions. Preserve all factual claims.`,
-    add_metrics: `Enhance the selected text by adding or strengthening quantified results. Infer plausible numbers from the surrounding context where explicit figures are absent (e.g., team size, revenue, percentage improvements, timeframes). Every metric added must be defensible given the context.`,
+    strengthen: `Rewrite the selected text to be more impactful. Use stronger action verbs, sharper language, and executive-caliber voice. Eliminate weak qualifiers and passive constructions. Preserve all factual claims. CRITICAL: Do NOT fabricate metrics, percentages, dollar amounts, or team sizes. Only sharpen language and strengthen action verbs. If the original text lacks specific numbers, do not add made-up numbers. Preserve all factual claims exactly as stated.`,
+    add_metrics: `Enhance the selected text by adding or strengthening quantified results. Infer plausible numbers ONLY from the surrounding resume context — if explicit figures are absent, use conservative ranges (e.g., "team of 10+" rather than "team of 47") or directional language (e.g., "reduced costs by over 15%"). Every metric must be defensible given the context. Do NOT invent specific dollar amounts, exact percentages, or precise headcounts that aren't supported by the resume.`,
     shorten: `Compress the selected text to its most essential form. Cut every word that does not carry meaning. Preserve all key accomplishments, metrics, and impact. The result should be tighter and punchier, not thinner.`,
-    add_keywords: `Naturally incorporate relevant keywords from the job description into the selected text. The integration must read fluently — never keyword-stuffed. Prioritize keywords that reflect genuine overlap with the candidate's experience.`,
+    add_keywords: `Naturally incorporate relevant keywords from the job description into the selected text. The integration must read fluently — never keyword-stuffed. Prioritize keywords that reflect genuine overlap with the candidate's experience. Do NOT change the meaning or add claims not present in the original text.`,
     rewrite: `Completely rewrite the selected text from scratch while preserving all underlying information, accomplishments, and meaning. Aim for cleaner structure, stronger language, and greater readability.`,
     custom: `Follow this instruction exactly: ${customInstruction ?? '(no instruction provided)'}`,
     not_my_voice: `Rewrite the selected text to sound more authentic and human. Strip out corporate jargon, buzzwords, and formulaic resume-speak. The revised text should sound like how this specific professional actually talks about their work — direct, specific, and genuine.`,
@@ -343,24 +355,47 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
 
-  const { action, selected_text, section, full_resume_context, job_description, custom_instruction } = parsed.data;
+  const { action, selected_text, section, full_resume_context, job_description, custom_instruction, section_context, edit_context } = parsed.data;
 
   logger.info({ session_id: sessionId, user_id: userId, action, section }, 'Inline resume edit requested');
 
   const systemPrompt = buildEditSystemPrompt(action, custom_instruction);
 
-  const userMessage = [
+  // Use section_context when available (much smaller than full resume)
+  const resumeContext = section_context ?? full_resume_context;
+  const contextLabel = section_context ? 'SECTION CONTEXT' : 'FULL RESUME CONTEXT';
+
+  const messageParts = [
     `SECTION: ${section}`,
     '',
     `SELECTED TEXT TO EDIT:`,
     selected_text,
+  ];
+
+  // Add edit context (requirement, evidence, strategy) when available
+  if (edit_context) {
+    messageParts.push('');
+    if (edit_context.requirement) {
+      messageParts.push(`JOB REQUIREMENT THIS ADDRESSES: ${edit_context.requirement}`);
+    }
+    if (edit_context.evidence && edit_context.evidence.length > 0) {
+      messageParts.push(`CANDIDATE'S RELEVANT EXPERIENCE: ${edit_context.evidence.join('; ')}`);
+    }
+    if (edit_context.strategy) {
+      messageParts.push(`POSITIONING STRATEGY: ${edit_context.strategy}`);
+    }
+  }
+
+  messageParts.push(
     '',
-    `FULL RESUME CONTEXT:`,
-    full_resume_context,
+    `${contextLabel}:`,
+    resumeContext,
     '',
     `JOB DESCRIPTION (for keyword and requirement awareness):`,
     job_description,
-  ].join('\n');
+  );
+
+  const userMessage = messageParts.join('\n');
 
   try {
     const response = await llm.chat({
@@ -540,5 +575,132 @@ Return valid JSON only:
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: sessionId, keyword, error: message }, 'Keyword integration failed');
     return c.json({ error: 'Integration failed', message }, 500);
+  }
+});
+
+// ─── POST /:sessionId/hiring-manager-review ────────────────────────
+
+const hiringManagerReviewSchema = z.object({
+  resume_text: z.string().min(50, 'Resume text is required'),
+  job_description: z.string().min(50, 'Job description is required'),
+  company_name: z.string().min(1, 'Company name is required'),
+  role_title: z.string().min(1, 'Role title is required'),
+  /** Key requirements from job intelligence — helps ground the review */
+  requirements: z.array(z.string()).optional(),
+  /** Hidden hiring signals from job intelligence */
+  hidden_signals: z.array(z.string()).optional(),
+});
+
+resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateLimitMiddleware(10, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 200_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = hiringManagerReviewSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const { resume_text, job_description, company_name, role_title, requirements, hidden_signals } = parsed.data;
+
+  logger.info({ session_id: sessionId, user_id: userId, company_name, role_title }, 'Hiring manager review requested');
+
+  const requirementsList = requirements?.length
+    ? `\n\nKEY REQUIREMENTS I'M EVALUATING:\n${requirements.map(r => `- ${r}`).join('\n')}`
+    : '';
+
+  const hiddenSignals = hidden_signals?.length
+    ? `\n\nWHAT I'M REALLY LOOKING FOR (beyond the job posting):\n${hidden_signals.map(s => `- ${s}`).join('\n')}`
+    : '';
+
+  const systemPrompt = `You are the hiring manager for the ${role_title} position at ${company_name}. You have just received this resume and are reviewing it critically.
+
+Your persona: You are experienced, demanding, and know exactly what you need. You've seen hundreds of resumes for this role. You are looking for someone who can hit the ground running.
+
+REVIEW THE RESUME AS THIS SPECIFIC HIRING MANAGER. Be hyper-critical. Identify:
+1. What immediately impresses you (strengths that would make you want to interview this person)
+2. What concerns you or feels insufficient (specific gaps or weaknesses)
+3. What's missing that you'd expect to see
+4. Specific recommendations to address each concern
+
+For each concern, provide a concrete, actionable recommendation — not vague advice.
+
+Return valid JSON only:
+{
+  "overall_impression": "2-3 sentences of your gut reaction as the hiring manager",
+  "verdict": "strong_candidate" | "promising_needs_work" | "significant_gaps",
+  "strengths": [
+    {
+      "observation": "What impresses you",
+      "why_it_matters": "Why this matters for the role"
+    }
+  ],
+  "concerns": [
+    {
+      "observation": "What concerns you",
+      "severity": "critical" | "moderate" | "minor",
+      "recommendation": "Specific, actionable fix — phrase as a resume edit instruction",
+      "target_section": "Which resume section to fix (e.g., 'Executive Summary', 'Professional Experience - Company X')"
+    }
+  ],
+  "missing_elements": [
+    {
+      "element": "What you expected to see but didn't find",
+      "recommendation": "How to add it"
+    }
+  ]
+}
+
+RULES:
+- Be specific — reference actual content from the resume, not generic advice
+- Every concern must have a concrete recommendation
+- Focus on what would actually change your hiring decision
+- Do NOT fabricate or assume experience — only reference what's in the resume
+- Limit to the most impactful findings: max 5 strengths, max 5 concerns, max 3 missing elements`;
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: `RESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}${requirementsList}${hiddenSignals}\n\nReview this resume as the hiring manager for this role.`,
+      }],
+      max_tokens: 4096,
+    });
+
+    const result = repairJSON<{
+      overall_impression: string;
+      verdict: 'strong_candidate' | 'promising_needs_work' | 'significant_gaps';
+      strengths: Array<{ observation: string; why_it_matters: string }>;
+      concerns: Array<{ observation: string; severity: string; recommendation: string; target_section?: string }>;
+      missing_elements: Array<{ element: string; recommendation: string }>;
+    }>(response.text);
+
+    if (!result) {
+      return c.json({ error: 'Review failed — unparseable response' }, 500);
+    }
+
+    logger.info({ session_id: sessionId, verdict: result.verdict }, 'Hiring manager review completed');
+
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ session_id: sessionId, error: message }, 'Hiring manager review failed');
+    return c.json({ error: 'Review failed', message }, 500);
   }
 });

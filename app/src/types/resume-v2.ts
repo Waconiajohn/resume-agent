@@ -92,6 +92,11 @@ export interface GapStrategy {
   inferred_metric?: string;
   inference_rationale?: string;
   ai_reasoning?: string;
+  interview_questions?: Array<{
+    question: string;
+    rationale: string;
+    looking_for: string;
+  }>;
 }
 
 export type GapClassification = 'strong' | 'partial' | 'missing';
@@ -129,6 +134,12 @@ export interface GapCoachingCard {
   evidence_found: string[];
   /** True when this strategy was approved in a previous run (e.g. "Add Context" re-run) */
   previously_approved?: boolean;
+  /** Targeted questions to ask the user about this specific gap */
+  interview_questions?: Array<{
+    question: string;
+    rationale: string;
+    looking_for: string;
+  }>;
 }
 
 export type GapCoachingAction = 'approve' | 'context' | 'skip';

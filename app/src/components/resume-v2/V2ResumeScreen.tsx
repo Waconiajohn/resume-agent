@@ -9,12 +9,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useV2Pipeline } from '@/hooks/useV2Pipeline';
-import { useInlineEdit } from '@/hooks/useInlineEdit';
+import { useInlineEdit, resumeToPlainText } from '@/hooks/useInlineEdit';
 import { useLiveScoring } from '@/hooks/useLiveScoring';
 import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
 import type { ResumeDraft, GapCoachingResponse } from '@/types/resume-v2';
+import { useHiringManagerReview } from '@/hooks/useHiringManagerReview';
+import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 
 interface V2ResumeScreenProps {
   accessToken: string | null;
@@ -47,6 +49,15 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const { scores: liveScores, isScoring, requestRescore, setInitialScores } = useLiveScoring(
     accessToken, data.sessionId, jobDescription,
   );
+
+  // Hiring manager review
+  const {
+    result: hiringManagerResult,
+    isLoading: isHiringManagerLoading,
+    error: hiringManagerError,
+    requestReview: rawRequestReview,
+    reset: resetHiringManagerReview,
+  } = useHiringManagerReview(accessToken, data.sessionId);
 
   // Seed initial scores from pipeline assembly
   useEffect(() => {
@@ -115,17 +126,34 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   }, [start, resumeText, jobDescription, resetHistory]);
 
   // Keyword integration: use inline edit with 'add_keywords' action
-  // Find the first experience bullet and request an AI edit to add the keyword
+  // Use positioning assessment to find the most relevant entry when available
   const handleIntegrateKeyword = useCallback((keyword: string) => {
     if (!currentResume) return;
-    // Find the first experience entry to use as the target section
-    const firstExp = currentResume.professional_experience[0];
-    if (!firstExp || firstExp.bullets.length === 0) return;
-    // Use the first bullet as a starting point — the AI will find the best fit
-    const targetBullet = firstExp.bullets[0].text;
-    const section = `Professional Experience - ${firstExp.company}`;
+    // Try to find a relevant experience entry using positioning assessment
+    let targetBullet = '';
+    let section = '';
+
+    if (data.assembly?.positioning_assessment?.requirement_map) {
+      // Find a requirement that mentions this keyword
+      const reqEntry = data.assembly.positioning_assessment.requirement_map.find(
+        r => r.requirement.toLowerCase().includes(keyword.toLowerCase()),
+      );
+      if (reqEntry?.addressed_by?.length) {
+        targetBullet = reqEntry.addressed_by[0].bullet_text;
+        section = reqEntry.addressed_by[0].section;
+      }
+    }
+
+    // Fallback to first experience bullet
+    if (!targetBullet) {
+      const firstExp = currentResume.professional_experience[0];
+      if (!firstExp || firstExp.bullets.length === 0) return;
+      targetBullet = firstExp.bullets[0].text;
+      section = `Professional Experience - ${firstExp.company}`;
+    }
+
     requestEdit(targetBullet, section, 'add_keywords', `Naturally integrate this specific keyword/phrase into the text: "${keyword}"`);
-  }, [currentResume, requestEdit]);
+  }, [currentResume, data.assembly, requestEdit]);
 
   // Track the resume from the previous run so the WhatChangedCard can diff it
   const [previousResume, setPreviousResume] = useState<ResumeDraft | null>(null);
@@ -150,7 +178,54 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setJobDescription('');
     setSessionLoadAttempted(false);
     setSessionLoadError(null);
-  }, [reset]);
+    resetHiringManagerReview();
+  }, [reset, resetHiringManagerReview]);
+
+  // Hiring manager review: build the request from available data
+  const handleRequestHiringManagerReview = useCallback(() => {
+    if (!currentResume || !data.jobIntelligence) return;
+    const serializedResume = resumeToPlainText(currentResume);
+
+    void rawRequestReview({
+      resume_text: serializedResume,
+      job_description: jobDescription,
+      company_name: data.jobIntelligence.company_name,
+      role_title: data.jobIntelligence.role_title,
+      requirements: data.jobIntelligence.core_competencies.map(c => c.competency),
+      hidden_signals: data.jobIntelligence.hidden_hiring_signals,
+    });
+  }, [currentResume, data.jobIntelligence, jobDescription, rawRequestReview]);
+
+  // Apply a hiring manager concern as an inline edit
+  const handleApplyHiringManagerRecommendation = useCallback((concern: HiringManagerConcern) => {
+    if (!currentResume) return;
+    const section = concern.target_section ?? 'Executive Summary';
+    const sectionLower = section.toLowerCase();
+    let targetText = '';
+
+    if (sectionLower.includes('executive summary') || sectionLower.includes('summary')) {
+      targetText = currentResume.executive_summary?.content ?? '';
+    } else if (sectionLower.includes('accomplishment')) {
+      targetText = currentResume.selected_accomplishments[0]?.content ?? '';
+    } else if (sectionLower.includes('competenc')) {
+      targetText = currentResume.core_competencies.join(', ');
+    } else {
+      // Try matching by company name in professional experience
+      for (const exp of currentResume.professional_experience) {
+        if (sectionLower.includes(exp.company.toLowerCase())) {
+          targetText = exp.bullets[0]?.text ?? '';
+          break;
+        }
+      }
+    }
+
+    // Ultimate fallback: first experience bullet
+    if (!targetText && currentResume.professional_experience.length > 0) {
+      targetText = currentResume.professional_experience[0].bullets[0]?.text ?? '';
+    }
+    if (!targetText) return;
+    requestEdit(targetText, section, 'custom', concern.recommendation);
+  }, [currentResume, requestEdit]);
 
   if (!isPipelineActive) {
     return (
@@ -193,10 +268,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
           <div className="ml-auto flex items-center gap-3 text-xs">
             <div className="flex items-center gap-1">
               {isScoring && <Loader2 className="h-3 w-3 text-white/30 motion-safe:animate-spin" />}
-              <span className="text-[#afc4ff]">ATS: {displayAtsScore}%</span>
+              <span className="text-[#afc4ff]">Match: {displayAtsScore}%</span>
             </div>
             {displayTruthScore !== null && (
-              <span className="text-[#b5dec2]">Truth: {displayTruthScore}%</span>
+              <span className="text-[#b5dec2]">Accuracy: {displayTruthScore}%</span>
             )}
             {displayToneScore !== null && (
               <span className="text-[#f0d99f]">Tone: {displayToneScore}%</span>
@@ -232,6 +307,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onIntegrateKeyword={handleIntegrateKeyword}
         previousResume={previousResume}
         onDismissChanges={handleDismissChanges}
+        hiringManagerResult={hiringManagerResult}
+        isHiringManagerLoading={isHiringManagerLoading}
+        hiringManagerError={hiringManagerError}
+        onRequestHiringManagerReview={handleRequestHiringManagerReview}
+        onApplyHiringManagerRecommendation={handleApplyHiringManagerRecommendation}
       />
     </div>
   );

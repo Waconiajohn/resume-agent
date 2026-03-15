@@ -217,13 +217,13 @@ export function PositioningAssessmentCard({
   const afterScore = assessment.after_score;
 
   // Build title
-  let title = 'Positioning Assessment';
+  let title = 'How Your Resume Addresses the Job';
   if (roleTitle && companyName) {
-    title = `Positioning Assessment: ${roleTitle} at ${companyName}`;
+    title = `How Your Resume Addresses: ${roleTitle} at ${companyName}`;
   } else if (roleTitle) {
-    title = `Positioning Assessment: ${roleTitle}`;
+    title = `How Your Resume Addresses: ${roleTitle}`;
   } else if (companyName) {
-    title = `Positioning Assessment — ${companyName}`;
+    title = `How Your Resume Addresses — ${companyName}`;
   }
 
   // Bucket requirements by status for summary counts

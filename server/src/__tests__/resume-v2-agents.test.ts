@@ -34,6 +34,11 @@ vi.mock('../lib/logger.js', () => ({
   createSessionLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
+// Perplexity is used by benchmark-candidate for industry research; stub it out
+vi.mock('../lib/perplexity.js', () => ({
+  queryWithFallback: vi.fn().mockResolvedValue(''),
+}));
+
 // resume-rules is imported by resume-writer and executive-tone; provide a minimal stub
 vi.mock('../agents/resume-v2/knowledge/resume-rules.js', () => ({
   getResumeRulesPrompt: () => '## RESUME RULES\n- Write strong bullets.',
