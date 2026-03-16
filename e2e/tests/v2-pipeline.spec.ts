@@ -346,9 +346,9 @@ async function runPipelineToCompletion(page: Page) {
   await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
   await page.locator('#v2-jd').fill(REAL_JD_TEXT);
   await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
-  // Wait for split-screen: resume heading + requirements checklist visible
+  // Wait for split-screen: resume heading + gap analysis report visible
   await expect(page.getByRole('heading', { name: 'Sarah Mitchell' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('Requirements Checklist')).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByTestId('gap-analysis-report')).toBeVisible({ timeout: 5_000 });
   // Wait for pipeline_complete to fire (sets isComplete → canEdit)
   await expect(page.getByText(/Click any bullet to edit with AI/i)).toBeVisible({ timeout: 5_000 });
 }
@@ -423,8 +423,8 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
   test('pipeline completes and enters split-screen layout', async ({ page }) => {
     await runPipelineToCompletion(page);
 
-    // Split-screen: left panel has requirements checklist
-    await expect(page.getByText('Requirements Checklist')).toBeVisible();
+    // Split-screen: left panel has gap analysis report
+    await expect(page.getByTestId('gap-analysis-report')).toBeVisible();
     // Left panel shows role info
     await expect(page.getByText('Senior Cloud Architect').first()).toBeVisible();
 
@@ -464,39 +464,37 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
   });
 });
 
-test.describe('V2 Pipeline: requirements checklist (split-screen)', () => {
-  test('left panel shows requirements grouped by importance', async ({ page }) => {
+test.describe('V2 Pipeline: gap analysis report (split-screen)', () => {
+  test('left panel shows requirements with importance badges', async ({ page }) => {
     await runPipelineToCompletion(page);
 
-    // Must Have group header
+    // Importance badges still appear per card
     await expect(page.getByText('Must Have').first()).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('AWS Architecture').first()).toBeVisible();
     await expect(page.getByText('Kubernetes').first()).toBeVisible();
 
-    // Important group
+    // Important badge
     await expect(page.getByText('Important').first()).toBeVisible();
     await expect(page.getByText('Compliance Frameworks').first()).toBeVisible();
   });
 
-  test('requirements show correct status from positioning assessment', async ({ page }) => {
+  test('requirements show correct tier grouping from positioning assessment', async ({ page }) => {
     await runPipelineToCompletion(page);
 
-    // The positioning assessment has: AWS=strong, Kubernetes=repositioned, Compliance=gap
-    // Status line for strong match: "Addressed by: ..."
-    await expect(page.getByText(/Addressed by:/i).first()).toBeVisible({ timeout: 5_000 });
+    // GapAnalysisReportPanel groups by tier: Highly Qualified / Partially Qualified / True Gaps
+    await expect(page.getByText('Highly Qualified')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('Partially Qualified')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('True Gaps')).toBeVisible({ timeout: 5_000 });
 
-    // Status line for repositioned: "Repositioned: ..."
-    await expect(page.getByText(/Repositioned:/i).first()).toBeVisible({ timeout: 5_000 });
-
-    // Status line for gap: "GAP — Not addressed"
-    await expect(page.getByText(/GAP.*Not addressed/i)).toBeVisible({ timeout: 5_000 });
+    // Gap card shows "Not currently addressed"
+    await expect(page.getByText(/Not currently addressed/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test('progress bar shows addressed count', async ({ page }) => {
     await runPipelineToCompletion(page);
 
-    // 2 of 3 requirements addressed (1 strong + 1 repositioned)
-    await expect(page.getByText(/2 of 3 requirements addressed/i)).toBeVisible({ timeout: 5_000 });
+    // 2 of 3 requirements addressed (1 strong + 1 partial)
+    await expect(page.getByText(/2 of 3 addressed/i)).toBeVisible({ timeout: 5_000 });
   });
 });
 

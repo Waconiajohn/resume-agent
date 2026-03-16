@@ -425,8 +425,8 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
     if (requirements.length > 0) {
-      // A3: Scroll to RequirementsChecklistPanel row (replaces removed audit card)
-      scrollToAndHighlight(`[data-requirement-row="${CSS.escape(requirements[0])}"]`);
+      // A3: Scroll to GapAnalysisReportPanel card for this requirement
+      scrollToAndHighlight(`[data-requirement="${CSS.escape(requirements[0])}"]`);
     }
   }
 
@@ -441,7 +441,7 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
       <button
         type="button"
         onClick={handleClick}
-        aria-label={`View strategy audit for: ${requirements[0] ?? 'requirement'}`}
+        aria-label={`View gap analysis for: ${requirements[0] ?? 'requirement'}`}
         className="flex items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 rounded"
       >
         <Lightbulb
@@ -484,7 +484,7 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
               </span>
             ))}
             <span className="block mt-2 pt-2 border-t border-white/[0.07] text-[10px] text-white/35 italic">
-              Click to highlight in requirements checklist
+              Click to highlight in gap analysis report
             </span>
           </span>
         </span>
