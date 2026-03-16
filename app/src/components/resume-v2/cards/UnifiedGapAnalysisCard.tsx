@@ -26,6 +26,12 @@ import type {
   PositioningAssessment,
 } from '@/types/resume-v2';
 import type { EditAction, EditContext } from '@/hooks/useInlineEdit';
+import {
+  normalizeRequirement,
+  findBulletForRequirement,
+  buildEditContext as buildEditContextUtil,
+  buildCoachingLookup,
+} from '../utils/coaching-actions';
 
 // ─── Per-coaching-item state (mirrors GapCoachingCard pattern) ──────
 
@@ -51,12 +57,6 @@ interface UnifiedGapAnalysisCardProps {
   disabled?: boolean;
   /** Assembly positioning assessment — used to find the correct bullet for each requirement */
   positioningAssessment?: PositioningAssessment | null;
-}
-
-// ─── Normalize requirement strings for lookup matching ──────────────
-
-function normalizeRequirement(s: string): string {
-  return s.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -85,58 +85,6 @@ const SECTION_CONFIG = {
   },
 } as const;
 
-/**
- * Find the bullet that addresses a requirement using the positioning assessment.
- * Falls back to word-overlap matching only if positioning assessment is unavailable.
- */
-function findBulletForRequirement(
-  requirement: string,
-  positioningAssessment: PositioningAssessment | null | undefined,
-  resume: ResumeDraft,
-): { text: string; section: string } | null {
-  // Use positioning assessment when available (authoritative mapping from Assembly agent)
-  if (positioningAssessment?.requirement_map) {
-    const reqLower = requirement.toLowerCase();
-    const entry = positioningAssessment.requirement_map.find(
-      r => r.requirement.toLowerCase() === reqLower ||
-           r.requirement.toLowerCase().includes(reqLower) ||
-           reqLower.includes(r.requirement.toLowerCase()),
-    );
-    if (entry?.addressed_by && entry.addressed_by.length > 0) {
-      const best = entry.addressed_by[0];
-      return { text: best.bullet_text, section: best.section };
-    }
-  }
-
-  // Fallback: find first bullet in resume that mentions the requirement
-  const reqWords = requirement.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  let bestMatch: { text: string; section: string; score: number } | null = null;
-
-  for (const exp of resume.professional_experience) {
-    const section = `Professional Experience - ${exp.company}`;
-    for (const bullet of exp.bullets) {
-      const bulletLower = bullet.text.toLowerCase();
-      const score = reqWords.filter(w => bulletLower.includes(w)).length / Math.max(reqWords.length, 1);
-      if (!bestMatch || score > bestMatch.score) {
-        bestMatch = { text: bullet.text, section, score };
-      }
-    }
-  }
-
-  if (!bestMatch && resume.professional_experience.length > 0) {
-    const first = resume.professional_experience[0];
-    if (first.bullets.length > 0) {
-      bestMatch = {
-        text: first.bullets[0].text,
-        section: `Professional Experience - ${first.company}`,
-        score: 0,
-      };
-    }
-  }
-
-  return bestMatch ? { text: bestMatch.text, section: bestMatch.section } : null;
-}
-
 // ─── Expandable requirement row ─────────────────────────────────────
 
 interface RequirementRowProps {
@@ -161,12 +109,8 @@ function RequirementRow({
   const hasCoaching = coaching && coachingState && onCoachingChange;
   const isResponded = coachingState?.action !== null && coachingState?.action !== undefined;
 
-  /** Build edit context from requirement data for intelligent edits */
-  const buildEditContext = (): EditContext => ({
-    requirement: req.requirement,
-    evidence: req.evidence.length > 0 ? req.evidence : undefined,
-    strategy: req.strategy?.positioning,
-  });
+  const editContext = (): EditContext =>
+    buildEditContextUtil(req.requirement, req.evidence, req.strategy?.positioning);
 
   const handleApplyToResume = () => {
     if (!onRequestEdit || !currentResume || !req.strategy) return;
@@ -178,7 +122,7 @@ function RequirementRow({
       target.section,
       'custom',
       `Naturally weave this ${label} into the text: "${req.strategy.positioning}". This addresses the job requirement: "${req.requirement}".`,
-      buildEditContext(),
+      editContext(),
     );
   };
 
@@ -186,14 +130,14 @@ function RequirementRow({
     if (!onRequestEdit || !currentResume) return;
     const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume);
     if (!target) return;
-    onRequestEdit(target.text, target.section, 'strengthen', undefined, buildEditContext());
+    onRequestEdit(target.text, target.section, 'strengthen', undefined, editContext());
   };
 
   const handleAddMetrics = () => {
     if (!onRequestEdit || !currentResume) return;
     const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume);
     if (!target) return;
-    onRequestEdit(target.text, target.section, 'add_metrics', undefined, buildEditContext());
+    onRequestEdit(target.text, target.section, 'add_metrics', undefined, editContext());
   };
 
   const accentColor = SECTION_CONFIG[classification].accent;
@@ -593,14 +537,7 @@ export function UnifiedGapAnalysisCard({
   const missing = useMemo(() => gapAnalysis.requirements.filter(r => r.classification === 'missing'), [gapAnalysis]);
 
   // Build coaching lookup by normalized requirement name (tolerates whitespace/case variance)
-  const coachingLookup = useMemo(() => {
-    const map = new Map<string, { card: GapCoachingCard; index: number }>();
-    if (!gapCoachingCards) return map;
-    gapCoachingCards.forEach((card, index) => {
-      map.set(normalizeRequirement(card.requirement), { card, index });
-    });
-    return map;
-  }, [gapCoachingCards]);
+  const coachingLookup = useMemo(() => buildCoachingLookup(gapCoachingCards), [gapCoachingCards]);
 
   // Coaching state tracking — reset is handled by `key` prop at call site
   const [coachingStates, setCoachingStates] = useState<CoachingState[]>(() =>

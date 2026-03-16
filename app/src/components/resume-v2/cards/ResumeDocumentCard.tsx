@@ -1,14 +1,35 @@
 import { useCallback, useState } from 'react';
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, Loader2 } from 'lucide-react';
 import type { ResumeDraft } from '@/types/resume-v2';
-import { scrollToAuditRow } from '../useStrategyThread';
+import { scrollToAndHighlight } from '../useStrategyThread';
+import type { PendingEdit, EditAction } from '@/hooks/useInlineEdit';
 
 interface ResumeDocumentCardProps {
   resume: ResumeDraft;
   onTextSelect?: (selectedText: string, section: string, rect: DOMRect) => void;
+  /** Which bullet is currently selected for inline editing */
+  activeBullet?: { section: string; index: number } | null;
+  /** Click handler for bullet selection */
+  onBulletClick?: (bulletText: string, section: string, bulletIndex: number, requirements: string[]) => void;
+  /** The pending AI suggestion for the active bullet */
+  pendingEdit?: PendingEdit | null;
+  isEditing?: boolean;
+  onAcceptEdit?: (text: string) => void;
+  onRejectEdit?: () => void;
+  onRequestEdit?: (text: string, section: string, action: EditAction, instruction?: string) => void;
 }
 
-export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardProps) {
+export function ResumeDocumentCard({
+  resume,
+  onTextSelect,
+  activeBullet = null,
+  onBulletClick,
+  pendingEdit = null,
+  isEditing = false,
+  onAcceptEdit,
+  onRejectEdit,
+  onRequestEdit,
+}: ResumeDocumentCardProps) {
   const handleMouseUp = useCallback(() => {
     if (!onTextSelect) return;
 
@@ -100,9 +121,11 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
           <ul className="space-y-2">
             {resume.selected_accomplishments.map((a, i) => {
               const hasStrategy = a.addresses_requirements.length > 0;
+              const isActive = activeBullet?.section === 'selected_accomplishments' && activeBullet.index === i;
               return (
                 <li
                   key={i}
+                  data-bullet-id={`selected_accomplishments-${i}`}
                   className={`text-sm text-white/80 leading-relaxed pl-4 relative ${
                     a.is_new ? 'border-l-2 border-[#b5dec2]/40' : ''
                   }`}
@@ -118,9 +141,46 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
                     aria-hidden="true"
                   />
                   {a.is_new && <NewMarker />}
-                  {a.content}
+                  {onBulletClick ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBulletClick(a.content, 'selected_accomplishments', i, a.addresses_requirements);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onBulletClick(a.content, 'selected_accomplishments', i, a.addresses_requirements);
+                        }
+                      }}
+                      className={
+                        isActive
+                          ? 'ring-2 ring-[#afc4ff]/40 rounded-lg bg-[#afc4ff]/[0.04] px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200'
+                          : 'hover:bg-white/[0.06] cursor-pointer rounded px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 focus-visible:outline-none'
+                      }
+                    >
+                      {a.content}
+                    </span>
+                  ) : (
+                    a.content
+                  )}
                   {hasStrategy && (
                     <StrategyTooltip requirements={a.addresses_requirements} />
+                  )}
+                  {isActive && onRequestEdit && (
+                    <InlineEditPanel
+                      bulletText={a.content}
+                      section="selected_accomplishments"
+                      requirements={a.addresses_requirements}
+                      pendingEdit={pendingEdit}
+                      isEditing={isEditing}
+                      onRequestEdit={onRequestEdit}
+                      onAcceptEdit={onAcceptEdit}
+                      onRejectEdit={onRejectEdit}
+                    />
                   )}
                 </li>
               );
@@ -151,9 +211,12 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
                 <ul className="mt-2 space-y-1.5">
                   {exp.bullets.map((bullet, j) => {
                     const hasStrategy = bullet.addresses_requirements.length > 0;
+                    const bulletIndex = i * 100 + j;
+                    const isActive = activeBullet?.section === 'professional_experience' && activeBullet.index === bulletIndex;
                     return (
                       <li
                         key={j}
+                        data-bullet-id={`professional_experience-${bulletIndex}`}
                         className={`text-sm text-white/80 leading-relaxed pl-4 relative ${
                           bullet.is_new ? 'border-l-2 border-[#b5dec2]/40' : ''
                         }`}
@@ -169,9 +232,46 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
                           aria-hidden="true"
                         />
                         {bullet.is_new && <NewMarker />}
-                        {bullet.text}
+                        {onBulletClick ? (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onBulletClick(bullet.text, 'professional_experience', bulletIndex, bullet.addresses_requirements);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onBulletClick(bullet.text, 'professional_experience', bulletIndex, bullet.addresses_requirements);
+                              }
+                            }}
+                            className={
+                              isActive
+                                ? 'ring-2 ring-[#afc4ff]/40 rounded-lg bg-[#afc4ff]/[0.04] px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200'
+                                : 'hover:bg-white/[0.06] cursor-pointer rounded px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 focus-visible:outline-none'
+                            }
+                          >
+                            {bullet.text}
+                          </span>
+                        ) : (
+                          bullet.text
+                        )}
                         {hasStrategy && (
                           <StrategyTooltip requirements={bullet.addresses_requirements} />
+                        )}
+                        {isActive && onRequestEdit && (
+                          <InlineEditPanel
+                            bulletText={bullet.text}
+                            section="professional_experience"
+                            requirements={bullet.addresses_requirements}
+                            pendingEdit={pendingEdit}
+                            isEditing={isEditing}
+                            onRequestEdit={onRequestEdit}
+                            onAcceptEdit={onAcceptEdit}
+                            onRejectEdit={onRejectEdit}
+                          />
                         )}
                       </li>
                     );
@@ -231,13 +331,102 @@ export function ResumeDocumentCard({ resume, onTextSelect }: ResumeDocumentCardP
   );
 }
 
+interface InlineEditPanelProps {
+  bulletText: string;
+  section: string;
+  requirements: string[];
+  pendingEdit: PendingEdit | null;
+  isEditing: boolean;
+  onRequestEdit: (text: string, section: string, action: EditAction, instruction?: string) => void;
+  onAcceptEdit?: (text: string) => void;
+  onRejectEdit?: () => void;
+}
+
+function InlineEditPanel({
+  bulletText,
+  section,
+  requirements,
+  pendingEdit,
+  isEditing,
+  onRequestEdit,
+  onAcceptEdit,
+  onRejectEdit,
+}: InlineEditPanelProps) {
+  return (
+    <div className="mt-2 rounded-lg border border-[#afc4ff]/20 bg-[#0f141e]/90 backdrop-blur-md p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
+      {/* Requirement tags */}
+      {requirements.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <span className="text-[10px] text-white/35">Addresses:</span>
+          {requirements.map((req, i) => (
+            <span
+              key={i}
+              className="rounded-full bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-2 py-0.5 text-[10px] text-[#afc4ff]/70"
+            >
+              {req}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2">
+        {(['strengthen', 'add_metrics', 'rewrite'] as EditAction[]).map(action => (
+          <button
+            key={action}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRequestEdit(bulletText, section, action); }}
+            disabled={isEditing}
+            className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white/70 hover:bg-white/[0.08] hover:text-white/90 disabled:opacity-40 transition-colors"
+          >
+            {action === 'strengthen' ? 'Strengthen' : action === 'add_metrics' ? '+ Metrics' : 'Rewrite'}
+          </button>
+        ))}
+      </div>
+
+      {/* Loading state */}
+      {isEditing && (
+        <div className="flex items-center gap-2 text-xs text-white/40">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Generating suggestion...
+        </div>
+      )}
+
+      {/* Pending edit suggestion — only show if it matches this bullet's text */}
+      {pendingEdit && pendingEdit.section === section && pendingEdit.originalText === bulletText && (
+        <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] p-3 space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-[#b5dec2]/60">Suggested</p>
+          <p className="text-sm text-white/80 leading-relaxed">{pendingEdit.replacement}</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAcceptEdit?.(pendingEdit.replacement); }}
+              className="rounded-lg bg-[#b5dec2]/20 border border-[#b5dec2]/30 px-3 py-1 text-xs font-medium text-[#b5dec2] hover:bg-[#b5dec2]/30 transition-colors"
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRejectEdit?.(); }}
+              className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:bg-white/[0.06] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StrategyTooltip({ requirements }: { requirements: string[] }) {
   const [show, setShow] = useState(false);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
     if (requirements.length > 0) {
-      scrollToAuditRow(requirements[0]);
+      // A3: Scroll to RequirementsChecklistPanel row (replaces removed audit card)
+      scrollToAndHighlight(`[data-requirement-row="${CSS.escape(requirements[0])}"]`);
     }
   }
 
@@ -295,7 +484,7 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
               </span>
             ))}
             <span className="block mt-2 pt-2 border-t border-white/[0.07] text-[10px] text-white/35 italic">
-              Click to view in audit table
+              Click to highlight in requirements checklist
             </span>
           </span>
         </span>

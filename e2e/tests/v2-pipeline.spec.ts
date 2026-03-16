@@ -9,8 +9,9 @@
  *   2. V2IntakeForm renders → fill resume + JD → submit
  *   3. POST /api/pipeline/start → returns session_id
  *   4. GET /api/pipeline/:sessionId/stream → SSE events stream in
- *   5. Cards render progressively as events arrive
- *   6. Pipeline completes → export bar visible
+ *   5. Cards render progressively (single-column streaming mode)
+ *   6. Once resume exists → split-screen layout (left: requirements, right: resume)
+ *   7. Pipeline completes → export bar visible in right panel
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -31,6 +32,7 @@ const MOCK_SSE_EVENTS = [
     core_competencies: [
       { competency: 'AWS Architecture', importance: 'must_have', evidence_from_jd: 'Deep expertise in AWS required' },
       { competency: 'Kubernetes', importance: 'must_have', evidence_from_jd: 'Container orchestration at scale' },
+      { competency: 'Compliance Frameworks', importance: 'important', evidence_from_jd: 'SOC 2 and HIPAA compliance' },
     ],
     strategic_responsibilities: ['Define cloud architecture strategy', 'Lead architecture reviews'],
     business_problems: ['Multi-cloud platform reliability', 'Compliance requirements'],
@@ -65,6 +67,7 @@ const MOCK_SSE_EVENTS = [
     ideal_profile_summary: 'A senior cloud architect with 10+ years leading multi-cloud infrastructure at enterprise scale.',
     expected_achievements: [
       { area: 'Cloud Migration', description: 'Led large-scale migration', typical_metrics: '$5M+ budget, 100+ applications' },
+      { area: 'AWS Architecture', description: 'Deep AWS expertise with multi-service integration', typical_metrics: 'Certified, 100+ services' },
     ],
     expected_leadership_scope: '5+ engineering teams, 40+ engineers',
     expected_industry_knowledge: ['Financial services', 'Healthcare compliance'],
@@ -77,15 +80,15 @@ const MOCK_SSE_EVENTS = [
   { type: 'stage_start', stage: 'strategy', message: 'Building positioning strategy...' },
   { type: 'gap_analysis', data: {
     requirements: [
-      { requirement: 'AWS expertise', importance: 'must_have', classification: 'strong', evidence: ['AWS SA Professional', 'EC2, ECS, EKS, Lambda'] },
-      { requirement: 'Multi-cloud experience', importance: 'important', classification: 'partial', evidence: ['GCP basic'], strategy: { real_experience: 'Has GCP exposure', positioning: 'Position hybrid cloud experience as multi-cloud readiness' } },
-      { requirement: 'Compliance frameworks', importance: 'must_have', classification: 'missing', evidence: [], strategy: { real_experience: 'Zero-trust networking, container scanning', positioning: 'Security-first approach aligns with compliance mindset', inferred_metric: 'SOC 2 readiness', inference_rationale: 'Security practices indicate compliance awareness' } },
+      { requirement: 'AWS Architecture', importance: 'must_have', classification: 'strong', evidence: ['AWS SA Professional', 'EC2, ECS, EKS, Lambda'] },
+      { requirement: 'Kubernetes', importance: 'must_have', classification: 'partial', evidence: ['CKA certified'], strategy: { real_experience: 'CKA + production K8s', positioning: 'Position Kubernetes platform as enterprise-scale orchestration' } },
+      { requirement: 'Compliance Frameworks', importance: 'important', classification: 'missing', evidence: [], strategy: { real_experience: 'Zero-trust networking, container scanning', positioning: 'Security-first approach aligns with compliance mindset', inferred_metric: 'SOC 2 readiness', inference_rationale: 'Security practices indicate compliance awareness' } },
     ],
     coverage_score: 78,
     strength_summary: 'Strong cloud infrastructure background with relevant AWS and Kubernetes experience.',
     critical_gaps: ['Compliance framework knowledge (SOC 2, HIPAA, PCI-DSS)'],
     pending_strategies: [
-      { requirement: 'Compliance frameworks', strategy: { real_experience: 'Zero-trust networking', positioning: 'Security-first approach', inferred_metric: 'SOC 2 readiness', inference_rationale: 'Security practices' } },
+      { requirement: 'Compliance Frameworks', strategy: { real_experience: 'Zero-trust networking', positioning: 'Security-first approach', inferred_metric: 'SOC 2 readiness', inference_rationale: 'Security practices' } },
     ],
   }},
   { type: 'narrative_strategy', data: {
@@ -120,7 +123,7 @@ const MOCK_SSE_EVENTS = [
     },
     core_competencies: ['Cloud Architecture', 'AWS', 'Kubernetes', 'Terraform', 'Team Leadership', 'FinOps', 'CI/CD', 'SRE'],
     selected_accomplishments: [
-      { content: 'Led migration of 60+ legacy applications to AWS, reducing hosting costs by 35%', is_new: false, addresses_requirements: ['AWS expertise'] },
+      { content: 'Led migration of 60+ legacy applications to AWS, reducing hosting costs by 35%', is_new: false, addresses_requirements: ['AWS Architecture'] },
     ],
     professional_experience: [
       {
@@ -130,7 +133,7 @@ const MOCK_SSE_EVENTS = [
         end_date: 'Present',
         scope_statement: 'Led 14-engineer cloud infrastructure team supporting 200+ microservices',
         bullets: [
-          { text: 'Spearheaded enterprise-wide cloud migration of 60+ applications to AWS, achieving 35% cost reduction', is_new: false, addresses_requirements: ['AWS expertise'] },
+          { text: 'Spearheaded enterprise-wide cloud migration of 60+ applications to AWS, achieving 35% cost reduction', is_new: false, addresses_requirements: ['AWS Architecture'] },
           { text: 'Architected Kubernetes-based platform processing 50M+ daily API requests with 99.99% availability', is_new: false, addresses_requirements: ['Kubernetes'] },
         ],
       },
@@ -173,7 +176,7 @@ const MOCK_SSE_EVENTS = [
       },
       core_competencies: ['Cloud Architecture', 'AWS', 'Kubernetes', 'Terraform', 'Team Leadership', 'FinOps', 'CI/CD', 'SRE'],
       selected_accomplishments: [
-        { content: 'Led migration of 60+ legacy applications to AWS, reducing hosting costs by 35%', is_new: false, addresses_requirements: ['AWS expertise'] },
+        { content: 'Led migration of 60+ legacy applications to AWS, reducing hosting costs by 35%', is_new: false, addresses_requirements: ['AWS Architecture'] },
       ],
       professional_experience: [
         {
@@ -182,12 +185,22 @@ const MOCK_SSE_EVENTS = [
           start_date: '2020',
           end_date: 'Present',
           scope_statement: 'Led 14-engineer cloud infrastructure team',
-          bullets: [{ text: 'Spearheaded cloud migration of 60+ applications, achieving 35% cost reduction', is_new: false, addresses_requirements: [] }],
+          bullets: [
+            { text: 'Spearheaded cloud migration of 60+ applications, achieving 35% cost reduction', is_new: false, addresses_requirements: ['AWS Architecture'] },
+            { text: 'Architected Kubernetes-based platform processing 50M+ daily API requests', is_new: false, addresses_requirements: ['Kubernetes'] },
+          ],
         },
       ],
       education: [{ degree: 'B.S. Computer Science', institution: 'Oregon State University', year: '2012' }],
       certifications: ['AWS Solutions Architect – Professional', 'CKA', 'Terraform Associate'],
       earlier_career: [{ title: 'Systems Engineer', company: 'DataFlow Inc.', dates: '2012 – 2016' }],
+    },
+    positioning_assessment: {
+      requirement_map: [
+        { requirement: 'AWS Architecture', status: 'strong', addressed_by: [{ section: 'professional_experience', bullet_text: 'Spearheaded cloud migration of 60+ applications' }] },
+        { requirement: 'Kubernetes', status: 'repositioned', addressed_by: [{ section: 'professional_experience', bullet_text: 'Architected Kubernetes-based platform processing 50M+' }], strategy_used: 'Position Kubernetes platform as enterprise-scale orchestration' },
+        { requirement: 'Compliance Frameworks', status: 'gap', addressed_by: [] },
+      ],
     },
     scores: { ats_match: 85, truth: 92, tone: 88 },
     quick_wins: [
@@ -324,6 +337,22 @@ async function waitForAuthenticatedShell(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: /CareerIQ/i })).toBeVisible({ timeout: 15_000 });
 }
 
+/** Helper: submit intake form and wait for pipeline to complete (split-screen visible) */
+async function runPipelineToCompletion(page: Page) {
+  await mockV2PipelineNetwork(page);
+  await page.goto('/app');
+  await waitForAuthenticatedShell(page);
+  await page.getByRole('button', { name: /Start New Session/i }).click();
+  await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
+  await page.locator('#v2-jd').fill(REAL_JD_TEXT);
+  await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
+  // Wait for split-screen: resume heading + requirements checklist visible
+  await expect(page.getByRole('heading', { name: 'Sarah Mitchell' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Requirements Checklist')).toBeVisible({ timeout: 5_000 });
+  // Wait for pipeline_complete to fire (sets isComplete → canEdit)
+  await expect(page.getByText(/Click any bullet to edit with AI/i)).toBeVisible({ timeout: 5_000 });
+}
+
 // ── Tests ────────────────────────────────────────────────────────────
 
 test.describe('V2 Pipeline: intake form', () => {
@@ -391,44 +420,27 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
     await expect(page.getByText('Senior Cloud Architect at TechVision Solutions')).toBeVisible({ timeout: 15_000 });
   });
 
-  test('pipeline cards render progressively from SSE events', async ({ page }) => {
-    await mockV2PipelineNetwork(page);
-    await page.goto('/app');
-    await waitForAuthenticatedShell(page);
+  test('pipeline completes and enters split-screen layout', async ({ page }) => {
+    await runPipelineToCompletion(page);
 
-    await page.getByRole('button', { name: /Start New Session/i }).click();
-    await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-    await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
+    // Split-screen: left panel has requirements checklist
+    await expect(page.getByText('Requirements Checklist')).toBeVisible();
+    // Left panel shows role info
+    await expect(page.getByText('Senior Cloud Architect').first()).toBeVisible();
 
-    // Wait for pipeline to complete — all mock events stream in ~2.5s (25 events × 100ms)
-    // The pipeline_complete event triggers isComplete=true
+    // Right panel has the resume document
+    await expect(page.getByRole('heading', { name: 'Sarah Mitchell' })).toBeVisible();
+    await expect(page.getByText('Cloud Architecture & Platform Engineering Leader')).toBeVisible();
 
-    // Gap Analysis card should render with coverage score
-    await expect(page.getByText('78%')).toBeVisible({ timeout: 10_000 });
-
-    // Gap classifications should show
-    await expect(page.getByText('AWS expertise')).toBeVisible({ timeout: 5_000 });
-
-    // Resume content should render — use the heading specifically
-    await expect(page.getByRole('heading', { name: 'Sarah Mitchell' })).toBeVisible({ timeout: 5_000 });
-
-    // Scores should appear after assembly_complete
-    await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 10_000 });
+    // Scores appear in the top bar after assembly_complete
+    await expect(page.getByText('Match: 85%')).toBeVisible({ timeout: 5_000 });
   });
 
   test('pipeline completion shows export bar and New Resume button', async ({ page }) => {
-    await mockV2PipelineNetwork(page);
-    await page.goto('/app');
-    await waitForAuthenticatedShell(page);
+    await runPipelineToCompletion(page);
 
-    await page.getByRole('button', { name: /Start New Session/i }).click();
-    await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-    await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
-
-    // Wait for completion
-    await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 15_000 });
+    // Wait for completion banner
+    await expect(page.getByText(/Your resume is ready/i)).toBeVisible({ timeout: 10_000 });
 
     // "New Resume" button appears in the top bar after completion
     await expect(page.getByRole('button', { name: /New Resume/i })).toBeVisible({ timeout: 5_000 });
@@ -438,17 +450,10 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
   });
 
   test('New Resume button resets to intake form', async ({ page }) => {
-    await mockV2PipelineNetwork(page);
-    await page.goto('/app');
-    await waitForAuthenticatedShell(page);
-
-    await page.getByRole('button', { name: /Start New Session/i }).click();
-    await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-    await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
+    await runPipelineToCompletion(page);
 
     // Wait for completion
-    await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Your resume is ready/i)).toBeVisible({ timeout: 10_000 });
 
     // Click "New Resume"
     await page.getByRole('button', { name: /New Resume/i }).click();
@@ -459,49 +464,121 @@ test.describe('V2 Pipeline: SSE streaming flow', () => {
   });
 });
 
-test.describe('V2 Pipeline: gap analysis interactions', () => {
-  test('gap analysis shows strong/partial/missing classifications', async ({ page }) => {
-    await mockV2PipelineNetwork(page);
-    await page.goto('/app');
-    await waitForAuthenticatedShell(page);
+test.describe('V2 Pipeline: requirements checklist (split-screen)', () => {
+  test('left panel shows requirements grouped by importance', async ({ page }) => {
+    await runPipelineToCompletion(page);
 
-    await page.getByRole('button', { name: /Start New Session/i }).click();
-    await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-    await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
+    // Must Have group header
+    await expect(page.getByText('Must Have').first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('AWS Architecture').first()).toBeVisible();
+    await expect(page.getByText('Kubernetes').first()).toBeVisible();
 
-    // Wait for gap analysis — title now includes company/role when available
-    await expect(page.getByText('Your Alignment with TechVision Solutions')).toBeVisible({ timeout: 10_000 });
+    // Important group
+    await expect(page.getByText('Important').first()).toBeVisible();
+    await expect(page.getByText('Compliance Frameworks').first()).toBeVisible();
+  });
 
-    // Summary counts (new card uses "gaps" instead of "missing")
-    await expect(page.getByText('1 strong')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('1 partial')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('1 gaps')).toBeVisible({ timeout: 5_000 });
+  test('requirements show correct status from positioning assessment', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    // The positioning assessment has: AWS=strong, Kubernetes=repositioned, Compliance=gap
+    // Status line for strong match: "Addressed by: ..."
+    await expect(page.getByText(/Addressed by:/i).first()).toBeVisible({ timeout: 5_000 });
+
+    // Status line for repositioned: "Repositioned: ..."
+    await expect(page.getByText(/Repositioned:/i).first()).toBeVisible({ timeout: 5_000 });
+
+    // Status line for gap: "GAP — Not addressed"
+    await expect(page.getByText(/GAP.*Not addressed/i)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('progress bar shows addressed count', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    // 2 of 3 requirements addressed (1 strong + 1 repositioned)
+    await expect(page.getByText(/2 of 3 requirements addressed/i)).toBeVisible({ timeout: 5_000 });
   });
 });
 
-test.describe('V2 Pipeline: inline editing', () => {
-  /** Helper: run the pipeline to completion with mocks */
-  async function runPipelineToCompletion(page: Page) {
-    await mockV2PipelineNetwork(page);
-    await page.goto('/app');
-    await waitForAuthenticatedShell(page);
-    await page.getByRole('button', { name: /Start New Session/i }).click();
-    await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-    await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-    await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
-    await expect(page.getByText('ATS: 85%')).toBeVisible({ timeout: 15_000 });
-  }
+test.describe('V2 Pipeline: inline bullet editing', () => {
+  test('clicking a bullet shows inline edit panel with action buttons', async ({ page }) => {
+    await runPipelineToCompletion(page);
 
+    // Find a bullet with role="button" (clickable in edit mode)
+    const bullets = page.locator('[role="button"]').filter({ hasText: /Spearheaded cloud migration/i });
+    await expect(bullets.first()).toBeVisible({ timeout: 5_000 });
+
+    // Click the bullet
+    await bullets.first().click();
+
+    // Inline edit panel should appear with action buttons
+    await expect(page.getByRole('button', { name: 'Strengthen' })).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByRole('button', { name: '+ Metrics' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Rewrite' })).toBeVisible();
+  });
+
+  test('inline edit panel shows requirement tags for bullets that address requirements', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    // Click a bullet that addresses "AWS Architecture"
+    const bullet = page.locator('[role="button"]').filter({ hasText: /Spearheaded cloud migration/i });
+    await bullet.first().click();
+
+    // Should show "Addresses:" label and the requirement tag
+    await expect(page.getByText('Addresses:')).toBeVisible({ timeout: 3_000 });
+    await expect(page.locator('.rounded-full').filter({ hasText: 'AWS Architecture' })).toBeVisible();
+  });
+
+  test('clicking Escape closes inline edit panel', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    // Click a bullet to open inline edit panel
+    const bullet = page.locator('[role="button"]').filter({ hasText: /Spearheaded cloud migration/i });
+    await bullet.first().click();
+    await expect(page.getByRole('button', { name: 'Strengthen' })).toBeVisible({ timeout: 3_000 });
+
+    // Press Escape
+    await page.keyboard.press('Escape');
+
+    // Inline edit panel should close
+    await expect(page.getByRole('button', { name: 'Strengthen' })).not.toBeVisible({ timeout: 3_000 });
+  });
+
+  test('clicking an edit action calls the API and shows suggestion', async ({ page }) => {
+    await runPipelineToCompletion(page);
+
+    // Mock the edit endpoint
+    await page.route('**/api/pipeline/*/edit', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ replacement: 'IMPROVED: Led enterprise-wide cloud transformation of 60+ mission-critical applications.' }),
+      });
+    });
+
+    // Click a bullet
+    const bullet = page.locator('[role="button"]').filter({ hasText: /Spearheaded cloud migration/i });
+    await bullet.first().click();
+
+    // Click "Strengthen"
+    await page.getByRole('button', { name: 'Strengthen' }).click();
+
+    // Suggestion should appear in the inline panel
+    await expect(page.getByText('IMPROVED:')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Suggested')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Accept' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Cancel' }).first()).toBeVisible();
+  });
+});
+
+test.describe('V2 Pipeline: text selection editing (split-screen)', () => {
   /** Helper: programmatically select text and trigger mouseup */
   async function selectResumeText(page: Page, selector: string, charCount = 30) {
-    // Scroll the target element into view first so getBoundingClientRect returns viewport-relative coords
     await page.locator(selector).first().scrollIntoViewIfNeeded();
 
     await page.evaluate(({ sel, count }) => {
       const el = document.querySelector(sel);
       if (!el) throw new Error(`Element not found: ${sel}`);
-      // Walk to the first text node (may be nested inside a <span> like NewMarker)
       let textNode: Node | null = null;
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       while (walk.nextNode()) {
@@ -526,7 +603,8 @@ test.describe('V2 Pipeline: inline editing', () => {
   test('selecting resume text shows the inline edit toolbar', async ({ page }) => {
     await runPipelineToCompletion(page);
 
-    await expect(page.getByText('Select text to edit with AI')).toBeVisible({ timeout: 5_000 });
+    // In split-screen, the hint text is different
+    await expect(page.getByText('Click any bullet to edit with AI')).toBeVisible({ timeout: 5_000 });
 
     await selectResumeText(page, '[data-section="executive_summary"] p');
 
@@ -537,32 +615,7 @@ test.describe('V2 Pipeline: inline editing', () => {
     await expect(toolbar.getByTitle('Not my voice')).toBeVisible();
   });
 
-  test('clicking an edit action calls the API and shows diff view', async ({ page }) => {
-    await runPipelineToCompletion(page);
-
-    // Mock the edit endpoint to return a replacement
-    await page.route('**/api/pipeline/*/edit', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ replacement: 'IMPROVED: Enterprise cloud architect with 15+ years transforming infrastructure.' }),
-      });
-    });
-
-    await selectResumeText(page, '[data-section="executive_summary"] p');
-
-    const toolbar = page.getByRole('toolbar', { name: /AI editing actions/i });
-    await expect(toolbar).toBeVisible({ timeout: 3_000 });
-
-    // Click "Strengthen"
-    await toolbar.getByTitle('Strengthen').click();
-
-    // Toolbar should disappear, "AI is editing..." spinner should show briefly
-    // Then the DiffView should appear with the replacement
-    await expect(page.getByText('IMPROVED:')).toBeVisible({ timeout: 10_000 });
-  });
-
-  test('accepting an edit updates the resume text', async ({ page }) => {
+  test('accepting a text-selection edit updates the resume text', async ({ page }) => {
     await runPipelineToCompletion(page);
 
     await page.route('**/api/pipeline/*/edit', async (route) => {
@@ -578,7 +631,7 @@ test.describe('V2 Pipeline: inline editing', () => {
     await expect(toolbar).toBeVisible({ timeout: 3_000 });
     await toolbar.getByTitle('Rewrite').click();
 
-    // Wait for diff to appear
+    // Wait for diff to appear (DiffView shows when no activeBullet)
     await expect(page.getByText('UPGRADED executive summary')).toBeVisible({ timeout: 10_000 });
 
     // Accept the edit
@@ -591,36 +644,6 @@ test.describe('V2 Pipeline: inline editing', () => {
 
     // Undo button should appear
     await expect(page.getByRole('button', { name: /undo/i })).toBeVisible({ timeout: 3_000 });
-  });
-
-  test('rejecting an edit restores original text', async ({ page }) => {
-    await runPipelineToCompletion(page);
-
-    await page.route('**/api/pipeline/*/edit', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ replacement: 'REJECTED text that should not persist.' }),
-      });
-    });
-
-    await selectResumeText(page, '[data-section="executive_summary"] p');
-    const toolbar = page.getByRole('toolbar', { name: /AI editing actions/i });
-    await expect(toolbar).toBeVisible({ timeout: 3_000 });
-    await toolbar.getByTitle('Strengthen').click();
-
-    await expect(page.getByText('REJECTED text')).toBeVisible({ timeout: 10_000 });
-
-    // Reject the edit
-    const rejectBtn = page.getByRole('button', { name: 'Reject edit' });
-    await expect(rejectBtn).toBeVisible({ timeout: 3_000 });
-    await rejectBtn.click();
-
-    // The diff should disappear
-    await expect(page.getByText('REJECTED text')).not.toBeVisible({ timeout: 3_000 });
-
-    // Original text should still be in the resume
-    await expect(page.locator('[data-section="executive_summary"]').getByText('Enterprise cloud architect')).toBeVisible();
   });
 
   test('edit API error shows error message', async ({ page }) => {

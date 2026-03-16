@@ -127,7 +127,7 @@ test.describe('Full Pipeline E2E', () => {
       // Gap coaching is optional — if all requirements are strong matches,
       // no cards appear and the pipeline continues straight to writing.
       const gapCoachingOrResume = page.locator(
-        '[data-coaching-requirement], section[aria-label="Your resume"]',
+        '[data-coaching-requirement], [data-testid="requirements-checklist"]',
       );
 
       // Wait up to 4 minutes for strategy phase to complete (includes analysis)
@@ -137,7 +137,7 @@ test.describe('Full Pipeline E2E', () => {
 
       // Check if the resume section already appeared (pipeline moved past coaching)
       const resumeAlreadyVisible = await page
-        .locator('section[aria-label="Your resume"]')
+        .locator('[data-testid="requirements-checklist"]')
         .isVisible()
         .catch(() => false);
 
@@ -220,7 +220,7 @@ test.describe('Full Pipeline E2E', () => {
 
         // After continuing (or if pipeline already moved on), wait for resume section
         await expect(
-          page.locator('section[aria-label="Your resume"]'),
+          page.locator('[data-testid="requirements-checklist"]'),
         ).toBeVisible({ timeout: 3 * 60_000 });
       } else {
         // eslint-disable-next-line no-console
@@ -229,10 +229,10 @@ test.describe('Full Pipeline E2E', () => {
     });
 
     // Step 6: Wait for pipeline completion
-    // The completion status reads "Resume complete. Select any text above to edit with AI."
+    // The completion status reads "Your resume is ready"
     await test.step('Wait for pipeline completion', async () => {
       await expect(
-        page.getByText(/Resume complete/i),
+        page.getByText(/Your resume is ready/i),
       ).toBeVisible({ timeout: 5 * 60_000 }); // 5 min max for writing + assembly
 
       const pipelineDurationMs = Date.now() - pipelineStartMs;

@@ -63,19 +63,21 @@ export function importanceLabel(importance: string): string {
 
 export function importanceStyle(
   importance: string,
-): { color: string; backgroundColor: string; border: string } {
+): { color: string; backgroundColor: string; border: string; borderColor: string } {
   switch (importance) {
     case 'must_have':
       return {
         color: '#f0b8b8',
         backgroundColor: 'rgba(240,184,184,0.10)',
         border: '1px solid rgba(240,184,184,0.20)',
+        borderColor: 'rgba(240,184,184,0.20)',
       };
     case 'important':
       return {
         color: '#f0d99f',
         backgroundColor: 'rgba(240,217,159,0.10)',
         border: '1px solid rgba(240,217,159,0.20)',
+        borderColor: 'rgba(240,217,159,0.20)',
       };
     case 'nice_to_have':
     default:
@@ -83,6 +85,7 @@ export function importanceStyle(
         color: 'rgba(255,255,255,0.40)',
         backgroundColor: 'rgba(255,255,255,0.05)',
         border: '1px solid rgba(255,255,255,0.10)',
+        borderColor: 'rgba(255,255,255,0.10)',
       };
   }
 }
