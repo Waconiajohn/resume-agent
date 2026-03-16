@@ -5,11 +5,11 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { GapAnalysisReportPanel } from '../panels/GapAnalysisReportPanel';
 import type {
   JobIntelligence,
-  BenchmarkCandidate,
   GapAnalysis,
   GapCoachingCard,
   PositioningAssessment,
   ResumeDraft,
+  PreScores,
 } from '@/types/resume-v2';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ function makeGapAnalysis(overrides?: Partial<GapAnalysis>): GapAnalysis {
           real_experience: 'AWS migration experience',
           positioning: 'Architected enterprise cloud migration spanning 200+ services',
           inferred_metric: '$100K/mo infrastructure',
-          inference_rationale: '200 nodes × $500/mo, backed off from $120K',
+          inference_rationale: '200 nodes \u00d7 $500/mo, backed off from $120K',
           ai_reasoning: 'You have solid AWS but JD asks for multi-cloud.',
         },
       },
@@ -103,21 +103,6 @@ function makeGapAnalysis(overrides?: Partial<GapAnalysis>): GapAnalysis {
   };
 }
 
-function makeBenchmark(): BenchmarkCandidate {
-  return {
-    ideal_profile_summary: 'VP-level leader with 50+ eng org',
-    expected_achievements: [
-      { area: 'Team Leadership', description: 'Built orgs to 50+ people', typical_metrics: '50+ reports, 5+ years VP' },
-      { area: 'Cloud Infrastructure', description: 'Migrated legacy to cloud-native', typical_metrics: '30%+ cost reduction' },
-    ],
-    expected_leadership_scope: '50+ engineers',
-    expected_industry_knowledge: ['SaaS'],
-    expected_technical_skills: ['AWS', 'K8s'],
-    expected_certifications: [],
-    differentiators: [],
-  };
-}
-
 function makePositioningAssessment(): PositioningAssessment {
   return {
     summary: 'Strong on leadership, gaps in K8s',
@@ -126,13 +111,13 @@ function makePositioningAssessment(): PositioningAssessment {
         requirement: 'Team Leadership',
         importance: 'must_have',
         status: 'strong',
-        addressed_by: [{ section: 'Professional Experience — Acme Corp', bullet_text: 'Led cross-functional team of 120+ engineers across 4 product lines' }],
+        addressed_by: [{ section: 'Professional Experience \u2014 Acme Corp', bullet_text: 'Led cross-functional team of 120+ engineers across 4 product lines' }],
       },
       {
         requirement: 'Cloud Infrastructure',
         importance: 'important',
         status: 'repositioned',
-        addressed_by: [{ section: 'Professional Experience — Acme Corp', bullet_text: 'Managed 200-node on-prem server fleet' }],
+        addressed_by: [{ section: 'Professional Experience \u2014 Acme Corp', bullet_text: 'Managed 200-node on-prem server fleet' }],
         strategy_used: 'Adjacent experience positioning',
       },
       {
@@ -190,7 +175,7 @@ function makeCoachingCards(): GapCoachingCard[] {
       proposed_strategy: 'Reposition',
       evidence_found: ['AWS migration', '200-node fleet'],
       inferred_metric: '$100K/mo',
-      inference_rationale: '200 nodes × $500/mo',
+      inference_rationale: '200 nodes \u00d7 $500/mo',
     },
     {
       requirement: 'Kubernetes',
@@ -206,14 +191,24 @@ function makeCoachingCards(): GapCoachingCard[] {
   ];
 }
 
+function makePreScores(overrides?: Partial<PreScores>): PreScores {
+  return {
+    ats_match: 45,
+    keywords_found: ['leadership', 'aws'],
+    keywords_missing: ['kubernetes', 'multi-cloud'],
+    ...overrides,
+  };
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('GapAnalysisReportPanel', () => {
+  // ─── Basic rendering ────────────────────────────────────────────────────────
+
   it('renders the panel with title and role info', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -229,7 +224,6 @@ describe('GapAnalysisReportPanel', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={makePositioningAssessment()}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -246,7 +240,6 @@ describe('GapAnalysisReportPanel', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -258,11 +251,103 @@ describe('GapAnalysisReportPanel', () => {
     expect(cards.length).toBe(3);
   });
 
-  it('shows evidence_from_jd in each card', () => {
+  it('does not render empty tier sections', () => {
+    const gapAnalysis = makeGapAnalysis({
+      requirements: [
+        { requirement: 'Team Leadership', importance: 'must_have', classification: 'strong', evidence: ['Led 120+'] },
+      ],
+    });
+    const ji = makeJobIntelligence({
+      core_competencies: [
+        { competency: 'Team Leadership', importance: 'must_have', evidence_from_jd: 'Lead teams' },
+      ],
+    });
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={ji}
+        positioningAssessment={null}
+        gapAnalysis={gapAnalysis}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('tier-strong')).toBeTruthy();
+    expect(screen.queryByTestId('tier-partial')).toBeNull();
+    expect(screen.queryByTestId('tier-gap')).toBeNull();
+  });
+
+  // ─── Mapping-first layout ──────────────────────────────────────────────────
+
+  it('shows resume mapping FIRST when positioning assessment exists', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Led cross-functional team of 120\+ engineers/)).toBeTruthy();
+    expect(screen.getByText(/Not addressed in your resume/)).toBeTruthy();
+  });
+
+  it('shows "View in Resume" links for addressed requirements', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    const viewLinks = screen.getAllByTestId('view-in-resume');
+    expect(viewLinks.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('calls onRequirementClick exactly once when clicking "View in Resume"', () => {
+    const onReqClick = vi.fn();
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={onReqClick}
+      />,
+    );
+
+    const viewLinks = screen.getAllByTestId('view-in-resume');
+    fireEvent.click(viewLinks[0]);
+
+    expect(onReqClick).toHaveBeenCalledTimes(1);
+    expect(mockScrollToBullet).not.toHaveBeenCalled();
+  });
+
+  it('shows "Repositioned in" prefix for repositioned items', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Repositioned in/)).toBeTruthy();
+  });
+
+  it('gracefully handles missing positioningAssessment — all cards show "Not addressed"', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -270,31 +355,17 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    expect(screen.getByText(/Lead cross-functional teams of 50\+ engineers/)).toBeTruthy();
-    expect(screen.getByText(/Multi-cloud experience at enterprise scale/)).toBeTruthy();
+    expect(screen.queryAllByTestId('view-in-resume').length).toBe(0);
+    // T1 fix: all 3 cards should show "Not addressed" when no positioning assessment
+    expect(screen.getAllByText(/Not addressed in your resume/).length).toBe(3);
   });
 
-  it('shows benchmark context when benchmarkCandidate is provided', () => {
+  // ─── AI coaching prose ──────────────────────────────────────────────────────
+
+  it('shows AI coaching prose from coaching cards', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={makeBenchmark()}
-        positioningAssessment={null}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText('Built orgs to 50+ people')).toBeTruthy();
-    expect(screen.getByText(/50\+ reports, 5\+ years VP/)).toBeTruthy();
-  });
-
-  it('shows AI reasoning from coaching cards', () => {
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         gapCoachingCards={makeCoachingCards()}
@@ -307,26 +378,10 @@ describe('GapAnalysisReportPanel', () => {
     expect(screen.getByText(/Solid AWS but multi-cloud is needed/)).toBeTruthy();
   });
 
-  it('shows suggested language for partial matches', () => {
+  it('shows inferred metrics inline with coaching prose', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
-        positioningAssessment={null}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText(/Architected enterprise cloud migration spanning 200\+ services/)).toBeTruthy();
-  });
-
-  it('shows inferred metrics', () => {
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         gapCoachingCards={makeCoachingCards()}
@@ -338,67 +393,128 @@ describe('GapAnalysisReportPanel', () => {
     expect(screen.getByText(/\$100K\/mo/)).toBeTruthy();
   });
 
-  it('shows resume mapping when positioning assessment exists', () => {
+  // ─── Suggested language block ───────────────────────────────────────────────
+
+  it('shows suggested language with Apply button on the language block', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
+        positioningAssessment={null}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        currentResume={makeResume()}
+        isEditing={false}
+      />,
+    );
+
+    expect(screen.getByText(/Architected enterprise cloud migration spanning 200\+ services/)).toBeTruthy();
+    const applyButtons = screen.getAllByTestId('action-apply-language');
+    expect(applyButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows "Add to Resume" on gap language blocks and "Apply" on non-gap', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
         positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        currentResume={makeResume()}
+        isEditing={false}
+      />,
+    );
+
+    // C2: gap card (Kubernetes) should show "Add to Resume", non-gap should show "Apply"
+    const gapSection = screen.getByTestId('tier-gap');
+    expect(gapSection.textContent).toContain('Add to Resume');
+
+    const strongSection = screen.getByTestId('tier-strong');
+    const strongApply = strongSection.querySelector('[data-testid="action-apply-language"]');
+    if (strongApply) {
+      expect(strongApply.textContent).toContain('Apply');
+      expect(strongApply.textContent).not.toContain('Add to Resume');
+    }
+  });
+
+  it('shows "If you have this experience" prefix only on gap language blocks', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
         onRequirementClick={vi.fn()}
       />,
     );
 
-    expect(screen.getByText(/Led cross-functional team of 120\+ engineers/)).toBeTruthy();
-    expect(screen.getByText(/Not currently addressed/)).toBeTruthy();
+    // C1: gap card should show the conditional prefix
+    const gapSection = screen.getByTestId('tier-gap');
+    expect(gapSection.textContent).toContain('If you have this experience');
+
+    // Non-gap sections should NOT show it
+    const strongSection = screen.getByTestId('tier-strong');
+    expect(strongSection.textContent).not.toContain('If you have this experience');
+
+    const partialSection = screen.getByTestId('tier-partial');
+    expect(partialSection.textContent).not.toContain('If you have this experience');
   });
 
-  it('shows "View in Resume" links for addressed requirements', () => {
+  it('clicking Apply on language block triggers onRequestEdit', () => {
+    const onRequestEdit = vi.fn();
+
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={onRequestEdit}
+        currentResume={makeResume()}
+        isEditing={false}
+      />,
+    );
+
+    // C7: Click Apply on the strong card's language block
+    const strongSection = screen.getByTestId('tier-strong');
+    const applyBtn = strongSection.querySelector('[data-testid="action-apply-language"]') as HTMLElement;
+    expect(applyBtn).toBeTruthy();
+    fireEvent.click(applyBtn);
+
+    expect(onRequestEdit).toHaveBeenCalledTimes(1);
+    expect(onRequestEdit.mock.calls[0][2]).toBe('custom');
+  });
+
+  // ─── Importance display ─────────────────────────────────────────────────────
+
+  it('shows importance as subtle lowercase text, not colored pills', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
         onRequirementClick={vi.fn()}
       />,
     );
 
-    const viewLinks = screen.getAllByTestId('view-in-resume');
-    expect(viewLinks.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('must have').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('important').length).toBeGreaterThanOrEqual(1);
+    // Old colored pill labels should not exist
+    expect(screen.queryByText('Must Have')).toBeNull();
+    expect(screen.queryByText('Important')).toBeNull();
   });
 
-  // T-1 fix: assert call count to catch double-call bugs
-  it('calls onRequirementClick exactly once when clicking "View in Resume" (no double scrollToBullet)', () => {
-    const onReqClick = vi.fn();
-
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
-        positioningAssessment={makePositioningAssessment()}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={onReqClick}
-      />,
-    );
-
-    const viewLinks = screen.getAllByTestId('view-in-resume');
-    fireEvent.click(viewLinks[0]);
-
-    // Should call onRequirementClick exactly once (parent handles scrollToBullet)
-    expect(onReqClick).toHaveBeenCalledTimes(1);
-    // Should NOT call scrollToBullet directly (that's the parent's job)
-    expect(mockScrollToBullet).not.toHaveBeenCalled();
-  });
+  // ─── Action buttons ────────────────────────────────────────────────────────
 
   it('shows action buttons when editing is possible', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={makePositioningAssessment()}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -417,7 +533,6 @@ describe('GapAnalysisReportPanel', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -431,11 +546,69 @@ describe('GapAnalysisReportPanel', () => {
     expect(screen.queryAllByTestId('card-actions').length).toBe(0);
   });
 
-  it('shows questions behind a click for gap cards', () => {
+  it('does NOT show Add Context on strong match cards (B3 fix)', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        currentResume={makeResume()}
+        isEditing={false}
+      />,
+    );
+
+    const strongSection = screen.getByTestId('tier-strong');
+    const strongAddContext = strongSection.querySelector('[data-testid="action-add-context"]');
+    expect(strongAddContext).toBeNull();
+
+    // But partial and gap should have Add Context
+    const partialSection = screen.getByTestId('tier-partial');
+    const partialAddContext = partialSection.querySelector('[data-testid="action-add-context"]');
+    expect(partialAddContext).toBeTruthy();
+
+    const gapSection = screen.getByTestId('tier-gap');
+    const gapAddContext = gapSection.querySelector('[data-testid="action-add-context"]');
+    expect(gapAddContext).toBeTruthy();
+  });
+
+  it('shows Strengthen button for partial items without positioning strategy', () => {
+    const ga = makeGapAnalysis({
+      requirements: [
+        { requirement: 'Cloud Infrastructure', importance: 'important', classification: 'partial', evidence: ['AWS migration'] },
+      ],
+    });
+    const ji = makeJobIntelligence({
+      core_competencies: [
+        { competency: 'Cloud Infrastructure', importance: 'important', evidence_from_jd: 'Cloud experience' },
+      ],
+    });
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={ji}
+        positioningAssessment={null}
+        gapAnalysis={ga}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        currentResume={makeResume()}
+        isEditing={false}
+      />,
+    );
+
+    expect(screen.getByTestId('action-strengthen')).toBeTruthy();
+    expect(screen.queryByTestId('action-apply-language')).toBeNull();
+  });
+
+  // ─── Questions toggle ───────────────────────────────────────────────────────
+
+  it('shows questions toggle ONLY on gap cards, collapsed by default', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -443,18 +616,25 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    const toggleBtn = screen.getByTestId('toggle-questions');
-    expect(toggleBtn.textContent).toMatch(/2 questions/);
+    // T2 fix: exactly one toggle — only the Kubernetes gap card has questions
+    const toggleBtns = screen.getAllByTestId('toggle-questions');
+    expect(toggleBtns.length).toBe(1);
+    expect(toggleBtns[0].textContent).toMatch(/2 questions/);
 
-    fireEvent.click(toggleBtn);
+    // Collapsed by default — question text not visible
+    expect(screen.queryByText(/Have you worked with K8s/)).toBeNull();
+
+    // Expand to see questions
+    fireEvent.click(toggleBtns[0]);
     expect(screen.getByText(/Have you worked with K8s/)).toBeTruthy();
   });
 
-  it('opens context input when clicking "Add My Context"', () => {
+  // ─── Add Context ───────────────────────────────────────────────────────────
+
+  it('uses requirement-specific placeholder for Add Context', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -465,10 +645,79 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
+    // Click Add Context on a partial/gap card (not strong — strong doesn't have it)
     const addContextBtns = screen.getAllByTestId('action-add-context');
     fireEvent.click(addContextBtns[0]);
 
-    expect(screen.getByPlaceholderText(/Share relevant experience/)).toBeTruthy();
+    const textarea = screen.getByRole('textbox');
+    const placeholder = textarea.getAttribute('placeholder') ?? '';
+    expect(placeholder.length).toBeGreaterThan(10);
+    expect(placeholder).not.toContain('Share relevant experience');
+  });
+
+  it('contextHint returns cloud-specific text for cloud requirements', () => {
+    const ji = makeJobIntelligence({
+      core_competencies: [
+        { competency: 'Cloud Infrastructure', importance: 'important', evidence_from_jd: 'Cloud' },
+      ],
+    });
+    const ga = makeGapAnalysis({
+      requirements: [
+        { requirement: 'Cloud Infrastructure', importance: 'important', classification: 'partial', evidence: ['AWS'] },
+      ],
+    });
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={ji}
+        positioningAssessment={null}
+        gapAnalysis={ga}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        currentResume={makeResume()}
+        isEditing={false}
+      />,
+    );
+
+    const addContextBtn = screen.getByTestId('action-add-context');
+    fireEvent.click(addContextBtn);
+
+    const textarea = screen.getByRole('textbox');
+    expect(textarea.getAttribute('placeholder')).toContain('cloud platform');
+  });
+
+  it('contextHint returns container-specific text for K8s requirements', () => {
+    // Use a gap card for Kubernetes (gap cards show Add Context)
+    const ji = makeJobIntelligence({
+      core_competencies: [
+        { competency: 'Kubernetes', importance: 'must_have', evidence_from_jd: 'K8s' },
+      ],
+    });
+    const ga = makeGapAnalysis({
+      requirements: [
+        { requirement: 'Kubernetes', importance: 'must_have', classification: 'missing', evidence: [] },
+      ],
+    });
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={ji}
+        positioningAssessment={null}
+        gapAnalysis={ga}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={vi.fn()}
+        currentResume={makeResume()}
+        isEditing={false}
+      />,
+    );
+
+    const addContextBtn = screen.getByTestId('action-add-context');
+    fireEvent.click(addContextBtn);
+
+    const textarea = screen.getByRole('textbox');
+    expect(textarea.getAttribute('placeholder')).toContain('container orchestration');
   });
 
   it('calls onRequestEdit when submitting context', () => {
@@ -477,7 +726,6 @@ describe('GapAnalysisReportPanel', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={makePositioningAssessment()}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -491,7 +739,7 @@ describe('GapAnalysisReportPanel', () => {
     const addContextBtns = screen.getAllByTestId('action-add-context');
     fireEvent.click(addContextBtns[0]);
 
-    const textarea = screen.getByPlaceholderText(/Share relevant experience/);
+    const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: 'I actually led K8s migration at my last job' } });
 
     const submitBtn = screen.getByTestId('submit-context');
@@ -501,11 +749,152 @@ describe('GapAnalysisReportPanel', () => {
     expect(onRequestEdit.mock.calls[0][2]).toBe('custom');
   });
 
+  // ─── Summary header ────────────────────────────────────────────────────────
+
+  it('shows "Coverage: X%" when no preScores provided', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    const report = screen.getByTestId('gap-analysis-report');
+    expect(report.textContent).toContain('Coverage: 67%');
+    expect(report.textContent).not.toContain('After:');
+    expect(report.textContent).not.toContain('Your starting point');
+  });
+
+  it('shows "Your starting point: X% → After: Y%" when preScores provided', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        preScores={makePreScores()}
+      />,
+    );
+
+    const report = screen.getByTestId('gap-analysis-report');
+    expect(report.textContent).toContain('Your starting point: 45%');
+    expect(report.textContent).toContain('After: 67%');
+    expect(report.textContent).not.toContain('Coverage:');
+  });
+
+  it('shows pre-score baseline even when ats_match is 0 (B4 fix)', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+        preScores={makePreScores({ ats_match: 0 })}
+      />,
+    );
+
+    const report = screen.getByTestId('gap-analysis-report');
+    expect(report.textContent).toContain('Your starting point: 0%');
+    expect(report.textContent).toContain('After:');
+  });
+
+  // ─── Tier mapping ──────────────────────────────────────────────────────────
+
+  it('maps repositioned assessment status to partial tier', () => {
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={makePositioningAssessment()}
+        gapAnalysis={makeGapAnalysis()}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    const partialSection = screen.getByTestId('tier-partial');
+    expect(partialSection.textContent).toContain('Cloud Infrastructure');
+  });
+
+  // ─── Dedup ──────────────────────────────────────────────────────────────────
+
+  it('deduplicates requirements with trailing punctuation differences', () => {
+    const ji = makeJobIntelligence({
+      core_competencies: [
+        { competency: 'Kubernetes', importance: 'must_have', evidence_from_jd: 'K8s required' },
+      ],
+    });
+    const ga = makeGapAnalysis({
+      requirements: [
+        { requirement: 'Kubernetes.', importance: 'must_have', classification: 'missing', evidence: [] },
+      ],
+    });
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={ji}
+        positioningAssessment={null}
+        gapAnalysis={ga}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByTestId('requirement-card').length).toBe(1);
+  });
+
+  // ─── Fuzzy lookup ──────────────────────────────────────────────────────────
+
+  it('uses fuzzy lookup when assessment requirement text differs slightly', () => {
+    const ji = makeJobIntelligence({
+      core_competencies: [
+        { competency: 'Cross-Functional Team Leadership', importance: 'must_have', evidence_from_jd: 'Lead teams' },
+      ],
+    });
+    const pa: PositioningAssessment = {
+      summary: 'test',
+      requirement_map: [
+        {
+          requirement: 'Team Leadership Cross-Functional',
+          importance: 'must_have',
+          status: 'strong',
+          addressed_by: [{ section: 'Experience', bullet_text: 'Led 50+ engineers' }],
+        },
+      ],
+      before_score: 50,
+      after_score: 80,
+      strategies_applied: [],
+    };
+    const ga = makeGapAnalysis({
+      requirements: [
+        { requirement: 'Cross-Functional Team Leadership', importance: 'must_have', classification: 'strong', evidence: ['Led teams'] },
+      ],
+    });
+
+    render(
+      <GapAnalysisReportPanel
+        jobIntelligence={ji}
+        positioningAssessment={pa}
+        gapAnalysis={ga}
+        activeRequirements={[]}
+        onRequirementClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('tier-strong')).toBeTruthy();
+    expect(screen.getByText(/Led 50\+ engineers/)).toBeTruthy();
+  });
+
+  // ─── Active state ──────────────────────────────────────────────────────────
+
   it('highlights active requirement card', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={['Team Leadership']}
@@ -521,261 +910,12 @@ describe('GapAnalysisReportPanel', () => {
     expect(leadershipCard!.style.boxShadow).toContain('0 0 0 1px');
   });
 
-  it('shows summary header with correct stats', () => {
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
-        positioningAssessment={makePositioningAssessment()}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    const report = screen.getByTestId('gap-analysis-report');
-    expect(report.textContent).toMatch(/67%/);
-  });
-
-  it('gracefully handles missing benchmarkCandidate', () => {
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
-        positioningAssessment={null}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getAllByTestId('requirement-card').length).toBe(3);
-    expect(screen.queryByText('The Benchmark')).toBeNull();
-  });
-
-  it('gracefully handles missing positioningAssessment', () => {
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
-        positioningAssessment={null}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryAllByTestId('view-in-resume').length).toBe(0);
-    expect(screen.getAllByText(/Not currently addressed/).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('does not render empty tier sections', () => {
-    const gapAnalysis = makeGapAnalysis({
-      requirements: [
-        {
-          requirement: 'Team Leadership',
-          importance: 'must_have',
-          classification: 'strong',
-          evidence: ['Led 120+'],
-        },
-      ],
-    });
-
-    const ji = makeJobIntelligence({
-      core_competencies: [
-        { competency: 'Team Leadership', importance: 'must_have', evidence_from_jd: 'Lead teams' },
-      ],
-    });
-
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={ji}
-        benchmarkCandidate={null}
-        positioningAssessment={null}
-        gapAnalysis={gapAnalysis}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId('tier-strong')).toBeTruthy();
-    expect(screen.queryByTestId('tier-partial')).toBeNull();
-    expect(screen.queryByTestId('tier-gap')).toBeNull();
-  });
-
-  it('shows importance badges with correct labels', () => {
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
-        positioningAssessment={null}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getAllByText('Must Have').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Important').length).toBeGreaterThanOrEqual(1);
-  });
-
-  // ─── T-2: repositioned → partial tier mapping ────────────────────────────────
-
-  it('maps repositioned assessment status to partial tier', () => {
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
-        positioningAssessment={makePositioningAssessment()}
-        gapAnalysis={makeGapAnalysis()}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    // Cloud Infrastructure has status: 'repositioned' in positioning assessment
-    // It should appear in the partial tier, not gap or a separate section
-    const partialSection = screen.getByTestId('tier-partial');
-    expect(partialSection.textContent).toContain('Cloud Infrastructure');
-  });
-
-  // ─── T-3: dedup with punctuation edge case ──────────────────────────────────
-
-  it('deduplicates requirements with trailing punctuation differences', () => {
-    const ji = makeJobIntelligence({
-      core_competencies: [
-        { competency: 'Kubernetes', importance: 'must_have', evidence_from_jd: 'K8s required' },
-      ],
-    });
-
-    // Gap analysis has the same requirement but with trailing period
-    const ga = makeGapAnalysis({
-      requirements: [
-        {
-          requirement: 'Kubernetes.',
-          importance: 'must_have',
-          classification: 'missing',
-          evidence: [],
-        },
-      ],
-    });
-
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={ji}
-        benchmarkCandidate={null}
-        positioningAssessment={null}
-        gapAnalysis={ga}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    // Should produce exactly 1 card, not 2
-    const cards = screen.getAllByTestId('requirement-card');
-    expect(cards.length).toBe(1);
-  });
-
-  // ─── T-5: fuzzy lookup path ─────────────────────────────────────────────────
-
-  it('uses fuzzy lookup when assessment requirement text differs slightly', () => {
-    const ji = makeJobIntelligence({
-      core_competencies: [
-        { competency: 'Cross-Functional Team Leadership', importance: 'must_have', evidence_from_jd: 'Lead teams' },
-      ],
-    });
-
-    // Assessment uses different wording but overlapping tokens
-    const pa: PositioningAssessment = {
-      summary: 'test',
-      requirement_map: [
-        {
-          requirement: 'Team Leadership Cross-Functional',
-          importance: 'must_have',
-          status: 'strong',
-          addressed_by: [{ section: 'Experience', bullet_text: 'Led 50+ engineers' }],
-        },
-      ],
-      before_score: 50,
-      after_score: 80,
-      strategies_applied: [],
-    };
-
-    const ga = makeGapAnalysis({
-      requirements: [
-        {
-          requirement: 'Cross-Functional Team Leadership',
-          importance: 'must_have',
-          classification: 'strong',
-          evidence: ['Led teams'],
-        },
-      ],
-    });
-
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={ji}
-        benchmarkCandidate={null}
-        positioningAssessment={pa}
-        gapAnalysis={ga}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-      />,
-    );
-
-    // Fuzzy match should find the assessment entry and place in strong tier
-    expect(screen.getByTestId('tier-strong')).toBeTruthy();
-    // Should show the bullet from the assessment
-    expect(screen.getByText(/Led 50\+ engineers/)).toBeTruthy();
-  });
-
-  // ─── M-6: partial items without strategy get Strengthen fallback ────────────
-
-  it('shows Strengthen button for partial items without positioning strategy', () => {
-    const ga = makeGapAnalysis({
-      requirements: [
-        {
-          requirement: 'Cloud Infrastructure',
-          importance: 'important',
-          classification: 'partial',
-          evidence: ['AWS migration'],
-          // No strategy
-        },
-      ],
-    });
-
-    const ji = makeJobIntelligence({
-      core_competencies: [
-        { competency: 'Cloud Infrastructure', importance: 'important', evidence_from_jd: 'Cloud experience' },
-      ],
-    });
-
-    render(
-      <GapAnalysisReportPanel
-        jobIntelligence={ji}
-        benchmarkCandidate={null}
-        positioningAssessment={null}
-        gapAnalysis={ga}
-        activeRequirements={[]}
-        onRequirementClick={vi.fn()}
-        onRequestEdit={vi.fn()}
-        currentResume={makeResume()}
-        isEditing={false}
-      />,
-    );
-
-    // Should show Strengthen as fallback (not Apply Language which requires strategy)
-    expect(screen.getByTestId('action-strengthen')).toBeTruthy();
-    expect(screen.queryByTestId('action-apply-language')).toBeNull();
-  });
-
   // ─── Accessibility ─────────────────────────────────────────────────────────
 
   it('has proper ARIA attributes on requirement cards', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={['Team Leadership']}
@@ -784,15 +924,12 @@ describe('GapAnalysisReportPanel', () => {
     );
 
     const cards = screen.getAllByTestId('requirement-card');
-    // Cards should have role="article" and tabIndex for keyboard access
     expect(cards[0].getAttribute('role')).toBe('article');
     expect(cards[0].getAttribute('tabindex')).toBe('0');
 
-    // Active card should have aria-current
     const activeCard = cards.find(c => c.getAttribute('data-requirement') === 'Team Leadership');
     expect(activeCard!.getAttribute('aria-current')).toBe('true');
 
-    // Inactive card should NOT have aria-current
     const inactiveCard = cards.find(c => c.getAttribute('data-requirement') === 'Kubernetes');
     expect(inactiveCard!.getAttribute('aria-current')).toBeNull();
   });
@@ -801,7 +938,6 @@ describe('GapAnalysisReportPanel', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={null}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -816,11 +952,10 @@ describe('GapAnalysisReportPanel', () => {
     expect(toggleBtn.getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('has aria-label on tier sections', () => {
+  it('has correct aria-label on all tier sections', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={makePositioningAssessment()}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -828,17 +963,18 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    const strongSection = screen.getByTestId('tier-strong');
-    expect(strongSection.getAttribute('aria-label')).toBe('Highly Qualified');
+    // C6: verify all three tier sections have correct aria-label
+    expect(screen.getByTestId('tier-strong').getAttribute('aria-label')).toBe('Strong Matches');
+    expect(screen.getByTestId('tier-partial').getAttribute('aria-label')).toBe('Repositioned');
+    expect(screen.getByTestId('tier-gap').getAttribute('aria-label')).toBe('Gaps');
   });
 
-  // ─── M-8: resumeStatus icon correctness ────────────────────────────────────
+  // ─── Status icons ──────────────────────────────────────────────────────────
 
-  it('shows correct status icons for addressed requirements (strong=✓, repositioned=→, gap=✗)', () => {
+  it('shows correct status icons for addressed requirements', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
-        benchmarkCandidate={null}
         positioningAssessment={makePositioningAssessment()}
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
@@ -846,12 +982,10 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    // The panel should contain both ✓ and → for strong and repositioned items
     const report = screen.getByTestId('gap-analysis-report');
     const textContent = report.textContent ?? '';
-    // Strong items show check mark
-    expect(textContent).toContain('✓');
-    // Repositioned items show arrow
-    expect(textContent).toContain('→');
+    expect(textContent).toContain('\u2713');
+    expect(textContent).toContain('\u2192');
+    expect(textContent).toContain('\u2717');
   });
 });

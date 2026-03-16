@@ -1,26 +1,22 @@
 /**
- * GapAnalysisReportPanel — Rich coaching report replacing RequirementsChecklistPanel.
+ * GapAnalysisReportPanel — Mapping-first coaching panel.
  *
- * Organized into three tiers (Strong / Partial / Gap) with the full analysis chain:
- * Target → Benchmark → You → Gap → Action.
+ * Each requirement card shows WHERE it's addressed in the resume FIRST,
+ * then conversational AI coaching, with one-click actions to apply changes.
  *
  * Design rules:
- * - 14px minimum for anything the user reads. 11px only for badge labels.
- * - Accent colors for dots, borders, and card bg tints only — never body text.
- * - All coaching content visible without clicking. Only questions behind a click.
- *
- * Note on tier mapping:
- * - PositioningAssessment has 3 statuses: 'strong', 'repositioned', 'gap'.
- * - This panel maps 'repositioned' → 'partial' tier intentionally, since
- *   partial matches and repositioned items both represent "close but not exact"
- *   and share the same coaching workflow (apply/refine positioning language).
+ * - Mapping (resume location + bullet text) is the first thing below the requirement name
+ * - AI coaching reads as prose — no labeled sections
+ * - Suggested language has Apply button ON the language block
+ * - Importance shown as subtle lowercase text, no colored pills
+ * - Only gaps get a color accent; strong/partial are neutral
+ * - Questions behind a toggle, only for gaps
  */
 
-import { useState, useMemo, useCallback, type ReactNode } from 'react';
-import { ChevronRight, MessageSquare, Sparkles, TrendingUp, BarChart3, Eye, HelpCircle } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { ChevronRight, Eye, Sparkles, TrendingUp, BarChart3, MessageSquare } from 'lucide-react';
 import type {
   JobIntelligence,
-  BenchmarkCandidate,
   PositioningAssessment,
   PositioningAssessmentEntry,
   GapAnalysis,
@@ -28,22 +24,21 @@ import type {
   ResumeDraft,
   RequirementGap,
   GapStrategy,
+  PreScores,
 } from '@/types/resume-v2';
 import type { EditAction, EditContext } from '@/hooks/useInlineEdit';
-import { importanceLabel } from '../cards/shared-badges';
 import {
   normalizeRequirement,
   findBulletForRequirement,
   buildEditContext,
   buildCoachingLookup,
 } from '../utils/coaching-actions';
-import { REPORT_COLORS, tierColor, tierBg, tierBorder, importanceBadgeStyle, type Tier } from './report-colors';
+import { REPORT_COLORS, tierColor, tierBg, tierBorder, type Tier } from './report-colors';
 
-// ─── Props (drop-in replacement for RequirementsChecklistPanel) ───────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface GapAnalysisReportPanelProps {
   jobIntelligence: JobIntelligence;
-  benchmarkCandidate: BenchmarkCandidate | null;
   positioningAssessment: PositioningAssessment | null;
   gapAnalysis: GapAnalysis;
   gapCoachingCards?: GapCoachingCard[] | null;
@@ -52,16 +47,14 @@ interface GapAnalysisReportPanelProps {
   onRequestEdit?: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: EditContext) => void;
   currentResume?: ResumeDraft | null;
   isEditing?: boolean;
+  preScores?: PreScores | null;
 }
 
-// ─── Merged requirement type ──────────────────────────────────────────────────
+// ─── Merged requirement type ─────────────────────────────────────────────────
 
 interface MergedRequirement {
   requirement: string;
   importance: 'must_have' | 'important' | 'nice_to_have';
-  evidenceFromJd: string;
-  benchmarkDescription?: string;
-  benchmarkMetrics?: string;
   tier: Tier;
   evidence: string[];
   strategy?: GapStrategy;
@@ -74,13 +67,12 @@ interface MergedRequirement {
   strategyUsed?: string;
 }
 
-// ─── Helpers (placed before component for readability and hoisting safety) ────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function tokenize(s: string): string[] {
   return s.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
 }
 
-/** Fuzzy lookup: find the best matching entry by token overlap (≥2 tokens, >50% score) */
 function fuzzyLookup<T>(key: string, map: Map<string, T>): T | undefined {
   const exact = map.get(key);
   if (exact) return exact;
@@ -104,24 +96,6 @@ function fuzzyLookup<T>(key: string, map: Map<string, T>): T | undefined {
   return best;
 }
 
-function findBenchmarkMatch(
-  requirement: string,
-  achievements: BenchmarkCandidate['expected_achievements'],
-): { description: string; typical_metrics: string } | null {
-  const needleTokens = tokenize(requirement);
-  const match = achievements.find((a) => {
-    const areaTokens = tokenize(a.area);
-    const overlap = areaTokens.filter((t) => needleTokens.includes(t)).length;
-    return overlap >= 2 || a.area.toLowerCase() === requirement.toLowerCase();
-  });
-  return match ? { description: match.description, typical_metrics: match.typical_metrics } : null;
-}
-
-/**
- * Maps gap classification + positioning assessment status to a display tier.
- * 'repositioned' → 'partial': both represent "close but not exact match" and
- * share the same coaching workflow (apply/refine positioning language).
- */
 function classificationToTier(classification: string, assessmentStatus?: string): Tier {
   if (assessmentStatus === 'strong') return 'strong';
   if (assessmentStatus === 'repositioned') return 'partial';
@@ -131,17 +105,41 @@ function classificationToTier(classification: string, assessmentStatus?: string)
   return 'gap';
 }
 
-/** Status icon for the "In Your Resume" section — explicitly handles all statuses */
-function resumeStatusIcon(status?: string): { icon: string; color: string } {
-  if (status === 'strong') return { icon: '✓', color: REPORT_COLORS.strong };
-  if (status === 'repositioned') return { icon: '→', color: REPORT_COLORS.partial };
-  return { icon: '✗', color: REPORT_COLORS.gap };
+/** Format importance as subtle lowercase text */
+function importanceText(importance: string): string {
+  switch (importance) {
+    case 'must_have': return 'must have';
+    case 'important': return 'important';
+    case 'nice_to_have': return 'nice to have';
+    default: return importance;
+  }
+}
+
+/** Generate a requirement-specific context hint */
+function contextHint(requirement: string): string {
+  const lower = requirement.toLowerCase();
+  if (lower.includes('cloud') || lower.includes('aws') || lower.includes('azure') || lower.includes('gcp')) {
+    return `I also have cloud platform experience from...`;
+  }
+  if (lower.includes('kubernetes') || lower.includes('k8s') || lower.includes('container')) {
+    return `I managed container orchestration at...`;
+  }
+  if (lower.includes('leadership') || lower.includes('team') || lower.includes('management')) {
+    return `I led a team of X at...`;
+  }
+  if (lower.includes('budget') || lower.includes('financial') || lower.includes('p&l')) {
+    return `I managed a $X budget at...`;
+  }
+  if (lower.includes('agile') || lower.includes('scrum') || lower.includes('devops')) {
+    return `I implemented ${requirement.toLowerCase()} practices at...`;
+  }
+  return `I have ${requirement.toLowerCase()} experience from...`;
 }
 
 const TIER_CONFIG: Record<Tier, { label: string; icon: string; headerLabel: string }> = {
-  strong: { label: 'Strong', icon: '\u25CF', headerLabel: 'Highly Qualified' },   // ● (solid circle, universal)
-  partial: { label: 'Partial', icon: '\u25D1', headerLabel: 'Partially Qualified' }, // ◑ (right half circle, better font coverage than ◐)
-  gap: { label: 'Gap', icon: '\u2715', headerLabel: 'True Gaps' },                // ✕ (multiplication X)
+  strong: { label: 'Strong', icon: '\u2713', headerLabel: 'Strong Matches' },
+  partial: { label: 'Partial', icon: '\u2192', headerLabel: 'Repositioned' },
+  gap: { label: 'Gap', icon: '\u2717', headerLabel: 'Gaps' },
 };
 
 // ─── Summary Header ──────────────────────────────────────────────────────────
@@ -153,6 +151,7 @@ function SummaryHeader({
   strengthSummary,
   roleTitle,
   companyName,
+  preScoreAts,
 }: {
   strongCount: number;
   partialCount: number;
@@ -160,68 +159,57 @@ function SummaryHeader({
   strengthSummary: string;
   roleTitle?: string;
   companyName?: string;
+  preScoreAts?: number | null;
 }) {
   const total = strongCount + partialCount + gapCount;
   const addressedPct = total > 0 ? Math.round(((strongCount + partialCount) / total) * 100) : 0;
 
   return (
     <div className="px-5 pt-5 pb-4 space-y-4 shrink-0 border-b border-white/[0.06]">
-      {/* Title */}
       <div>
         <h2 style={{ fontSize: 16, fontWeight: 600, color: REPORT_COLORS.heading, lineHeight: 1.3 }}>
           Gap Analysis Report
         </h2>
         {roleTitle && (
           <p style={{ fontSize: 13, color: REPORT_COLORS.secondary, marginTop: 2 }}>
-            {roleTitle}{companyName ? ` — ${companyName}` : ''}
+            {roleTitle}{companyName ? ` \u2014 ${companyName}` : ''}
           </p>
         )}
       </div>
 
-      {/* Stat boxes */}
-      <div className="flex gap-3">
-        {[
-          { count: strongCount, label: 'Strong', color: REPORT_COLORS.strong },
-          { count: partialCount, label: 'Partial', color: REPORT_COLORS.partial },
-          { count: gapCount, label: 'Gaps', color: REPORT_COLORS.gap },
-        ].map(({ count, label, color }) => (
-          <div
-            key={label}
-            className="flex-1 rounded-lg px-3 py-2 text-center"
-            style={{ backgroundColor: `${color}0A`, border: `1px solid ${color}20` }}
-          >
-            <div style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1.1 }}>{count}</div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: REPORT_COLORS.secondary, marginTop: 2 }}>{label}</div>
-          </div>
-        ))}
+      {/* Score line: starting point → after */}
+      <div className="flex items-baseline gap-2">
+        {preScoreAts != null && (
+          <span style={{ fontSize: 14, color: REPORT_COLORS.secondary }}>
+            Your starting point: {preScoreAts}%
+          </span>
+        )}
+        {preScoreAts != null && (
+          <span style={{ fontSize: 14, color: REPORT_COLORS.tertiary }}>{'\u2192'}</span>
+        )}
+        <span style={{ fontSize: 14, fontWeight: 600, color: REPORT_COLORS.heading }}>
+          {preScoreAts != null ? `After: ${addressedPct}%` : `Coverage: ${addressedPct}%`}
+        </span>
+        <span style={{ fontSize: 13, color: REPORT_COLORS.tertiary, marginLeft: 'auto' }}>
+          {strongCount + partialCount} of {total} addressed
+        </span>
       </div>
 
       {/* Progress bar */}
       {total > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <span style={{ fontSize: 13, color: REPORT_COLORS.secondary, fontWeight: 500 }}>
-              Coverage: {addressedPct}%
-            </span>
-            <span style={{ fontSize: 13, color: REPORT_COLORS.tertiary }}>
-              {strongCount + partialCount} of {total} addressed
-            </span>
-          </div>
-          <div className="h-2 w-full rounded-full overflow-hidden flex" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-            {strongCount > 0 && (
-              <div className="h-full transition-all duration-500" style={{ width: `${(strongCount / total) * 100}%`, backgroundColor: REPORT_COLORS.strong }} />
-            )}
-            {partialCount > 0 && (
-              <div className="h-full transition-all duration-500" style={{ width: `${(partialCount / total) * 100}%`, backgroundColor: REPORT_COLORS.partial }} />
-            )}
-            {gapCount > 0 && (
-              <div className="h-full transition-all duration-500" style={{ width: `${(gapCount / total) * 100}%`, backgroundColor: `${REPORT_COLORS.gap}66` }} />
-            )}
-          </div>
+        <div className="h-2 w-full rounded-full overflow-hidden flex" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+          {strongCount > 0 && (
+            <div className="h-full transition-all duration-500" style={{ width: `${(strongCount / total) * 100}%`, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+          )}
+          {partialCount > 0 && (
+            <div className="h-full transition-all duration-500" style={{ width: `${(partialCount / total) * 100}%`, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+          )}
+          {gapCount > 0 && (
+            <div className="h-full transition-all duration-500" style={{ width: `${(gapCount / total) * 100}%`, backgroundColor: 'rgba(199,91,91,0.30)' }} />
+          )}
         </div>
       )}
 
-      {/* Strength summary */}
       {strengthSummary && (
         <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
           {strengthSummary}
@@ -251,67 +239,7 @@ function TierSectionHeader({ tier, count }: { tier: Tier; count: number }) {
   );
 }
 
-// ─── Section Label (small uppercase) ─────────────────────────────────────────
-
-function SectionLabel({ children, color }: { children: ReactNode; color?: string }) {
-  return (
-    <div
-      style={{
-        fontSize: 12,
-        fontWeight: 600,
-        letterSpacing: '0.05em',
-        textTransform: 'uppercase',
-        color: color ?? REPORT_COLORS.tertiary,
-        marginBottom: 6,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ─── Action Button ───────────────────────────────────────────────────────────
-
-function ActionButton({
-  icon,
-  label,
-  color,
-  onClick,
-  testId,
-  subtle,
-}: {
-  icon: ReactNode;
-  label: string;
-  color: string;
-  onClick: () => void;
-  testId: string;
-  subtle?: boolean;
-}) {
-  const textColor = subtle ? REPORT_COLORS.secondary : color;
-  const bgColor = subtle ? 'rgba(255,255,255,0.04)' : `${color}12`;
-  const borderColor = subtle ? 'rgba(255,255,255,0.08)' : `${color}25`;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80"
-      style={{
-        fontSize: 13,
-        fontWeight: 500,
-        color: textColor,
-        backgroundColor: bgColor,
-        border: `1px solid ${borderColor}`,
-      }}
-      data-testid={testId}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-// ─── Requirement Card ────────────────────────────────────────────────────────
+// ─── Requirement Card (mapping-first layout) ─────────────────────────────────
 
 function RequirementCard({
   req,
@@ -381,19 +309,17 @@ function RequirementCard({
     setShowContext(false);
   }, [canAct, contextText, req, positioningAssessment, currentResume, onRequestEdit]);
 
-  // H-2 fix: only call onRequirementClick (parent already calls scrollToBullet)
   const handleViewInResume = useCallback(() => {
     onRequirementClick(req.requirement);
   }, [req.requirement, onRequirementClick]);
 
-  const badgeStyle = importanceBadgeStyle(req.importance);
   const questions = req.interviewQuestions ?? [];
+  const hasMapping = req.addressedBy && req.addressedBy.length > 0;
+  const metric = req.inferredMetric ?? req.strategy?.inferred_metric;
+  const metricRationale = req.inferenceRationale ?? req.strategy?.inference_rationale;
 
-  // C-1 fix: use individual border properties instead of mixing shorthand with longhand
   const borderLeft = `3px solid ${tierBorder(req.tier)}`;
-  const borderTop = isActive ? `1px solid ${color}66` : '1px solid rgba(255,255,255,0.06)';
-  const borderRight = borderTop;
-  const borderBottom = borderTop;
+  const borderOther = isActive ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.06)';
 
   return (
     <div
@@ -413,213 +339,156 @@ function RequirementCard({
       style={{
         backgroundColor: tierBg(req.tier),
         borderLeft,
-        borderTop,
-        borderRight,
-        borderBottom,
-        boxShadow: isActive ? `0 0 0 1px ${color}33` : undefined,
+        borderTop: borderOther,
+        borderRight: borderOther,
+        borderBottom: borderOther,
+        boxShadow: isActive ? '0 0 0 1px rgba(255,255,255,0.12)' : undefined,
       }}
     >
-      <div className="px-4 py-4 space-y-4">
-        {/* Header: icon + requirement + importance badge */}
+      <div className="px-4 py-4 space-y-3">
+        {/* Header: requirement name + subtle importance text */}
         <div className="flex items-start gap-2.5">
-          <span style={{ fontSize: 14, color, marginTop: 2, lineHeight: 1, flexShrink: 0 }} aria-hidden="true">{config.icon}</span>
           <span style={{ fontSize: 15, fontWeight: 500, color: REPORT_COLORS.heading, lineHeight: 1.5, flex: 1 }}>
             {req.requirement}
           </span>
           <span
-            className="rounded-full px-2 py-0.5 shrink-0"
-            style={{ fontSize: 11, fontWeight: 600, ...badgeStyle }}
+            className="shrink-0 mt-1"
+            style={{ fontSize: 13, color: REPORT_COLORS.tertiary }}
           >
-            {importanceLabel(req.importance)}
+            {importanceText(req.importance)}
           </span>
         </div>
 
-        {/* WHAT THE JOB REQUIRES */}
-        {req.evidenceFromJd && (
-          <div>
-            <SectionLabel>What the Job Requires</SectionLabel>
-            <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
-              &ldquo;{req.evidenceFromJd}&rdquo;
-            </p>
+        {/* MAPPING FIRST — where it's addressed in the resume */}
+        {hasMapping ? (
+          <div className="space-y-1.5">
+            {req.addressedBy!.map((entry, i) => (
+              <div key={`${entry.section}-${i}`} className="flex items-start gap-2">
+                <span style={{ color, fontSize: 14, marginTop: 1, flexShrink: 0 }}>
+                  {config.icon}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, color: REPORT_COLORS.secondary }}>
+                    {req.resumeStatus === 'repositioned' ? 'Repositioned in ' : ''}{entry.section}
+                  </span>
+                  <p style={{ fontSize: 14, color: REPORT_COLORS.body, marginTop: 2, lineHeight: 1.5 }}>
+                    &ldquo;{entry.bullet_text.length > 140 ? entry.bullet_text.slice(0, 140).trimEnd() + '...' : entry.bullet_text}&rdquo;
+                  </p>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={handleViewInResume}
+              className="inline-flex items-center gap-1 ml-6 hover:opacity-80 transition-opacity"
+              style={{ fontSize: 13, fontWeight: 500, color: REPORT_COLORS.secondary }}
+              data-testid="view-in-resume"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              View in Resume
+              <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span style={{ color: REPORT_COLORS.gap, fontSize: 14 }}>{'\u2717'}</span>
+            <span style={{ fontSize: 14, color: REPORT_COLORS.gap }}>
+              Not addressed in your resume
+            </span>
           </div>
         )}
 
-        {/* THE BENCHMARK */}
-        {req.benchmarkDescription && (
-          <div>
-            <SectionLabel>The Benchmark</SectionLabel>
-            <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
-              {req.benchmarkDescription}
-            </p>
-            {req.benchmarkMetrics && (
-              <p style={{ fontSize: 14, color: REPORT_COLORS.secondary, marginTop: 4 }}>
-                Typical: {req.benchmarkMetrics}
+        {/* AI coaching as prose */}
+        {req.aiReasoning && (
+          <p style={{ fontSize: 14, lineHeight: 1.7, color: REPORT_COLORS.body }}>
+            {req.aiReasoning}
+            {/* Inferred metrics inline */}
+            {metric && (
+              <span style={{ color: REPORT_COLORS.secondary }}>
+                {' '}{metric}{metricRationale ? ` \u2014 ${metricRationale}` : ''}
+              </span>
+            )}
+          </p>
+        )}
+
+        {/* Inferred metric standalone (when no AI reasoning to attach to) */}
+        {!req.aiReasoning && metric && (
+          <p style={{ fontSize: 14, color: REPORT_COLORS.secondary }}>
+            {metric}{metricRationale ? ` \u2014 ${metricRationale}` : ''}
+          </p>
+        )}
+
+        {/* Suggested language block with Apply button ON it */}
+        {req.strategy?.positioning && (
+          <div
+            className="rounded-lg px-4 py-3 relative"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.10)',
+            }}
+          >
+            {req.tier === 'gap' && (
+              <p style={{ fontSize: 13, color: REPORT_COLORS.tertiary, marginBottom: 6 }}>
+                If you have this experience, we can add it:
               </p>
+            )}
+            <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading }}>
+              &ldquo;{req.strategy.positioning}&rdquo;
+            </p>
+            {canAct && (
+              <div className="flex justify-end mt-2">
+                <button
+                  type="button"
+                  onClick={handleApplyLanguage}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: REPORT_COLORS.heading,
+                    backgroundColor: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                  }}
+                  data-testid="action-apply-language"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {req.tier === 'gap' ? 'Add to Resume' : 'Apply'}
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
             )}
           </div>
         )}
 
-        {/* YOUR EVIDENCE */}
-        <div>
-          <SectionLabel>Your Evidence</SectionLabel>
-          {req.evidence.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {req.evidence.map((e) => (
-                <span
-                  key={e}
-                  className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1"
-                  style={{
-                    fontSize: 14,
-                    color: REPORT_COLORS.body,
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                  }}
-                >
-                  <span style={{ color: REPORT_COLORS.strong, fontSize: 11 }} aria-hidden="true">&#x2713;</span>
-                  {e}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p style={{ fontSize: 14, color: REPORT_COLORS.secondary, fontStyle: 'italic' }}>
-              No direct evidence found in resume.
-            </p>
-          )}
-        </div>
-
-        {/* AI ANALYSIS / WHY PARTIAL / WHY THIS IS A GAP */}
-        {req.aiReasoning && (
-          <div>
-            <SectionLabel color={`${color}99`}>
-              {req.tier === 'strong' ? 'AI Analysis' : req.tier === 'partial' ? 'Why Partial' : 'Why This Is a Gap'}
-            </SectionLabel>
-            <p style={{ fontSize: 14, lineHeight: 1.7, color: REPORT_COLORS.body }}>
-              {req.aiReasoning}
-            </p>
-          </div>
-        )}
-
-        {/* SUGGESTED LANGUAGE / SAFE LANGUAGE */}
-        {req.strategy?.positioning && (
-          <div>
-            <SectionLabel color={`${color}99`}>
-              {req.tier === 'gap' ? 'Safe Language (if you can confirm experience)' : 'Suggested Language'}
-            </SectionLabel>
-            <div
-              className="rounded-lg px-4 py-3"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.03)',
-                border: `1px dashed ${color}33`,
-              }}
-            >
-              <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading, fontStyle: 'italic' }}>
-                &ldquo;{req.strategy.positioning}&rdquo;
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* INFERRED METRIC */}
-        {(req.inferredMetric || req.strategy?.inferred_metric) && (
-          <div>
-            <SectionLabel>Inferred Metric</SectionLabel>
-            <div className="flex items-start gap-2">
-              <BarChart3 className="h-4 w-4 shrink-0 mt-0.5" style={{ color: REPORT_COLORS.partial }} />
-              <div>
-                <span style={{ fontSize: 14, color: REPORT_COLORS.body }}>
-                  {req.inferredMetric ?? req.strategy?.inferred_metric}
-                </span>
-                {(req.inferenceRationale || req.strategy?.inference_rationale) && (
-                  <span style={{ fontSize: 14, color: REPORT_COLORS.secondary }}>
-                    {' '}&mdash; {req.inferenceRationale ?? req.strategy?.inference_rationale}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* IN YOUR RESUME */}
-        <div>
-          <SectionLabel>In Your Resume</SectionLabel>
-          {req.addressedBy && req.addressedBy.length > 0 ? (
-            <div className="space-y-2">
-              {req.addressedBy.map((entry, i) => {
-                const statusVis = resumeStatusIcon(req.resumeStatus);
-                return (
-                  <div key={`${entry.section}-${i}`} className="flex items-start gap-2">
-                    <span style={{ color: statusVis.color, fontSize: 14, marginTop: 1 }}>
-                      {statusVis.icon}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span
-                        className="rounded px-1.5 py-0.5"
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: REPORT_COLORS.secondary,
-                          backgroundColor: 'rgba(255,255,255,0.06)',
-                        }}
-                      >
-                        {entry.section}
-                      </span>
-                      <p style={{ fontSize: 14, color: REPORT_COLORS.body, marginTop: 4, lineHeight: 1.5 }}>
-                        &ldquo;{entry.bullet_text.length > 120 ? entry.bullet_text.slice(0, 120).trimEnd() + '...' : entry.bullet_text}&rdquo;
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-              <button
-                type="button"
-                onClick={handleViewInResume}
-                className="inline-flex items-center gap-1 mt-1 hover:opacity-80 transition-opacity"
-                style={{ fontSize: 14, fontWeight: 500, color }}
-                data-testid="view-in-resume"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                View in Resume
-                <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
-          ) : (
-            <p style={{ fontSize: 14, color: REPORT_COLORS.gap }}>
-              &#x2717; Not currently addressed
-            </p>
-          )}
-        </div>
-
-        {/* QUESTIONS (behind a click) */}
-        {questions.length > 0 && (
+        {/* Questions toggle — only for gaps, collapsed by default */}
+        {questions.length > 0 && req.tier === 'gap' && (
           <div>
             <button
               type="button"
               onClick={() => setQuestionsExpanded(!questionsExpanded)}
               className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-              style={{ fontSize: 14, fontWeight: 500, color: REPORT_COLORS.secondary }}
+              style={{ fontSize: 13, color: REPORT_COLORS.secondary }}
               aria-expanded={questionsExpanded}
               data-testid="toggle-questions"
             >
-              <HelpCircle className="h-3.5 w-3.5" />
-              {questionsExpanded ? 'Hide' : `${questions.length} question${questions.length !== 1 ? 's' : ''} to close this gap`}
               <ChevronRight
                 className="h-3 w-3 transition-transform duration-200"
                 style={{ transform: questionsExpanded ? 'rotate(90deg)' : 'none' }}
               />
+              {questionsExpanded ? 'Hide questions' : `${questions.length} question${questions.length !== 1 ? 's' : ''} to uncover evidence`}
             </button>
             {questionsExpanded && (
-              <div className="mt-3 space-y-3">
+              <div className="mt-2 space-y-2 ml-5">
                 {questions.map((q, i) => (
                   <div
                     key={`q-${i}`}
-                    className="rounded-lg px-3.5 py-3"
+                    className="rounded-lg px-3.5 py-2.5"
                     style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                   >
                     <p style={{ fontSize: 14, fontWeight: 500, color: REPORT_COLORS.heading, lineHeight: 1.5 }}>
                       {q.question}
                     </p>
                     {q.looking_for && (
-                      <p style={{ fontSize: 14, color: REPORT_COLORS.tertiary, marginTop: 4 }}>
+                      <p style={{ fontSize: 13, color: REPORT_COLORS.tertiary, marginTop: 2 }}>
                         Looking for: {q.looking_for}
                       </p>
                     )}
@@ -630,13 +499,13 @@ function RequirementCard({
           </div>
         )}
 
-        {/* Context input (revealed on click) */}
+        {/* Context input */}
         {showContext && (
           <div className="space-y-2">
             <textarea
               value={contextText}
               onChange={(e) => setContextText(e.target.value)}
-              placeholder="Share relevant experience, projects, or context not in your resume..."
+              placeholder={contextHint(req.requirement)}
               rows={3}
               className="w-full rounded-lg px-3.5 py-2.5 resize-none focus:outline-none transition-colors"
               style={{
@@ -644,8 +513,7 @@ function RequirementCard({
                 lineHeight: 1.6,
                 color: REPORT_COLORS.heading,
                 backgroundColor: 'rgba(255,255,255,0.04)',
-                border: `1px solid ${color}33`,
-                caretColor: color,
+                border: '1px solid rgba(255,255,255,0.15)',
               }}
               aria-label={`Additional context for: ${req.requirement}`}
             />
@@ -655,7 +523,13 @@ function RequirementCard({
                 disabled={!contextText.trim() || isEditing}
                 onClick={handleSubmitContext}
                 className="rounded-lg px-3 py-1.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{ fontSize: 14, fontWeight: 500, color, backgroundColor: `${color}1A`, border: `1px solid ${color}33` }}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: REPORT_COLORS.heading,
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                }}
                 data-testid="submit-context"
               >
                 Submit &amp; Rewrite
@@ -663,7 +537,7 @@ function RequirementCard({
               <button
                 type="button"
                 onClick={() => { setShowContext(false); setContextText(''); }}
-                style={{ fontSize: 14, color: REPORT_COLORS.tertiary }}
+                style={{ fontSize: 13, color: REPORT_COLORS.tertiary }}
                 className="px-2 hover:opacity-80 transition-opacity"
               >
                 Cancel
@@ -677,33 +551,75 @@ function RequirementCard({
           <div className="flex items-center gap-2 flex-wrap" data-testid="card-actions">
             {req.tier === 'strong' && (
               <>
-                <ActionButton icon={<TrendingUp className="h-3.5 w-3.5" />} label="Strengthen" color={REPORT_COLORS.strong} onClick={handleStrengthen} testId="action-strengthen" />
-                <ActionButton icon={<BarChart3 className="h-3.5 w-3.5" />} label="Add Metrics" color={REPORT_COLORS.partial} onClick={handleAddMetrics} testId="action-add-metrics" />
+                <button
+                  type="button"
+                  onClick={handleStrengthen}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: REPORT_COLORS.secondary,
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                  data-testid="action-strengthen"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Strengthen
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddMetrics}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: REPORT_COLORS.secondary,
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                  data-testid="action-add-metrics"
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Add Metrics
+                </button>
               </>
             )}
-            {req.tier === 'partial' && (
-              <>
-                {req.strategy?.positioning && (
-                  <ActionButton icon={<Sparkles className="h-3.5 w-3.5" />} label="Apply Language" color={color} onClick={handleApplyLanguage} testId="action-apply-language" />
-                )}
-                {/* M-6 fix: fallback Strengthen for partial items without positioning strategy */}
-                {!req.strategy?.positioning && (
-                  <ActionButton icon={<TrendingUp className="h-3.5 w-3.5" />} label="Strengthen" color={REPORT_COLORS.strong} onClick={handleStrengthen} testId="action-strengthen" />
-                )}
-              </>
+            {req.tier === 'partial' && !req.strategy?.positioning && (
+              <button
+                type="button"
+                onClick={handleStrengthen}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: REPORT_COLORS.secondary,
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+                data-testid="action-strengthen"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+                Strengthen
+              </button>
             )}
-            {req.tier === 'gap' && req.strategy?.positioning && (
-              <ActionButton icon={<Sparkles className="h-3.5 w-3.5" />} label="Apply Safe Language" color={color} onClick={handleApplyLanguage} testId="action-apply-language" />
-            )}
-            {!showContext && (
-              <ActionButton
-                icon={<MessageSquare className="h-3.5 w-3.5" />}
-                label="Add My Context"
-                color={REPORT_COLORS.secondary}
+            {!showContext && req.tier !== 'strong' && (
+              <button
+                type="button"
                 onClick={() => setShowContext(true)}
-                testId="action-add-context"
-                subtle
-              />
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: REPORT_COLORS.secondary,
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+                data-testid="action-add-context"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Add Context
+              </button>
             )}
           </div>
         )}
@@ -716,7 +632,6 @@ function RequirementCard({
 
 export function GapAnalysisReportPanel({
   jobIntelligence,
-  benchmarkCandidate,
   positioningAssessment,
   gapAnalysis,
   gapCoachingCards,
@@ -725,14 +640,13 @@ export function GapAnalysisReportPanel({
   onRequestEdit,
   currentResume,
   isEditing,
+  preScores,
 }: GapAnalysisReportPanelProps) {
-  // Build lookups
   const coachingLookup = useMemo(
     () => buildCoachingLookup(gapCoachingCards ?? null),
     [gapCoachingCards],
   );
 
-  // C-2 fix: use explicit PositioningAssessmentEntry type instead of conditional type
   const assessmentMap = useMemo(() => {
     const map = new Map<string, PositioningAssessmentEntry>();
     if (!positioningAssessment?.requirement_map) return map;
@@ -750,13 +664,10 @@ export function GapAnalysisReportPanel({
     return map;
   }, [gapAnalysis]);
 
-  // Merge all data sources into MergedRequirement[]
   const merged = useMemo(() => {
-    // H-4 fix: use normalizeRequirement for dedup (handles trailing punctuation)
     const seen = new Set<string>();
     const result: MergedRequirement[] = [];
 
-    // Primary source: core_competencies from JobIntelligence
     for (const comp of jobIntelligence.core_competencies) {
       const normalizedKey = normalizeRequirement(comp.competency);
       seen.add(normalizedKey);
@@ -765,9 +676,6 @@ export function GapAnalysisReportPanel({
       const coaching = coachingLookup.get(normalizedKey)?.card;
       const rawKey = comp.competency.trim().toLowerCase();
       const assessment = assessmentMap.get(rawKey) ?? fuzzyLookup(rawKey, assessmentMap);
-      const benchmark = benchmarkCandidate
-        ? findBenchmarkMatch(comp.competency, benchmarkCandidate.expected_achievements)
-        : null;
 
       const tier = classificationToTier(
         gapReq?.classification ?? 'missing',
@@ -777,9 +685,6 @@ export function GapAnalysisReportPanel({
       result.push({
         requirement: comp.competency,
         importance: comp.importance,
-        evidenceFromJd: comp.evidence_from_jd ?? '',
-        benchmarkDescription: benchmark?.description,
-        benchmarkMetrics: benchmark?.typical_metrics,
         tier,
         evidence: coaching?.evidence_found ?? gapReq?.evidence ?? [],
         strategy: gapReq?.strategy,
@@ -793,9 +698,7 @@ export function GapAnalysisReportPanel({
       });
     }
 
-    // Additional gaps from gap analysis not in core_competencies
     for (const req of gapAnalysis.requirements) {
-      // H-4 fix: use normalizeRequirement for dedup (consistent with seen set)
       const normalizedKey = normalizeRequirement(req.requirement);
       if (seen.has(normalizedKey)) continue;
       if (req.classification !== 'missing') continue;
@@ -805,7 +708,6 @@ export function GapAnalysisReportPanel({
       result.push({
         requirement: req.requirement,
         importance: req.importance,
-        evidenceFromJd: '',
         tier: 'gap',
         evidence: coaching?.evidence_found ?? req.evidence ?? [],
         strategy: req.strategy,
@@ -817,9 +719,8 @@ export function GapAnalysisReportPanel({
     }
 
     return result;
-  }, [jobIntelligence, gapAnalysis, coachingLookup, assessmentMap, gapReqLookup, benchmarkCandidate]);
+  }, [jobIntelligence, gapAnalysis, coachingLookup, assessmentMap, gapReqLookup]);
 
-  // Group by tier
   const tiers = useMemo(() => {
     const groups: Record<Tier, MergedRequirement[]> = { strong: [], partial: [], gap: [] };
     for (const req of merged) {
@@ -835,14 +736,12 @@ export function GapAnalysisReportPanel({
 
   return (
     <div
-      className="h-full overflow-y-auto"
       data-testid="gap-analysis-report"
       style={{
         background: 'rgba(10,12,20,0.85)',
         backdropFilter: 'blur(12px)',
       }}
     >
-      {/* Summary header */}
       <SummaryHeader
         strongCount={tiers.strong.length}
         partialCount={tiers.partial.length}
@@ -850,9 +749,9 @@ export function GapAnalysisReportPanel({
         strengthSummary={gapAnalysis.strength_summary}
         roleTitle={jobIntelligence.role_title}
         companyName={jobIntelligence.company_name}
+        preScoreAts={preScores?.ats_match}
       />
 
-      {/* Tier sections */}
       <div className="pb-6">
         {(['strong', 'partial', 'gap'] as Tier[]).map((tier) => {
           const items = tiers[tier];

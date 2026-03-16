@@ -395,19 +395,21 @@ export function V2StreamingDisplay({
         {/* Split-screen: left gap analysis report + right resume (stacked on mobile) */}
         <div className="flex-1 flex min-h-0">
           {/* ─── Left panel: Requirements Checklist (hidden below md breakpoint) ─── */}
-          <div className="hidden md:block md:w-[35%] md:min-w-[280px] md:max-w-[420px] border-r border-white/[0.06] overflow-y-auto" style={{ maxHeight: '100%' }}>
-            <GapAnalysisReportPanel
-              jobIntelligence={data.jobIntelligence!}
-              benchmarkCandidate={data.benchmarkCandidate ?? null}
-              positioningAssessment={data.assembly?.positioning_assessment ?? null}
-              gapAnalysis={data.gapAnalysis!}
-              activeRequirements={activeRequirements}
-              onRequirementClick={handleRequirementClick}
-              gapCoachingCards={gapCoachingCards}
-              onRequestEdit={canEdit ? onRequestEdit : undefined}
-              currentResume={displayResume}
-              isEditing={isEditing}
-            />
+          <div className="hidden md:block md:w-1/2 border-r border-white/[0.06] relative">
+            <div className="absolute inset-0 overflow-y-auto">
+              <GapAnalysisReportPanel
+                jobIntelligence={data.jobIntelligence!}
+                positioningAssessment={data.assembly?.positioning_assessment ?? null}
+                gapAnalysis={data.gapAnalysis!}
+                activeRequirements={activeRequirements}
+                onRequirementClick={handleRequirementClick}
+                gapCoachingCards={gapCoachingCards}
+                onRequestEdit={canEdit ? onRequestEdit : undefined}
+                currentResume={displayResume}
+                isEditing={isEditing}
+                preScores={preScores}
+              />
+            </div>
           </div>
 
           {/* ─── Right panel: Resume + editing + tools ─── */}
