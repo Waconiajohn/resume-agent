@@ -13,13 +13,15 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronRight, Eye, Sparkles, TrendingUp, MessageSquare, Check, MessagesSquare } from 'lucide-react';
+import { ChevronRight, Eye, Sparkles, TrendingUp, MessageSquare, MessagesSquare } from 'lucide-react';
 import type {
   JobIntelligence,
   PositioningAssessment,
   PositioningAssessmentEntry,
   GapAnalysis,
   GapCoachingCard,
+  RequirementCoverageBreakdown,
+  RequirementSource,
   ResumeDraft,
   RequirementGap,
   GapStrategy,
@@ -65,10 +67,12 @@ interface GapAnalysisReportPanelProps {
 
 interface MergedRequirement {
   requirement: string;
+  source?: RequirementSource;
   importance: 'must_have' | 'important' | 'nice_to_have';
   tier: Tier;
   evidence: string[];
   evidenceFromJd?: string;
+  sourceEvidence?: string;
   benchmarkContext?: string;
   strategy?: GapStrategy;
   aiReasoning?: string;
@@ -161,36 +165,41 @@ function tierStatusLabel(tier: Tier): 'strong' | 'repositioned' | 'gap' {
 
 function SummaryHeader({
   importanceCounts,
-  appliedCount,
   total,
   strengthSummary,
   roleTitle,
   companyName,
   preScoreAts,
+  scoreBreakdown,
   strongCount,
   partialCount,
   gapCount,
 }: {
   importanceCounts: Record<string, { total: number; addressed: number }>;
-  appliedCount: number;
   total: number;
   strengthSummary: string;
   roleTitle?: string;
   companyName?: string;
   preScoreAts?: number | null;
+  scoreBreakdown?: {
+    job_description: RequirementCoverageBreakdown;
+    benchmark: RequirementCoverageBreakdown;
+  } | null;
   strongCount: number;
   partialCount: number;
   gapCount: number;
 }) {
-  const addressedCount = strongCount + partialCount + appliedCount;
+  const addressedCount = strongCount + partialCount;
   const addressedPct = total > 0 ? Math.round((addressedCount / total) * 100) : 0;
+  const jdCoverage = scoreBreakdown?.job_description?.coverage_score ?? addressedPct;
+  const benchmarkCoverage = scoreBreakdown?.benchmark?.coverage_score ?? null;
 
   return (
     <div className="px-5 pt-5 pb-4 space-y-4 shrink-0 border-b border-white/[0.06]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: REPORT_COLORS.heading, lineHeight: 1.3 }}>
-            Gap Analysis
+            Requirement Coverage
           </h2>
           {roleTitle && (
             <p style={{ fontSize: 13, color: REPORT_COLORS.secondary, marginTop: 2 }}>
@@ -201,7 +210,7 @@ function SummaryHeader({
         {preScoreAts != null && (
           <div className="text-right shrink-0">
             <span style={{ fontSize: 20, fontWeight: 700, color: REPORT_COLORS.heading }}>
-              {preScoreAts}% <span style={{ fontSize: 14, fontWeight: 400, color: REPORT_COLORS.tertiary }}>{'\u2192'}</span> {addressedPct}%
+              {preScoreAts}% <span style={{ fontSize: 14, fontWeight: 400, color: REPORT_COLORS.tertiary }}>{'\u2192'}</span> {jdCoverage}%
             </span>
           </div>
         )}
@@ -222,34 +231,79 @@ function SummaryHeader({
         </div>
       )}
 
-      {/* Per-importance breakdown + addressed count */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <span style={{ fontSize: 13, color: REPORT_COLORS.secondary }}>
-          {addressedCount} of {total} addressed
-        </span>
-        <span style={{ fontSize: 11, color: REPORT_COLORS.tertiary }}>{'\u00b7'}</span>
-        {IMPORTANCE_ORDER.map((imp) => {
-          const counts = importanceCounts[imp];
-          if (!counts || counts.total === 0) return null;
-          return (
-            <span key={imp} style={{ fontSize: 12, color: REPORT_COLORS.tertiary }}>
-              {importanceLabel(imp)}: {counts.addressed}/{counts.total}
-            </span>
-          );
-        })}
-      </div>
-
-      {!preScoreAts && total > 0 && (
-        <div style={{ fontSize: 14, fontWeight: 600, color: REPORT_COLORS.heading }}>
-          Coverage: {addressedPct}%
-        </div>
-      )}
-
       {strengthSummary && (
         <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.body }}>
           {strengthSummary}
         </p>
       )}
+
+      <div
+        className="rounded-xl px-4 py-3 space-y-3"
+        style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: REPORT_COLORS.body }}>
+          We check every job description requirement first, then compare you to a benchmark candidate so weak postings do not produce weak resumes.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div
+            className="rounded-lg px-3 py-2"
+            style={{ backgroundColor: 'rgba(175,196,255,0.08)', border: '1px solid rgba(175,196,255,0.14)' }}
+          >
+            <p style={{ fontSize: 11, color: REPORT_COLORS.tertiary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Job Description Fit
+            </p>
+            <p style={{ fontSize: 13, color: REPORT_COLORS.heading, marginTop: 4 }}>
+              {scoreBreakdown?.job_description.addressed ?? addressedCount}/{scoreBreakdown?.job_description.total ?? total} addressed ({jdCoverage}%)
+            </p>
+            <p style={{ fontSize: 12, color: REPORT_COLORS.secondary, marginTop: 4 }}>
+              This is the ATS-critical score.
+            </p>
+          </div>
+          <div
+            className="rounded-lg px-3 py-2"
+            style={{ backgroundColor: 'rgba(240,217,159,0.08)', border: '1px solid rgba(240,217,159,0.14)' }}
+          >
+            <p style={{ fontSize: 11, color: REPORT_COLORS.tertiary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Benchmark Alignment
+            </p>
+            <p style={{ fontSize: 13, color: REPORT_COLORS.heading, marginTop: 4 }}>
+              {scoreBreakdown?.benchmark.addressed ?? 0}/{scoreBreakdown?.benchmark.total ?? 0} addressed ({benchmarkCoverage ?? 0}%)
+            </p>
+            <p style={{ fontSize: 12, color: REPORT_COLORS.secondary, marginTop: 4 }}>
+              This shows where we can strengthen positioning.
+            </p>
+          </div>
+        </div>
+        <p style={{ fontSize: 12, lineHeight: 1.5, color: REPORT_COLORS.tertiary }}>
+          Green means the resume already supports the requirement. Blue means we can strengthen or reframe it truthfully. Red means it is still missing or only partly supported.
+        </p>
+        <p style={{ fontSize: 12, lineHeight: 1.6, color: REPORT_COLORS.tertiary }}>
+          1. Confirm the green items. 2. For blue or red items, add detail or coach the AI. 3. Nothing counts as addressed until you approve the edit on the resume.
+        </p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span style={{ fontSize: 13, color: REPORT_COLORS.secondary }}>
+            {addressedCount} of {total} addressed
+          </span>
+          <span style={{ fontSize: 11, color: REPORT_COLORS.tertiary }}>{'\u00b7'}</span>
+          {IMPORTANCE_ORDER.map((imp) => {
+            const counts = importanceCounts[imp];
+            if (!counts || counts.total === 0) return null;
+            return (
+              <span key={imp} style={{ fontSize: 12, color: REPORT_COLORS.tertiary }}>
+                {importanceLabel(imp)}: {counts.addressed}/{counts.total}
+              </span>
+            );
+          })}
+          {!preScoreAts && total > 0 && (
+            <>
+              <span style={{ fontSize: 11, color: REPORT_COLORS.tertiary }}>{'\u00b7'}</span>
+              <span style={{ fontSize: 12, color: REPORT_COLORS.tertiary }}>
+                Coverage: {jdCoverage}%
+              </span>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -276,46 +330,6 @@ function ImportanceGroupHeader({ importance, count }: { importance: string; coun
   );
 }
 
-// ─── Applied (collapsed) Card ────────────────────────────────────────────────
-
-function AppliedCard({
-  req,
-  onExpand,
-}: {
-  req: MergedRequirement;
-  onExpand: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onExpand}
-      data-testid="applied-card"
-      data-requirement={req.requirement}
-      className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-colors hover:bg-white/[0.03]"
-      style={{
-        borderLeft: '3px solid rgba(181,222,194,0.30)',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      <span className="flex items-center justify-center h-5 w-5 rounded-full" style={{ backgroundColor: 'rgba(181,222,194,0.15)' }}>
-        <Check className="h-3 w-3" style={{ color: '#b5dec2' }} />
-      </span>
-      <span style={{ fontSize: 14, color: REPORT_COLORS.secondary, flex: 1, textAlign: 'left' }}>
-        {req.requirement}
-      </span>
-      <span
-        className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-        style={{ color: '#b5dec2', backgroundColor: 'rgba(181,222,194,0.10)' }}
-        data-testid="applied-badge"
-      >
-        Applied
-      </span>
-    </button>
-  );
-}
-
 // ─── Requirement Card (mapping-first layout) ─────────────────────────────────
 
 function RequirementCard({
@@ -326,7 +340,6 @@ function RequirementCard({
   currentResume,
   positioningAssessment,
   isEditing,
-  onApply,
   gapChat,
   buildChatContext,
 }: {
@@ -337,7 +350,6 @@ function RequirementCard({
   currentResume?: ResumeDraft | null;
   positioningAssessment: PositioningAssessment | null;
   isEditing?: boolean;
-  onApply: (requirement: string) => void;
   gapChat?: GapChatHook | null;
   buildChatContext?: (requirement: string) => GapChatContext;
 }) {
@@ -367,16 +379,14 @@ function RequirementCard({
       `Naturally weave this ${label} into the text: "${req.strategy.positioning}". This addresses the job requirement: "${req.requirement}".`,
       buildEditContext(req.requirement, req.evidence, req.strategy.positioning),
     );
-    onApply(req.requirement);
-  }, [canAct, req, positioningAssessment, currentResume, onRequestEdit, onApply]);
+  }, [canAct, req, positioningAssessment, currentResume, onRequestEdit]);
 
   const handleStrengthen = useCallback(() => {
     if (!canAct) return;
     const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
     if (!target) return;
     onRequestEdit!(target.text, target.section, 'strengthen', undefined, buildEditContext(req.requirement, req.evidence, req.strategy?.positioning));
-    onApply(req.requirement);
-  }, [canAct, req, positioningAssessment, currentResume, onRequestEdit, onApply]);
+  }, [canAct, req, positioningAssessment, currentResume, onRequestEdit]);
 
   const handleSubmitContext = useCallback(() => {
     if (!canAct || !contextText.trim()) return;
@@ -391,8 +401,7 @@ function RequirementCard({
     );
     setContextText('');
     setShowContext(false);
-    onApply(req.requirement);
-  }, [canAct, contextText, req, positioningAssessment, currentResume, onRequestEdit, onApply]);
+  }, [canAct, contextText, req, positioningAssessment, currentResume, onRequestEdit]);
 
   const handleViewInResume = useCallback(() => {
     onRequirementClick(req.requirement);
@@ -432,7 +441,7 @@ function RequirementCard({
       }}
     >
       <div className="px-4 py-4 space-y-3">
-        {/* Header: requirement name + importance pill + status badge */}
+        {/* Header: requirement name + source */}
         <div className="flex items-start gap-2.5">
           <span style={{ color, fontSize: 15, marginTop: 2, flexShrink: 0 }}>
             {config.icon}
@@ -442,11 +451,17 @@ function RequirementCard({
               <span style={{ fontSize: 15, fontWeight: 500, color: REPORT_COLORS.heading, lineHeight: 1.5, flex: 1 }}>
                 {req.requirement}
               </span>
-              <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0 mt-0.5"
-                style={importanceStyle(req.importance)}
-                data-testid="importance-pill"
-              >
+            </div>
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              {req.source && (
+                <>
+                  <span style={{ fontSize: 11, color: REPORT_COLORS.tertiary }}>
+                    Source: {req.source === 'job_description' ? 'Job description' : 'Benchmark standard'}
+                  </span>
+                  <span style={{ fontSize: 11, color: REPORT_COLORS.tertiary }}>{'\u00b7'}</span>
+                </>
+              )}
+              <span style={{ fontSize: 11, color: REPORT_COLORS.tertiary }}>
                 {importanceLabel(req.importance)}
               </span>
             </div>
@@ -454,6 +469,11 @@ function RequirementCard({
             {req.evidenceFromJd && (
               <p style={{ fontSize: 13, color: REPORT_COLORS.tertiary, marginTop: 2, lineHeight: 1.4 }} data-testid="jd-evidence">
                 &ldquo;{req.evidenceFromJd}&rdquo;
+              </p>
+            )}
+            {!req.evidenceFromJd && req.sourceEvidence && (
+              <p style={{ fontSize: 13, color: REPORT_COLORS.tertiary, marginTop: 2, lineHeight: 1.4 }}>
+                {req.sourceEvidence}
               </p>
             )}
           </div>
@@ -486,6 +506,9 @@ function RequirementCard({
         {/* MAPPING — where it's addressed in the resume */}
         {hasMapping ? (
           <div className="space-y-1.5">
+            <p style={{ fontSize: 12, color: REPORT_COLORS.secondary }}>
+              Already supported in your resume:
+            </p>
             {req.addressedBy!.map((entry, i) => (
               <div key={`${entry.section}-${i}`} className="flex items-start gap-2">
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -514,7 +537,7 @@ function RequirementCard({
           <div className="flex items-center gap-2">
             <span style={{ color: tierColor('gap'), fontSize: 14 }}>{'\u2717'}</span>
             <span style={{ fontSize: 14, color: tierColor('gap') }}>
-              Not addressed in your resume
+              Not yet proven in your resume
             </span>
           </div>
         )}
@@ -557,6 +580,19 @@ function RequirementCard({
           </div>
         )}
 
+        {req.tier !== 'strong' && (
+          <div
+            className="rounded-lg px-3.5 py-3"
+            style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <p style={{ fontSize: 13, lineHeight: 1.6, color: REPORT_COLORS.body }}>
+              {req.tier === 'partial'
+                ? 'You are at least partly qualified here. Tighten the wording or add missing detail before you count this as covered.'
+                : 'This requirement still needs proof. Add real detail, brainstorm adjacent experience, or leave it marked as only partially addressed.'}
+            </p>
+          </div>
+        )}
+
         {/* Suggested language block with Apply button ON it */}
         {req.strategy?.positioning && (
           <div
@@ -568,7 +604,12 @@ function RequirementCard({
           >
             {req.tier === 'gap' && (
               <p style={{ fontSize: 13, color: REPORT_COLORS.tertiary, marginBottom: 6 }}>
-                If you have this experience, we can add it:
+                Use this only if it is true and you can support it:
+              </p>
+            )}
+            {req.tier !== 'gap' && (
+              <p style={{ fontSize: 13, color: REPORT_COLORS.tertiary, marginBottom: 6 }}>
+                Suggested resume wording:
               </p>
             )}
             <p style={{ fontSize: 14, lineHeight: 1.65, color: REPORT_COLORS.heading }}>
@@ -590,7 +631,7 @@ function RequirementCard({
                   data-testid="action-apply-language"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  {req.tier === 'gap' ? 'Add to Resume' : 'Apply'}
+                  Review Edit
                   <ChevronRight className="h-3 w-3" />
                 </button>
               </div>
@@ -705,7 +746,7 @@ function RequirementCard({
                 data-testid="action-strengthen"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
-                Strengthen
+                Improve Wording
               </button>
             )}
             {req.tier === 'partial' && !req.strategy?.positioning && (
@@ -723,7 +764,7 @@ function RequirementCard({
                 data-testid="action-strengthen"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
-                Strengthen
+                Improve Wording
               </button>
             )}
             {!showContext && req.tier !== 'strong' && (
@@ -741,7 +782,7 @@ function RequirementCard({
                 data-testid="action-add-context"
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-                Add Context
+                Add Details
               </button>
             )}
             {gapChat && buildChatContext && req.tier !== 'strong' && !showChat && !chatResolved && (
@@ -759,7 +800,7 @@ function RequirementCard({
                 data-testid="action-coach-me"
               >
                 <MessagesSquare className="h-3.5 w-3.5" />
-                Coach Me
+                Brainstorm
               </button>
             )}
           </div>
@@ -786,7 +827,6 @@ function RequirementCard({
               const editTarget = target ?? fallbackTarget;
               if (!editTarget) return; // No resume content to edit — don't fake "Applied"
 
-              gapChat.acceptLanguage(requirement, language);
               onRequestEdit!(
                 editTarget.text,
                 editTarget.section,
@@ -794,7 +834,6 @@ function RequirementCard({
                 `Naturally integrate this coached resume language into the text: "${language}". This addresses the job requirement: "${req.requirement}".`,
                 buildEditContext(req.requirement, req.evidence, language),
               );
-              onApply(req.requirement);
             }}
             context={chatCtx!}
             isEditing={isEditing}
@@ -822,20 +861,7 @@ export function GapAnalysisReportPanel({
   gapChat,
   buildChatContext,
 }: GapAnalysisReportPanelProps) {
-  const [appliedSet, setAppliedSet] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleApply = useCallback((requirement: string) => {
-    setAppliedSet((prev) => new Set(prev).add(requirement));
-  }, []);
-
-  const handleUnapply = useCallback((requirement: string) => {
-    setAppliedSet((prev) => {
-      const next = new Set(prev);
-      next.delete(requirement);
-      return next;
-    });
-  }, []);
 
   const coachingLookup = useMemo(
     () => buildCoachingLookup(gapCoachingCards ?? null),
@@ -859,6 +885,41 @@ export function GapAnalysisReportPanel({
     return map;
   }, [gapAnalysis]);
 
+  const liveResumeMap = useMemo(() => {
+    const map = new Map<string, Array<{ section: string; bullet_text: string }>>();
+    if (!currentResume) return map;
+
+    const addEntry = (requirement: string, entry: { section: string; bullet_text: string }) => {
+      const key = normalizeRequirement(requirement);
+      const existing = map.get(key) ?? [];
+      if (!existing.some((item) => item.section === entry.section && item.bullet_text === entry.bullet_text)) {
+        map.set(key, [...existing, entry]);
+      }
+    };
+
+    currentResume.selected_accomplishments.forEach((accomplishment) => {
+      accomplishment.addresses_requirements.forEach((requirement) => {
+        addEntry(requirement, {
+          section: 'Selected Accomplishments',
+          bullet_text: accomplishment.content,
+        });
+      });
+    });
+
+    currentResume.professional_experience.forEach((experience) => {
+      experience.bullets.forEach((bullet) => {
+        bullet.addresses_requirements.forEach((requirement) => {
+          addEntry(requirement, {
+            section: `${experience.title} at ${experience.company}`,
+            bullet_text: bullet.text,
+          });
+        });
+      });
+    });
+
+    return map;
+  }, [currentResume]);
+
   const merged = useMemo(() => {
     const seen = new Set<string>();
     const result: MergedRequirement[] = [];
@@ -871,10 +932,12 @@ export function GapAnalysisReportPanel({
       const coaching = coachingLookup.get(normalizedKey)?.card;
       const rawKey = comp.competency.trim().toLowerCase();
       const assessment = assessmentMap.get(rawKey) ?? fuzzyLookup(rawKey, assessmentMap);
+      const liveAddressedBy = liveResumeMap.get(normalizedKey) ?? fuzzyLookup(normalizedKey, liveResumeMap);
+      const effectiveStatus = assessment?.status ?? (liveAddressedBy?.length ? (gapReq?.classification === 'strong' ? 'strong' : 'repositioned') : undefined);
 
       const tier = classificationToTier(
         gapReq?.classification ?? 'missing',
-        assessment?.status,
+        effectiveStatus,
       );
 
       const benchCtx = benchmarkCandidate
@@ -883,18 +946,20 @@ export function GapAnalysisReportPanel({
 
       result.push({
         requirement: comp.competency,
+        source: 'job_description',
         importance: comp.importance,
         tier,
         evidence: coaching?.evidence_found ?? gapReq?.evidence ?? [],
         evidenceFromJd: comp.evidence_from_jd || undefined,
+        sourceEvidence: gapReq?.source_evidence ?? comp.evidence_from_jd ?? undefined,
         benchmarkContext: benchCtx ?? undefined,
         strategy: gapReq?.strategy,
         aiReasoning: coaching?.ai_reasoning ?? gapReq?.strategy?.ai_reasoning,
         interviewQuestions: coaching?.interview_questions ?? gapReq?.strategy?.interview_questions,
         inferredMetric: coaching?.inferred_metric ?? gapReq?.strategy?.inferred_metric,
         inferenceRationale: coaching?.inference_rationale ?? gapReq?.strategy?.inference_rationale,
-        resumeStatus: assessment?.status,
-        addressedBy: assessment?.addressed_by,
+        resumeStatus: effectiveStatus,
+        addressedBy: mergeAddressedBy(assessment?.addressed_by, liveAddressedBy),
         strategyUsed: assessment?.strategy_used,
       });
     }
@@ -905,26 +970,34 @@ export function GapAnalysisReportPanel({
       if (seen.has(normalizedKey)) continue;
 
       const coaching = coachingLookup.get(normalizedKey)?.card;
+      const assessment = assessmentMap.get(normalizedKey) ?? fuzzyLookup(normalizedKey, assessmentMap);
+      const liveAddressedBy = liveResumeMap.get(normalizedKey) ?? fuzzyLookup(normalizedKey, liveResumeMap);
+      const effectiveStatus = assessment?.status ?? (liveAddressedBy?.length ? (req.classification === 'strong' ? 'strong' : 'repositioned') : undefined);
       const benchCtx = benchmarkCandidate
         ? findBenchmarkContext(req.requirement, benchmarkCandidate.expected_achievements)
         : null;
 
       result.push({
         requirement: req.requirement,
+        source: req.source,
         importance: req.importance,
-        tier: classificationToTier(req.classification),
+        tier: classificationToTier(req.classification, effectiveStatus),
         evidence: coaching?.evidence_found ?? req.evidence ?? [],
+        sourceEvidence: req.source_evidence,
         benchmarkContext: benchCtx ?? undefined,
         strategy: req.strategy,
         aiReasoning: coaching?.ai_reasoning ?? req.strategy?.ai_reasoning,
         interviewQuestions: coaching?.interview_questions ?? req.strategy?.interview_questions,
         inferredMetric: coaching?.inferred_metric ?? req.strategy?.inferred_metric,
         inferenceRationale: coaching?.inference_rationale ?? req.strategy?.inference_rationale,
+        resumeStatus: effectiveStatus,
+        addressedBy: mergeAddressedBy(assessment?.addressed_by, liveAddressedBy),
+        strategyUsed: assessment?.strategy_used,
       });
     }
 
     return result;
-  }, [jobIntelligence, gapAnalysis, coachingLookup, assessmentMap, gapReqLookup, benchmarkCandidate]);
+  }, [jobIntelligence, gapAnalysis, coachingLookup, assessmentMap, gapReqLookup, benchmarkCandidate, liveResumeMap]);
 
   // Group by importance, sort gaps first within each group
   const groupedByImportance = useMemo(() => {
@@ -964,12 +1037,12 @@ export function GapAnalysisReportPanel({
     for (const req of merged) {
       if (!counts[req.importance]) counts[req.importance] = { total: 0, addressed: 0 };
       counts[req.importance].total++;
-      if (req.tier === 'strong' || req.tier === 'partial' || appliedSet.has(req.requirement)) {
+      if (req.tier === 'strong' || req.tier === 'partial') {
         counts[req.importance].addressed++;
       }
     }
     return counts;
-  }, [merged, appliedSet]);
+  }, [merged]);
 
   const activeSet = useMemo(
     () => new Set(activeRequirements.map((r) => r.trim().toLowerCase())),
@@ -997,12 +1070,12 @@ export function GapAnalysisReportPanel({
     >
       <SummaryHeader
         importanceCounts={importanceCounts}
-        appliedCount={appliedSet.size}
         total={merged.length}
         strengthSummary={gapAnalysis.strength_summary}
         roleTitle={jobIntelligence.role_title}
         companyName={jobIntelligence.company_name}
         preScoreAts={preScores?.ats_match}
+        scoreBreakdown={gapAnalysis.score_breakdown ?? null}
         strongCount={tierCounts.strong}
         partialCount={tierCounts.partial}
         gapCount={tierCounts.gap}
@@ -1018,18 +1091,6 @@ export function GapAnalysisReportPanel({
               <ImportanceGroupHeader importance={importance} count={items.length} />
               <div className="px-4 py-3 space-y-3">
                 {items.map((req, idx) => {
-                  const isApplied = appliedSet.has(req.requirement);
-
-                  if (isApplied) {
-                    return (
-                      <AppliedCard
-                        key={`${req.requirement}-${idx}`}
-                        req={req}
-                        onExpand={() => handleUnapply(req.requirement)}
-                      />
-                    );
-                  }
-
                   return (
                     <RequirementCard
                       key={`${req.requirement}-${idx}`}
@@ -1040,7 +1101,6 @@ export function GapAnalysisReportPanel({
                       currentResume={currentResume}
                       positioningAssessment={positioningAssessment}
                       isEditing={isEditing}
-                      onApply={handleApply}
                       gapChat={gapChat}
                       buildChatContext={buildChatContext}
                     />
@@ -1053,4 +1113,20 @@ export function GapAnalysisReportPanel({
       </div>
     </div>
   );
+}
+
+function mergeAddressedBy(
+  assessmentEntries?: Array<{ section: string; bullet_text: string }>,
+  liveEntries?: Array<{ section: string; bullet_text: string }>,
+): Array<{ section: string; bullet_text: string }> | undefined {
+  const merged = [...(assessmentEntries ?? []), ...(liveEntries ?? [])];
+  if (merged.length === 0) return undefined;
+
+  const deduped: Array<{ section: string; bullet_text: string }> = [];
+  for (const entry of merged) {
+    if (!deduped.some((item) => item.section === entry.section && item.bullet_text === entry.bullet_text)) {
+      deduped.push(entry);
+    }
+  }
+  return deduped;
 }

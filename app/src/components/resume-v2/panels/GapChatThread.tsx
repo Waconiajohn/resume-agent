@@ -23,8 +23,6 @@ interface GapChatThreadProps {
   context: GapChatContext;
   /** Whether the parent is currently running an inline edit */
   isEditing?: boolean;
-  /** Last user message that failed — for retry */
-  lastFailedMessage?: string;
 }
 
 function UserBubble({ content }: { content: string }) {
@@ -52,12 +50,10 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
   requirement: string;
   isAccepted: boolean;
 }) {
-  const [localAccepted, setLocalAccepted] = useState(false);
-  const disabled = isEditing || localAccepted || isAccepted;
+  const disabled = isEditing || isAccepted;
 
   const handleAccept = useCallback(() => {
     if (disabled || !message.suggestedLanguage) return;
-    setLocalAccepted(true);
     onAcceptLanguage(requirement, message.suggestedLanguage);
   }, [disabled, message.suggestedLanguage, requirement, onAcceptLanguage]);
 
@@ -109,7 +105,7 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
                 data-testid="accept-language"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {localAccepted ? 'Adding...' : 'Add to Resume'}
+                {isEditing ? 'Preparing Edit...' : 'Review Edit'}
               </button>
             </div>
           </div>
@@ -221,7 +217,7 @@ export function GapChatThread({
         <div className="flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5" style={{ color: '#b5dec2' }} />
           <span style={{ fontSize: 13, fontWeight: 500, color: '#b5dec2' }}>
-            Language added to resume
+            Edit accepted
           </span>
         </div>
         <p style={{ fontSize: 13, color: REPORT_COLORS.secondary, marginTop: 4, lineHeight: 1.5 }}>

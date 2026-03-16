@@ -101,18 +101,49 @@ export interface GapStrategy {
 
 export type GapClassification = 'strong' | 'partial' | 'missing';
 
+export type RequirementSource = 'job_description' | 'benchmark';
+
+export type RequirementCategory =
+  | 'core_competency'
+  | 'strategic_responsibility'
+  | 'hidden_signal'
+  | 'benchmark_leadership'
+  | 'benchmark_achievement'
+  | 'benchmark_skill'
+  | 'benchmark_certification'
+  | 'benchmark_industry'
+  | 'benchmark_differentiator';
+
+export type RequirementScoreDomain = 'ats' | 'benchmark';
+
 export interface RequirementGap {
   requirement: string;
-  source?: 'job_description' | 'benchmark';
+  source?: RequirementSource;
+  category?: RequirementCategory;
+  score_domain?: RequirementScoreDomain;
   importance: 'must_have' | 'important' | 'nice_to_have';
   classification: GapClassification;
   evidence: string[];
+  source_evidence?: string;
   strategy?: GapStrategy;
+}
+
+export interface RequirementCoverageBreakdown {
+  total: number;
+  strong: number;
+  partial: number;
+  missing: number;
+  addressed: number;
+  coverage_score: number;
 }
 
 export interface GapAnalysis {
   requirements: RequirementGap[];
   coverage_score: number;
+  score_breakdown?: {
+    job_description: RequirementCoverageBreakdown;
+    benchmark: RequirementCoverageBreakdown;
+  };
   strength_summary: string;
   critical_gaps: string[];
   pending_strategies: Array<{
@@ -216,6 +247,7 @@ export interface ResumeExperience {
   start_date: string;
   end_date: string;
   scope_statement: string;
+  scope_statement_is_new?: boolean;
   bullets: ResumeBullet[];
 }
 
@@ -281,6 +313,12 @@ export interface GapChatContext {
   inferredMetric?: string;
   jobDescriptionExcerpt: string;
   candidateExperienceSummary: string;
+}
+
+export interface V2PersistedDraftState {
+  editable_resume: ResumeDraft | null;
+  master_save_mode: 'session_only' | 'master_resume';
+  updated_at: string;
 }
 
 // ─── Pipeline State (accumulated in the frontend) ───────────────────

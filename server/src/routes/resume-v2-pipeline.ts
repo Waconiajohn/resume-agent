@@ -27,6 +27,16 @@ const startSchema = z.object({
   resume_text: z.string().min(50, 'Resume must be at least 50 characters').max(50000, 'Resume must be at most 50,000 characters'),
   job_description: z.string().min(50, 'Job description must be at least 50 characters').max(50000, 'Job description must be at most 50,000 characters'),
   user_context: z.string().optional(),
+  gap_coaching_responses: z.array(z.object({
+    requirement: z.string().min(1),
+    action: z.enum(['approve', 'context', 'skip']),
+    user_context: z.string().optional(),
+  })).optional(),
+  pre_scores: z.object({
+    ats_match: z.number().int().min(0).max(100),
+    keywords_found: z.array(z.string()),
+    keywords_missing: z.array(z.string()),
+  }).optional(),
 });
 
 const EDIT_ACTIONS = ['strengthen', 'add_metrics', 'shorten', 'add_keywords', 'rewrite', 'custom', 'not_my_voice'] as const;
@@ -78,7 +88,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
 
-  const { resume_text, job_description, user_context } = parsed.data;
+  const { resume_text, job_description, user_context, gap_coaching_responses, pre_scores } = parsed.data;
 
   // Create session
   const { data: session, error: sessionError } = await supabaseAdmin
@@ -127,6 +137,8 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         user_id: userId,
         emit,
         user_context,
+        gap_coaching_responses,
+        pre_scores,
       });
 
       // Persist the full pipeline data so the V2 UI can hydrate from history.
@@ -148,6 +160,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
           resume_text,
           job_description,
         },
+        draft_state: null,
       };
 
       const { error: snapshotError } = await supabaseAdmin
@@ -219,6 +232,67 @@ resumeV2Pipeline.post('/:sessionId/respond-gaps', authMiddleware, rateLimitMiddl
   logger.info({ session_id: sessionId, response_count: parsed.data.responses.length }, 'Gap coaching responses received');
 
   return c.json({ status: 'received', responses: parsed.data.responses });
+});
+
+// ─── PUT /:sessionId/draft-state ───────────────────────────────────
+
+const draftStateSchema = z.object({
+  draft_state: z.object({
+    editable_resume: z.unknown().nullable(),
+    master_save_mode: z.enum(['session_only', 'master_resume']),
+    updated_at: z.string(),
+  }).nullable(),
+});
+
+resumeV2Pipeline.put('/:sessionId/draft-state', authMiddleware, rateLimitMiddleware(60, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id, product_type, tailored_sections')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  if (session.product_type !== 'resume_v2') {
+    return c.json({ error: 'Draft persistence is only supported for resume_v2 sessions' }, 400);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 250_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = draftStateSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const existingSnapshot = (session.tailored_sections as Record<string, unknown> | null) ?? {};
+  const nextSnapshot = {
+    ...existingSnapshot,
+    version: 'v2' as const,
+    draft_state: parsed.data.draft_state,
+  };
+
+  const { error: updateError } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      tailored_sections: nextSnapshot as unknown as Record<string, unknown>,
+    })
+    .eq('id', sessionId)
+    .eq('user_id', userId);
+
+  if (updateError) {
+    logger.error({ session_id: sessionId, error: updateError }, 'Failed to persist v2 draft state');
+    return c.json({ error: 'Failed to save draft state' }, 500);
+  }
+
+  return c.json({ status: 'saved' });
 });
 
 // ─── GET /:sessionId/stream ──────────────────────────────────────────
@@ -298,6 +372,7 @@ resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
       version: 'v2',
       pipeline_data: stored.pipeline_data,
       inputs: stored.inputs,
+      draft_state: stored.draft_state ?? null,
     });
   }
 

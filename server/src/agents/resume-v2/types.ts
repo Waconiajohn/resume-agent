@@ -118,6 +118,21 @@ export interface GapAnalysisInput {
 
 export type GapClassification = 'strong' | 'partial' | 'missing';
 
+export type RequirementSource = 'job_description' | 'benchmark';
+
+export type RequirementCategory =
+  | 'core_competency'
+  | 'strategic_responsibility'
+  | 'hidden_signal'
+  | 'benchmark_leadership'
+  | 'benchmark_achievement'
+  | 'benchmark_skill'
+  | 'benchmark_certification'
+  | 'benchmark_industry'
+  | 'benchmark_differentiator';
+
+export type RequirementScoreDomain = 'ats' | 'benchmark';
+
 export interface GapStrategy {
   /** What the candidate actually has that's adjacent to the requirement */
   real_experience: string;
@@ -145,17 +160,34 @@ export interface GapStrategy {
 
 export interface RequirementGap {
   requirement: string;
-  source: 'job_description' | 'benchmark';
+  source: RequirementSource;
+  category?: RequirementCategory;
+  score_domain?: RequirementScoreDomain;
   importance: 'must_have' | 'important' | 'nice_to_have';
   classification: GapClassification;
   evidence: string[];
+  /** Source-side evidence explaining why this requirement exists */
+  source_evidence?: string;
   /** Only present for partial/missing — creative strategy to close the gap */
   strategy?: GapStrategy;
+}
+
+export interface RequirementCoverageBreakdown {
+  total: number;
+  strong: number;
+  partial: number;
+  missing: number;
+  addressed: number;
+  coverage_score: number;
 }
 
 export interface GapAnalysisOutput {
   requirements: RequirementGap[];
   coverage_score: number;
+  score_breakdown?: {
+    job_description: RequirementCoverageBreakdown;
+    benchmark: RequirementCoverageBreakdown;
+  };
   strength_summary: string;
   critical_gaps: string[];
   /**
@@ -253,6 +285,7 @@ export interface ResumeExperienceEntry {
   start_date: string;
   end_date: string;
   scope_statement: string;
+  scope_statement_is_new?: boolean;
   bullets: ResumeBullet[];
 }
 

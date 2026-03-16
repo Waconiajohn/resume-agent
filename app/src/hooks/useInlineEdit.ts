@@ -121,7 +121,7 @@ export function useInlineEdit(
 
     // Apply the edit
     const replacement = editedReplacement !== undefined ? editedReplacement : pendingEdit.replacement;
-    const updated = applyTextReplacement(resume, pendingEdit.originalText, replacement);
+    const updated = applyTextReplacement(resume, pendingEdit, replacement);
     onResumeUpdate(updated);
     setPendingEdit(null);
   }, [pendingEdit, resume, onResumeUpdate]);
@@ -267,38 +267,123 @@ function extractSectionContext(r: ResumeDraft, section: string): string | null {
   return null;
 }
 
-/** Apply a text replacement across all string fields in the resume */
-function applyTextReplacement(resume: ResumeDraft, oldText: string, newText: string): ResumeDraft {
-  const replace = (s: string) => s.includes(oldText) ? s.replaceAll(oldText, newText) : s;
+/** Apply a targeted text replacement and preserve provenance metadata */
+function applyTextReplacement(resume: ResumeDraft, pendingEdit: PendingEdit, newText: string): ResumeDraft {
+  const requirement = pendingEdit.editContext?.requirement;
+  const requirementTag = requirement?.trim();
+  const sectionLower = pendingEdit.section.toLowerCase();
+  const oldText = pendingEdit.originalText;
+
+  const addRequirement = (requirements: string[]): string[] => {
+    if (!requirementTag) return requirements;
+    return requirements.includes(requirementTag) ? requirements : [...requirements, requirementTag];
+  };
+
+  const markEditedText = (value: string) => value === oldText ? newText : value;
+
+  if (sectionLower.includes('executive summary') || sectionLower.includes('summary')) {
+    if (resume.executive_summary.content === oldText) {
+      return {
+        ...resume,
+        executive_summary: {
+          ...resume.executive_summary,
+          content: newText,
+          is_new: true,
+        },
+      };
+    }
+  }
+
+  if (sectionLower.includes('selected accomplishments') || sectionLower.includes('accomplishments')) {
+    return {
+      ...resume,
+      selected_accomplishments: resume.selected_accomplishments.map((accomplishment) => (
+        accomplishment.content === oldText
+          ? {
+              ...accomplishment,
+              content: newText,
+              is_new: true,
+              addresses_requirements: addRequirement(accomplishment.addresses_requirements),
+            }
+          : accomplishment
+      )),
+    };
+  }
+
+  if (sectionLower.includes('professional experience')) {
+    return {
+      ...resume,
+      professional_experience: resume.professional_experience.map((experience) => {
+        const matchesSection = sectionLower.includes(experience.company.toLowerCase()) || sectionLower === 'professional_experience';
+        if (!matchesSection) return experience;
+
+        if (experience.scope_statement === oldText) {
+          return {
+            ...experience,
+            scope_statement: newText,
+            scope_statement_is_new: true,
+          };
+        }
+
+        return {
+          ...experience,
+          bullets: experience.bullets.map((bullet) => (
+            bullet.text === oldText
+              ? {
+                  ...bullet,
+                  text: newText,
+                  is_new: true,
+                  addresses_requirements: addRequirement(bullet.addresses_requirements),
+                }
+              : bullet
+          )),
+        };
+      }),
+    };
+  }
 
   return {
     ...resume,
     header: {
       ...resume.header,
-      branded_title: replace(resume.header.branded_title),
+      branded_title: markEditedText(resume.header.branded_title),
     },
     executive_summary: {
       ...resume.executive_summary,
-      content: replace(resume.executive_summary.content),
+      content: markEditedText(resume.executive_summary.content),
+      is_new: resume.executive_summary.content === oldText ? true : resume.executive_summary.is_new,
     },
-    core_competencies: resume.core_competencies.map(replace),
-    selected_accomplishments: resume.selected_accomplishments.map(a => ({
-      ...a,
-      content: replace(a.content),
+    core_competencies: resume.core_competencies.map(markEditedText),
+    selected_accomplishments: resume.selected_accomplishments.map((accomplishment) => (
+      accomplishment.content === oldText
+        ? {
+            ...accomplishment,
+            content: newText,
+            is_new: true,
+            addresses_requirements: addRequirement(accomplishment.addresses_requirements),
+          }
+        : accomplishment
+    )),
+    professional_experience: resume.professional_experience.map((experience) => ({
+      ...experience,
+      scope_statement: experience.scope_statement === oldText ? newText : experience.scope_statement,
+      scope_statement_is_new: experience.scope_statement === oldText ? true : experience.scope_statement_is_new,
+      bullets: experience.bullets.map((bullet) => (
+        bullet.text === oldText
+          ? {
+              ...bullet,
+              text: newText,
+              is_new: true,
+              addresses_requirements: addRequirement(bullet.addresses_requirements),
+            }
+          : bullet
+      )),
     })),
-    professional_experience: resume.professional_experience.map(exp => ({
-      ...exp,
-      scope_statement: replace(exp.scope_statement),
-      bullets: exp.bullets.map(b => ({
-        ...b,
-        text: replace(b.text),
-      })),
+    education: resume.education.map((education) => ({
+      ...education,
+      degree: markEditedText(education.degree),
+      institution: markEditedText(education.institution),
     })),
-    education: resume.education.map(edu => ({
-      ...edu,
-      degree: replace(edu.degree),
-      institution: replace(edu.institution),
-    })),
-    certifications: resume.certifications.map(replace),
+    certifications: resume.certifications.map(markEditedText),
   };
 }

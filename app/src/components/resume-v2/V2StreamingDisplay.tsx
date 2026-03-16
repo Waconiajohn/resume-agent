@@ -9,7 +9,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, FileText, Shield, Undo2, Redo2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, Shield, Undo2, Redo2, ChevronDown, ChevronRight, Database, Save } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import type { V2PipelineData, V2Stage, ResumeDraft, JobIntelligence, CandidateIntelligence, BenchmarkCandidate, NarrativeStrategy } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
@@ -72,6 +72,14 @@ interface V2StreamingDisplayProps {
   onApplyHiringManagerRecommendation?: (concern: HiringManagerConcern) => void;
   gapChat?: GapChatHook | null;
   buildChatContext?: (requirement: string) => GapChatContext;
+  masterSaveMode?: 'session_only' | 'master_resume';
+  onChangeMasterSaveMode?: (mode: 'session_only' | 'master_resume') => void;
+  onSaveCurrentToMaster?: () => void;
+  isSavingToMaster?: boolean;
+  masterSaveStatus?: {
+    tone: 'neutral' | 'success' | 'error';
+    message: string;
+  };
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -203,6 +211,84 @@ function AnalysisSummarySection({
   );
 }
 
+function MasterResumeSyncCard({
+  mode,
+  onChangeMode,
+  onSaveNow,
+  isSaving,
+  status,
+}: {
+  mode: 'session_only' | 'master_resume';
+  onChangeMode?: (mode: 'session_only' | 'master_resume') => void;
+  onSaveNow?: () => void;
+  isSaving?: boolean;
+  status?: {
+    tone: 'neutral' | 'success' | 'error';
+    message: string;
+  };
+}) {
+  const toneStyles = status?.tone === 'error'
+    ? 'text-[#f0b8b8] border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.05]'
+    : status?.tone === 'success'
+      ? 'text-[#b5dec2] border-[#b5dec2]/20 bg-[#b5dec2]/[0.05]'
+      : 'text-white/50 border-white/[0.06] bg-white/[0.025]';
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03] p-2">
+          <Database className="h-4 w-4 text-white/55" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-white/78">Reuse these edits later</p>
+          <p className="mt-1 text-sm leading-6 text-white/55">
+            Keep accepted edits in this session only, or sync them to your default master resume so future applications start from a stronger base.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="inline-flex rounded-lg border border-white/[0.08] bg-white/[0.02] p-1">
+          <button
+            type="button"
+            onClick={() => onChangeMode?.('session_only')}
+            className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
+              mode === 'session_only' ? 'bg-white/[0.08] text-white/88' : 'text-white/45 hover:text-white/70'
+            }`}
+          >
+            Session Only
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeMode?.('master_resume')}
+            className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
+              mode === 'master_resume' ? 'bg-[#afc4ff]/15 text-[#afc4ff]' : 'text-white/45 hover:text-white/70'
+            }`}
+          >
+            Auto-Sync to Master
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onSaveNow}
+          disabled={isSaving || !onSaveNow}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {isSaving ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          {isSaving ? 'Saving...' : 'Save Current Version Now'}
+        </button>
+      </div>
+
+      <div className={`rounded-lg border px-3 py-2 text-xs leading-5 ${toneStyles}`}>
+        {status?.message ?? (mode === 'master_resume'
+          ? 'Future accepted edits will sync to your master resume automatically.'
+          : 'Accepted edits stay local to this resume unless you save them to the master resume.')}
+      </div>
+    </div>
+  );
+}
+
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -214,6 +300,11 @@ export function V2StreamingDisplay({
   hiringManagerResult, isHiringManagerLoading, hiringManagerError,
   onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
   gapChat, buildChatContext,
+  masterSaveMode = 'session_only',
+  onChangeMasterSaveMode,
+  onSaveCurrentToMaster,
+  isSavingToMaster = false,
+  masterSaveStatus,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -397,11 +488,11 @@ export function V2StreamingDisplay({
           </div>
         )}
 
-        {/* Split-screen: left gap analysis report + right resume (stacked on mobile) */}
-        <div className="flex-1 flex min-h-0">
-          {/* ─── Left panel: Requirements Checklist (hidden below md breakpoint) ─── */}
-          <div className="hidden md:block md:w-1/2 border-r border-white/[0.06] relative">
-            <div className="absolute inset-0 overflow-y-auto">
+        {/* Split-screen: left gap analysis report + right resume */}
+        <div className="flex-1 flex min-h-0 flex-col xl:flex-row">
+          {/* ─── Left panel: Requirement coverage ─── */}
+          <div className="border-b border-white/[0.06] xl:border-b-0 xl:border-r xl:w-[46%] xl:relative max-h-[55vh] xl:max-h-none">
+            <div className="h-full overflow-y-auto xl:absolute xl:inset-0">
               <GapAnalysisReportPanel
                 jobIntelligence={data.jobIntelligence!}
                 positioningAssessment={data.assembly?.positioning_assessment ?? null}
@@ -436,6 +527,23 @@ export function V2StreamingDisplay({
                   {editError}
                 </div>
               )}
+
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
+                <p className="text-sm font-medium text-white/78">
+                  How to use this screen
+                </p>
+                <p className="mt-1 text-sm leading-6 text-white/55">
+                  Review requirement coverage first, then confirm the resume wording on the right. Anything marked <span className="text-[#b5dec2]">New</span> was added or rewritten by AI and should be checked by the candidate before export.
+                </p>
+              </div>
+
+              <MasterResumeSyncCard
+                mode={masterSaveMode}
+                onChangeMode={onChangeMasterSaveMode}
+                onSaveNow={onSaveCurrentToMaster}
+                isSaving={isSavingToMaster}
+                status={masterSaveStatus}
+              />
 
               {/* What Changed (after re-run) */}
               {isComplete && previousResume && displayResume && onDismissChanges && (
@@ -499,8 +607,9 @@ export function V2StreamingDisplay({
                 <AnimatedCard index={1}>
                   <GlassCard className="p-6">
                     {canEdit && (
-                      <div className="mb-4 text-xs text-white/30 border-b border-white/[0.04] pb-2">
-                        Click any bullet to edit with AI, or select text for more options
+                      <div className="mb-4 space-y-1 border-b border-white/[0.04] pb-3 text-xs text-white/38">
+                        <p>Click a bullet to improve the wording, add proof, or review a suggested change.</p>
+                        <p>Use text selection when you want a custom rewrite on a specific phrase.</p>
                       </div>
                     )}
                     <ResumeDocumentCard

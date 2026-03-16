@@ -6,7 +6,7 @@
  *   2. Streaming — accumulating output display with inline AI editing + live scoring
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useV2Pipeline } from '@/hooks/useV2Pipeline';
 import { useInlineEdit, resumeToPlainText } from '@/hooks/useInlineEdit';
@@ -15,10 +15,19 @@ import { useGapChat } from '@/hooks/useGapChat';
 import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
-import type { ResumeDraft, GapCoachingResponse, GapChatContext } from '@/types/resume-v2';
+import type { ResumeDraft, GapCoachingResponse, GapChatContext, V2PersistedDraftState } from '@/types/resume-v2';
 import { normalizeRequirement } from './utils/coaching-actions';
 import { useHiringManagerReview } from '@/hooks/useHiringManagerReview';
 import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
+import { useToast } from '@/components/Toast';
+
+type MasterResumeSaveMode = 'session_only' | 'master_resume';
+
+interface MasterResumeSaveResult {
+  success: boolean;
+  message: string;
+  resumeId?: string;
+}
 
 interface V2ResumeScreenProps {
   accessToken: string | null;
@@ -26,10 +35,48 @@ interface V2ResumeScreenProps {
   initialResumeText?: string;
   /** Load a completed V2 session from history */
   initialSessionId?: string;
+  onSyncToMasterResume?: (
+    draft: ResumeDraft,
+    options?: {
+      sourceSessionId?: string | null;
+      companyName?: string;
+      jobTitle?: string;
+      atsScore?: number;
+    },
+  ) => Promise<MasterResumeSaveResult>;
 }
 
-export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialSessionId }: V2ResumeScreenProps) {
-  const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, respondToGapCoaching, integrateKeyword } = useV2Pipeline(accessToken);
+function v2DraftStorageKey(sessionId: string): string {
+  return `resume-agent:v2-draft:${sessionId}`;
+}
+
+function readLocalDraftState(sessionId: string): V2PersistedDraftState | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(v2DraftStorageKey(sessionId));
+    if (!raw) return null;
+    return JSON.parse(raw) as V2PersistedDraftState;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalDraftState(sessionId: string, draftState: V2PersistedDraftState | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (draftState === null) {
+      window.localStorage.removeItem(v2DraftStorageKey(sessionId));
+      return;
+    }
+    window.localStorage.setItem(v2DraftStorageKey(sessionId), JSON.stringify(draftState));
+  } catch {
+    // Best effort only
+  }
+}
+
+export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
+  const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
+  const { addToast } = useToast();
 
   // Track the editable resume separately — starts as the pipeline output,
   // then gets mutated by inline edits
@@ -63,7 +110,18 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
   // Gap coaching chat
   const gapChat = useGapChat(accessToken, data.sessionId);
-  const { resetChat: resetGapChat } = gapChat;
+  const { resetChat: resetGapChat, acceptLanguage: acceptGapLanguage } = gapChat;
+  const [masterSaveMode, setMasterSaveMode] = useState<MasterResumeSaveMode>('session_only');
+  const [isSavingToMaster, setIsSavingToMaster] = useState(false);
+  const [masterSaveStatus, setMasterSaveStatus] = useState<{
+    tone: 'neutral' | 'success' | 'error';
+    message: string;
+  }>({
+    tone: 'neutral',
+    message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
+  });
+  const lastMasterSnapshotRef = useRef('');
+  const lastPersistedDraftRef = useRef<string>('null');
 
   // Build context for per-item gap chat — memoized factory
   const buildChatContext = useCallback((requirement: string): GapChatContext => {
@@ -116,8 +174,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     void (async () => {
       const result = await loadSession(initialSessionId);
       if (result) {
+        const resolvedDraftState = result.draftState ?? readLocalDraftState(initialSessionId);
         setResumeText(result.resume_text);
         setJobDescription(result.job_description);
+        setEditableResume(resolvedDraftState?.editable_resume ?? null);
+        setMasterSaveMode(resolvedDraftState?.master_save_mode ?? 'session_only');
+        lastPersistedDraftRef.current = JSON.stringify(resolvedDraftState ?? null);
       } else {
         setSessionLoadError('Failed to load session. It may have expired or belong to a different account.');
       }
@@ -125,8 +187,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   }, [initialSessionId, sessionLoadAttempted, loadSession]);
 
   const acceptEdit = useCallback((editedText: string) => {
+    const acceptedRequirement = pendingEdit?.editContext?.requirement;
     rawAcceptEdit(editedText);
-  }, [rawAcceptEdit]);
+    if (acceptedRequirement) {
+      acceptGapLanguage(acceptedRequirement, editedText);
+    }
+  }, [pendingEdit, rawAcceptEdit, acceptGapLanguage]);
 
   // Trigger rescore whenever editableResume changes (i.e., after accepting an edit or undo/redo)
   useEffect(() => {
@@ -135,6 +201,121 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     }
   }, [editableResume, isComplete, requestRescore]);
 
+  useEffect(() => {
+    if (masterSaveMode === 'master_resume') {
+      setMasterSaveStatus({
+        tone: 'neutral',
+        message: 'Future accepted edits will sync to your master resume automatically. Use "Save Current Version Now" to push the current draft immediately.',
+      });
+      return;
+    }
+
+    setMasterSaveStatus((prev) => (
+      prev.tone === 'error'
+        ? prev
+        : {
+            tone: 'neutral',
+            message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
+          }
+    ));
+  }, [masterSaveMode]);
+
+  const persistResumeToMaster = useCallback(async (
+    draft: ResumeDraft,
+    reason: 'auto' | 'manual',
+  ) => {
+    if (!onSyncToMasterResume || isSavingToMaster) return false;
+
+    setIsSavingToMaster(true);
+
+    const result = await onSyncToMasterResume(draft, {
+      sourceSessionId: data.sessionId || null,
+      companyName: data.jobIntelligence?.company_name,
+      jobTitle: data.jobIntelligence?.role_title,
+      atsScore: liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? undefined,
+    });
+
+    setIsSavingToMaster(false);
+
+    if (!result.success) {
+      setMasterSaveStatus({
+        tone: 'error',
+        message: result.message,
+      });
+
+      if (reason === 'auto') {
+        setMasterSaveMode('session_only');
+        addToast({
+          type: 'error',
+          message: `${result.message} Auto-sync to master resume was turned off.`,
+        });
+      } else {
+        addToast({ type: 'error', message: result.message });
+      }
+      return false;
+    }
+
+    lastMasterSnapshotRef.current = resumeToPlainText(draft);
+    setMasterSaveStatus({
+      tone: 'success',
+      message: reason === 'auto' ? 'Auto-synced to your master resume.' : result.message,
+    });
+
+    if (reason === 'manual') {
+      addToast({ type: 'success', message: result.message });
+    }
+    return true;
+  }, [
+    addToast,
+    data.assembly?.scores.ats_match,
+    data.jobIntelligence?.company_name,
+    data.jobIntelligence?.role_title,
+    data.sessionId,
+    isSavingToMaster,
+    liveScores?.ats_score,
+    onSyncToMasterResume,
+  ]);
+
+  useEffect(() => {
+    if (masterSaveMode !== 'master_resume' || !editableResume || isSavingToMaster) return;
+
+    const snapshot = resumeToPlainText(editableResume);
+    if (snapshot === lastMasterSnapshotRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      void persistResumeToMaster(editableResume, 'auto');
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [editableResume, isSavingToMaster, masterSaveMode, persistResumeToMaster]);
+
+  useEffect(() => {
+    if (!data.sessionId || !isComplete) return;
+
+    const nextDraftState: V2PersistedDraftState | null = editableResume || masterSaveMode !== 'session_only'
+      ? {
+          editable_resume: editableResume,
+          master_save_mode: masterSaveMode,
+          updated_at: new Date().toISOString(),
+        }
+      : null;
+
+    const serialized = JSON.stringify(nextDraftState);
+    if (serialized === lastPersistedDraftRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      writeLocalDraftState(data.sessionId, nextDraftState);
+      void (async () => {
+        const ok = await saveDraftState(data.sessionId, nextDraftState);
+        if (ok) {
+          lastPersistedDraftRef.current = serialized;
+        }
+      })();
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [data.sessionId, editableResume, isComplete, masterSaveMode, saveDraftState]);
+
   const isPipelineActive = data.sessionId !== '';
 
   const handleSubmit = useCallback((rt: string, jd: string) => {
@@ -142,6 +323,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setJobDescription(jd);
     setEditableResume(null);
     setSessionLoadError(null);
+    lastMasterSnapshotRef.current = '';
+    lastPersistedDraftRef.current = 'null';
+    setMasterSaveMode('session_only');
+    setMasterSaveStatus({
+      tone: 'neutral',
+      message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
+    });
     resetHistory();
     resetGapChat();
     void start(rt, jd);
@@ -165,8 +353,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume(null);
     resetHistory();
     resetGapChat();
-    void start(resumeText, jobDescription, contextParts.length > 0 ? contextParts.join('\n') : undefined);
-  }, [start, resumeText, jobDescription, resetHistory, resetGapChat]);
+    void start(resumeText, jobDescription, {
+      userContext: contextParts.length > 0 ? contextParts.join('\n') : undefined,
+      gapCoachingResponses: responses,
+      preScores: data.preScores,
+    });
+  }, [start, resumeText, jobDescription, resetHistory, resetGapChat, data.preScores]);
 
   // Keyword integration: use inline edit with 'add_keywords' action
   // Use positioning assessment to find the most relevant entry when available
@@ -207,8 +399,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume(null);
     resetHistory();
     resetGapChat();
-    void start(resumeText, jobDescription, userContext);
-  }, [start, resumeText, jobDescription, resetHistory, resetGapChat, editableResume, data.assembly, data.resumeDraft]);
+    void start(resumeText, jobDescription, { userContext, preScores: data.preScores });
+  }, [start, resumeText, jobDescription, resetHistory, resetGapChat, editableResume, data.assembly, data.resumeDraft, data.preScores]);
 
   const handleDismissChanges = useCallback(() => {
     setPreviousResume(null);
@@ -218,6 +410,13 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     reset();
     setEditableResume(null);
     setPreviousResume(null);
+    lastMasterSnapshotRef.current = '';
+    lastPersistedDraftRef.current = 'null';
+    setMasterSaveMode('session_only');
+    setMasterSaveStatus({
+      tone: 'neutral',
+      message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
+    });
     setResumeText('');
     setJobDescription('');
     setSessionLoadAttempted(false);
@@ -225,6 +424,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     resetHiringManagerReview();
     resetGapChat();
   }, [reset, resetHiringManagerReview, resetGapChat]);
+
+  const handleSaveCurrentToMaster = useCallback(() => {
+    if (!currentResume) return;
+    void persistResumeToMaster(currentResume, 'manual');
+  }, [currentResume, persistResumeToMaster]);
 
   // Hiring manager review: build the request from available data
   const handleRequestHiringManagerReview = useCallback(() => {
@@ -359,6 +563,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onApplyHiringManagerRecommendation={handleApplyHiringManagerRecommendation}
         gapChat={isComplete ? gapChat : null}
         buildChatContext={isComplete ? buildChatContext : undefined}
+        masterSaveMode={masterSaveMode}
+        onChangeMasterSaveMode={setMasterSaveMode}
+        onSaveCurrentToMaster={handleSaveCurrentToMaster}
+        isSavingToMaster={isSavingToMaster}
+        masterSaveStatus={masterSaveStatus}
       />
     </div>
   );

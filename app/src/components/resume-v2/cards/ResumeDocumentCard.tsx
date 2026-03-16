@@ -206,7 +206,14 @@ export function ResumeDocumentCard({
                   </span>
                 </div>
                 {exp.scope_statement && (
-                  <p className="mt-1 text-xs text-white/50 italic pl-1">{exp.scope_statement}</p>
+                  <p
+                    className={`mt-1 text-xs text-white/50 italic ${
+                      exp.scope_statement_is_new ? 'border-l-2 border-[#b5dec2]/40 pl-2' : 'pl-1'
+                    }`}
+                  >
+                    {exp.scope_statement_is_new && <NewMarker />}
+                    {exp.scope_statement}
+                  </p>
                 )}
                 <ul className="mt-2 space-y-1.5">
                   {exp.bullets.map((bullet, j) => {
@@ -356,17 +363,9 @@ function InlineEditPanel({
     <div className="mt-2 rounded-lg border border-[#afc4ff]/20 bg-[#0f141e]/90 backdrop-blur-md p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
       {/* Requirement tags */}
       {requirements.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10px] text-white/35">Addresses:</span>
-          {requirements.map((req, i) => (
-            <span
-              key={i}
-              className="rounded-full bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-2 py-0.5 text-[10px] text-[#afc4ff]/70"
-            >
-              {req}
-            </span>
-          ))}
-        </div>
+        <p className="text-[11px] leading-5 text-white/42">
+          This bullet currently supports: <span className="text-[#afc4ff]/75">{requirements.join(', ')}</span>
+        </p>
       )}
 
       {/* Action buttons */}
@@ -379,7 +378,7 @@ function InlineEditPanel({
             disabled={isEditing}
             className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white/70 hover:bg-white/[0.08] hover:text-white/90 disabled:opacity-40 transition-colors"
           >
-            {action === 'strengthen' ? 'Strengthen' : action === 'add_metrics' ? '+ Metrics' : 'Rewrite'}
+            {action === 'strengthen' ? 'Improve Wording' : action === 'add_metrics' ? 'Add Proof' : 'Rewrite'}
           </button>
         ))}
       </div>

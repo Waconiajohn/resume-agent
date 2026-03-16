@@ -187,6 +187,7 @@ resumes.get('/:id', async (c) => {
 
 const updateResumeSchema = z.object({
   summary: z.string().max(5000).optional(),
+  raw_text: z.string().min(1).max(100_000).optional(),
   experience: z.array(z.unknown()).max(50).optional(),
   skills: z.record(z.string(), z.array(z.string())).optional(),
   education: z.array(z.unknown()).max(20).optional(),
@@ -247,8 +248,22 @@ resumes.put('/:id', rateLimitMiddleware(20, 60_000), async (c) => {
     updatePayload[field] = changes[field as keyof typeof changes];
   }
 
-  // If experience/skills/education/certifications/summary changed, rebuild raw_text
-  if (changes.summary !== undefined || changes.experience !== undefined || changes.skills !== undefined || changes.education !== undefined || changes.certifications !== undefined) {
+  // Allow clients to preserve a canonical rendered resume text explicitly.
+  if (changes.raw_text !== undefined) {
+    updatePayload.raw_text = changes.raw_text;
+  }
+
+  // Otherwise, rebuild raw_text from structured fields when they change.
+  if (
+    changes.raw_text === undefined
+    && (
+      changes.summary !== undefined
+      || changes.experience !== undefined
+      || changes.skills !== undefined
+      || changes.education !== undefined
+      || changes.certifications !== undefined
+    )
+  ) {
     const existingRow = existing as Record<string, unknown>;
     const parts: string[] = [];
     const summary = changes.summary ?? existingRow.summary;

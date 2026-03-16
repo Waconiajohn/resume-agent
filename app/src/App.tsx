@@ -20,6 +20,8 @@ import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
+import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
+import type { ResumeDraft } from '@/types/resume-v2';
 
 const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then(m => ({ default: m.CoachDrawer })));
 
@@ -252,6 +254,88 @@ export default function App() {
       return true;
     },
     [setDefaultResume, getDefaultResume],
+  );
+
+  const handleSyncV2ResumeToMaster = useCallback(
+    async (
+      draft: ResumeDraft,
+      options?: {
+        sourceSessionId?: string | null;
+        companyName?: string;
+        jobTitle?: string;
+        atsScore?: number;
+      },
+    ) => {
+      const finalResume = resumeDraftToFinalResume(draft, {
+        companyName: options?.companyName,
+        jobTitle: options?.jobTitle,
+        atsScore: options?.atsScore,
+      });
+      const rawText = resumeToText(finalResume);
+
+      let targetResumeId = intakeDefaultResumeId ?? resumes.find((item) => item.is_default)?.id ?? null;
+      if (!targetResumeId) {
+        const defaultResume = await getDefaultResume();
+        targetResumeId = defaultResume?.id ?? null;
+      }
+
+      if (targetResumeId) {
+        const updated = await updateMasterResume(targetResumeId, {
+          summary: finalResume.summary,
+          experience: finalResume.experience,
+          skills: finalResume.skills,
+          education: finalResume.education,
+          certifications: finalResume.certifications,
+          contact_info: finalResume.contact_info,
+          raw_text: rawText,
+        });
+        if (!updated) {
+          return {
+            success: false,
+            message: 'Failed to update your master resume.',
+          };
+        }
+
+        setIntakeDefaultResumeId(updated.id);
+        setIntakeInitialResumeText(updated.raw_text || rawText);
+        await listResumes();
+
+        return {
+          success: true,
+          resumeId: updated.id,
+          message: 'Master resume updated.',
+        };
+      }
+
+      const created = await saveResumeAsBase(finalResume, {
+        setAsDefault: true,
+        sourceSessionId: options?.sourceSessionId ?? null,
+      });
+      if (!created.success) {
+        return {
+          success: false,
+          message: created.error ?? 'Failed to create a master resume.',
+        };
+      }
+
+      setIntakeDefaultResumeId(created.resumeId ?? null);
+      setIntakeInitialResumeText(rawText);
+      await listResumes();
+
+      return {
+        success: true,
+        resumeId: created.resumeId,
+        message: 'Created your default master resume.',
+      };
+    },
+    [
+      getDefaultResume,
+      intakeDefaultResumeId,
+      listResumes,
+      resumes,
+      saveResumeAsBase,
+      updateMasterResume,
+    ],
   );
 
   const handleDeleteBaseResume = useCallback(
@@ -493,6 +577,7 @@ export default function App() {
           onBack={() => { setV2SessionId(null); setView('landing'); }}
           initialResumeText={intakeInitialResumeText}
           initialSessionId={v2SessionId ?? undefined}
+          onSyncToMasterResume={handleSyncV2ResumeToMaster}
         />
       )}
 

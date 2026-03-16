@@ -14,7 +14,14 @@
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
-import type { GapAnalysisInput, GapAnalysisOutput } from '../types.js';
+import type {
+  GapAnalysisInput,
+  GapAnalysisOutput,
+  RequirementCategory,
+  RequirementCoverageBreakdown,
+  RequirementGap,
+  RequirementSource,
+} from '../types.js';
 
 const SYSTEM_PROMPT = `You are a $3,000/engagement executive resume strategist. Your specialty: finding creative, TRUTHFUL ways to close gaps between what a candidate has and what a job requires.
 
@@ -36,9 +43,12 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
     {
       "requirement": "what the job requires",
       "source": "job_description|benchmark",
+      "category": "core_competency|strategic_responsibility|benchmark_leadership|benchmark_achievement|benchmark_skill|benchmark_certification|benchmark_industry|benchmark_differentiator",
+      "score_domain": "ats|benchmark",
       "importance": "must_have|important|nice_to_have",
       "classification": "strong|partial|missing",
       "evidence": ["specific evidence from the candidate's background"],
+      "source_evidence": "the JD or benchmark evidence that created this requirement",
       "strategy": {
         "real_experience": "what the candidate actually has that's adjacent",
         "positioning": "how to phrase it on the resume",
@@ -56,6 +66,24 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
     }
   ],
   "coverage_score": 75,
+  "score_breakdown": {
+    "job_description": {
+      "total": 8,
+      "strong": 3,
+      "partial": 3,
+      "missing": 2,
+      "addressed": 6,
+      "coverage_score": 75
+    },
+    "benchmark": {
+      "total": 6,
+      "strong": 2,
+      "partial": 2,
+      "missing": 2,
+      "addressed": 4,
+      "coverage_score": 67
+    }
+  },
   "strength_summary": "2-3 sentences on the candidate's strongest positioning angles",
   "critical_gaps": ["gaps that truly cannot be addressed — be honest"],
   "pending_strategies": [
@@ -80,15 +108,18 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
 }
 
 RULES:
-- source: 'job_description' if the requirement comes from the JD's core_competencies or strategic responsibilities. 'benchmark' if the requirement comes from what the benchmark candidate would have but the JD doesn't explicitly state.
+- Preserve the source, category, and importance from the canonical requirement catalog exactly as provided.
+- score_domain = 'ats' for job_description requirements. score_domain = 'benchmark' for benchmark requirements.
+- source_evidence must explain where the requirement came from in the JD or benchmark profile.
 - Every requirement from the job gets classified (strong/partial/missing).
+- Include benchmark-only requirements too, even when the candidate will never fully close all of them. Those should surface as benchmark alignment opportunities, not ATS blockers.
 - For STRONG matches: provide the evidence. No strategy needed.
 - For PARTIAL matches: provide evidence AND a creative strategy to strengthen the positioning.
 - For MISSING matches: provide a creative strategy if ANY adjacent experience exists. If truly missing, put it in critical_gaps.
 - pending_strategies: include ALL strategies for partial/missing requirements. These go to the user for approval before being used in the resume.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Write as a coaching conversation — explain your reasoning to the candidate. Show your math. Be specific about what evidence you found and why it works. This text will be shown directly to the user.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate 1-3 targeted questions that could surface hidden experience relevant to this gap. Questions MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Each question should have a rationale (why it matters) and looking_for (what kind of answer would help).
-- coverage_score: percentage of must_have + important requirements that are strong or have viable strategies.
+- coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
 - Be honest about critical_gaps — don't stretch beyond what's defensible.`;
 
 export async function runGapAnalysis(
@@ -107,7 +138,7 @@ export async function runGapAnalysis(
   });
 
   const parsed = repairJSON<GapAnalysisOutput>(response.text);
-  if (parsed) return parsed;
+  if (parsed) return normalizeGapAnalysis(parsed);
 
   // Attempt 2: retry with explicit JSON-only instruction
   logger.warn(
@@ -124,7 +155,7 @@ export async function runGapAnalysis(
   });
 
   const retryParsed = repairJSON<GapAnalysisOutput>(retry.text);
-  if (retryParsed) return retryParsed;
+  if (retryParsed) return normalizeGapAnalysis(retryParsed);
 
   logger.error(
     { rawSnippet: retry.text.substring(0, 500) },
@@ -134,11 +165,34 @@ export async function runGapAnalysis(
 }
 
 function buildUserMessage(input: GapAnalysisInput): string {
-  const parts: string[] = [
-    '## Job Requirements (from Job Intelligence)',
+  const canonicalRequirements: string[] = [
     ...input.job_intelligence.core_competencies.map(
-      c => `- [${c.importance}] ${c.competency}: ${c.evidence_from_jd}`
+      c => `- [source=job_description][category=core_competency][importance=${c.importance}] ${c.competency} :: ${c.evidence_from_jd}`,
     ),
+    ...input.job_intelligence.strategic_responsibilities.map(
+      responsibility => `- [source=job_description][category=strategic_responsibility][importance=important] ${responsibility} :: Strategic responsibility explicitly present in the JD`,
+    ),
+    `- [source=benchmark][category=benchmark_leadership][importance=important] ${input.benchmark.expected_leadership_scope} :: Leadership scope expected of the benchmark candidate`,
+    ...input.benchmark.expected_achievements.map(
+      a => `- [source=benchmark][category=benchmark_achievement][importance=important] ${a.area}: ${a.description} :: Typical metrics: ${a.typical_metrics}`,
+    ),
+    ...input.benchmark.expected_technical_skills.map(
+      skill => `- [source=benchmark][category=benchmark_skill][importance=important] ${skill} :: Benchmark technical skill`,
+    ),
+    ...input.benchmark.expected_certifications.map(
+      cert => `- [source=benchmark][category=benchmark_certification][importance=nice_to_have] ${cert} :: Benchmark certification expectation`,
+    ),
+    ...input.benchmark.expected_industry_knowledge.map(
+      knowledge => `- [source=benchmark][category=benchmark_industry][importance=important] ${knowledge} :: Benchmark industry knowledge`,
+    ),
+    ...input.benchmark.differentiators.map(
+      differentiator => `- [source=benchmark][category=benchmark_differentiator][importance=nice_to_have] ${differentiator} :: What makes the benchmark candidate stand out`,
+    ),
+  ];
+
+  const parts: string[] = [
+    '## Canonical Requirement Catalog',
+    ...canonicalRequirements,
     '',
     '## Benchmark Candidate (the ideal hire)',
     `Profile: ${input.benchmark.ideal_profile_summary}`,
@@ -183,8 +237,63 @@ function buildUserMessage(input: GapAnalysisInput): string {
 
   parts.push(
     '',
-    'Compare this candidate against EVERY requirement from the job. Classify each as strong/partial/missing. For partial and missing, propose creative positioning strategies.',
+    'Compare this candidate against EVERY requirement in the canonical requirement catalog. Classify each as strong/partial/missing. For partial and missing, propose creative positioning strategies.',
   );
 
   return parts.join('\n');
+}
+
+function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
+  const requirements = output.requirements.map(normalizeRequirement);
+  const jobBreakdown = computeCoverageBreakdown(requirements, 'job_description');
+  const benchmarkBreakdown = computeCoverageBreakdown(requirements, 'benchmark');
+  const total = jobBreakdown.total + benchmarkBreakdown.total;
+  const addressed = jobBreakdown.addressed + benchmarkBreakdown.addressed;
+
+  return {
+    ...output,
+    requirements,
+    coverage_score: total > 0 ? Math.round((addressed / total) * 100) : 0,
+    score_breakdown: {
+      job_description: jobBreakdown,
+      benchmark: benchmarkBreakdown,
+    },
+  };
+}
+
+function normalizeRequirement(requirement: RequirementGap): RequirementGap {
+  const source: RequirementSource = requirement.source === 'benchmark' ? 'benchmark' : 'job_description';
+
+  return {
+    ...requirement,
+    source,
+    category: requirement.category ?? defaultCategoryForSource(source),
+    score_domain: requirement.score_domain ?? (source === 'job_description' ? 'ats' : 'benchmark'),
+    source_evidence: requirement.source_evidence,
+  };
+}
+
+function defaultCategoryForSource(source: RequirementSource): RequirementCategory {
+  return source === 'job_description' ? 'core_competency' : 'benchmark_achievement';
+}
+
+function computeCoverageBreakdown(
+  requirements: RequirementGap[],
+  source: RequirementSource,
+): RequirementCoverageBreakdown {
+  const scoped = requirements.filter((requirement) => requirement.source === source);
+  const strong = scoped.filter((requirement) => requirement.classification === 'strong').length;
+  const partial = scoped.filter((requirement) => requirement.classification === 'partial').length;
+  const missing = scoped.filter((requirement) => requirement.classification === 'missing').length;
+  const addressed = strong + partial;
+  const total = scoped.length;
+
+  return {
+    total,
+    strong,
+    partial,
+    missing,
+    addressed,
+    coverage_score: total > 0 ? Math.round((addressed / total) * 100) : 0,
+  };
 }

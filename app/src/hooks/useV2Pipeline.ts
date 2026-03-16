@@ -12,7 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse-parser';
-import type { V2PipelineData, V2SSEEvent, V2Stage } from '@/types/resume-v2';
+import type { GapCoachingResponse, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage } from '@/types/resume-v2';
 
 const INITIAL_DATA: V2PipelineData = {
   sessionId: '',
@@ -146,7 +146,15 @@ export function useV2Pipeline(accessToken: string | null) {
     }
   }, [accessToken, handleEvent]);
 
-  const start = useCallback(async (resumeText: string, jobDescription: string, userContext?: string) => {
+  const start = useCallback(async (
+    resumeText: string,
+    jobDescription: string,
+    options?: {
+      userContext?: string;
+      gapCoachingResponses?: GapCoachingResponse[];
+      preScores?: PreScores | null;
+    },
+  ) => {
     if (!accessToken) return;
     // isStarting guard: covers the brief window between user submit and SSE connection.
     // Once SSE connects, isStarting becomes false and the UI switches to streaming display,
@@ -166,7 +174,13 @@ export function useV2Pipeline(accessToken: string | null) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ resume_text: resumeText, job_description: jobDescription, user_context: userContext }),
+        body: JSON.stringify({
+          resume_text: resumeText,
+          job_description: jobDescription,
+          user_context: options?.userContext,
+          gap_coaching_responses: options?.gapCoachingResponses,
+          pre_scores: options?.preScores ?? undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -187,29 +201,6 @@ export function useV2Pipeline(accessToken: string | null) {
       setIsStarting(false);
     }
   }, [accessToken, isStarting, connectSSE]);
-
-  const respondToGapCoaching = useCallback(async (responses: Array<{ requirement: string; action: 'approve' | 'context' | 'skip'; user_context?: string }>) => {
-    if (!accessToken || !data.sessionId) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/pipeline/${data.sessionId}/respond-gaps`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ responses }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        const msg = (body as { error?: string }).error ?? 'Failed to submit gap responses';
-        setData(prev => ({ ...prev, error: msg }));
-      }
-    } catch (err) {
-      setData(prev => ({ ...prev, error: err instanceof Error ? err.message : 'Failed to submit gap responses' }));
-    }
-  }, [accessToken, data.sessionId]);
 
   const integrateKeyword = useCallback(async (keyword: string, resumeText: string, jobDescription: string): Promise<{
     original_text: string;
@@ -236,7 +227,11 @@ export function useV2Pipeline(accessToken: string | null) {
     }
   }, [accessToken, data.sessionId]);
 
-  const loadSession = useCallback(async (sessionId: string): Promise<{ resume_text: string; job_description: string } | false> => {
+  const loadSession = useCallback(async (sessionId: string): Promise<{
+    resume_text: string;
+    job_description: string;
+    draftState: V2PersistedDraftState | null;
+  } | false> => {
     if (!accessToken) return false;
 
     try {
@@ -258,6 +253,7 @@ export function useV2Pipeline(accessToken: string | null) {
           resumeDraft: V2PipelineData['resumeDraft'];
           assembly: V2PipelineData['assembly'];
         };
+        draft_state?: V2PersistedDraftState | null;
         inputs?: { resume_text: string; job_description: string };
       };
 
@@ -282,7 +278,32 @@ export function useV2Pipeline(accessToken: string | null) {
       setIsComplete(true);
       setIsConnected(false);
 
-      return body.inputs ?? { resume_text: '', job_description: '' };
+      return {
+        ...(body.inputs ?? { resume_text: '', job_description: '' }),
+        draftState: body.draft_state ?? null,
+      };
+    } catch {
+      return false;
+    }
+  }, [accessToken]);
+
+  const saveDraftState = useCallback(async (
+    sessionId: string,
+    draftState: V2PersistedDraftState | null,
+  ): Promise<boolean> => {
+    if (!accessToken) return false;
+
+    try {
+      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/draft-state`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ draft_state: draftState }),
+      });
+
+      return response.ok;
     } catch {
       return false;
     }
@@ -305,7 +326,7 @@ export function useV2Pipeline(accessToken: string | null) {
     start,
     reset,
     loadSession,
-    respondToGapCoaching,
+    saveDraftState,
     integrateKeyword,
   };
 }
