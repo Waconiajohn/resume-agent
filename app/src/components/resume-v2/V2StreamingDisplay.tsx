@@ -331,10 +331,10 @@ export function V2StreamingDisplay({
           </div>
         )}
 
-        {/* Split-screen: left checklist + right resume (stacked on mobile) */}
+        {/* Split-screen: left gap analysis report + right resume (stacked on mobile) */}
         <div className="flex-1 flex min-h-0">
           {/* ─── Left panel: Requirements Checklist (hidden below md breakpoint) ─── */}
-          <div className="hidden md:block md:w-[35%] md:min-w-[280px] md:max-w-[420px] border-r border-white/[0.06] overflow-y-auto">
+          <div className="hidden md:flex md:flex-col md:w-[35%] md:min-w-[280px] md:max-w-[420px] border-r border-white/[0.06] overflow-hidden">
             <GapAnalysisReportPanel
               jobIntelligence={data.jobIntelligence!}
               benchmarkCandidate={data.benchmarkCandidate ?? null}
@@ -388,6 +388,7 @@ export function V2StreamingDisplay({
                         quickWins={data.assembly.quick_wins}
                         isScoring={isScoring}
                         onIntegrateKeyword={onIntegrateKeyword}
+                        preScoreKeywords={preScores}
                       />
                     ) : (
                       <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />

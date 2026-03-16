@@ -14,6 +14,8 @@ export interface KeywordScoreDashboardProps {
   isIntegrating?: boolean;
   integratingKeyword?: string | null;
   onQuickWinAction?: (description: string, impact: string) => void;
+  /** Baseline keyword data from pre-scoring (shown when liveScores not yet available) */
+  preScoreKeywords?: { keywords_found: string[]; keywords_missing: string[] } | null;
 }
 
 // ─── Quick win action detection ────────────────────────────────────────────────
@@ -113,6 +115,7 @@ export function KeywordScoreDashboard({
   isIntegrating = false,
   integratingKeyword = null,
   onQuickWinAction,
+  preScoreKeywords,
 }: KeywordScoreDashboardProps) {
   // The displayed ATS score: prefer live (post-edit) score, fall back to pipeline score
   const displayAts = liveScores?.ats_score ?? pipelineScores.ats_match;
@@ -120,8 +123,9 @@ export function KeywordScoreDashboard({
   const hasImproved = liveScores !== null && liveScores.ats_score !== pipelineAts;
   const delta = liveScores !== null ? liveScores.ats_score - pipelineAts : 0;
 
-  const keywordsFound = liveScores?.keywords_found ?? [];
-  const keywordsMissing = liveScores?.keywords_missing ?? [];
+  // Keywords: prefer live scores, fall back to pre-score baseline
+  const keywordsFound = liveScores?.keywords_found ?? preScoreKeywords?.keywords_found ?? [];
+  const keywordsMissing = liveScores?.keywords_missing ?? preScoreKeywords?.keywords_missing ?? [];
   const topSuggestions = liveScores?.top_suggestions ?? [];
 
   // Show top suggestions when there are no missing keywords but we still have suggestions

@@ -165,7 +165,7 @@ function SummaryHeader({
   const addressedPct = total > 0 ? Math.round(((strongCount + partialCount) / total) * 100) : 0;
 
   return (
-    <div className="px-5 pt-5 pb-4 space-y-4">
+    <div className="px-5 pt-5 pb-4 space-y-4 shrink-0 border-b border-white/[0.06]">
       {/* Title */}
       <div>
         <h2 style={{ fontSize: 16, fontWeight: 600, color: REPORT_COLORS.heading, lineHeight: 1.3 }}>
