@@ -9,9 +9,9 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, FileText, Shield, Undo2, Redo2, ChevronDown } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, FileText, Shield, Undo2, Redo2, ChevronDown, ChevronRight } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
-import type { V2PipelineData, V2Stage, ResumeDraft } from '@/types/resume-v2';
+import type { V2PipelineData, V2Stage, ResumeDraft, JobIntelligence, CandidateIntelligence, BenchmarkCandidate, NarrativeStrategy } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { JobIntelligenceCard } from './cards/JobIntelligenceCard';
@@ -134,6 +134,67 @@ function AnimatedCard({ children, index = 0 }: { children: React.ReactNode; inde
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {children}
+    </div>
+  );
+}
+
+// ─── Analysis Summary (persists in split-screen above the resume) ────────────
+
+function AnalysisSummarySection({
+  jobIntelligence,
+  candidateIntelligence,
+  benchmarkCandidate,
+  narrativeStrategy,
+}: {
+  jobIntelligence: JobIntelligence | null;
+  candidateIntelligence: CandidateIntelligence | null;
+  benchmarkCandidate: BenchmarkCandidate | null;
+  narrativeStrategy: NarrativeStrategy | null;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const cardCount = [jobIntelligence, candidateIntelligence, benchmarkCandidate, narrativeStrategy].filter(Boolean).length;
+  if (cardCount === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
+        aria-expanded={expanded}
+      >
+        <ChevronRight
+          className="h-3.5 w-3.5 text-white/40 shrink-0 transition-transform duration-200"
+          style={{ transform: expanded ? 'rotate(90deg)' : 'none' }}
+        />
+        <Briefcase className="h-3.5 w-3.5 text-white/40 shrink-0" />
+        <span className="text-sm font-medium text-white/70">
+          Analysis &amp; Strategy
+        </span>
+        <span className="text-xs text-white/30 ml-auto">
+          {cardCount} {cardCount === 1 ? 'section' : 'sections'}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4 border-t border-white/[0.06]">
+          {jobIntelligence && (
+            <div className="pt-4">
+              <GlassCard className="p-5"><JobIntelligenceCard data={jobIntelligence} /></GlassCard>
+            </div>
+          )}
+          {candidateIntelligence && (
+            <GlassCard className="p-5"><CandidateIntelligenceCard data={candidateIntelligence} /></GlassCard>
+          )}
+          {benchmarkCandidate && (
+            <GlassCard className="p-5"><BenchmarkCandidateCard data={benchmarkCandidate} /></GlassCard>
+          )}
+          {narrativeStrategy && (
+            <GlassCard className="p-5"><NarrativeStrategyCard data={narrativeStrategy} /></GlassCard>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -375,6 +436,16 @@ export function V2StreamingDisplay({
                     onDismiss={onDismissChanges}
                   />
                 </AnimatedCard>
+              )}
+
+              {/* ─── Analysis cards (persist from streaming into split-screen) ─── */}
+              {(data.jobIntelligence || data.candidateIntelligence || data.benchmarkCandidate || data.narrativeStrategy) && (
+                <AnalysisSummarySection
+                  jobIntelligence={data.jobIntelligence}
+                  candidateIntelligence={data.candidateIntelligence}
+                  benchmarkCandidate={data.benchmarkCandidate}
+                  narrativeStrategy={data.narrativeStrategy}
+                />
               )}
 
               {/* Scores compact bar */}
