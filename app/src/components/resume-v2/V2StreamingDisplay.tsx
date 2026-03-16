@@ -33,6 +33,8 @@ import { ScoringReportCard } from './cards/ScoringReportCard';
 import { HiringManagerReviewCard } from './cards/HiringManagerReviewCard';
 import { GapAnalysisReportPanel } from './panels/GapAnalysisReportPanel';
 import type { HiringManagerReviewResult, HiringManagerConcern } from '@/hooks/useHiringManagerReview';
+import type { GapChatHook } from '@/hooks/useGapChat';
+import type { GapChatContext } from '@/types/resume-v2';
 import { scrollToBullet } from './useStrategyThread';
 
 interface V2StreamingDisplayProps {
@@ -68,6 +70,8 @@ interface V2StreamingDisplayProps {
   hiringManagerError?: string | null;
   onRequestHiringManagerReview?: () => void;
   onApplyHiringManagerRecommendation?: (concern: HiringManagerConcern) => void;
+  gapChat?: GapChatHook | null;
+  buildChatContext?: (requirement: string) => GapChatContext;
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -209,6 +213,7 @@ export function V2StreamingDisplay({
   previousResume, onDismissChanges,
   hiringManagerResult, isHiringManagerLoading, hiringManagerError,
   onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
+  gapChat, buildChatContext,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -409,6 +414,8 @@ export function V2StreamingDisplay({
                 currentResume={displayResume}
                 isEditing={isEditing}
                 preScores={preScores}
+                gapChat={gapChat}
+                buildChatContext={buildChatContext}
               />
             </div>
           </div>

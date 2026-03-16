@@ -6,15 +6,17 @@
  *   2. Streaming — accumulating output display with inline AI editing + live scoring
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useV2Pipeline } from '@/hooks/useV2Pipeline';
 import { useInlineEdit, resumeToPlainText } from '@/hooks/useInlineEdit';
 import { useLiveScoring } from '@/hooks/useLiveScoring';
+import { useGapChat } from '@/hooks/useGapChat';
 import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
-import type { ResumeDraft, GapCoachingResponse } from '@/types/resume-v2';
+import type { ResumeDraft, GapCoachingResponse, GapChatContext } from '@/types/resume-v2';
+import { normalizeRequirement } from './utils/coaching-actions';
 import { useHiringManagerReview } from '@/hooks/useHiringManagerReview';
 import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 
@@ -59,6 +61,45 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     reset: resetHiringManagerReview,
   } = useHiringManagerReview(accessToken, data.sessionId);
 
+  // Gap coaching chat
+  const gapChat = useGapChat(accessToken, data.sessionId);
+  const { resetChat: resetGapChat } = gapChat;
+
+  // Build context for per-item gap chat — memoized factory
+  const buildChatContext = useCallback((requirement: string): GapChatContext => {
+    const ji = data.jobIntelligence;
+    const ci = data.candidateIntelligence;
+    const ga = data.gapAnalysis;
+
+    // Find the matching requirement in gap analysis (normalized + fallback)
+    const normalized = normalizeRequirement(requirement);
+    const gapReq = ga?.requirements.find(
+      r => normalizeRequirement(r.requirement) === normalized,
+    ) ?? ga?.requirements.find(
+      r => r.requirement.toLowerCase().includes(normalized) || normalized.includes(r.requirement.toLowerCase()),
+    );
+
+    // Find JD evidence for this requirement (normalized + fallback)
+    const comp = ji?.core_competencies.find(
+      c => normalizeRequirement(c.competency) === normalized,
+    ) ?? ji?.core_competencies.find(
+      c => c.competency.toLowerCase().includes(normalized) || normalized.includes(c.competency.toLowerCase()),
+    );
+
+    return {
+      evidence: gapReq?.evidence ?? [],
+      currentStrategy: gapReq?.strategy?.positioning,
+      aiReasoning: gapReq?.strategy?.ai_reasoning,
+      inferredMetric: gapReq?.strategy?.inferred_metric,
+      jobDescriptionExcerpt: comp?.evidence_from_jd
+        ?? ji?.core_competencies.map(c => `${c.competency} (${c.importance})`).join(', ')
+        ?? '',
+      candidateExperienceSummary: ci
+        ? `${ci.career_themes.join(', ')}. ${ci.leadership_scope}. Scale: ${ci.operational_scale}.`
+        : '',
+    };
+  }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis]);
+
   // Seed initial scores from pipeline assembly
   useEffect(() => {
     if (data.assembly) {
@@ -102,8 +143,9 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume(null);
     setSessionLoadError(null);
     resetHistory();
+    resetGapChat();
     void start(rt, jd);
-  }, [start, resetHistory]);
+  }, [start, resetHistory, resetGapChat]);
 
   // Gap coaching: user reviewed strategies → re-run pipeline with their decisions
   const handleGapCoachingRespond = useCallback((responses: GapCoachingResponse[]) => {
@@ -122,8 +164,9 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
 
     setEditableResume(null);
     resetHistory();
+    resetGapChat();
     void start(resumeText, jobDescription, contextParts.length > 0 ? contextParts.join('\n') : undefined);
-  }, [start, resumeText, jobDescription, resetHistory]);
+  }, [start, resumeText, jobDescription, resetHistory, resetGapChat]);
 
   // Keyword integration: use inline edit with 'add_keywords' action
   // Use positioning assessment to find the most relevant entry when available
@@ -163,8 +206,9 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setPreviousResume(editableResume ?? data.assembly?.final_resume ?? data.resumeDraft ?? null);
     setEditableResume(null);
     resetHistory();
+    resetGapChat();
     void start(resumeText, jobDescription, userContext);
-  }, [start, resumeText, jobDescription, resetHistory, editableResume, data.assembly, data.resumeDraft]);
+  }, [start, resumeText, jobDescription, resetHistory, resetGapChat, editableResume, data.assembly, data.resumeDraft]);
 
   const handleDismissChanges = useCallback(() => {
     setPreviousResume(null);
@@ -179,7 +223,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setSessionLoadAttempted(false);
     setSessionLoadError(null);
     resetHiringManagerReview();
-  }, [reset, resetHiringManagerReview]);
+    resetGapChat();
+  }, [reset, resetHiringManagerReview, resetGapChat]);
 
   // Hiring manager review: build the request from available data
   const handleRequestHiringManagerReview = useCallback(() => {
@@ -312,6 +357,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         hiringManagerError={hiringManagerError}
         onRequestHiringManagerReview={handleRequestHiringManagerReview}
         onApplyHiringManagerRecommendation={handleApplyHiringManagerRecommendation}
+        gapChat={isComplete ? gapChat : null}
+        buildChatContext={isComplete ? buildChatContext : undefined}
       />
     </div>
   );

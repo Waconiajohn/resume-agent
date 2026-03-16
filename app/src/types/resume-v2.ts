@@ -265,6 +265,24 @@ export interface AssemblyResult {
   positioning_assessment?: PositioningAssessment;
 }
 
+// ─── Gap Chat (per-item coaching conversation) ──────────────────────
+
+export interface GapChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  suggestedLanguage?: string;
+  followUpQuestion?: string;
+}
+
+export interface GapChatContext {
+  evidence: string[];
+  currentStrategy?: string;
+  aiReasoning?: string;
+  inferredMetric?: string;
+  jobDescriptionExcerpt: string;
+  candidateExperienceSummary: string;
+}
+
 // ─── Pipeline State (accumulated in the frontend) ───────────────────
 
 export interface V2PipelineData {

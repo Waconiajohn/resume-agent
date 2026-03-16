@@ -13,7 +13,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ChevronRight, Eye, Sparkles, TrendingUp, MessageSquare, Check } from 'lucide-react';
+import { ChevronRight, Eye, Sparkles, TrendingUp, MessageSquare, Check, MessagesSquare } from 'lucide-react';
 import type {
   JobIntelligence,
   PositioningAssessment,
@@ -37,6 +37,9 @@ import {
 } from '../utils/coaching-actions';
 import { REPORT_COLORS, tierColor, tierBg, tierBorder, type Tier } from './report-colors';
 import { StatusBadge, importanceStyle, importanceLabel } from '../cards/shared-badges';
+import { GapChatThread } from './GapChatThread';
+import type { GapChatHook } from '@/hooks/useGapChat';
+import type { GapChatContext } from '@/types/resume-v2';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +55,10 @@ interface GapAnalysisReportPanelProps {
   currentResume?: ResumeDraft | null;
   isEditing?: boolean;
   preScores?: PreScores | null;
+  /** Per-item coaching chat hook — enables conversational coaching on gap items */
+  gapChat?: GapChatHook | null;
+  /** Builds context for the gap chat endpoint */
+  buildChatContext?: (requirement: string) => GapChatContext;
 }
 
 // ─── Merged requirement type ─────────────────────────────────────────────────
@@ -320,6 +327,8 @@ function RequirementCard({
   positioningAssessment,
   isEditing,
   onApply,
+  gapChat,
+  buildChatContext,
 }: {
   req: MergedRequirement;
   isActive: boolean;
@@ -329,10 +338,18 @@ function RequirementCard({
   positioningAssessment: PositioningAssessment | null;
   isEditing?: boolean;
   onApply: (requirement: string) => void;
+  gapChat?: GapChatHook | null;
+  buildChatContext?: (requirement: string) => GapChatContext;
 }) {
   const [showContext, setShowContext] = useState(false);
   const [contextText, setContextText] = useState('');
   const [questionsExpanded, setQuestionsExpanded] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+
+  // Chat state for this item — computed once, used in button gate + thread render
+  const chatState = gapChat?.getItemState(req.requirement);
+  const chatResolved = chatState?.resolvedLanguage != null;
+  const chatCtx = showChat && buildChatContext ? buildChatContext(req.requirement) : undefined;
 
   const color = tierColor(req.tier);
   const config = TIER_CONFIG[req.tier];
@@ -727,7 +744,61 @@ function RequirementCard({
                 Add Context
               </button>
             )}
+            {gapChat && buildChatContext && req.tier !== 'strong' && !showChat && !chatResolved && (
+              <button
+                type="button"
+                onClick={() => setShowChat(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors hover:opacity-80"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#afc4ff',
+                  backgroundColor: 'rgba(175,196,255,0.06)',
+                  border: '1px solid rgba(175,196,255,0.15)',
+                }}
+                data-testid="action-coach-me"
+              >
+                <MessagesSquare className="h-3.5 w-3.5" />
+                Coach Me
+              </button>
+            )}
           </div>
+        )}
+
+        {/* Gap coaching chat thread */}
+        {showChat && gapChat && buildChatContext && req.tier !== 'strong' && (
+          <GapChatThread
+            requirement={req.requirement}
+            classification={req.tier === 'partial' ? 'partial' : 'missing'}
+            messages={chatState?.messages ?? []}
+            isLoading={chatState?.isLoading ?? false}
+            error={chatState?.error ?? null}
+            resolvedLanguage={chatState?.resolvedLanguage ?? null}
+            onSendMessage={gapChat.sendMessage}
+            onAcceptLanguage={(requirement, language) => {
+              // Find a target bullet before accepting — prevent silent no-op
+              if (!canAct) return;
+              const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
+              // Fallback: first experience bullet if no direct mapping exists
+              const fallbackTarget = !target && currentResume?.professional_experience[0]?.bullets[0]
+                ? { text: currentResume.professional_experience[0].bullets[0].text, section: `Professional Experience - ${currentResume.professional_experience[0].company}` }
+                : null;
+              const editTarget = target ?? fallbackTarget;
+              if (!editTarget) return; // No resume content to edit — don't fake "Applied"
+
+              gapChat.acceptLanguage(requirement, language);
+              onRequestEdit!(
+                editTarget.text,
+                editTarget.section,
+                'custom',
+                `Naturally integrate this coached resume language into the text: "${language}". This addresses the job requirement: "${req.requirement}".`,
+                buildEditContext(req.requirement, req.evidence, language),
+              );
+              onApply(req.requirement);
+            }}
+            context={chatCtx!}
+            isEditing={isEditing}
+          />
         )}
       </div>
     </div>
@@ -748,6 +819,8 @@ export function GapAnalysisReportPanel({
   currentResume,
   isEditing,
   preScores,
+  gapChat,
+  buildChatContext,
 }: GapAnalysisReportPanelProps) {
   const [appliedSet, setAppliedSet] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -968,6 +1041,8 @@ export function GapAnalysisReportPanel({
                       positioningAssessment={positioningAssessment}
                       isEditing={isEditing}
                       onApply={handleApply}
+                      gapChat={gapChat}
+                      buildChatContext={buildChatContext}
                     />
                   );
                 })}

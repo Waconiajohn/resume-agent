@@ -578,6 +578,136 @@ Return valid JSON only:
   }
 });
 
+// ─── POST /:sessionId/gap-chat ────────────────────────────────────
+
+const gapChatSchema = z.object({
+  requirement: z.string().min(1).max(1000).trim(),
+  classification: z.enum(['partial', 'missing', 'strong']),
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().max(2000),
+  })).max(20),
+  context: z.object({
+    evidence: z.array(z.string().max(1000)).max(20),
+    current_strategy: z.string().max(2000).optional(),
+    ai_reasoning: z.string().max(2000).optional(),
+    inferred_metric: z.string().max(500).optional(),
+    job_description_excerpt: z.string().max(5000),
+    candidate_experience_summary: z.string().max(3000),
+  }),
+});
+
+const GAP_CHAT_SYSTEM = `You are a $3,000/engagement executive resume strategist having a coaching conversation with a candidate about a specific gap on their resume.
+
+Your job:
+1. Help them surface hidden experience they haven't articulated
+2. Find creative, TRUTHFUL ways to position their real experience against the requirement
+3. When you have enough context, propose specific resume language they can add
+
+CONVERSATION STYLE:
+- Warm but direct. You're a coach, not a cheerleader.
+- Ask ONE targeted follow-up question at a time — don't overwhelm.
+- When the candidate shares new information, immediately show how you'd use it.
+- Show your math when inferring numbers (budget from team size, etc.) and back off 10-20%.
+
+RESPONSE FORMAT: Return valid JSON only:
+{
+  "response": "Your conversational reply — coaching explanation, what you found, follow-up question. 2-4 sentences.",
+  "suggested_resume_language": "Ready-to-use resume bullet text if you have enough context. Omit this field if you need more information first.",
+  "follow_up_question": "A single targeted question to surface more evidence. Omit if you've proposed language and are waiting for their decision."
+}
+
+RULES:
+- NEVER fabricate experience. Only position what's real.
+- When inferring metrics, back off 10-20% from calculated values.
+- suggested_resume_language should be a single, polished resume bullet — not a paragraph.
+- If the candidate's response reveals they truly don't have this experience, say so honestly and suggest they skip this gap.`;
+
+resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
+  const user = c.get('user');
+  const userId = user.id;
+  const sessionId = c.req.param('sessionId');
+
+  const { data: session } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  const parsedBody = await parseJsonBodyWithLimit(c, 50_000);
+  if (!parsedBody.ok) return parsedBody.response;
+
+  const parsed = gapChatSchema.safeParse(parsedBody.data);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const { requirement, classification, messages, context } = parsed.data;
+
+  logger.info({ session_id: sessionId, requirement, turn: messages.length }, 'Gap chat message');
+
+  // Build the context message for the first turn
+  const contextBlock = [
+    `## Gap Being Discussed`,
+    `Requirement: ${requirement}`,
+    `Classification: ${classification}`,
+    '',
+    context.evidence.length > 0
+      ? `## Candidate's Relevant Experience\n${context.evidence.map(e => `- ${e}`).join('\n')}`
+      : '## Candidate\'s Relevant Experience\nNone found in current resume.',
+    '',
+    context.current_strategy ? `## Current Positioning Strategy\n${context.current_strategy}` : '',
+    context.ai_reasoning ? `## AI Analysis\n${context.ai_reasoning}` : '',
+    context.inferred_metric ? `## Inferred Metric\n${context.inferred_metric}` : '',
+    '',
+    `## Job Description Context\n${context.job_description_excerpt}`,
+    '',
+    `## Candidate Background Summary\n${context.candidate_experience_summary}`,
+  ].filter(Boolean).join('\n');
+
+  // Build multi-turn conversation: context as first system-provided user message,
+  // then the actual conversation history
+  const llmMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+    { role: 'user', content: contextBlock },
+    { role: 'assistant', content: '{"response": "I understand the gap. Let me review what we have and help you position this.", "follow_up_question": "Tell me about any experience you have related to this requirement, even if it seems indirect."}' },
+    ...messages,
+  ];
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_MID,
+      system: GAP_CHAT_SYSTEM,
+      messages: llmMessages,
+      max_tokens: 1024,
+    });
+
+    const result = repairJSON<{
+      response: string;
+      suggested_resume_language?: string;
+      follow_up_question?: string;
+    }>(response.text);
+
+    if (!result?.response) {
+      // Fallback: treat raw text as the response — log for monitoring
+      logger.warn({ session_id: sessionId, requirement, rawSnippet: response.text.substring(0, 200) }, 'Gap chat: repairJSON failed, falling back to raw text');
+      return c.json({
+        response: response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim(),
+      });
+    }
+
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ session_id: sessionId, requirement, error: message }, 'Gap chat failed');
+    return c.json({ error: 'Chat failed', message }, 500);
+  }
+});
+
 // ─── POST /:sessionId/hiring-manager-review ────────────────────────
 
 const hiringManagerReviewSchema = z.object({

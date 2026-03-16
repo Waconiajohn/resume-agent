@@ -601,6 +601,36 @@ Total: 234 new tests.
 
 ---
 
+## Sprint GC1: Gap Coaching Interactive Loop
+
+**Goal:** Add a per-item conversational coaching loop to the gap analysis left panel, so users can chat with the AI about each gap item, surface hidden experience, refine positioning language, and add it to the live resume.
+**Status:** IN PROGRESS
+**Started:** 2026-03-16
+
+### Story GC1-1: Gap Coaching Chat — Backend + Frontend [LARGE]
+- **As a** user reviewing my gap analysis
+- **I want to** have a conversational coaching loop with the AI about each gap item
+- **So that** I can surface hidden experience and refine positioning language before adding it to my resume
+- **Acceptance Criteria:**
+  - [ ] New `POST /:sessionId/gap-chat` endpoint: single MODEL_MID call with requirement context + conversation history, returns structured JSON (response, suggested_resume_language, follow_up_question)
+  - [ ] New `useGapChat` hook: per-item conversation state, send message, accept language, 10-turn cap
+  - [ ] New `GapChatThread` component: message bubbles, input bar, suggested language blocks with "Add to Resume" button
+  - [ ] `GapAnalysisReportPanel` integrates chat thread into PARTIAL and GAP requirement cards via "Coach Me" button
+  - [ ] Per-item conversation history preserved when navigating between items
+  - [ ] "Add to Resume" uses existing `useInlineEdit` + `findBulletForRequirement()` — no new edit infrastructure
+  - [ ] Score updates automatically via existing `requestRescore()` reactive chain
+  - [ ] Props threaded through V2StreamingDisplay → V2ResumeScreen
+  - [ ] TypeScript: both `cd app && npx tsc --noEmit` and `cd server && npx tsc --noEmit` pass
+- **Estimated complexity:** Large
+- **Dependencies:** Gap Analysis agent (#4) must have run
+
+### Out of Scope (Sprint GC1)
+- Changes to the Gap Analysis agent (#4) or Resume Writer agent (#6)
+- Changes to the orchestrator or pipeline flow
+- Tests (separate sprint)
+
+---
+
 ## Epic Complete
 
 All sprints delivered. The Resume Agent v2 10-agent pipeline is fully built end-to-end: backend agents, orchestrator, SSE streaming, frontend intake/display/editing/export, gap coaching UX, strategy transparency, test coverage, and session persistence.
