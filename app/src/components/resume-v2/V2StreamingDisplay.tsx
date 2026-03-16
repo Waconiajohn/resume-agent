@@ -401,6 +401,7 @@ export function V2StreamingDisplay({
                 jobIntelligence={data.jobIntelligence!}
                 positioningAssessment={data.assembly?.positioning_assessment ?? null}
                 gapAnalysis={data.gapAnalysis!}
+                benchmarkCandidate={data.benchmarkCandidate ?? null}
                 activeRequirements={activeRequirements}
                 onRequirementClick={handleRequirementClick}
                 gapCoachingCards={gapCoachingCards}

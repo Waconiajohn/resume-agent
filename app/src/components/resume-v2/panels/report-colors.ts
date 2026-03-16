@@ -1,18 +1,15 @@
 /**
  * Color system for the Gap Analysis Report Panel.
  *
- * Simplified: only gaps get a color accent. Strong and partial are neutral —
- * the mapping and coaching speak for themselves.
- *
- * Status accents are used for left borders and status icons only.
- * Body text uses white at varying opacity for readability.
+ * Tier-specific accents: green (strong), blue (partial), red (gap).
+ * Matches the streaming view palette.
  */
 
 export const REPORT_COLORS = {
-  // Status accents — neutral for strong/partial, crimson for gaps
-  strong: 'rgba(255,255,255,0.50)',
-  partial: 'rgba(255,255,255,0.50)',
-  gap: 'rgba(199,91,91,0.70)',
+  // Tier accents — green/blue/red matching streaming view
+  strong: '#b5dec2',
+  partial: '#afc4ff',
+  gap: '#f0b8b8',
 
   // Text roles
   heading: 'rgba(255,255,255,0.92)',
@@ -28,11 +25,17 @@ export function tierColor(tier: Tier): string {
 }
 
 export function tierBg(tier: Tier): string {
-  if (tier === 'gap') return 'rgba(199,91,91,0.04)';
-  return 'transparent';
+  switch (tier) {
+    case 'strong': return 'rgba(181,222,194,0.04)';
+    case 'partial': return 'rgba(175,196,255,0.04)';
+    case 'gap': return 'rgba(240,184,184,0.04)';
+  }
 }
 
 export function tierBorder(tier: Tier): string {
-  if (tier === 'gap') return 'rgba(199,91,91,0.30)';
-  return 'rgba(255,255,255,0.15)';
+  switch (tier) {
+    case 'strong': return 'rgba(181,222,194,0.30)';
+    case 'partial': return 'rgba(175,196,255,0.30)';
+    case 'gap': return 'rgba(240,184,184,0.30)';
+  }
 }

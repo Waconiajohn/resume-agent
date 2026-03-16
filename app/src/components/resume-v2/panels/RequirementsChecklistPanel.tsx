@@ -21,10 +21,12 @@ import type {
 import type { EditAction, EditContext } from '@/hooks/useInlineEdit';
 import { importanceLabel, importanceStyle } from '../cards/shared-badges';
 import {
+  tokenize,
   normalizeRequirement,
   findBulletForRequirement,
   buildEditContext,
   buildCoachingLookup,
+  findBenchmarkContext,
 } from '../utils/coaching-actions';
 
 // ─── Props ──────────────────────────────────────────────────────────────────────
@@ -84,27 +86,6 @@ function GroupHeader({ importance, count }: { importance: Importance; count: num
       <span className="text-[10px] tabular-nums text-white/30">{count}</span>
     </div>
   );
-}
-
-// ─── Benchmark context lookup ─────────────────────────────────────────────────
-
-/** Tokenize a string into lowercase words (strips punctuation) */
-function tokenize(s: string): string[] {
-  return s.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
-}
-
-function findBenchmarkContext(
-  requirement: string,
-  expectedAchievements: BenchmarkCandidate['expected_achievements'],
-): string | null {
-  const needleTokens = tokenize(requirement);
-  // D2: Require ≥2 overlapping words to avoid false positives
-  const match = expectedAchievements.find((a) => {
-    const areaTokens = tokenize(a.area);
-    const overlap = areaTokens.filter((t) => needleTokens.includes(t)).length;
-    return overlap >= 2 || a.area.toLowerCase() === requirement.toLowerCase();
-  });
-  return match ? match.description : null;
 }
 
 // ─── Status line ──────────────────────────────────────────────────────────────

@@ -3,15 +3,35 @@
  * and RequirementsChecklistPanel.
  */
 import type {
+  BenchmarkCandidate,
   GapCoachingCard,
   PositioningAssessment,
   ResumeDraft,
 } from '@/types/resume-v2';
 import type { EditContext } from '@/hooks/useInlineEdit';
 
+/** Tokenize a string into lowercase words (strips punctuation) */
+export function tokenize(s: string): string[] {
+  return s.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
+}
+
 /** Normalize requirement strings for lookup matching (trim, lowercase, strip trailing punctuation) */
 export function normalizeRequirement(s: string): string {
   return s.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
+}
+
+/** Find benchmark context by matching requirement to expected achievements via token overlap */
+export function findBenchmarkContext(
+  requirement: string,
+  expectedAchievements: BenchmarkCandidate['expected_achievements'],
+): string | null {
+  const needleTokens = tokenize(requirement);
+  const match = expectedAchievements.find((a) => {
+    const areaTokens = tokenize(a.area);
+    const overlap = areaTokens.filter((t) => needleTokens.includes(t)).length;
+    return overlap >= 2 || a.area.toLowerCase() === requirement.toLowerCase();
+  });
+  return match ? match.description : null;
 }
 
 /**
