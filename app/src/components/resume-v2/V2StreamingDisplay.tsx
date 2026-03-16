@@ -151,7 +151,7 @@ function AnalysisSummarySection({
   benchmarkCandidate: BenchmarkCandidate | null;
   narrativeStrategy: NarrativeStrategy | null;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const cardCount = [jobIntelligence, candidateIntelligence, benchmarkCandidate, narrativeStrategy].filter(Boolean).length;
   if (cardCount === 0) return null;
@@ -395,7 +395,7 @@ export function V2StreamingDisplay({
         {/* Split-screen: left gap analysis report + right resume (stacked on mobile) */}
         <div className="flex-1 flex min-h-0">
           {/* ─── Left panel: Requirements Checklist (hidden below md breakpoint) ─── */}
-          <div className="hidden md:flex md:flex-col md:w-[35%] md:min-w-[280px] md:max-w-[420px] border-r border-white/[0.06] overflow-hidden">
+          <div className="hidden md:block md:w-[35%] md:min-w-[280px] md:max-w-[420px] border-r border-white/[0.06] overflow-y-auto" style={{ maxHeight: '100%' }}>
             <GapAnalysisReportPanel
               jobIntelligence={data.jobIntelligence!}
               benchmarkCandidate={data.benchmarkCandidate ?? null}

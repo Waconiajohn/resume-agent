@@ -15,7 +15,7 @@ export interface KeywordScoreDashboardProps {
   integratingKeyword?: string | null;
   onQuickWinAction?: (description: string, impact: string) => void;
   /** Baseline keyword data from pre-scoring (shown when liveScores not yet available) */
-  preScoreKeywords?: { keywords_found: string[]; keywords_missing: string[] } | null;
+  preScoreKeywords?: { ats_match: number; keywords_found: string[]; keywords_missing: string[] } | null;
 }
 
 // ─── Quick win action detection ────────────────────────────────────────────────
@@ -120,7 +120,10 @@ export function KeywordScoreDashboard({
   // The displayed ATS score: prefer live (post-edit) score, fall back to pipeline score
   const displayAts = liveScores?.ats_score ?? pipelineScores.ats_match;
   const pipelineAts = pipelineScores.ats_match;
+  const beforeAts = preScoreKeywords?.ats_match ?? null;
   const hasImproved = liveScores !== null && liveScores.ats_score !== pipelineAts;
+  const hasBeforeScore = beforeAts !== null && beforeAts !== pipelineAts;
+  const pipelineDelta = hasBeforeScore ? pipelineAts - beforeAts! : 0;
   const delta = liveScores !== null ? liveScores.ats_score - pipelineAts : 0;
 
   // Keywords: prefer live scores, fall back to pre-score baseline
@@ -163,7 +166,7 @@ export function KeywordScoreDashboard({
             )}
           </div>
 
-          {/* Before / after delta */}
+          {/* Before → After score context */}
           {hasImproved ? (
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/50 mb-3">
               <span>Pipeline: {pipelineAts}%</span>
@@ -171,7 +174,6 @@ export function KeywordScoreDashboard({
               <span style={{ color: scoreColor(liveScores?.ats_score ?? displayAts) }}>
                 After edits: {liveScores?.ats_score ?? displayAts}%
               </span>
-              {/* Delta badge — larger, with arrow icon for positive */}
               <span
                 className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-semibold"
                 style={{
@@ -186,6 +188,29 @@ export function KeywordScoreDashboard({
                 )}
                 {delta > 0 ? '+' : ''}
                 {delta}
+              </span>
+            </div>
+          ) : hasBeforeScore ? (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/50 mb-3">
+              <span>Your starting point: {beforeAts}%</span>
+              <span className="text-white/25">→</span>
+              <span style={{ color: scoreColor(pipelineAts) }}>
+                After optimization: {pipelineAts}%
+              </span>
+              <span
+                className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-semibold"
+                style={{
+                  color: pipelineDelta > 0 ? '#b5dec2' : '#f0b8b8',
+                  backgroundColor:
+                    pipelineDelta > 0 ? 'rgba(181,222,194,0.14)' : 'rgba(240,184,184,0.14)',
+                  border: `1px solid ${pipelineDelta > 0 ? 'rgba(181,222,194,0.25)' : 'rgba(240,184,184,0.25)'}`,
+                }}
+              >
+                {pipelineDelta > 0 && (
+                  <ArrowUp className="h-3 w-3 shrink-0" aria-hidden="true" />
+                )}
+                {pipelineDelta > 0 ? '+' : ''}
+                {pipelineDelta}
               </span>
             </div>
           ) : (

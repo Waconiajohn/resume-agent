@@ -835,7 +835,7 @@ export function GapAnalysisReportPanel({
 
   return (
     <div
-      className="flex flex-col h-full"
+      className="h-full overflow-y-auto"
       data-testid="gap-analysis-report"
       style={{
         background: 'rgba(10,12,20,0.85)',
@@ -852,8 +852,8 @@ export function GapAnalysisReportPanel({
         companyName={jobIntelligence.company_name}
       />
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto min-h-0 pb-6">
+      {/* Tier sections */}
+      <div className="pb-6">
         {(['strong', 'partial', 'gap'] as Tier[]).map((tier) => {
           const items = tiers[tier];
           if (items.length === 0) return null;
