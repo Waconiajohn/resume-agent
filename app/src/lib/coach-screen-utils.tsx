@@ -66,7 +66,7 @@ export function formatPendingGateLabelForWorkspace(gate: string | null | undefin
   if (!gate) return undefined;
   if (gate === 'positioning_profile_choice') return 'Choose how to use the saved positioning profile';
   if (gate === 'architect_review') return 'Review and approve the resume blueprint';
-  if (gate.startsWith('positioning_q_')) return 'Answer the current Why Me question';
+  if (gate.startsWith('positioning_q_')) return 'Answer the current Career Profile question';
   if (gate.startsWith('questionnaire_')) return 'Complete the current questionnaire';
   if (gate.startsWith('section_review_')) return 'Review the current section draft';
   return gate.replace(/_/g, ' ');

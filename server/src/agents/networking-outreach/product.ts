@@ -137,6 +137,9 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           parts.push(`Context Notes: ${ti.context_notes}`);
         }
 
+        if (state.platform_context?.career_profile) {
+          parts.push('', '## Career Profile', JSON.stringify(state.platform_context.career_profile, null, 2));
+        }
         if (state.platform_context?.why_me_story) {
           parts.push('', '## Why-Me Story', JSON.stringify(state.platform_context.why_me_story, null, 2));
         }
@@ -144,7 +147,11 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
           parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
         }
 
-        parts.push('', 'Call analyze_target first (pass the resume_text along with the target info), then find_common_ground, then assess_connection_path, then plan_outreach_sequence.');
+        parts.push(
+          '',
+          '## Objective',
+          'Use the available tools to understand the target, find genuine common ground, judge the right connection path, and plan an outreach sequence that feels personal without sounding forced.',
+        );
 
         // Distress resources — first agent only
         const distress = getDistressFromInput(input);
@@ -179,15 +186,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
               : 'InMail format. Up to 1900 characters.'
           }`,
           '',
-          'Follow your workflow exactly:',
-          '1. write_connection_request',
-          '2. write_follow_up with follow_up_number 1',
-          '3. write_follow_up with follow_up_number 2',
-          '4. write_value_offer',
-          '5. write_meeting_request',
-          '6. assemble_sequence',
-          '',
-          'Do NOT skip any message type in the sequence.',
+          'Use the available writing tools to produce the full sequence: connection request, follow-up 1, follow-up 2, value offer, meeting request, and one assembled sequence. Each message should respect the method limits and feel naturally connected to the research.',
         ];
 
         // If the user requested revisions at the review gate, include feedback
@@ -196,7 +195,7 @@ export function createNetworkingOutreachProductConfig(): ProductConfig<Networkin
             '',
             '## User Revision Requested',
             `The user reviewed the outreach sequence and requested the following changes: "${state.revision_feedback}"`,
-            'Rewrite the affected messages incorporating this feedback, then call assemble_sequence with all updated messages.',
+            'Rewrite the affected messages to address this feedback, preserve the best personalization hooks, and then rebuild the final sequence.',
           );
         }
 

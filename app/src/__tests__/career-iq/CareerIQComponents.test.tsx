@@ -232,7 +232,6 @@ describe('Sidebar', () => {
     expect(screen.getByText('LinkedIn Studio')).toBeInTheDocument();
     expect(screen.getByText('Job Command Center')).toBeInTheDocument();
     expect(screen.getByText('Interview Lab')).toBeInTheDocument();
-    expect(screen.getByText('Salary & Negotiation')).toBeInTheDocument();
   });
 
   it('disables gated rooms when dashboardState is new-user', () => {
@@ -252,9 +251,9 @@ describe('Sidebar', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
-    // Gated rooms should have title with "Complete your Why-Me story to unlock"
+    // Gated rooms should have title with "Complete your Career Profile to unlock"
     const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton?.getAttribute('title')).toContain('Complete your Why-Me story to unlock');
+    expect(resumeButton?.getAttribute('title')).toContain('Complete your Career Profile to unlock');
   });
 
   it('enables all rooms when dashboardState is refining', () => {

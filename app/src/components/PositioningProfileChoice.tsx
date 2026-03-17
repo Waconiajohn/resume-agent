@@ -36,7 +36,7 @@ export function PositioningProfileChoice({
         </span>
       </div>
       <p className="text-xs text-white/70">
-        This is your previously saved "Why Me" interview profile (career story, strengths, and evidence). It only affects how Step 3 starts and can speed up this run.
+        This is your previously saved Career Profile interview context (career story, strengths, and evidence). It only affects how Step 3 starts and can speed up this run.
       </p>
       <p className="mb-4 mt-1 text-xs text-white/55">
         Last updated: {formatDate(updatedAt)}

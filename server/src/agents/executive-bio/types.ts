@@ -10,6 +10,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 // ─── Bio Formats ────────────────────────────────────────────────────
 
@@ -128,10 +129,15 @@ export interface ExecutiveBioState extends BaseState {
 
   /** Cross-product context from resume pipeline */
   platform_context?: {
+    career_profile?: CareerProfileV2;
     /** Positioning strategy from the resume agent */
     positioning_strategy?: Record<string, unknown>;
     /** Why-me narrative from the resume agent */
-    why_me_story?: string;
+    why_me_story?: string | {
+      colleaguesCameForWhat: string;
+      knownForWhat: string;
+      whyNotMe: string;
+    };
   };
 
   /** Context about the target role and market */

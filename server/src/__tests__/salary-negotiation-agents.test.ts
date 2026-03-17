@@ -399,18 +399,69 @@ describe('Salary Negotiation ProductConfig', () => {
     expect(msg).toContain('200,000');
   });
 
-  it('buildAgentMessage for researcher includes Why-Me story when available', () => {
+  it('buildAgentMessage for researcher includes Career Profile when available', () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       offer_details: { company: 'Acme', role: 'VP Ops' },
       platform_context: {
-        why_me_story: 'I have deep operational experience in turnaround situations',
+        career_profile: {
+          version: 'career_profile_v2',
+          source: 'career_profile',
+          generated_at: '2026-03-16T00:00:00.000Z',
+          targeting: {
+            target_roles: ['VP Operations'],
+            target_industries: ['Industrial'],
+            seniority: 'VP',
+            transition_type: 'turnaround',
+            preferred_company_environments: [],
+          },
+          positioning: {
+            core_strengths: ['Turnarounds'],
+            proof_themes: ['Operational discipline'],
+            differentiators: ['Fixer'],
+            adjacent_positioning: [],
+            positioning_statement: 'Turnaround operator',
+            narrative_summary: 'Turnaround leader',
+            leadership_scope: 'Multi-site',
+            scope_of_responsibility: 'Operations',
+          },
+          narrative: {
+            colleagues_came_for_what: '',
+            known_for_what: '',
+            why_not_me: '',
+            story_snippet: '',
+          },
+          preferences: {
+            must_haves: [],
+            constraints: [],
+            compensation_direction: '',
+          },
+          coaching: {
+            financial_segment: '',
+            emotional_state: '',
+            coaching_tone: '',
+            urgency_score: 0,
+            recommended_starting_point: '',
+          },
+          evidence_positioning_statements: [],
+          profile_signals: {
+            clarity: 'green',
+            alignment: 'green',
+            differentiation: 'green',
+          },
+          completeness: {
+            overall_score: 100,
+            dashboard_state: 'strong',
+            sections: [],
+          },
+          profile_summary: 'Turnaround operator',
+        },
       },
     });
     const msg = config.buildAgentMessage('researcher', state, {
       resume_text: 'Resume here...',
     });
-    expect(msg).toContain('Why-Me');
-    expect(msg).toContain('turnaround situations');
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('Turnaround operator');
   });
 
   it('buildAgentMessage for researcher includes positioning strategy when available', () => {
@@ -427,16 +478,15 @@ describe('Salary Negotiation ProductConfig', () => {
     expect(msg).toContain('digital transformation');
   });
 
-  it('buildAgentMessage for strategist includes tool workflow instructions', () => {
+  it('buildAgentMessage for strategist includes end-state objectives', () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       offer_details: { company: 'Acme', role: 'VP Ops' },
     });
     const msg = config.buildAgentMessage('strategist', state, {});
-    expect(msg).toContain('design_strategy');
-    expect(msg).toContain('write_talking_points');
-    expect(msg).toContain('simulate_scenario');
-    expect(msg).toContain('write_counter_response');
-    expect(msg).toContain('assemble_negotiation_prep');
+    expect(msg).toContain('overall strategy');
+    expect(msg).toContain('initial offer response');
+    expect(msg).toContain('counter-offer');
+    expect(msg).toContain('final negotiation');
   });
 
   it('buildAgentMessage for unknown agent returns empty string', () => {

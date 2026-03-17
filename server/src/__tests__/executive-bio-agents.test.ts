@@ -362,17 +362,68 @@ describe('Executive Bio ProductConfig', () => {
     expect(msg).toContain('Requested Formats');
   });
 
-  it('buildAgentMessage for writer includes Why-Me story when in platform_context', () => {
+  it('buildAgentMessage for writer includes Career Profile when in platform_context', () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       platform_context: {
-        why_me_story: 'I have deep expertise in digital transformation across Fortune 500 companies',
+        career_profile: {
+          version: 'career_profile_v2',
+          source: 'career_profile',
+          generated_at: '2026-03-16T00:00:00.000Z',
+          targeting: {
+            target_roles: ['COO'],
+            target_industries: ['Tech'],
+            seniority: 'C-suite',
+            transition_type: 'growth',
+            preferred_company_environments: [],
+          },
+          positioning: {
+            core_strengths: ['Digital transformation'],
+            proof_themes: ['Execution'],
+            differentiators: ['Operator'],
+            adjacent_positioning: [],
+            positioning_statement: 'Transformation executive',
+            narrative_summary: 'Transformation executive',
+            leadership_scope: 'Global',
+            scope_of_responsibility: 'Operations',
+          },
+          narrative: {
+            colleagues_came_for_what: '',
+            known_for_what: '',
+            why_not_me: '',
+            story_snippet: '',
+          },
+          preferences: {
+            must_haves: [],
+            constraints: [],
+            compensation_direction: '',
+          },
+          coaching: {
+            financial_segment: '',
+            emotional_state: '',
+            coaching_tone: '',
+            urgency_score: 0,
+            recommended_starting_point: '',
+          },
+          evidence_positioning_statements: [],
+          profile_signals: {
+            clarity: 'green',
+            alignment: 'green',
+            differentiation: 'green',
+          },
+          completeness: {
+            overall_score: 100,
+            dashboard_state: 'strong',
+            sections: [],
+          },
+          profile_summary: 'Transformation executive',
+        },
       },
     });
     const msg = config.buildAgentMessage('writer', state, {
       resume_text: 'Resume here...',
     });
-    expect(msg).toContain('Why-Me');
-    expect(msg).toContain('digital transformation');
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('Transformation executive');
   });
 
   it('buildAgentMessage for unknown agent returns empty string', () => {

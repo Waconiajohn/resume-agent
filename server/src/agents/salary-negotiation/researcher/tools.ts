@@ -482,7 +482,7 @@ COMP BREAKDOWN:
 ${breakdown?.map((b) => `- ${b.component}: current=${b.current_value ?? 'N/A'}, market=${b.market_value}, negotiable=${b.negotiable}`).join('\n') || 'Not yet analyzed'}
 
 ${state.platform_context?.positioning_strategy ? `POSITIONING STRATEGY:\n${JSON.stringify(state.platform_context.positioning_strategy)}` : ''}
-${state.platform_context?.why_me_story ? `WHY-ME NARRATIVE:\n${state.platform_context.why_me_story}` : ''}
+${state.platform_context?.why_me_story ? `WHY-ME NARRATIVE:\n${typeof state.platform_context.why_me_story === 'string' ? state.platform_context.why_me_story : JSON.stringify(state.platform_context.why_me_story)}` : ''}
 
 Return JSON array of leverage points (aim for 4-8):
 [

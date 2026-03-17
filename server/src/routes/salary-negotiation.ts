@@ -6,16 +6,15 @@
  * compensation benchmarks, design negotiation strategy, and generate talking points.
  * Autonomous — no user gates.
  *
- * Cross-product context: Loads positioning strategy and why-me narrative
- * from prior resume sessions if available.
+ * Cross-product context: Loads the shared Career Profile and positioning
+ * strategy from prior work if available.
  */
 
 import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createSalaryNegotiationProductConfig } from '../agents/salary-negotiation/product.js';
 import { FF_SALARY_NEGOTIATION } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
@@ -80,36 +79,24 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
       current_compensation,
     };
 
-    // Load cross-product platform context and emotional baseline
     try {
-      const [baseline, strategyRows, narrativeRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'career_narrative'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-      if (narrativeRows.length > 0) {
-        const narrative = narrativeRows[0].content;
-        platformContext.why_me_story = typeof narrative === 'object' && narrative !== null && 'why_me_story' in narrative
-          ? String((narrative as Record<string, unknown>).why_me_story)
-          : JSON.stringify(narrative);
-      }
+      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeWhyMeStory: true,
+        includeEmotionalBaseline: true,
+      });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
-      if (baseline) {
-        transformed.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        transformed.emotional_baseline = emotionalBaseline;
       }
     } catch (err) {
       logger.warn(
         { error: err instanceof Error ? err.message : String(err), userId },
-        'Salary negotiation: failed to load platform context (continuing without it)',
+        'Salary negotiation: failed to load Career Profile context (continuing without it)',
       );
     }
 

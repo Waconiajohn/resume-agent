@@ -50,8 +50,13 @@ const analyzeInterviewContextTool: WriterTool = {
       `- ${i.name} (${i.title}): Topics: ${i.topics_discussed.join(', ')}${i.rapport_notes ? `. Rapport: ${i.rapport_notes}` : ''}${i.key_questions?.length ? `. Key questions: ${i.key_questions.join('; ')}` : ''}`,
     ).join('\n');
 
+    const whyMeNarrative = state.platform_context?.why_me_story
+      ? typeof state.platform_context.why_me_story === 'string'
+        ? state.platform_context.why_me_story
+        : JSON.stringify(state.platform_context.why_me_story, null, 2)
+      : 'N/A';
     const platformContext = state.platform_context
-      ? `\n## Platform Context\nPositioning Strategy: ${JSON.stringify(state.platform_context.positioning_strategy, null, 2)}\nWhy-Me Narrative: ${state.platform_context.why_me_story ?? 'N/A'}`
+      ? `\n## Platform Context\nPositioning Strategy: ${JSON.stringify(state.platform_context.positioning_strategy, null, 2)}\nWhy-Me Narrative: ${whyMeNarrative}`
       : '';
 
     const response = await llm.chat({

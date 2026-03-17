@@ -5,18 +5,16 @@
  * Demonstrates the platform abstraction by running a 2-agent pipeline
  * (Analyst → Writer) through the same infrastructure as the resume product.
  *
- * Cross-product context: If the user has previously completed a resume
- * positioning session, the positioning strategy and evidence items from
- * `user_platform_context` are loaded and injected into the analyst's
- * prompt automatically. Missing context is not an error.
+ * Cross-product context: If the user has previously completed their Career
+ * Profile and resume strategy work, the shared profile, positioning strategy,
+ * and evidence items are loaded automatically. Missing context is not an error.
  */
 
 import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createCoverLetterProductConfig } from '../agents/cover-letter/product.js';
 import { FF_COVER_LETTER } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../agents/cover-letter/types.js';
@@ -57,28 +55,19 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
     if (!userId) return input;
 
     try {
-      const [baseline, strategyRows, evidenceRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'evidence_item'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-
-      if (evidenceRows.length > 0) {
-        platformContext.evidence_items = evidenceRows.map((r) => r.content);
-      }
+      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeEvidenceItems: true,
+        includeEmotionalBaseline: true,
+      });
 
       const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
-      if (baseline) {
-        result.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        result.emotional_baseline = emotionalBaseline;
       }
       return result;
     } catch (err) {
@@ -87,7 +76,7 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
           error: err instanceof Error ? err.message : String(err),
           userId,
         },
-        'Cover letter: failed to load platform context (continuing without it)',
+        'Cover letter: failed to load Career Profile context (continuing without it)',
       );
     }
 

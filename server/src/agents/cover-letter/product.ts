@@ -126,6 +126,14 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           `Company: ${String(input.company_name ?? 'Unknown')}`,
         ];
 
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '',
+            '## Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+          );
+        }
+
         if (state.platform_context?.positioning_strategy) {
           parts.push(
             '',
@@ -147,7 +155,11 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           );
         }
 
-        parts.push('', 'Call parse_inputs first, then match_requirements, then plan_letter.');
+        parts.push(
+          '',
+          '## Objective',
+          'Use the available tools to parse the resume and job description, identify the strongest evidence-to-requirement matches, and build a letter plan that feels specific to this company. Ground every claim in the source material or saved Career Profile context before you finish the plan.',
+        );
 
         // Distress resources — first agent only
         const distress = getDistressFromInput(input);
@@ -177,7 +189,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           '',
           `Tone requested by the user: **${tone}**. Pass this value as the tone parameter when calling write_letter.`,
           '',
-          'Call write_letter to generate the letter, then review_letter to check quality.',
+          'Use the available writing tools to draft a credible, specific letter, then self-review it for clarity, role fit, and tone before presenting it.',
         ];
 
         // If the user requested revisions at the review gate, include feedback
@@ -186,7 +198,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
             '',
             '## User Revision Requested',
             `The user reviewed the cover letter and requested the following changes: "${state.revision_feedback}"`,
-            'Call write_letter again incorporating this feedback, then review_letter to check quality.',
+            'Revise the draft to address this feedback while keeping the letter specific, truthful, and concise. Re-run your quality check before you finish.',
           );
         }
 

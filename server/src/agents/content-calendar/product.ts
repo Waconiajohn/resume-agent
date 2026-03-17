@@ -93,6 +93,14 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
           String(input.resume_text ?? ''),
         ];
 
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '',
+            '## Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+          );
+        }
+
         if (state.platform_context?.why_me_story) {
           parts.push(
             '',
@@ -126,7 +134,8 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
 
         parts.push(
           '',
-          'Call analyze_expertise first, then identify_themes, then map_audience_interests, then plan_content_mix.',
+          '## Objective',
+          'Use the available strategy tools to identify the strongest themes, target audience angles, and content mix for a month of LinkedIn posts. The calendar should reflect the user’s Career Profile and create a coherent public positioning story.',
         );
 
         // Distress resources — first agent only
@@ -151,11 +160,7 @@ export function createContentCalendarProductConfig(): ProductConfig<ContentCalen
         const parts = [
           'Write the complete 30-day content calendar using the strategy data gathered.',
           '',
-          'Follow your workflow exactly:',
-          '1. Write posts following the content mix and themes',
-          '2. assemble_calendar',
-          '',
-          'Do NOT skip any post day.',
+          'Use the available writing tools to draft every scheduled post day, keep the mix and themes intact, and assemble one complete calendar. Do not leave planned posting days blank.',
         ];
 
         // Emotional baseline tone adaptation

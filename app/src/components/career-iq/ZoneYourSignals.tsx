@@ -27,14 +27,14 @@ interface ZoneYourSignalsProps {
 }
 
 function computePositioningStrength(signals?: WhyMeSignals): { level: SignalLevel; detail: string } {
-  if (!signals) return { level: 'needs-work', detail: 'Complete your Why-Me story to activate this signal' };
+  if (!signals) return { level: 'needs-work', detail: 'Complete your Career Profile to activate this signal' };
 
   const levels = [signals.clarity, signals.alignment, signals.differentiation];
   const greenCount = levels.filter((l) => l === 'green').length;
   const redCount = levels.filter((l) => l === 'red').length;
 
-  if (greenCount === 3) return { level: 'strong', detail: 'Resume + LinkedIn aligned with your Why-Me narrative' };
-  if (redCount >= 2) return { level: 'needs-work', detail: 'Refine your Why-Me story to strengthen your positioning' };
+  if (greenCount === 3) return { level: 'strong', detail: 'Resume + LinkedIn aligned with your Career Profile narrative' };
+  if (redCount >= 2) return { level: 'needs-work', detail: 'Refine your Career Profile to strengthen your positioning' };
   return { level: 'building', detail: `${greenCount} of 3 signals strong — keep refining for full alignment` };
 }
 
@@ -73,7 +73,7 @@ function computeMarketAlignment(stats?: PipelineStats): { level: SignalLevel; de
 }
 
 const MOCK_SIGNALS: Signal[] = [
-  { label: 'Positioning Strength', description: 'How well your materials tell your Why-Me story', level: 'strong', icon: Target, detail: 'Resume + LinkedIn aligned with your Why-Me narrative' },
+  { label: 'Positioning Strength', description: 'How well your materials tell your Career Profile story', level: 'strong', icon: Target, detail: 'Resume + LinkedIn aligned with your Career Profile narrative' },
   { label: 'Activity Score', description: 'Your consistent engagement across the platform', level: 'building', icon: Activity, detail: '3 applications this week — 5+ keeps momentum strong' },
   { label: 'Market Alignment', description: 'How well your targeting matches market opportunity', level: 'needs-work', icon: TrendingUp, detail: 'Your Boolean search covers 12 of 30+ title variations' },
 ];

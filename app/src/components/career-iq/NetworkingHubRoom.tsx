@@ -1093,7 +1093,7 @@ export function NetworkingHubRoom() {
             the queue and in front of decision-makers.
           </p>
           <ContextLoadedBadge
-            contextTypes={['positioning_strategy', 'evidence_item']}
+            contextTypes={['career_profile', 'positioning_strategy', 'evidence_item']}
             className="mt-2"
           />
         </div>

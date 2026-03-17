@@ -6,16 +6,15 @@
  * and write personalized thank-you notes for each interviewer.
  * Autonomous — no user gates.
  *
- * Cross-product context: Loads positioning strategy from prior resume
- * sessions if available.
+ * Cross-product context: Loads the shared Career Profile and positioning
+ * context from prior work if available.
  */
 
 import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createThankYouNoteProductConfig } from '../agents/thank-you-note/product.js';
 import { FF_THANK_YOU_NOTE } from '../lib/feature-flags.js';
-import { getUserContext, getWhyMeContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
@@ -61,33 +60,24 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
     const transformed: Record<string, unknown> = { ...input };
 
-    // Load cross-product platform context and emotional baseline
     try {
-      const [baseline, strategyRows, whyMe] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getWhyMeContext(userId),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-      if (whyMe) {
-        platformContext.why_me_story = whyMe;
-      }
+      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeWhyMeStory: true,
+        includeEmotionalBaseline: true,
+      });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
-      if (baseline) {
-        transformed.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        transformed.emotional_baseline = emotionalBaseline;
       }
     } catch (err) {
       logger.warn(
         { error: err instanceof Error ? err.message : String(err), userId },
-        'Thank-you note: failed to load platform context (continuing without it)',
+        'Thank-you note: failed to load Career Profile context (continuing without it)',
       );
     }
 

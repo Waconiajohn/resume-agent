@@ -112,6 +112,7 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'writer') {
+        const whyMeContext = state.platform_context?.why_me_story;
         const parts = [
           'Analyze executive positioning and write polished bios for this candidate.',
           '',
@@ -126,8 +127,15 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
         ];
 
         if (state.platform_context) {
-          if (state.platform_context.why_me_story) {
-            parts.push('', '## Why-Me Narrative', state.platform_context.why_me_story);
+          if (state.platform_context.career_profile) {
+            parts.push('', '## Career Profile', JSON.stringify(state.platform_context.career_profile, null, 2));
+          }
+          if (whyMeContext) {
+            parts.push(
+              '',
+              '## Career Narrative Signals',
+              typeof whyMeContext === 'string' ? whyMeContext : JSON.stringify(whyMeContext, null, 2),
+            );
           }
           if (state.platform_context.positioning_strategy) {
             parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
@@ -143,7 +151,8 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
 
         parts.push(
           '',
-          'Call tools in order: analyze_positioning first, then write_bio + quality_check_bio for each format/length combination, then assemble_bio_collection.',
+          '## Objective',
+          'Use the available tools to analyze the executive’s positioning, draft each requested bio variant, quality-check them, and assemble one polished bio collection. Every bio should feel distinct, audience-aware, and grounded in the same Career Profile.',
         );
 
         // If the user requested revisions at the review gate, include feedback
@@ -152,7 +161,7 @@ export function createExecutiveBioProductConfig(): ProductConfig<ExecutiveBioSta
             '',
             '## User Revision Requested',
             `The user reviewed the bio collection and requested the following changes: "${state.revision_feedback}"`,
-            'Call write_bio again for the affected bios incorporating this feedback, then quality_check_bio, then assemble_bio_collection with all updated bios.',
+            'Rewrite the affected bios to address this feedback, re-check their quality, and then rebuild the full collection with the updated versions.',
           );
         }
 

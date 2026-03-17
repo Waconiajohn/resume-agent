@@ -89,7 +89,7 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
         )}
         title={
           isGated
-            ? `Complete your Why-Me story to unlock ${room.label}`
+            ? `Complete your Career Profile to unlock ${room.label}`
             : collapsed
               ? room.label
               : undefined

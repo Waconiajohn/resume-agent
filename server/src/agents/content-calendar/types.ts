@@ -9,6 +9,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 // ─── Content Types ──────────────────────────────────────────────────
 
@@ -139,6 +140,7 @@ export interface ContentCalendarState extends BaseState {
 
   /** Cross-product context from resume pipeline */
   platform_context?: {
+    career_profile?: CareerProfileV2;
     why_me_story?: {
       colleaguesCameForWhat: string;
       knownForWhat: string;

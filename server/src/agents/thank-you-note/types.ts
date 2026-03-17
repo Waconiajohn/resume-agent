@@ -10,6 +10,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 // ─── Note Formats ──────────────────────────────────────────────────
 
@@ -114,8 +115,13 @@ export interface ThankYouNoteState extends BaseState {
 
   /** Cross-product context from resume pipeline */
   platform_context?: {
+    career_profile?: CareerProfileV2;
     positioning_strategy?: Record<string, unknown>;
-    why_me_story?: string;
+    why_me_story?: string | {
+      colleaguesCameForWhat: string;
+      knownForWhat: string;
+      whyNotMe: string;
+    };
   };
 
   /** Context about the target role and market */

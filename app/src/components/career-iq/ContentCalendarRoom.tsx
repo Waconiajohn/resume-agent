@@ -322,7 +322,7 @@ export function ContentCalendarRoom() {
             30 days of strategic LinkedIn posts based on your expertise and positioning.
           </p>
           <ContextLoadedBadge
-            contextTypes={['positioning_strategy', 'evidence_item']}
+            contextTypes={['career_profile', 'positioning_strategy', 'evidence_item']}
             className="mt-2"
           />
         </div>

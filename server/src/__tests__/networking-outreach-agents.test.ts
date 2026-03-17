@@ -303,15 +303,15 @@ describe('Networking Outreach — ProductConfig', () => {
     expect(msg).toContain('Jane Doe');
     expect(msg).toContain('VP Ops');
     expect(msg).toContain('Acme');
-    expect(msg).toContain('analyze_target');
+    expect(msg).toContain('Objective');
   });
 
-  it('buildAgentMessage for writer includes workflow steps', async () => {
+  it('buildAgentMessage for writer includes sequence objectives', async () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     const msg = await config.buildAgentMessage('writer', state, {});
-    expect(msg).toContain('write_connection_request');
-    expect(msg).toContain('write_meeting_request');
-    expect(msg).toContain('assemble_sequence');
+    expect(msg).toContain('connection request');
+    expect(msg).toContain('meeting request');
+    expect(msg).toContain('assembled sequence');
   });
 
   it('buildAgentMessage for unknown agent returns empty', async () => {

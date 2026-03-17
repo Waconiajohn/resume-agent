@@ -143,6 +143,7 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'researcher') {
+        const whyMeContext = state.platform_context?.why_me_story;
         const parts = [
           'Research compensation benchmarks and identify negotiation leverage for this candidate.',
           '',
@@ -188,8 +189,15 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
         }
 
         if (state.platform_context) {
-          if (state.platform_context.why_me_story) {
-            parts.push('', '## Why-Me Narrative', state.platform_context.why_me_story);
+          if (state.platform_context.career_profile) {
+            parts.push('', '## Career Profile', JSON.stringify(state.platform_context.career_profile, null, 2));
+          }
+          if (whyMeContext) {
+            parts.push(
+              '',
+              '## Career Narrative Signals',
+              typeof whyMeContext === 'string' ? whyMeContext : JSON.stringify(whyMeContext, null, 2),
+            );
           }
           if (state.platform_context.positioning_strategy) {
             parts.push('', '## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2));
@@ -198,7 +206,8 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
 
         parts.push(
           '',
-          'Call tools in order: research_compensation, analyze_market_position, identify_leverage_points, assess_total_comp.',
+          '## Objective',
+          'Use the available research tools to estimate the market, judge this offer in context, surface real leverage, and outline the total-comp tradeoffs that matter in negotiation. Keep the analysis commercially sharp and evidence-based.',
         );
 
         // Distress resources — first agent only
@@ -223,17 +232,8 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
         const parts = [
           'Design a comprehensive negotiation strategy and build the full preparation package.',
           '',
-          'Follow this workflow exactly:',
-          '1. Call design_strategy to create the overall negotiation approach',
-          '2. Call write_talking_points to generate evidence-backed talking points',
-          '3. Call simulate_scenario THREE times:',
-          '   - scenario_type="initial_offer_response"',
-          '   - scenario_type="counter_offer"',
-          '   - scenario_type="final_negotiation"',
-          '4. Call write_counter_response to create counter-offer templates',
-          '5. Call assemble_negotiation_prep to produce the final report',
-          '',
-          'Do NOT skip any step or scenario type.',
+          '## Objective',
+          'Use the research already gathered to create one coherent negotiation package: an overall strategy, evidence-backed talking points, scenarios for the initial offer response, counter-offer, and final negotiation, written counter language, and one assembled prep report. Cover each scenario type before you finish.',
         ];
 
         // If the user requested revisions at the strategy review gate, include feedback
@@ -242,7 +242,7 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
             '',
             '## User Revision Requested',
             `The user reviewed the negotiation strategy and requested the following changes: "${state.revision_feedback}"`,
-            'Adjust your strategy, talking points, and scenarios to incorporate this feedback, then call assemble_negotiation_prep with the updated content.',
+            'Adjust the strategy, talking points, and scenarios to incorporate this feedback, then rebuild the final prep package with the updated content.',
           );
         }
 

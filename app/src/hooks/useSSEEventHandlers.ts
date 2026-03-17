@@ -554,7 +554,7 @@ export function handlePositioningQuestion(
     'gate',
     {
       stage: 'positioning',
-      expectedNextAction: 'Answer the Why Me question in the workspace',
+      expectedNextAction: 'Answer the Career Profile question in the workspace',
     },
   );
   state.setIsProcessing(false);

@@ -140,7 +140,13 @@ export function createCounterOfferSimProductConfig(): ProductConfig<
         );
       }
       if (state.platform_context?.why_me_story) {
-        parts.push('', '## Why-Me Story', state.platform_context.why_me_story);
+        parts.push(
+          '',
+          '## Why-Me Story',
+          typeof state.platform_context.why_me_story === 'string'
+            ? state.platform_context.why_me_story
+            : JSON.stringify(state.platform_context.why_me_story, null, 2),
+        );
       }
       if (state.platform_context?.market_research) {
         parts.push(

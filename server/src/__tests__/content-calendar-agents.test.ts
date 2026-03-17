@@ -288,31 +288,78 @@ describe('Content Calendar ProductConfig', () => {
       resume_text: 'John Doe, VP Operations...',
     });
     expect(msg).toContain('John Doe, VP Operations...');
-    expect(msg).toContain('analyze_expertise');
+    expect(msg).toContain('Objective');
   });
 
-  it('buildAgentMessage includes Why-Me story when available', () => {
+  it('buildAgentMessage includes Career Profile when available', () => {
     const config = createContentCalendarProductConfig();
     const state = config.createInitialState('s', 'u', {});
     state.platform_context = {
-      why_me_story: {
-        colleaguesCameForWhat: 'fixing broken teams',
-        knownForWhat: 'turnaround leadership',
-        whyNotMe: 'deep operational experience others lack',
+      career_profile: {
+        version: 'career_profile_v2',
+        source: 'career_profile',
+        generated_at: '2026-03-16T00:00:00.000Z',
+        targeting: {
+          target_roles: ['VP Operations'],
+          target_industries: ['Industrial'],
+          seniority: 'VP',
+          transition_type: 'turnaround',
+          preferred_company_environments: [],
+        },
+        positioning: {
+          core_strengths: ['Turnarounds'],
+          proof_themes: ['Team repair'],
+          differentiators: ['Fixer'],
+          adjacent_positioning: [],
+          positioning_statement: 'Turnaround operator',
+          narrative_summary: 'Turnaround leader',
+          leadership_scope: 'Multi-site',
+          scope_of_responsibility: 'Operations',
+        },
+        narrative: {
+          colleagues_came_for_what: 'fixing broken teams',
+          known_for_what: 'turnaround leadership',
+          why_not_me: 'deep operational experience others lack',
+          story_snippet: '',
+        },
+        preferences: {
+          must_haves: [],
+          constraints: [],
+          compensation_direction: '',
+        },
+        coaching: {
+          financial_segment: '',
+          emotional_state: '',
+          coaching_tone: '',
+          urgency_score: 0,
+          recommended_starting_point: '',
+        },
+        evidence_positioning_statements: [],
+        profile_signals: {
+          clarity: 'green',
+          alignment: 'green',
+          differentiation: 'green',
+        },
+        completeness: {
+          overall_score: 100,
+          dashboard_state: 'strong',
+          sections: [],
+        },
+        profile_summary: 'Turnaround operator',
       },
     };
     const msg = config.buildAgentMessage('strategist', state, {
       resume_text: 'resume',
     });
-    expect(msg).toContain('Why-Me');
-    expect(msg).toContain('fixing broken teams');
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('Turnaround operator');
   });
 
   it('buildAgentMessage returns content for writer', () => {
     const config = createContentCalendarProductConfig();
     const state = config.createInitialState('s', 'u', {});
     const msg = config.buildAgentMessage('writer', state, {});
-    expect(msg).toContain('assemble_calendar');
+    expect(msg).toContain('scheduled post day');
     expect(msg).toContain('content calendar');
   });
 

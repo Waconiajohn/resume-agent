@@ -10,6 +10,7 @@
 
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { AgentTool } from '../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 // ─── Topic Suggestion ──────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export interface LinkedInContentState extends BaseState {
 
   /** Cross-product context from prior sessions */
   platform_context?: {
+    career_profile?: CareerProfileV2;
     positioning_strategy?: Record<string, unknown>;
     evidence_items?: Record<string, unknown>[];
     career_narrative?: Record<string, unknown>;

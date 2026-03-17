@@ -166,6 +166,71 @@ describe('buildAgentMessage — analyst with platform context', () => {
     expect(msg).toContain('Revenue grew 3x');
   });
 
+  it('includes Career Profile when present', () => {
+    const config = createCoverLetterProductConfig();
+    const state = config.createInitialState('s', 'u', {
+      platform_context: {
+        career_profile: {
+          version: 'career_profile_v2',
+          source: 'career_profile',
+          generated_at: '2026-03-16T00:00:00.000Z',
+          targeting: {
+            target_roles: ['VP Engineering'],
+            target_industries: ['SaaS'],
+            seniority: 'VP',
+            transition_type: 'growth',
+            preferred_company_environments: [],
+          },
+          positioning: {
+            core_strengths: ['Scaling teams'],
+            proof_themes: ['Execution'],
+            differentiators: ['Builder'],
+            adjacent_positioning: [],
+            positioning_statement: 'I scale engineering teams.',
+            narrative_summary: 'Builder and operator.',
+            leadership_scope: 'Global',
+            scope_of_responsibility: 'Product and platform',
+          },
+          narrative: {
+            colleagues_came_for_what: '',
+            known_for_what: '',
+            why_not_me: '',
+            story_snippet: '',
+          },
+          preferences: {
+            must_haves: [],
+            constraints: [],
+            compensation_direction: '',
+          },
+          coaching: {
+            financial_segment: '',
+            emotional_state: '',
+            coaching_tone: '',
+            urgency_score: 0,
+            recommended_starting_point: '',
+          },
+          evidence_positioning_statements: [],
+          profile_signals: {
+            clarity: 'green',
+            alignment: 'green',
+            differentiation: 'green',
+          },
+          completeness: {
+            overall_score: 100,
+            dashboard_state: 'strong',
+            sections: [],
+          },
+          profile_summary: 'VP engineering builder',
+        },
+      },
+    });
+
+    const msg = config.buildAgentMessage('analyst', state, makeBaseInput());
+
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('VP Engineering');
+  });
+
   it('omits platform context sections when not provided (first-time user)', () => {
     const config = createCoverLetterProductConfig();
     const state = config.createInitialState('s', 'u', {});
@@ -204,12 +269,13 @@ describe('buildAgentMessage — analyst with platform context', () => {
     expect(msg).toContain('Globex');
   });
 
-  it('always ends with tool call instruction', () => {
+  it('ends with an objective-driven planning instruction', () => {
     const config = createCoverLetterProductConfig();
     const state = config.createInitialState('s', 'u', {});
 
     const msg = config.buildAgentMessage('analyst', state, makeBaseInput());
 
-    expect(msg).toContain('Call parse_inputs first, then match_requirements, then plan_letter.');
+    expect(msg).toContain('Objective');
+    expect(msg).toContain('build a letter plan');
   });
 });

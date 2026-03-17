@@ -5,17 +5,16 @@
  * Runs a 2-agent pipeline (Strategist → Writer) to generate a 30-day
  * LinkedIn content calendar. Autonomous — no user gates.
  *
- * Cross-product context: Loads Why-Me story, positioning strategy, and
- * evidence items from prior resume sessions if available. Also loads
- * LinkedIn optimization analysis if available.
+ * Cross-product context: Loads the shared Career Profile, positioning
+ * strategy, evidence items, and narrative signals when available. Also
+ * loads LinkedIn optimization analysis if available.
  */
 
 import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createContentCalendarProductConfig } from '../agents/content-calendar/product.js';
 import { FF_CONTENT_CALENDAR } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
@@ -50,16 +49,14 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
     if (!userId) return input;
 
     try {
-      const [baseline, strategyRows, evidenceRows, whyMeRows, linkedinReport] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'evidence_item'),
-        supabaseAdmin
-          .from('why_me_stories')
-          .select('colleagues_came_for_what, known_for_what, why_not_me')
-          .eq('user_id', userId)
-          .maybeSingle()
-          .then(r => r.data),
+      const [{ platformContext, emotionalBaseline }, linkedinReport] = await Promise.all([
+        loadAgentContextBundle(userId, {
+          includeCareerProfile: true,
+          includePositioningStrategy: true,
+          includeEvidenceItems: true,
+          includeWhyMeStory: true,
+          includeEmotionalBaseline: true,
+        }),
         supabaseAdmin
           .from('linkedin_optimization_reports')
           .select('keyword_analysis, profile_analysis')
@@ -67,26 +64,8 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
-          .then(r => r.data),
+          .then((r) => r.data),
       ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-
-      if (evidenceRows.length > 0) {
-        platformContext.evidence_items = evidenceRows.map((r) => r.content);
-      }
-
-      if (whyMeRows) {
-        platformContext.why_me_story = {
-          colleaguesCameForWhat: whyMeRows.colleagues_came_for_what ?? '',
-          knownForWhat: whyMeRows.known_for_what ?? '',
-          whyNotMe: whyMeRows.why_not_me ?? '',
-        };
-      }
 
       if (linkedinReport) {
         platformContext.linkedin_analysis = {
@@ -99,8 +78,8 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
-      if (baseline) {
-        result.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        result.emotional_baseline = emotionalBaseline;
       }
       return result;
     } catch (err) {
@@ -109,7 +88,7 @@ export const contentCalendarRoutes = createProductRoutes<ContentCalendarState, C
           error: err instanceof Error ? err.message : String(err),
           userId,
         },
-        'Content calendar: failed to load platform context (continuing without it)',
+        'Content calendar: failed to load Career Profile context (continuing without it)',
       );
     }
 

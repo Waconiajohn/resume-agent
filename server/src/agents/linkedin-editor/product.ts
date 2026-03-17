@@ -135,15 +135,23 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
             parts.push(
               `## Revision Requested for ${nextSection}`,
               `User feedback: "${feedback}"`,
-              'Call revise_section, then self_review_section, then present_section.',
+              'Use the section tools to revise only this section, self-review it, and then present it for approval.',
               '',
             );
           } else {
             parts.push(
-              `Call write_section (section: "${nextSection}"), then self_review_section, then present_section.`,
+              `Draft only the ${nextSection} section, self-review it, and present it for approval before moving on.`,
               '',
             );
           }
+        }
+
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '## Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+            '',
+          );
         }
 
         if (state.platform_context?.positioning_strategy) {

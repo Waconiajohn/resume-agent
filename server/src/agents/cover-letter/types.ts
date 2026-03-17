@@ -6,6 +6,7 @@
  */
 
 import type { BaseState, BaseEvent } from '../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 // ─── Pipeline State ───────────────────────────────────────────────────
 
@@ -16,6 +17,7 @@ export interface CoverLetterState extends BaseState {
 
   /** Cross-product context from resume strategist (positioning + evidence) */
   platform_context?: {
+    career_profile?: CareerProfileV2;
     positioning_strategy?: Record<string, unknown>;
     evidence_items?: Record<string, unknown>[];
   };

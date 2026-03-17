@@ -108,6 +108,14 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           '',
         ];
 
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '## Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+            '',
+          );
+        }
+
         if (state.platform_context?.positioning_strategy) {
           parts.push(
             '## Prior Positioning Strategy',
@@ -124,7 +132,10 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           );
         }
 
-        parts.push('Call analyze_expertise first, then suggest_topics, then present_topics.');
+        parts.push(
+          '## Objective',
+          'Use the available tools to identify what this person should be known for on LinkedIn right now, then suggest topics that are truthful, differentiated, and well-supported by their evidence and Career Profile.',
+        );
 
         // Distress resources — first agent only
         const distress = getDistressFromInput(input);
@@ -149,9 +160,17 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
         const parts = [
           `Write a LinkedIn post on this topic: "${selectedTopic}"`,
           '',
-          'Follow your workflow: write_post → self_review_post → present_post',
+          'Use the available writing tools to draft an authentic post, self-review it for voice and usefulness, and then present the finished version.',
           '',
         ];
+
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '## Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+            '',
+          );
+        }
 
         if (state.platform_context?.career_narrative) {
           parts.push(
@@ -166,7 +185,7 @@ export function createLinkedInContentProductConfig(): ProductConfig<LinkedInCont
           parts.push(
             '## Revision Requested',
             `The user reviewed the post and requested changes: "${state.revision_feedback}"`,
-            'Call revise_post with this feedback, then self_review_post, then present_post.',
+            'Revise the draft to address this feedback, keep the voice credible, and re-check the post before you present it.',
             '',
           );
         }

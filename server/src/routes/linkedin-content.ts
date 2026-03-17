@@ -5,16 +5,15 @@
  * Runs a 2-agent pipeline (Strategist → Writer) to generate an authentic
  * LinkedIn thought leadership post.
  *
- * Cross-product context: Loads positioning strategy, evidence items, and
- * career narrative from prior resume sessions if available.
+ * Cross-product context: Loads the shared Career Profile, positioning
+ * strategy, evidence items, and career narrative from prior work.
  */
 
 import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createLinkedInContentProductConfig } from '../agents/linkedin-content/product.js';
 import { FF_LINKEDIN_CONTENT } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../agents/linkedin-content/types.js';
@@ -44,33 +43,20 @@ export const linkedInContentRoutes = createProductRoutes<LinkedInContentState, L
     if (!userId) return input;
 
     try {
-      const [baseline, strategyRows, evidenceRows, narrativeRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'evidence_item'),
-        getUserContext(userId, 'career_narrative'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-
-      if (evidenceRows.length > 0) {
-        platformContext.evidence_items = evidenceRows.map((r) => r.content);
-      }
-
-      if (narrativeRows.length > 0) {
-        platformContext.career_narrative = narrativeRows[0].content;
-      }
+      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeEvidenceItems: true,
+        includeCareerNarrative: true,
+        includeEmotionalBaseline: true,
+      });
 
       const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
-      if (baseline) {
-        result.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        result.emotional_baseline = emotionalBaseline;
       }
       return result;
     } catch (err) {
@@ -79,7 +65,7 @@ export const linkedInContentRoutes = createProductRoutes<LinkedInContentState, L
           error: err instanceof Error ? err.message : String(err),
           userId,
         },
-        'LinkedIn content: failed to load platform context (continuing without it)',
+        'LinkedIn content: failed to load Career Profile context (continuing without it)',
       );
     }
 

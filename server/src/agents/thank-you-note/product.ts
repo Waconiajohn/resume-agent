@@ -104,6 +104,7 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'writer') {
+        const whyMeContext = state.platform_context?.why_me_story;
         const parts = [
           'Analyze the interview context and write personalized thank-you notes for each interviewer.',
           '',
@@ -136,8 +137,15 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
         }
 
         if (state.platform_context) {
-          if (state.platform_context.why_me_story) {
-            parts.push('## Why-Me Narrative', state.platform_context.why_me_story, '');
+          if (state.platform_context.career_profile) {
+            parts.push('## Career Profile', JSON.stringify(state.platform_context.career_profile, null, 2), '');
+          }
+          if (whyMeContext) {
+            parts.push(
+              '## Career Narrative Signals',
+              typeof whyMeContext === 'string' ? whyMeContext : JSON.stringify(whyMeContext, null, 2),
+              '',
+            );
           }
           if (state.platform_context.positioning_strategy) {
             parts.push('## Positioning Strategy', JSON.stringify(state.platform_context.positioning_strategy, null, 2), '');
@@ -145,7 +153,7 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
         }
 
         parts.push(
-          'Call tools in order: analyze_interview_context first, then write_thank_you_note + personalize_per_interviewer for each interviewer, then assemble_note_set.',
+          'Use the available tools to understand the interview context, draft a note for each interviewer, personalize it with specific rapport signals, and assemble one polished note set. Each note should feel human, specific, and worth sending immediately.',
         );
 
         // If the user requested revisions at the review gate, incorporate feedback
@@ -154,7 +162,7 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
             '',
             '## User Revision Requested',
             `The user reviewed the thank-you notes and requested the following changes: "${state.revision_feedback}"`,
-            'Call write_thank_you_note and assemble_note_set again incorporating this feedback.',
+            'Update the affected notes, keep the personalization truthful, and reassemble the note set with the revised versions.',
           );
         }
 

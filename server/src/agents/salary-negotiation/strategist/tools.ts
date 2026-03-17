@@ -108,7 +108,11 @@ function buildStateContext(state: SalaryNegotiationState): string {
   }
   if (state.platform_context?.why_me_story) {
     parts.push('\n## Why-Me Narrative');
-    parts.push(state.platform_context.why_me_story);
+    parts.push(
+      typeof state.platform_context.why_me_story === 'string'
+        ? state.platform_context.why_me_story
+        : JSON.stringify(state.platform_context.why_me_story, null, 2),
+    );
   }
 
   return parts.join('\n');

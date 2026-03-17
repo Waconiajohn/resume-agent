@@ -234,10 +234,73 @@ describe('createLinkedInContentProductConfig().buildAgentMessage', () => {
     expect(msg).toContain('Positioning Strategy');
   });
 
-  it('includes analyze_expertise instruction in strategist message', () => {
+  it('includes Career Profile in strategist message when available', () => {
+    const state = makeState({
+      platform_context: {
+        career_profile: {
+          version: 'career_profile_v2',
+          source: 'career_profile',
+          generated_at: '2026-03-16T00:00:00.000Z',
+          targeting: {
+            target_roles: ['VP Product'],
+            target_industries: ['Technology'],
+            seniority: 'VP',
+            transition_type: 'growth',
+            preferred_company_environments: [],
+          },
+          positioning: {
+            core_strengths: ['Product strategy'],
+            proof_themes: ['Growth'],
+            differentiators: ['Builder'],
+            adjacent_positioning: [],
+            positioning_statement: 'Product builder',
+            narrative_summary: 'Product builder',
+            leadership_scope: 'Global',
+            scope_of_responsibility: 'Product',
+          },
+          narrative: {
+            colleagues_came_for_what: '',
+            known_for_what: '',
+            why_not_me: '',
+            story_snippet: '',
+          },
+          preferences: {
+            must_haves: [],
+            constraints: [],
+            compensation_direction: '',
+          },
+          coaching: {
+            financial_segment: '',
+            emotional_state: '',
+            coaching_tone: '',
+            urgency_score: 0,
+            recommended_starting_point: '',
+          },
+          evidence_positioning_statements: [],
+          profile_signals: {
+            clarity: 'green',
+            alignment: 'green',
+            differentiation: 'green',
+          },
+          completeness: {
+            overall_score: 100,
+            dashboard_state: 'strong',
+            sections: [],
+          },
+          profile_summary: 'Product builder',
+        },
+      },
+    });
+    const msg = config.buildAgentMessage('strategist', state, {});
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('Product builder');
+  });
+
+  it('includes objective-driven guidance in strategist message', () => {
     const state = makeState();
     const msg = config.buildAgentMessage('strategist', state, {});
-    expect(msg).toContain('analyze_expertise');
+    expect(msg).toContain('Objective');
+    expect(msg).toContain('what this person should be known for');
   });
 
   it('returns a message for the writer agent', () => {

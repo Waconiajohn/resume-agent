@@ -985,7 +985,7 @@ export function SalaryNegotiationRoom({ prefillCompany, prefillRole, onPrefillCo
         </div>
       </div>
       <ContextLoadedBadge
-        contextTypes={['positioning_strategy', 'emotional_baseline']}
+        contextTypes={['career_profile', 'positioning_strategy', 'emotional_baseline']}
         className="mb-3"
       />
 
