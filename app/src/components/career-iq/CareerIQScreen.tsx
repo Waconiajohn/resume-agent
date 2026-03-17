@@ -373,7 +373,7 @@ export function CareerIQScreen({
     }
 
     if (activeRoom === 'financial') {
-      return <FinancialWellnessRoom />;
+      return <FinancialWellnessRoom careerProfileSummary={summary} onOpenCareerProfile={openCareerProfile} />;
     }
 
     if (activeRoom === 'linkedin') {
@@ -418,12 +418,14 @@ export function CareerIQScreen({
           prefillCompany={salaryNegoPrefill?.company}
           prefillRole={salaryNegoPrefill?.role}
           onPrefillConsumed={() => setSalaryNegoPrefill(null)}
+          careerProfileSummary={summary}
+          onOpenCareerProfile={openCareerProfile}
         />
       );
     }
 
     if (activeRoom === 'executive-bio') {
-      return <ExecutiveDocumentsRoom />;
+      return <ExecutiveDocumentsRoom careerProfileSummary={summary} onOpenCareerProfile={openCareerProfile} />;
     }
 
     return <RoomPlaceholder room={activeRoom} />;

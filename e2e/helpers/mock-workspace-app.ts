@@ -1,0 +1,594 @@
+import type { Page, Route } from '@playwright/test';
+
+const AUTH_SESSION = {
+  access_token: 'mock-e2e-access-token',
+  refresh_token: 'mock-e2e-refresh-token',
+  expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  token_type: 'bearer',
+  user: {
+    id: 'mock-e2e-user-id',
+    email: 'e2e@example.com',
+    user_metadata: {
+      full_name: 'E2E User',
+      first_name: 'E2E',
+      last_name: 'User',
+    },
+  },
+};
+
+const MOCK_CAREER_PROFILE = {
+  version: 'career_profile_v2',
+  source: 'career_profile',
+  generated_at: new Date().toISOString(),
+  targeting: {
+    target_roles: ['VP Operations', 'COO'],
+    target_industries: ['SaaS', 'Enterprise Technology'],
+    seniority: 'executive',
+    transition_type: 'same_level',
+    preferred_company_environments: ['Growth stage', 'PE-backed'],
+  },
+  positioning: {
+    core_strengths: ['Operational strategy', 'Cross-functional leadership'],
+    proof_themes: ['Scaled teams through change', 'Improved execution quality'],
+    differentiators: ['Combines operator discipline with executive communication'],
+    adjacent_positioning: ['Can step from VP Operations into broader COO scope'],
+    positioning_statement: 'Operator who brings order, cadence, and executive-level clarity to scaling companies.',
+    narrative_summary: 'Known for aligning leaders and steadying execution in fast-moving environments.',
+    leadership_scope: 'Teams of 40+, executive stakeholder alignment',
+    scope_of_responsibility: 'Operations, systems, and cross-functional delivery',
+  },
+  narrative: {
+    colleagues_came_for_what: 'Turning complexity into execution plans that teams can follow.',
+    known_for_what: 'Bringing calm, structure, and momentum to scaling organizations.',
+    why_not_me: 'Bridges VP Operations depth into COO-level operating leadership.',
+    story_snippet: 'Executive operator who makes growth sustainable.',
+  },
+  preferences: {
+    must_haves: ['Executive scope', 'High-trust leadership'],
+    constraints: ['No relocation'],
+    compensation_direction: 'Executive cash + upside',
+  },
+  coaching: {
+    financial_segment: 'executive_transition',
+    emotional_state: 'focused',
+    coaching_tone: 'direct',
+    urgency_score: 62,
+    recommended_starting_point: 'resume',
+  },
+  evidence_positioning_statements: [
+    'Built operating cadence across product, support, and delivery leaders.',
+    'Trusted to stabilize execution while companies scale.',
+  ],
+  profile_signals: {
+    clarity: 'green',
+    alignment: 'green',
+    differentiation: 'yellow',
+  },
+  completeness: {
+    overall_score: 84,
+    dashboard_state: 'strong',
+    sections: [
+      { id: 'direction', label: 'Direction', status: 'ready', score: 90, summary: 'Target role and market direction are clear.' },
+      { id: 'positioning', label: 'Positioning', status: 'ready', score: 86, summary: 'The platform has enough positioning depth to guide downstream tools.' },
+      { id: 'narrative', label: 'Narrative', status: 'partial', score: 72, summary: 'The main identity thread is clear but could use deeper proof.' },
+      { id: 'constraints', label: 'Constraints', status: 'ready', score: 88, summary: 'Must-haves and constraints are captured.' },
+    ],
+  },
+  profile_summary: 'Executive operator targeting VP Operations / COO opportunities in SaaS and enterprise technology.',
+} as const;
+
+const MOCK_SESSIONS = [
+  {
+    id: 'mock-resume-session',
+    status: 'completed',
+    current_phase: 'quality_review',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-techcorp',
+    pipeline_status: 'complete',
+    pipeline_stage: 'complete',
+    company_name: 'TechCorp',
+    job_title: 'VP Operations',
+    product_type: 'resume_v2',
+    created_at: '2026-03-10T16:00:00.000Z',
+    updated_at: '2026-03-10T17:15:00.000Z',
+  },
+  {
+    id: 'mock-cover-letter-session',
+    status: 'completed',
+    current_phase: 'quality_review',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-techcorp',
+    pipeline_status: 'complete',
+    pipeline_stage: 'complete',
+    company_name: 'TechCorp',
+    job_title: 'VP Operations',
+    product_type: 'cover_letter',
+    created_at: '2026-03-10T16:00:00.000Z',
+    updated_at: '2026-03-10T17:10:00.000Z',
+  },
+  {
+    id: 'mock-second-resume-session',
+    status: 'active',
+    current_phase: 'gap_analysis',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-betaco',
+    pipeline_status: 'running',
+    pipeline_stage: 'gap_analysis',
+    company_name: 'BetaCo',
+    job_title: 'Chief of Staff',
+    product_type: 'resume_v2',
+    created_at: '2026-03-12T15:00:00.000Z',
+    updated_at: '2026-03-12T15:45:00.000Z',
+  },
+];
+
+const MOCK_RESUMES = [
+  {
+    id: 'resume-default',
+    title: 'Executive Master Resume',
+    version: 4,
+    is_default: true,
+    updated_at: '2026-03-01T12:00:00.000Z',
+  },
+];
+
+const MOCK_RESUME_V2_RESULT = {
+  version: 'v2',
+  status: 'complete',
+  pipeline_stage: 'complete',
+  inputs: {
+    resume_text: 'Executive operator with operations leadership experience.',
+    job_description: 'VP Operations role focused on cross-functional leadership.',
+  },
+  pipeline_data: {
+    stage: 'complete',
+    jobIntelligence: {
+      company_name: 'TechCorp',
+      role_title: 'VP Operations',
+      seniority_level: 'VP',
+      core_competencies: [
+        {
+          competency: 'Executive stakeholder leadership',
+          importance: 'must_have',
+          evidence_from_jd: 'Lead executive alignment and drive operating cadence.',
+        },
+      ],
+      strategic_responsibilities: ['Drive operating cadence across departments'],
+      business_problems: ['Improve execution quality'],
+      cultural_signals: ['Ownership'],
+      hidden_hiring_signals: ['Needs an operator who can align leaders quickly'],
+      language_keywords: ['cross-functional', 'stakeholder', 'operating cadence'],
+      industry: 'SaaS',
+    },
+    candidateIntelligence: {
+      contact: null,
+      career_themes: ['Operational leadership'],
+      leadership_scope: 'Executive-level operating leadership',
+      quantified_outcomes: [],
+      industry_depth: ['SaaS'],
+      technologies: [],
+      operational_scale: 'Cross-functional operating model',
+      career_span_years: 15,
+      experience: [],
+      education: [],
+      certifications: [],
+      hidden_accomplishments: [],
+    },
+    benchmarkCandidate: {
+      ideal_profile_summary: 'Executive operator with strong stakeholder alignment and systems discipline.',
+      expected_achievements: [],
+      expected_leadership_scope: 'Executive-level scope',
+      expected_industry_knowledge: ['SaaS operations'],
+      expected_technical_skills: ['Operating cadence'],
+      expected_certifications: [],
+      differentiators: ['Cross-functional leadership'],
+    },
+    gapAnalysis: {
+      requirements: [
+        {
+          requirement: 'Executive stakeholder leadership',
+          importance: 'must_have',
+          classification: 'strong',
+          evidence: ['Aligned product, operations, and support leaders around weekly execution priorities.'],
+          source: 'job_description',
+          source_evidence: 'Lead executive alignment and drive operating cadence.',
+          score_domain: 'job_description',
+        },
+      ],
+      coverage_score: 88,
+      score_breakdown: {
+        job_description: {
+          addressed: 1,
+          total: 1,
+          strong: 1,
+          partial: 0,
+          missing: 0,
+          coverage_score: 100,
+        },
+        benchmark: {
+          addressed: 1,
+          total: 1,
+          strong: 1,
+          partial: 0,
+          missing: 0,
+          coverage_score: 100,
+        },
+      },
+      strength_summary: 'Strong operating leadership fit.',
+      critical_gaps: [],
+      pending_strategies: [],
+    },
+    gapCoachingCards: [],
+    preScores: {
+      ats_match: 74,
+      keyword_coverage: 72,
+      readability_score: 81,
+      missing_keywords: [],
+      matched_keywords: ['stakeholder leadership'],
+    },
+    narrativeStrategy: {
+      primary_narrative: 'Executive operator who turns complexity into operating rhythm.',
+      supporting_themes: ['Cross-functional leadership'],
+      branded_title: 'VP Operations',
+      why_me_story: 'Built reliable operating cadence across fast-moving teams.',
+      why_me_concise: 'Executive operator with systems discipline.',
+      why_me_best_line: 'The operator who makes growth executable.',
+      section_guidance: {
+        summary_angle: 'Lead with operating rhythm and executive alignment.',
+        competency_themes: ['Operating cadence'],
+        accomplishment_priorities: ['Cross-functional execution'],
+        experience_framing: {},
+      },
+    },
+    resumeDraft: {
+      header: {
+        name: 'E2E User',
+        phone: '555-0100',
+        email: 'e2e@example.com',
+        branded_title: 'VP Operations',
+      },
+      executive_summary: {
+        content: 'Executive operator who builds structure, operating rhythm, and executive alignment.',
+        is_new: false,
+        addresses_requirements: ['Executive stakeholder leadership'],
+      },
+      core_competencies: ['Operating Cadence', 'Executive Alignment'],
+      selected_accomplishments: [],
+      professional_experience: [
+        {
+          company: 'TechCorp',
+          title: 'VP Operations',
+          start_date: '2021',
+          end_date: 'Present',
+          scope_statement: 'Led operating cadence across product, operations, and customer support.',
+          scope_statement_is_new: false,
+          scope_statement_addresses_requirements: ['Executive stakeholder leadership'],
+          bullets: [
+            {
+              text: 'Aligned executive, product, and operations leaders around weekly priorities to improve execution quality.',
+              is_new: false,
+              addresses_requirements: ['Executive stakeholder leadership'],
+            },
+          ],
+        },
+      ],
+      education: [],
+      certifications: [],
+    },
+    assembly: {
+      final_resume: {
+        header: {
+          name: 'E2E User',
+          phone: '555-0100',
+          email: 'e2e@example.com',
+          branded_title: 'VP Operations',
+        },
+        executive_summary: {
+          content: 'Executive operator who builds structure, operating rhythm, and executive alignment.',
+          is_new: false,
+          addresses_requirements: ['Executive stakeholder leadership'],
+        },
+        core_competencies: ['Operating Cadence', 'Executive Alignment'],
+        selected_accomplishments: [],
+        professional_experience: [
+          {
+            company: 'TechCorp',
+            title: 'VP Operations',
+            start_date: '2021',
+            end_date: 'Present',
+            scope_statement: 'Led operating cadence across product, operations, and customer support.',
+            scope_statement_is_new: false,
+            scope_statement_addresses_requirements: ['Executive stakeholder leadership'],
+            bullets: [
+              {
+                text: 'Aligned executive, product, and operations leaders around weekly priorities to improve execution quality.',
+                is_new: false,
+                addresses_requirements: ['Executive stakeholder leadership'],
+              },
+            ],
+          },
+        ],
+        education: [],
+        certifications: [],
+      },
+      positioning_assessment: {
+        requirement_map: [
+          {
+            requirement: 'Executive stakeholder leadership',
+            status: 'strong',
+            addressed_by: [
+              {
+                section: 'Professional Experience',
+                bullet_text: 'Aligned executive, product, and operations leaders around weekly priorities to improve execution quality.',
+              },
+            ],
+          },
+        ],
+      },
+      scores: {
+        ats_match: 90,
+        truth: 96,
+        tone: 89,
+      },
+      quick_wins: [],
+    },
+    error: null,
+    stageMessages: [],
+  },
+};
+
+const MOCK_FINAL_REVIEW_RESULT = {
+  six_second_scan: {
+    decision: 'continue_reading',
+    reason: 'The top third shows a credible VP Operations story with executive alignment and operating cadence visible quickly enough to keep reading.',
+    top_signals_seen: [
+      {
+        signal: 'Executive operator positioning is visible immediately',
+        why_it_matters: 'The recruiter can tell what kind of leader this candidate is without hunting.',
+        visible_in_top_third: true,
+      },
+      {
+        signal: 'Cross-functional execution proof appears early',
+        why_it_matters: 'It supports the JD requirement for executive stakeholder leadership.',
+        visible_in_top_third: true,
+      },
+    ],
+    important_signals_missing: [
+      {
+        signal: 'Clearer metric on execution improvement',
+        why_it_matters: 'Adding even one hard number would make the business impact more interview-worthy.',
+      },
+    ],
+  },
+  hiring_manager_verdict: {
+    rating: 'possible_interview',
+    summary: 'The draft is directionally strong for the role, but it still needs one sharper business-impact proof point before it reads like a confident interview yes.',
+  },
+  fit_assessment: {
+    job_description_fit: 'strong',
+    benchmark_alignment: 'moderate',
+    business_impact: 'moderate',
+    clarity_and_credibility: 'strong',
+  },
+  top_wins: [
+    {
+      win: 'Built an executive operating cadence across product, operations, and support leaders.',
+      why_powerful: 'This is the strongest proof that the candidate can align leaders and steady execution.',
+      aligned_requirement: 'Executive stakeholder leadership',
+      prominent_enough: true,
+      repositioning_recommendation: 'Keep this in the top third of the document.',
+    },
+  ],
+  concerns: [
+    {
+      id: 'concern_impact_metric',
+      severity: 'critical',
+      type: 'missing_metric',
+      observation: 'The strongest operating-cadence bullet lacks a hard metric or scope indicator.',
+      why_it_hurts: 'Without scope or outcome, the experience reads more like responsibility than business impact.',
+      fix_strategy: 'Add one truthful metric about execution improvement, team scope, or cadence ownership.',
+      target_section: 'Professional Experience',
+      related_requirement: 'Executive stakeholder leadership',
+      suggested_resume_edit: 'Aligned executive, product, and operations leaders around weekly priorities, improving execution health across a 40+ person cross-functional organization.',
+      requires_candidate_input: true,
+      clarifying_question: 'How large was the team or function you were aligning, or what concrete execution result improved?',
+    },
+  ],
+  structure_recommendations: [
+    {
+      issue: 'The strongest win could carry more measurable business impact.',
+      recommendation: 'Tighten the leading operating-cadence bullet with scope or metric evidence.',
+      priority: 'high',
+    },
+  ],
+  benchmark_comparison: {
+    advantages_vs_benchmark: [
+      'Executive alignment and operating cadence are already visible.',
+    ],
+    gaps_vs_benchmark: [
+      'Benchmark candidates often show clearer scale and quantified execution results.',
+    ],
+    reframing_opportunities: [
+      'Use team scope or cadence ownership as a truthful proxy if revenue metrics are unavailable.',
+    ],
+  },
+  improvement_summary: [
+    'Add one hard metric or scope signal to the lead operating-cadence bullet.',
+    'Keep the executive operator story anchored in the top third.',
+    'Use Final Review fixes before export so the draft reads more interview-ready.',
+  ],
+} as const;
+
+function buildJsonResponse(body: unknown) {
+  return {
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(body),
+  };
+}
+
+async function fulfillApiRoute(route: Route) {
+  const requestUrl = new URL(route.request().url());
+  const path = requestUrl.pathname;
+  const method = route.request().method();
+
+  if (path === '/api/sessions' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ sessions: MOCK_SESSIONS, has_more: false }));
+    return;
+  }
+
+  if (path === '/api/sessions' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ session: { id: 'mock-created-session' } }));
+    return;
+  }
+
+  if (path === '/api/resumes' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ resumes: MOCK_RESUMES }));
+    return;
+  }
+
+  if (path === '/api/resumes/default' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      resume: {
+        id: 'resume-default',
+        raw_text: 'Executive operator with operations leadership experience.',
+        version: 4,
+        is_default: true,
+      },
+    }));
+    return;
+  }
+
+  if (path === '/api/platform-context/career-profile' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ career_profile: MOCK_CAREER_PROFILE }));
+    return;
+  }
+
+  if (path === '/api/platform-context/summary' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      types: [
+        { context_type: 'career_profile', source_product: 'career_profile', updated_at: new Date().toISOString() },
+        { context_type: 'positioning_strategy', source_product: 'resume_v2', updated_at: new Date().toISOString() },
+        { context_type: 'emotional_baseline', source_product: 'onboarding', updated_at: new Date().toISOString() },
+        { context_type: 'client_profile', source_product: 'onboarding', updated_at: new Date().toISOString() },
+      ],
+    }));
+    return;
+  }
+
+  if (path === '/api/coach/recommend' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      action: 'Open Resume Builder and reopen your TechCorp application first.',
+      product: 'Resume Builder',
+      room: 'resume',
+      urgency: 'immediate',
+      phase: 'active_search',
+      phase_label: 'Active Job Search',
+      rationale: 'Your strongest leverage is the active TechCorp process already in progress.',
+    }));
+    return;
+  }
+
+  if (path.startsWith('/api/momentum') && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ summary: null, nudges: [] }));
+    return;
+  }
+
+  if (path.startsWith('/api/content-posts')) {
+    await route.fulfill(buildJsonResponse({ posts: [] }));
+    return;
+  }
+
+  if (path.startsWith('/api/networking/contacts') || path.startsWith('/api/networking/follow-ups')) {
+    await route.fulfill(buildJsonResponse({ contacts: [], touchpoints: [] }));
+    return;
+  }
+
+  if (path.startsWith('/api/job-finder') || path.startsWith('/api/job-search') || path.startsWith('/api/job-tracker')) {
+    await route.fulfill(buildJsonResponse({ jobs: [], results: [], matches: [] }));
+    return;
+  }
+
+  if (/^\/api\/pipeline\/[^/]+\/result$/.test(path) && method === 'GET') {
+    await route.fulfill(buildJsonResponse(MOCK_RESUME_V2_RESULT));
+    return;
+  }
+
+  if (/^\/api\/pipeline\/[^/]+\/hiring-manager-review$/.test(path) && method === 'POST') {
+    await route.fulfill(buildJsonResponse(MOCK_FINAL_REVIEW_RESULT));
+    return;
+  }
+
+  if (/^\/api\/pipeline\/[^/]+\/draft-state$/.test(path) && method === 'PUT') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (path === '/api/pipeline/start' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ session_id: 'mock-created-session' }));
+    return;
+  }
+
+  await route.fulfill(buildJsonResponse({ ok: true }));
+}
+
+export async function mockWorkspaceApp(page: Page): Promise<void> {
+  await page.addInitScript(({ session }) => {
+    const serialized = JSON.stringify(session);
+    const originalGetItem = Storage.prototype.getItem;
+
+    Storage.prototype.getItem = function patchedGetItem(key: string) {
+      if (typeof key === 'string' && key.includes('auth-token')) {
+        return serialized;
+      }
+      return originalGetItem.call(this, key);
+    };
+  }, { session: AUTH_SESSION });
+
+  await page.route('**/supabase.co/**', async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+
+    if (url.includes('/auth/v1/user')) {
+      await route.fulfill(buildJsonResponse(AUTH_SESSION.user));
+      return;
+    }
+
+    if (url.includes('/auth/v1/token')) {
+      await route.fulfill(buildJsonResponse(AUTH_SESSION));
+      return;
+    }
+
+    if (url.includes('/auth/v1/')) {
+      await route.fulfill(buildJsonResponse({}));
+      return;
+    }
+
+    if (method === 'GET' && url.includes('/rest/v1/job_applications')) {
+      await route.fulfill(buildJsonResponse([
+        { id: 'job-techcorp', company: 'TechCorp', title: 'VP Operations', jd_text: 'Lead executive alignment.' },
+      ]));
+      return;
+    }
+
+    if (method === 'GET' && url.includes('/rest/v1/master_resumes')) {
+      await route.fulfill(buildJsonResponse([{ raw_text: 'Executive operator with operations leadership experience.' }]));
+      return;
+    }
+
+    if (method === 'GET' && url.includes('/rest/v1/coach_sessions')) {
+      await route.fulfill(buildJsonResponse([]));
+      return;
+    }
+
+    if (url.includes('/rest/v1/')) {
+      await route.fulfill(buildJsonResponse([]));
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await page.route('**/api/**', fulfillApiRoute);
+}

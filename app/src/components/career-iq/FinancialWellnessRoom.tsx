@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
+import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import type { CareerProfileSummary } from './career-profile-summary';
 import {
   TrendingDown,
   Shield,
@@ -683,7 +685,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function FinancialWellnessRoom() {
+interface FinancialWellnessRoomProps {
+  careerProfileSummary?: CareerProfileSummary;
+  onOpenCareerProfile?: () => void;
+}
+
+export function FinancialWellnessRoom({
+  careerProfileSummary,
+  onOpenCareerProfile,
+}: FinancialWellnessRoomProps = {}) {
   const { phase, questions, summary, error, startAssessment, submitResponses, reset } =
     useRetirementBridge();
 
@@ -739,6 +749,20 @@ export function FinancialWellnessRoom() {
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+      {careerProfileSummary && (
+        <CareerProfileSummaryCard
+          summary={careerProfileSummary}
+          title="Career context can inform Retirement Bridge, but it does not replace financial guidance"
+          description="Retirement Bridge is intentionally different from the rest of the platform. It uses your transition context to ask better questions, while keeping financial guidance deferred to a fiduciary planner."
+          usagePoints={[
+            'The assessment uses your transition context and emotional baseline to frame better questions.',
+            'Financial Wellness still relies more on client profile signals than resume positioning.',
+            'This tool prepares a planner conversation. It does not turn career context into financial advice.',
+          ]}
+          onOpenProfile={onOpenCareerProfile}
+        />
+      )}
+
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Financial Wellness</h1>
         <p className="text-[13px] text-white/40">

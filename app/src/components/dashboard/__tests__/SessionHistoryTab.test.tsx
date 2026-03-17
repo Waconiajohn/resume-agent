@@ -177,4 +177,42 @@ describe('SessionHistoryTab', () => {
 
     expect(onResumeSession).toHaveBeenCalledWith('session-1');
   });
+
+  it('groups assets by company, role, and day into one job record', () => {
+    const onResumeSession = vi.fn();
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          onResumeSession,
+          sessions: [
+            makeSession({
+              id: 'resume-1',
+              product_type: 'resume_v2',
+              company_name: 'Acme Corp',
+              job_title: 'VP Engineering',
+              created_at: '2026-01-01T12:00:00Z',
+              updated_at: '2026-01-01T13:00:00Z',
+            }),
+            makeSession({
+              id: 'letter-1',
+              product_type: 'cover_letter',
+              company_name: 'Acme Corp',
+              job_title: 'VP Engineering',
+              created_at: '2026-01-01T15:00:00Z',
+              updated_at: '2026-01-01T16:00:00Z',
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Job record')).toBeInTheDocument();
+    expect(screen.getAllByText('Acme Corp')).toHaveLength(1);
+    expect(screen.getByText('Resume')).toBeInTheDocument();
+    expect(screen.getAllByText('Cover Letter').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /^open$/i }));
+
+    expect(onResumeSession).toHaveBeenCalledWith('letter-1');
+  });
 });

@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { ExecutiveBioRoom } from './ExecutiveBioRoom';
 import { CaseStudyRoom } from './CaseStudyRoom';
+import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import type { CareerProfileSummary } from './career-profile-summary';
 import { FileText, BookOpen } from 'lucide-react';
 
 type DocTab = 'bio' | 'case-study';
@@ -12,11 +14,33 @@ const TABS: { id: DocTab; label: string; icon: typeof FileText; description: str
   { id: 'case-study', label: 'Case Studies', icon: BookOpen, description: 'Consulting-grade narratives' },
 ];
 
-export function ExecutiveDocumentsRoom() {
+interface ExecutiveDocumentsRoomProps {
+  careerProfileSummary?: CareerProfileSummary;
+  onOpenCareerProfile?: () => void;
+}
+
+export function ExecutiveDocumentsRoom({
+  careerProfileSummary,
+  onOpenCareerProfile,
+}: ExecutiveDocumentsRoomProps) {
   const [activeTab, setActiveTab] = useState<DocTab>('bio');
 
   return (
     <div className="p-6 space-y-6">
+      {careerProfileSummary && (
+        <CareerProfileSummaryCard
+          summary={careerProfileSummary}
+          title="Career Profile is shaping your executive documents"
+          description="Executive bios and case studies should sound like the same operator the rest of the platform is positioning, not a separate marketing persona."
+          usagePoints={[
+            'The profile story decides what identity thread leads your bio.',
+            'Differentiators and proof themes determine which wins become case studies.',
+            'These documents should reinforce LinkedIn and resume positioning, not contradict it.',
+          ]}
+          onOpenProfile={onOpenCareerProfile}
+        />
+      )}
+
       {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-white/90">Executive Documents</h2>

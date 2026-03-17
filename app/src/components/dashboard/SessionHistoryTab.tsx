@@ -29,6 +29,16 @@ interface SessionHistoryTabProps {
   onGetSessionCoverLetter: (id: string) => Promise<{ letter: string; quality_score?: number | null } | null>;
 }
 
+interface SessionJobRecord {
+  key: string;
+  company: string;
+  role: string;
+  createdAt: string;
+  latestSession: CoachSession;
+  status: ReturnType<typeof formatStatus>;
+  assets: CoachSession[];
+}
+
 function humanizeProductType(type: string): string {
   switch (type) {
     case 'resume_v2':
@@ -73,6 +83,58 @@ function formatStatus(status?: string | null): { label: string; classes: string 
       return { label: 'Needs Review', classes: 'border-[#f0b8b8]/25 bg-[#f0b8b8]/10 text-[#f6d0d0]' };
     default:
       return { label: 'In Progress', classes: 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]' };
+  }
+}
+
+function buildJobRecordKey(session: CoachSession): string {
+  const company = session.company_name?.trim().toLowerCase() || 'untitled-company';
+  const role = session.job_title?.trim().toLowerCase() || 'untitled-role';
+  const date = session.created_at.slice(0, 10);
+  return `${company}::${role}::${date}`;
+}
+
+function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
+  const grouped = new Map<string, SessionJobRecord>();
+
+  for (const session of sessions) {
+    const key = buildJobRecordKey(session);
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, {
+        key,
+        company: session.company_name?.trim() || 'Untitled company',
+        role: session.job_title?.trim() || 'Untitled role',
+        createdAt: session.created_at,
+        latestSession: session,
+        status: formatStatus(session.pipeline_status ?? session.pipeline_stage),
+        assets: [session],
+      });
+      continue;
+    }
+
+    existing.assets.push(session);
+    if (new Date(session.updated_at).getTime() > new Date(existing.latestSession.updated_at).getTime()) {
+      existing.latestSession = session;
+      existing.status = formatStatus(session.pipeline_status ?? session.pipeline_stage);
+      existing.createdAt = session.created_at;
+    }
+  }
+
+  return Array.from(grouped.values()).sort(
+    (left, right) => new Date(right.latestSession.updated_at).getTime() - new Date(left.latestSession.updated_at).getTime(),
+  );
+}
+
+function assetBadgeLabel(type: string): string {
+  switch (type) {
+    case 'cover_letter':
+      return 'Cover Letter';
+    case 'resume':
+    case 'resume_v2':
+      return 'Resume';
+    default:
+      return humanizeProductType(type);
   }
 }
 
@@ -136,6 +198,7 @@ export function SessionHistoryTab({
     const matchesSupportedType = type === 'resume' || type === 'resume_v2' || type === 'cover_letter';
     return matchesProduct && matchesSupportedType && matchesStatusFilter(session, statusFilter);
   });
+  const jobRecords = useMemo(() => buildJobRecords(filteredSessions), [filteredSessions]);
 
   const handleLoadMore = useCallback(async () => {
     setLoadingMore(true);
@@ -208,10 +271,11 @@ export function SessionHistoryTab({
       </div>
 
       <GlassCard className="overflow-hidden p-0">
-        <div className="hidden grid-cols-[minmax(0,2.3fr)_140px_140px_220px] gap-4 border-b border-white/[0.06] px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-white/35 lg:grid">
+        <div className="hidden grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1fr)_260px] gap-4 border-b border-white/[0.06] px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-white/35 lg:grid">
           <div>Company and role</div>
           <div>Date</div>
           <div>Status</div>
+          <div>Assets</div>
           <div>Actions</div>
         </div>
 
@@ -224,67 +288,81 @@ export function SessionHistoryTab({
               </div>
             ))}
           </div>
-        ) : filteredSessions.length === 0 ? (
+        ) : jobRecords.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="text-sm text-white/45">No saved tailored work found for this filter.</p>
           </div>
         ) : (
           <div className="divide-y divide-white/[0.04]">
-            {filteredSessions.map((session) => {
-              const status = formatStatus(session.pipeline_status ?? session.pipeline_stage);
-              const productLabel = humanizeProductType(productTypeForSession(session));
-              const company = session.company_name?.trim() || 'Untitled company';
-              const role = session.job_title?.trim() || 'Untitled role';
-              const showResumeAction = productTypeForSession(session) !== 'cover_letter';
-              const showCoverLetterAction = productTypeForSession(session) === 'cover_letter';
+            {jobRecords.map((record) => {
+              const resumeAsset = record.assets.find((session) => productTypeForSession(session) !== 'cover_letter');
+              const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter');
+              const assetCounts = record.assets.reduce<Record<string, number>>((accumulator, session) => {
+                const type = productTypeForSession(session);
+                accumulator[type] = (accumulator[type] ?? 0) + 1;
+                return accumulator;
+              }, {});
 
               return (
-                <div key={session.id} className="px-5 py-4">
-                  <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2.3fr)_140px_140px_220px] lg:items-center">
+                <div key={record.key} className="px-5 py-4">
+                  <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1fr)_260px] lg:items-center">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="truncate text-sm font-semibold text-white/85">{company}</div>
-                        <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/45">
-                          {productLabel}
+                        <div className="truncate text-sm font-semibold text-white/85">{record.company}</div>
+                        <span className="rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-2 py-0.5 text-[10px] text-[#c9d7ff]">
+                          Job record
                         </span>
                       </div>
-                      <div className="mt-1 truncate text-xs text-white/45">{role}</div>
+                      <div className="mt-1 truncate text-xs text-white/45">{record.role}</div>
                     </div>
 
-                    <div className="text-xs text-white/55">{formatDate(session.created_at)}</div>
+                    <div className="text-xs text-white/55">{formatDate(record.createdAt)}</div>
 
                     <div>
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${status.classes}`}>
-                        {status.label}
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${record.status.classes}`}>
+                        {record.status.label}
                       </span>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(session.id)}>
+                      {Object.entries(assetCounts).map(([type, count]) => (
+                        <span
+                          key={type}
+                          className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/50"
+                        >
+                          {assetBadgeLabel(type)}{count > 1 ? ` (${count})` : ''}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(record.latestSession.id)}>
                         <ExternalLink size={12} className="mr-1.5" />
                         Open
                       </GlassButton>
-                      {showResumeAction && (
-                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingResumeSessionId(session.id)}>
+                      {resumeAsset && (
+                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingResumeSessionId(resumeAsset.id)}>
                           <FileText size={12} className="mr-1.5" />
                           View Resume
                         </GlassButton>
                       )}
-                      {showCoverLetterAction && (
-                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingCoverLetterSessionId(session.id)}>
+                      {coverLetterAsset && (
+                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingCoverLetterSessionId(coverLetterAsset.id)}>
                           <FileText size={12} className="mr-1.5" />
                           View Letter
                         </GlassButton>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => void onDeleteSession(session.id)}
-                        className="inline-flex h-8 items-center rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/70"
-                        aria-label={`Delete ${company} ${role} session`}
-                      >
-                        <Trash2 size={12} className="mr-1.5" />
-                        Delete
-                      </button>
+                      {!coverLetterAsset && record.assets.length === 1 && (
+                        <button
+                          type="button"
+                          onClick={() => void onDeleteSession(record.latestSession.id)}
+                          className="inline-flex h-8 items-center rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+                          aria-label={`Delete ${record.company} ${record.role} session`}
+                        >
+                          <Trash2 size={12} className="mr-1.5" />
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

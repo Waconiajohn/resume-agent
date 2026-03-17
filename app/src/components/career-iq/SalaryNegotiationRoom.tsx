@@ -1,6 +1,8 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
+import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import type { CareerProfileSummary } from './career-profile-summary';
 import {
   DollarSign,
   TrendingUp,
@@ -730,9 +732,17 @@ interface SalaryNegotiationRoomProps {
   prefillRole?: string;
   /** Called once after the prefill values have been applied to the form. */
   onPrefillConsumed?: () => void;
+  careerProfileSummary?: CareerProfileSummary;
+  onOpenCareerProfile?: () => void;
 }
 
-export function SalaryNegotiationRoom({ prefillCompany, prefillRole, onPrefillConsumed }: SalaryNegotiationRoomProps = {}) {
+export function SalaryNegotiationRoom({
+  prefillCompany,
+  prefillRole,
+  onPrefillConsumed,
+  careerProfileSummary,
+  onOpenCareerProfile,
+}: SalaryNegotiationRoomProps = {}) {
   const [form, setForm] = useState<FormState>(() => ({
     ...DEFAULT_FORM,
     offerCompany: prefillCompany ?? '',
@@ -935,6 +945,20 @@ export function SalaryNegotiationRoom({ prefillCompany, prefillRole, onPrefillCo
   // Idle form
   return (
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+      {careerProfileSummary && (
+        <CareerProfileSummaryCard
+          summary={careerProfileSummary}
+          title="Career Profile is anchoring your negotiation posture"
+          description="Salary Negotiation should reflect the same level, scope, and market story the rest of the platform is building for you."
+          usagePoints={[
+            'Role level and differentiators help frame what makes your ask credible.',
+            'The platform uses your positioning story to decide where you have leverage.',
+            'Negotiation language should match the same executive tone used in your resume and interview prep.',
+          ]}
+          onOpenProfile={onOpenCareerProfile}
+        />
+      )}
+
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-[#afc4ff]/10 p-2.5 border border-[#afc4ff]/20">

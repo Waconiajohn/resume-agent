@@ -1512,6 +1512,11 @@ export function LinkedInStudioRoom({ signals, careerProfileSummary, onOpenCareer
           summary={careerProfileSummary}
           title="Career Profile is setting your LinkedIn angle"
           description="LinkedIn Studio uses the same story, strengths, and differentiators that power Resume Builder so your public brand does not drift."
+          usagePoints={[
+            'Your positioning story shapes headline, About, and profile language.',
+            'Differentiators and proof themes guide post ideas and content angles.',
+            'The tool keeps recruiter-facing keywords aligned with your real profile direction.',
+          ]}
           onOpenProfile={onOpenCareerProfile}
         />
       )}

@@ -22,7 +22,7 @@ const questions: AssessmentQuestion[] = [
   {
     id: 'q1',
     question: 'What kind of role are you targeting next?',
-    category: 'target_role',
+    category: 'career_context',
     purpose: 'This tells the AI what kind of market story it should build across the platform.',
   },
 ];
@@ -46,7 +46,7 @@ describe('CareerProfileRoom', () => {
     );
 
     expect(screen.getByText('Why AI is asking this')).toBeInTheDocument();
-    expect(screen.getByText('Live profile preview')).toBeInTheDocument();
+    expect(screen.getByText('What is updating live')).toBeInTheDocument();
     expect(screen.queryByText('What the AI already learned')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'I am targeting VP Operations or COO roles in SaaS.' } });

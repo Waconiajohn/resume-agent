@@ -41,6 +41,14 @@ const TOOL_GROUPS: ToolGroup[] = [
 
 const START_HERE_IDS = ['onboarding-assessment', 'resume-strategist', 'job-command-center'];
 const MOST_USED_IDS = ['linkedin-studio', 'interview-lab', 'salary-negotiation'];
+const CAREER_PROFILE_POWERED_IDS = new Set([
+  'resume-strategist',
+  'linkedin-studio',
+  'job-command-center',
+  'interview-lab',
+  'salary-negotiation',
+  'executive-documents',
+]);
 
 /* ─── Props ─── */
 
@@ -55,6 +63,7 @@ interface ProductCatalogGridProps {
 function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNavigate: (route: string) => void }) {
   const isNavigable = product.status === 'active' || product.status === 'beta';
   const isBeta = product.status === 'beta';
+  const usesCareerProfile = CAREER_PROFILE_POWERED_IDS.has(product.id);
 
   return (
     <GlassCard
@@ -96,6 +105,11 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
         )}>
           {product.shortDescription}
         </p>
+        {usesCareerProfile && (
+          <div className="mt-2 inline-flex w-fit items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#c9d7ff]">
+            Uses Career Profile
+          </div>
+        )}
       </div>
     </GlassCard>
   );
@@ -117,6 +131,7 @@ function FeaturedToolCard({
   eyebrow: string;
 }) {
   const isNavigable = product.status === 'active' || product.status === 'beta';
+  const usesCareerProfile = CAREER_PROFILE_POWERED_IDS.has(product.id);
 
   return (
     <GlassCard
@@ -147,6 +162,11 @@ function FeaturedToolCard({
           )}
         </div>
         <p className="mt-3 text-sm leading-relaxed text-white/58">{product.shortDescription}</p>
+        {usesCareerProfile && (
+          <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#c9d7ff]">
+            Uses Career Profile
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -263,6 +283,11 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-white/86">{product.name}</div>
                     <div className="mt-1 text-xs leading-relaxed text-white/50">{product.shortDescription}</div>
+                    {CAREER_PROFILE_POWERED_IDS.has(product.id) && (
+                      <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#c9d7ff]">
+                        Uses Career Profile
+                      </div>
+                    )}
                   </div>
                 </div>
                 <span className="text-xs text-[#98b3ff]">{product.ctaLabel}</span>

@@ -1209,6 +1209,11 @@ export function InterviewLabRoom({
           summary={careerProfileSummary}
           title="Career Profile is framing your interview story"
           description="Interview Lab should turn the same positioning story into interview answers, proof points, and debrief follow-up instead of making you start over."
+          usagePoints={[
+            'The prep report leans on the same story and proof themes used in Resume Builder.',
+            'Mock interview coaching uses your saved positioning instead of starting cold.',
+            'Thank-you notes and 90-day plans should reinforce the exact same narrative.',
+          ]}
           onOpenProfile={onOpenCareerProfile}
         />
       )}

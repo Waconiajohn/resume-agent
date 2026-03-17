@@ -832,6 +832,11 @@ export function JobCommandCenterRoom({
           summary={careerProfileSummary}
           title="Career Profile is steering your search targets"
           description="Job Command Center should not just show roles. It should show roles that match the story and strengths you want the market to recognize."
+          usagePoints={[
+            'Role matching uses your target titles, industries, and level.',
+            'Search logic favors jobs that fit the story you are trying to tell the market.',
+            'Pipeline recommendations should reflect where your profile is strongest, not just keyword overlap.',
+          ]}
           onOpenProfile={onOpenCareerProfile}
           onContinue={careerProfileSummary.nextRecommendedRoom === 'jobs' ? undefined : () => onNavigateRoom?.('resume')}
           continueLabel={careerProfileSummary.nextRecommendedRoom === 'career-profile' ? 'Finish Career Profile' : 'Open Resume Builder'}

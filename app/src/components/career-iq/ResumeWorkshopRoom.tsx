@@ -72,6 +72,11 @@ export function ResumeWorkshopRoom({
           summary={careerProfileSummary}
           title="Career Profile is shaping every tailored resume"
           description="Resume Builder uses the profile story to decide what to emphasize, what evidence to ask for, and what is worth promoting into the master resume."
+          usagePoints={[
+            'Your core story determines what the rewrite queue prioritizes first.',
+            'Strengths and differentiators influence how AI reframes adjacent experience.',
+            'Only strong, reusable edits should be promoted back into the master resume.',
+          ]}
           onOpenProfile={() => onNavigate?.('/workspace?room=career-profile')}
         />
       )}
