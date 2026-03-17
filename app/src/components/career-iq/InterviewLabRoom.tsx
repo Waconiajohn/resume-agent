@@ -855,6 +855,26 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 // --- Main component ---
 
 type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview' | 'thank-you' | 'ninety-day-plan';
+type LabSection = 'prep' | 'practice' | 'documents' | 'follow_up';
+
+const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string }> = {
+  prep: {
+    label: 'Prep',
+    description: 'Research the role, generate prep, and walk into the interview with a plan.',
+  },
+  practice: {
+    label: 'Practice',
+    description: 'Run the mock interview and pressure-test how your answers sound out loud.',
+  },
+  documents: {
+    label: 'Documents',
+    description: 'Create the 90-day plan and other interview leave-behinds when they will help you stand out.',
+  },
+  follow_up: {
+    label: 'Follow-Up',
+    description: 'Track outcomes, log debriefs, and send thoughtful follow-up material.',
+  },
+};
 
 interface MockInterviewConfig {
   resumeText: string;
@@ -871,6 +891,7 @@ export function InterviewLabRoom({
 }: InterviewLabRoomProps) {
   const [history, setHistory] = useState<PastInterview[]>(loadHistory);
   const [viewMode, setViewMode] = useState<ViewMode>('lab');
+  const [activeSection, setActiveSection] = useState<LabSection>('prep');
   const [activeCompany, setActiveCompany] = useState('');
   const [activeRole, setActiveRole] = useState('');
   const [loadingInputs, setLoadingInputs] = useState(false);
@@ -1013,6 +1034,7 @@ export function InterviewLabRoom({
   }, []);
 
   const handleStartMockInterview = useCallback(async () => {
+    setActiveSection('practice');
     setMockInterviewLoading(true);
     setMockInterviewError(null);
     try {
@@ -1037,6 +1059,7 @@ export function InterviewLabRoom({
   }, []);
 
   const handleOpenNinetyDayPlan = useCallback(() => {
+    setActiveSection('documents');
     setViewMode('ninety-day-plan');
   }, []);
 
@@ -1194,43 +1217,12 @@ export function InterviewLabRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Lab</h1>
           <p className="text-[13px] text-white/40">
-            Prepare for every interview with AI-powered company research, predicted questions, practice sessions, and leave-behind documents.
+            Organize interview work into prep, practice, documents, and follow-up instead of hunting through one crowded screen.
           </p>
           <ContextLoadedBadge
             contextTypes={['career_profile', 'positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
             className="mt-2"
           />
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <GlassButton
-            variant="ghost"
-            onClick={() => setViewMode('thank-you')}
-            className="text-[13px]"
-          >
-            <Mail size={14} className="mr-1.5" />
-            Thank You Notes
-          </GlassButton>
-          <GlassButton
-            variant="ghost"
-            onClick={handleOpenNinetyDayPlan}
-            className="text-[13px]"
-          >
-            <ClipboardList size={14} className="mr-1.5" />
-            90-Day Plan Document
-          </GlassButton>
-          <GlassButton
-            variant="primary"
-            onClick={() => void handleStartMockInterview()}
-            disabled={mockInterviewLoading}
-            className="text-[13px]"
-          >
-            {mockInterviewLoading ? (
-              <Loader2 size={14} className="mr-1.5 animate-spin" />
-            ) : (
-              <Mic size={14} className="mr-1.5" />
-            )}
-            Start Mock Interview
-          </GlassButton>
         </div>
       </div>
 
@@ -1241,31 +1233,145 @@ export function InterviewLabRoom({
         </div>
       )}
 
-      <UpcomingInterviews
-        interviews={
-          pipelineInterviews && pipelineInterviews.length > 0
-            ? pipelineInterviews.map((card) => ({
-                id: card.id,
-                company: card.company,
-                role: card.role,
-                date: 'TBD',
-                time: 'TBD',
-                type: 'video' as const,
-                round: 'From pipeline',
-                jobApplicationId: card.id,
-              }))
-            : []
-        }
-        onGeneratePrep={handleGeneratePrep}
-      />
+      <div className="grid gap-3 lg:grid-cols-4">
+        {(Object.entries(LAB_SECTION_COPY) as Array<[LabSection, { label: string; description: string }]>).map(([sectionId, section]) => {
+          const isActive = activeSection === sectionId;
+          return (
+            <button
+              key={sectionId}
+              type="button"
+              onClick={() => setActiveSection(sectionId)}
+              className={cn(
+                'rounded-2xl border px-4 py-4 text-left transition-colors',
+                isActive
+                  ? 'border-[#98b3ff]/22 bg-[#98b3ff]/[0.08]'
+                  : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.05]',
+              )}
+            >
+              <div className="text-sm font-semibold text-white/86">{section.label}</div>
+              <div className="mt-2 text-xs leading-relaxed text-white/50">{section.description}</div>
+            </button>
+          );
+        })}
+      </div>
 
-      <InterviewHistory
-        history={history}
-        onUpdateOutcome={handleUpdateOutcome}
-        onAdd={handleAddInterview}
-        onAddDebrief={handleAddDebriefClick}
-        debriefCount={debriefs.length}
-      />
+      {activeSection === 'prep' && (
+        <>
+          <GlassCard className="p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  Prep
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-white/88">Start with research and likely interview pressure points</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/54">
+                  Generate a prep report from an active role. The platform will pull your master resume, use your Career Profile story, and build predicted questions, company research, and talking points.
+                </p>
+              </div>
+              <GlassButton variant="ghost" onClick={() => onOpenCareerProfile?.()} className="text-[13px]">
+                <Brain size={14} className="mr-1.5" />
+                Review Career Profile
+              </GlassButton>
+            </div>
+          </GlassCard>
+
+          <UpcomingInterviews
+            interviews={
+              pipelineInterviews && pipelineInterviews.length > 0
+                ? pipelineInterviews.map((card) => ({
+                    id: card.id,
+                    company: card.company,
+                    role: card.role,
+                    date: 'TBD',
+                    time: 'TBD',
+                    type: 'video' as const,
+                    round: 'From pipeline',
+                    jobApplicationId: card.id,
+                  }))
+                : []
+            }
+            onGeneratePrep={handleGeneratePrep}
+          />
+        </>
+      )}
+
+      {activeSection === 'practice' && (
+        <GlassCard className="p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                Practice
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-white/88">Pressure-test the story before the live interview</h2>
+              <p className="mt-2 text-sm leading-relaxed text-white/54">
+                Run the mock interview when you want to hear your positioning out loud, tighten weak answers, and expose where your proof still feels thin.
+              </p>
+            </div>
+            <GlassButton
+              variant="primary"
+              onClick={() => void handleStartMockInterview()}
+              disabled={mockInterviewLoading}
+              className="text-[13px]"
+            >
+              {mockInterviewLoading ? (
+                <Loader2 size={14} className="mr-1.5 animate-spin" />
+              ) : (
+                <Mic size={14} className="mr-1.5" />
+              )}
+              Start Mock Interview
+            </GlassButton>
+          </div>
+        </GlassCard>
+      )}
+
+      {activeSection === 'documents' && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <GlassCard className="p-5">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              Interview Leave-Behinds
+            </div>
+            <h2 className="mt-2 text-lg font-semibold text-white/88">90-Day Plan Document</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/54">
+              Use this when you need to show how you would step into the role, prioritize fast, and create confidence before an offer decision is made.
+            </p>
+            <GlassButton variant="ghost" onClick={handleOpenNinetyDayPlan} className="mt-4 text-[13px]">
+              <ClipboardList size={14} className="mr-1.5" />
+              Open 90-Day Plan Document
+            </GlassButton>
+          </GlassCard>
+
+          <GlassCard className="p-5">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              Follow-Up Assets
+            </div>
+            <h2 className="mt-2 text-lg font-semibold text-white/88">Thank You Notes</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/54">
+              Create fast, thoughtful follow-up notes that reinforce the same positioning story you used in the interview.
+            </p>
+            <GlassButton
+              variant="ghost"
+              onClick={() => {
+                setActiveSection('follow_up');
+                setViewMode('thank-you');
+              }}
+              className="mt-4 text-[13px]"
+            >
+              <Mail size={14} className="mr-1.5" />
+              Open Thank You Notes
+            </GlassButton>
+          </GlassCard>
+        </div>
+      )}
+
+      {activeSection === 'follow_up' && (
+        <InterviewHistory
+          history={history}
+          onUpdateOutcome={handleUpdateOutcome}
+          onAdd={handleAddInterview}
+          onAddDebrief={handleAddDebriefClick}
+          debriefCount={debriefs.length}
+        />
+      )}
     </div>
   );
 }

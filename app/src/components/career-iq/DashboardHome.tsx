@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowRight, FileText, Search, Target, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowRight, FileText, Search, Target } from 'lucide-react';
 import { ZoneYourDay } from './ZoneYourDay';
 import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
 import { CoachingNudgeBar } from './CoachingNudgeBar';
@@ -51,65 +51,116 @@ function saveDismissed(dismissed: Record<string, boolean>) {
 function HomeGuideCard({
   hasResumeSessions,
   sessionCount,
+  dashboardState,
+  signals,
+  coachRecommendationTitle,
   onNavigateRoom,
   onRefineWhyMe,
 }: {
   hasResumeSessions: boolean;
   sessionCount: number;
+  dashboardState: DashboardState;
+  signals: WhyMeSignals;
+  coachRecommendationTitle?: string;
   onNavigateRoom?: (room: CareerIQRoom) => void;
   onRefineWhyMe?: () => void;
 }) {
+  const primaryAction = dashboardState === 'new-user'
+    ? {
+        eyebrow: 'Start here',
+        title: 'Finish your Career Profile first',
+        description: 'This is the shared story every agent reads. The stronger it is, the sharper Resume Builder, Job Search, LinkedIn, and Interview Lab become.',
+        label: 'Open Career Profile',
+        onClick: onRefineWhyMe,
+      }
+    : !hasResumeSessions
+      ? {
+          eyebrow: 'Next best move',
+          title: 'Build the first tailored resume for a live job',
+          description: 'Your Career Profile is strong enough to stop starting from scratch. Turn it into a job-specific resume you can reopen later by company, role, and date.',
+          label: 'Open Resume Builder',
+          onClick: () => onNavigateRoom?.('resume'),
+        }
+      : {
+          eyebrow: 'Daily workspace',
+          title: 'Reopen active work and move one application forward',
+          description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Resume Builder and Job Command Center should now be the main places you work from day to day.`,
+          label: 'Open Resume Builder',
+          onClick: () => onNavigateRoom?.('resume'),
+        };
+
+  const secondaryAction = dashboardState === 'new-user'
+    ? {
+        label: 'Open Job Command Center',
+        onClick: () => onNavigateRoom?.('jobs'),
+      }
+    : {
+        label: 'Open Job Command Center',
+        onClick: () => onNavigateRoom?.('jobs'),
+      };
+
+  const signalSummary = [
+    `Clarity: ${signals.clarity}`,
+    `Alignment: ${signals.alignment}`,
+    `Differentiation: ${signals.differentiation}`,
+  ];
+
   return (
     <GlassCard className="p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-2xl">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl">
           <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-            Workspace Home
+            {primaryAction.eyebrow}
           </div>
-          <h1 className="mt-2 text-xl font-semibold text-white/90">A simpler path through the platform</h1>
+          <h1 className="mt-2 text-xl font-semibold text-white/90">{primaryAction.title}</h1>
           <p className="mt-2 text-sm leading-relaxed text-white/50">
-            Start with your Career Profile, use Resume Builder to tailor each application, and come back here to track what needs attention next.
+            {primaryAction.description}
           </p>
+          {coachRecommendationTitle && (
+            <p className="mt-3 text-xs leading-relaxed text-white/42">
+              Coach recommendation: {coachRecommendationTitle}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={onRefineWhyMe}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white/90"
+            onClick={primaryAction.onClick}
+            className="rounded-lg border border-[#98b3ff]/25 bg-[#98b3ff]/12 px-3 py-2 text-xs font-medium text-[#c9d7ff] transition-colors hover:bg-[#98b3ff]/18"
           >
-            Open Career Profile
+            {primaryAction.label}
           </button>
           <button
             type="button"
-            onClick={() => onNavigateRoom?.('resume')}
-            className="rounded-lg border border-[#98b3ff]/25 bg-[#98b3ff]/12 px-3 py-2 text-xs font-medium text-[#c9d7ff] transition-colors hover:bg-[#98b3ff]/18"
+            onClick={secondaryAction.onClick}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white/90"
           >
-            Open Resume Builder
+            {secondaryAction.label}
           </button>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 lg:grid-cols-3">
+      <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
         <StepCard
           icon={Target}
-          title="1. Career Profile"
-          description="Clarify the story, strengths, and fit you want every tool to use."
-          actionLabel="Review profile"
+          title="Career Profile backbone"
+          description={`Signals right now: ${signalSummary.join(' · ')}`}
+          actionLabel="Review Career Profile"
           onClick={onRefineWhyMe}
         />
         <StepCard
           icon={FileText}
-          title="2. Resume Builder"
+          title="Resume Builder"
           description={hasResumeSessions
             ? `You have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen by company, role, and date.`
             : 'Create a tailored resume for a target job and keep the strongest additions for future use.'}
-          actionLabel={hasResumeSessions ? 'Review saved work' : 'Start a tailored resume'}
+          actionLabel={hasResumeSessions ? 'Open saved work' : 'Start a tailored resume'}
           onClick={() => onNavigateRoom?.('resume')}
         />
         <StepCard
           icon={Search}
-          title="3. Job Command Center"
+          title="Job Command Center"
           description="Track active roles, interview stages, and what should happen next in your search."
           actionLabel="Open job tracker"
           onClick={() => onNavigateRoom?.('jobs')}
@@ -172,7 +223,11 @@ export function DashboardHome({
 }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
   const firstMomentumNudge = nudges.length > 0 ? nudges[0] : null;
-  const showResumeNudge = !firstMomentumNudge && dashboardState !== 'new-user' && !hasResumeSessions && !dismissed.resume_nudge;
+  const showMomentumNudge = Boolean(firstMomentumNudge && !dismissed[firstMomentumNudge.id]);
+  const spotlightFirst = useMemo(
+    () => Boolean(coachRecommendation && dashboardState === 'new-user' && !showMomentumNudge),
+    [coachRecommendation, dashboardState, showMomentumNudge],
+  );
 
   const handleDismiss = (key: string) => {
     const updated = { ...dismissed, [key]: true };
@@ -185,52 +240,21 @@ export function DashboardHome({
       <HomeGuideCard
         hasResumeSessions={hasResumeSessions}
         sessionCount={sessionCount}
+        dashboardState={dashboardState}
+        signals={signals}
+        coachRecommendationTitle={coachRecommendation?.action}
         onNavigateRoom={onNavigateRoom}
         onRefineWhyMe={onRefineWhyMe}
       />
 
-      <CoachSpotlight
-        userName={userName}
-        recommendation={coachRecommendation ?? null}
-        loading={coachLoading}
-        onNavigateRoom={onNavigateRoom}
-        onOpenCoach={onOpenCoach}
-      />
-
-      {showResumeNudge && (
-        <GlassCard className="flex items-center gap-3 border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-4 py-3">
-          <div className="rounded-lg bg-[#98b3ff]/15 p-2">
-            <FileText size={16} className="text-[#98b3ff]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium text-white/75">Your profile is ready for a tailored resume</div>
-            <div className="mt-0.5 text-[11px] text-white/40">
-              Resume Builder saves each application by company, job title, and date so you can reopen the exact version later.
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              handleDismiss('resume_nudge');
-              onNavigateRoom?.('resume');
-            }}
-            className="flex items-center gap-1 text-[12px] text-[#98b3ff] transition-colors hover:text-[#c9d7ff]"
-          >
-            Open Resume Builder
-            <ArrowRight size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDismiss('resume_nudge')}
-            className="text-white/45 transition-colors hover:text-white/70"
-          >
-            <X size={14} />
-          </button>
-        </GlassCard>
-      )}
-
-      {firstMomentumNudge && (
-        <CoachingNudgeBar nudges={[firstMomentumNudge]} onDismiss={onDismissNudge ?? (() => {})} />
+      {spotlightFirst && (
+        <CoachSpotlight
+          userName={userName}
+          recommendation={coachRecommendation ?? null}
+          loading={coachLoading}
+          onNavigateRoom={onNavigateRoom}
+          onOpenCoach={onOpenCoach}
+        />
       )}
 
       <ZoneYourDay
@@ -240,6 +264,26 @@ export function DashboardHome({
         onRefineWhyMe={onRefineWhyMe}
         onNavigateRoom={onNavigateRoom}
       />
+
+      {showMomentumNudge && firstMomentumNudge && (
+        <CoachingNudgeBar
+          nudges={[firstMomentumNudge]}
+          onDismiss={(nudgeId) => {
+            handleDismiss(nudgeId);
+            onDismissNudge?.(nudgeId);
+          }}
+        />
+      )}
+
+      {!spotlightFirst && (
+        <CoachSpotlight
+          userName={userName}
+          recommendation={coachRecommendation ?? null}
+          loading={coachLoading}
+          onNavigateRoom={onNavigateRoom}
+          onOpenCoach={onOpenCoach}
+        />
+      )}
 
       <ZoneYourPipeline
         onNavigateRoom={onNavigateRoom}

@@ -125,16 +125,6 @@ function ItemMeta({ item }: { item: RewriteQueueItem }) {
       <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
         {SOURCE_LABELS[item.source]}
       </span>
-      {item.importance && (
-        <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/38">
-          {item.importance.replaceAll('_', ' ')}
-        </span>
-      )}
-      {item.severity && (
-        <span className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/38">
-          {item.severity}
-        </span>
-      )}
     </div>
   );
 }
@@ -148,20 +138,15 @@ function EvidenceSummary({
   sourceCount: number;
   needsCandidateInput?: boolean;
 }) {
+  const evidenceLabel = currentCount === 0
+    ? 'No accepted proof in the resume yet.'
+    : `${currentCount} accepted proof point${currentCount === 1 ? '' : 's'} already exist${currentCount === 1 ? 's' : ''} in the draft.`;
+  const sourceLabel = `${sourceCount} source note${sourceCount === 1 ? '' : 's'} back this item.`;
+
   return (
-    <div className="flex flex-wrap gap-2 text-[11px] text-white/40">
-      <span className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1">
-        {currentCount === 0 ? 'No accepted proof yet' : `${currentCount} accepted proof${currentCount === 1 ? '' : 's'}`}
-      </span>
-      <span className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1">
-        {sourceCount} source note{sourceCount === 1 ? '' : 's'}
-      </span>
-      {needsCandidateInput && (
-        <span className="rounded-full border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[#f0d99f]">
-          Needs one more detail
-        </span>
-      )}
-    </div>
+    <p className="text-xs leading-5 text-white/46">
+      {evidenceLabel} {sourceLabel} {needsCandidateInput ? 'The AI still needs one more detail from the candidate.' : ''}
+    </p>
   );
 }
 
@@ -197,6 +182,28 @@ function EvidenceList({
           </div>
           <p className="mt-1 text-sm leading-6 text-white/74">{item.text}</p>
         </div>
+      ))}
+    </div>
+  );
+}
+
+function SecondaryMeta({ item }: { item: RewriteQueueItem }) {
+  const tokens = [
+    item.importance ? `Importance: ${item.importance.replaceAll('_', ' ')}` : null,
+    item.severity ? `Severity: ${item.severity}` : null,
+  ].filter(Boolean);
+
+  if (tokens.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tokens.map((token) => (
+        <span
+          key={token}
+          className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/38"
+        >
+          {token}
+        </span>
       ))}
     </div>
   );
@@ -392,11 +399,7 @@ export function RewriteQueuePanel({
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Why this is next</p>
                 <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.whyItMatters}</p>
               </div>
-              <EvidenceSummary
-                currentCount={nextItem.currentEvidence.length}
-                sourceCount={nextItem.sourceEvidence.length}
-                needsCandidateInput={nextItem.candidateInputNeeded}
-              />
+              <EvidenceSummary currentCount={nextItem.currentEvidence.length} sourceCount={nextItem.sourceEvidence.length} needsCandidateInput={nextItem.candidateInputNeeded} />
               {nextItem.starterQuestion && (
                 <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.04] px-3 py-2 text-xs leading-5 text-white/72">
                   First question: {nextItem.starterQuestion}
@@ -528,11 +531,7 @@ export function RewriteQueuePanel({
                                 <p className="mt-1 text-sm leading-6 text-white/56">{item.recommendedNextStep.detail}</p>
                               </div>
 
-                              <EvidenceSummary
-                                currentCount={item.currentEvidence.length}
-                                sourceCount={item.sourceEvidence.length}
-                                needsCandidateInput={item.candidateInputNeeded}
-                              />
+                              <EvidenceSummary currentCount={item.currentEvidence.length} sourceCount={item.sourceEvidence.length} needsCandidateInput={item.candidateInputNeeded} />
                             </div>
 
                             <button
@@ -590,6 +589,8 @@ export function RewriteQueuePanel({
                                   AI angle: {item.coachingReasoning}
                                 </div>
                               )}
+
+                              <SecondaryMeta item={item} />
 
                               <EvidenceList label="Current resume evidence" items={item.currentEvidence} />
 

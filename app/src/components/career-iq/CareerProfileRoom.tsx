@@ -65,6 +65,26 @@ export function CareerProfileRoom({
     () => questions.length > 0 && questions.every((question) => (responses[question.id] ?? '').trim().length > 0),
     [questions, responses],
   );
+  const answeredItems = useMemo(
+    () => questions
+      .map((question) => ({
+        question,
+        response: responses[question.id] ?? '',
+      }))
+      .filter((item) => item.response.trim().length > 0),
+    [questions, responses],
+  );
+  const currentResponse = currentQuestion ? (responses[currentQuestion.id] ?? '') : '';
+  const remainingCount = Math.max(questions.length - answeredItems.length, 0);
+  const liveReflection = useMemo(() => {
+    if (!currentQuestion) return '';
+    if (currentResponse.trim().length === 0) {
+      return currentQuestion.purpose || `This answer helps the AI sharpen your ${formatCategory(currentQuestion.category)} story before it writes anything else.`;
+    }
+
+    const preview = clipText(currentResponse, 120);
+    return `The AI is hearing "${preview}" and using it to strengthen your ${formatCategory(currentQuestion.category)} story across Resume Builder, LinkedIn, interview prep, and job matching.`;
+  }, [currentQuestion, currentResponse]);
 
   const handleSubmit = async () => {
     if (!readyToSubmit || submitting) return;
@@ -154,64 +174,178 @@ export function CareerProfileRoom({
       )}
 
       {onboardingStatus === 'awaiting_responses' && currentQuestion && (
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                Guided Intake
+        <div className="grid gap-6 xl:grid-cols-[1.25fr_0.9fr]">
+          <GlassCard className="p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="max-w-3xl">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  AI Career Intake
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-white/88">
+                  Question {currentIndex + 1} of {questions.length}
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/58">{currentQuestion.question}</p>
               </div>
-              <h2 className="mt-2 text-lg font-semibold text-white/88">
-                Question {currentIndex + 1} of {questions.length}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-white/55">{currentQuestion.question}</p>
+              <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-white/45">
+                {formatCategory(currentQuestion.category)}
+              </div>
             </div>
-            <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] text-white/45">
-              {currentQuestion.category.split('_').join(' ')}
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
+                  Why AI is asking this
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-white/72">
+                  {currentQuestion.purpose || `This answer helps the platform understand your ${formatCategory(currentQuestion.category)} so every tool stops guessing.`}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] p-4">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
+                  What is updating live
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-white/74">{liveReflection}</p>
+              </div>
             </div>
-          </div>
 
-          <textarea
-            value={responses[currentQuestion.id] ?? ''}
-            onChange={(event) => {
-              const value = event.target.value;
-              setResponses((prev) => ({ ...prev, [currentQuestion.id]: value }));
-            }}
-            placeholder="Answer in your own words. The agent is looking for proof, constraints, and the language you naturally use to describe your value."
-            className={cn(
-              'mt-5 min-h-[170px] w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3',
-              'text-sm leading-relaxed text-white/85 placeholder:text-white/30',
-              'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
-            )}
-          />
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-              disabled={currentIndex === 0}
-              className="inline-flex items-center gap-1.5 text-sm text-white/45 transition-colors hover:text-white/70 disabled:cursor-not-allowed disabled:text-white/20"
-            >
-              <ChevronLeft size={16} />
-              Previous
-            </button>
-
-            <div className="flex items-center gap-2">
-              {currentIndex < questions.length - 1 ? (
-                <GlassButton
-                  variant="primary"
-                  onClick={() => setCurrentIndex((index) => Math.min(questions.length - 1, index + 1))}
-                >
-                  Next Question
-                  <ArrowRight size={14} className="ml-1.5" />
-                </GlassButton>
-              ) : (
-                <GlassButton variant="primary" onClick={() => void handleSubmit()} disabled={!readyToSubmit || submitting}>
-                  {submitting ? 'Submitting...' : 'Build Career Profile'}
-                </GlassButton>
+            <textarea
+              value={currentResponse}
+              onChange={(event) => {
+                const value = event.target.value;
+                setResponses((prev) => ({ ...prev, [currentQuestion.id]: value }));
+              }}
+              placeholder="Answer in your own words. Include proof, constraints, scope, and the language you naturally use to describe your value."
+              className={cn(
+                'mt-5 min-h-[180px] w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3',
+                'text-sm leading-relaxed text-white/85 placeholder:text-white/30',
+                'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
               )}
+            />
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <ConversationHint
+                label="Answered"
+                value={`${answeredItems.length}`}
+                detail="These answers are already shaping your shared profile."
+              />
+              <ConversationHint
+                label="Remaining"
+                value={`${remainingCount}`}
+                detail="The intake stays focused on the biggest missing context."
+              />
+              <ConversationHint
+                label="What to include"
+                value="Proof"
+                detail="Use examples, metrics, seniority, constraints, and the language you would use in real conversation."
+              />
             </div>
-          </div>
-        </GlassCard>
+
+            {answeredItems.length > 0 && (
+              <div className="mt-5 rounded-2xl border border-white/[0.06] bg-black/15 px-4 py-4">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">
+                  What the AI already learned
+                </div>
+                <div className="mt-3 space-y-3">
+                  {answeredItems.slice(Math.max(answeredItems.length - 3, 0)).map((item) => (
+                    <div key={item.question.id} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3">
+                      <p className="text-xs font-medium text-white/70">{item.question.question}</p>
+                      <p className="mt-1 text-sm leading-6 text-white/56">{clipText(item.response, 180)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+                disabled={currentIndex === 0}
+                className="inline-flex items-center gap-1.5 text-sm text-white/45 transition-colors hover:text-white/70 disabled:cursor-not-allowed disabled:text-white/20"
+              >
+                <ChevronLeft size={16} />
+                Previous answer
+              </button>
+
+              <div className="flex items-center gap-2">
+                {currentIndex < questions.length - 1 ? (
+                  <GlassButton
+                    variant="primary"
+                    onClick={() => setCurrentIndex((index) => Math.min(questions.length - 1, index + 1))}
+                  >
+                    Save and continue
+                    <ArrowRight size={14} className="ml-1.5" />
+                  </GlassButton>
+                ) : (
+                  <GlassButton variant="primary" onClick={() => void handleSubmit()} disabled={!readyToSubmit || submitting}>
+                    {submitting ? 'Submitting...' : 'Build Career Profile'}
+                  </GlassButton>
+                )}
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <div className="flex items-center gap-2">
+              <Brain size={16} className="text-[#98b3ff]" />
+              <h3 className="text-sm font-semibold text-white/86">Live profile preview</h3>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-white/54">
+              This is the story the platform is building while you answer. You should be able to see what the AI thinks it knows before it starts writing on your behalf.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <PreviewBlock label="Primary story" value={summary.primaryStory} />
+              <PreviewBlock label="Strength signal" value={summary.strengthSnapshot} />
+              <PreviewBlock label="Differentiation" value={summary.differentiationSnapshot} />
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+              <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">
+                Readiness right now
+              </div>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-2xl font-semibold text-white/88">{summary.readinessPercent}%</div>
+                  <div className="text-sm text-white/50">{summary.readinessLabel}</div>
+                </div>
+                <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[11px] text-white/45">
+                  {answeredItems.length} answered
+                </div>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-white/58">{summary.statusLine}</p>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Strongest themes taking shape</div>
+                <div className="mt-3 space-y-2">
+                  {(summary.highlightPoints.length > 0 ? summary.highlightPoints : [
+                    'The AI will start surfacing your proof themes here as you answer.',
+                  ]).map((item) => (
+                    <div key={item} className="flex items-start gap-2 text-sm text-white/68">
+                      <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#b5dec2]" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Still needs clarity</div>
+                <div className="mt-3 space-y-2">
+                  {(summary.focusAreas.length > 0 ? summary.focusAreas : [
+                    'Once this intake is complete, the platform will use it to drive Resume Builder, LinkedIn, Interview Lab, and Job Search.',
+                  ]).slice(0, 3).map((item) => (
+                    <div key={item} className="rounded-xl border border-white/[0.06] bg-black/15 px-3 py-2 text-sm leading-6 text-white/60">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
       )}
 
       {profileLoading && !profile && !isRunning && onboardingStatus === 'idle' && (
@@ -355,4 +489,41 @@ function NarrativeBlock({ label, value }: { label: string; value: string }) {
       </div>
     </div>
   );
+}
+
+function ConversationHint({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4">
+      <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-white/84">{value}</div>
+      <div className="mt-2 text-xs leading-relaxed text-white/48">{detail}</div>
+    </div>
+  );
+}
+
+function PreviewBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">{label}</div>
+      <div className="mt-2 text-sm leading-relaxed text-white/72">{value}</div>
+    </div>
+  );
+}
+
+function formatCategory(category: string): string {
+  return category.split('_').join(' ');
+}
+
+function clipText(value: string, maxLength = 120): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
 }

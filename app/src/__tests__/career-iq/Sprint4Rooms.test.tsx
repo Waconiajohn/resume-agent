@@ -194,16 +194,19 @@ describe('InterviewLabRoom', () => {
 
   it('renders interview history section', () => {
     render(<InterviewLabRoom />);
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     expect(screen.getByText('Interview History')).toBeInTheDocument();
   });
 
   it('surfaces the 90-day plan as an interview document action', () => {
     render(<InterviewLabRoom />);
+    fireEvent.click(screen.getByRole('button', { name: /documents/i }));
     expect(screen.getByRole('button', { name: /90-day plan document/i })).toBeInTheDocument();
   });
 
   it('allows adding a new interview entry', () => {
     render(<InterviewLabRoom />);
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     fireEvent.click(screen.getByText('Add Interview'));
     fireEvent.change(screen.getByPlaceholderText('Company'), { target: { value: 'Test Corp' } });
     fireEvent.change(screen.getByPlaceholderText('Role'), { target: { value: 'CTO' } });
@@ -213,6 +216,7 @@ describe('InterviewLabRoom', () => {
 
   it('persists history to localStorage on add', () => {
     render(<InterviewLabRoom />);
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     fireEvent.click(screen.getByText('Add Interview'));
     fireEvent.change(screen.getByPlaceholderText('Company'), { target: { value: 'Persist Co' } });
     fireEvent.change(screen.getByPlaceholderText('Role'), { target: { value: 'VP' } });
@@ -229,6 +233,7 @@ describe('InterviewLabRoom', () => {
       { id: '1', company: 'TestCo', role: 'CTO', date: '2026-03-01', outcome: 'pending' },
     ]));
     render(<InterviewLabRoom />);
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     expect(screen.getByText('TestCo')).toBeInTheDocument();
   });
 });

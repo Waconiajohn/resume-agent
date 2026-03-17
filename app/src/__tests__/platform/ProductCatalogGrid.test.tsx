@@ -14,7 +14,7 @@ describe('ProductCatalogGrid', () => {
   it('renders all products from the catalog', () => {
     render(<ProductCatalogGrid onNavigate={vi.fn()} />);
     for (const product of PRODUCT_CATALOG) {
-      expect(screen.getByText(product.name)).toBeInTheDocument();
+      expect(screen.getAllByText(product.name).length).toBeGreaterThan(0);
     }
   });
 
@@ -31,7 +31,7 @@ describe('ProductCatalogGrid', () => {
   it('renders short descriptions for each product', () => {
     render(<ProductCatalogGrid onNavigate={vi.fn()} />);
     for (const product of PRODUCT_CATALOG) {
-      expect(screen.getByText(product.shortDescription)).toBeInTheDocument();
+      expect(screen.getAllByText(product.shortDescription).length).toBeGreaterThan(0);
     }
   });
 
@@ -40,7 +40,7 @@ describe('ProductCatalogGrid', () => {
     render(<ProductCatalogGrid onNavigate={onNavigate} />);
     const activeProduct = PRODUCT_CATALOG.find((p) => p.status === 'active');
     if (!activeProduct) throw new Error('No active product in catalog');
-    const card = screen.getByRole('button', { name: `Open ${activeProduct.name}` });
+    const card = screen.getAllByRole('button', { name: `Open ${activeProduct.name}` })[0];
     fireEvent.click(card);
     expect(onNavigate).toHaveBeenCalledWith(activeProduct.route);
   });
@@ -63,7 +63,7 @@ describe('ProductCatalogGrid', () => {
     render(<ProductCatalogGrid onNavigate={onNavigate} />);
     const activeProduct = PRODUCT_CATALOG.find((p) => p.status === 'active');
     if (!activeProduct) throw new Error('No active product in catalog');
-    const card = screen.getByRole('button', { name: `Open ${activeProduct.name}` });
+    const card = screen.getAllByRole('button', { name: `Open ${activeProduct.name}` })[0];
     fireEvent.keyDown(card, { key: 'Enter' });
     expect(onNavigate).toHaveBeenCalledWith(activeProduct.route);
   });
@@ -106,6 +106,13 @@ describe('ProductCatalogGrid', () => {
   it('renders coach CTA with default label when no userName', () => {
     render(<ProductCatalogGrid onNavigate={vi.fn()} onOpenCoach={vi.fn()} />);
     expect(screen.getByText(/Chat with AI Coach/)).toBeInTheDocument();
+  });
+
+  it('renders guided Start Here and Most Used sections', () => {
+    render(<ProductCatalogGrid onNavigate={vi.fn()} />);
+    expect(screen.getByText('Start Here')).toBeInTheDocument();
+    expect(screen.getByText('Most Used')).toBeInTheDocument();
+    expect(screen.getByText('Full Tool Catalog')).toBeInTheDocument();
   });
 
   it('renders coach CTA with personalized name', () => {

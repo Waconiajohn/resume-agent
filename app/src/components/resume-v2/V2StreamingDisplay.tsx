@@ -186,7 +186,7 @@ function AnalysisSummarySection({
   benchmarkCandidate: BenchmarkCandidate | null;
   narrativeStrategy: NarrativeStrategy | null;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const cardCount = [jobIntelligence, candidateIntelligence, benchmarkCandidate, narrativeStrategy].filter(Boolean).length;
   if (cardCount === 0) return null;
@@ -523,6 +523,7 @@ function GuidedWorkflowCard({
       <ProcessStepGuideCard
         step={currentStep}
         tone={!hasFinalReview ? 'action' : unresolvedCriticalCount > 0 ? 'review' : 'export'}
+        compact
         userDoesOverride={userDoesOverride}
         nextOverride={nextOverride}
       />
@@ -557,6 +558,45 @@ function ResumeEvidenceStatusCard({
         <p className="mt-2 text-sm font-medium text-white/85">{pendingEdit ? '1 suggestion waiting for review' : 'No pending suggestions'}</p>
         <p className="mt-1 text-xs leading-5 text-white/50">Suggestions only affect coverage after the candidate accepts the diff.</p>
       </div>
+    </div>
+  );
+}
+
+function CompactDisclosure({
+  title,
+  description,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(defaultOpen);
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((previous) => !previous)}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+        aria-expanded={expanded}
+      >
+        <ChevronRight
+          className="h-3.5 w-3.5 text-white/40 transition-transform"
+          style={{ transform: expanded ? 'rotate(90deg)' : 'none' }}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-white/78">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-white/46">{description}</p>
+        </div>
+      </button>
+      {expanded && (
+        <div className="space-y-4 border-t border-white/[0.06] px-4 py-4">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -956,78 +996,11 @@ export function V2StreamingDisplay({
                 postReviewPolish={postReviewPolish}
               />
 
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
-                <p className="text-sm font-medium text-white/78">
-                  How this rewrite works
-                </p>
-                <p className="mt-1 text-sm leading-6 text-white/55">
-                  Work the rewrite queue on the left one item at a time. When AI proposes language, it lands in the review inbox on the right and then in the diff review. Anything marked <span className="text-[#b5dec2]">New</span> was added or rewritten by AI and should be verified before export.
-                </p>
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 text-sm leading-6 text-white/56">
+                Work the queue on the left. Suggestions land here only when they are ready for review, and the resume only changes after you accept the diff.
               </div>
 
-              <ResumeEvidenceStatusCard
-                resume={displayResume}
-                pendingEdit={pendingEdit}
-              />
-
-              <ReviewInboxCard pendingEdit={pendingEdit} />
-
-              <MasterResumeSyncCard
-                mode={masterSaveMode}
-                onChangeMode={onChangeMasterSaveMode}
-                onSaveNow={onSaveCurrentToMaster}
-                isSaving={isSavingToMaster}
-                status={masterSaveStatus}
-              />
-
-              <MasterResumePromotionCard
-                items={promotableMasterItems}
-                selectedIds={selectedMasterPromotionIds}
-                onToggleItem={onToggleMasterPromotionItem}
-                onSelectAll={onSelectAllMasterPromotionItems}
-                onClearAll={onClearMasterPromotionItems}
-              />
-
-              {/* What Changed (after re-run) */}
-              {isComplete && previousResume && displayResume && onDismissChanges && (
-                <AnimatedCard index={0}>
-                  <WhatChangedCard
-                    previousResume={previousResume}
-                    currentResume={displayResume}
-                    onDismiss={onDismissChanges}
-                  />
-                </AnimatedCard>
-              )}
-
-              {/* ─── Analysis cards (persist from streaming into split-screen) ─── */}
-              {(data.jobIntelligence || data.candidateIntelligence || data.benchmarkCandidate || data.narrativeStrategy) && (
-                <AnalysisSummarySection
-                  jobIntelligence={data.jobIntelligence}
-                  candidateIntelligence={data.candidateIntelligence}
-                  benchmarkCandidate={data.benchmarkCandidate}
-                  narrativeStrategy={data.narrativeStrategy}
-                />
-              )}
-
-              {/* Scores compact bar */}
-              {data.assembly && (
-                <AnimatedCard index={0}>
-                  <div className="mb-2">
-                    {isComplete ? (
-                      <KeywordScoreDashboard
-                        pipelineScores={data.assembly.scores}
-                        liveScores={liveScores}
-                        quickWins={data.assembly.quick_wins}
-                        isScoring={isScoring}
-                        onIntegrateKeyword={onIntegrateKeyword}
-                        preScoreKeywords={preScores}
-                      />
-                    ) : (
-                      <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />
-                    )}
-                  </div>
-                </AnimatedCard>
-              )}
+              {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
 
               {/* Verification spinner */}
               {!isComplete && (data.stage === 'verification' || data.stage === 'assembly') && (
@@ -1079,16 +1052,10 @@ export function V2StreamingDisplay({
                 </div>
               )}
 
-              {/* ─── Below resume: scoring report, export, HM review, add context ─── */}
+              {/* ─── Below resume: final review, export, and secondary controls ─── */}
               {isComplete && data.assembly && (
                 <div className="space-y-4 pt-4 border-t border-white/[0.06]">
-                  {preScores && (
-                    <AnimatedCard index={0}>
-                      <ScoringReportCard preScores={preScores} assembly={data.assembly} />
-                    </AnimatedCard>
-                  )}
-
-                  <AnimatedCard index={1}>
+                  <AnimatedCard index={0}>
                     <div
                       className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm ${
                         hiringManagerResult && !isFinalReviewStale
@@ -1106,12 +1073,12 @@ export function V2StreamingDisplay({
                         ? 'Your draft is ready for Final Review. Run the recruiter and hiring manager check before exporting.'
                         : isFinalReviewStale
                           ? 'Final Review is out of date because the resume changed. Rerun it before exporting or acknowledge the warning.'
-                          : 'Final Review is current. Resolve any remaining concerns, then export when you are satisfied.'}
+                        : 'Final Review is current. Resolve any remaining concerns, then export when you are satisfied.'}
                     </div>
                   </AnimatedCard>
 
                   {onRequestHiringManagerReview && data.jobIntelligence && (
-                    <AnimatedCard index={2}>
+                    <AnimatedCard index={1}>
                       <HiringManagerReviewCard
                         result={hiringManagerResult ?? null}
                         resolvedConcernIds={resolvedFinalReviewConcernIds}
@@ -1129,7 +1096,7 @@ export function V2StreamingDisplay({
                   )}
 
                   {data.gapAnalysis && (
-                    <AnimatedCard index={3}>
+                    <AnimatedCard index={2}>
                       <FinalReadinessSummaryCard
                         jobBreakdown={{
                           addressed: jobBreakdown.addressed,
@@ -1155,14 +1122,8 @@ export function V2StreamingDisplay({
                     </AnimatedCard>
                   )}
 
-                  {data.gapAnalysis && (
-                    <AnimatedCard index={4}>
-                      <AddContextCard onSubmit={onAddContext} loading={isRerunning} />
-                    </AnimatedCard>
-                  )}
-
                   {displayResume && (
-                    <AnimatedCard index={5}>
+                    <AnimatedCard index={3}>
                       <ExportBar
                         resume={displayResume}
                         companyName={data.jobIntelligence?.company_name}
@@ -1179,6 +1140,81 @@ export function V2StreamingDisplay({
                       />
                     </AnimatedCard>
                   )}
+
+                  {data.gapAnalysis && (
+                    <AnimatedCard index={4}>
+                      <AddContextCard onSubmit={onAddContext} loading={isRerunning} />
+                    </AnimatedCard>
+                  )}
+
+                  <CompactDisclosure
+                    title="Draft details and reuse settings"
+                    description="Open this when you want the evidence counts, master-resume sync mode, and promotion controls."
+                    defaultOpen={Boolean(masterSaveStatus?.tone === 'error' || promotableMasterItems.length > 0)}
+                  >
+                    <ResumeEvidenceStatusCard
+                      resume={displayResume}
+                      pendingEdit={pendingEdit}
+                    />
+                    <MasterResumeSyncCard
+                      mode={masterSaveMode}
+                      onChangeMode={onChangeMasterSaveMode}
+                      onSaveNow={onSaveCurrentToMaster}
+                      isSaving={isSavingToMaster}
+                      status={masterSaveStatus}
+                    />
+                    <MasterResumePromotionCard
+                      items={promotableMasterItems}
+                      selectedIds={selectedMasterPromotionIds}
+                      onToggleItem={onToggleMasterPromotionItem}
+                      onSelectAll={onSelectAllMasterPromotionItems}
+                      onClearAll={onClearMasterPromotionItems}
+                    />
+                  </CompactDisclosure>
+
+                  <CompactDisclosure
+                    title="Analysis, scoring, and strategy"
+                    description="Open this when you want the benchmark, narrative strategy, scoring detail, and pre/post ATS context."
+                    defaultOpen={false}
+                  >
+                    {(data.jobIntelligence || data.candidateIntelligence || data.benchmarkCandidate || data.narrativeStrategy) && (
+                      <AnalysisSummarySection
+                        jobIntelligence={data.jobIntelligence}
+                        candidateIntelligence={data.candidateIntelligence}
+                        benchmarkCandidate={data.benchmarkCandidate}
+                        narrativeStrategy={data.narrativeStrategy}
+                      />
+                    )}
+
+                    {data.assembly && (
+                      <div>
+                        {isComplete ? (
+                          <KeywordScoreDashboard
+                            pipelineScores={data.assembly.scores}
+                            liveScores={liveScores}
+                            quickWins={data.assembly.quick_wins}
+                            isScoring={isScoring}
+                            onIntegrateKeyword={onIntegrateKeyword}
+                            preScoreKeywords={preScores}
+                          />
+                        ) : (
+                          <ScoresCard scores={data.assembly.scores} quickWins={data.assembly.quick_wins} />
+                        )}
+                      </div>
+                    )}
+
+                    {preScores && (
+                      <ScoringReportCard preScores={preScores} assembly={data.assembly} />
+                    )}
+
+                    {isComplete && previousResume && displayResume && onDismissChanges && (
+                      <WhatChangedCard
+                        previousResume={previousResume}
+                        currentResume={displayResume}
+                        onDismiss={onDismissChanges}
+                      />
+                    )}
+                  </CompactDisclosure>
                 </div>
               )}
             </div>
