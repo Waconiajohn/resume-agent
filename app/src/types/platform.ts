@@ -174,41 +174,6 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     ctaLabel: 'Open LinkedIn Studio',
   },
   {
-    id: 'personal-brand-audit',
-    slug: 'personal-brand-audit',
-    name: 'Personal Brand Audit',
-    shortDescription: 'Audit and align your online presence with your positioning',
-    longDescription:
-      'Analyzes your digital footprint against your target positioning — resume, LinkedIn, bio, and public profiles — and identifies gaps, contradictions, and quick wins to strengthen your executive brand.',
-    icon: '\u{1F50E}',
-    status: 'active',
-    route: '/workspace?room=personal-brand',
-    category: 'intelligence',
-    features: [
-      {
-        title: 'Cross-Platform Consistency',
-        description:
-          'Checks for contradictions across LinkedIn, resume, bio, and other visible profiles.',
-      },
-      {
-        title: 'Positioning Gap Analysis',
-        description:
-          'Identifies where your public presence diverges from your intended positioning strategy.',
-      },
-      {
-        title: 'Quick Win Prioritization',
-        description:
-          'Ranks improvements by impact so you fix the most visible gaps first.',
-      },
-      {
-        title: 'Searchability Score',
-        description:
-          'Rates how easily target employers can find and recognize you for the roles you want.',
-      },
-    ],
-    ctaLabel: 'Audit My Brand',
-  },
-  {
     id: 'executive-documents',
     slug: 'executive-bio',
     name: 'Executive Documents',
@@ -392,9 +357,9 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     id: 'salary-negotiation',
     slug: 'salary-negotiation',
     name: 'Salary & Negotiation',
-    shortDescription: 'Market benchmarks, negotiation scripts, and counter-offer simulation',
+    shortDescription: 'Market benchmarks, negotiation scripts, and total-comp strategy',
     longDescription:
-      'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts and runs you through realistic counter-offer scenarios so you walk in fully prepared.',
+      'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts, leverage points, and compensation tradeoff guidance so you walk in fully prepared.',
     icon: '\u{1F4B0}',
     status: 'active',
     route: '/workspace?room=salary-negotiation',
@@ -411,9 +376,9 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Word-for-word language for countering, anchoring high, and navigating silence without caving.',
       },
       {
-        title: 'Counter-Offer Simulation',
+        title: 'Scenario Planning',
         description:
-          'Rehearse the full range of employer responses — accept, partial counter, hard no — so nothing catches you off guard.',
+          'Prepare for likely employer responses, tradeoffs, and fallback positions before the conversation starts.',
       },
       {
         title: 'Total Comp Analysis',
@@ -422,41 +387,6 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       },
     ],
     ctaLabel: 'Build Negotiation Strategy',
-  },
-  {
-    id: '90-day-plan',
-    slug: '90-day-plan',
-    name: '90-Day Plan',
-    shortDescription: 'Structured first-90-days plan tailored to your new role',
-    longDescription:
-      'Generates a role-specific 30-60-90 day plan that demonstrates strategic thinking in interviews and accelerates onboarding after you land the job. Built from the JD, company context, and your positioning.',
-    icon: '\u{1F5FA}\uFE0F',
-    status: 'active',
-    route: '/workspace?room=ninety-day-plan',
-    category: 'planning',
-    features: [
-      {
-        title: 'JD-Aligned Priorities',
-        description:
-          'Plan milestones map directly to the role\'s stated success criteria and stakeholder expectations.',
-      },
-      {
-        title: 'Interview-Ready Format',
-        description:
-          'Structured for use as a leave-behind or final-round presentation — shows strategic thinking.',
-      },
-      {
-        title: 'Three-Phase Structure',
-        description:
-          'Listen & learn (days 1-30), assess & align (days 31-60), lead & execute (days 61-90).',
-      },
-      {
-        title: 'Quick Wins Identification',
-        description:
-          'Surfaces early wins that build credibility before tackling the longer transformation agenda.',
-      },
-    ],
-    ctaLabel: 'Generate 90-Day Plan',
   },
   {
     id: 'financial-wellness',

@@ -577,7 +577,7 @@ export function NinetyDayPlanRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">90-Day Plan Generator</h1>
+          <h1 className="text-xl font-semibold text-white/90">90-Day Success Plan</h1>
           <p className="text-[13px] text-white/40 mt-1">
             Stakeholder map ready for review
           </p>
@@ -618,7 +618,7 @@ export function NinetyDayPlanRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">90-Day Plan Generator</h1>
+          <h1 className="text-xl font-semibold text-white/90">90-Day Success Plan</h1>
           <p className="text-[13px] text-white/40 mt-1">
             Building your stakeholder map and phased success plan
           </p>
@@ -669,7 +669,7 @@ export function NinetyDayPlanRoom() {
           <Map size={20} className="text-[#afc4ff]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">90-Day Plan Generator</h1>
+          <h1 className="text-xl font-semibold text-white/90">90-Day Success Plan</h1>
           <p className="text-[13px] text-white/40 leading-relaxed mt-1">
             Generate a role-specific 90-day success plan with stakeholder map, quick wins, and
             phased milestones — built around your narrative, not a generic template.

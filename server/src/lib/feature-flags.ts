@@ -18,7 +18,6 @@
 //   FF_EXECUTIVE_BIO=true         Executive Bio (Agent #16)
 //   FF_CASE_STUDY=true            Portfolio / Case Study (Agent #17)
 //   FF_THANK_YOU_NOTE=true        Thank You Note Writer (Agent #18)
-//   FF_PERSONAL_BRAND_AUDIT=true  Personal Brand Audit (Agent #19)
 //   FF_NINETY_DAY_PLAN=true       90-Day Plan Generator (Agent #20)
 //   FF_ONBOARDING=true            Onboarding Assessment Agent (Phase 1A)
 //   FF_MOCK_INTERVIEW=true        Mock Interview Simulation
@@ -28,7 +27,6 @@
 //   FF_LINKEDIN_EDITOR=true       LinkedIn Profile Editor
 //   FF_NETWORKING_CRM=true        Networking CRM
 //   FF_INTERVIEW_DEBRIEF=true     Interview Debrief
-//   FF_COUNTER_OFFER_SIM=true     Counter-Offer Simulation
 //   FF_MOMENTUM=true              Momentum Tracking (Phase 5)
 //   FF_RETIREMENT_BRIDGE=true     Retirement Bridge Assessment (Phase 6)
 //   FF_B2B_OUTPLACEMENT=true      B2B Outplacement Admin Portal (Phase 7)
@@ -162,14 +160,6 @@ export const FF_CASE_STUDY = envBool('FF_CASE_STUDY', false);
 export const FF_THANK_YOU_NOTE = envBool('FF_THANK_YOU_NOTE', false);
 
 /**
- * FF_PERSONAL_BRAND_AUDIT — Enable the Personal Brand Audit Agent (#19) routes.
- *
- * When false (default), /api/personal-brand/* returns 404.
- * Set FF_PERSONAL_BRAND_AUDIT=true in server/.env to activate.
- */
-export const FF_PERSONAL_BRAND_AUDIT = envBool('FF_PERSONAL_BRAND_AUDIT', false);
-
-/**
  * FF_NINETY_DAY_PLAN — Enable the 90-Day Plan Agent (#20) routes.
  *
  * When false (default), /api/ninety-day-plan/* returns 404.
@@ -267,14 +257,6 @@ export const FF_NETWORKING_CRM = envBool('FF_NETWORKING_CRM', false);
  * Set FF_INTERVIEW_DEBRIEF=true in server/.env to activate.
  */
 export const FF_INTERVIEW_DEBRIEF = envBool('FF_INTERVIEW_DEBRIEF', false);
-
-/**
- * FF_COUNTER_OFFER_SIM — Enable the Counter-Offer Simulation routes (Story 4B).
- *
- * When false (default), /api/counter-offer-sim/* returns 404.
- * Set FF_COUNTER_OFFER_SIM=true in server/.env to activate.
- */
-export const FF_COUNTER_OFFER_SIM = envBool('FF_COUNTER_OFFER_SIM', false);
 
 // ─── Phase 5: Emotional Intelligence Layer ────────────────────────────────────
 

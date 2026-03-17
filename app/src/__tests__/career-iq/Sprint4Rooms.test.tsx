@@ -197,6 +197,11 @@ describe('InterviewLabRoom', () => {
     expect(screen.getByText('Interview History')).toBeInTheDocument();
   });
 
+  it('surfaces the 90-day plan as an interview document action', () => {
+    render(<InterviewLabRoom />);
+    expect(screen.getByRole('button', { name: /90-day plan document/i })).toBeInTheDocument();
+  });
+
   it('allows adding a new interview entry', () => {
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByText('Add Interview'));

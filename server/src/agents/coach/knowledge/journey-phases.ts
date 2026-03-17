@@ -131,9 +131,9 @@ export const JOURNEY_PHASES: PhaseDefinition[] = [
     description: 'The client has accepted an offer and completed their career transition.',
     prerequisites: ['salary_negotiation'],
     completion_signals: ['ninety_day_plan'],
-    typical_products: ['ninety_day_plan', 'personal_brand'],
+    typical_products: ['ninety_day_plan'],
     estimated_cost_usd: 0.10,
-    sequencing_note: 'The 90-day plan sets the client up to succeed in their new role. Personal brand work during the transition builds the client\'s visibility for the role after this one.',
+    sequencing_note: 'The 90-day plan sets the client up to succeed in their new role and gives them a strong interview leave-behind during final rounds.',
   },
 ];
 

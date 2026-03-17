@@ -32,6 +32,7 @@ import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
 import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
+import { NinetyDayPlanRoom } from '@/components/career-iq/NinetyDayPlanRoom';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import type { CareerProfileSummary } from './career-profile-summary';
 
@@ -853,7 +854,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 
 // --- Main component ---
 
-type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview' | 'thank-you';
+type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview' | 'thank-you' | 'ninety-day-plan';
 
 interface MockInterviewConfig {
   resumeText: string;
@@ -1035,6 +1036,10 @@ export function InterviewLabRoom({
     setMockInterviewConfig(null);
   }, []);
 
+  const handleOpenNinetyDayPlan = useCallback(() => {
+    setViewMode('ninety-day-plan');
+  }, []);
+
   if (viewMode === 'thank-you') {
     return (
       <div className="flex flex-col gap-4 p-6 max-w-[1400px] mx-auto">
@@ -1070,6 +1075,22 @@ export function InterviewLabRoom({
         companyName={mockInterviewConfig.companyName}
         onBack={handleMockInterviewBack}
       />
+    );
+  }
+
+  if (viewMode === 'ninety-day-plan') {
+    return (
+      <div className="flex flex-col gap-4 p-6 max-w-[1400px] mx-auto">
+        <button
+          type="button"
+          onClick={() => setViewMode('lab')}
+          className="flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium w-fit"
+        >
+          <ArrowLeft size={14} />
+          Back to Interview Lab
+        </button>
+        <NinetyDayPlanRoom />
+      </div>
     );
   }
 
@@ -1173,7 +1194,7 @@ export function InterviewLabRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Lab</h1>
           <p className="text-[13px] text-white/40">
-            Prepare for every interview with AI-powered company research, predicted questions, and practice sessions.
+            Prepare for every interview with AI-powered company research, predicted questions, practice sessions, and leave-behind documents.
           </p>
           <ContextLoadedBadge
             contextTypes={['career_profile', 'positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
@@ -1188,6 +1209,14 @@ export function InterviewLabRoom({
           >
             <Mail size={14} className="mr-1.5" />
             Thank You Notes
+          </GlassButton>
+          <GlassButton
+            variant="ghost"
+            onClick={handleOpenNinetyDayPlan}
+            className="text-[13px]"
+          >
+            <ClipboardList size={14} className="mr-1.5" />
+            90-Day Plan Document
           </GlassButton>
           <GlassButton
             variant="primary"

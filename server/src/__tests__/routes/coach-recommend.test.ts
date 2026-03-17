@@ -98,7 +98,7 @@ describe('getRecommendation', () => {
     const result = getRecommendation(snapshot);
 
     expect(result.product).toBe('onboarding');
-    expect(result.room).toBe('dashboard');
+    expect(result.room).toBe('career-profile');
     expect(result.urgency).toBe('immediate');
     expect(result.action).toContain('onboarding assessment');
   });
@@ -314,15 +314,15 @@ describe('getRecommendation', () => {
       client_profile: { career_level: 'vp' },
       positioning_strategy: { positioning_angle: 'VP Engineering' },
       // complete phase primary products already done
-      completed_products: ['ninety_day_plan', 'personal_brand'],
+      completed_products: ['ninety_day_plan'],
     });
 
     const result = getRecommendation(snapshot);
 
-    expect(result.product).toBe('personal_brand');
-    expect(result.room).toBe('personal-brand');
+    expect(result.product).toBe('onboarding');
+    expect(result.room).toBe('career-profile');
     expect(result.urgency).toBe('when_ready');
-    expect(result.action).toContain('personal brand');
+    expect(result.action).toContain('Career Profile');
   });
 
   // ── Return shape ──────────────────────────────────────────────────────────

@@ -33,7 +33,6 @@ export const PRODUCT_COST_ESTIMATES: Record<string, number> = {
   case_study: 0.08,
   thank_you_note: 0.03,
   ninety_day_plan: 0.08,
-  personal_brand: 0.06,
   onboarding: 0.01,
   job_finder: 0.05,
   job_tracker: 0.01,

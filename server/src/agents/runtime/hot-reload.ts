@@ -43,7 +43,6 @@ const AGENT_SUBDIRS = [
   'salary-negotiation',
   'ninety-day-plan',
   'content-calendar',
-  'personal-brand',
   'onboarding',
   'retirement-bridge',
   'runtime',

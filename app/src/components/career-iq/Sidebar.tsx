@@ -23,11 +23,11 @@ export type CareerIQRoom =
   | 'interview'
   | 'salary-negotiation'
   | 'executive-bio'
-  | 'personal-brand'
-  | 'ninety-day-plan'
   | 'financial'
   | 'learning'
   // Legacy IDs — redirect to merged rooms in CareerIQScreen
+  | 'personal-brand'
+  | 'ninety-day-plan'
   | 'content-calendar'
   | 'case-study'
   | 'thank-you-note'

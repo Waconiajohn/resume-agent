@@ -24,7 +24,6 @@ function readRoute(filename: string): string {
 const ROUTE_PRODUCT_TYPES: Array<{ file: string; productType: string }> = [
   { file: 'case-study.ts', productType: 'case_study' },
   { file: 'content-calendar.ts', productType: 'content_calendar' },
-  { file: 'counter-offer-sim.ts', productType: 'counter_offer_sim' },
   { file: 'cover-letter.ts', productType: 'cover_letter' },
   { file: 'executive-bio.ts', productType: 'executive_bio' },
   { file: 'interview-prep.ts', productType: 'interview_prep' },
@@ -37,7 +36,6 @@ const ROUTE_PRODUCT_TYPES: Array<{ file: string; productType: string }> = [
   { file: 'networking-outreach.ts', productType: 'networking_outreach' },
   { file: 'ninety-day-plan.ts', productType: 'ninety_day_plan' },
   { file: 'onboarding.ts', productType: 'onboarding' },
-  { file: 'personal-brand.ts', productType: 'personal_brand' },
   { file: 'retirement-bridge.ts', productType: 'retirement_bridge' },
   { file: 'salary-negotiation.ts', productType: 'salary_negotiation' },
   { file: 'thank-you-note.ts', productType: 'thank_you_note' },

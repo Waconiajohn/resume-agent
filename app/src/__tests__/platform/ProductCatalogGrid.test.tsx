@@ -68,8 +68,8 @@ describe('ProductCatalogGrid', () => {
     expect(onNavigate).toHaveBeenCalledWith(activeProduct.route);
   });
 
-  it('catalog has at least 13 entries', () => {
-    expect(PRODUCT_CATALOG.length).toBeGreaterThanOrEqual(13);
+  it('catalog has at least 10 entries', () => {
+    expect(PRODUCT_CATALOG.length).toBeGreaterThanOrEqual(10);
   });
 
   it('includes financial category products', () => {

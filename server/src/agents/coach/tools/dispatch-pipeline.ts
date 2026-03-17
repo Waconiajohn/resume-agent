@@ -37,7 +37,7 @@ const dispatchPipelineTool: CoachTool = {
         description:
           'The product domain to dispatch (e.g., "resume", "cover_letter", "linkedin_editor", ' +
           '"interview_prep", "salary_negotiation", "networking_outreach", "executive_bio", ' +
-          '"job_finder", "ninety_day_plan", "personal_brand")',
+          '"job_finder", "ninety_day_plan", "onboarding")',
       },
       reason: {
         type: 'string',

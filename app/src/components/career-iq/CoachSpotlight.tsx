@@ -15,8 +15,9 @@ import type { CareerIQRoom } from './Sidebar';
 const VALID_ROOMS: readonly CareerIQRoom[] = [
   'dashboard', 'career-profile', 'resume', 'linkedin', 'jobs', 'networking',
   'interview', 'salary-negotiation', 'executive-bio',
-  'personal-brand', 'ninety-day-plan', 'financial', 'learning',
+  'financial', 'learning',
   // Legacy IDs still accepted for redirect
+  'personal-brand', 'ninety-day-plan',
   'content-calendar', 'case-study', 'thank-you-note', 'network-intelligence',
 ];
 

@@ -189,17 +189,17 @@ export function getRecommendation(snapshot: ClientSnapshot): RecommendationResul
     };
   }
 
-  // 9. All phases complete — maintenance / personal brand
+  // 9. All phases complete — maintenance / career profile refresh
   return {
-    action: 'Your transition is complete. Consider building your personal brand to strengthen your position for the role after this one.',
-    product: 'personal_brand',
-    room: PRODUCT_ROOM_MAP['personal_brand'],
+    action: 'Your transition is complete. Refresh your Career Profile so your positioning, LinkedIn story, and future applications stay aligned.',
+    product: 'onboarding',
+    room: PRODUCT_ROOM_MAP.onboarding,
     rationale:
-      'The best time to build a personal brand is when you are not looking for a job. Executives who invest in visibility during employment have 3x the inbound opportunities in their next transition.',
+      'Career Profile now carries the platform-wide positioning context. Keeping it current preserves consistency across resume, LinkedIn, interviews, and future transitions.',
     estimated_cost_usd: JOURNEY_PHASES.find((p) => p.phase === 'complete')?.estimated_cost_usd ?? 0.10,
     urgency: 'when_ready',
     sequencing_note:
-      'Personal brand work is evergreen. It compounds over time and pays dividends in the next transition, not just this one.',
+      'Treat Career Profile as the source of truth for your brand story. Update it when your scope, differentiators, or target direction change.',
   };
 }
 

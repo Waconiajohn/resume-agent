@@ -25,7 +25,7 @@ const TOOL_GROUPS: ToolGroup[] = [
   {
     label: 'LinkedIn & Brand',
     icon: '🔗',
-    productIds: ['linkedin-studio', 'personal-brand-audit', 'executive-documents'],
+    productIds: ['linkedin-studio', 'executive-documents'],
   },
   {
     label: 'Job Search & Networking',
@@ -35,7 +35,7 @@ const TOOL_GROUPS: ToolGroup[] = [
   {
     label: 'Interview & Offers',
     icon: '🎤',
-    productIds: ['interview-lab', 'salary-negotiation', '90-day-plan', 'financial-wellness'],
+    productIds: ['interview-lab', 'salary-negotiation', 'financial-wellness'],
   },
 ];
 

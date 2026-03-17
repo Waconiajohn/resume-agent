@@ -27,8 +27,6 @@ const VALID_ROOMS = new Set<string>([
   'interview',
   'salary-negotiation',
   'executive-bio',
-  'personal-brand',
-  'ninety-day-plan',
   'financial',
   'learning',
 ]);
@@ -38,6 +36,8 @@ const LEGACY_REDIRECTS: Record<string, CareerIQRoom> = {
   'thank-you-note': 'interview',
   'case-study': 'linkedin',
   'network-intelligence': 'jobs',
+  'personal-brand': 'career-profile',
+  'ninety-day-plan': 'interview',
 };
 
 const COMING_SOON_ROOMS = new Set<string>([
@@ -75,8 +75,6 @@ const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then((modul
 const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then((module) => ({ default: module.JobCommandCenterRoom })));
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) => ({ default: module.InterviewLabRoom })));
 const SalaryNegotiationRoom = lazy(() => import('./SalaryNegotiationRoom').then((module) => ({ default: module.SalaryNegotiationRoom })));
-const PersonalBrandRoom = lazy(() => import('./PersonalBrandRoom').then((module) => ({ default: module.PersonalBrandRoom })));
-const NinetyDayPlanRoom = lazy(() => import('./NinetyDayPlanRoom').then((module) => ({ default: module.NinetyDayPlanRoom })));
 const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
 const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then((module) => ({ default: module.ExecutiveDocumentsRoom })));
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then((module) => ({ default: module.RoomPlaceholder })));
@@ -426,14 +424,6 @@ export function CareerIQScreen({
 
     if (activeRoom === 'executive-bio') {
       return <ExecutiveDocumentsRoom />;
-    }
-
-    if (activeRoom === 'personal-brand') {
-      return <PersonalBrandRoom />;
-    }
-
-    if (activeRoom === 'ninety-day-plan') {
-      return <NinetyDayPlanRoom />;
     }
 
     return <RoomPlaceholder room={activeRoom} />;
