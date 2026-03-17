@@ -30,6 +30,7 @@ import { useHiringManagerReview } from '@/hooks/useHiringManagerReview';
 import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 import { useToast } from '@/components/Toast';
 import { getPromotableResumeItems } from '@/lib/master-resume-promotion';
+import { trackProductEvent } from '@/lib/product-telemetry';
 
 type MasterResumeSaveMode = 'session_only' | 'master_resume';
 
@@ -198,9 +199,15 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   const pendingPostReviewPolishRef = useRef<{
     concernId: string | null;
   } | null>(null);
+  const lastCompletedFinalReviewSignatureRef = useRef<string | null>(null);
   const selectedPromotableItems = useMemo(() => (
     promotableMasterItems.filter((item) => selectedMasterPromotionIds.includes(item.id))
   ), [promotableMasterItems, selectedMasterPromotionIds]);
+  const unresolvedCriticalConcernCount = useMemo(() => (
+    hiringManagerResult?.concerns.filter((concern) => (
+      concern.severity === 'critical' && !resolvedFinalReviewConcernIds.includes(concern.id)
+    )).length ?? 0
+  ), [hiringManagerResult, resolvedFinalReviewConcernIds]);
 
   // Build context for per-item gap chat — memoized factory
   const buildChatContext = useCallback((requirement: string): GapChatContext => {
@@ -551,6 +558,51 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   ]);
 
   useEffect(() => {
+    if (!isComplete || !currentResume || hiringManagerResult) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      trackProductEvent('resume_rewrite_stalled', {
+        session_id: data.sessionId,
+        has_resume: true,
+        has_final_review: false,
+      });
+    }, 120000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentResume, data.sessionId, hiringManagerResult, isComplete]);
+
+  useEffect(() => {
+    if (!hiringManagerResult || (!isFinalReviewStale && unresolvedCriticalConcernCount === 0)) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      trackProductEvent('final_review_stalled', {
+        session_id: data.sessionId,
+        is_stale: isFinalReviewStale,
+        unresolved_critical_count: unresolvedCriticalConcernCount,
+      });
+    }, 120000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [data.sessionId, hiringManagerResult, isFinalReviewStale, unresolvedCriticalConcernCount]);
+
+  useEffect(() => {
+    if (!hiringManagerResult) return;
+
+    const signature = JSON.stringify({
+      verdict: hiringManagerResult.hiring_manager_verdict.rating,
+      unresolvedCriticalConcernCount,
+    });
+    if (lastCompletedFinalReviewSignatureRef.current === signature) return;
+
+    trackProductEvent('final_review_completed', {
+      session_id: data.sessionId,
+      verdict: hiringManagerResult.hiring_manager_verdict.rating,
+      unresolved_critical_count: unresolvedCriticalConcernCount,
+    });
+    lastCompletedFinalReviewSignatureRef.current = signature;
+  }, [data.sessionId, hiringManagerResult, unresolvedCriticalConcernCount]);
+
+  useEffect(() => {
     if (!data.sessionId || !isComplete) return;
 
     const gapChatSnapshot = getGapChatSnapshot();
@@ -858,6 +910,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         ]
       : undefined;
 
+    trackProductEvent('final_review_requested', {
+      session_id: data.sessionId,
+      company_name: jobIntelligence.company_name,
+      role_title: jobIntelligence.role_title,
+    });
+
     void (async () => {
       await rawRequestReview({
         resume_text: serializedResume,
@@ -883,6 +941,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     currentResume,
     data.benchmarkCandidate,
     data.jobIntelligence,
+    data.sessionId,
     jobDescription,
     rawRequestReview,
     resetFinalReviewChat,

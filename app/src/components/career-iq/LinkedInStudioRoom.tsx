@@ -36,6 +36,8 @@ import { supabase } from '@/lib/supabase';
 import { SeriesPlanner } from './linkedin-studio/SeriesPlanner';
 import { ToolsPanel } from './linkedin-studio/ToolsPanel';
 import { ExperienceEntryCard } from './ExperienceEntryCard';
+import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import type { CareerProfileSummary } from './career-profile-summary';
 import type { WhyMeSignals } from './useWhyMeStory';
 import type { TopicSuggestion } from '@/hooks/useLinkedInContent';
 import type { ProfileSection } from '@/hooks/useLinkedInEditor';
@@ -43,6 +45,8 @@ import type { ProfileSection } from '@/hooks/useLinkedInEditor';
 interface LinkedInStudioRoomProps {
   signals: WhyMeSignals;
   whyMeClarity?: string;
+  careerProfileSummary?: CareerProfileSummary;
+  onOpenCareerProfile?: () => void;
 }
 
 type StudioTab = 'composer' | 'editor' | 'calendar' | 'analytics' | 'library' | 'tools';
@@ -1454,7 +1458,7 @@ function parseReportSections(report: string): {
 
 // ─── Main component ───────────────────────────────────────────────────────
 
-export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
+export function LinkedInStudioRoom({ signals, careerProfileSummary, onOpenCareerProfile }: LinkedInStudioRoomProps) {
   const optimizer = useLinkedInOptimizer();
   const [activeTab, setActiveTab] = useState<StudioTab>('composer');
   const [inputError, setInputError] = useState<string | null>(null);
@@ -1503,6 +1507,15 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+      {careerProfileSummary && (
+        <CareerProfileSummaryCard
+          summary={careerProfileSummary}
+          title="Career Profile is setting your LinkedIn angle"
+          description="LinkedIn Studio uses the same story, strengths, and differentiators that power Resume Builder so your public brand does not drift."
+          onOpenProfile={onOpenCareerProfile}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">

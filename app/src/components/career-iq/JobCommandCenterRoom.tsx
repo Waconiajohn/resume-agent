@@ -40,11 +40,15 @@ import { WatchlistManager } from '@/components/job-command-center/WatchlistManag
 import { DailyOpsSection } from '@/components/job-command-center/DailyOpsSection';
 
 import { PipelineSummary } from './PipelineSummary';
+import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import type { CareerProfileSummary } from './career-profile-summary';
 import type { CareerIQRoom } from './Sidebar';
 
 interface JobCommandCenterRoomProps {
   onNavigate: (route: string) => void;
   onNavigateRoom?: (room: CareerIQRoom) => void;
+  careerProfileSummary?: CareerProfileSummary;
+  onOpenCareerProfile?: () => void;
 }
 
 // --- SmartMatches ---
@@ -726,7 +730,12 @@ type JCCTab = 'pipeline' | 'radar' | 'daily-ops';
 
 // --- Main component ---
 
-export function JobCommandCenterRoom({ onNavigate, onNavigateRoom }: JobCommandCenterRoomProps) {
+export function JobCommandCenterRoom({
+  onNavigate,
+  onNavigateRoom,
+  careerProfileSummary,
+  onOpenCareerProfile,
+}: JobCommandCenterRoomProps) {
   const jobFinder = useJobFinder();
   const pipeline = useApplicationPipeline();
   const radar = useRadarSearch();
@@ -818,6 +827,17 @@ export function JobCommandCenterRoom({ onNavigate, onNavigateRoom }: JobCommandC
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+      {careerProfileSummary && (
+        <CareerProfileSummaryCard
+          summary={careerProfileSummary}
+          title="Career Profile is steering your search targets"
+          description="Job Command Center should not just show roles. It should show roles that match the story and strengths you want the market to recognize."
+          onOpenProfile={onOpenCareerProfile}
+          onContinue={careerProfileSummary.nextRecommendedRoom === 'jobs' ? undefined : () => onNavigateRoom?.('resume')}
+          continueLabel={careerProfileSummary.nextRecommendedRoom === 'career-profile' ? 'Finish Career Profile' : 'Open Resume Builder'}
+        />
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Job Command Center</h1>

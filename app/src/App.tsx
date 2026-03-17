@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSession } from '@/hooks/useSession';
 import { useAgent } from '@/hooks/useAgent';
 import { Header } from '@/components/Header';
 import { AuthGate } from '@/components/AuthGate';
 import { CoachScreen } from '@/components/CoachScreen';
-// PipelineIntakeForm — legacy intake, replaced by V2IntakeForm in resume-v2
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SalesPage } from '@/components/SalesPage';
 import { PricingPage } from '@/components/PricingPage';
@@ -14,19 +14,28 @@ import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
+import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
 import { buildMasterResumePromotionPayload } from '@/lib/master-resume-promotion';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
+import { trackProductEvent } from '@/lib/product-telemetry';
+import {
+  getAppView,
+  getLegacyWorkspaceRedirect,
+  getToolSlugFromPath,
+  getWorkspaceRoomFromSearch,
+  resolveNavigationTarget,
+} from '@/lib/app-routing';
 import type { MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
 
-const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then(m => ({ default: m.CoachDrawer })));
-
-type View = 'workspace' | 'coach' | 'resume-v2' | 'pricing' | 'billing' | 'affiliate' | 'tools' | 'cover-letter' | 'admin';
+const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then((m) => ({ default: m.CoachDrawer })));
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, updateProfile, signOut } =
     useAuth();
   const accessToken = session?.access_token ?? null;
@@ -88,112 +97,16 @@ export default function App() {
     updateSectionLocally,
   } = useAgent(currentSession?.id ?? null, accessToken);
 
-  // Request-level lock: prevents concurrent gate responses even when React state
-  // updates haven't flushed yet (fixes Bug 18 — double-click 409s).
   const isRespondingRef = useRef(false);
-
-  const [view, setView] = useState<View>('workspace');
-  const [toolSlug, setToolSlug] = useState<string | undefined>(undefined);
-  const [initialRoom, setInitialRoom] = useState<string | undefined>(undefined);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
   const [toolsCoachOpen, setToolsCoachOpen] = useState(false);
-
-
-  // Detect URL-based views on mount
-  useEffect(() => {
-    const path = window.location.pathname;
-    const search = window.location.search;
-    const params = new URLSearchParams(search);
-    const workspaceRoom = params.get('room') ?? undefined;
-
-    if (path === '/' || path === '/sales') return;
-    if (path === '/pricing') setView('pricing');
-    else if (path === '/billing') setView('billing');
-    else if (path === '/affiliate') setView('affiliate');
-    else if (path === '/cover-letter') setView('cover-letter');
-    else if (path === '/resume-builder' || path === '/resume-builder/session') setView('resume-v2');
-    else if (path === '/workspace' || path === '/career-iq') {
-      setInitialRoom(workspaceRoom);
-      setView('workspace');
-      if (path === '/career-iq') {
-        window.history.replaceState({}, '', workspaceRoom ? `/workspace?room=${workspaceRoom}` : '/workspace');
-      }
-    }
-    else if (path === '/dashboard') {
-      setInitialRoom('resume');
-      setView('workspace');
-      window.history.replaceState({}, '', '/workspace?room=resume');
-    }
-    else if (path === '/admin') setView('admin');
-    else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
-    else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
-    else {
-      setView('workspace');
-      if (path !== '/workspace') {
-        window.history.replaceState({}, '', '/workspace');
-      }
-    }
-  }, []);
-
-  // Detect referral code from URL query parameter and persist to localStorage
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const refCode = params.get('ref');
-    if (refCode && refCode.trim()) {
-      localStorage.setItem('referral_code', refCode.trim().toUpperCase());
-    }
-  }, []);
-
-  // Handle checkout query params returned from Stripe
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('checkout') === 'success') {
-      setCheckoutStatus('success');
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (params.get('checkout') === 'cancelled') {
-      setCheckoutStatus('cancelled');
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  // When a new gate becomes active, reset the in-flight lock so the user can respond.
-  useEffect(() => {
-    if (isPipelineGateActive) {
-      isRespondingRef.current = false;
-    }
-  }, [isPipelineGateActive]);
-
-  // Handle browser back/forward navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      const params = new URLSearchParams(window.location.search);
-      const workspaceRoom = params.get('room') ?? undefined;
-      if (path === '/' || path === '/sales') return;
-      if (path === '/pricing') setView('pricing');
-      else if (path === '/billing') setView('billing');
-      else if (path === '/affiliate') setView('affiliate');
-      else if (path === '/cover-letter') setView('cover-letter');
-      else if (path === '/resume-builder' || path === '/resume-builder/session') setView('resume-v2');
-      else if (path === '/workspace' || path === '/career-iq') {
-        setInitialRoom(workspaceRoom);
-        setView('workspace');
-      }
-      else if (path === '/dashboard') {
-        setInitialRoom('resume');
-        setView('workspace');
-      }
-      else if (path === '/admin') setView('admin');
-      else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
-      else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
-      else setView('workspace');
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
   const [v2SessionId, setV2SessionId] = useState<string | null>(null);
+
+  const currentView = getAppView(location.pathname);
+  const workspaceRoom = getWorkspaceRoomFromSearch(location.search);
+  const toolSlug = getToolSlugFromPath(location.pathname);
   const hasLiveWorkspaceState = Boolean(
     currentSession
     && (
@@ -208,53 +121,84 @@ export default function App() {
     ),
   );
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const refCode = params.get('ref');
+    if (refCode && refCode.trim()) {
+      localStorage.setItem('referral_code', refCode.trim().toUpperCase());
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const checkoutValue = params.get('checkout');
+    if (checkoutValue !== 'success' && checkoutValue !== 'cancelled') return;
+
+    setCheckoutStatus(checkoutValue);
+    params.delete('checkout');
+    const nextSearch = params.toString();
+    navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    trackProductEvent('route_viewed', {
+      view: currentView,
+      room: workspaceRoom ?? null,
+    });
+
+    if (location.pathname === '/workspace' && workspaceRoom === 'resume') {
+      trackProductEvent('resume_builder_opened', { surface: 'workspace' });
+    }
+  }, [currentView, location.pathname, workspaceRoom]);
+
+  useEffect(() => {
+    if (isPipelineGateActive) {
+      isRespondingRef.current = false;
+    }
+  }, [isPipelineGateActive]);
+
+  const navigateTo = useCallback((target: string) => {
+    navigate(resolveNavigationTarget(target));
+  }, [navigate]);
+
   const handleNewSession = useCallback(async () => {
-    setView('resume-v2');
     setV2SessionId(null);
     setIntakeInitialResumeText('');
     setIntakeDefaultResumeId(null);
-    if (window.location.pathname !== '/resume-builder/session') {
-      window.history.pushState({}, '', '/resume-builder/session');
-    }
+    trackProductEvent('resume_builder_session_started', { source: 'workspace_resume_builder' });
+    navigate('/resume-builder/session');
     void listResumes();
     const defaultResume = await getDefaultResume();
     if (defaultResume?.raw_text?.trim()) {
       setIntakeInitialResumeText(defaultResume.raw_text);
       setIntakeDefaultResumeId(defaultResume.id);
     }
-  }, [getDefaultResume, listResumes]);
+  }, [getDefaultResume, listResumes, navigate]);
 
   const handleResumeSession = useCallback(
     async (sessionId: string) => {
-      // Check if this is a V2 session — route to V2 screen instead of coach
-      const session = sessions.find(s => s.id === sessionId);
-      if (session?.product_type === 'resume_v2') {
+      const targetSession = sessions.find((session) => session.id === sessionId);
+      if (targetSession?.product_type === 'resume_v2') {
         setV2SessionId(sessionId);
-        setView('resume-v2');
-        if (window.location.pathname !== '/resume-builder/session') {
-          window.history.pushState({}, '', '/resume-builder/session');
-        }
+        navigate('/resume-builder/session');
         return;
       }
+
       await loadSession(sessionId);
-      setView('coach');
+      navigate('/coach');
     },
-    [loadSession, sessions],
+    [loadSession, navigate, sessions],
   );
 
   const handleDeleteSession = useCallback(
     async (sessionId: string) => {
       const ok = await deleteSession(sessionId);
       if (ok && currentSession?.id === sessionId) {
-        setInitialRoom('resume');
-        setView('workspace');
-        if (`${window.location.pathname}${window.location.search}` !== '/workspace?room=resume') {
-          window.history.pushState({}, '', '/workspace?room=resume');
-        }
+        navigate('/workspace?room=resume');
       }
       return ok;
     },
-    [deleteSession, currentSession],
+    [currentSession, deleteSession, navigate],
   );
 
   const handleSaveCurrentResumeAsBase = useCallback(
@@ -294,7 +238,7 @@ export default function App() {
       }
       return true;
     },
-    [setDefaultResume, getDefaultResume],
+    [getDefaultResume, setDefaultResume],
   );
 
   const handleSyncV2ResumeToMaster = useCallback(
@@ -415,14 +359,13 @@ export default function App() {
   const handleSendMessage = useCallback(
     async (content: string) => {
       if (!currentSession) return;
-      if (isProcessing || isPipelineGateActive) return; // Prevent 409 and gate collisions
+      if (isProcessing || isPipelineGateActive) return;
       addUserMessage(content);
       const clientMessageId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const ok = await sendMessage(currentSession.id, content, clientMessageId);
       if (!ok) {
-        // API rejected the message (e.g. 409 still processing) — reset processing state
         setIsProcessing(false);
       }
     },
@@ -432,14 +375,14 @@ export default function App() {
   const handlePipelineRespond = useCallback(
     async (gate: string, response: unknown) => {
       if (!currentSession) return;
-      if (!isPipelineGateActive) return; // Prevent 409 when no gate is pending
-      if (isRespondingRef.current) return; // Ref-level lock: blocks concurrent calls before state flush
+      if (!isPipelineGateActive) return;
+      if (isRespondingRef.current) return;
       isRespondingRef.current = true;
-      setIsPipelineGateActive(false); // Optimistic disable prevents double-click
+      setIsPipelineGateActive(false);
       try {
         const ok = await respondToGate(currentSession.id, gate, response);
         if (!ok) {
-          setIsPipelineGateActive(true); // Re-enable on failure so user can retry
+          setIsPipelineGateActive(true);
         }
       } finally {
         isRespondingRef.current = false;
@@ -451,293 +394,257 @@ export default function App() {
   const handleSignOut = useCallback(async () => {
     await signOut();
     setCurrentSession(null);
-    setInitialRoom(undefined);
-    setView('workspace');
-  }, [signOut, setCurrentSession]);
-
-  const navigateTo = useCallback((viewName: string) => {
-    // Handle /tools/:slug
-    if (viewName.startsWith('/tools/')) {
-      setView('tools');
-      setToolSlug(viewName.split('/tools/')[1]);
-      if (window.location.pathname !== viewName) {
-        window.history.pushState({}, '', viewName);
-      }
-      return;
-    }
-    if (viewName === '/tools' || viewName === 'tools') {
-      setView('tools');
-      setToolSlug(undefined);
-      if (window.location.pathname !== '/tools') {
-        window.history.pushState({}, '', '/tools');
-      }
-      return;
-    }
-    if (viewName.startsWith('/workspace')) {
-      const url = new URL(viewName, 'http://local');
-      const room = url.searchParams.get('room') ?? undefined;
-      setInitialRoom(room);
-      setView('workspace');
-      const nextPath = room ? `/workspace?room=${room}` : '/workspace';
-      if (`${window.location.pathname}${window.location.search}` !== nextPath) {
-        window.history.pushState({}, '', nextPath);
-      }
-      return;
-    }
-    if (viewName === '/dashboard' || viewName === 'dashboard') {
-      setInitialRoom('resume');
-      setView('workspace');
-      if (`${window.location.pathname}${window.location.search}` !== '/workspace?room=resume') {
-        window.history.pushState({}, '', '/workspace?room=resume');
-      }
-      return;
-    }
-    if (viewName === 'cover-letter' || viewName === '/cover-letter') {
-      setView('cover-letter');
-      if (window.location.pathname !== '/cover-letter') {
-        window.history.pushState({}, '', '/cover-letter');
-      }
-      return;
-    }
-    if (viewName === 'workspace' || viewName === 'career-iq' || viewName === '/career-iq' || viewName === '/workspace') {
-      setView('workspace');
-      setInitialRoom(undefined);
-      if (window.location.pathname !== '/workspace') {
-        window.history.pushState({}, '', '/workspace');
-      }
-      return;
-    }
-    const validViews: View[] = ['workspace', 'coach', 'resume-v2', 'pricing', 'billing', 'affiliate', 'tools', 'cover-letter', 'admin'];
-    const newView = validViews.includes(viewName as View) ? (viewName as View) : 'workspace';
-    setView(newView);
-    const paths: Record<View, string> = {
-      workspace: '/workspace',
-      coach: '/workspace',
-      'resume-v2': '/resume-builder/session',
-      pricing: '/pricing',
-      billing: '/billing',
-      affiliate: '/affiliate',
-      tools: '/tools',
-      'cover-letter': '/cover-letter',
-      admin: '/admin',
-    };
-    const newPath = paths[newView];
-    if (newPath && window.location.pathname !== newPath) {
-      window.history.pushState({}, '', newPath);
-    }
-  }, []);
+    setV2SessionId(null);
+    navigate('/sales');
+  }, [navigate, setCurrentSession, signOut]);
 
   if (loading) {
     return (
       <ToastProvider>
         <div className="flex h-screen items-center justify-center bg-surface">
-          <div className="h-8 w-8 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
+          <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-[#afc4ff] motion-safe:animate-spin" />
         </div>
       </ToastProvider>
     );
   }
 
-  const isSalesPage = ['/', '/sales'].includes(window.location.pathname);
-  if (isSalesPage) return <ToastProvider><SalesPage /></ToastProvider>;
-
+  const isSalesRoute = location.pathname === '/' || location.pathname === '/sales';
   if (!user) {
     return (
       <ToastProvider>
-        <AuthGate
-          onSignIn={signInWithEmail}
-          onSignUp={signUpWithEmail}
-          onGoogleSignIn={signInWithGoogle}
-        />
+        {isSalesRoute ? (
+          <SalesPage />
+        ) : (
+          <AuthGate
+            onSignIn={signInWithEmail}
+            onSignUp={signUpWithEmail}
+            onGoogleSignIn={signInWithGoogle}
+          />
+        )}
       </ToastProvider>
     );
   }
 
   return (
     <ToastProvider>
-    <ErrorBoundary key={currentSession?.id ?? view}>
-      <div className="h-screen bg-surface">
-        <Header
-          email={user.email}
-          displayName={displayName}
-          onSignOut={handleSignOut}
-          onUpdateProfile={updateProfile}
-          pipelineStage={view === 'coach' ? (pipelineStage ?? currentPhase) : null}
-          isProcessing={view === 'coach' ? isProcessing : false}
-          sessionComplete={view === 'coach' ? (sessionComplete ?? false) : false}
-          onNavigate={navigateTo}
-        />
-
-        {checkoutStatus === 'success' && (
-          <div className="mx-auto max-w-6xl px-4 pt-3">
-            <div role="status" aria-live="polite" className="rounded-xl border border-[#b5dec2]/30 bg-[#b5dec2]/10 px-4 py-3 text-sm text-[#b5dec2] flex items-center justify-between">
-              <span>Subscription activated! You now have access to all plan features.</span>
-              <button type="button" onClick={() => setCheckoutStatus(null)} className="text-[#b5dec2] hover:text-white/90 text-xs ml-4">Dismiss</button>
-            </div>
-          </div>
-        )}
-        {checkoutStatus === 'cancelled' && (
-          <div className="mx-auto max-w-6xl px-4 pt-3">
-            <div role="status" aria-live="polite" className="rounded-xl border border-[#f0d99f]/30 bg-[#f0d99f]/10 px-4 py-3 text-sm text-[#f0d99f] flex items-center justify-between">
-              <span>Checkout cancelled. You can try again anytime from the pricing page.</span>
-              <button type="button" onClick={() => setCheckoutStatus(null)} className="text-[#f0d99f] hover:text-white/90 text-xs ml-4">Dismiss</button>
-            </div>
-          </div>
-        )}
-
-      {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && !hasLiveWorkspaceState && (
-        <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[#afc4ff]" />
-            <span className="text-sm text-white/50">Connecting to session...</span>
-          </div>
-        </div>
-      )}
-
-      {view === 'coach' && (connected || hasLiveWorkspaceState || sessionComplete || agentError || sessionError) && (
-        <CoachScreen
-          sessionId={currentSession?.id ?? null}
-          accessToken={accessToken}
-          messages={messages}
-          streamingText={streamingText}
-          tools={tools}
-          askPrompt={askPrompt}
-          phaseGate={phaseGate}
-          currentPhase={pipelineStage ?? currentPhase}
-          isProcessing={isProcessing}
-          connected={connected}
-          lastBackendActivityAt={lastBackendActivityAt}
-          stalledSuspected={stalledSuspected}
-          sessionComplete={sessionComplete}
-          resume={resume}
-          panelType={panelType}
-          panelData={panelData}
-          error={agentError ?? sessionError}
-          onSendMessage={handleSendMessage}
-          isPipelineGateActive={isPipelineGateActive}
-          onPipelineRespond={handlePipelineRespond}
-          positioningProfileFound={positioningProfileFound}
-          onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
-          approvedSections={approvedSections}
-          sectionDrafts={sectionDrafts}
-          sectionBuildOrder={sectionBuildOrder}
-          onDismissSuggestion={dismissSuggestion}
-          onLocalSectionEdit={updateSectionLocally}
-          liveDraftReadiness={draftReadiness}
-          liveWorkflowReplan={workflowReplan}
-          pipelineActivity={pipelineActivity}
-          onReconnectStream={reconnectStreamNow}
-        />
-      )}
-
-      {view === 'resume-v2' && (
-        <V2ResumeScreen
-          accessToken={accessToken}
-          onBack={() => {
-            setV2SessionId(null);
-            setInitialRoom('resume');
-            setView('workspace');
-            if (`${window.location.pathname}${window.location.search}` !== '/workspace?room=resume') {
-              window.history.pushState({}, '', '/workspace?room=resume');
-            }
-          }}
-          initialResumeText={intakeInitialResumeText}
-          initialSessionId={v2SessionId ?? undefined}
-          onSyncToMasterResume={handleSyncV2ResumeToMaster}
-        />
-      )}
-
-      {view === 'pricing' && (
-        <PricingPage
-          accessToken={accessToken}
-          onUpgradeSuccess={() => setCheckoutStatus('success')}
-        />
-      )}
-
-      {view === 'billing' && user && (
-        <BillingDashboard accessToken={accessToken} />
-      )}
-
-      {view === 'affiliate' && (
-        <AffiliateDashboard
-          accessToken={accessToken}
-          onNavigate={(v) => setView(v as View)}
-        />
-      )}
-
-      {view === 'tools' && (
-        <>
-          <ToolsScreen
-            slug={toolSlug}
-            userName={displayName}
-            onOpenCoach={() => setToolsCoachOpen(true)}
-            onNavigate={(route) => {
-              if (route === '/tools') navigateTo('tools');
-              else if (route.startsWith('/tools/')) navigateTo(route);
-              else if (route === '/cover-letter') navigateTo('cover-letter');
-              else if (route === '/app' || route === '/' || route === '/workspace') navigateTo('workspace');
-              else if (route === '/onboarding') {
-                navigateTo('/workspace?room=career-profile');
-              }
-              else if (route.startsWith('/career-iq') || route.startsWith('/workspace')) {
-                const roomParam = new URL(route, 'http://x').searchParams.get('room');
-                navigateTo(roomParam ? `/workspace?room=${roomParam}` : 'workspace');
-              }
-              else navigateTo('workspace');
-            }}
-          />
-          <Suspense fallback={null}>
-            <CoachDrawer
-              userName={displayName}
-              isOpen={toolsCoachOpen}
-              onOpen={() => setToolsCoachOpen(true)}
-              onClose={() => setToolsCoachOpen(false)}
-              onNavigate={(room) => {
-                setToolsCoachOpen(false);
-                setInitialRoom(room);
-                navigateTo(`/workspace?room=${room}`);
-              }}
+      <CareerProfileProvider>
+        <ErrorBoundary key={`${currentSession?.id ?? 'no-session'}:${location.pathname}${location.search}`}>
+          <div className="h-screen bg-surface">
+            <Header
+              email={user.email}
+              displayName={displayName}
+              onSignOut={handleSignOut}
+              onUpdateProfile={updateProfile}
+              pipelineStage={currentView === 'coach' ? (pipelineStage ?? currentPhase) : null}
+              isProcessing={currentView === 'coach' ? isProcessing : false}
+              sessionComplete={currentView === 'coach' ? (sessionComplete ?? false) : false}
+              onNavigate={navigateTo}
             />
-          </Suspense>
-        </>
-      )}
 
-      {view === 'cover-letter' && (
-        <CoverLetterScreen
-          accessToken={accessToken}
-          onNavigate={navigateTo}
-          onGetDefaultResume={getDefaultResume}
-        />
-      )}
+            {checkoutStatus === 'success' && (
+              <div className="mx-auto max-w-6xl px-4 pt-3">
+                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#b5dec2]/30 bg-[#b5dec2]/10 px-4 py-3 text-sm text-[#b5dec2]">
+                  <span>Subscription activated! You now have access to all plan features.</span>
+                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#b5dec2] hover:text-white/90">Dismiss</button>
+                </div>
+              </div>
+            )}
 
-      {view === 'workspace' && (
-        <CareerIQScreen
-          userName={displayName}
-          onNavigate={navigateTo}
-          sessions={sessions}
-          resumes={resumes}
-          sessionsLoading={sessionLoading}
-          onNewSession={handleNewSession}
-          onResumeSession={handleResumeSession}
-          initialRoom={initialRoom}
-          onLoadSessions={listSessions}
-          onLoadResumes={listResumes}
-          onDeleteSession={handleDeleteSession}
-          onGetSessionResume={getSessionResume}
-          onGetSessionCoverLetter={getSessionCoverLetter}
-          onGetDefaultResume={getDefaultResume}
-          onGetResumeById={getResumeById}
-          onUpdateMasterResume={updateMasterResume}
-          onGetResumeHistory={getResumeHistory}
-          onSetDefaultResume={handleSetDefaultBaseResume}
-          onDeleteResume={handleDeleteBaseResume}
-        />
-      )}
+            {checkoutStatus === 'cancelled' && (
+              <div className="mx-auto max-w-6xl px-4 pt-3">
+                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#f0d99f]/30 bg-[#f0d99f]/10 px-4 py-3 text-sm text-[#f0d99f]">
+                  <span>Checkout cancelled. You can try again anytime from the pricing page.</span>
+                  <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#f0d99f] hover:text-white/90">Dismiss</button>
+                </div>
+              </div>
+            )}
 
-      {view === 'admin' && (
-        <AdminDashboard />
-      )}
-      </div>
-    </ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Navigate to="/workspace" replace />} />
+              <Route path="/sales" element={<Navigate to="/workspace" replace />} />
+              <Route path="/app" element={<Navigate to="/workspace" replace />} />
+              <Route path="/career-iq" element={<Navigate to={getLegacyWorkspaceRedirect(location.search)} replace />} />
+              <Route path="/dashboard" element={<Navigate to="/workspace?room=resume" replace />} />
+              <Route
+                path="/coach"
+                element={currentSession ? (
+                  currentView === 'coach' && !connected && !sessionComplete && !agentError && !hasLiveWorkspaceState ? (
+                    <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-[#afc4ff] motion-safe:animate-spin" />
+                        <span className="text-sm text-white/50">Connecting to session...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <CoachScreen
+                      sessionId={currentSession.id}
+                      accessToken={accessToken}
+                      messages={messages}
+                      streamingText={streamingText}
+                      tools={tools}
+                      askPrompt={askPrompt}
+                      phaseGate={phaseGate}
+                      currentPhase={pipelineStage ?? currentPhase}
+                      isProcessing={isProcessing}
+                      connected={connected}
+                      lastBackendActivityAt={lastBackendActivityAt}
+                      stalledSuspected={stalledSuspected}
+                      sessionComplete={sessionComplete}
+                      resume={resume}
+                      panelType={panelType}
+                      panelData={panelData}
+                      error={agentError ?? sessionError}
+                      onSendMessage={handleSendMessage}
+                      isPipelineGateActive={isPipelineGateActive}
+                      onPipelineRespond={handlePipelineRespond}
+                      positioningProfileFound={positioningProfileFound}
+                      onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
+                      approvedSections={approvedSections}
+                      sectionDrafts={sectionDrafts}
+                      sectionBuildOrder={sectionBuildOrder}
+                      onDismissSuggestion={dismissSuggestion}
+                      onLocalSectionEdit={updateSectionLocally}
+                      liveDraftReadiness={draftReadiness}
+                      liveWorkflowReplan={workflowReplan}
+                      pipelineActivity={pipelineActivity}
+                      onReconnectStream={reconnectStreamNow}
+                    />
+                  )
+                ) : (
+                  <Navigate to="/workspace?room=resume" replace />
+                )}
+              />
+              <Route path="/resume-builder" element={<Navigate to="/workspace?room=resume" replace />} />
+              <Route
+                path="/resume-builder/session"
+                element={(
+                  <V2ResumeScreen
+                    accessToken={accessToken}
+                    onBack={() => navigate('/workspace?room=resume')}
+                    initialResumeText={intakeInitialResumeText}
+                    initialSessionId={v2SessionId ?? undefined}
+                    onSyncToMasterResume={handleSyncV2ResumeToMaster}
+                  />
+                )}
+              />
+              <Route
+                path="/pricing"
+                element={(
+                  <PricingPage
+                    accessToken={accessToken}
+                    onUpgradeSuccess={() => setCheckoutStatus('success')}
+                  />
+                )}
+              />
+              <Route path="/billing" element={<BillingDashboard accessToken={accessToken} />} />
+              <Route
+                path="/affiliate"
+                element={<AffiliateDashboard accessToken={accessToken} onNavigate={navigateTo} />}
+              />
+              <Route
+                path="/tools"
+                element={(
+                  <>
+                    <ToolsScreen
+                      userName={displayName}
+                      onOpenCoach={() => setToolsCoachOpen(true)}
+                      onNavigate={(route) => {
+                        if (route === '/onboarding') {
+                          navigate('/workspace?room=career-profile');
+                          return;
+                        }
+                        navigateTo(route);
+                      }}
+                    />
+                    <Suspense fallback={null}>
+                      <CoachDrawer
+                        userName={displayName}
+                        isOpen={toolsCoachOpen}
+                        onOpen={() => setToolsCoachOpen(true)}
+                        onClose={() => setToolsCoachOpen(false)}
+                        onNavigate={(room) => {
+                          setToolsCoachOpen(false);
+                          navigate(`/workspace?room=${room}`);
+                        }}
+                      />
+                    </Suspense>
+                  </>
+                )}
+              />
+              <Route
+                path="/tools/:slug"
+                element={(
+                  <>
+                    <ToolsScreen
+                      slug={toolSlug}
+                      userName={displayName}
+                      onOpenCoach={() => setToolsCoachOpen(true)}
+                      onNavigate={(route) => {
+                        if (route === '/onboarding') {
+                          navigate('/workspace?room=career-profile');
+                          return;
+                        }
+                        navigateTo(route);
+                      }}
+                    />
+                    <Suspense fallback={null}>
+                      <CoachDrawer
+                        userName={displayName}
+                        isOpen={toolsCoachOpen}
+                        onOpen={() => setToolsCoachOpen(true)}
+                        onClose={() => setToolsCoachOpen(false)}
+                        onNavigate={(room) => {
+                          setToolsCoachOpen(false);
+                          navigate(`/workspace?room=${room}`);
+                        }}
+                      />
+                    </Suspense>
+                  </>
+                )}
+              />
+              <Route
+                path="/cover-letter"
+                element={(
+                  <CoverLetterScreen
+                    accessToken={accessToken}
+                    onNavigate={navigateTo}
+                    onGetDefaultResume={getDefaultResume}
+                  />
+                )}
+              />
+              <Route
+                path="/workspace"
+                element={(
+                  <CareerIQScreen
+                    userName={displayName}
+                    onNavigate={navigateTo}
+                    sessions={sessions}
+                    resumes={resumes}
+                    sessionsLoading={sessionLoading}
+                    resumesLoading={resumesLoading}
+                    onNewSession={handleNewSession}
+                    onResumeSession={handleResumeSession}
+                    initialRoom={workspaceRoom}
+                    onLoadSessions={listSessions}
+                    onLoadResumes={listResumes}
+                    onDeleteSession={handleDeleteSession}
+                    onGetSessionResume={getSessionResume}
+                    onGetSessionCoverLetter={getSessionCoverLetter}
+                    onGetDefaultResume={getDefaultResume}
+                    onGetResumeById={getResumeById}
+                    onUpdateMasterResume={updateMasterResume}
+                    onGetResumeHistory={getResumeHistory}
+                    onSetDefaultResume={handleSetDefaultBaseResume}
+                    onDeleteResume={handleDeleteBaseResume}
+                  />
+                )}
+              />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="*" element={<Navigate to="/workspace" replace />} />
+            </Routes>
+          </div>
+        </ErrorBoundary>
+      </CareerProfileProvider>
     </ToastProvider>
   );
 }

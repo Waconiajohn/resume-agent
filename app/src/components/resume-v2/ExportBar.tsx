@@ -8,6 +8,7 @@ import { GlassButton } from '../GlassButton';
 import type { ResumeDraft } from '@/types/resume-v2';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import { getExportGateState } from '@/lib/export-bar-gating';
+import { trackProductEvent } from '@/lib/product-telemetry';
 
 interface ExportBarProps {
   resume: ResumeDraft;
@@ -56,6 +57,15 @@ export function ExportBar({
   }, [resume, companyName, jobTitle, atsScore]);
 
   const handleDocx = useCallback(async () => {
+    trackProductEvent('export_attempted', {
+      format: 'docx',
+      export_blocked: exportBlocked,
+      has_completed_final_review: hasCompletedFinalReview,
+      is_final_review_stale: isFinalReviewStale,
+      unresolved_critical_count: unresolvedCriticalCount,
+      queue_needs_attention_count: queueNeedsAttentionCount,
+      queue_partial_count: queuePartialCount,
+    });
     setExporting('docx');
     setError(null);
     try {
@@ -67,9 +77,26 @@ export function ExportBar({
     } finally {
       setExporting(null);
     }
-  }, [getFinalResume]);
+  }, [
+    exportBlocked,
+    getFinalResume,
+    hasCompletedFinalReview,
+    isFinalReviewStale,
+    queueNeedsAttentionCount,
+    queuePartialCount,
+    unresolvedCriticalCount,
+  ]);
 
   const handlePdf = useCallback(async () => {
+    trackProductEvent('export_attempted', {
+      format: 'pdf',
+      export_blocked: exportBlocked,
+      has_completed_final_review: hasCompletedFinalReview,
+      is_final_review_stale: isFinalReviewStale,
+      unresolved_critical_count: unresolvedCriticalCount,
+      queue_needs_attention_count: queueNeedsAttentionCount,
+      queue_partial_count: queuePartialCount,
+    });
     setExporting('pdf');
     setError(null);
     try {
@@ -81,11 +108,28 @@ export function ExportBar({
     } finally {
       setExporting(null);
     }
-  }, [getFinalResume]);
+  }, [
+    exportBlocked,
+    getFinalResume,
+    hasCompletedFinalReview,
+    isFinalReviewStale,
+    queueNeedsAttentionCount,
+    queuePartialCount,
+    unresolvedCriticalCount,
+  ]);
 
   const handleCopy = useCallback(async () => {
     const text = onCopy ? onCopy() : buildPlainText(resume);
     if (!text) return;
+    trackProductEvent('export_attempted', {
+      format: 'copy',
+      export_blocked: exportBlocked,
+      has_completed_final_review: hasCompletedFinalReview,
+      is_final_review_stale: isFinalReviewStale,
+      unresolved_critical_count: unresolvedCriticalCount,
+      queue_needs_attention_count: queueNeedsAttentionCount,
+      queue_partial_count: queuePartialCount,
+    });
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -93,7 +137,16 @@ export function ExportBar({
     } catch {
       setError('Copy to clipboard failed');
     }
-  }, [onCopy, resume]);
+  }, [
+    exportBlocked,
+    hasCompletedFinalReview,
+    isFinalReviewStale,
+    onCopy,
+    queueNeedsAttentionCount,
+    queuePartialCount,
+    resume,
+    unresolvedCriticalCount,
+  ]);
 
   return (
     <div className="space-y-2">
@@ -123,7 +176,14 @@ export function ExportBar({
               {exportBlocked ? (
                 <button
                   type="button"
-                  onClick={onAcknowledgeWarnings}
+                  onClick={() => {
+                    trackProductEvent('export_warning_acknowledged', {
+                      unresolved_critical_count: unresolvedCriticalCount,
+                      queue_needs_attention_count: queueNeedsAttentionCount,
+                      queue_partial_count: queuePartialCount,
+                    });
+                    onAcknowledgeWarnings?.();
+                  }}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#f0d99f]/25 bg-[#f0d99f]/10 px-3 py-2 text-xs font-medium text-[#f0d99f] transition-colors hover:bg-[#f0d99f]/16"
                 >
                   I understand, enable export

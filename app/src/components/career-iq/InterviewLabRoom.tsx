@@ -32,6 +32,8 @@ import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
 import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
+import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import type { CareerProfileSummary } from './career-profile-summary';
 
 // --- Types ---
 
@@ -53,6 +55,12 @@ interface PastInterview {
   date: string;
   outcome: 'advanced' | 'rejected' | 'pending';
   notes: string;
+}
+
+interface InterviewLabRoomProps {
+  pipelineInterviews?: PipelineInterviewCard[];
+  careerProfileSummary?: CareerProfileSummary;
+  onOpenCareerProfile?: () => void;
 }
 
 export interface PipelineInterviewCard {
@@ -845,10 +853,6 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 
 // --- Main component ---
 
-interface InterviewLabRoomProps {
-  pipelineInterviews?: PipelineInterviewCard[];
-}
-
 type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview' | 'thank-you';
 
 interface MockInterviewConfig {
@@ -859,7 +863,11 @@ interface MockInterviewConfig {
   questionType?: 'behavioral' | 'technical' | 'situational';
 }
 
-export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) {
+export function InterviewLabRoom({
+  pipelineInterviews,
+  careerProfileSummary,
+  onOpenCareerProfile,
+}: InterviewLabRoomProps) {
   const [history, setHistory] = useState<PastInterview[]>(loadHistory);
   const [viewMode, setViewMode] = useState<ViewMode>('lab');
   const [activeCompany, setActiveCompany] = useState('');
@@ -1152,6 +1160,15 @@ export function InterviewLabRoom({ pipelineInterviews }: InterviewLabRoomProps) 
   // Default lab view
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+      {careerProfileSummary && (
+        <CareerProfileSummaryCard
+          summary={careerProfileSummary}
+          title="Career Profile is framing your interview story"
+          description="Interview Lab should turn the same positioning story into interview answers, proof points, and debrief follow-up instead of making you start over."
+          onOpenProfile={onOpenCareerProfile}
+        />
+      )}
+
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Lab</h1>

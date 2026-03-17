@@ -391,47 +391,7 @@ describe('WhyMeEngine', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. WelcomeState
-// ---------------------------------------------------------------------------
-
-import { WelcomeState } from '../../components/career-iq/WelcomeState';
-
-describe('WelcomeState', () => {
-  afterEach(() => cleanup());
-
-  it('displays first name extracted from email', () => {
-    render(<WelcomeState userName="margaret.jones@example.com" onStartWhyMe={vi.fn()} />);
-    expect(screen.getByText(/Welcome, Margaret/)).toBeInTheDocument();
-  });
-
-  it('displays capitalized first name from simple email', () => {
-    render(<WelcomeState userName="john@example.com" onStartWhyMe={vi.fn()} />);
-    expect(screen.getByText(/Welcome, John/)).toBeInTheDocument();
-  });
-
-  it('displays welcome text when userName is empty', () => {
-    render(<WelcomeState userName="" onStartWhyMe={vi.fn()} />);
-    // Empty string goes through split/capitalize path — renders "Welcome, "
-    expect(screen.getByText(/Welcome,/)).toBeInTheDocument();
-  });
-
-  it('CTA button calls onStartWhyMe', () => {
-    const onStartWhyMe = vi.fn();
-    render(<WelcomeState userName="test@example.com" onStartWhyMe={onStartWhyMe} />);
-    fireEvent.click(screen.getByText('Define Your Why-Me Story'));
-    expect(onStartWhyMe).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders 3-step onboarding path', () => {
-    render(<WelcomeState userName="test@example.com" onStartWhyMe={vi.fn()} />);
-    expect(screen.getByText('Define Your Story')).toBeInTheDocument();
-    expect(screen.getByText('Build Your First Resume')).toBeInTheDocument();
-    expect(screen.getByText('Start Your Search')).toBeInTheDocument();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 5. LivePulseStrip
+// 4. LivePulseStrip
 // ---------------------------------------------------------------------------
 
 import { LivePulseStrip } from '../../components/career-iq/LivePulseStrip';

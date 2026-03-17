@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
+import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
+import { useCareerProfile } from './CareerProfileContext';
 import { RoomSkeleton } from '@/components/shared/RoomSkeleton';
 import { DashboardHome } from './DashboardHome';
 import { WhyMeEngine } from './WhyMeEngine';
 import { MobileBriefing } from './MobileBriefing';
-import { useWhyMeStory } from './useWhyMeStory';
 import { useMediaQuery } from './useMediaQuery';
 import { useMomentum } from '@/hooks/useMomentum';
 import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
@@ -30,29 +31,17 @@ const VALID_ROOMS = new Set<string>([
   'ninety-day-plan',
   'financial',
   'learning',
-  'content-calendar',
-  'case-study',
-  'thank-you-note',
-  'network-intelligence',
 ]);
 
 const LEGACY_REDIRECTS: Record<string, CareerIQRoom> = {
   'content-calendar': 'linkedin',
-  'case-study': 'executive-bio',
   'thank-you-note': 'interview',
-  'network-intelligence': 'networking',
+  'case-study': 'linkedin',
+  'network-intelligence': 'jobs',
 };
 
 const COMING_SOON_ROOMS = new Set<string>([
-  'linkedin',
-  'networking',
-  'interview',
   'salary-negotiation',
-  'executive-bio',
-  'personal-brand',
-  'ninety-day-plan',
-  'financial',
-  'learning',
 ]);
 
 function toValidRoom(value: string | undefined): CareerIQRoom {
@@ -146,7 +135,7 @@ export function CareerIQScreen({
   onDeleteResume,
 }: CareerIQScreenProps) {
   const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toValidRoom(initialRoom));
-  const { story, updateField, signals, dashboardState } = useWhyMeStory();
+  const { story, updateField, signals, dashboardState, summary } = useCareerProfile();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
@@ -338,6 +327,7 @@ export function CareerIQScreen({
     if (activeRoom === 'resume') {
       return (
         <ResumeWorkshopRoom
+          careerProfileSummary={summary}
           sessions={sessions}
           resumes={resumes}
           loading={sessionsLoading}
@@ -369,15 +359,35 @@ export function CareerIQScreen({
     }
 
     if (activeRoom === 'linkedin') {
-      return <LinkedInStudioRoom signals={signals} whyMeClarity={story.colleaguesCameForWhat} />;
+      return (
+        <LinkedInStudioRoom
+          signals={signals}
+          whyMeClarity={story.colleaguesCameForWhat}
+          careerProfileSummary={summary}
+          onOpenCareerProfile={openCareerProfile}
+        />
+      );
     }
 
     if (activeRoom === 'jobs') {
-      return <JobCommandCenterRoom onNavigate={onNavigate} onNavigateRoom={handleRoomNavigate} />;
+      return (
+        <JobCommandCenterRoom
+          onNavigate={onNavigate}
+          onNavigateRoom={handleRoomNavigate}
+          careerProfileSummary={summary}
+          onOpenCareerProfile={openCareerProfile}
+        />
+      );
     }
 
     if (activeRoom === 'interview') {
-      return <InterviewLabRoom pipelineInterviews={pipelineInterviews} />;
+      return (
+        <InterviewLabRoom
+          pipelineInterviews={pipelineInterviews}
+          careerProfileSummary={summary}
+          onOpenCareerProfile={openCareerProfile}
+        />
+      );
     }
 
     if (activeRoom === 'networking') {
@@ -413,6 +423,14 @@ export function CareerIQScreen({
     if (activeRoom === 'dashboard') {
       return (
         <>
+          <div className="px-4 pt-4">
+            <CareerProfileSummaryCard
+              summary={summary}
+              title="Career Profile powers the rest of Workspace"
+              onOpenProfile={openCareerProfile}
+              onContinue={() => handleRoomNavigate(summary.nextRecommendedRoom === 'career-profile' ? 'career-profile' : 'resume')}
+            />
+          </div>
           <MobileBriefing
             userName={userName}
             signals={signals}

@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
-  DollarSign,
   User,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -62,7 +61,6 @@ const ROOM_GROUPS: RoomGroup[] = [
       { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile and content updates', gated: true },
       { id: 'jobs', label: 'Job Command Center', icon: Search, description: 'Matches, pipeline & momentum', gated: true },
       { id: 'interview', label: 'Interview Lab', icon: Mic, description: 'Prep, mock, debrief & follow-up', gated: true },
-      { id: 'salary-negotiation', label: 'Salary & Negotiation', icon: DollarSign, description: 'Benchmarks, scripts & simulation', gated: true },
     ],
   },
 ];
