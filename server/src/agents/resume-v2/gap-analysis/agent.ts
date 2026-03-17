@@ -194,6 +194,24 @@ function buildUserMessage(input: GapAnalysisInput): string {
     '## Canonical Requirement Catalog',
     ...canonicalRequirements,
     '',
+  ];
+
+  if (input.career_profile) {
+    parts.push(
+      '## Career Profile',
+      `Profile summary: ${input.career_profile.profile_summary}`,
+      `Target roles: ${input.career_profile.targeting.target_roles.join(', ') || 'Not yet defined'}`,
+      `Target industries: ${input.career_profile.targeting.target_industries.join(', ') || 'Not yet defined'}`,
+      `Core strengths: ${input.career_profile.positioning.core_strengths.join(', ') || 'Not yet defined'}`,
+      `Proof themes: ${input.career_profile.positioning.proof_themes.join(', ') || 'Not yet defined'}`,
+      `Differentiators: ${input.career_profile.positioning.differentiators.join(', ') || 'Not yet defined'}`,
+      `Adjacent positioning: ${input.career_profile.positioning.adjacent_positioning.join(', ') || 'Not yet defined'}`,
+      `Constraints: ${input.career_profile.preferences.constraints.join(', ') || 'None recorded'}`,
+      '',
+    );
+  }
+
+  parts.push(
     '## Benchmark Candidate (the ideal hire)',
     `Profile: ${input.benchmark.ideal_profile_summary}`,
     `Leadership scope expected: ${input.benchmark.expected_leadership_scope}`,
@@ -225,7 +243,7 @@ function buildUserMessage(input: GapAnalysisInput): string {
     '',
     `Technologies: ${input.candidate.technologies.join(', ')}`,
     `Certifications: ${input.candidate.certifications.join(', ')}`,
-  ];
+  );
 
   if (input.user_context) {
     parts.push(

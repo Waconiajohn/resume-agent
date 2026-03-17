@@ -22,6 +22,7 @@ import type { V2PipelineSSEEvent, V2PipelineStage } from '../agents/resume-v2/ty
 import { llm } from '../lib/llm.js';
 import { MODEL_MID, MODEL_LIGHT, MODEL_PRIMARY } from '../lib/model-constants.js';
 import { repairJSON } from '../lib/json-repair.js';
+import { loadCareerProfileContext } from '../lib/career-profile-context.js';
 
 const startSchema = z.object({
   resume_text: z.string().min(50, 'Resume must be at least 50 characters').max(50000, 'Resume must be at most 50,000 characters'),
@@ -300,6 +301,8 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
     };
 
     try {
+      const careerProfile = await loadCareerProfileContext(userId);
+
       // emitters is looked up on every emit so late-connecting clients receive events
       const emit = (event: V2PipelineSSEEvent) => {
         const snapshotState = applyEventToSnapshot(liveSnapshot, event);
@@ -326,6 +329,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
         session_id: sessionId,
         user_id: userId,
         emit,
+        career_profile: careerProfile ?? undefined,
         user_context,
         gap_coaching_responses,
         pre_scores,
@@ -1412,6 +1416,7 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
   const sessionBenchmark = pipelineData && typeof pipelineData.benchmarkCandidate === 'object'
     ? pipelineData.benchmarkCandidate as Record<string, unknown>
     : null;
+  const careerProfile = await loadCareerProfileContext(userId);
 
   const mergedJobRequirements = job_requirements
     ?? requirements
@@ -1504,6 +1509,9 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
 
   const benchmarkRequirementsList = mergedBenchmarkRequirements.length
     ? `\n\nBENCHMARK REQUIREMENTS AND DIFFERENTIATORS:\n${mergedBenchmarkRequirements.map(r => `- ${r}`).join('\n')}`
+    : '';
+  const careerProfileBlock = careerProfile
+    ? `\n\nCAREER PROFILE:\nProfile summary: ${careerProfile.profile_summary}\nTarget roles: ${careerProfile.targeting.target_roles.join(', ') || 'Not yet defined'}\nCore strengths: ${careerProfile.positioning.core_strengths.join(', ') || 'Not yet defined'}\nProof themes: ${careerProfile.positioning.proof_themes.join(', ') || 'Not yet defined'}\nDifferentiators: ${careerProfile.positioning.differentiators.join(', ') || 'Not yet defined'}\nKnown for: ${careerProfile.narrative.known_for_what || 'Not yet defined'}\nConstraints: ${careerProfile.preferences.constraints.join(', ') || 'None recorded'}`
     : '';
 
   const systemPrompt = `You are running the final review for a tailored resume targeting the ${role_title} position at ${company_name}.
@@ -1599,7 +1607,7 @@ RULES:
 - Do not include markdown fences or commentary outside the JSON object.`;
 
   try {
-    const userPrompt = `FINAL TAILORED RESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}${requirementsList}${hiddenSignals}${benchmarkProfile}${benchmarkRequirementsList}\n\nRun the final review.`;
+    const userPrompt = `FINAL TAILORED RESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}${requirementsList}${hiddenSignals}${benchmarkProfile}${benchmarkRequirementsList}${careerProfileBlock}\n\nRun the final review.`;
 
     const response = await llm.chat({
       model: MODEL_PRIMARY,

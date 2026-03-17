@@ -14,8 +14,7 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createJobFinderProductConfig } from '../agents/job-finder/product.js';
 import { FF_JOB_FINDER } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { JobFinderState, JobFinderSSEEvent } from '../agents/job-finder/types.js';
@@ -46,51 +45,23 @@ export const jobFinderRoutes = createProductRoutes<JobFinderState, JobFinderSSEE
     if (!userId) return input;
 
     try {
-      const [
-        baseline,
-        strategyRows,
-        benchmarkRows,
-        gapRows,
-        evidenceRows,
-        narrativeRows,
-        industryRows,
-      ] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'benchmark_candidate'),
-        getUserContext(userId, 'gap_analysis'),
-        getUserContext(userId, 'evidence_item'),
-        getUserContext(userId, 'career_narrative'),
-        getUserContext(userId, 'industry_research'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-      if (benchmarkRows.length > 0) {
-        platformContext.benchmark_candidate = benchmarkRows[0].content;
-      }
-      if (gapRows.length > 0) {
-        platformContext.gap_analysis = gapRows[0].content;
-      }
-      if (evidenceRows.length > 0) {
-        platformContext.evidence_items = evidenceRows.map((r) => r.content);
-      }
-      if (narrativeRows.length > 0) {
-        platformContext.career_narrative = narrativeRows[0].content;
-      }
-      if (industryRows.length > 0) {
-        platformContext.industry_research = industryRows[0].content;
-      }
+      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeBenchmarkCandidate: true,
+        includeGapAnalysis: true,
+        includeEvidenceItems: true,
+        includeCareerNarrative: true,
+        includeIndustryResearch: true,
+        includeEmotionalBaseline: true,
+      });
 
       const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
-      if (baseline) {
-        result.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        result.emotional_baseline = emotionalBaseline;
       }
       return result;
     } catch (err) {

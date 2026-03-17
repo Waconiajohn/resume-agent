@@ -122,6 +122,14 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
           `Company: ${String(input.company_name ?? 'Unknown')}`,
         ];
 
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '',
+            '## Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+          );
+        }
+
         if (state.platform_context?.why_me_story) {
           parts.push(
             '',

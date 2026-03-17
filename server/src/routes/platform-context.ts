@@ -16,6 +16,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { listUserContextByType } from '../lib/platform-context.js';
 import type { ContextType } from '../lib/platform-context.js';
+import { loadCareerProfileContext } from '../lib/career-profile-context.js';
 import logger from '../lib/logger.js';
 
 const app = new Hono();
@@ -23,6 +24,7 @@ const app = new Hono();
 // ─── Context types surfaced to the frontend ───────────────────────────────────
 
 const SUMMARY_TYPES: ContextType[] = [
+  'career_profile',
   'positioning_strategy',
   'evidence_item',
   'career_narrative',
@@ -39,6 +41,8 @@ const SUMMARY_TYPES: ContextType[] = [
 // before they consume rate limit capacity.
 app.use('/summary', authMiddleware);
 app.use('/summary', rateLimitMiddleware(60, 60_000));
+app.use('/career-profile', authMiddleware);
+app.use('/career-profile', rateLimitMiddleware(30, 60_000));
 
 app.get('/summary', async (c) => {
   const user = c.get('user') as { id: string };
@@ -66,6 +70,21 @@ app.get('/summary', async (c) => {
     const message = err instanceof Error ? err.message : String(err);
     logger.error({ error: message, userId: user.id }, 'platform-context summary failed');
     return c.json({ error: 'Failed to load platform context summary' }, 500);
+  }
+});
+
+// ─── GET /career-profile ─────────────────────────────────────────────────────
+
+app.get('/career-profile', async (c) => {
+  const user = c.get('user') as { id: string };
+
+  try {
+    const careerProfile = await loadCareerProfileContext(user.id);
+    return c.json({ career_profile: careerProfile });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ error: message, userId: user.id }, 'career-profile context load failed');
+    return c.json({ error: 'Failed to load career profile context' }, 500);
   }
 });
 

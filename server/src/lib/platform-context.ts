@@ -22,6 +22,7 @@ export interface WhyMeContext {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ContextType =
+  | 'career_profile'
   | 'positioning_strategy'
   | 'evidence_item'
   | 'career_narrative'

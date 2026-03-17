@@ -14,6 +14,7 @@ import { assessorConfig } from './assessor/agent.js';
 import type { OnboardingState, OnboardingSSEEvent, ClientProfile, AssessmentSummary } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { upsertUserContext } from '../../lib/platform-context.js';
+import { loadCareerProfileContext } from '../../lib/career-profile-context.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 
@@ -86,9 +87,9 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
 
     buildAgentMessage: (agentName, state, input) => {
       if (agentName === 'assessor_questions') {
-        // Phase 1: Generate assessment questions
         const parts = [
-          'Conduct a brief onboarding assessment for a new user.',
+          'You are building or refining this candidate\'s Career Profile.',
+          'Use the available context to ask only the highest-value questions that will sharpen downstream resume, LinkedIn, job-search, and interview work.',
           '',
         ];
 
@@ -99,7 +100,10 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
           parts.push('## Resume', 'No resume provided yet — this user is starting fresh.', '');
         }
 
-        parts.push('Start by calling generate_questions to create 3-5 personalized assessment questions.');
+        parts.push(
+          'Focus on uncovering role direction, strengths with proof, real constraints, and truthful adjacent positioning.',
+          'Keep the first pass concise. Ask 3-5 personalized questions total and avoid repeating what is already well-supported by the resume or prior context.',
+        );
 
         // Distress resources — first invocation only (question generation pass)
         const distress = getDistressFromInput(input);
@@ -110,11 +114,27 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
           }
         }
 
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '',
+            '## Existing Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+          );
+        }
+
         if (state.platform_context?.positioning_strategy) {
           parts.push(
             '',
             '## Prior Positioning Strategy',
             JSON.stringify(state.platform_context.positioning_strategy, null, 2),
+          );
+        }
+
+        if (state.platform_context?.why_me_story) {
+          parts.push(
+            '',
+            '## Existing Why-Me Story',
+            JSON.stringify(state.platform_context.why_me_story, null, 2),
           );
         }
 
@@ -127,14 +147,22 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
       }
 
       if (agentName === 'assessor_evaluation') {
-        // Phase 2: Evaluate user responses and build profile
         const parts = [
+          'The user has answered the Career Profile assessment questions.',
           '## User Responses',
-          'The user has answered the assessment questions. Process their responses now.',
           JSON.stringify(state.responses, null, 2),
           '',
-          'Call evaluate_responses with these responses, then detect_financial_segment, then build_client_profile.',
+          'Use the responses, resume, and prior context to refine the candidate\'s direction, strengths, proof themes, constraints, urgency, and coaching tone.',
+          'You are responsible for producing an honest client profile that downstream agents can trust.',
         ];
+
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '',
+            '## Existing Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+          );
+        }
 
         if (state.platform_context?.positioning_strategy) {
           parts.push(
@@ -180,12 +208,14 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
           type: 'assessment_complete',
           session_id: state.session_id,
           profile: state.client_profile,
+          career_profile: state.career_profile,
           summary: state.assessment_summary,
         });
       }
 
       return {
         client_profile: state.client_profile,
+        career_profile: state.career_profile,
         assessment_summary: state.assessment_summary,
       };
     },
@@ -229,6 +259,25 @@ export function createOnboardingProductConfig(): ProductConfig<OnboardingState, 
         logger.warn(
           { error: err instanceof Error ? err.message : String(err), userId: state.user_id },
           'Onboarding: failed to persist platform context (non-fatal)',
+        );
+      }
+
+      try {
+        const careerProfile = await loadCareerProfileContext(state.user_id);
+        if (careerProfile) {
+          state.career_profile = careerProfile;
+          await upsertUserContext(
+            state.user_id,
+            'career_profile',
+            careerProfile as unknown as Record<string, unknown>,
+            'onboarding',
+            state.session_id,
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err), userId: state.user_id },
+          'Onboarding: failed to persist normalized career profile (non-fatal)',
         );
       }
     },

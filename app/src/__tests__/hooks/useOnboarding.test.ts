@@ -202,7 +202,7 @@ describe('useOnboarding', () => {
 
     const body = JSON.parse(respondCall[1].body);
     expect(body.session_id).toBe(sampleSessionId);
-    expect(body.gate).toBe('assessment_responses');
+    expect(body.gate).toBe('onboarding_assessment');
     expect(body.response).toEqual(responses);
   });
 

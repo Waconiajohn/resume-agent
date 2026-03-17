@@ -11,6 +11,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 // ─── Discovered Job ─────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ export interface JobFinderState extends BaseState {
 
   /** Cross-product context from resume and research pipelines */
   platform_context?: {
+    career_profile?: CareerProfileV2;
     positioning_strategy?: Record<string, unknown>;
     benchmark_candidate?: Record<string, unknown>;
     gap_analysis?: Record<string, unknown>;

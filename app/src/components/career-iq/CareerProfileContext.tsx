@@ -1,73 +1,102 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { trackProductEvent } from '@/lib/product-telemetry';
+import { useCareerProfileAgent } from '@/hooks/useCareerProfileAgent';
 import type { CareerProfileSummary } from './career-profile-summary';
-import { buildCareerProfileSummary } from './career-profile-summary';
-import { useWhyMeStory, type WhyMeStory } from './useWhyMeStory';
+import type { CareerProfileV2 } from '@/types/career-profile';
+import type { AssessmentQuestion, OnboardingStatus } from '@/types/onboarding';
+import type { ActivityMessage } from '@/types/activity';
 
 interface CareerProfileContextValue {
-  story: WhyMeStory;
-  updateField: (field: keyof WhyMeStory, value: string) => void;
-  signals: ReturnType<typeof useWhyMeStory>['signals'];
-  dashboardState: ReturnType<typeof useWhyMeStory>['dashboardState'];
+  profile: CareerProfileV2 | null;
+  story: ReturnType<typeof useCareerProfileAgent>['story'];
+  signals: ReturnType<typeof useCareerProfileAgent>['signals'];
+  dashboardState: ReturnType<typeof useCareerProfileAgent>['dashboardState'];
+  summary: CareerProfileSummary;
   isComplete: boolean;
   hasStarted: boolean;
   loading: boolean;
-  summary: CareerProfileSummary;
+  profileLoading: boolean;
+  profileError: string | null;
+  onboardingStatus: OnboardingStatus;
+  questions: AssessmentQuestion[];
+  activityMessages: ActivityMessage[];
+  currentStage: string | null;
+  startAssessment: (resumeText?: string) => Promise<boolean>;
+  submitResponses: (responses: Record<string, string>) => Promise<boolean>;
+  resetAssessment: () => void;
+  refreshProfile: () => Promise<CareerProfileV2 | null>;
 }
 
 const CareerProfileContext = createContext<CareerProfileContextValue | null>(null);
 
 export function CareerProfileProvider({ children }: { children: ReactNode }) {
-  const whyMe = useWhyMeStory();
+  const careerProfile = useCareerProfileAgent();
   const startedTrackedRef = useRef(false);
   const completedTrackedRef = useRef(false);
 
-  const summary = useMemo(
-    () => buildCareerProfileSummary(whyMe.story, whyMe.signals, whyMe.dashboardState),
-    [whyMe.story, whyMe.signals, whyMe.dashboardState],
-  );
-
   useEffect(() => {
-    if (whyMe.hasStarted && !startedTrackedRef.current) {
+    if (careerProfile.hasStarted && !startedTrackedRef.current) {
       trackProductEvent('career_profile_started', {
-        readiness_percent: summary.readinessPercent,
-        dashboard_state: whyMe.dashboardState,
+        readiness_percent: careerProfile.summary.readinessPercent,
+        dashboard_state: careerProfile.dashboardState,
       });
       startedTrackedRef.current = true;
     }
-    if (!whyMe.hasStarted) {
+    if (!careerProfile.hasStarted) {
       startedTrackedRef.current = false;
       completedTrackedRef.current = false;
     }
-  }, [summary.readinessPercent, whyMe.dashboardState, whyMe.hasStarted]);
+  }, [careerProfile.dashboardState, careerProfile.hasStarted, careerProfile.summary.readinessPercent]);
 
   useEffect(() => {
-    if (whyMe.isComplete && !completedTrackedRef.current) {
+    if (careerProfile.isComplete && !completedTrackedRef.current) {
       trackProductEvent('career_profile_completed', {
-        readiness_percent: summary.readinessPercent,
+        readiness_percent: careerProfile.summary.readinessPercent,
       });
       completedTrackedRef.current = true;
     }
-  }, [summary.readinessPercent, whyMe.isComplete]);
+  }, [careerProfile.isComplete, careerProfile.summary.readinessPercent]);
 
   useEffect(() => {
-    if (!whyMe.hasStarted || whyMe.isComplete) return undefined;
+    if (!careerProfile.hasStarted || careerProfile.isComplete) return undefined;
 
     const timeoutId = window.setTimeout(() => {
       trackProductEvent('career_profile_stalled', {
-        dashboard_state: whyMe.dashboardState,
-        readiness_percent: summary.readinessPercent,
-        focus_areas: summary.focusAreas,
+        dashboard_state: careerProfile.dashboardState,
+        readiness_percent: careerProfile.summary.readinessPercent,
+        focus_areas: careerProfile.summary.focusAreas,
       });
     }, 90000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [summary.focusAreas, summary.readinessPercent, whyMe.dashboardState, whyMe.hasStarted, whyMe.isComplete]);
+  }, [
+    careerProfile.dashboardState,
+    careerProfile.hasStarted,
+    careerProfile.isComplete,
+    careerProfile.summary.focusAreas,
+    careerProfile.summary.readinessPercent,
+  ]);
 
   const value = useMemo<CareerProfileContextValue>(() => ({
-    ...whyMe,
-    summary,
-  }), [summary, whyMe]);
+    profile: careerProfile.profile,
+    story: careerProfile.story,
+    signals: careerProfile.signals,
+    dashboardState: careerProfile.dashboardState,
+    summary: careerProfile.summary,
+    isComplete: careerProfile.isComplete,
+    hasStarted: careerProfile.hasStarted,
+    loading: careerProfile.loading || careerProfile.onboarding.status === 'generating_questions' || careerProfile.onboarding.status === 'evaluating',
+    profileLoading: careerProfile.profileLoading,
+    profileError: careerProfile.profileError ?? careerProfile.onboarding.error,
+    onboardingStatus: careerProfile.onboarding.status,
+    questions: careerProfile.onboarding.questions,
+    activityMessages: careerProfile.onboarding.activityMessages,
+    currentStage: careerProfile.onboarding.currentStage,
+    startAssessment: careerProfile.startAssessment,
+    submitResponses: careerProfile.onboarding.respondToGate,
+    resetAssessment: careerProfile.onboarding.reset,
+    refreshProfile: careerProfile.refreshProfile,
+  }), [careerProfile]);
 
   return (
     <CareerProfileContext.Provider value={value}>

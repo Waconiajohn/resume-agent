@@ -155,7 +155,7 @@ function SmartMatches({
           <h3 className="text-[15px] font-semibold text-white/85">Smart Matches</h3>
         </div>
         <p className="text-[12px] text-white/35 mb-4">
-          AI-curated roles matched to your Why-Me story. Run the Job Finder to discover your best
+          AI-curated roles matched to your Career Profile. Run the Job Finder to discover your best
           opportunities.
         </p>
         <GlassButton onClick={onRunFinder} className="w-full">
@@ -292,7 +292,7 @@ function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearc
         <h3 className="text-[15px] font-semibold text-white/85">Boolean Search Builder</h3>
       </div>
       <p className="text-[12px] text-white/35 mb-4">
-        AI-generated search strings optimized for each platform. Based on your Why-Me story and
+        AI-generated search strings optimized for each platform. Based on your Career Profile and
         target roles.
       </p>
 
@@ -842,10 +842,10 @@ export function JobCommandCenterRoom({
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Job Command Center</h1>
         <p className="text-[13px] text-white/40">
-          AI-surfaced roles matching your Why-Me story, smart search tools, and pipeline management.
+          AI-surfaced roles matching your Career Profile, smart search tools, and pipeline management.
         </p>
         <ContextLoadedBadge
-          contextTypes={['positioning_strategy']}
+          contextTypes={['career_profile', 'positioning_strategy']}
           className="mt-2"
         />
       </div>

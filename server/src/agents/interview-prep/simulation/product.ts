@@ -107,6 +107,13 @@ export function createMockInterviewProductConfig(): ProductConfig<MockInterviewS
       }
 
       // Platform context enrichment
+      if (state.platform_context?.career_profile) {
+        parts.push(
+          '',
+          '## Career Profile',
+          JSON.stringify(state.platform_context.career_profile, null, 2),
+        );
+      }
       if (state.platform_context?.positioning_strategy) {
         parts.push(
           '',

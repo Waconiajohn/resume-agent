@@ -1,4 +1,20 @@
-import type { DashboardState, WhyMeSignals, WhyMeStory } from './useWhyMeStory';
+import type {
+  CareerProfileDashboardState,
+  CareerProfileSignalLevel,
+  CareerProfileV2,
+} from '@/types/career-profile';
+
+export interface CareerProfileStory {
+  colleaguesCameForWhat: string;
+  knownForWhat: string;
+  whyNotMe: string;
+}
+
+export interface CareerProfileSignals {
+  clarity: CareerProfileSignalLevel;
+  alignment: CareerProfileSignalLevel;
+  differentiation: CareerProfileSignalLevel;
+}
 
 export type CareerProfileNextRoom = 'career-profile' | 'resume' | 'jobs';
 
@@ -15,14 +31,6 @@ export interface CareerProfileSummary {
   nextRecommendedAction: string;
 }
 
-function signalWeight(level: WhyMeSignals[keyof WhyMeSignals]): number {
-  return {
-    green: 100,
-    yellow: 65,
-    red: 20,
-  }[level];
-}
-
 function clipText(text: string, maxLength = 110): string {
   const trimmed = text.trim();
   if (!trimmed) return '';
@@ -30,59 +38,77 @@ function clipText(text: string, maxLength = 110): string {
   return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
-function buildHighlightPoints(story: WhyMeStory): string[] {
-  const candidates = [
+export function deriveCareerProfileStory(profile: CareerProfileV2 | null): CareerProfileStory {
+  return {
+    colleaguesCameForWhat: profile?.narrative.colleagues_came_for_what ?? '',
+    knownForWhat: profile?.narrative.known_for_what ?? '',
+    whyNotMe: profile?.narrative.why_not_me ?? '',
+  };
+}
+
+export function deriveCareerProfileSignals(profile: CareerProfileV2 | null): CareerProfileSignals {
+  return {
+    clarity: profile?.profile_signals.clarity ?? 'red',
+    alignment: profile?.profile_signals.alignment ?? 'red',
+    differentiation: profile?.profile_signals.differentiation ?? 'red',
+  };
+}
+
+export function deriveCareerProfileDashboardState(profile: CareerProfileV2 | null): CareerProfileDashboardState {
+  return profile?.completeness.dashboard_state ?? 'new-user';
+}
+
+export function buildCareerProfileSummary(profile: CareerProfileV2 | null): CareerProfileSummary {
+  const story = deriveCareerProfileStory(profile);
+  const dashboardState = deriveCareerProfileDashboardState(profile);
+  const readinessPercent = profile?.completeness.overall_score ?? 0;
+
+  const focusAreas = profile?.completeness.sections
+    .filter((section) => section.status !== 'ready')
+    .map((section) => section.summary) ?? [];
+
+  const primaryStory = clipText(
+    story.knownForWhat
+      || profile?.positioning.positioning_statement
+      || profile?.profile_summary
+      || 'Define the core story you want every tool to use on your behalf.',
+    140,
+  );
+
+  const strengthSnapshot = clipText(
+    story.colleaguesCameForWhat
+      || profile?.positioning.core_strengths[0]
+      || 'Add a short explanation of the work people already trust you to do.',
+    120,
+  );
+
+  const differentiationSnapshot = clipText(
+    story.whyNotMe
+      || profile?.positioning.differentiators[0]
+      || profile?.positioning.adjacent_positioning[0]
+      || 'Capture the adjacent experience or edge that makes you competitive.',
+    120,
+  );
+
+  const highlightPoints = [
+    ...profile?.evidence_positioning_statements ?? [],
     story.colleaguesCameForWhat,
     story.knownForWhat,
     story.whyNotMe,
   ]
     .map((value) => clipText(value, 88))
-    .filter(Boolean);
-
-  return candidates.slice(0, 3);
-}
-
-export function buildCareerProfileSummary(
-  story: WhyMeStory,
-  signals: WhyMeSignals,
-  dashboardState: DashboardState,
-): CareerProfileSummary {
-  const readinessPercent = Math.round(
-    (signalWeight(signals.clarity) + signalWeight(signals.alignment) + signalWeight(signals.differentiation)) / 3,
-  );
-
-  const focusAreas: string[] = [];
-  if (signals.clarity !== 'green') {
-    focusAreas.push('Clarify the work people come to you for.');
-  }
-  if (signals.alignment !== 'green') {
-    focusAreas.push('Tighten the statement about what you want to be known for.');
-  }
-  if (signals.differentiation !== 'green') {
-    focusAreas.push('Strengthen the proof of why you are a better-fit candidate.');
-  }
+    .filter(Boolean)
+    .slice(0, 3);
 
   const readyForResume = dashboardState === 'strong';
-  const primaryStory = clipText(
-    story.knownForWhat
-      || story.colleaguesCameForWhat
-      || 'Define the core story you want every tool to use on your behalf.',
-    140,
-  );
-  const strengthSnapshot = clipText(
-    story.colleaguesCameForWhat
-      || 'Add a short explanation of the work people already trust you to do.',
-    120,
-  );
-  const differentiationSnapshot = clipText(
-    story.whyNotMe
-      || 'Capture the adjacent experience or edge that makes you competitive.',
-    120,
-  );
 
   return {
     readinessPercent,
-    readinessLabel: readyForResume ? 'Platform-ready' : dashboardState === 'refining' ? 'Needs refinement' : 'Not started',
+    readinessLabel: readyForResume
+      ? 'Platform-ready'
+      : dashboardState === 'refining'
+        ? 'Needs refinement'
+        : 'Not started',
     statusLine: readyForResume
       ? 'This profile is strong enough to guide resume, job-search, LinkedIn, and interview work.'
       : dashboardState === 'refining'
@@ -91,7 +117,7 @@ export function buildCareerProfileSummary(
     primaryStory,
     strengthSnapshot,
     differentiationSnapshot,
-    highlightPoints: buildHighlightPoints(story),
+    highlightPoints,
     focusAreas,
     nextRecommendedRoom: readyForResume ? 'resume' : 'career-profile',
     nextRecommendedAction: readyForResume ? 'Open Resume Builder' : 'Finish Career Profile',

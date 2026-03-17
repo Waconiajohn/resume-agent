@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 
 // Human-readable labels for each context type
 const CONTEXT_LABELS: Record<string, string> = {
+  career_profile: 'career profile',
   positioning_strategy: 'positioning strategy',
   evidence_item: 'evidence items',
   career_narrative: 'career narrative',
@@ -29,6 +30,7 @@ const CONTEXT_LABELS: Record<string, string> = {
 
 // Priority order for selecting which label to surface in the badge
 const PRIORITY_ORDER = [
+  'career_profile',
   'positioning_strategy',
   'career_narrative',
   'evidence_item',

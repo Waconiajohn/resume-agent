@@ -139,7 +139,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
           <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-4 py-3 flex items-center gap-3">
             <Sparkles size={16} className="text-[#98b3ff] flex-shrink-0" />
             <p className="text-[13px] text-[#98b3ff]/70">
-              Strengthen your Clarity signal first — your posts will have sharper positioning once your Why-Me story is defined.
+              Strengthen your Clarity signal first — your posts will have sharper positioning once your Career Profile is defined.
             </p>
           </div>
         )}
@@ -451,7 +451,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
           <div className="rounded-xl border border-[#98b3ff]/15 bg-[#98b3ff]/[0.04] px-4 py-3 flex items-center gap-3">
             <Sparkles size={16} className="text-[#98b3ff] flex-shrink-0" />
             <p className="text-[13px] text-[#98b3ff]/70">
-              Strengthen your Clarity signal first — your LinkedIn sections will be sharper once your Why-Me story is defined.
+              Strengthen your Clarity signal first — your LinkedIn sections will be sharper once your Career Profile is defined.
             </p>
           </div>
         )}
@@ -751,7 +751,7 @@ const SECTION_SCORE_CONFIG: {
   icon: React.ComponentType<{ size: number; className?: string }>;
 }[] = [
   { key: 'headline', label: 'Headline', description: 'Positioning statement quality', icon: Zap },
-  { key: 'about', label: 'About', description: 'Why Me narrative depth', icon: Eye },
+  { key: 'about', label: 'About', description: 'Career Profile narrative depth', icon: Eye },
   { key: 'keywords', label: 'Keywords', description: 'Search discoverability', icon: Search },
   { key: 'experience', label: 'Experience', description: 'Impact framing', icon: TrendingUp },
 ];
@@ -1524,7 +1524,7 @@ export function LinkedInStudioRoom({ signals, careerProfileSummary, onOpenCareer
             Write posts, optimize your profile, plan your content strategy, and track your LinkedIn presence.
           </p>
           <ContextLoadedBadge
-            contextTypes={['positioning_strategy', 'emotional_baseline']}
+            contextTypes={['career_profile', 'positioning_strategy', 'emotional_baseline']}
             className="mt-2"
           />
         </div>

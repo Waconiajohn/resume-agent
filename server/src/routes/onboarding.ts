@@ -14,8 +14,7 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createOnboardingProductConfig } from '../agents/onboarding/product.js';
 import { FF_ONBOARDING } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { OnboardingState, OnboardingSSEEvent } from '../agents/onboarding/types.js';
@@ -48,22 +47,19 @@ export const onboardingRoutes = createProductRoutes<OnboardingState, OnboardingS
     const transformed: Record<string, unknown> = { ...input };
 
     try {
-      const [baseline, strategyRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
+      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeWhyMeStory: true,
+        includeClientProfile: true,
+        includeEmotionalBaseline: true,
+      });
 
       if (Object.keys(platformContext).length > 0) {
         transformed.platform_context = platformContext;
       }
-      if (baseline) {
-        transformed.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        transformed.emotional_baseline = emotionalBaseline;
       }
     } catch (err) {
       logger.warn(

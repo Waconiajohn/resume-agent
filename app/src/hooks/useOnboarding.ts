@@ -323,7 +323,7 @@ export function useOnboarding(options?: {
           },
           body: JSON.stringify({
             session_id: sessionId,
-            gate: 'assessment_responses',
+            gate: 'onboarding_assessment',
             response: responses,
           }),
         });

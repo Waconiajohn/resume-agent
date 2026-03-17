@@ -13,8 +13,7 @@ import { z } from 'zod';
 import { createProductRoutes } from './product-route-factory.js';
 import { createLinkedInOptimizerProductConfig } from '../agents/linkedin-optimizer/product.js';
 import { FF_LINKEDIN_OPTIMIZER } from '../lib/feature-flags.js';
-import { getUserContext } from '../lib/platform-context.js';
-import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import type { LinkedInOptimizerState, LinkedInOptimizerSSEEvent } from '../agents/linkedin-optimizer/types.js';
@@ -51,42 +50,20 @@ export const linkedInOptimizerRoutes = createProductRoutes<LinkedInOptimizerStat
     if (!userId) return input;
 
     try {
-      const [baseline, strategyRows, evidenceRows, whyMeRows] = await Promise.all([
-        getEmotionalBaseline(userId),
-        getUserContext(userId, 'positioning_strategy'),
-        getUserContext(userId, 'evidence_item'),
-        supabaseAdmin
-          .from('why_me_stories')
-          .select('colleagues_came_for_what, known_for_what, why_not_me')
-          .eq('user_id', userId)
-          .maybeSingle()
-          .then(r => r.data),
-      ]);
-
-      const platformContext: Record<string, unknown> = {};
-
-      if (strategyRows.length > 0) {
-        platformContext.positioning_strategy = strategyRows[0].content;
-      }
-
-      if (evidenceRows.length > 0) {
-        platformContext.evidence_items = evidenceRows.map((r) => r.content);
-      }
-
-      if (whyMeRows) {
-        platformContext.why_me_story = {
-          colleaguesCameForWhat: whyMeRows.colleagues_came_for_what ?? '',
-          knownForWhat: whyMeRows.known_for_what ?? '',
-          whyNotMe: whyMeRows.why_not_me ?? '',
-        };
-      }
+      const { platformContext, emotionalBaseline } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeEvidenceItems: true,
+        includeWhyMeStory: true,
+        includeEmotionalBaseline: true,
+      });
 
       const result: Record<string, unknown> = { ...input };
       if (Object.keys(platformContext).length > 0) {
         result.platform_context = platformContext;
       }
-      if (baseline) {
-        result.emotional_baseline = baseline;
+      if (emotionalBaseline) {
+        result.emotional_baseline = emotionalBaseline;
       }
       return result;
     } catch (err) {

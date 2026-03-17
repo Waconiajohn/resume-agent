@@ -48,6 +48,10 @@ vi.mock('../lib/platform-context.js', () => ({
   upsertUserContext: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock('../lib/career-profile-context.js', () => ({
+  loadCareerProfileContext: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock('../lib/json-repair.js', () => ({
   repairJSON: vi.fn((text: string) => text),
 }));
@@ -1435,10 +1439,11 @@ describe('Onboarding ProductConfig', () => {
     expect(state.responses).toEqual({});
   });
 
-  it('buildAgentMessage for assessor_questions instructs generate_questions', () => {
+  it('buildAgentMessage for assessor_questions frames a Career Profile discovery pass', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     const msg = config.buildAgentMessage('assessor_questions', state, {});
-    expect(msg).toContain('generate_questions');
+    expect(msg).toContain('Career Profile');
+    expect(msg).toContain('highest-value questions');
   });
 
   it('buildAgentMessage for assessor_questions includes resume when resume_text is provided', () => {
@@ -1450,11 +1455,12 @@ describe('Onboarding ProductConfig', () => {
     expect(msg).toContain('John Doe');
   });
 
-  it('buildAgentMessage for assessor_evaluation instructs evaluate_responses', () => {
+  it('buildAgentMessage for assessor_evaluation frames truthful profile refinement', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     state.responses = { q1: 'I was VP Engineering', q2: 'I need to find something in 2-3 months' };
     const msg = config.buildAgentMessage('assessor_evaluation', state, {});
-    expect(msg).toContain('evaluate_responses');
+    expect(msg).toContain('honest client profile');
+    expect(msg).toContain('Career Profile assessment questions');
   });
 
   it('buildAgentMessage for assessor_evaluation includes user responses JSON', () => {

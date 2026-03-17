@@ -1176,7 +1176,7 @@ export function InterviewLabRoom({
             Prepare for every interview with AI-powered company research, predicted questions, and practice sessions.
           </p>
           <ContextLoadedBadge
-            contextTypes={['positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
+            contextTypes={['career_profile', 'positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
             className="mt-2"
           />
         </div>

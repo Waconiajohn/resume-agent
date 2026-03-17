@@ -96,6 +96,14 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
           '',
         ];
 
+        if (platformCtx?.career_profile) {
+          parts.push(
+            '## Career Profile',
+            JSON.stringify(platformCtx.career_profile, null, 2),
+            '',
+          );
+        }
+
         // NI data summary
         const hasNiData = !!platformCtx;
         if (hasNiData) {

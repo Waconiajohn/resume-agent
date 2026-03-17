@@ -9,6 +9,8 @@
  * See: ADR-042
  */
 
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+
 // ─── Agent 1: Job Intelligence ───────────────────────────────────────
 
 export interface JobIntelligenceInput {
@@ -112,6 +114,7 @@ export interface GapAnalysisInput {
   candidate: CandidateIntelligenceOutput;
   benchmark: BenchmarkCandidateOutput;
   job_intelligence: JobIntelligenceOutput;
+  career_profile?: CareerProfileV2;
   /** Additional context provided by user after reviewing initial draft */
   user_context?: string;
 }
@@ -210,6 +213,7 @@ export interface NarrativeStrategyInput {
   gap_analysis: GapAnalysisOutput;
   candidate: CandidateIntelligenceOutput;
   job_intelligence: JobIntelligenceOutput;
+  career_profile?: CareerProfileV2;
   /** Strategies the user approved from gap analysis */
   approved_strategies: Array<{
     requirement: string;
@@ -265,6 +269,7 @@ export interface ResumeWriterInput {
   benchmark: BenchmarkCandidateOutput;
   gap_analysis: GapAnalysisOutput;
   narrative: NarrativeStrategyOutput;
+  career_profile?: CareerProfileV2;
   approved_strategies: Array<{
     requirement: string;
     strategy: GapStrategy;
@@ -491,6 +496,7 @@ export interface V2PipelineState {
   resume_text: string;
   job_description: string;
   user_context?: string;
+  career_profile?: CareerProfileV2;
 
   // Agent outputs (populated as pipeline progresses)
   job_intelligence?: JobIntelligenceOutput;

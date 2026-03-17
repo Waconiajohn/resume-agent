@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import { useCareerProfile } from './CareerProfileContext';
+import { CareerProfileRoom } from './CareerProfileRoom';
 import { RoomSkeleton } from '@/components/shared/RoomSkeleton';
 import { DashboardHome } from './DashboardHome';
-import { WhyMeEngine } from './WhyMeEngine';
 import { MobileBriefing } from './MobileBriefing';
 import { useMediaQuery } from './useMediaQuery';
 import { useMomentum } from '@/hooks/useMomentum';
@@ -135,7 +135,22 @@ export function CareerIQScreen({
   onDeleteResume,
 }: CareerIQScreenProps) {
   const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toValidRoom(initialRoom));
-  const { story, updateField, signals, dashboardState, summary } = useCareerProfile();
+  const {
+    profile,
+    story,
+    signals,
+    dashboardState,
+    summary,
+    profileLoading,
+    profileError,
+    onboardingStatus,
+    questions,
+    activityMessages,
+    currentStage,
+    startAssessment,
+    submitResponses,
+    resetAssessment,
+  } = useCareerProfile();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
@@ -313,14 +328,19 @@ export function CareerIQScreen({
 
     if (activeRoom === 'career-profile') {
       return (
-        <div className="mx-auto max-w-4xl p-6">
-          <WhyMeEngine
-            story={story}
-            signals={signals}
-            onUpdate={updateField}
-            onClose={() => handleRoomNavigate('dashboard')}
-          />
-        </div>
+        <CareerProfileRoom
+          profile={profile}
+          summary={summary}
+          profileLoading={profileLoading}
+          profileError={profileError}
+          onboardingStatus={onboardingStatus}
+          questions={questions}
+          activityMessages={activityMessages}
+          currentStage={currentStage}
+          onStartAssessment={() => startAssessment()}
+          onSubmitResponses={submitResponses}
+          onResetAssessment={resetAssessment}
+        />
       );
     }
 

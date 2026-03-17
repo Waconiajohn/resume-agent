@@ -272,6 +272,21 @@ function buildUserMessage(input: NarrativeStrategyInput): string {
       .map(r => `- ${r.requirement}: ${r.strategy!.positioning}`),
   ];
 
+  if (input.career_profile) {
+    parts.push(
+      '',
+      '## Career Profile',
+      `Profile summary: ${input.career_profile.profile_summary}`,
+      `Target roles: ${input.career_profile.targeting.target_roles.join(', ') || 'Not yet defined'}`,
+      `Target industries: ${input.career_profile.targeting.target_industries.join(', ') || 'Not yet defined'}`,
+      `Core strengths: ${input.career_profile.positioning.core_strengths.join(', ') || 'Not yet defined'}`,
+      `Proof themes: ${input.career_profile.positioning.proof_themes.join(', ') || 'Not yet defined'}`,
+      `Differentiators: ${input.career_profile.positioning.differentiators.join(', ') || 'Not yet defined'}`,
+      `Known for: ${input.career_profile.narrative.known_for_what || 'Not yet defined'}`,
+      `Adjacent positioning: ${input.career_profile.positioning.adjacent_positioning.join(', ') || 'Not yet defined'}`,
+    );
+  }
+
   if (input.approved_strategies.length > 0) {
     parts.push(
       '',

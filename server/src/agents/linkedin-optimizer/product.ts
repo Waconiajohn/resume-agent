@@ -99,6 +99,14 @@ export function createLinkedInOptimizerProductConfig(): ProductConfig<LinkedInOp
           parts.push(`Target Industry: ${String(input.target_industry)}`);
         }
 
+        if (state.platform_context?.career_profile) {
+          parts.push(
+            '',
+            '## Career Profile',
+            JSON.stringify(state.platform_context.career_profile, null, 2),
+          );
+        }
+
         if (state.platform_context?.why_me_story) {
           parts.push(
             '',

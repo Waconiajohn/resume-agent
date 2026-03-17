@@ -9,6 +9,7 @@
  */
 
 import type { BaseState } from '../../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../../lib/career-profile-context.js';
 
 // ─── Question & Evaluation Types ─────────────────────────────────────
 
@@ -63,6 +64,7 @@ export interface MockInterviewState extends BaseState {
   company_name?: string;
   /** Cross-product context from prior CareerIQ sessions */
   platform_context?: {
+    career_profile?: CareerProfileV2;
     positioning_strategy?: Record<string, unknown>;
     why_me_story?: Record<string, unknown>;
     evidence_items?: Record<string, unknown>[];

@@ -31,6 +31,7 @@ import type {
   GapCoachingCard,
   GapAnalysisOutput,
 } from './types.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 export type EmitFn = (event: V2PipelineSSEEvent) => void;
 
@@ -41,6 +42,7 @@ export interface RunPipelineOptions {
   user_id: string;
   emit: EmitFn;
   signal?: AbortSignal;
+  career_profile?: CareerProfileV2;
   /** Pre-approved strategies (from "Add Context" re-run) */
   approved_strategies?: Array<{ requirement: string; strategy: GapStrategy }>;
   /** Additional context from user */
@@ -60,6 +62,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     resume_text: options.resume_text,
     job_description: options.job_description,
     user_context: options.user_context,
+    career_profile: options.career_profile,
     approved_strategies: options.approved_strategies ?? [],
     token_usage: { input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 },
   };
@@ -120,6 +123,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       candidate: candidateIntel,
       benchmark,
       job_intelligence: jobIntel,
+      career_profile: options.career_profile,
       user_context: options.user_context,
     }, signal);
 
@@ -195,6 +199,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       gap_analysis: gapAnalysis,
       candidate: candidateIntel,
       job_intelligence: jobIntel,
+      career_profile: options.career_profile,
       approved_strategies: allApproved,
       benchmark_differentiators: benchmark.differentiators,
     }, signal);
@@ -216,6 +221,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
       benchmark,
       gap_analysis: gapAnalysis,
       narrative,
+      career_profile: options.career_profile,
       approved_strategies: allApproved,
     }, signal);
 

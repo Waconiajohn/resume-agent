@@ -11,6 +11,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 
 // ─── Financial Segments ────────────────────────────────────────────
 
@@ -139,11 +140,18 @@ export interface OnboardingState extends BaseState {
 
   /** Final output — stored in platform context on completion */
   client_profile?: ClientProfile;
+  career_profile?: CareerProfileV2;
 
   /** Cross-product context from any prior platform interactions */
   platform_context?: {
     positioning_strategy?: Record<string, unknown>;
     prior_profile?: Record<string, unknown>;
+    career_profile?: CareerProfileV2;
+    why_me_story?: {
+      colleaguesCameForWhat: string;
+      knownForWhat: string;
+      whyNotMe: string;
+    };
   };
 }
 
@@ -159,6 +167,7 @@ export type OnboardingSSEEvent =
       type: 'assessment_complete';
       session_id: string;
       profile: ClientProfile;
+      career_profile?: CareerProfileV2;
       summary: AssessmentSummary;
     }
   | {

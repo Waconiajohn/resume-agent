@@ -226,6 +226,21 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `Competency themes: ${input.narrative.section_guidance.competency_themes.join(', ')}`,
     `Accomplishment priorities: ${input.narrative.section_guidance.accomplishment_priorities.join('; ')}`,
     '',
+  ];
+
+  if (input.career_profile) {
+    parts.push(
+      '## CAREER PROFILE',
+      `Profile summary: ${input.career_profile.profile_summary}`,
+      `Core strengths: ${input.career_profile.positioning.core_strengths.join(', ') || 'Not yet defined'}`,
+      `Proof themes: ${input.career_profile.positioning.proof_themes.join(', ') || 'Not yet defined'}`,
+      `Differentiators: ${input.career_profile.positioning.differentiators.join(', ') || 'Not yet defined'}`,
+      `Constraints: ${input.career_profile.preferences.constraints.join(', ') || 'None recorded'}`,
+      '',
+    );
+  }
+
+  parts.push(
     '## CANDIDATE CONTACT INFO (use exactly)',
     `Name: ${input.candidate.contact.name}`,
     `Email: ${input.candidate.contact.email}`,
@@ -234,7 +249,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     `Location: ${input.candidate.contact.location ?? 'not provided'}`,
     '',
     '## CANDIDATE EXPERIENCE (source material)',
-  ];
+  );
 
   for (const exp of input.candidate.experience) {
     const scope = exp.inferred_scope
