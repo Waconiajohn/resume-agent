@@ -119,11 +119,11 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
             <div className="flex items-center gap-2 mb-1">
               <Sparkles size={16} className="text-[#98b3ff]" />
               <span className="text-[11px] font-medium text-[#98b3ff] uppercase tracking-widest">
-                Your Why-Me Story
+                Career Profile
               </span>
             </div>
             <p className="text-[13px] text-white/45">
-              Three questions that unlock your entire positioning strategy
+              Three questions that sharpen the story every tool uses
             </p>
           </div>
           <StepIndicator currentStep={currentStep} signals={signals} />
@@ -187,7 +187,7 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
           <div className="flex items-center gap-3">
             {onClose && allComplete && (
               <GlassButton variant="primary" onClick={onClose}>
-                Go to Dashboard
+                Back to Workspace Home
                 <ChevronRight size={16} className="ml-1" />
               </GlassButton>
             )}

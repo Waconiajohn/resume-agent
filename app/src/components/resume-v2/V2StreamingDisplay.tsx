@@ -8,11 +8,12 @@
  * The split-screen activates once the resume exists (after gap coaching gate).
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, Shield, Undo2, Redo2, ChevronDown, ChevronRight, Database, Save } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, Shield, Undo2, Redo2, ChevronDown, ChevronRight, Database, Save, Square, SquareCheckBig } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import type { V2PipelineData, V2Stage, ResumeDraft, JobIntelligence, CandidateIntelligence, BenchmarkCandidate, NarrativeStrategy } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
+import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
 import type { EditAction, PendingEdit } from '@/hooks/useInlineEdit';
 import { JobIntelligenceCard } from './cards/JobIntelligenceCard';
 import { CandidateIntelligenceCard } from './cards/CandidateIntelligenceCard';
@@ -31,11 +32,15 @@ import { WhatChangedCard } from './cards/WhatChangedCard';
 import { PreScoreReportCard } from './cards/PreScoreReportCard';
 import { ScoringReportCard } from './cards/ScoringReportCard';
 import { HiringManagerReviewCard } from './cards/HiringManagerReviewCard';
-import { GapAnalysisReportPanel } from './panels/GapAnalysisReportPanel';
+import { RewriteQueuePanel } from './panels/RewriteQueuePanel';
 import type { HiringManagerReviewResult, HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 import type { GapChatHook } from '@/hooks/useGapChat';
+import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 import type { GapChatContext } from '@/types/resume-v2';
 import { scrollToBullet } from './useStrategyThread';
+import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
+import { ReviewInboxCard } from './cards/ReviewInboxCard';
+import { buildRewriteQueue } from '@/lib/rewrite-queue';
 
 interface V2StreamingDisplayProps {
   data: V2PipelineData;
@@ -66,12 +71,25 @@ interface V2StreamingDisplayProps {
   previousResume?: ResumeDraft | null;
   onDismissChanges?: () => void;
   hiringManagerResult?: HiringManagerReviewResult | null;
+  resolvedFinalReviewConcernIds?: string[];
+  isFinalReviewStale?: boolean;
+  finalReviewWarningsAcknowledged?: boolean;
+  onAcknowledgeFinalReviewWarnings?: () => void;
   isHiringManagerLoading?: boolean;
   hiringManagerError?: string | null;
   onRequestHiringManagerReview?: () => void;
-  onApplyHiringManagerRecommendation?: (concern: HiringManagerConcern) => void;
+  onApplyHiringManagerRecommendation?: (
+    concern: HiringManagerConcern,
+    languageOverride?: string,
+    candidateInputUsed?: boolean,
+  ) => void;
   gapChat?: GapChatHook | null;
+  gapChatSnapshot?: CoachingThreadSnapshot | null;
   buildChatContext?: (requirement: string) => GapChatContext;
+  finalReviewChat?: FinalReviewChatHook | null;
+  finalReviewChatSnapshot?: CoachingThreadSnapshot | null;
+  buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
+  postReviewPolish?: PostReviewPolishState;
   masterSaveMode?: 'session_only' | 'master_resume';
   onChangeMasterSaveMode?: (mode: 'session_only' | 'master_resume') => void;
   onSaveCurrentToMaster?: () => void;
@@ -80,6 +98,11 @@ interface V2StreamingDisplayProps {
     tone: 'neutral' | 'success' | 'error';
     message: string;
   };
+  promotableMasterItems?: MasterPromotionItem[];
+  selectedMasterPromotionIds?: string[];
+  onToggleMasterPromotionItem?: (itemId: string) => void;
+  onSelectAllMasterPromotionItems?: () => void;
+  onClearMasterPromotionItems?: () => void;
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -289,6 +312,345 @@ function MasterResumeSyncCard({
   );
 }
 
+function MasterResumePromotionCard({
+  items,
+  selectedIds,
+  onToggleItem,
+  onSelectAll,
+  onClearAll,
+}: {
+  items: MasterPromotionItem[];
+  selectedIds: string[];
+  onToggleItem?: (itemId: string) => void;
+  onSelectAll?: () => void;
+  onClearAll?: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03] p-2">
+          <Save className="h-4 w-4 text-white/55" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-white/78">Choose what gets promoted to your master resume</p>
+          <p className="mt-1 text-sm leading-6 text-white/55">
+            Only checked AI-created edits will be added to the master resume. This keeps one-off tailoring out while preserving reusable bullets and accomplishments.
+          </p>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-xs leading-5 text-white/50">
+          No accepted AI-created bullets or accomplishments are available to promote yet. Accept a tailored edit first, then choose whether it should become part of your master resume.
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <span className="text-white/48">
+              {selectedIds.length} of {items.length} promotable edit{items.length === 1 ? '' : 's'} selected
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onSelectAll}
+                className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-white/68 transition-colors hover:bg-white/[0.06] hover:text-white/86"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={onClearAll}
+                className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-white/48 transition-colors hover:bg-white/[0.05] hover:text-white/72"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {items.map((item) => {
+              const checked = selectedIds.includes(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onToggleItem?.(item.id)}
+                  className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                    checked
+                      ? 'border-[#afc4ff]/22 bg-[#afc4ff]/[0.06]'
+                      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0 text-[#afc4ff]">
+                      {checked ? <SquareCheckBig className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-white/82">{item.label}</p>
+                        <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-white/38">
+                          {item.category.replaceAll('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-white/42">{item.section}</p>
+                      <p className="mt-2 text-sm leading-6 text-white/72">{item.text}</p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function countAcceptedTailoredEdits(resume: ResumeDraft | null | undefined): number {
+  if (!resume) return 0;
+
+  let count = 0;
+  if (resume.executive_summary.is_new) count++;
+  count += resume.selected_accomplishments.filter((item) => item.is_new).length;
+  for (const experience of resume.professional_experience) {
+    if (experience.scope_statement_is_new) count++;
+    count += experience.bullets.filter((bullet) => bullet.is_new).length;
+  }
+  return count;
+}
+
+function countOriginalEvidence(resume: ResumeDraft | null | undefined): number {
+  if (!resume) return 0;
+
+  let count = resume.selected_accomplishments.filter((item) => !item.is_new).length;
+  for (const experience of resume.professional_experience) {
+    if (!experience.scope_statement_is_new && experience.scope_statement) count++;
+    count += experience.bullets.filter((bullet) => !bullet.is_new).length;
+  }
+  return count;
+}
+
+function GuidedWorkflowCard({
+  hasFinalReview,
+  isFinalReviewStale,
+  unresolvedCriticalCount,
+  coverageAddressed,
+  coverageTotal,
+  queueSummary,
+  nextQueueItemLabel,
+  postReviewPolish,
+}: {
+  hasFinalReview: boolean;
+  isFinalReviewStale: boolean;
+  unresolvedCriticalCount: number;
+  coverageAddressed: number;
+  coverageTotal: number;
+  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number };
+  nextQueueItemLabel?: string;
+  postReviewPolish?: PostReviewPolishState;
+}) {
+  const queueNeedsAttention = queueSummary.needsAttention;
+  const queuePartials = queueSummary.partiallyAddressed;
+  const hasActiveQueueWork = queueNeedsAttention > 0 || queuePartials > 0;
+
+  const currentStep = hasActiveQueueWork
+    ? 'gap_analysis'
+    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0 || postReviewPolish?.status === 'running'
+      ? 'quality_review'
+      : 'section_writing';
+
+  const nextOverride = queueNeedsAttention > 0
+    ? `Next: work the highest-priority queue item${nextQueueItemLabel ? `, starting with "${nextQueueItemLabel}".` : '.'}`
+    : queuePartials > 0
+      ? 'Next: tighten the partially addressed queue items so the proof is stronger before export.'
+      : !hasFinalReview
+        ? 'Next: run Final Review to pressure-test the draft before export.'
+        : isFinalReviewStale
+          ? 'Next: rerun Final Review because the resume changed after the last review.'
+          : unresolvedCriticalCount > 0
+            ? 'Next: resolve or consciously waive the remaining critical concerns, then export.'
+            : 'Next: export the tailored resume or promote selected edits to the master resume.';
+
+  const userDoesOverride = queueNeedsAttention > 0
+    ? 'Use the rewrite queue on the left one item at a time. Generate options, send the best one to diff review, and only count it after you accept the edit.'
+    : queuePartials > 0
+      ? 'The draft has movement, but some items still need stronger proof or cleaner language. Work those partial items before you rely on the final score.'
+      : !hasFinalReview
+        ? 'The core rewrite is in place. Run Final Review next so the recruiter scan and hiring manager verdict can challenge what you built.'
+        : isFinalReviewStale
+          ? 'Your resume changed after Final Review. Rerun the recruiter scan and hiring manager verdict before you rely on the current review.'
+          : unresolvedCriticalCount > 0
+            ? 'Use the Final Review concerns to tighten evidence, answer clarifying questions, and approve the resulting edits.'
+            : 'Confirm the final wording, review any AI-added language, and export when satisfied.';
+
+  const phaseLabel = hasActiveQueueWork
+    ? 'Close the Gaps'
+    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
+      ? 'Run Final Review'
+      : 'Polish and Export';
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Current Phase</p>
+            <p className="mt-1 text-sm font-medium text-white/82">{phaseLabel}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-white/60">
+              Queue: {queueNeedsAttention} attention / {queuePartials} partial
+            </span>
+            <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-2.5 py-1 text-[#afc4ff]/85">
+              Coverage: {coverageAddressed}/{coverageTotal}
+            </span>
+            <span className={`rounded-full border px-2.5 py-1 ${
+              isFinalReviewStale || unresolvedCriticalCount > 0
+                ? 'border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] text-[#f0b8b8]/85'
+                : 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] text-[#b5dec2]/85'
+            }`}>
+              {isFinalReviewStale ? 'Final Review out of date' : `Critical concerns: ${unresolvedCriticalCount}`}
+            </span>
+            {postReviewPolish?.status === 'running' && (
+              <span className="rounded-full border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[#f0d99f]/85">
+                Refreshing tone + ATS
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <ProcessStepGuideCard
+        step={currentStep}
+        tone={!hasFinalReview ? 'action' : unresolvedCriticalCount > 0 ? 'review' : 'export'}
+        userDoesOverride={userDoesOverride}
+        nextOverride={nextOverride}
+      />
+    </div>
+  );
+}
+
+function ResumeEvidenceStatusCard({
+  resume,
+  pendingEdit,
+}: {
+  resume: ResumeDraft | null | undefined;
+  pendingEdit: PendingEdit | null;
+}) {
+  const originalEvidenceCount = countOriginalEvidence(resume);
+  const acceptedTailoredEditCount = countAcceptedTailoredEdits(resume);
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-3">
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Original Evidence</p>
+        <p className="mt-2 text-sm font-medium text-white/82">{originalEvidenceCount} lines from the starting resume</p>
+        <p className="mt-1 text-xs leading-5 text-white/48">These are the facts and examples the candidate brought into the session.</p>
+      </div>
+      <div className="rounded-xl border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-[#b5dec2]/70">Accepted Tailored Edits</p>
+        <p className="mt-2 text-sm font-medium text-white/85">{acceptedTailoredEditCount} AI-assisted changes accepted</p>
+        <p className="mt-1 text-xs leading-5 text-white/50">Anything marked New on the resume was added or rewritten during this rewrite flow.</p>
+      </div>
+      <div className="rounded-xl border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/70">Pending Suggestions</p>
+        <p className="mt-2 text-sm font-medium text-white/85">{pendingEdit ? '1 suggestion waiting for review' : 'No pending suggestions'}</p>
+        <p className="mt-1 text-xs leading-5 text-white/50">Suggestions only affect coverage after the candidate accepts the diff.</p>
+      </div>
+    </div>
+  );
+}
+
+function FinalReadinessSummaryCard({
+  jobBreakdown,
+  benchmarkBreakdown,
+  hasFinalReview,
+  isFinalReviewStale,
+  unresolvedCriticalCount,
+  queueSummary,
+  nextQueueItemLabel,
+  postReviewPolish,
+}: {
+  jobBreakdown: { addressed: number; total: number; partial: number; missing: number; coverageScore: number };
+  benchmarkBreakdown: { addressed: number; total: number; partial: number; missing: number; coverageScore: number };
+  hasFinalReview: boolean;
+  isFinalReviewStale: boolean;
+  unresolvedCriticalCount: number;
+  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number };
+  nextQueueItemLabel?: string;
+  postReviewPolish?: PostReviewPolishState;
+}) {
+  const hasQueueWork = queueSummary.needsAttention > 0 || queueSummary.partiallyAddressed > 0;
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-white/82">Final Readiness</p>
+          <p className="mt-1 text-sm leading-6 text-white/52">
+            This is the final status before export: job fit first, benchmark competitiveness second, then tone and ATS freshness.
+          </p>
+        </div>
+        <span className={`rounded-full border px-2.5 py-1 text-[11px] ${
+          hasFinalReview && !isFinalReviewStale && unresolvedCriticalCount === 0
+            ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] text-[#b5dec2]/85'
+            : 'border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] text-[#f0d99f]/85'
+        }`}>
+          {!hasFinalReview
+            ? 'Final Review not run'
+            : isFinalReviewStale
+              ? 'Review out of date'
+              : `${unresolvedCriticalCount} critical left`}
+        </span>
+      </div>
+
+      {isFinalReviewStale && (
+        <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/66">
+          The resume changed after the last Final Review. Rerun the recruiter scan and hiring manager verdict before treating this readiness summary as current.
+        </div>
+      )}
+
+      {hasQueueWork && (
+        <div className="rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 text-xs leading-5 text-white/62">
+          The rewrite queue still has {queueSummary.needsAttention} needs-attention item{queueSummary.needsAttention === 1 ? '' : 's'} and {queueSummary.partiallyAddressed} partial item{queueSummary.partiallyAddressed === 1 ? '' : 's'}.
+          {nextQueueItemLabel ? ` The clearest next move is "${nextQueueItemLabel}".` : ''}
+        </div>
+      )}
+
+      <div className="grid gap-3 lg:grid-cols-4">
+        <div className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] px-3 py-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/75">JD Fit</p>
+          <p className="mt-2 text-sm font-medium text-white/84">{jobBreakdown.addressed}/{jobBreakdown.total} addressed</p>
+          <p className="mt-1 text-xs text-white/48">{jobBreakdown.coverageScore}% coverage</p>
+        </div>
+        <div className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#f0d99f]/75">Benchmark</p>
+          <p className="mt-2 text-sm font-medium text-white/84">{benchmarkBreakdown.addressed}/{benchmarkBreakdown.total} addressed</p>
+          <p className="mt-1 text-xs text-white/48">{benchmarkBreakdown.coverageScore}% alignment</p>
+        </div>
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">ATS</p>
+          <p className="mt-2 text-sm font-medium text-white/84">
+            {postReviewPolish?.result?.ats_score ?? 'Not refreshed yet'}
+          </p>
+          <p className="mt-1 text-xs text-white/48">
+            {postReviewPolish?.status === 'complete' ? 'Updated after Final Review fixes' : 'Latest refresh status'}
+          </p>
+        </div>
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">Tone</p>
+          <p className="mt-2 text-sm font-medium text-white/84">
+            {postReviewPolish?.result?.tone_score ?? 'Not refreshed yet'}
+          </p>
+          <p className="mt-1 text-xs text-white/48">
+            {postReviewPolish?.status === 'running' ? 'Refreshing now' : postReviewPolish?.message ?? 'Awaiting post-review refresh'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function V2StreamingDisplay({
   data, isComplete, isConnected, error,
   editableResume, pendingEdit, isEditing, editError, undoCount, redoCount,
@@ -297,14 +659,21 @@ export function V2StreamingDisplay({
   liveScores, isScoring,
   gapCoachingCards, onRespondGapCoaching, preScores, onIntegrateKeyword,
   previousResume, onDismissChanges,
-  hiringManagerResult, isHiringManagerLoading, hiringManagerError,
+  hiringManagerResult, resolvedFinalReviewConcernIds = [], isFinalReviewStale = false, finalReviewWarningsAcknowledged = false, onAcknowledgeFinalReviewWarnings,
+  isHiringManagerLoading, hiringManagerError,
   onRequestHiringManagerReview, onApplyHiringManagerRecommendation,
-  gapChat, buildChatContext,
+  gapChat, gapChatSnapshot, buildChatContext,
+  finalReviewChat, finalReviewChatSnapshot, buildFinalReviewChatContext, postReviewPolish,
   masterSaveMode = 'session_only',
   onChangeMasterSaveMode,
   onSaveCurrentToMaster,
   isSavingToMaster = false,
   masterSaveStatus,
+  promotableMasterItems = [],
+  selectedMasterPromotionIds = [],
+  onToggleMasterPromotionItem,
+  onSelectAllMasterPromotionItems,
+  onClearMasterPromotionItems,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -446,7 +815,49 @@ export function V2StreamingDisplay({
   // C4: benchmarkCandidate not required — left panel degrades gracefully without it
   const canShowSplitScreen = hasResume && !isRerunning && data.jobIntelligence && data.gapAnalysis;
 
-  const activeRequirements = activeBullet?.requirements ?? [];
+  const jobBreakdown = data.gapAnalysis?.score_breakdown?.job_description ?? {
+    addressed: 0,
+    total: 0,
+    partial: 0,
+    missing: 0,
+    coverage_score: 0,
+  };
+  const benchmarkBreakdown = data.gapAnalysis?.score_breakdown?.benchmark ?? {
+    addressed: 0,
+    total: 0,
+    partial: 0,
+    missing: 0,
+    coverage_score: 0,
+  };
+  const unresolvedCriticalConcerns = hiringManagerResult
+    ? hiringManagerResult.concerns.filter((concern) => (
+      concern.severity === 'critical' && !resolvedFinalReviewConcernIds.includes(concern.id)
+    ))
+    : [];
+  const rewriteQueue = useMemo(() => {
+    if (!data.jobIntelligence || !data.gapAnalysis) return null;
+    return buildRewriteQueue({
+      jobIntelligence: data.jobIntelligence,
+      gapAnalysis: data.gapAnalysis,
+      currentResume: displayResume,
+      benchmarkCandidate: data.benchmarkCandidate,
+      gapCoachingCards,
+      gapChatSnapshot,
+      finalReviewResult: hiringManagerResult ?? null,
+      finalReviewChatSnapshot,
+      resolvedFinalReviewConcernIds,
+    });
+  }, [
+    data.benchmarkCandidate,
+    data.gapAnalysis,
+    data.jobIntelligence,
+    displayResume,
+    finalReviewChatSnapshot,
+    gapChatSnapshot,
+    gapCoachingCards,
+    hiringManagerResult,
+    resolvedFinalReviewConcernIds,
+  ]);
 
   // ─── Split-screen layout (resume exists) ──────────────────────────────────
   if (canShowSplitScreen) {
@@ -488,25 +899,31 @@ export function V2StreamingDisplay({
           </div>
         )}
 
-        {/* Split-screen: left gap analysis report + right resume */}
+        {/* Split-screen: left rewrite queue + right resume */}
         <div className="flex-1 flex min-h-0 flex-col xl:flex-row">
-          {/* ─── Left panel: Requirement coverage ─── */}
+          {/* ─── Left panel: Unified rewrite queue ─── */}
           <div className="border-b border-white/[0.06] xl:border-b-0 xl:border-r xl:w-[46%] xl:relative max-h-[55vh] xl:max-h-none">
             <div className="h-full overflow-y-auto xl:absolute xl:inset-0">
-              <GapAnalysisReportPanel
+              <RewriteQueuePanel
                 jobIntelligence={data.jobIntelligence!}
                 positioningAssessment={data.assembly?.positioning_assessment ?? null}
                 gapAnalysis={data.gapAnalysis!}
                 benchmarkCandidate={data.benchmarkCandidate ?? null}
-                activeRequirements={activeRequirements}
-                onRequirementClick={handleRequirementClick}
-                gapCoachingCards={gapCoachingCards}
-                onRequestEdit={canEdit ? onRequestEdit : undefined}
                 currentResume={displayResume}
-                isEditing={isEditing}
-                preScores={preScores}
+                gapCoachingCards={gapCoachingCards}
                 gapChat={gapChat}
+                gapChatSnapshot={gapChatSnapshot}
                 buildChatContext={buildChatContext}
+                finalReviewResult={hiringManagerResult ?? null}
+                finalReviewChat={finalReviewChat}
+                finalReviewChatSnapshot={finalReviewChatSnapshot}
+                buildFinalReviewChatContext={buildFinalReviewChatContext}
+                resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+                onRequirementClick={handleRequirementClick}
+                onRequestEdit={canEdit ? onRequestEdit : undefined}
+                onApplyFinalReviewRecommendation={onApplyHiringManagerRecommendation}
+                onRequestHiringManagerReview={onRequestHiringManagerReview}
+                isEditing={isEditing}
               />
             </div>
           </div>
@@ -528,14 +945,32 @@ export function V2StreamingDisplay({
                 </div>
               )}
 
+              <GuidedWorkflowCard
+                hasFinalReview={Boolean(hiringManagerResult)}
+                isFinalReviewStale={isFinalReviewStale}
+                unresolvedCriticalCount={unresolvedCriticalConcerns.length}
+                coverageAddressed={jobBreakdown.addressed}
+                coverageTotal={jobBreakdown.total}
+                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0 }}
+                nextQueueItemLabel={rewriteQueue?.nextItem?.title}
+                postReviewPolish={postReviewPolish}
+              />
+
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
                 <p className="text-sm font-medium text-white/78">
-                  How to use this screen
+                  How this rewrite works
                 </p>
                 <p className="mt-1 text-sm leading-6 text-white/55">
-                  Review requirement coverage first, then confirm the resume wording on the right. Anything marked <span className="text-[#b5dec2]">New</span> was added or rewritten by AI and should be checked by the candidate before export.
+                  Work the rewrite queue on the left one item at a time. When AI proposes language, it lands in the review inbox on the right and then in the diff review. Anything marked <span className="text-[#b5dec2]">New</span> was added or rewritten by AI and should be verified before export.
                 </p>
               </div>
+
+              <ResumeEvidenceStatusCard
+                resume={displayResume}
+                pendingEdit={pendingEdit}
+              />
+
+              <ReviewInboxCard pendingEdit={pendingEdit} />
 
               <MasterResumeSyncCard
                 mode={masterSaveMode}
@@ -543,6 +978,14 @@ export function V2StreamingDisplay({
                 onSaveNow={onSaveCurrentToMaster}
                 isSaving={isSavingToMaster}
                 status={masterSaveStatus}
+              />
+
+              <MasterResumePromotionCard
+                items={promotableMasterItems}
+                selectedIds={selectedMasterPromotionIds}
+                onToggleItem={onToggleMasterPromotionItem}
+                onSelectAll={onSelectAllMasterPromotionItems}
+                onClearAll={onClearMasterPromotionItems}
               />
 
               {/* What Changed (after re-run) */}
@@ -646,33 +1089,68 @@ export function V2StreamingDisplay({
                   )}
 
                   <AnimatedCard index={1}>
-                    <div className="flex items-center gap-2 rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] px-4 py-3 text-sm text-[#b5dec2]/90" role="status">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      Your resume is ready! Click any bullet to edit, or select text for more options.
+                    <div
+                      className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm ${
+                        hiringManagerResult && !isFinalReviewStale
+                          ? 'border border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]/90'
+                          : 'border border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] text-[#f0d99f]/90'
+                      }`}
+                      role="status"
+                    >
+                      {hiringManagerResult && !isFinalReviewStale ? (
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                      )}
+                      {!hiringManagerResult
+                        ? 'Your draft is ready for Final Review. Run the recruiter and hiring manager check before exporting.'
+                        : isFinalReviewStale
+                          ? 'Final Review is out of date because the resume changed. Rerun it before exporting or acknowledge the warning.'
+                          : 'Final Review is current. Resolve any remaining concerns, then export when you are satisfied.'}
                     </div>
                   </AnimatedCard>
 
-                  {displayResume && (
-                    <AnimatedCard index={2}>
-                      <ExportBar
-                        resume={displayResume}
-                        companyName={data.jobIntelligence?.company_name}
-                        jobTitle={data.jobIntelligence?.role_title}
-                        atsScore={data.assembly.scores.ats_match}
-                      />
-                    </AnimatedCard>
-                  )}
-
                   {onRequestHiringManagerReview && data.jobIntelligence && (
-                    <AnimatedCard index={3}>
+                    <AnimatedCard index={2}>
                       <HiringManagerReviewCard
                         result={hiringManagerResult ?? null}
+                        resolvedConcernIds={resolvedFinalReviewConcernIds}
                         isLoading={isHiringManagerLoading ?? false}
                         error={hiringManagerError ?? null}
                         companyName={data.jobIntelligence.company_name}
                         roleTitle={data.jobIntelligence.role_title}
                         onRequestReview={onRequestHiringManagerReview}
                         onApplyRecommendation={onApplyHiringManagerRecommendation}
+                        isEditing={isEditing}
+                        finalReviewChat={finalReviewChat}
+                        buildFinalReviewChatContext={buildFinalReviewChatContext}
+                      />
+                    </AnimatedCard>
+                  )}
+
+                  {data.gapAnalysis && (
+                    <AnimatedCard index={3}>
+                      <FinalReadinessSummaryCard
+                        jobBreakdown={{
+                          addressed: jobBreakdown.addressed,
+                          total: jobBreakdown.total,
+                          partial: jobBreakdown.partial,
+                          missing: jobBreakdown.missing,
+                          coverageScore: jobBreakdown.coverage_score,
+                        }}
+                        benchmarkBreakdown={{
+                          addressed: benchmarkBreakdown.addressed,
+                          total: benchmarkBreakdown.total,
+                          partial: benchmarkBreakdown.partial,
+                          missing: benchmarkBreakdown.missing,
+                          coverageScore: benchmarkBreakdown.coverage_score,
+                        }}
+                        hasFinalReview={Boolean(hiringManagerResult)}
+                        isFinalReviewStale={isFinalReviewStale}
+                        unresolvedCriticalCount={unresolvedCriticalConcerns.length}
+                        queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0 }}
+                        nextQueueItemLabel={rewriteQueue?.nextItem?.title}
+                        postReviewPolish={postReviewPolish}
                       />
                     </AnimatedCard>
                   )}
@@ -680,6 +1158,25 @@ export function V2StreamingDisplay({
                   {data.gapAnalysis && (
                     <AnimatedCard index={4}>
                       <AddContextCard onSubmit={onAddContext} loading={isRerunning} />
+                    </AnimatedCard>
+                  )}
+
+                  {displayResume && (
+                    <AnimatedCard index={5}>
+                      <ExportBar
+                        resume={displayResume}
+                        companyName={data.jobIntelligence?.company_name}
+                        jobTitle={data.jobIntelligence?.role_title}
+                        atsScore={data.assembly.scores.ats_match}
+                        hasCompletedFinalReview={Boolean(hiringManagerResult)}
+                        isFinalReviewStale={isFinalReviewStale}
+                        unresolvedCriticalCount={unresolvedCriticalConcerns.length}
+                        queueNeedsAttentionCount={rewriteQueue?.summary.needsAttention ?? 0}
+                        queuePartialCount={rewriteQueue?.summary.partiallyAddressed ?? 0}
+                        nextQueueItemLabel={rewriteQueue?.nextItem?.title}
+                        warningsAcknowledged={finalReviewWarningsAcknowledged}
+                        onAcknowledgeWarnings={onAcknowledgeFinalReviewWarnings}
+                      />
                     </AnimatedCard>
                   )}
                 </div>
@@ -871,13 +1368,13 @@ export function V2StreamingDisplay({
 
 function getStageMessage(stage: V2Stage): string {
   switch (stage) {
-    case 'intake': return 'Getting started...';
-    case 'analysis': return 'Reading the job description and learning about your background...';
-    case 'strategy': return 'Figuring out the best way to position you for this role...';
-    case 'writing': return 'Writing your tailored resume...';
-    case 'verification': return 'Double-checking every claim for accuracy and tone...';
-    case 'assembly': return 'Putting the finishing touches on your resume...';
-    case 'complete': return 'Your resume is ready';
+    case 'intake': return 'Reading your background...';
+    case 'analysis': return 'Studying the target role and benchmark expectations...';
+    case 'strategy': return 'Mapping requirements and finding the strongest positioning...';
+    case 'writing': return 'Closing gaps and building the draft...';
+    case 'verification': return 'Running final review and checking tone, evidence, and accuracy...';
+    case 'assembly': return 'Polishing the draft and preparing export-ready output...';
+    case 'complete': return 'Your polished resume is ready';
     default: return 'Working on it...';
   }
 }

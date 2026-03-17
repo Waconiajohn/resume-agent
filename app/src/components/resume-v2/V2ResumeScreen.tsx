@@ -6,20 +6,30 @@
  *   2. Streaming — accumulating output display with inline AI editing + live scoring
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useV2Pipeline } from '@/hooks/useV2Pipeline';
 import { useInlineEdit, resumeToPlainText } from '@/hooks/useInlineEdit';
 import { useLiveScoring } from '@/hooks/useLiveScoring';
 import { useGapChat } from '@/hooks/useGapChat';
+import { useFinalReviewChat } from '@/hooks/useFinalReviewChat';
+import { usePostReviewPolish } from '@/hooks/usePostReviewPolish';
 import { GlassButton } from '../GlassButton';
 import { V2IntakeForm } from './V2IntakeForm';
 import { V2StreamingDisplay } from './V2StreamingDisplay';
-import type { ResumeDraft, GapCoachingResponse, GapChatContext, V2PersistedDraftState } from '@/types/resume-v2';
+import type {
+  FinalReviewChatContext,
+  ResumeDraft,
+  GapCoachingResponse,
+  GapChatContext,
+  MasterPromotionItem,
+  V2PersistedDraftState,
+} from '@/types/resume-v2';
 import { normalizeRequirement } from './utils/coaching-actions';
 import { useHiringManagerReview } from '@/hooks/useHiringManagerReview';
 import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
 import { useToast } from '@/components/Toast';
+import { getPromotableResumeItems } from '@/lib/master-resume-promotion';
 
 type MasterResumeSaveMode = 'session_only' | 'master_resume';
 
@@ -42,6 +52,7 @@ interface V2ResumeScreenProps {
       companyName?: string;
       jobTitle?: string;
       atsScore?: number;
+      promotionItems?: MasterPromotionItem[];
     },
   ) => Promise<MasterResumeSaveResult>;
 }
@@ -74,6 +85,41 @@ function writeLocalDraftState(sessionId: string, draftState: V2PersistedDraftSta
   }
 }
 
+function extractResumeExcerptForSection(resume: ResumeDraft, section: string | undefined): string {
+  if (!section) {
+    return resumeToPlainText(resume);
+  }
+
+  const sectionLower = section.toLowerCase();
+
+  if (sectionLower.includes('summary')) {
+    return `EXECUTIVE SUMMARY:\n${resume.executive_summary.content}`;
+  }
+
+  if (sectionLower.includes('accomplishment')) {
+    return `SELECTED ACCOMPLISHMENTS:\n${resume.selected_accomplishments.map((item) => `- ${item.content}`).join('\n')}`;
+  }
+
+  if (sectionLower.includes('competenc')) {
+    return `CORE COMPETENCIES:\n${resume.core_competencies.join(', ')}`;
+  }
+
+  const matchingExperience = resume.professional_experience.find((experience) => (
+    sectionLower.includes(experience.company.toLowerCase())
+      || sectionLower.includes(experience.title.toLowerCase())
+  ));
+
+  if (matchingExperience) {
+    return [
+      `${matchingExperience.title} | ${matchingExperience.company} (${matchingExperience.start_date} - ${matchingExperience.end_date})`,
+      matchingExperience.scope_statement,
+      ...matchingExperience.bullets.map((bullet) => `- ${bullet.text}`),
+    ].join('\n');
+  }
+
+  return resumeToPlainText(resume);
+}
+
 export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initialSessionId, onSyncToMasterResume }: V2ResumeScreenProps) {
   const { data, isConnected, isComplete, isStarting, error, start, reset, loadSession, saveDraftState, integrateKeyword } = useV2Pipeline(accessToken);
   const { addToast } = useToast();
@@ -93,9 +139,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     pendingEdit, isEditing, editError, undoCount, redoCount,
     requestEdit, acceptEdit: rawAcceptEdit, rejectEdit, undo, redo, resetHistory,
   } = useInlineEdit(accessToken, data.sessionId, currentResume, jobDescription, setEditableResume);
+  const promotableMasterItems = useMemo(() => getPromotableResumeItems(currentResume), [currentResume]);
+  const [selectedMasterPromotionIds, setSelectedMasterPromotionIds] = useState<string[]>([]);
 
   // Live ATS scoring
-  const { scores: liveScores, isScoring, requestRescore, setInitialScores } = useLiveScoring(
+  const { scores: liveScores, isScoring, setInitialScores } = useLiveScoring(
     accessToken, data.sessionId, jobDescription,
   );
 
@@ -106,11 +154,36 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     error: hiringManagerError,
     requestReview: rawRequestReview,
     reset: resetHiringManagerReview,
+    hydrateResult: hydrateHiringManagerReview,
   } = useHiringManagerReview(accessToken, data.sessionId);
 
   // Gap coaching chat
   const gapChat = useGapChat(accessToken, data.sessionId);
-  const { resetChat: resetGapChat, acceptLanguage: acceptGapLanguage } = gapChat;
+  const {
+    resetChat: resetGapChat,
+    acceptLanguage: acceptGapLanguage,
+    clearResolvedLanguage: clearGapResolvedLanguage,
+    getSnapshot: getGapChatSnapshot,
+    hydrateSnapshot: hydrateGapChatSnapshot,
+  } = gapChat;
+  const finalReviewChat = useFinalReviewChat(accessToken, data.sessionId);
+  const {
+    resetChat: resetFinalReviewChat,
+    acceptLanguage: acceptFinalReviewLanguage,
+    clearResolvedLanguage: clearFinalReviewResolvedLanguage,
+    getSnapshot: getFinalReviewChatSnapshot,
+    hydrateSnapshot: hydrateFinalReviewChatSnapshot,
+  } = finalReviewChat;
+  const {
+    state: postReviewPolish,
+    runPolish,
+    hydrateState: hydratePostReviewPolish,
+    reset: resetPostReviewPolish,
+  } = usePostReviewPolish(accessToken, data.sessionId);
+  const [resolvedFinalReviewConcernIds, setResolvedFinalReviewConcernIds] = useState<string[]>([]);
+  const [finalReviewWarningsAcknowledged, setFinalReviewWarningsAcknowledged] = useState(false);
+  const [isFinalReviewStale, setIsFinalReviewStale] = useState(false);
+  const [finalReviewResumeText, setFinalReviewResumeText] = useState<string | null>(null);
   const [masterSaveMode, setMasterSaveMode] = useState<MasterResumeSaveMode>('session_only');
   const [isSavingToMaster, setIsSavingToMaster] = useState(false);
   const [masterSaveStatus, setMasterSaveStatus] = useState<{
@@ -122,6 +195,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   });
   const lastMasterSnapshotRef = useRef('');
   const lastPersistedDraftRef = useRef<string>('null');
+  const pendingPostReviewPolishRef = useRef<{
+    concernId: string | null;
+  } | null>(null);
+  const selectedPromotableItems = useMemo(() => (
+    promotableMasterItems.filter((item) => selectedMasterPromotionIds.includes(item.id))
+  ), [promotableMasterItems, selectedMasterPromotionIds]);
 
   // Build context for per-item gap chat — memoized factory
   const buildChatContext = useCallback((requirement: string): GapChatContext => {
@@ -158,6 +237,29 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     };
   }, [data.jobIntelligence, data.candidateIntelligence, data.gapAnalysis]);
 
+  const buildFinalReviewChatContext = useCallback((concern: HiringManagerConcern): FinalReviewChatContext | null => {
+    if (!currentResume || !data.jobIntelligence || !hiringManagerResult) return null;
+
+    return {
+      concernId: concern.id,
+      concernType: concern.type,
+      severity: concern.severity,
+      observation: concern.observation,
+      whyItHurts: concern.why_it_hurts,
+      fixStrategy: concern.fix_strategy,
+      targetSection: concern.target_section,
+      relatedRequirement: concern.related_requirement,
+      suggestedResumeEdit: concern.suggested_resume_edit,
+      roleTitle: data.jobIntelligence.role_title,
+      companyName: data.jobIntelligence.company_name,
+      jobDescriptionFit: hiringManagerResult.fit_assessment.job_description_fit,
+      benchmarkAlignment: hiringManagerResult.fit_assessment.benchmark_alignment,
+      businessImpact: hiringManagerResult.fit_assessment.business_impact,
+      clarityAndCredibility: hiringManagerResult.fit_assessment.clarity_and_credibility,
+      resumeExcerpt: extractResumeExcerptForSection(currentResume, concern.target_section),
+    };
+  }, [currentResume, data.jobIntelligence, hiringManagerResult]);
+
   // Seed initial scores from pipeline assembly
   useEffect(() => {
     if (data.assembly) {
@@ -179,33 +281,83 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         setJobDescription(result.job_description);
         setEditableResume(resolvedDraftState?.editable_resume ?? null);
         setMasterSaveMode(resolvedDraftState?.master_save_mode ?? 'session_only');
+        hydrateGapChatSnapshot(resolvedDraftState?.gap_chat_state ?? null);
+        hydrateHiringManagerReview(resolvedDraftState?.final_review_state?.result ?? null);
+        setResolvedFinalReviewConcernIds(resolvedDraftState?.final_review_state?.resolved_concern_ids ?? []);
+        setFinalReviewWarningsAcknowledged(resolvedDraftState?.final_review_state?.acknowledged_export_warnings ?? false);
+        setIsFinalReviewStale(resolvedDraftState?.final_review_state?.is_stale ?? false);
+        setFinalReviewResumeText(resolvedDraftState?.final_review_state?.reviewed_resume_text ?? null);
+        hydrateFinalReviewChatSnapshot(resolvedDraftState?.final_review_chat_state ?? null);
+        hydratePostReviewPolish(resolvedDraftState?.post_review_polish ?? null);
+        setSelectedMasterPromotionIds(resolvedDraftState?.master_promotion_state?.selected_item_ids ?? []);
         lastPersistedDraftRef.current = JSON.stringify(resolvedDraftState ?? null);
       } else {
         setSessionLoadError('Failed to load session. It may have expired or belong to a different account.');
       }
     })();
-  }, [initialSessionId, sessionLoadAttempted, loadSession]);
+  }, [
+    initialSessionId,
+    sessionLoadAttempted,
+    loadSession,
+    hydrateFinalReviewChatSnapshot,
+    hydrateGapChatSnapshot,
+    hydrateHiringManagerReview,
+    hydratePostReviewPolish,
+  ]);
 
   const acceptEdit = useCallback((editedText: string) => {
     const acceptedRequirement = pendingEdit?.editContext?.requirement;
+    const acceptedOrigin = pendingEdit?.editContext?.origin;
+    const acceptedConcernId = pendingEdit?.editContext?.finalReviewConcernId ?? null;
+    const candidateInputUsed = pendingEdit?.editContext?.candidateInputUsed ?? false;
+
     rawAcceptEdit(editedText);
     if (acceptedRequirement) {
       acceptGapLanguage(acceptedRequirement, editedText);
     }
-  }, [pendingEdit, rawAcceptEdit, acceptGapLanguage]);
+    if (acceptedOrigin === 'final_review' && acceptedConcernId) {
+      acceptFinalReviewLanguage(acceptedConcernId, editedText);
+      setResolvedFinalReviewConcernIds((previous) => (
+        previous.includes(acceptedConcernId) ? previous : [...previous, acceptedConcernId]
+      ));
+      pendingPostReviewPolishRef.current = { concernId: acceptedConcernId };
 
-  // Trigger rescore whenever editableResume changes (i.e., after accepting an edit or undo/redo)
-  useEffect(() => {
-    if (editableResume && isComplete) {
-      requestRescore(editableResume);
+      if (candidateInputUsed) {
+        addToast({
+          type: 'success',
+          message: 'Final Review detail applied. Tone and match score are refreshing in the background.',
+        });
+      }
     }
-  }, [editableResume, isComplete, requestRescore]);
+    if (hiringManagerResult) {
+      setIsFinalReviewStale(true);
+      setFinalReviewWarningsAcknowledged(false);
+    }
+  }, [
+    pendingEdit,
+    rawAcceptEdit,
+    acceptGapLanguage,
+    acceptFinalReviewLanguage,
+    addToast,
+    hiringManagerResult,
+  ]);
+
+  // Trigger the post-review polish pass only after an accepted Final Review fix.
+  useEffect(() => {
+    if (!editableResume || !isComplete || !pendingPostReviewPolishRef.current) return;
+
+    const trigger = pendingPostReviewPolishRef.current;
+    pendingPostReviewPolishRef.current = null;
+    void runPolish(editableResume, jobDescription, { concernId: trigger.concernId });
+  }, [editableResume, isComplete, jobDescription, runPolish]);
 
   useEffect(() => {
     if (masterSaveMode === 'master_resume') {
       setMasterSaveStatus({
         tone: 'neutral',
-        message: 'Future accepted edits will sync to your master resume automatically. Use "Save Current Version Now" to push the current draft immediately.',
+        message: selectedPromotableItems.length > 0
+          ? `Auto-sync is on. ${selectedPromotableItems.length} selected edit${selectedPromotableItems.length === 1 ? '' : 's'} can be promoted to your master resume.`
+          : 'Auto-sync is on, but no accepted AI-created edits are selected for master resume promotion yet.',
       });
       return;
     }
@@ -218,13 +370,27 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
             message: 'Accepted edits stay in this session unless you choose to sync them to your master resume.',
           }
     ));
-  }, [masterSaveMode]);
+  }, [masterSaveMode, selectedPromotableItems.length]);
 
   const persistResumeToMaster = useCallback(async (
     draft: ResumeDraft,
     reason: 'auto' | 'manual',
   ) => {
     if (!onSyncToMasterResume || isSavingToMaster) return false;
+
+    if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0) {
+      setMasterSaveStatus({
+        tone: 'neutral',
+        message: 'Select at least one accepted AI-created edit before promoting content to the master resume.',
+      });
+      if (reason === 'manual') {
+        addToast({
+          type: 'error',
+          message: 'No accepted edits are selected for master resume promotion.',
+        });
+      }
+      return false;
+    }
 
     setIsSavingToMaster(true);
 
@@ -233,6 +399,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       companyName: data.jobIntelligence?.company_name,
       jobTitle: data.jobIntelligence?.role_title,
       atsScore: liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? undefined,
+      promotionItems: selectedPromotableItems,
     });
 
     setIsSavingToMaster(false);
@@ -255,7 +422,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       return false;
     }
 
-    lastMasterSnapshotRef.current = resumeToPlainText(draft);
+    lastMasterSnapshotRef.current = JSON.stringify({
+      resume: resumeToPlainText(draft),
+      promotion_ids: selectedPromotableItems.map((item) => item.id),
+    });
     setMasterSaveStatus({
       tone: 'success',
       message: reason === 'auto' ? 'Auto-synced to your master resume.' : result.message,
@@ -274,12 +444,18 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     isSavingToMaster,
     liveScores?.ats_score,
     onSyncToMasterResume,
+    promotableMasterItems.length,
+    selectedPromotableItems,
   ]);
 
   useEffect(() => {
     if (masterSaveMode !== 'master_resume' || !editableResume || isSavingToMaster) return;
+    if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0) return;
 
-    const snapshot = resumeToPlainText(editableResume);
+    const snapshot = JSON.stringify({
+      resume: resumeToPlainText(editableResume),
+      promotion_ids: selectedPromotableItems.map((item) => item.id),
+    });
     if (snapshot === lastMasterSnapshotRef.current) return;
 
     const timer = window.setTimeout(() => {
@@ -287,15 +463,129 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     }, 500);
 
     return () => window.clearTimeout(timer);
-  }, [editableResume, isSavingToMaster, masterSaveMode, persistResumeToMaster]);
+  }, [
+    editableResume,
+    isSavingToMaster,
+    masterSaveMode,
+    persistResumeToMaster,
+    promotableMasterItems.length,
+    selectedPromotableItems,
+  ]);
+
+  useEffect(() => {
+    if (!hiringManagerResult || !currentResume || !finalReviewResumeText) return;
+
+    const currentResumeText = resumeToPlainText(currentResume);
+    const shouldBeStale = currentResumeText !== finalReviewResumeText;
+    if (shouldBeStale !== isFinalReviewStale) {
+      setIsFinalReviewStale(shouldBeStale);
+    }
+    if (shouldBeStale && finalReviewWarningsAcknowledged) {
+      setFinalReviewWarningsAcknowledged(false);
+    }
+  }, [
+    currentResume,
+    finalReviewResumeText,
+    finalReviewWarningsAcknowledged,
+    hiringManagerResult,
+    isFinalReviewStale,
+  ]);
+
+  useEffect(() => {
+    const nextIds = promotableMasterItems.map((item) => item.id);
+    if (nextIds.length === 0) {
+      if (selectedMasterPromotionIds.length > 0) {
+        setSelectedMasterPromotionIds([]);
+      }
+      return;
+    }
+
+    setSelectedMasterPromotionIds((previous) => {
+      const preserved = previous.filter((id) => nextIds.includes(id));
+      const newIds = nextIds.filter((id) => !previous.includes(id));
+      const merged = [...preserved, ...newIds];
+      if (merged.length === previous.length && merged.every((id, index) => id === previous[index])) {
+        return previous;
+      }
+      return merged;
+    });
+  }, [promotableMasterItems, selectedMasterPromotionIds.length]);
+
+  useEffect(() => {
+    if (!currentResume || !isComplete) return;
+
+    const plainText = resumeToPlainText(currentResume);
+    const gapSnapshot = getGapChatSnapshot();
+    for (const [requirement, item] of Object.entries(gapSnapshot.items)) {
+      if (item.resolvedLanguage && !plainText.includes(item.resolvedLanguage)) {
+        clearGapResolvedLanguage(requirement);
+      }
+    }
+
+    const finalReviewSnapshot = getFinalReviewChatSnapshot();
+    const missingResolvedIds = resolvedFinalReviewConcernIds.filter((concernId) => {
+      const resolvedLanguage = finalReviewSnapshot.items[concernId.trim().toLowerCase()]?.resolvedLanguage;
+      return resolvedLanguage ? !plainText.includes(resolvedLanguage) : true;
+    });
+
+    if (missingResolvedIds.length === 0) return;
+
+    for (const concernId of missingResolvedIds) {
+      clearFinalReviewResolvedLanguage(concernId);
+    }
+    setResolvedFinalReviewConcernIds((previous) => previous.filter((id) => !missingResolvedIds.includes(id)));
+    setFinalReviewWarningsAcknowledged(false);
+    if (postReviewPolish.status !== 'idle') {
+      resetPostReviewPolish();
+    }
+  }, [
+    clearFinalReviewResolvedLanguage,
+    clearGapResolvedLanguage,
+    currentResume,
+    getFinalReviewChatSnapshot,
+    getGapChatSnapshot,
+    isComplete,
+    postReviewPolish.status,
+    resetPostReviewPolish,
+    resolvedFinalReviewConcernIds,
+  ]);
 
   useEffect(() => {
     if (!data.sessionId || !isComplete) return;
 
-    const nextDraftState: V2PersistedDraftState | null = editableResume || masterSaveMode !== 'session_only'
+    const gapChatSnapshot = getGapChatSnapshot();
+    const finalReviewChatSnapshot = getFinalReviewChatSnapshot();
+    const hasGapChatState = Object.keys(gapChatSnapshot.items).length > 0;
+    const hasFinalReviewChatState = Object.keys(finalReviewChatSnapshot.items).length > 0;
+    const hasFinalReviewState = Boolean(hiringManagerResult);
+    const hasPostReviewPolish = postReviewPolish.status !== 'idle' || postReviewPolish.result !== null;
+
+    const nextDraftState: V2PersistedDraftState | null = editableResume
+      || masterSaveMode !== 'session_only'
+      || hasGapChatState
+      || hasFinalReviewState
+      || hasFinalReviewChatState
+      || hasPostReviewPolish
+      || promotableMasterItems.length > 0
       ? {
           editable_resume: editableResume,
           master_save_mode: masterSaveMode,
+          gap_chat_state: hasGapChatState ? gapChatSnapshot : null,
+          final_review_state: hasFinalReviewState
+            ? {
+                result: hiringManagerResult,
+                resolved_concern_ids: resolvedFinalReviewConcernIds,
+                acknowledged_export_warnings: finalReviewWarningsAcknowledged,
+                is_stale: isFinalReviewStale,
+                reviewed_resume_text: finalReviewResumeText,
+                last_run_at: new Date().toISOString(),
+              }
+            : null,
+          final_review_chat_state: hasFinalReviewChatState ? finalReviewChatSnapshot : null,
+          post_review_polish: hasPostReviewPolish ? postReviewPolish : null,
+          master_promotion_state: promotableMasterItems.length > 0
+            ? { selected_item_ids: selectedMasterPromotionIds }
+            : null,
           updated_at: new Date().toISOString(),
         }
       : null;
@@ -314,7 +604,23 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [data.sessionId, editableResume, isComplete, masterSaveMode, saveDraftState]);
+  }, [
+    data.sessionId,
+    editableResume,
+    finalReviewWarningsAcknowledged,
+    finalReviewResumeText,
+    getFinalReviewChatSnapshot,
+    getGapChatSnapshot,
+    hiringManagerResult,
+    isFinalReviewStale,
+    isComplete,
+    masterSaveMode,
+    promotableMasterItems.length,
+    postReviewPolish,
+    resolvedFinalReviewConcernIds,
+    saveDraftState,
+    selectedMasterPromotionIds,
+  ]);
 
   const isPipelineActive = data.sessionId !== '';
 
@@ -332,8 +638,16 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     });
     resetHistory();
     resetGapChat();
+    resetFinalReviewChat();
+    resetHiringManagerReview();
+    setResolvedFinalReviewConcernIds([]);
+    setFinalReviewWarningsAcknowledged(false);
+    setIsFinalReviewStale(false);
+    setFinalReviewResumeText(null);
+    setSelectedMasterPromotionIds([]);
+    resetPostReviewPolish();
     void start(rt, jd);
-  }, [start, resetHistory, resetGapChat]);
+  }, [start, resetHistory, resetGapChat, resetFinalReviewChat, resetHiringManagerReview, resetPostReviewPolish]);
 
   // Gap coaching: user reviewed strategies → re-run pipeline with their decisions
   const handleGapCoachingRespond = useCallback((responses: GapCoachingResponse[]) => {
@@ -353,12 +667,30 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume(null);
     resetHistory();
     resetGapChat();
+    resetFinalReviewChat();
+    resetHiringManagerReview();
+    setResolvedFinalReviewConcernIds([]);
+    setFinalReviewWarningsAcknowledged(false);
+    setIsFinalReviewStale(false);
+    setFinalReviewResumeText(null);
+    setSelectedMasterPromotionIds([]);
+    resetPostReviewPolish();
     void start(resumeText, jobDescription, {
       userContext: contextParts.length > 0 ? contextParts.join('\n') : undefined,
       gapCoachingResponses: responses,
       preScores: data.preScores,
     });
-  }, [start, resumeText, jobDescription, resetHistory, resetGapChat, data.preScores]);
+  }, [
+    start,
+    resumeText,
+    jobDescription,
+    resetHistory,
+    resetGapChat,
+    resetFinalReviewChat,
+    resetHiringManagerReview,
+    resetPostReviewPolish,
+    data.preScores,
+  ]);
 
   // Keyword integration: use inline edit with 'add_keywords' action
   // Use positioning assessment to find the most relevant entry when available
@@ -399,8 +731,29 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setEditableResume(null);
     resetHistory();
     resetGapChat();
+    resetFinalReviewChat();
+    resetHiringManagerReview();
+    setResolvedFinalReviewConcernIds([]);
+    setFinalReviewWarningsAcknowledged(false);
+    setIsFinalReviewStale(false);
+    setFinalReviewResumeText(null);
+    setSelectedMasterPromotionIds([]);
+    resetPostReviewPolish();
     void start(resumeText, jobDescription, { userContext, preScores: data.preScores });
-  }, [start, resumeText, jobDescription, resetHistory, resetGapChat, editableResume, data.assembly, data.resumeDraft, data.preScores]);
+  }, [
+    start,
+    resumeText,
+    jobDescription,
+    resetHistory,
+    resetGapChat,
+    resetFinalReviewChat,
+    resetHiringManagerReview,
+    resetPostReviewPolish,
+    editableResume,
+    data.assembly,
+    data.resumeDraft,
+    data.preScores,
+  ]);
 
   const handleDismissChanges = useCallback(() => {
     setPreviousResume(null);
@@ -423,30 +776,125 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setSessionLoadError(null);
     resetHiringManagerReview();
     resetGapChat();
-  }, [reset, resetHiringManagerReview, resetGapChat]);
+    resetFinalReviewChat();
+    setResolvedFinalReviewConcernIds([]);
+    setFinalReviewWarningsAcknowledged(false);
+    setIsFinalReviewStale(false);
+    setFinalReviewResumeText(null);
+    setSelectedMasterPromotionIds([]);
+    resetPostReviewPolish();
+  }, [reset, resetHiringManagerReview, resetGapChat, resetFinalReviewChat, resetPostReviewPolish]);
 
   const handleSaveCurrentToMaster = useCallback(() => {
     if (!currentResume) return;
     void persistResumeToMaster(currentResume, 'manual');
   }, [currentResume, persistResumeToMaster]);
 
-  // Hiring manager review: build the request from available data
-  const handleRequestHiringManagerReview = useCallback(() => {
-    if (!currentResume || !data.jobIntelligence) return;
-    const serializedResume = resumeToPlainText(currentResume);
-
-    void rawRequestReview({
-      resume_text: serializedResume,
-      job_description: jobDescription,
-      company_name: data.jobIntelligence.company_name,
-      role_title: data.jobIntelligence.role_title,
-      requirements: data.jobIntelligence.core_competencies.map(c => c.competency),
-      hidden_signals: data.jobIntelligence.hidden_hiring_signals,
+  const handleToggleMasterPromotionItem = useCallback((itemId: string) => {
+    setSelectedMasterPromotionIds((previous) => (
+      previous.includes(itemId)
+        ? previous.filter((id) => id !== itemId)
+        : [...previous, itemId]
+    ));
+    setMasterSaveStatus({
+      tone: 'neutral',
+      message: 'Promotion selection updated. Only checked edits will be added to your master resume.',
     });
-  }, [currentResume, data.jobIntelligence, jobDescription, rawRequestReview]);
+  }, []);
 
-  // Apply a hiring manager concern as an inline edit
-  const handleApplyHiringManagerRecommendation = useCallback((concern: HiringManagerConcern) => {
+  const handleSelectAllMasterPromotionItems = useCallback(() => {
+    setSelectedMasterPromotionIds(promotableMasterItems.map((item) => item.id));
+    setMasterSaveStatus({
+      tone: 'neutral',
+      message: 'All promotable edits are selected for master resume sync.',
+    });
+  }, [promotableMasterItems]);
+
+  const handleClearMasterPromotionItems = useCallback(() => {
+    setSelectedMasterPromotionIds([]);
+    setMasterSaveStatus({
+      tone: 'neutral',
+      message: 'Master resume sync is now limited to zero selected edits until you check items again.',
+    });
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    undo();
+    if (hiringManagerResult) {
+      setIsFinalReviewStale(true);
+      setFinalReviewWarningsAcknowledged(false);
+    }
+    if (postReviewPolish.status !== 'idle') {
+      resetPostReviewPolish();
+    }
+  }, [undo, hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
+
+  const handleRedo = useCallback(() => {
+    redo();
+    if (hiringManagerResult) {
+      setIsFinalReviewStale(true);
+      setFinalReviewWarningsAcknowledged(false);
+    }
+    if (postReviewPolish.status !== 'idle') {
+      resetPostReviewPolish();
+    }
+  }, [redo, hiringManagerResult, postReviewPolish.status, resetPostReviewPolish]);
+
+  // Final review: recruiter scan + hiring manager critique + benchmark comparison
+  const handleRequestHiringManagerReview = useCallback(() => {
+    const jobIntelligence = data.jobIntelligence;
+    if (!currentResume || !jobIntelligence) return;
+    const serializedResume = resumeToPlainText(currentResume);
+    const benchmarkRequirements = data.benchmarkCandidate
+      ? [
+          ...data.benchmarkCandidate.expected_achievements.map(
+            achievement => `${achievement.area}: ${achievement.description}${achievement.typical_metrics ? ` (Typical metrics: ${achievement.typical_metrics})` : ''}`,
+          ),
+          `Leadership scope: ${data.benchmarkCandidate.expected_leadership_scope}`,
+          ...data.benchmarkCandidate.expected_industry_knowledge,
+          ...data.benchmarkCandidate.expected_technical_skills,
+          ...data.benchmarkCandidate.expected_certifications,
+          ...data.benchmarkCandidate.differentiators,
+        ]
+      : undefined;
+
+    void (async () => {
+      await rawRequestReview({
+        resume_text: serializedResume,
+        job_description: jobDescription,
+        company_name: jobIntelligence.company_name,
+        role_title: jobIntelligence.role_title,
+        job_requirements: [
+          ...jobIntelligence.core_competencies.map(c => c.competency),
+          ...jobIntelligence.strategic_responsibilities,
+        ],
+        hidden_signals: jobIntelligence.hidden_hiring_signals,
+        benchmark_profile_summary: data.benchmarkCandidate?.ideal_profile_summary,
+        benchmark_requirements: benchmarkRequirements,
+      });
+      setFinalReviewResumeText(serializedResume);
+      setIsFinalReviewStale(false);
+      setResolvedFinalReviewConcernIds([]);
+      setFinalReviewWarningsAcknowledged(false);
+      resetFinalReviewChat();
+      resetPostReviewPolish();
+    })();
+  }, [
+    currentResume,
+    data.benchmarkCandidate,
+    data.jobIntelligence,
+    jobDescription,
+    rawRequestReview,
+    resetFinalReviewChat,
+    resetPostReviewPolish,
+  ]);
+
+  // Apply a final review concern as an inline edit
+  const handleApplyHiringManagerRecommendation = useCallback((
+    concern: HiringManagerConcern,
+    languageOverride?: string,
+    candidateInputUsed = false,
+  ) => {
     if (!currentResume) return;
     const section = concern.target_section ?? 'Executive Summary';
     const sectionLower = section.toLowerCase();
@@ -473,7 +921,19 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       targetText = currentResume.professional_experience[0].bullets[0]?.text ?? '';
     }
     if (!targetText) return;
-    requestEdit(targetText, section, 'custom', concern.recommendation);
+    const suggestedLanguage = languageOverride ?? concern.suggested_resume_edit;
+    const instruction = suggestedLanguage
+      ? `${concern.fix_strategy}\n\nUse this sample direction if it remains strictly truthful:\n${suggestedLanguage}`
+      : concern.fix_strategy;
+    requestEdit(targetText, section, 'custom', instruction, {
+      requirement: concern.related_requirement,
+      strategy: concern.fix_strategy,
+      origin: 'final_review',
+      scoreDomain: concern.related_requirement ? 'both' : 'job_description',
+      candidateInputUsed,
+      finalReviewConcernId: concern.id,
+      finalReviewConcernSeverity: concern.severity,
+    });
   }, [currentResume, requestEdit]);
 
   if (!isPipelineActive) {
@@ -488,9 +948,11 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
   }
 
   // Display score — live score overrides pipeline score
-  const displayAtsScore = liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? null;
+  const displayAtsScore = postReviewPolish.result?.ats_score ?? liveScores?.ats_score ?? data.assembly?.scores.ats_match ?? null;
   const displayTruthScore = data.assembly?.scores.truth ?? null;
-  const displayToneScore = data.assembly?.scores.tone ?? null;
+  const displayToneScore = postReviewPolish.result?.tone_score ?? data.assembly?.scores.tone ?? null;
+  const gapChatSnapshot = isComplete ? getGapChatSnapshot() : null;
+  const finalReviewChatSnapshot = isComplete ? getFinalReviewChatSnapshot() : null;
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
@@ -544,8 +1006,8 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         onRequestEdit={requestEdit}
         onAcceptEdit={acceptEdit}
         onRejectEdit={rejectEdit}
-        onUndo={undo}
-        onRedo={redo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
         onAddContext={handleAddContext}
         isRerunning={isStarting}
         liveScores={liveScores}
@@ -557,17 +1019,31 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         previousResume={previousResume}
         onDismissChanges={handleDismissChanges}
         hiringManagerResult={hiringManagerResult}
+        resolvedFinalReviewConcernIds={resolvedFinalReviewConcernIds}
+        isFinalReviewStale={isFinalReviewStale}
+        finalReviewWarningsAcknowledged={finalReviewWarningsAcknowledged}
+        onAcknowledgeFinalReviewWarnings={() => setFinalReviewWarningsAcknowledged(true)}
         isHiringManagerLoading={isHiringManagerLoading}
         hiringManagerError={hiringManagerError}
         onRequestHiringManagerReview={handleRequestHiringManagerReview}
         onApplyHiringManagerRecommendation={handleApplyHiringManagerRecommendation}
         gapChat={isComplete ? gapChat : null}
+        gapChatSnapshot={gapChatSnapshot}
         buildChatContext={isComplete ? buildChatContext : undefined}
+        finalReviewChat={isComplete ? finalReviewChat : null}
+        finalReviewChatSnapshot={finalReviewChatSnapshot}
+        buildFinalReviewChatContext={isComplete ? buildFinalReviewChatContext : undefined}
+        postReviewPolish={postReviewPolish}
         masterSaveMode={masterSaveMode}
         onChangeMasterSaveMode={setMasterSaveMode}
         onSaveCurrentToMaster={handleSaveCurrentToMaster}
         isSavingToMaster={isSavingToMaster}
         masterSaveStatus={masterSaveStatus}
+        promotableMasterItems={promotableMasterItems}
+        selectedMasterPromotionIds={selectedMasterPromotionIds}
+        onToggleMasterPromotionItem={handleToggleMasterPromotionItem}
+        onSelectAllMasterPromotionItems={handleSelectAllMasterPromotionItems}
+        onClearMasterPromotionItems={handleClearMasterPromotionItems}
       />
     </div>
   );

@@ -95,9 +95,9 @@ const IMPORTANCE_ORDER: Array<'must_have' | 'important' | 'nice_to_have'> = [
 const TIER_SORT_ORDER: Record<Tier, number> = { gap: 0, partial: 1, strong: 2 };
 
 const TIER_CONFIG: Record<Tier, { label: string; icon: string }> = {
-  strong: { label: 'Strong', icon: '\u2713' },
-  partial: { label: 'Partial', icon: '\u2192' },
-  gap: { label: 'Gap', icon: '\u2717' },
+  strong: { label: 'Already Covered', icon: '\u2713' },
+  partial: { label: 'Needs More Evidence', icon: '\u2192' },
+  gap: { label: 'Not Addressed', icon: '\u2717' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -275,7 +275,7 @@ function SummaryHeader({
           </div>
         </div>
         <p style={{ fontSize: 12, lineHeight: 1.5, color: REPORT_COLORS.tertiary }}>
-          Green means the resume already supports the requirement. Blue means we can strengthen or reframe it truthfully. Red means it is still missing or only partly supported.
+          Green means the resume already supports the requirement. Blue means it is only partly covered or still needs stronger proof. Red means it is not addressed yet.
         </p>
         <p style={{ fontSize: 12, lineHeight: 1.6, color: REPORT_COLORS.tertiary }}>
           1. Confirm the green items. 2. For blue or red items, add detail or coach the AI. 3. Nothing counts as addressed until you approve the edit on the resume.
@@ -366,6 +366,12 @@ function RequirementCard({
   const color = tierColor(req.tier);
   const config = TIER_CONFIG[req.tier];
   const canAct = onRequestEdit && currentResume && !isEditing;
+  const hasMapping = req.addressedBy && req.addressedBy.length > 0;
+  const statusLabel = req.tier === 'strong'
+    ? 'Already Covered'
+    : req.tier === 'partial'
+      ? hasMapping ? 'Partially Covered' : 'Needs More Evidence'
+      : 'Not Addressed';
 
   const handleApplyLanguage = useCallback(() => {
     if (!canAct || !req.strategy?.positioning) return;
@@ -408,7 +414,6 @@ function RequirementCard({
   }, [req.requirement, onRequirementClick]);
 
   const questions = req.interviewQuestions ?? [];
-  const hasMapping = req.addressedBy && req.addressedBy.length > 0;
   const metric = req.inferredMetric ?? req.strategy?.inferred_metric;
   const metricRationale = req.inferenceRationale ?? req.strategy?.inference_rationale;
 
@@ -481,7 +486,7 @@ function RequirementCard({
 
         {/* Status badge */}
         <div>
-          <StatusBadge status={tierStatusLabel(req.tier)} />
+          <StatusBadge status={tierStatusLabel(req.tier)} labelOverride={statusLabel} />
         </div>
 
         {/* Benchmark context */}
@@ -513,7 +518,7 @@ function RequirementCard({
               <div key={`${entry.section}-${i}`} className="flex items-start gap-2">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 13, color: REPORT_COLORS.secondary }}>
-                    {req.resumeStatus === 'repositioned' ? 'Repositioned in ' : ''}{entry.section}
+                    {req.resumeStatus === 'repositioned' ? 'Partially covered in ' : ''}{entry.section}
                   </span>
                   <p style={{ fontSize: 14, color: REPORT_COLORS.body, marginTop: 2, lineHeight: 1.5 }}>
                     &ldquo;{entry.bullet_text.length > 140 ? entry.bullet_text.slice(0, 140).trimEnd() + '...' : entry.bullet_text}&rdquo;
@@ -746,7 +751,7 @@ function RequirementCard({
                 data-testid="action-strengthen"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
-                Improve Wording
+                Refine Wording
               </button>
             )}
             {req.tier === 'partial' && !req.strategy?.positioning && (
@@ -764,7 +769,7 @@ function RequirementCard({
                 data-testid="action-strengthen"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
-                Improve Wording
+                Refine Wording
               </button>
             )}
             {!showContext && req.tier !== 'strong' && (
@@ -782,7 +787,7 @@ function RequirementCard({
                 data-testid="action-add-context"
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-                Add Details
+                Share Details
               </button>
             )}
             {gapChat && buildChatContext && req.tier !== 'strong' && !showChat && !chatResolved && (
@@ -800,7 +805,7 @@ function RequirementCard({
                 data-testid="action-coach-me"
               >
                 <MessagesSquare className="h-3.5 w-3.5" />
-                Brainstorm
+                Ask Another Question
               </button>
             )}
           </div>
@@ -816,7 +821,7 @@ function RequirementCard({
             error={chatState?.error ?? null}
             resolvedLanguage={chatState?.resolvedLanguage ?? null}
             onSendMessage={gapChat.sendMessage}
-            onAcceptLanguage={(requirement, language) => {
+            onAcceptLanguage={(requirement, language, candidateInputUsed) => {
               // Find a target bullet before accepting — prevent silent no-op
               if (!canAct) return;
               const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
@@ -832,11 +837,16 @@ function RequirementCard({
                 editTarget.section,
                 'custom',
                 `Naturally integrate this coached resume language into the text: "${language}". This addresses the job requirement: "${req.requirement}".`,
-                buildEditContext(req.requirement, req.evidence, language),
+                buildEditContext(req.requirement, req.evidence, language, {
+                  origin: 'gap',
+                  candidateInputUsed,
+                  scoreDomain: 'job_description',
+                }),
               );
             }}
             context={chatCtx!}
             isEditing={isEditing}
+            onSkip={() => setShowChat(false)}
           />
         )}
       </div>

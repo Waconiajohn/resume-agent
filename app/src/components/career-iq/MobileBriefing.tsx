@@ -5,7 +5,6 @@ import {
   Bot,
   Home,
   Columns3,
-  Video,
   Activity,
   User,
   ChevronLeft,
@@ -42,15 +41,15 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom }:
 
   const actions: Record<DashboardState, { insight: string; cta: string }> = {
     'new-user': {
-      insight: 'Define your Why-Me story to unlock the full platform.',
-      cta: 'Define Your Why-Me Story',
+      insight: 'Build your Career Profile to give the rest of the platform clear direction.',
+      cta: 'Build Career Profile',
     },
     refining: {
-      insight: 'Strengthening your story will sharpen every agent\'s output.',
-      cta: 'Refine Your Story',
+      insight: 'Strengthening your Career Profile will sharpen every agent\'s output.',
+      cta: 'Refine Career Profile',
     },
     strong: {
-      insight: 'Your LinkedIn headline isn\'t reflecting your Why-Me story yet.',
+      insight: 'Your profile is in good shape. Use it to target stronger-fit roles next.',
       cta: 'Update LinkedIn Headline',
     },
   };
@@ -220,10 +219,10 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
 
 const MOBILE_TABS: { id: CareerIQRoom; label: string; icon: typeof Home }[] = [
   { id: 'dashboard', label: 'Home', icon: Home },
-  { id: 'jobs', label: 'Pipeline', icon: Columns3 },
-  { id: 'learning', label: 'Live', icon: Video },
-  { id: 'networking', label: 'Network', icon: Activity },
+  { id: 'career-profile', label: 'Profile', icon: Sparkles },
   { id: 'resume', label: 'Resume', icon: User },
+  { id: 'jobs', label: 'Pipeline', icon: Columns3 },
+  { id: 'interview', label: 'Interview', icon: Activity },
 ];
 
 function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavigate: (room: CareerIQRoom) => void }) {

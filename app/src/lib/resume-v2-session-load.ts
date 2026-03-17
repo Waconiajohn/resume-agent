@@ -1,0 +1,69 @@
+import type { V2PersistedDraftState, V2PipelineData, V2Stage } from '@/types/resume-v2';
+
+export type LoadableV2PipelineSnapshot = {
+  stage?: V2Stage;
+  jobIntelligence?: V2PipelineData['jobIntelligence'];
+  candidateIntelligence?: V2PipelineData['candidateIntelligence'];
+  benchmarkCandidate?: V2PipelineData['benchmarkCandidate'];
+  gapAnalysis?: V2PipelineData['gapAnalysis'];
+  gapCoachingCards?: V2PipelineData['gapCoachingCards'];
+  preScores?: V2PipelineData['preScores'];
+  narrativeStrategy?: V2PipelineData['narrativeStrategy'];
+  resumeDraft?: V2PipelineData['resumeDraft'];
+  assembly?: V2PipelineData['assembly'];
+  error?: string | null;
+  stageMessages?: V2PipelineData['stageMessages'];
+};
+
+export interface LoadSessionResponseBody {
+  version?: string;
+  status?: 'running' | 'complete' | 'error';
+  pipeline_stage?: V2Stage;
+  error_message?: string | null;
+  pipeline_data?: LoadableV2PipelineSnapshot;
+  draft_state?: V2PersistedDraftState | null;
+  inputs?: { resume_text: string; job_description: string };
+}
+
+export interface HydratedV2SessionLoad {
+  data: V2PipelineData;
+  isComplete: boolean;
+  shouldReconnect: boolean;
+  inputs: { resume_text: string; job_description: string };
+  draftState: V2PersistedDraftState | null;
+}
+
+export function hydrateV2SessionLoad(
+  sessionId: string,
+  body: LoadSessionResponseBody,
+): HydratedV2SessionLoad | null {
+  if (body.version !== 'v2' || !body.pipeline_data) return null;
+
+  const status = body.status ?? 'complete';
+  const pd = body.pipeline_data;
+  const stage = status === 'complete'
+    ? 'complete'
+    : (pd.stage ?? body.pipeline_stage ?? 'intake');
+
+  return {
+    data: {
+      sessionId,
+      stage,
+      jobIntelligence: pd.jobIntelligence ?? null,
+      candidateIntelligence: pd.candidateIntelligence ?? null,
+      benchmarkCandidate: pd.benchmarkCandidate ?? null,
+      gapAnalysis: pd.gapAnalysis ?? null,
+      gapCoachingCards: pd.gapCoachingCards ?? null,
+      preScores: pd.preScores ?? null,
+      narrativeStrategy: pd.narrativeStrategy ?? null,
+      resumeDraft: pd.resumeDraft ?? null,
+      assembly: pd.assembly ?? null,
+      error: pd.error ?? body.error_message ?? null,
+      stageMessages: pd.stageMessages ?? [],
+    },
+    isComplete: status === 'complete',
+    shouldReconnect: status === 'running',
+    inputs: body.inputs ?? { resume_text: '', job_description: '' },
+    draftState: body.draft_state ?? null,
+  };
+}

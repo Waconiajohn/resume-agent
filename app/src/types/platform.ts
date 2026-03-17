@@ -40,7 +40,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'A structured intake assessment that surfaces your professional strengths, career goals, and financial context through carefully designed questions. Builds a confidential client profile that personalizes every tool in the platform to your unique situation.',
     icon: '🎯',
     status: 'active',
-    route: '/onboarding',
+    route: '/workspace?room=career-profile',
     category: 'career',
     features: [
       {
@@ -64,7 +64,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Identifies your target role type, preferred industries, and non-negotiables to focus your search on roles where you are genuinely competitive.',
       },
     ],
-    ctaLabel: 'Start Assessment',
+    ctaLabel: 'Open Career Profile',
   },
   {
     id: 'resume-strategist',
@@ -75,7 +75,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Three AI agents collaborate to transform your resume into a strategic positioning document. The Strategist researches your market and identifies competitive advantages. The Craftsman writes each section with your authentic voice. The Producer ensures ATS compliance across 5 major systems.',
     icon: '\u{1F4C4}',
     status: 'active',
-    route: '/app',
+    route: '/workspace?room=resume',
     category: 'career',
     features: [
       {
@@ -99,7 +99,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Your real language and accomplishments, strategically positioned — never fabricated or inflated.',
       },
     ],
-    ctaLabel: 'Start New Session',
+    ctaLabel: 'Open Resume Builder',
   },
   {
     id: 'cover-letter',
@@ -147,7 +147,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Your complete LinkedIn command center. Optimize your headline, summary, and experience sections for recruiter visibility. Generate thought-leadership posts from your real expertise. Plan a 30-day content calendar aligned to your positioning strategy.',
     icon: '\u{1F4BC}',
     status: 'active',
-    route: '/career-iq?room=linkedin',
+    route: '/workspace?room=linkedin',
     category: 'career',
     features: [
       {
@@ -182,7 +182,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Analyzes your digital footprint against your target positioning — resume, LinkedIn, bio, and public profiles — and identifies gaps, contradictions, and quick wins to strengthen your executive brand.',
     icon: '\u{1F50E}',
     status: 'active',
-    route: '/career-iq?room=personal-brand',
+    route: '/workspace?room=personal-brand',
     category: 'intelligence',
     features: [
       {
@@ -217,7 +217,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generate polished executive biographies for speaking engagements, board profiles, and media kits — plus structured case studies that turn your biggest career wins into publication-ready narratives with quantified outcomes.',
     icon: '\u{1F4DD}',
     status: 'active',
-    route: '/career-iq?room=executive-bio',
+    route: '/workspace?room=executive-bio',
     category: 'writing',
     features: [
       {
@@ -254,7 +254,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Central hub for your active job search. Track applications through every pipeline stage, surface AI-matched job opportunities, monitor your search velocity, and get coaching nudges to keep momentum.',
     icon: '\u{1F50D}',
     status: 'active',
-    route: '/career-iq?room=jobs',
+    route: '/workspace?room=jobs',
     category: 'career',
     features: [
       {
@@ -289,7 +289,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Upload your LinkedIn connections and we map open positions to companies where you have existing contacts. Surface referral bonus opportunities, generate personalized outreach sequences, and track your networking across every target company.',
     icon: '\u{1F310}',
     status: 'active',
-    route: '/career-iq?room=networking',
+    route: '/workspace?room=networking',
     category: 'networking',
     features: [
       {
@@ -321,7 +321,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
     name: 'Job Applier',
     shortDescription: 'Chrome extension that auto-fills job applications with your tailored resume',
     longDescription:
-      'A Chrome extension that detects when you are on a job application page and auto-fills the form using your CareerIQ tailored resume. Supports Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS.',
+      'A Chrome extension that detects when you are on a job application page and auto-fills the form using your Workspace-tailored resume. Supports Greenhouse, Lever, LinkedIn Easy Apply, Workday, Indeed, and iCIMS.',
     icon: '\u{1F680}',
     status: 'active',
     route: '/tools/job-applier',
@@ -346,7 +346,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       {
         title: 'Tailored Per Job',
         description:
-          'Pulls the resume CareerIQ tailored for this specific job, not a generic master resume.',
+          'Pulls the resume tailored for this specific job from Workspace, not a generic master resume.',
       },
     ],
     ctaLabel: 'Get Chrome Extension',
@@ -362,7 +362,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Your complete interview command center. Prepare with JD-driven question banks, practice in realistic mock interviews with AI feedback, debrief immediately after real interviews, and generate personalized thank-you notes — all in one place.',
     icon: '\u{1F3AF}',
     status: 'active',
-    route: '/career-iq?room=interview',
+    route: '/workspace?room=interview',
     category: 'interview',
     features: [
       {
@@ -397,7 +397,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts and runs you through realistic counter-offer scenarios so you walk in fully prepared.',
     icon: '\u{1F4B0}',
     status: 'active',
-    route: '/career-iq?room=salary-negotiation',
+    route: '/workspace?room=salary-negotiation',
     category: 'planning',
     features: [
       {
@@ -432,7 +432,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates a role-specific 30-60-90 day plan that demonstrates strategic thinking in interviews and accelerates onboarding after you land the job. Built from the JD, company context, and your positioning.',
     icon: '\u{1F5FA}\uFE0F',
     status: 'active',
-    route: '/career-iq?room=ninety-day-plan',
+    route: '/workspace?room=ninety-day-plan',
     category: 'planning',
     features: [
       {
@@ -467,7 +467,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'A seven-dimension retirement readiness assessment that evaluates your financial, health, social, and psychological preparedness. Provides fiduciary-grade guidance and matches you with qualified financial planners for a warm, documented handoff.',
     icon: '🏦',
     status: 'active',
-    route: '/career-iq?room=financial',
+    route: '/workspace?room=financial',
     category: 'financial',
     features: [
       {

@@ -1,58 +1,22 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SessionHistoryTab } from '../SessionHistoryTab';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 
-// ─── Mocks ───────────────────────────────────────────────────────────────────
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    },
+  },
+}));
 
-// Prevent modals from rendering actual complex content
 vi.mock('../SessionResumeModal', () => ({
   SessionResumeModal: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="session-resume-modal">
-      <button onClick={onClose}>Close Modal</button>
-    </div>
-  ),
-}));
-
-vi.mock('../ResumeComparisonModal', () => ({
-  ResumeComparisonModal: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="resume-comparison-modal">
-      <button onClick={onClose}>Close Comparison</button>
-    </div>
-  ),
-}));
-
-vi.mock('../DashboardSessionCard', () => ({
-  DashboardSessionCard: ({
-    session,
-    onResume,
-    onDelete,
-    onViewResume,
-    onViewCoverLetter,
-    isSelected,
-    onToggleSelect,
-    showSelectCheckbox,
-  }: {
-    session: CoachSession;
-    onResume: (id: string) => void;
-    onDelete: (id: string) => void;
-    onViewResume: (id: string) => void;
-    onViewCoverLetter?: (id: string) => void;
-    isSelected?: boolean;
-    onToggleSelect?: (id: string) => void;
-    showSelectCheckbox?: boolean;
-  }) => (
-    <div data-testid={`session-card-${session.id}`} data-selected={isSelected}>
-      <span>{session.company_name ?? 'Untitled'}</span>
-      <button onClick={() => onResume(session.id)}>Resume</button>
-      <button onClick={() => onDelete(session.id)}>Delete</button>
-      <button onClick={() => onViewResume(session.id)}>View Resume</button>
-      <button onClick={() => onViewCoverLetter?.(session.id)}>View Cover Letter</button>
-      {showSelectCheckbox && (
-        <button onClick={() => onToggleSelect?.(session.id)}>Select</button>
-      )}
+      <button onClick={onClose}>Close Resume Modal</button>
     </div>
   ),
 }));
@@ -65,8 +29,6 @@ vi.mock('../SessionCoverLetterModal', () => ({
   ),
 }));
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
-
 function makeSession(overrides: Partial<CoachSession> = {}): CoachSession {
   return {
     id: 'session-1',
@@ -75,11 +37,11 @@ function makeSession(overrides: Partial<CoachSession> = {}): CoachSession {
     master_resume_id: null,
     job_application_id: null,
     pipeline_status: 'complete',
-    product_type: 'resume',
+    product_type: 'resume_v2',
     company_name: 'Acme Corp',
     job_title: 'VP Engineering',
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-02T00:00:00Z',
+    created_at: '2026-01-01T12:00:00Z',
+    updated_at: '2026-01-02T12:00:00Z',
     ...overrides,
   };
 }
@@ -103,12 +65,10 @@ function makeProps(overrides: Record<string, unknown> = {}) {
     onResumeSession: vi.fn(),
     onDeleteSession: vi.fn().mockResolvedValue(true),
     onGetSessionResume: vi.fn().mockResolvedValue(makeFinalResume()),
-    onGetSessionCoverLetter: vi.fn().mockResolvedValue(null),
+    onGetSessionCoverLetter: vi.fn().mockResolvedValue({ letter: 'Hello there' }),
     ...overrides,
   };
 }
-
-// ─── Tests ───────────────────────────────────────────────────────────────────
 
 afterEach(() => {
   cleanup();
@@ -116,176 +76,105 @@ afterEach(() => {
 });
 
 describe('SessionHistoryTab', () => {
-  it('renders session cards for provided sessions', () => {
+  it('renders company, role, date, and status for saved sessions', () => {
     render(<SessionHistoryTab {...makeProps()} />);
-    expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument();
+
+    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+    expect(screen.getByText('VP Engineering')).toBeInTheDocument();
+    expect(screen.getAllByText('Completed').length).toBeGreaterThan(0);
+    expect(screen.getByText('Jan 1, 2026')).toBeInTheDocument();
   });
 
-  it('renders multiple session cards', () => {
-    const sessions = [
-      makeSession({ id: 'session-1' }),
-      makeSession({ id: 'session-2', company_name: 'Beta Ltd' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
-    expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument();
-    expect(screen.getByTestId('session-card-session-2')).toBeInTheDocument();
-  });
-
-  it('shows loading skeleton when loading is true', () => {
-    render(<SessionHistoryTab {...makeProps({ sessions: [], loading: true })} />);
-    // Loading skeleton renders animated pulse divs, no session cards
-    expect(screen.queryByTestId('session-card-session-1')).not.toBeInTheDocument();
-    // Look for the skeleton pulse elements
-    const { container } = render(<SessionHistoryTab {...makeProps({ sessions: [], loading: true })} />);
-    const pulseElements = container.querySelectorAll('[class*="animate-pulse"]');
-    expect(pulseElements.length).toBeGreaterThan(0);
-  });
-
-  it('shows empty state when no sessions and not loading', () => {
+  it('shows an empty state when there are no saved sessions', () => {
     render(<SessionHistoryTab {...makeProps({ sessions: [] })} />);
-    expect(screen.getByText(/no sessions found/i)).toBeInTheDocument();
+    expect(screen.getByText(/no saved tailored work found/i)).toBeInTheDocument();
   });
 
-  it('shows filter buttons for All, Completed, In Progress, Incomplete', () => {
-    render(<SessionHistoryTab {...makeProps()} />);
-    expect(screen.getByRole('button', { name: /all/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /completed/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /in progress/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /incomplete/i })).toBeInTheDocument();
+  it('shows loading rows when loading is true', () => {
+    const { container } = render(<SessionHistoryTab {...makeProps({ sessions: [], loading: true })} />);
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
-  it('calls onLoadSessions with status filter when filter changes', async () => {
+  it('calls onLoadSessions with the selected status filter', async () => {
     const onLoadSessions = vi.fn();
     render(<SessionHistoryTab {...makeProps({ onLoadSessions })} />);
+
     fireEvent.click(screen.getByRole('button', { name: /completed/i }));
+
     await waitFor(() => {
-      expect(onLoadSessions).toHaveBeenCalledWith({ status: 'complete' });
+      expect(onLoadSessions).toHaveBeenLastCalledWith({ status: 'complete' });
     });
   });
 
-  it('calls onLoadSessions without filter when All is selected', async () => {
-    const onLoadSessions = vi.fn();
-    render(<SessionHistoryTab {...makeProps({ onLoadSessions })} />);
-    // First click a non-all filter, then all
-    fireEvent.click(screen.getByRole('button', { name: /completed/i }));
-    fireEvent.click(screen.getByRole('button', { name: /all/i }));
-    await waitFor(() => {
-      // Last call should be without filter
-      const calls = onLoadSessions.mock.calls;
-      const lastCall = calls[calls.length - 1];
-      expect(lastCall[0]).toBeUndefined();
-    });
+  it('shows the asset type filter when multiple supported product types exist', () => {
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          sessions: [
+            makeSession({ id: 'resume-1', product_type: 'resume_v2' }),
+            makeSession({ id: 'letter-1', product_type: 'cover_letter', company_name: 'Beta Co', job_title: 'Director' }),
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByRole('combobox', { name: /filter by asset type/i })).toBeInTheDocument();
   });
 
-  it('shows compare button when two complete sessions are selected', async () => {
-    const sessions = [
-      makeSession({ id: 'session-1', pipeline_status: 'complete' }),
-      makeSession({ id: 'session-2', pipeline_status: 'complete', company_name: 'Beta Ltd' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+  it('filters rows by selected asset type', () => {
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          sessions: [
+            makeSession({ id: 'resume-1', product_type: 'resume_v2' }),
+            makeSession({ id: 'letter-1', product_type: 'cover_letter', company_name: 'Beta Co', job_title: 'Director' }),
+          ],
+        })}
+      />,
+    );
 
-    fireEvent.click(screen.getAllByRole('button', { name: /select/i })[0]);
-    fireEvent.click(screen.getAllByRole('button', { name: /select/i })[1]);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /compare selected/i })).toBeInTheDocument();
-    });
-  });
-
-  // ─── Product filter tests ──────────────────────────────────────────────────
-
-  it('shows product filter dropdown when sessions have multiple product types', () => {
-    const sessions = [
-      makeSession({ id: 'session-1', product_type: 'resume' }),
-      makeSession({ id: 'session-2', product_type: 'cover_letter', company_name: 'Beta' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
-    expect(screen.getByRole('combobox', { name: /filter by product/i })).toBeInTheDocument();
-  });
-
-  it('hides product filter dropdown when all sessions have same product type', () => {
-    const sessions = [
-      makeSession({ id: 'session-1', product_type: 'resume' }),
-      makeSession({ id: 'session-2', product_type: 'resume', company_name: 'Beta' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
-    expect(screen.queryByRole('combobox', { name: /filter by product/i })).not.toBeInTheDocument();
-  });
-
-  it('filters sessions by product type when product filter is changed', () => {
-    const sessions = [
-      makeSession({ id: 'session-1', product_type: 'resume' }),
-      makeSession({ id: 'session-2', product_type: 'cover_letter', company_name: 'Beta' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
-
-    fireEvent.change(screen.getByRole('combobox', { name: /filter by product/i }), {
+    fireEvent.change(screen.getByRole('combobox', { name: /filter by asset type/i }), {
       target: { value: 'cover_letter' },
     });
 
-    expect(screen.queryByTestId('session-card-session-1')).not.toBeInTheDocument();
-    expect(screen.getByTestId('session-card-session-2')).toBeInTheDocument();
+    expect(screen.queryByText('Acme Corp')).not.toBeInTheDocument();
+    expect(screen.getByText('Beta Co')).toBeInTheDocument();
   });
 
-  it('chains product filter with status filter', () => {
-    const sessions = [
-      makeSession({ id: 's1', product_type: 'resume', pipeline_status: 'complete' }),
-      makeSession({ id: 's2', product_type: 'cover_letter', pipeline_status: 'complete', company_name: 'Beta' }),
-      makeSession({ id: 's3', product_type: 'resume', pipeline_status: 'running', company_name: 'Gamma' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
+  it('opens the resume modal from a resume row', async () => {
+    render(<SessionHistoryTab {...makeProps()} />);
 
-    // Filter to "Completed" status
-    fireEvent.click(screen.getByRole('button', { name: /completed/i }));
-    // Filter to "resume" product
-    fireEvent.change(screen.getByRole('combobox', { name: /filter by product/i }), {
-      target: { value: 'resume' },
-    });
-
-    expect(screen.getByTestId('session-card-s1')).toBeInTheDocument();
-    expect(screen.queryByTestId('session-card-s2')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('session-card-s3')).not.toBeInTheDocument();
-  });
-
-  it('treats sessions without product_type as resume', () => {
-    const sessions = [
-      makeSession({ id: 'session-1' }), // no product_type
-      makeSession({ id: 'session-2', product_type: 'cover_letter', company_name: 'Beta' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
-
-    fireEvent.change(screen.getByRole('combobox', { name: /filter by product/i }), {
-      target: { value: 'resume' },
-    });
-
-    expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('session-card-session-2')).not.toBeInTheDocument();
-  });
-
-  it('humanizes unknown product_type values in dropdown', () => {
-    const sessions = [
-      makeSession({ id: 'session-1', product_type: 'resume' }),
-      makeSession({ id: 'session-2', product_type: 'linkedin_optimizer', company_name: 'Beta' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
-    const dropdown = screen.getByRole('combobox', { name: /filter by product/i });
-    expect(dropdown).toHaveTextContent('Linkedin Optimizer');
-  });
-
-  it('shows comparison modal when Compare Selected is clicked', async () => {
-    const sessions = [
-      makeSession({ id: 'session-1', pipeline_status: 'complete' }),
-      makeSession({ id: 'session-2', pipeline_status: 'complete', company_name: 'Beta Ltd' }),
-    ];
-    render(<SessionHistoryTab {...makeProps({ sessions })} />);
-
-    fireEvent.click(screen.getAllByRole('button', { name: /select/i })[0]);
-    fireEvent.click(screen.getAllByRole('button', { name: /select/i })[1]);
-    await waitFor(() => screen.getByRole('button', { name: /compare selected/i }));
-    fireEvent.click(screen.getByRole('button', { name: /compare selected/i }));
+    fireEvent.click(screen.getByRole('button', { name: /view resume/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('resume-comparison-modal')).toBeInTheDocument();
+      expect(screen.getByTestId('session-resume-modal')).toBeInTheDocument();
     });
+  });
+
+  it('opens the cover letter modal for a cover letter row', async () => {
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          sessions: [
+            makeSession({ id: 'letter-1', product_type: 'cover_letter', company_name: 'Beta Co', job_title: 'Director' }),
+          ],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /view letter/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-cover-letter-modal')).toBeInTheDocument();
+    });
+  });
+
+  it('calls onResumeSession when Open is clicked', () => {
+    const onResumeSession = vi.fn();
+    render(<SessionHistoryTab {...makeProps({ onResumeSession })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^open$/i }));
+
+    expect(onResumeSession).toHaveBeenCalledWith('session-1');
   });
 });

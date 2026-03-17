@@ -1,39 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ExternalLink, FileText, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { DashboardSessionCard } from '@/components/dashboard/DashboardSessionCard';
 import { SessionResumeModal } from '@/components/dashboard/SessionResumeModal';
 import { SessionCoverLetterModal } from '@/components/dashboard/SessionCoverLetterModal';
-import { ResumeComparisonModal } from '@/components/dashboard/ResumeComparisonModal';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
 
 type StatusFilter = 'all' | 'complete' | 'running' | 'error';
+type ProductFilter = 'all' | string;
 
 const FILTER_OPTIONS: Array<{ id: StatusFilter; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'complete', label: 'Completed' },
   { id: 'running', label: 'In Progress' },
-  { id: 'error', label: 'Incomplete' },
+  { id: 'error', label: 'Needs Review' },
 ];
-
-type ProductFilter = 'all' | string;
-
-function getUniqueProductTypes(sessions: CoachSession[]): string[] {
-  const types = new Set<string>();
-  for (const s of sessions) {
-    types.add(s.product_type ?? 'resume');
-  }
-  return Array.from(types).sort();
-}
-
-function humanizeProductType(type: string): string {
-  return type
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 interface SessionHistoryTabProps {
   sessions: CoachSession[];
@@ -45,6 +29,68 @@ interface SessionHistoryTabProps {
   onGetSessionCoverLetter: (id: string) => Promise<{ letter: string; quality_score?: number | null } | null>;
 }
 
+function humanizeProductType(type: string): string {
+  switch (type) {
+    case 'resume_v2':
+    case 'resume':
+      return 'Tailored Resume';
+    case 'cover_letter':
+      return 'Cover Letter';
+    default:
+      return type.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+}
+
+function productTypeForSession(session: CoachSession): string {
+  return session.product_type ?? 'resume';
+}
+
+function getUniqueProductTypes(sessions: CoachSession[]): string[] {
+  const types = new Set<string>();
+  for (const session of sessions) {
+    const type = productTypeForSession(session);
+    if (type === 'resume' || type === 'resume_v2' || type === 'cover_letter') {
+      types.add(type);
+    }
+  }
+  return Array.from(types).sort();
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatStatus(status?: string | null): { label: string; classes: string } {
+  switch (status) {
+    case 'complete':
+    case 'completed':
+      return { label: 'Completed', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+    case 'error':
+      return { label: 'Needs Review', classes: 'border-[#f0b8b8]/25 bg-[#f0b8b8]/10 text-[#f6d0d0]' };
+    default:
+      return { label: 'In Progress', classes: 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]' };
+  }
+}
+
+function matchesStatusFilter(session: CoachSession, filter: StatusFilter): boolean {
+  if (filter === 'all') return true;
+  const rawStatus = session.pipeline_status ?? session.pipeline_stage ?? '';
+
+  if (filter === 'complete') {
+    return rawStatus === 'complete' || rawStatus === 'completed';
+  }
+
+  if (filter === 'error') {
+    return rawStatus === 'error';
+  }
+
+  return rawStatus !== 'complete' && rawStatus !== 'completed' && rawStatus !== 'error';
+}
+
 export function SessionHistoryTab({
   sessions,
   loading,
@@ -54,38 +100,42 @@ export function SessionHistoryTab({
   onGetSessionResume,
   onGetSessionCoverLetter,
 }: SessionHistoryTabProps) {
-  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [viewingResumeSessionId, setViewingResumeSessionId] = useState<string | null>(null);
   const [viewingCoverLetterSessionId, setViewingCoverLetterSessionId] = useState<string | null>(null);
-  const [selectedForCompare, setSelectedForCompare] = useState<Set<string>>(new Set());
-  const [showComparison, setShowComparison] = useState(false);
   const [extraSessions, setExtraSessions] = useState<CoachSession[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    const filters = filter !== 'all' ? { status: filter } : undefined;
+    const filters = statusFilter !== 'all' ? { status: statusFilter } : undefined;
     onLoadSessions(filters);
-  }, [filter, onLoadSessions]);
+  }, [statusFilter, onLoadSessions]);
 
-  // Reset accumulated pages when filters change
   useEffect(() => {
     setExtraSessions([]);
     setHasMore(false);
-  }, [filter, productFilter]);
+  }, [statusFilter, productFilter]);
 
-  // Derive hasMore from whether the parent loaded a full page
   useEffect(() => {
     setHasMore(sessions.length >= 50);
   }, [sessions]);
 
   const allSessions = useMemo(() => {
     if (extraSessions.length === 0) return sessions;
-    const seen = new Set(sessions.map((s) => s.id));
-    const extras = extraSessions.filter((s) => !seen.has(s.id));
-    return [...sessions, ...extras];
-  }, [sessions, extraSessions]);
+    const seen = new Set(sessions.map((session) => session.id));
+    return [...sessions, ...extraSessions.filter((session) => !seen.has(session.id))];
+  }, [extraSessions, sessions]);
+
+  const productTypes = getUniqueProductTypes(allSessions);
+
+  const filteredSessions = allSessions.filter((session) => {
+    const type = productTypeForSession(session);
+    const matchesProduct = productFilter === 'all' || type === productFilter;
+    const matchesSupportedType = type === 'resume' || type === 'resume_v2' || type === 'cover_letter';
+    return matchesProduct && matchesSupportedType && matchesStatusFilter(session, statusFilter);
+  });
 
   const handleLoadMore = useCallback(async () => {
     setLoadingMore(true);
@@ -96,81 +146,57 @@ export function SessionHistoryTab({
 
       const nextOffset = sessions.length + extraSessions.length;
       const params = new URLSearchParams({ offset: String(nextOffset), limit: '50' });
-      if (filter !== 'all') params.set('status', filter);
+      if (statusFilter !== 'all') params.set('status', statusFilter);
 
-      const res = await fetch(`${API_BASE}/sessions?${params}`, {
+      const response = await fetch(`${API_BASE}/sessions?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return;
+      if (!response.ok) return;
 
-      const responseData = await res.json() as { sessions: CoachSession[]; has_more: boolean };
-      setExtraSessions((prev) => [...prev, ...responseData.sessions]);
+      const responseData = await response.json() as { sessions: CoachSession[]; has_more: boolean };
+      setExtraSessions((current) => [...current, ...responseData.sessions]);
       setHasMore(responseData.has_more);
     } finally {
       setLoadingMore(false);
     }
-  }, [sessions.length, extraSessions.length, filter]);
-
-  const productTypes = getUniqueProductTypes(allSessions);
-
-  const filteredSessions = allSessions.filter((s) => {
-    const matchesStatus = filter === 'all' || s.pipeline_status === filter;
-    const matchesProduct = productFilter === 'all' || (s.product_type ?? 'resume') === productFilter;
-    return matchesStatus && matchesProduct;
-  });
-
-  const handleDeleteSession = async (id: string) => {
-    await onDeleteSession(id);
-    setSelectedForCompare((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
-
-  const handleToggleSelect = (id: string) => {
-    setSelectedForCompare((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else if (next.size < 2) {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const compareIds = Array.from(selectedForCompare);
-  const canCompare = compareIds.length === 2;
+  }, [extraSessions.length, sessions.length, statusFilter]);
 
   return (
-    <div>
-      {/* Filters */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-white/85">Past tailored work</h3>
+          <p className="mt-1 text-xs text-white/45">
+            Reopen the exact resume or cover letter you built for a specific company and role.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-1">
-            {FILTER_OPTIONS.map((opt) => (
+            {FILTER_OPTIONS.map((option) => (
               <button
-                key={opt.id}
-                onClick={() => setFilter(opt.id)}
+                key={option.id}
+                type="button"
+                onClick={() => setStatusFilter(option.id)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  filter === opt.id
+                  statusFilter === option.id
                     ? 'bg-white/[0.1] text-white'
                     : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80'
                 }`}
               >
-                {opt.label}
+                {option.label}
               </button>
             ))}
           </div>
+
           {productTypes.length > 1 && (
             <select
               value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
+              onChange={(event) => setProductFilter(event.target.value)}
               className="rounded-lg border border-white/[0.08] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-white/80 outline-none transition-colors hover:bg-white/[0.08]"
-              aria-label="Filter by product"
+              aria-label="Filter by asset type"
             >
-              <option value="all">All Products</option>
+              <option value="all">All Assets</option>
               {productTypes.map((type) => (
                 <option key={type} value={type}>
                   {humanizeProductType(type)}
@@ -179,67 +205,101 @@ export function SessionHistoryTab({
             </select>
           )}
         </div>
-        {canCompare && (
-          <GlassButton
-            variant="ghost"
-            className="h-8 px-3 text-xs"
-            onClick={() => setShowComparison(true)}
-          >
-            Compare Selected
-          </GlassButton>
-        )}
       </div>
 
-      {/* Session grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <GlassCard key={i} className="p-4">
-              <div className="mb-2 h-4 w-3/4 motion-safe:animate-pulse rounded-lg bg-white/[0.05]" />
-              <div className="mb-1 h-3 w-1/2 motion-safe:animate-pulse rounded-lg bg-white/[0.03]" />
-              <div className="h-3 w-1/3 motion-safe:animate-pulse rounded-lg bg-white/[0.03]" />
-            </GlassCard>
-          ))}
+      <GlassCard className="overflow-hidden p-0">
+        <div className="hidden grid-cols-[minmax(0,2.3fr)_140px_140px_220px] gap-4 border-b border-white/[0.06] px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-white/35 lg:grid">
+          <div>Company and role</div>
+          <div>Date</div>
+          <div>Status</div>
+          <div>Actions</div>
         </div>
-      ) : filteredSessions.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-6 py-12 text-center">
-          <p className="text-sm text-white/40">No sessions found.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredSessions.map((session) => (
-            <DashboardSessionCard
-              key={session.id}
-              session={session}
-              onResume={onResumeSession}
-              onDelete={handleDeleteSession}
-              onViewResume={setViewingResumeSessionId}
-              onViewCoverLetter={setViewingCoverLetterSessionId}
-              isSelected={selectedForCompare.has(session.id)}
-              onToggleSelect={handleToggleSelect}
-              showSelectCheckbox={session.pipeline_status === 'complete'}
-            />
-          ))}
-        </div>
-      )}
+
+        {loading ? (
+          <div className="space-y-0">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="border-b border-white/[0.04] px-5 py-4 last:border-b-0">
+                <div className="mb-2 h-4 w-2/3 animate-pulse rounded bg-white/[0.05]" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-white/[0.03]" />
+              </div>
+            ))}
+          </div>
+        ) : filteredSessions.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm text-white/45">No saved tailored work found for this filter.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/[0.04]">
+            {filteredSessions.map((session) => {
+              const status = formatStatus(session.pipeline_status ?? session.pipeline_stage);
+              const productLabel = humanizeProductType(productTypeForSession(session));
+              const company = session.company_name?.trim() || 'Untitled company';
+              const role = session.job_title?.trim() || 'Untitled role';
+              const showResumeAction = productTypeForSession(session) !== 'cover_letter';
+              const showCoverLetterAction = productTypeForSession(session) === 'cover_letter';
+
+              return (
+                <div key={session.id} className="px-5 py-4">
+                  <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2.3fr)_140px_140px_220px] lg:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="truncate text-sm font-semibold text-white/85">{company}</div>
+                        <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/45">
+                          {productLabel}
+                        </span>
+                      </div>
+                      <div className="mt-1 truncate text-xs text-white/45">{role}</div>
+                    </div>
+
+                    <div className="text-xs text-white/55">{formatDate(session.created_at)}</div>
+
+                    <div>
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${status.classes}`}>
+                        {status.label}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(session.id)}>
+                        <ExternalLink size={12} className="mr-1.5" />
+                        Open
+                      </GlassButton>
+                      {showResumeAction && (
+                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingResumeSessionId(session.id)}>
+                          <FileText size={12} className="mr-1.5" />
+                          View Resume
+                        </GlassButton>
+                      )}
+                      {showCoverLetterAction && (
+                        <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingCoverLetterSessionId(session.id)}>
+                          <FileText size={12} className="mr-1.5" />
+                          View Letter
+                        </GlassButton>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void onDeleteSession(session.id)}
+                        className="inline-flex h-8 items-center rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+                        aria-label={`Delete ${company} ${role} session`}
+                      >
+                        <Trash2 size={12} className="mr-1.5" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </GlassCard>
 
       {hasMore && (
-        <div className="mt-4 flex justify-center">
-          <GlassButton
-            variant="ghost"
-            className="h-9 px-4 text-xs"
-            onClick={() => void handleLoadMore()}
-            disabled={loadingMore}
-          >
+        <div className="flex justify-center">
+          <GlassButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => void handleLoadMore()} disabled={loadingMore}>
             {loadingMore ? 'Loading...' : 'Load more'}
           </GlassButton>
         </div>
-      )}
-
-      {selectedForCompare.size > 0 && selectedForCompare.size < 2 && (
-        <p className="mt-3 text-center text-xs text-white/40">
-          Select one more completed session to compare.
-        </p>
       )}
 
       {viewingResumeSessionId && (
@@ -255,18 +315,6 @@ export function SessionHistoryTab({
           sessionId={viewingCoverLetterSessionId}
           onClose={() => setViewingCoverLetterSessionId(null)}
           onGetSessionCoverLetter={onGetSessionCoverLetter}
-        />
-      )}
-
-      {showComparison && canCompare && (
-        <ResumeComparisonModal
-          sessionIds={[compareIds[0], compareIds[1]] as [string, string]}
-          onClose={() => {
-            setShowComparison(false);
-            setSelectedForCompare(new Set());
-          }}
-          onGetSessionResume={onGetSessionResume}
-          sessions={allSessions}
         />
       )}
     </div>

@@ -4,31 +4,10 @@
 
 import { useState, useCallback } from 'react';
 import { API_BASE } from '@/lib/api';
+import type { FinalReviewConcern, FinalReviewResult } from '@/types/resume-v2';
 
-export interface HiringManagerStrength {
-  observation: string;
-  why_it_matters: string;
-}
-
-export interface HiringManagerConcern {
-  observation: string;
-  severity: 'critical' | 'moderate' | 'minor';
-  recommendation: string;
-  target_section?: string;
-}
-
-export interface HiringManagerMissingElement {
-  element: string;
-  recommendation: string;
-}
-
-export interface HiringManagerReviewResult {
-  overall_impression: string;
-  verdict: 'strong_candidate' | 'promising_needs_work' | 'significant_gaps';
-  strengths: HiringManagerStrength[];
-  concerns: HiringManagerConcern[];
-  missing_elements: HiringManagerMissingElement[];
-}
+export type HiringManagerConcern = FinalReviewConcern;
+export type HiringManagerReviewResult = FinalReviewResult;
 
 export function useHiringManagerReview(
   accessToken: string | null,
@@ -44,7 +23,10 @@ export function useHiringManagerReview(
     company_name: string;
     role_title: string;
     requirements?: string[];
+    job_requirements?: string[];
     hidden_signals?: string[];
+    benchmark_profile_summary?: string;
+    benchmark_requirements?: string[];
   }) => {
     if (!accessToken || !sessionId) return;
 
@@ -80,5 +62,10 @@ export function useHiringManagerReview(
     setError(null);
   }, []);
 
-  return { result, isLoading, error, requestReview, reset };
+  const hydrateResult = useCallback((nextResult: HiringManagerReviewResult | null) => {
+    setResult(nextResult);
+    setError(null);
+  }, []);
+
+  return { result, isLoading, error, requestReview, reset, hydrateResult };
 }

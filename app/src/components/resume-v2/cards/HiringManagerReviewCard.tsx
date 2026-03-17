@@ -1,44 +1,80 @@
 import { useState } from 'react';
-import { UserCheck, Loader2, AlertCircle, CheckCircle2, ChevronDown, Wrench } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Loader2,
+  Search,
+  Sparkles,
+  Target,
+  Trophy,
+  UserCheck,
+  Wrench,
+} from 'lucide-react';
 import { GlassCard } from '../../GlassCard';
 import { cn } from '@/lib/utils';
+import { FinalReviewConcernThread } from './FinalReviewConcernThread';
 import type {
-  HiringManagerReviewResult,
   HiringManagerConcern,
+  HiringManagerReviewResult,
 } from '@/hooks/useHiringManagerReview';
-
-
-// ─── Props ──────────────────────────────────────────────────────────
+import type { FinalReviewChatContext } from '@/types/resume-v2';
+import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 
 export interface HiringManagerReviewCardProps {
-  /** Null = not yet requested. Render the trigger button. */
   result: HiringManagerReviewResult | null;
   isLoading: boolean;
   error: string | null;
   companyName: string;
   roleTitle: string;
   onRequestReview: () => void;
-  /** Apply a concern's recommendation as an inline edit */
-  onApplyRecommendation?: (concern: HiringManagerConcern) => void;
+  onApplyRecommendation?: (
+    concern: HiringManagerConcern,
+    languageOverride?: string,
+    candidateInputUsed?: boolean,
+  ) => void;
+  isEditing?: boolean;
+  resolvedConcernIds?: string[];
+  finalReviewChat?: FinalReviewChatHook | null;
+  buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
 }
 
-// ─── Verdict config ─────────────────────────────────────────────────
-
 const VERDICT_CONFIG = {
-  strong_candidate: {
-    label: 'Strong Candidate',
+  strong_interview_candidate: {
+    label: 'Strong Interview Candidate',
     color: '#b5dec2',
     bg: 'rgba(181,222,194,0.10)',
     border: 'rgba(181,222,194,0.25)',
   },
-  promising_needs_work: {
-    label: 'Promising — Needs Work',
+  possible_interview: {
+    label: 'Possible Interview',
+    color: '#afc4ff',
+    bg: 'rgba(175,196,255,0.10)',
+    border: 'rgba(175,196,255,0.25)',
+  },
+  needs_improvement: {
+    label: 'Needs Improvement',
     color: '#f0d99f',
     bg: 'rgba(240,217,159,0.10)',
     border: 'rgba(240,217,159,0.25)',
   },
-  significant_gaps: {
-    label: 'Significant Gaps',
+  likely_rejected: {
+    label: 'Likely Rejected',
+    color: '#f0b8b8',
+    bg: 'rgba(240,184,184,0.10)',
+    border: 'rgba(240,184,184,0.25)',
+  },
+} as const;
+
+const SCAN_CONFIG = {
+  continue_reading: {
+    label: 'Keep Reading',
+    color: '#b5dec2',
+    bg: 'rgba(181,222,194,0.10)',
+    border: 'rgba(181,222,194,0.25)',
+  },
+  skip: {
+    label: 'At Risk of Skip',
     color: '#f0b8b8',
     bg: 'rgba(240,184,184,0.10)',
     border: 'rgba(240,184,184,0.25)',
@@ -51,7 +87,105 @@ const SEVERITY_CONFIG = {
   minor: { color: '#afc4ff', bg: 'rgba(175,196,255,0.12)', border: 'rgba(175,196,255,0.25)' },
 } as const;
 
-// ─── Main component ─────────────────────────────────────────────────
+const ASSESSMENT_CONFIG = {
+  strong: { label: 'Strong', color: '#b5dec2', bg: 'rgba(181,222,194,0.10)', border: 'rgba(181,222,194,0.25)' },
+  moderate: { label: 'Moderate', color: '#f0d99f', bg: 'rgba(240,217,159,0.10)', border: 'rgba(240,217,159,0.25)' },
+  weak: { label: 'Weak', color: '#f0b8b8', bg: 'rgba(240,184,184,0.10)', border: 'rgba(240,184,184,0.25)' },
+} as const;
+
+const CONCERN_LABELS: Record<HiringManagerConcern['type'], string> = {
+  missing_evidence: 'Missing Evidence',
+  weak_positioning: 'Weak Positioning',
+  missing_metric: 'Missing Metric',
+  unclear_scope: 'Unclear Scope',
+  benchmark_gap: 'Benchmark Gap',
+  clarity_issue: 'Clarity Issue',
+  credibility_risk: 'Credibility Risk',
+};
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: typeof Search;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="mb-3 flex items-start gap-3">
+      <div className="mt-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03] p-2">
+        <Icon className="h-4 w-4 text-white/60" />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-white/88">{title}</h3>
+        {description && (
+          <p className="mt-1 text-xs leading-relaxed text-white/48">{description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ToneBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: { color: string; bg: string; border: string };
+}) {
+  return (
+    <span
+      className="inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      style={{ color: tone.color, backgroundColor: tone.bg, borderColor: tone.border }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function AssessmentPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: 'strong' | 'moderate' | 'weak';
+}) {
+  const tone = ASSESSMENT_CONFIG[value];
+
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/32">{label}</p>
+      <div className="mt-2">
+        <ToneBadge label={tone.label} tone={tone} />
+      </div>
+    </div>
+  );
+}
+
+function TextList({
+  items,
+  tone = 'neutral',
+}: {
+  items: string[];
+  tone?: 'neutral' | 'good' | 'warning';
+}) {
+  const toneClass = tone === 'good'
+    ? 'border-[#b5dec2]/15 bg-[#b5dec2]/[0.04]'
+    : tone === 'warning'
+      ? 'border-[#f0d99f]/15 bg-[#f0d99f]/[0.04]'
+      : 'border-white/[0.06] bg-white/[0.025]';
+
+  return (
+    <div className="space-y-2">
+      {items.map((item, index) => (
+        <div key={`${item}-${index}`} className={`rounded-lg border px-3 py-2 ${toneClass}`}>
+          <p className="text-xs leading-relaxed text-white/68">{item}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function HiringManagerReviewCard({
   result,
@@ -61,30 +195,39 @@ export function HiringManagerReviewCard({
   roleTitle,
   onRequestReview,
   onApplyRecommendation,
+  isEditing = false,
+  resolvedConcernIds = [],
+  finalReviewChat,
+  buildFinalReviewChatContext,
 }: HiringManagerReviewCardProps) {
-  const [expandedConcern, setExpandedConcern] = useState<number | null>(null);
+  const [expandedConcern, setExpandedConcern] = useState<string | null>(null);
+  const [threadConcernId, setThreadConcernId] = useState<string | null>(null);
 
-  // Pre-review state: show trigger button
   if (!result && !isLoading && !error) {
     return (
       <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
         <div className="flex items-start gap-3">
-          <UserCheck className="h-5 w-5 mt-0.5 shrink-0" style={{ color: '#afc4ff' }} />
+          <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#afc4ff]" />
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-white/90 mb-1">
-              Hiring Manager Review
-            </h3>
-            <p className="text-xs text-white/50 leading-relaxed mb-3">
-              See your resume through the eyes of the hiring manager at {companyName}.
-              Get specific, actionable feedback on what would make them want to interview you.
+            <h3 className="text-sm font-semibold text-white/90">Final Review</h3>
+            <p className="mt-1 text-sm leading-relaxed text-white/52">
+              Combine a six-second recruiter scan with a deeper hiring manager critique before you export.
+              This stage tells the user what is obvious immediately, what still weakens interview odds,
+              and which fixes are worth making now.
             </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/40">
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Recruiter Scan</span>
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Hiring Manager Verdict</span>
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Benchmark Comparison</span>
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Concrete Fixes</span>
+            </div>
             <button
               type="button"
               onClick={onRequestReview}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/10 px-4 py-2.5 text-sm font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/20"
             >
               <UserCheck className="h-4 w-4" />
-              Run Hiring Manager Review
+              Run Final Review
             </button>
           </div>
         </div>
@@ -92,18 +235,15 @@ export function HiringManagerReviewCard({
     );
   }
 
-  // Loading state
   if (isLoading) {
     return (
       <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
         <div className="flex items-center gap-3">
           <Loader2 className="h-5 w-5 text-[#afc4ff] motion-safe:animate-spin" />
           <div>
-            <h3 className="text-sm font-semibold text-white/90">
-              Reviewing as Hiring Manager...
-            </h3>
-            <p className="text-xs text-white/40 mt-0.5">
-              Evaluating your resume as the {roleTitle} hiring manager at {companyName}
+            <h3 className="text-sm font-semibold text-white/90">Running Final Review...</h3>
+            <p className="mt-0.5 text-xs text-white/40">
+              Simulating the recruiter skim and the {roleTitle} hiring manager at {companyName}
             </p>
           </div>
         </div>
@@ -111,7 +251,6 @@ export function HiringManagerReviewCard({
     );
   }
 
-  // Error state
   if (error) {
     return (
       <GlassCard className="p-5">
@@ -122,7 +261,7 @@ export function HiringManagerReviewCard({
         <button
           type="button"
           onClick={onRequestReview}
-          className="mt-3 text-xs text-[#afc4ff] hover:text-[#afc4ff]/80 transition-colors"
+          className="mt-3 text-xs text-[#afc4ff] transition-colors hover:text-[#afc4ff]/80"
         >
           Try again
         </button>
@@ -132,148 +271,392 @@ export function HiringManagerReviewCard({
 
   if (!result) return null;
 
-  const verdict = VERDICT_CONFIG[result.verdict];
+  const verdictTone = VERDICT_CONFIG[result.hiring_manager_verdict.rating];
+  const recruiterTone = SCAN_CONFIG[result.six_second_scan.decision];
 
   return (
     <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">
-      {/* Header + verdict */}
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <UserCheck className="h-4 w-4 shrink-0" style={{ color: '#afc4ff' }} />
-          <h2 className="text-sm font-semibold text-white/90">
-            Hiring Manager Review — {companyName}
-          </h2>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4 shrink-0 text-[#afc4ff]" />
+            <h2 className="text-sm font-semibold text-white/90">Final Review</h2>
+          </div>
+          <p className="mt-1 text-sm leading-relaxed text-white/50">
+            Job-description fit drives the verdict. Benchmark alignment shows how competitive the resume looks against stronger peers.
+          </p>
         </div>
-        <span
-          className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-          style={{ color: verdict.color, backgroundColor: verdict.bg, border: `1px solid ${verdict.border}` }}
-        >
-          {verdict.label}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <ToneBadge label={recruiterTone.label} tone={recruiterTone} />
+          <ToneBadge label={verdictTone.label} tone={verdictTone} />
+        </div>
       </div>
 
-      {/* Overall impression */}
-      <p className="text-sm text-white/70 leading-relaxed mb-5 italic">
-        &ldquo;{result.overall_impression}&rdquo;
-      </p>
+      <div className="space-y-6">
+        <section>
+          <SectionHeader
+            icon={Search}
+            title="6-Second Recruiter Scan"
+            description={`This is the top-third skim test for ${companyName}. If the strongest signals are not obvious immediately, the candidate is at risk before the deeper review even starts.`}
+          />
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <p className="max-w-3xl text-sm leading-relaxed text-white/68">
+                {result.six_second_scan.reason}
+              </p>
+              <ToneBadge label={recruiterTone.label} tone={recruiterTone} />
+            </div>
 
-      {/* Strengths */}
-      {result.strengths.length > 0 && (
-        <div className="mb-5">
-          <h4 className="text-[10px] font-semibold text-[#b5dec2] uppercase tracking-wider mb-2">
-            What Impressed Me ({result.strengths.length})
-          </h4>
-          <div className="space-y-2">
-            {result.strengths.map((s, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs">
-                <CheckCircle2 className="h-3 w-3 mt-0.5 text-[#b5dec2] shrink-0" />
-                <div>
-                  <span className="text-white/70">{s.observation}</span>
-                  <span className="text-white/35 ml-1">— {s.why_it_matters}</span>
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
+                  Signals Seen
+                </p>
+                <div className="mt-3 space-y-3">
+                  {result.six_second_scan.top_signals_seen.length > 0 ? (
+                    result.six_second_scan.top_signals_seen.map((signal, index) => (
+                      <div key={`${signal.signal}-${index}`} className="text-xs">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-white/78">{signal.signal}</p>
+                          <ToneBadge
+                            label={signal.visible_in_top_third ? 'Top Third' : 'Too Low'}
+                            tone={signal.visible_in_top_third ? SCAN_CONFIG.continue_reading : ASSESSMENT_CONFIG.moderate}
+                          />
+                        </div>
+                        <p className="mt-1 text-white/42">{signal.why_it_matters}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-white/42">No clear strengths were surfaced in the recruiter skim.</p>
+                  )}
                 </div>
               </div>
-            ))}
+
+              <div className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
+                  Still Missing
+                </p>
+                <div className="mt-3 space-y-3">
+                  {result.six_second_scan.important_signals_missing.length > 0 ? (
+                    result.six_second_scan.important_signals_missing.map((signal, index) => (
+                      <div key={`${signal.signal}-${index}`} className="text-xs">
+                        <p className="text-white/78">{signal.signal}</p>
+                        <p className="mt-1 text-white/42">{signal.why_it_matters}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-white/42">No major top-of-page omissions were flagged.</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Concerns */}
-      {result.concerns.length > 0 && (
-        <div className="mb-5">
-          <h4 className="text-[10px] font-semibold text-[#f0b8b8] uppercase tracking-wider mb-2">
-            My Concerns ({result.concerns.length})
-          </h4>
-          <div className="space-y-2">
-            {result.concerns.map((concern, i) => {
-              const sev = SEVERITY_CONFIG[concern.severity as keyof typeof SEVERITY_CONFIG] ?? SEVERITY_CONFIG.moderate;
-              const isExpanded = expandedConcern === i;
+        <section>
+          <SectionHeader
+            icon={Target}
+            title="Hiring Manager Verdict"
+            description={`This is the deeper interview-readiness view for the ${roleTitle} role.`}
+          />
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+            <p className="text-sm leading-relaxed text-white/70">{result.hiring_manager_verdict.summary}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <AssessmentPill label="Job Description Fit" value={result.fit_assessment.job_description_fit} />
+              <AssessmentPill label="Benchmark Alignment" value={result.fit_assessment.benchmark_alignment} />
+              <AssessmentPill label="Business Impact" value={result.fit_assessment.business_impact} />
+              <AssessmentPill label="Clarity & Credibility" value={result.fit_assessment.clarity_and_credibility} />
+            </div>
+          </div>
+        </section>
 
-              return (
-                <div
-                  key={i}
-                  className="rounded-lg border overflow-hidden"
-                  style={{ borderColor: `${sev.border}` }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setExpandedConcern(isExpanded ? null : i)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.02] transition-colors"
-                    aria-expanded={isExpanded}
-                  >
-                    <ChevronDown
-                      className={cn(
-                        'h-3 w-3 text-white/30 shrink-0 transition-transform duration-200',
-                        isExpanded ? 'rotate-0' : '-rotate-90',
-                      )}
+        {result.top_wins.length > 0 && (
+          <section>
+            <SectionHeader
+              icon={Trophy}
+              title="Top Wins"
+              description="These are the strongest reasons to interview the candidate. If they are not prominent enough, the resume should be restructured before export."
+            />
+            <div className="space-y-3">
+              {result.top_wins.map((win, index) => (
+                <div key={`${win.win}-${index}`} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-white/84">{win.win}</p>
+                      <p className="mt-1 text-xs text-white/44">Supports: {win.aligned_requirement}</p>
+                    </div>
+                    <ToneBadge
+                      label={win.prominent_enough ? 'Placed Well' : 'Move Higher'}
+                      tone={win.prominent_enough ? ASSESSMENT_CONFIG.strong : ASSESSMENT_CONFIG.moderate}
                     />
-                    <span className="flex-1 text-xs text-white/70">{concern.observation}</span>
-                    <span
-                      className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase"
-                      style={{ color: sev.color, backgroundColor: sev.bg, border: `1px solid ${sev.border}` }}
-                    >
-                      {concern.severity}
-                    </span>
-                  </button>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-white/65">{win.why_powerful}</p>
+                  {!win.prominent_enough && (
+                    <div className="mt-3 rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
+                      <p className="text-xs text-white/68">{win.repositioning_recommendation}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
+        {result.concerns.length > 0 && (
+          <section>
+            <SectionHeader
+              icon={Sparkles}
+              title="Priority Fixes"
+              description="These are the issues most likely to change the interview decision. Apply fixes directly from here when the recommendation is solid."
+            />
+            <div className="space-y-2">
+              {result.concerns.map((concern) => {
+                const severityTone = SEVERITY_CONFIG[concern.severity];
+                const isExpanded = expandedConcern === concern.id;
+                const isResolved = resolvedConcernIds.includes(concern.id);
+                const isThreadOpen = threadConcernId === concern.id;
+                const chatState = finalReviewChat?.getItemState(concern.id);
+                const chatContext = buildFinalReviewChatContext?.(concern) ?? null;
+
+                return (
                   <div
-                    className={cn(
-                      'overflow-hidden transition-all duration-300',
-                      isExpanded ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0',
-                    )}
+                    key={concern.id}
+                    className="overflow-hidden rounded-xl border"
+                    style={{ borderColor: severityTone.border }}
                   >
-                    <div className="px-3 pb-3 pt-1 space-y-2 border-t border-white/[0.06]">
-                      <p className="text-xs text-white/50 leading-relaxed">
-                        <span className="font-medium text-white/60">Recommendation: </span>
-                        {concern.recommendation}
-                      </p>
-                      {concern.target_section && (
-                        <p className="text-[10px] text-white/30">
-                          Section: {concern.target_section}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isExpanded) {
+                          setExpandedConcern(null);
+                          if (threadConcernId === concern.id) {
+                            setThreadConcernId(null);
+                          }
+                          return;
+                        }
+                        setExpandedConcern(concern.id);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-white/[0.02]"
+                      aria-expanded={isExpanded}
+                    >
+                      <ChevronDown
+                        className={cn(
+                          'h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-200',
+                          isExpanded ? 'rotate-0' : '-rotate-90',
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-white/74">{concern.observation}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/28">
+                          {CONCERN_LABELS[concern.type]}
                         </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isResolved && (
+                          <ToneBadge label="Resolved on Resume" tone={ASSESSMENT_CONFIG.strong} />
+                        )}
+                        <ToneBadge label={concern.severity} tone={severityTone} />
+                      </div>
+                    </button>
+
+                    <div
+                      className={cn(
+                        'overflow-hidden transition-all duration-300',
+                        isExpanded ? 'max-h-[1400px] opacity-100' : 'max-h-0 opacity-0',
                       )}
-                      {onApplyRecommendation && (
-                        <button
-                          type="button"
-                          onClick={() => onApplyRecommendation(concern)}
-                          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors"
-                          style={{
-                            color: sev.color,
-                            backgroundColor: sev.bg,
-                            border: `1px solid ${sev.border}`,
-                          }}
-                        >
-                          <Wrench className="h-3 w-3" />
-                          Apply Fix
-                        </button>
-                      )}
+                    >
+                      <div className="space-y-3 border-t border-white/[0.06] px-3 pb-4 pt-3">
+                        <p className="text-sm leading-relaxed text-white/62">{concern.why_it_hurts}</p>
+
+                        {(concern.target_section || concern.related_requirement) && (
+                          <div className="flex flex-wrap gap-2 text-[11px] text-white/42">
+                            {concern.target_section && (
+                              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
+                                Section: {concern.target_section}
+                              </span>
+                            )}
+                            {concern.related_requirement && (
+                              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
+                                Requirement: {concern.related_requirement}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
+                            Fix Strategy
+                          </p>
+                          <p className="mt-2 text-sm leading-relaxed text-white/70">{concern.fix_strategy}</p>
+                        </div>
+
+                        {concern.suggested_resume_edit && (
+                          <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
+                              Sample Language
+                            </p>
+                            <p className="mt-2 text-sm leading-relaxed text-white/72">{concern.suggested_resume_edit}</p>
+                          </div>
+                        )}
+
+                        {concern.clarifying_question && (
+                          <div className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
+                              Candidate Question
+                            </p>
+                            <p className="mt-2 text-sm leading-relaxed text-white/72">{concern.clarifying_question}</p>
+                          </div>
+                        )}
+
+                        {isResolved && (
+                          <div className="rounded-lg border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-white/70">
+                            This concern already has an accepted edit on the resume. If you undo that change, it will show up as unresolved again.
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          {onApplyRecommendation && (
+                            <button
+                              type="button"
+                              onClick={() => onApplyRecommendation(concern)}
+                              disabled={isEditing}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-colors"
+                              style={{
+                                color: severityTone.color,
+                                backgroundColor: severityTone.bg,
+                                border: `1px solid ${severityTone.border}`,
+                              }}
+                            >
+                              <Wrench className="h-3 w-3" />
+                              {concern.requires_candidate_input ? 'Review Suggested Fix' : 'Review Edit'}
+                            </button>
+                          )}
+
+                          {finalReviewChat && chatContext && (
+                            <button
+                              type="button"
+                              onClick={() => setThreadConcernId(isThreadOpen ? null : concern.id)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px] font-medium text-white/68 transition-colors hover:bg-white/[0.06] hover:text-white/88"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              {isThreadOpen ? 'Hide Coaching Thread' : concern.requires_candidate_input ? 'Open Coaching Thread' : 'Brainstorm Another Fix'}
+                            </button>
+                          )}
+                        </div>
+
+                        {finalReviewChat && chatContext && isThreadOpen && (
+                          <FinalReviewConcernThread
+                            concernId={concern.id}
+                            messages={chatState?.messages ?? []}
+                            isLoading={chatState?.isLoading ?? false}
+                            error={chatState?.error ?? null}
+                            resolvedLanguage={isResolved ? (chatState?.resolvedLanguage ?? null) : null}
+                            onSendMessage={finalReviewChat.sendMessage}
+                            onReviewEdit={(concernId, language, candidateInputUsed) => {
+                              if (concernId !== concern.id || !onApplyRecommendation) return;
+                              onApplyRecommendation(concern, language, Boolean(candidateInputUsed));
+                            }}
+                            context={chatContext}
+                            isEditing={isEditing}
+                            onCloseThread={() => setThreadConcernId(null)}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-      {/* Missing elements */}
-      {result.missing_elements.length > 0 && (
-        <div>
-          <h4 className="text-[10px] font-semibold text-[#f0d99f] uppercase tracking-wider mb-2">
-            What I Expected to See ({result.missing_elements.length})
-          </h4>
-          <div className="space-y-2">
-            {result.missing_elements.map((m, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2"
-              >
-                <p className="text-xs text-white/70 mb-0.5">{m.element}</p>
-                <p className="text-[11px] text-white/40">{m.recommendation}</p>
-              </div>
-            ))}
+        {result.structure_recommendations.length > 0 && (
+          <section>
+            <SectionHeader
+              icon={Target}
+              title="Structure Recommendations"
+              description="Use these when the strongest material exists, but it is buried or sequenced poorly."
+            />
+            <div className="space-y-2">
+              {result.structure_recommendations.map((recommendation, index) => (
+                <div key={`${recommendation.issue}-${index}`} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-white/80">{recommendation.issue}</p>
+                    <ToneBadge
+                      label={`${recommendation.priority} priority`}
+                      tone={recommendation.priority === 'high'
+                        ? ASSESSMENT_CONFIG.weak
+                        : recommendation.priority === 'medium'
+                          ? ASSESSMENT_CONFIG.moderate
+                          : ASSESSMENT_CONFIG.strong}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-white/62">{recommendation.recommendation}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section>
+          <SectionHeader
+            icon={CheckCircle2}
+            title="Benchmark Comparison"
+            description="Benchmark gaps should not override solid job fit, but they do show where the candidate may look less competitive against stronger peers."
+          />
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
+                Advantages
+              </p>
+              {result.benchmark_comparison.advantages_vs_benchmark.length > 0 ? (
+                <div className="mt-3">
+                  <TextList items={result.benchmark_comparison.advantages_vs_benchmark} tone="good" />
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-white/42">No clear advantages were called out versus the benchmark.</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
+                Competitive Gaps
+              </p>
+              {result.benchmark_comparison.gaps_vs_benchmark.length > 0 ? (
+                <div className="mt-3">
+                  <TextList items={result.benchmark_comparison.gaps_vs_benchmark} tone="warning" />
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-white/42">No major benchmark gaps were highlighted.</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/42">
+                Reframing Opportunities
+              </p>
+              {result.benchmark_comparison.reframing_opportunities.length > 0 ? (
+                <div className="mt-3">
+                  <TextList items={result.benchmark_comparison.reframing_opportunities} />
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-white/42">No additional reframing opportunities were suggested.</p>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        </section>
+
+        {result.improvement_summary.length > 0 && (
+          <section>
+            <SectionHeader
+              icon={Sparkles}
+              title="Improvement Summary"
+              description="These are the highest-value moves left before export."
+            />
+            <TextList items={result.improvement_summary} />
+          </section>
+        )}
+      </div>
     </GlassCard>
   );
 }

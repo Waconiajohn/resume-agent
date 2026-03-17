@@ -19,6 +19,11 @@ export interface EditContext {
   requirement?: string;
   evidence?: string[];
   strategy?: string;
+  origin?: 'gap' | 'final_review' | 'manual';
+  scoreDomain?: 'job_description' | 'benchmark' | 'both';
+  candidateInputUsed?: boolean;
+  finalReviewConcernId?: string;
+  finalReviewConcernSeverity?: 'critical' | 'moderate' | 'minor';
 }
 
 export interface PendingEdit {
@@ -289,6 +294,7 @@ function applyTextReplacement(resume: ResumeDraft, pendingEdit: PendingEdit, new
           ...resume.executive_summary,
           content: newText,
           is_new: true,
+          addresses_requirements: addRequirement(resume.executive_summary.addresses_requirements ?? []),
         },
       };
     }
@@ -322,6 +328,7 @@ function applyTextReplacement(resume: ResumeDraft, pendingEdit: PendingEdit, new
             ...experience,
             scope_statement: newText,
             scope_statement_is_new: true,
+            scope_statement_addresses_requirements: addRequirement(experience.scope_statement_addresses_requirements ?? []),
           };
         }
 
@@ -352,6 +359,9 @@ function applyTextReplacement(resume: ResumeDraft, pendingEdit: PendingEdit, new
       ...resume.executive_summary,
       content: markEditedText(resume.executive_summary.content),
       is_new: resume.executive_summary.content === oldText ? true : resume.executive_summary.is_new,
+      addresses_requirements: resume.executive_summary.content === oldText
+        ? addRequirement(resume.executive_summary.addresses_requirements ?? [])
+        : resume.executive_summary.addresses_requirements,
     },
     core_competencies: resume.core_competencies.map(markEditedText),
     selected_accomplishments: resume.selected_accomplishments.map((accomplishment) => (
@@ -368,6 +378,9 @@ function applyTextReplacement(resume: ResumeDraft, pendingEdit: PendingEdit, new
       ...experience,
       scope_statement: experience.scope_statement === oldText ? newText : experience.scope_statement,
       scope_statement_is_new: experience.scope_statement === oldText ? true : experience.scope_statement_is_new,
+      scope_statement_addresses_requirements: experience.scope_statement === oldText
+        ? addRequirement(experience.scope_statement_addresses_requirements ?? [])
+        : experience.scope_statement_addresses_requirements,
       bullets: experience.bullets.map((bullet) => (
         bullet.text === oldText
           ? {

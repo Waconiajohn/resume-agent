@@ -248,6 +248,7 @@ export interface ResumeExperience {
   end_date: string;
   scope_statement: string;
   scope_statement_is_new?: boolean;
+  scope_statement_addresses_requirements?: string[];
   bullets: ResumeBullet[];
 }
 
@@ -262,6 +263,7 @@ export interface ResumeDraft {
   executive_summary: {
     content: string;
     is_new: boolean;
+    addresses_requirements?: string[];
   };
   core_competencies: string[];
   selected_accomplishments: Array<{
@@ -299,11 +301,22 @@ export interface AssemblyResult {
 
 // ─── Gap Chat (per-item coaching conversation) ──────────────────────
 
+export type CoachingRecommendedAction =
+  | 'answer_question'
+  | 'review_edit'
+  | 'try_another_angle'
+  | 'skip'
+  | 'confirm';
+
 export interface GapChatMessage {
   role: 'user' | 'assistant';
   content: string;
   suggestedLanguage?: string;
   followUpQuestion?: string;
+  currentQuestion?: string;
+  needsCandidateInput?: boolean;
+  recommendedNextAction?: CoachingRecommendedAction;
+  candidateInputUsed?: boolean;
 }
 
 export interface GapChatContext {
@@ -315,9 +328,233 @@ export interface GapChatContext {
   candidateExperienceSummary: string;
 }
 
+export interface FinalReviewChatContext {
+  concernId: string;
+  concernType: FinalReviewConcern['type'];
+  severity: FinalReviewConcern['severity'];
+  observation: string;
+  whyItHurts: string;
+  fixStrategy: string;
+  targetSection?: string;
+  relatedRequirement?: string;
+  suggestedResumeEdit?: string;
+  roleTitle: string;
+  companyName: string;
+  jobDescriptionFit?: FinalReviewFitAssessment['job_description_fit'];
+  benchmarkAlignment?: FinalReviewFitAssessment['benchmark_alignment'];
+  businessImpact?: FinalReviewFitAssessment['business_impact'];
+  clarityAndCredibility?: FinalReviewFitAssessment['clarity_and_credibility'];
+  resumeExcerpt: string;
+}
+
+export interface CoachingThreadItemSnapshot {
+  messages: GapChatMessage[];
+  resolvedLanguage: string | null;
+  error: string | null;
+}
+
+export interface CoachingThreadSnapshot {
+  items: Record<string, CoachingThreadItemSnapshot>;
+}
+
+// ─── Final Review (recruiter skim + hiring manager critique) ───────────────
+
+export interface FinalReviewSignal {
+  signal: string;
+  why_it_matters: string;
+  visible_in_top_third?: boolean;
+}
+
+export interface FinalReviewVerdict {
+  rating:
+    | 'strong_interview_candidate'
+    | 'possible_interview'
+    | 'needs_improvement'
+    | 'likely_rejected';
+  summary: string;
+}
+
+export interface FinalReviewFitAssessment {
+  job_description_fit: 'strong' | 'moderate' | 'weak';
+  benchmark_alignment: 'strong' | 'moderate' | 'weak';
+  business_impact: 'strong' | 'moderate' | 'weak';
+  clarity_and_credibility: 'strong' | 'moderate' | 'weak';
+}
+
+export interface FinalReviewTopWin {
+  win: string;
+  why_powerful: string;
+  aligned_requirement: string;
+  prominent_enough: boolean;
+  repositioning_recommendation: string;
+}
+
+export interface FinalReviewConcern {
+  id: string;
+  severity: 'critical' | 'moderate' | 'minor';
+  type:
+    | 'missing_evidence'
+    | 'weak_positioning'
+    | 'missing_metric'
+    | 'unclear_scope'
+    | 'benchmark_gap'
+    | 'clarity_issue'
+    | 'credibility_risk';
+  observation: string;
+  why_it_hurts: string;
+  fix_strategy: string;
+  target_section?: string;
+  related_requirement?: string;
+  suggested_resume_edit?: string;
+  requires_candidate_input: boolean;
+  clarifying_question?: string;
+}
+
+export interface FinalReviewStructureRecommendation {
+  issue: string;
+  recommendation: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface FinalReviewResult {
+  six_second_scan: {
+    decision: 'continue_reading' | 'skip';
+    reason: string;
+    top_signals_seen: FinalReviewSignal[];
+    important_signals_missing: FinalReviewSignal[];
+  };
+  hiring_manager_verdict: FinalReviewVerdict;
+  fit_assessment: FinalReviewFitAssessment;
+  top_wins: FinalReviewTopWin[];
+  concerns: FinalReviewConcern[];
+  structure_recommendations: FinalReviewStructureRecommendation[];
+  benchmark_comparison: {
+    advantages_vs_benchmark: string[];
+    gaps_vs_benchmark: string[];
+    reframing_opportunities: string[];
+  };
+  improvement_summary: string[];
+}
+
+export type RewriteQueueSource = 'job_description' | 'benchmark' | 'final_review';
+
+export type RewriteQueueStatus =
+  | 'already_covered'
+  | 'partially_addressed'
+  | 'needs_more_evidence'
+  | 'not_addressed';
+
+export type RewriteQueueBucket =
+  | 'needs_attention'
+  | 'partially_addressed'
+  | 'resolved';
+
+export type RewriteQueueAction =
+  | 'open_coaching'
+  | 'review_edit'
+  | 'review_suggested_fix'
+  | 'view_in_resume'
+  | 'rerun_final_review'
+  | 'verify';
+
+export interface RewriteQueueEvidence {
+  text: string;
+  source: 'resume' | 'job_description' | 'benchmark' | 'final_review';
+  section?: string;
+  isNew?: boolean;
+}
+
+export interface RewriteQueueNextStep {
+  action: RewriteQueueAction;
+  label: string;
+  detail: string;
+}
+
+export interface RewriteQueueItem {
+  id: string;
+  kind: 'requirement' | 'final_review';
+  source: RewriteQueueSource;
+  title: string;
+  status: RewriteQueueStatus;
+  bucket: RewriteQueueBucket;
+  isResolved: boolean;
+  whyItMatters: string;
+  currentEvidence: RewriteQueueEvidence[];
+  sourceEvidence: RewriteQueueEvidence[];
+  recommendedNextStep: RewriteQueueNextStep;
+  requirement?: string;
+  concernId?: string;
+  targetSection?: string;
+  relatedRequirement?: string;
+  importance?: RequirementGap['importance'];
+  classification?: GapClassification;
+  severity?: FinalReviewConcern['severity'];
+  candidateInputNeeded?: boolean;
+  coachingReasoning?: string;
+  starterQuestion?: string;
+}
+
+export interface RewriteQueueSummary {
+  total: number;
+  needsAttention: number;
+  partiallyAddressed: number;
+  resolved: number;
+}
+
+export interface FinalReviewPersistedState {
+  result: FinalReviewResult | null;
+  resolved_concern_ids: string[];
+  acknowledged_export_warnings: boolean;
+  is_stale: boolean;
+  reviewed_resume_text?: string | null;
+  last_run_at?: string;
+}
+
+export interface PostReviewPolishResult {
+  ats_score: number;
+  keywords_found: string[];
+  keywords_missing: string[];
+  top_suggestions: string[];
+  tone_score: number;
+  tone_findings: string[];
+}
+
+export interface PostReviewPolishState {
+  status: 'idle' | 'running' | 'complete' | 'error';
+  message: string;
+  result: PostReviewPolishResult | null;
+  last_triggered_by_concern_id?: string | null;
+  updated_at?: string;
+}
+
+export type MasterPromotionItemCategory =
+  | 'experience_bullet'
+  | 'scope_statement'
+  | 'selected_accomplishment';
+
+export interface MasterPromotionItem {
+  id: string;
+  category: MasterPromotionItemCategory;
+  section: string;
+  label: string;
+  text: string;
+  company?: string;
+  title?: string;
+  addressesRequirements?: string[];
+}
+
+export interface MasterPromotionState {
+  selected_item_ids: string[];
+}
+
 export interface V2PersistedDraftState {
   editable_resume: ResumeDraft | null;
   master_save_mode: 'session_only' | 'master_resume';
+  gap_chat_state?: CoachingThreadSnapshot | null;
+  final_review_state?: FinalReviewPersistedState | null;
+  final_review_chat_state?: CoachingThreadSnapshot | null;
+  post_review_polish?: PostReviewPolishState | null;
+  master_promotion_state?: MasterPromotionState | null;
   updated_at: string;
 }
 

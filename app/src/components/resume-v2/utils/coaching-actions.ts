@@ -91,11 +91,13 @@ export function buildEditContext(
   requirement: string,
   evidence: string[],
   strategyPositioning?: string,
+  overrides?: Partial<EditContext>,
 ): EditContext {
   return {
     requirement,
     evidence: evidence.length > 0 ? evidence : undefined,
     strategy: strategyPositioning,
+    ...overrides,
   };
 }
 

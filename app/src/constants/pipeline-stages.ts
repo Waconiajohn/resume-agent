@@ -7,13 +7,13 @@ export interface PipelineStageInfo {
 }
 
 export const PIPELINE_STAGES: PipelineStageInfo[] = [
-  { key: 'intake',          label: 'Reading Your Resume',      index: 1, estimateMinutes: 0.1, isInteractive: false },
-  { key: 'research',        label: 'Studying the Role',       index: 2, estimateMinutes: 1.5, isInteractive: false },
-  { key: 'positioning',     label: 'Strengthening Your Story', index: 3, estimateMinutes: 10,  isInteractive: true },
-  { key: 'gap_analysis',    label: 'Matching Your Experience', index: 4, estimateMinutes: 1.5, isInteractive: false },
-  { key: 'architect',       label: 'Planning Your Resume',    index: 5, estimateMinutes: 2,   isInteractive: false },
-  { key: 'section_writing', label: 'Writing Your Resume',     index: 6, estimateMinutes: 12,  isInteractive: true },
-  { key: 'quality_review',  label: 'Final Quality Check',     index: 7, estimateMinutes: 4,   isInteractive: false },
+  { key: 'intake',          label: 'Read Your Background',   index: 1, estimateMinutes: 0.1, isInteractive: false },
+  { key: 'research',        label: 'Study the Target Role',  index: 2, estimateMinutes: 1.5, isInteractive: false },
+  { key: 'positioning',     label: 'Map Requirements',       index: 3, estimateMinutes: 10,  isInteractive: true },
+  { key: 'gap_analysis',    label: 'Close the Gaps',         index: 4, estimateMinutes: 1.5, isInteractive: false },
+  { key: 'architect',       label: 'Build the Resume',       index: 5, estimateMinutes: 2,   isInteractive: false },
+  { key: 'section_writing', label: 'Run Final Review',       index: 6, estimateMinutes: 12,  isInteractive: true },
+  { key: 'quality_review',  label: 'Polish and Export',      index: 7, estimateMinutes: 4,   isInteractive: false },
 ];
 
 export const TOTAL_PIPELINE_STAGES = PIPELINE_STAGES.length;

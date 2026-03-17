@@ -13,7 +13,7 @@ import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import type { CareerIQRoom } from './Sidebar';
 
 const VALID_ROOMS: readonly CareerIQRoom[] = [
-  'dashboard', 'resume', 'linkedin', 'jobs', 'networking',
+  'dashboard', 'career-profile', 'resume', 'linkedin', 'jobs', 'networking',
   'interview', 'salary-negotiation', 'executive-bio',
   'personal-brand', 'ninety-day-plan', 'financial', 'learning',
   // Legacy IDs still accepted for redirect

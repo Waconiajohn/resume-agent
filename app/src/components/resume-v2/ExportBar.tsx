@@ -7,20 +7,49 @@ import { Download, FileType2, Loader2, AlertCircle, Clipboard, ClipboardCheck } 
 import { GlassButton } from '../GlassButton';
 import type { ResumeDraft } from '@/types/resume-v2';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
+import { getExportGateState } from '@/lib/export-bar-gating';
 
 interface ExportBarProps {
   resume: ResumeDraft;
   companyName?: string;
   jobTitle?: string;
   atsScore?: number;
+  hasCompletedFinalReview?: boolean;
+  isFinalReviewStale?: boolean;
+  unresolvedCriticalCount?: number;
+  queueNeedsAttentionCount?: number;
+  queuePartialCount?: number;
+  nextQueueItemLabel?: string;
+  warningsAcknowledged?: boolean;
+  onAcknowledgeWarnings?: () => void;
   /** Optional: called when the user clicks Copy. Supply a plain-text representation. */
   onCopy?: () => string | undefined;
 }
 
-export function ExportBar({ resume, companyName, jobTitle, atsScore, onCopy }: ExportBarProps) {
+export function ExportBar({
+  resume,
+  companyName,
+  jobTitle,
+  atsScore,
+  hasCompletedFinalReview = false,
+  isFinalReviewStale = false,
+  unresolvedCriticalCount = 0,
+  queueNeedsAttentionCount = 0,
+  queuePartialCount = 0,
+  nextQueueItemLabel,
+  warningsAcknowledged = false,
+  onAcknowledgeWarnings,
+  onCopy,
+}: ExportBarProps) {
   const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { hasWarnings, exportBlocked } = getExportGateState({
+    hasCompletedFinalReview,
+    isFinalReviewStale,
+    unresolvedCriticalCount,
+    warningsAcknowledged,
+  });
 
   const getFinalResume = useCallback(() => {
     return resumeDraftToFinalResume(resume, { companyName, jobTitle, atsScore });
@@ -68,10 +97,58 @@ export function ExportBar({ resume, companyName, jobTitle, atsScore, onCopy }: E
 
   return (
     <div className="space-y-2">
+      {hasWarnings && (
+        <div className="rounded-xl border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-3">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#f0d99f]" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-white/84">Export warning</p>
+              <div className="mt-1 space-y-1 text-xs leading-5 text-white/62">
+                {!hasCompletedFinalReview && (
+                  <p>Final Review has not been run yet, so the draft has not been pressure-tested with the recruiter scan and hiring manager critique.</p>
+                )}
+                {isFinalReviewStale && (
+                  <p>Final Review is out of date because the resume changed after the last review.</p>
+                )}
+                {unresolvedCriticalCount > 0 && (
+                  <p>{unresolvedCriticalCount} critical Final Review concern{unresolvedCriticalCount === 1 ? '' : 's'} still remain unresolved.</p>
+                )}
+                {(queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
+                  <p>
+                    The rewrite queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
+                    {nextQueueItemLabel ? ` The clearest next move is "${nextQueueItemLabel}".` : ''}
+                  </p>
+                )}
+              </div>
+              {exportBlocked ? (
+                <button
+                  type="button"
+                  onClick={onAcknowledgeWarnings}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#f0d99f]/25 bg-[#f0d99f]/10 px-3 py-2 text-xs font-medium text-[#f0d99f] transition-colors hover:bg-[#f0d99f]/16"
+                >
+                  I understand, enable export
+                </button>
+              ) : (
+                <p className="mt-3 text-xs text-white/50">
+                  Warning acknowledged. Export is enabled.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!hasWarnings && (queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 text-xs leading-5 text-white/58">
+          Export is enabled, but the queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
+          {nextQueueItemLabel ? ` If you want to keep improving the draft first, start with "${nextQueueItemLabel}".` : ''}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 flex-wrap">
         <GlassButton
           onClick={handleDocx}
-          disabled={exporting === 'docx'}
+          disabled={exporting === 'docx' || exportBlocked}
           size="sm"
           className="gap-1.5"
         >
@@ -88,7 +165,7 @@ export function ExportBar({ resume, companyName, jobTitle, atsScore, onCopy }: E
 
         <GlassButton
           onClick={handlePdf}
-          disabled={exporting === 'pdf'}
+          disabled={exporting === 'pdf' || exportBlocked}
           variant="ghost"
           size="sm"
           className="gap-1.5"
@@ -106,7 +183,7 @@ export function ExportBar({ resume, companyName, jobTitle, atsScore, onCopy }: E
 
         <GlassButton
           onClick={handleCopy}
-          disabled={exporting !== null}
+          disabled={exporting !== null || exportBlocked}
           variant="ghost"
           size="sm"
           className="gap-1.5"

@@ -1,9 +1,24 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
 import { RoomSkeleton } from '@/components/shared/RoomSkeleton';
+import { DashboardHome } from './DashboardHome';
+import { WhyMeEngine } from './WhyMeEngine';
+import { MobileBriefing } from './MobileBriefing';
+import { useWhyMeStory } from './useWhyMeStory';
+import { useMediaQuery } from './useMediaQuery';
+import { useMomentum } from '@/hooks/useMomentum';
+import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
+import { supabase } from '@/lib/supabase';
+import type { PipelineInterviewCard } from './InterviewLabRoom';
+import type { RealFeedEvent } from './ZoneAgentFeed';
+import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
+import type { CoachSession } from '@/types/session';
+import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
+import type { PipelineCard } from './ZoneYourPipeline';
 
 const VALID_ROOMS = new Set<string>([
   'dashboard',
+  'career-profile',
   'resume',
   'linkedin',
   'jobs',
@@ -15,17 +30,12 @@ const VALID_ROOMS = new Set<string>([
   'ninety-day-plan',
   'financial',
   'learning',
-  // Legacy IDs — still accepted, redirected to merged rooms
   'content-calendar',
   'case-study',
   'thank-you-note',
   'network-intelligence',
 ]);
 
-/**
- * Legacy room IDs that have been absorbed into other rooms.
- * When navigated to, they redirect to their parent room.
- */
 const LEGACY_REDIRECTS: Record<string, CareerIQRoom> = {
   'content-calendar': 'linkedin',
   'case-study': 'executive-bio',
@@ -33,13 +43,6 @@ const LEGACY_REDIRECTS: Record<string, CareerIQRoom> = {
   'network-intelligence': 'networking',
 };
 
-/**
- * Rooms whose server-side feature flags are disabled by default.
- * Rooms in this set render the Coming Soon placeholder instead of their
- * full UI, preventing API calls to routes that return 404.
- *
- * Update this set when a feature flag is enabled in server/.env.
- */
 const COMING_SOON_ROOMS = new Set<string>([
   'linkedin',
   'networking',
@@ -48,107 +51,47 @@ const COMING_SOON_ROOMS = new Set<string>([
   'executive-bio',
   'personal-brand',
   'ninety-day-plan',
+  'financial',
+  'learning',
 ]);
 
 function toValidRoom(value: string | undefined): CareerIQRoom {
   if (!value) return 'dashboard';
-  // Redirect legacy room IDs to their merged parent
   const redirect = LEGACY_REDIRECTS[value];
   if (redirect) return redirect;
   if (VALID_ROOMS.has(value)) return value as CareerIQRoom;
   return 'dashboard';
 }
-import { DashboardHome } from './DashboardHome';
-import { WhyMeEngine } from './WhyMeEngine';
-import { LivePulseStrip } from './LivePulseStrip';
-import { MobileBriefing } from './MobileBriefing';
-import { useWhyMeStory } from './useWhyMeStory';
-import { useMediaQuery } from './useMediaQuery';
-import { useMomentum } from '@/hooks/useMomentum';
-import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
-import { supabase } from '@/lib/supabase';
-import type { PipelineInterviewCard } from './InterviewLabRoom';
-import type { RealFeedEvent } from './ZoneAgentFeed';
-import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
-import type { MomentumSummary } from '@/hooks/useMomentum';
-import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
-
-/* ─── Mock data for dashboard preview (demo mode) ─── */
-
-const MOCK_SIGNALS: WhyMeSignals = {
-  clarity: 'green',
-  alignment: 'green',
-  differentiation: 'yellow',
-};
-
-const MOCK_DASHBOARD_STATE: DashboardState = 'strong';
-
-const MOCK_SESSIONS: ResumeSession[] = [
-  { id: 'mock-1', company_name: 'Google', created_at: new Date(Date.now() - 2 * 86400000).toISOString(), pipeline_stage: 'completed' },
-  { id: 'mock-2', company_name: 'Microsoft', created_at: new Date(Date.now() - 5 * 86400000).toISOString(), pipeline_stage: 'completed' },
-  { id: 'mock-3', company_name: 'Amazon', created_at: new Date(Date.now() - 1 * 86400000).toISOString(), pipeline_stage: 'in_progress' },
-];
-
-const MOCK_COVER_LETTERS: CoverLetterSession[] = [
-  { id: 'mock-cl-1', company_name: 'Google', created_at: new Date(Date.now() - 1.5 * 86400000).toISOString(), pipeline_status: 'complete' },
-  { id: 'mock-cl-2', company_name: 'Stripe', created_at: new Date(Date.now() - 3 * 86400000).toISOString(), pipeline_status: 'complete' },
-];
-
-const MOCK_MOMENTUM: MomentumSummary = {
-  current_streak: 5,
-  longest_streak: 12,
-  total_activities: 47,
-  this_week_activities: 8,
-  recent_wins: [
-    { id: 'w1', activity_type: 'resume_completed', metadata: { company: 'Google' }, created_at: new Date(Date.now() - 86400000).toISOString() },
-    { id: 'w2', activity_type: 'cover_letter_completed', metadata: { company: 'Google' }, created_at: new Date(Date.now() - 1.5 * 86400000).toISOString() },
-    { id: 'w3', activity_type: 'job_applied', metadata: { company: 'Stripe' }, created_at: new Date(Date.now() - 3 * 86400000).toISOString() },
-  ],
-};
-
-import type { PipelineCard } from './ZoneYourPipeline';
 
 const MOCK_PIPELINE_CARDS: PipelineCard[] = [
   { id: 'mp-1', company: 'Google', role: 'Sr. Program Manager', stage: 'Interviewing', daysSinceMovement: 1, hasNewActivity: true, interviewRound: 2, scheduledDate: new Date(Date.now() + 3 * 86400000).toISOString() },
   { id: 'mp-2', company: 'Microsoft', role: 'Principal PM', stage: 'Applied', daysSinceMovement: 3, hasNewActivity: false },
   { id: 'mp-3', company: 'Amazon', role: 'Sr. TPM', stage: 'Discovered', daysSinceMovement: 0, hasNewActivity: true },
-  { id: 'mp-4', company: 'Stripe', role: 'Head of Operations', stage: 'Applied', daysSinceMovement: 5, hasNewActivity: false },
-  { id: 'mp-5', company: 'Salesforce', role: 'VP Engineering', stage: 'Offer', daysSinceMovement: 0, hasNewActivity: true },
-  { id: 'mp-6', company: 'Netflix', role: 'Director, Program Mgmt', stage: 'Discovered', daysSinceMovement: 2, hasNewActivity: false },
-  { id: 'mp-7', company: 'Meta', role: 'Sr. Director, Ops', stage: 'Interviewing', daysSinceMovement: 4, hasNewActivity: false, interviewRound: 3, scheduledDate: new Date(Date.now() + 5 * 86400000).toISOString() },
 ];
 
 const MOCK_COACH_REC: CoachRecommendation = {
-  action: 'Review your tailored resume for the Amazon Sr. Program Manager role — it was just completed.',
-  product: 'Resume Workshop',
-  room: 'resume',
+  action: 'Strengthen your Career Profile first, then open Resume Builder and tailor the resume for your top target role.',
+  product: 'Resume Builder',
+  room: 'career-profile',
   urgency: 'immediate',
   phase: 'active_search',
   phase_label: 'Active Job Search',
-  rationale: 'You have 3 active applications and your Amazon resume just finished. Review it while the context is fresh, then submit your application today.',
+  rationale: 'Your profile sharpens the recommendations every other tool gives you, so it is the fastest leverage point.',
 };
 
-// Lazy-load room components for code splitting
-const LiveSessionsRoom = lazy(() => import('./LiveSessionsRoom').then(m => ({ default: m.LiveSessionsRoom })));
-const FinancialWellnessRoom = lazy(() => import('./FinancialWellnessRoom').then(m => ({ default: m.FinancialWellnessRoom })));
-const ResumeWorkshopRoom = lazy(() => import('./ResumeWorkshopRoom').then(m => ({ default: m.ResumeWorkshopRoom })));
-const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then(m => ({ default: m.LinkedInStudioRoom })));
-const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then(m => ({ default: m.JobCommandCenterRoom })));
-const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then(m => ({ default: m.InterviewLabRoom })));
-const SalaryNegotiationRoom = lazy(() => import('./SalaryNegotiationRoom').then(m => ({ default: m.SalaryNegotiationRoom })));
-const PersonalBrandRoom = lazy(() => import('./PersonalBrandRoom').then(m => ({ default: m.PersonalBrandRoom })));
-const NinetyDayPlanRoom = lazy(() => import('./NinetyDayPlanRoom').then(m => ({ default: m.NinetyDayPlanRoom })));
-const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then(m => ({ default: m.SmartReferralsRoom })));
-const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then(m => ({ default: m.ExecutiveDocumentsRoom })));
-const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then(m => ({ default: m.RoomPlaceholder })));
-const CoachDrawer = lazy(() => import('./CoachDrawer').then(m => ({ default: m.CoachDrawer })));
-
-interface ResumeSession {
-  id: string;
-  company_name?: string | null;
-  created_at: string;
-  pipeline_stage?: string | null;
-}
+const LiveSessionsRoom = lazy(() => import('./LiveSessionsRoom').then((module) => ({ default: module.LiveSessionsRoom })));
+const FinancialWellnessRoom = lazy(() => import('./FinancialWellnessRoom').then((module) => ({ default: module.FinancialWellnessRoom })));
+const ResumeWorkshopRoom = lazy(() => import('./ResumeWorkshopRoom').then((module) => ({ default: module.ResumeWorkshopRoom })));
+const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then((module) => ({ default: module.LinkedInStudioRoom })));
+const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then((module) => ({ default: module.JobCommandCenterRoom })));
+const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) => ({ default: module.InterviewLabRoom })));
+const SalaryNegotiationRoom = lazy(() => import('./SalaryNegotiationRoom').then((module) => ({ default: module.SalaryNegotiationRoom })));
+const PersonalBrandRoom = lazy(() => import('./PersonalBrandRoom').then((module) => ({ default: module.PersonalBrandRoom })));
+const NinetyDayPlanRoom = lazy(() => import('./NinetyDayPlanRoom').then((module) => ({ default: module.NinetyDayPlanRoom })));
+const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
+const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then((module) => ({ default: module.ExecutiveDocumentsRoom })));
+const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then((module) => ({ default: module.RoomPlaceholder })));
+const CoachDrawer = lazy(() => import('./CoachDrawer').then((module) => ({ default: module.CoachDrawer })));
 
 interface CoverLetterSession {
   id: string;
@@ -157,24 +100,28 @@ interface CoverLetterSession {
   pipeline_status: string | null;
 }
 
-interface SavedResume {
-  id: string;
-  name?: string;
-  is_default?: boolean;
-  created_at: string;
-}
-
 interface CareerIQScreenProps {
   userName: string;
   onNavigate: (route: string) => void;
-  sessions?: ResumeSession[];
-  resumes?: SavedResume[];
+  sessions?: CoachSession[];
+  resumes?: MasterResumeListItem[];
   sessionsLoading?: boolean;
+  resumesLoading?: boolean;
   onNewSession?: () => void;
   onResumeSession?: (sessionId: string) => void;
   initialRoom?: string;
+  onLoadSessions?: (filters?: { limit?: number; status?: string }) => void;
+  onLoadResumes?: () => void;
+  onDeleteSession?: (sessionId: string) => Promise<boolean>;
+  onGetSessionResume?: (sessionId: string) => Promise<FinalResume | null>;
+  onGetSessionCoverLetter?: (sessionId: string) => Promise<{ letter: string; quality_score?: number | null } | null>;
+  onGetDefaultResume?: () => Promise<MasterResume | null>;
+  onGetResumeById?: (resumeId: string) => Promise<MasterResume | null>;
+  onUpdateMasterResume?: (resumeId: string, changes: Record<string, unknown>) => Promise<MasterResume | null>;
+  onGetResumeHistory?: (resumeId: string) => Promise<Array<{ id: string; changes_summary: string; created_at: string }>>;
+  onSetDefaultResume?: (resumeId: string) => Promise<boolean>;
+  onDeleteResume?: (resumeId: string) => Promise<boolean>;
 }
-
 
 export function CareerIQScreen({
   userName,
@@ -182,34 +129,38 @@ export function CareerIQScreen({
   sessions = [],
   resumes = [],
   sessionsLoading = false,
+  resumesLoading = false,
   onNewSession,
   onResumeSession,
   initialRoom,
+  onLoadSessions,
+  onLoadResumes,
+  onDeleteSession,
+  onGetSessionResume,
+  onGetSessionCoverLetter,
+  onGetDefaultResume,
+  onGetResumeById,
+  onUpdateMasterResume,
+  onGetResumeHistory,
+  onSetDefaultResume,
+  onDeleteResume,
 }: CareerIQScreenProps) {
-  const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(
-    toValidRoom(initialRoom)
-  );
+  const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toValidRoom(initialRoom));
+  const { story, updateField, signals, dashboardState } = useWhyMeStory();
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
+  const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
+  const { nudges, dismissNudge, checkStalls } = useMomentum();
+  const { recommendation: coachRec, loading: coachLoading, refresh: refreshCoachRec } = useCoachRecommendation();
+  const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
+  const [salaryNegoPrefill, setSalaryNegoPrefill] = useState<{ company: string; role: string } | null>(null);
 
-  // When initialRoom changes (e.g., user clicks a different tool from catalog),
-  // update the active room even if already mounted
   useEffect(() => {
     if (initialRoom) {
       setActiveRoom(toValidRoom(initialRoom));
     }
   }, [initialRoom]);
 
-  const [showWhyMeEngine, setShowWhyMeEngine] = useState(false);
-  const { story, updateField, signals, dashboardState } = useWhyMeStory();
-  const isMobile = useMediaQuery('(max-width: 767px)');
-  const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
-  const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
-  const { summary: momentum, nudges, loading: momentumLoading, dismissNudge, checkStalls } = useMomentum();
-  const { recommendation: coachRec, loading: coachLoading, refresh: refreshCoachRec } = useCoachRecommendation();
-  const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
-  /** Pre-fill data forwarded from the pipeline Kanban to SalaryNegotiationRoom. */
-  const [salaryNegoPrefill, setSalaryNegoPrefill] = useState<{ company: string; role: string } | null>(null);
-
-  // Check for stalled activity after initial load (non-blocking, 2s delay)
   useEffect(() => {
     const timer = setTimeout(() => {
       void checkStalls();
@@ -217,42 +168,51 @@ export function CareerIQScreen({
     return () => clearTimeout(timer);
   }, [checkStalls]);
 
-  // Load pipeline cards in "Interviewing" stage for Interview Lab
   useEffect(() => {
     let cancelled = false;
+
     async function loadInterviewing() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || cancelled) return;
+
         const { data } = await supabase
           .from('job_applications')
           .select('id, company, title')
           .eq('pipeline_stage', 'interviewing')
           .neq('status', 'archived');
-        if (data && !cancelled) {
-          setPipelineInterviews(data.map((d) => ({ id: d.id, company: d.company, role: d.title })));
+
+        if (!cancelled && data) {
+          setPipelineInterviews(data.map((item) => ({ id: item.id, company: item.company, role: item.title })));
         }
-      } catch { /* fallback to empty */ }
+      } catch {
+        if (!cancelled) setPipelineInterviews([]);
+      }
     }
-    loadInterviewing();
-    return () => { cancelled = true; };
+
+    void loadInterviewing();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Load recent cover letter sessions
   useEffect(() => {
     let cancelled = false;
-    async function loadCoverLetterSessions() {
+
+    async function loadCoverLetters() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || cancelled) return;
+
         const { data } = await supabase
           .from('coach_sessions')
           .select('id, last_panel_data, pipeline_status, created_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(10);
-        if (data && !cancelled) {
-          const clSessions = data
+
+        if (!cancelled && data) {
+          const nextSessions = data
             .filter((row) => {
               const panelData = row.last_panel_data as Record<string, unknown> | null;
               return panelData?.product_type === 'cover_letter';
@@ -267,106 +227,89 @@ export function CareerIQScreen({
                 pipeline_status: typeof row.pipeline_status === 'string' ? row.pipeline_status : null,
               };
             });
-          setCoverLetterSessions(clSessions);
+
+          setCoverLetterSessions(nextSessions);
         }
-      } catch { /* fallback to empty */ }
+      } catch {
+        if (!cancelled) setCoverLetterSessions([]);
+      }
     }
-    loadCoverLetterSessions();
-    return () => { cancelled = true; };
+
+    void loadCoverLetters();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Compute feed events for mobile briefing (mirrors DashboardHome logic)
   const mobileFeedEvents = useMemo<RealFeedEvent[] | undefined>(() => {
     const events: RealFeedEvent[] = [];
-    for (const s of sessions) {
-      const company = s.company_name || 'Untitled';
-      const isComplete = s.pipeline_stage === 'complete' || s.pipeline_stage === 'completed';
+
+    for (const session of sessions) {
+      const company = session.company_name || 'Untitled';
+      const isComplete = session.pipeline_stage === 'complete' || session.pipeline_stage === 'completed';
       events.push({
         type: isComplete ? 'session_completed' : 'session_created',
-        timestamp: s.created_at,
+        timestamp: session.created_at,
         detail: isComplete
-          ? `Completed resume for ${company} — ready for download`
+          ? `Completed resume for ${company}`
           : `Started resume session for ${company}`,
       });
     }
-    for (const s of coverLetterSessions) {
-      const company = s.company_name || 'Untitled';
-      const isComplete = s.pipeline_status === 'complete';
+
+    for (const session of coverLetterSessions) {
+      const company = session.company_name || 'Untitled';
+      const isComplete = session.pipeline_status === 'complete';
       events.push({
         type: isComplete ? 'session_completed' : 'session_created',
-        timestamp: s.created_at,
+        timestamp: session.created_at,
         detail: isComplete
           ? `Generated cover letter for ${company}`
           : `Started cover letter for ${company}`,
       });
     }
+
     if (events.length === 0) return undefined;
-    events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    events.sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
     return events.slice(0, 5);
-  }, [sessions, coverLetterSessions]);
+  }, [coverLetterSessions, sessions]);
 
   const handleRoomNavigate = (room: CareerIQRoom) => {
     setActiveRoom(room);
     refreshCoachRec();
+    onNavigate(room === 'dashboard' ? '/workspace' : `/workspace?room=${room}`);
   };
 
-  /** IP1-4: Navigate to Interview Lab when user clicks "Prepare for this interview?" */
   const handleInterviewPrepClick = (card: PipelineCard) => {
-    handleRoomNavigate('interview');
-    // The InterviewLabRoom already loads Interviewing cards from Supabase via pipelineInterviews.
-    // Optimistically add this card to the pipelineInterviews list in case it isn't loaded yet.
-    setPipelineInterviews((prev) => {
-      if (prev.some((p) => p.id === card.id)) return prev;
-      return [{ id: card.id, company: card.company, role: card.role }, ...prev];
+    setPipelineInterviews((current) => {
+      if (current.some((item) => item.id === card.id)) return current;
+      return [{ id: card.id, company: card.company, role: card.role }, ...current];
     });
+    handleRoomNavigate('interview');
   };
 
-  /** SN1-2: Navigate to Salary Negotiation when user clicks "Prepare your negotiation?" */
   const handleNegotiationPrepClick = (card: PipelineCard) => {
     setSalaryNegoPrefill({ company: card.company, role: card.role });
     handleRoomNavigate('salary-negotiation');
   };
 
-  const handleStartWhyMe = () => setShowWhyMeEngine(true);
-  const handleCloseWhyMe = () => setShowWhyMeEngine(false);
+  const openCareerProfile = () => handleRoomNavigate('career-profile');
 
   const renderContent = () => {
-    // Why-Me Engine overlay
-    if (showWhyMeEngine) {
-      return (
-        <div className="p-6">
-          <WhyMeEngine
-            story={story}
-            signals={signals}
-            onUpdate={updateField}
-            onClose={handleCloseWhyMe}
-          />
-        </div>
-      );
-    }
-
-    // Feature-flag guard: rooms whose backend flags are disabled show Coming Soon
     if (COMING_SOON_ROOMS.has(activeRoom)) {
       return <RoomPlaceholder room={activeRoom} />;
     }
 
-    // Dashboard home with all 4 zones
-    // When user has no real data (new-user), show mock data preview so they can see what a full dashboard looks like
     if (activeRoom === 'dashboard') {
       const isDemo = sessions.length === 0 && coverLetterSessions.length === 0;
       return (
         <DashboardHome
           userName={userName}
-          signals={isDemo ? MOCK_SIGNALS : signals}
-          dashboardState={isDemo ? MOCK_DASHBOARD_STATE : dashboardState}
+          signals={signals}
+          dashboardState={dashboardState}
           onNavigateRoom={handleRoomNavigate}
-          onRefineWhyMe={handleStartWhyMe}
+          onRefineWhyMe={openCareerProfile}
           hasResumeSessions={isDemo ? true : sessions.length > 0}
-          sessionCount={isDemo ? MOCK_SESSIONS.length : sessions.length}
-          recentSessions={isDemo ? MOCK_SESSIONS : sessions}
-          coverLetterSessions={isDemo ? MOCK_COVER_LETTERS : coverLetterSessions}
-          momentum={isDemo ? MOCK_MOMENTUM : momentum}
-          momentumLoading={isDemo ? false : momentumLoading}
+          sessionCount={isDemo ? 3 : sessions.length}
           nudges={nudges}
           onDismissNudge={dismissNudge}
           onOpenCoach={() => setCoachDrawerOpen(true)}
@@ -379,51 +322,68 @@ export function CareerIQScreen({
       );
     }
 
-    // Resume Workshop room
+    if (activeRoom === 'career-profile') {
+      return (
+        <div className="mx-auto max-w-4xl p-6">
+          <WhyMeEngine
+            story={story}
+            signals={signals}
+            onUpdate={updateField}
+            onClose={() => handleRoomNavigate('dashboard')}
+          />
+        </div>
+      );
+    }
+
     if (activeRoom === 'resume') {
       return (
         <ResumeWorkshopRoom
           sessions={sessions}
           resumes={resumes}
           loading={sessionsLoading}
-          onNewSession={onNewSession ?? (() => onNavigate('intake'))}
-          onResumeSession={onResumeSession ?? ((id) => onNavigate(`coach:${id}`))}
+          resumesLoading={resumesLoading}
+          onNewSession={onNewSession ?? (() => onNavigate('/resume-builder/session'))}
+          onResumeSession={onResumeSession ?? (() => undefined)}
           onNavigate={onNavigate}
+          onLoadSessions={onLoadSessions}
+          onLoadResumes={onLoadResumes}
+          onDeleteSession={onDeleteSession}
+          onGetSessionResume={onGetSessionResume}
+          onGetSessionCoverLetter={onGetSessionCoverLetter}
+          onGetDefaultResume={onGetDefaultResume}
+          onGetResumeById={onGetResumeById}
+          onUpdateMasterResume={onUpdateMasterResume}
+          onGetResumeHistory={onGetResumeHistory}
+          onSetDefaultResume={onSetDefaultResume}
+          onDeleteResume={onDeleteResume}
         />
       );
     }
 
-    // Live Sessions room
     if (activeRoom === 'learning') {
       return <LiveSessionsRoom />;
     }
 
-    // Financial Wellness room
     if (activeRoom === 'financial') {
       return <FinancialWellnessRoom />;
     }
 
-    // LinkedIn Studio room
     if (activeRoom === 'linkedin') {
       return <LinkedInStudioRoom signals={signals} whyMeClarity={story.colleaguesCameForWhat} />;
     }
 
-    // Job Command Center room
     if (activeRoom === 'jobs') {
       return <JobCommandCenterRoom onNavigate={onNavigate} onNavigateRoom={handleRoomNavigate} />;
     }
 
-    // Interview Lab room
     if (activeRoom === 'interview') {
       return <InterviewLabRoom pipelineInterviews={pipelineInterviews} />;
     }
 
-    // Smart Referrals room (merged NI + Networking Hub)
     if (activeRoom === 'networking') {
       return <SmartReferralsRoom />;
     }
 
-    // Salary Negotiation room
     if (activeRoom === 'salary-negotiation') {
       return (
         <SalaryNegotiationRoom
@@ -434,26 +394,21 @@ export function CareerIQScreen({
       );
     }
 
-    // Executive Documents room (merged Bio + Case Study)
     if (activeRoom === 'executive-bio') {
       return <ExecutiveDocumentsRoom />;
     }
 
-    // Personal Brand room
     if (activeRoom === 'personal-brand') {
       return <PersonalBrandRoom />;
     }
 
-    // 90-Day Plan room
     if (activeRoom === 'ninety-day-plan') {
       return <NinetyDayPlanRoom />;
     }
 
-    // Other rooms
     return <RoomPlaceholder room={activeRoom} />;
   };
 
-  // Mobile: show daily briefing on dashboard, room content on any other room
   if (isMobile) {
     if (activeRoom === 'dashboard') {
       return (
@@ -463,7 +418,7 @@ export function CareerIQScreen({
             signals={signals}
             dashboardState={dashboardState}
             activeRoom={activeRoom}
-            onRefineWhyMe={handleStartWhyMe}
+            onRefineWhyMe={openCareerProfile}
             onNavigateRoom={handleRoomNavigate}
             feedEvents={mobileFeedEvents}
           />
@@ -474,7 +429,7 @@ export function CareerIQScreen({
               isOpen={coachDrawerOpen}
               onOpen={() => setCoachDrawerOpen(true)}
               onClose={() => setCoachDrawerOpen(false)}
-              isMobile={isMobile}
+              isMobile
             />
           </Suspense>
         </>
@@ -482,13 +437,12 @@ export function CareerIQScreen({
     }
 
     return (
-      <div className="flex flex-col min-h-screen pb-20">
-        {/* Mobile room header with back button */}
-        <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+      <div className="flex min-h-screen flex-col pb-20">
+        <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 pb-3 pt-4">
           <button
             type="button"
             onClick={() => handleRoomNavigate('dashboard')}
-            className="flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-[#98b3ff]"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -497,25 +451,23 @@ export function CareerIQScreen({
           </button>
         </div>
 
-        {/* Room content */}
         <div className="flex-1 overflow-y-auto">
           <Suspense fallback={<RoomSkeleton />}>
             {renderContent()}
           </Suspense>
         </div>
 
-        {/* Bottom nav persists on room views so users can switch rooms */}
         <MobileBriefing
           userName={userName}
           signals={signals}
           dashboardState={dashboardState}
           activeRoom={activeRoom}
-          onRefineWhyMe={handleStartWhyMe}
+          onRefineWhyMe={openCareerProfile}
           onNavigateRoom={handleRoomNavigate}
           feedEvents={mobileFeedEvents}
           navOnly
         />
-        {/* Coach drawer available on all mobile room views */}
+
         <Suspense fallback={null}>
           <CoachDrawer
             userName={userName}
@@ -542,12 +494,13 @@ export function CareerIQScreen({
           recommendation: coachRec?.action,
         }}
       />
-      <main className="flex-1 overflow-y-auto flex flex-col">
-        <LivePulseStrip />
+
+      <main className="flex flex-1 flex-col overflow-y-auto">
         <Suspense fallback={<RoomSkeleton />}>
           {renderContent()}
         </Suspense>
       </main>
+
       <Suspense fallback={null}>
         <CoachDrawer
           userName={userName}

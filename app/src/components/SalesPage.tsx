@@ -60,7 +60,7 @@ function Hero() {
           AI-powered career coaching that understands executive positioning
         </p>
         <div className="mt-10">
-          <a href="/app">
+          <a href="/workspace">
             <GlassButton>
               Get Started Free
             </GlassButton>
@@ -395,7 +395,7 @@ function CTASection() {
             Create your free account and build a resume that lands interviews
           </p>
           <div className="mt-8">
-            <a href="/app">
+            <a href="/workspace">
               <GlassButton>
                 Get Started Free
               </GlassButton>
@@ -417,7 +417,7 @@ function Footer() {
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-6 text-sm text-white/40">
         <span>Resume Agent</span>
         <span>&copy; 2026 All rights reserved</span>
-        <a href="/app" className="text-white/50 transition-colors hover:text-white">
+        <a href="/workspace" className="text-white/50 transition-colors hover:text-white">
           Sign In
         </a>
       </div>

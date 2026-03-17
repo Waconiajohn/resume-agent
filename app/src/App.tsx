@@ -4,7 +4,6 @@ import { useSession } from '@/hooks/useSession';
 import { useAgent } from '@/hooks/useAgent';
 import { Header } from '@/components/Header';
 import { AuthGate } from '@/components/AuthGate';
-import { LandingScreen } from '@/components/LandingScreen';
 import { CoachScreen } from '@/components/CoachScreen';
 // PipelineIntakeForm — legacy intake, replaced by V2IntakeForm in resume-v2
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -12,7 +11,6 @@ import { SalesPage } from '@/components/SalesPage';
 import { PricingPage } from '@/components/PricingPage';
 import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
-import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
@@ -20,12 +18,13 @@ import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
 import { resumeToText } from '@/lib/export';
+import { buildMasterResumePromotionPayload } from '@/lib/master-resume-promotion';
 import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
-import type { ResumeDraft } from '@/types/resume-v2';
+import type { MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
 
 const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then(m => ({ default: m.CoachDrawer })));
 
-type View = 'landing' | 'coach' | 'resume-v2' | 'pricing' | 'billing' | 'affiliate' | 'dashboard' | 'tools' | 'cover-letter' | 'career-iq' | 'admin';
+type View = 'workspace' | 'coach' | 'resume-v2' | 'pricing' | 'billing' | 'affiliate' | 'tools' | 'cover-letter' | 'admin';
 
 export default function App() {
   const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, updateProfile, signOut } =
@@ -93,7 +92,7 @@ export default function App() {
   // updates haven't flushed yet (fixes Bug 18 — double-click 409s).
   const isRespondingRef = useRef(false);
 
-  const [view, setView] = useState<View>('landing');
+  const [view, setView] = useState<View>('workspace');
   const [toolSlug, setToolSlug] = useState<string | undefined>(undefined);
   const [initialRoom, setInitialRoom] = useState<string | undefined>(undefined);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
@@ -103,15 +102,37 @@ export default function App() {
   // Detect URL-based views on mount
   useEffect(() => {
     const path = window.location.pathname;
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    const workspaceRoom = params.get('room') ?? undefined;
+
+    if (path === '/' || path === '/sales') return;
     if (path === '/pricing') setView('pricing');
     else if (path === '/billing') setView('billing');
     else if (path === '/affiliate') setView('affiliate');
-    else if (path === '/dashboard') setView('dashboard');
     else if (path === '/cover-letter') setView('cover-letter');
-    else if (path === '/career-iq') setView('career-iq');
+    else if (path === '/resume-builder' || path === '/resume-builder/session') setView('resume-v2');
+    else if (path === '/workspace' || path === '/career-iq') {
+      setInitialRoom(workspaceRoom);
+      setView('workspace');
+      if (path === '/career-iq') {
+        window.history.replaceState({}, '', workspaceRoom ? `/workspace?room=${workspaceRoom}` : '/workspace');
+      }
+    }
+    else if (path === '/dashboard') {
+      setInitialRoom('resume');
+      setView('workspace');
+      window.history.replaceState({}, '', '/workspace?room=resume');
+    }
     else if (path === '/admin') setView('admin');
     else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
     else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
+    else {
+      setView('workspace');
+      if (path !== '/workspace') {
+        window.history.replaceState({}, '', '/workspace');
+      }
+    }
   }, []);
 
   // Detect referral code from URL query parameter and persist to localStorage
@@ -146,16 +167,26 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname;
+      const params = new URLSearchParams(window.location.search);
+      const workspaceRoom = params.get('room') ?? undefined;
+      if (path === '/' || path === '/sales') return;
       if (path === '/pricing') setView('pricing');
       else if (path === '/billing') setView('billing');
       else if (path === '/affiliate') setView('affiliate');
-      else if (path === '/dashboard') setView('dashboard');
       else if (path === '/cover-letter') setView('cover-letter');
-      else if (path === '/career-iq') setView('career-iq');
+      else if (path === '/resume-builder' || path === '/resume-builder/session') setView('resume-v2');
+      else if (path === '/workspace' || path === '/career-iq') {
+        setInitialRoom(workspaceRoom);
+        setView('workspace');
+      }
+      else if (path === '/dashboard') {
+        setInitialRoom('resume');
+        setView('workspace');
+      }
       else if (path === '/admin') setView('admin');
       else if (path === '/tools') { setView('tools'); setToolSlug(undefined); }
       else if (path.startsWith('/tools/')) { setView('tools'); setToolSlug(path.split('/tools/')[1]); }
-      else setView('landing');
+      else setView('workspace');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -182,6 +213,9 @@ export default function App() {
     setV2SessionId(null);
     setIntakeInitialResumeText('');
     setIntakeDefaultResumeId(null);
+    if (window.location.pathname !== '/resume-builder/session') {
+      window.history.pushState({}, '', '/resume-builder/session');
+    }
     void listResumes();
     const defaultResume = await getDefaultResume();
     if (defaultResume?.raw_text?.trim()) {
@@ -197,6 +231,9 @@ export default function App() {
       if (session?.product_type === 'resume_v2') {
         setV2SessionId(sessionId);
         setView('resume-v2');
+        if (window.location.pathname !== '/resume-builder/session') {
+          window.history.pushState({}, '', '/resume-builder/session');
+        }
         return;
       }
       await loadSession(sessionId);
@@ -209,7 +246,11 @@ export default function App() {
     async (sessionId: string) => {
       const ok = await deleteSession(sessionId);
       if (ok && currentSession?.id === sessionId) {
-        setView('landing');
+        setInitialRoom('resume');
+        setView('workspace');
+        if (`${window.location.pathname}${window.location.search}` !== '/workspace?room=resume') {
+          window.history.pushState({}, '', '/workspace?room=resume');
+        }
       }
       return ok;
     },
@@ -264,6 +305,7 @@ export default function App() {
         companyName?: string;
         jobTitle?: string;
         atsScore?: number;
+        promotionItems?: MasterPromotionItem[];
       },
     ) => {
       const finalResume = resumeDraftToFinalResume(draft, {
@@ -272,23 +314,36 @@ export default function App() {
         atsScore: options?.atsScore,
       });
       const rawText = resumeToText(finalResume);
+      const selectedPromotionItems = options?.promotionItems ?? [];
 
       let targetResumeId = intakeDefaultResumeId ?? resumes.find((item) => item.is_default)?.id ?? null;
+      let defaultResume = await getDefaultResume();
       if (!targetResumeId) {
-        const defaultResume = await getDefaultResume();
         targetResumeId = defaultResume?.id ?? null;
       }
 
       if (targetResumeId) {
-        const updated = await updateMasterResume(targetResumeId, {
-          summary: finalResume.summary,
-          experience: finalResume.experience,
-          skills: finalResume.skills,
-          education: finalResume.education,
-          certifications: finalResume.certifications,
-          contact_info: finalResume.contact_info,
-          raw_text: rawText,
-        });
+        const changes = selectedPromotionItems.length > 0
+          ? buildMasterResumePromotionPayload({
+              draft,
+              baseResume: defaultResume,
+              selectedItems: selectedPromotionItems,
+              sourceSessionId: options?.sourceSessionId ?? null,
+              companyName: options?.companyName,
+              jobTitle: options?.jobTitle,
+              atsScore: options?.atsScore,
+            })
+          : {
+              summary: finalResume.summary,
+              experience: finalResume.experience,
+              skills: finalResume.skills,
+              education: finalResume.education,
+              certifications: finalResume.certifications,
+              contact_info: finalResume.contact_info,
+              raw_text: rawText,
+            };
+
+        const updated = await updateMasterResume(targetResumeId, changes);
         if (!updated) {
           return {
             success: false,
@@ -297,13 +352,15 @@ export default function App() {
         }
 
         setIntakeDefaultResumeId(updated.id);
-        setIntakeInitialResumeText(updated.raw_text || rawText);
+        setIntakeInitialResumeText(updated.raw_text || changes.raw_text || rawText);
         await listResumes();
 
         return {
           success: true,
           resumeId: updated.id,
-          message: 'Master resume updated.',
+          message: selectedPromotionItems.length > 0
+            ? `Promoted ${selectedPromotionItems.length} selected edit${selectedPromotionItems.length === 1 ? '' : 's'} to your master resume.`
+            : 'Master resume updated.',
         };
       }
 
@@ -394,7 +451,8 @@ export default function App() {
   const handleSignOut = useCallback(async () => {
     await signOut();
     setCurrentSession(null);
-    setView('landing');
+    setInitialRoom(undefined);
+    setView('workspace');
   }, [signOut, setCurrentSession]);
 
   const navigateTo = useCallback((viewName: string) => {
@@ -415,6 +473,25 @@ export default function App() {
       }
       return;
     }
+    if (viewName.startsWith('/workspace')) {
+      const url = new URL(viewName, 'http://local');
+      const room = url.searchParams.get('room') ?? undefined;
+      setInitialRoom(room);
+      setView('workspace');
+      const nextPath = room ? `/workspace?room=${room}` : '/workspace';
+      if (`${window.location.pathname}${window.location.search}` !== nextPath) {
+        window.history.pushState({}, '', nextPath);
+      }
+      return;
+    }
+    if (viewName === '/dashboard' || viewName === 'dashboard') {
+      setInitialRoom('resume');
+      setView('workspace');
+      if (`${window.location.pathname}${window.location.search}` !== '/workspace?room=resume') {
+        window.history.pushState({}, '', '/workspace?room=resume');
+      }
+      return;
+    }
     if (viewName === 'cover-letter' || viewName === '/cover-letter') {
       setView('cover-letter');
       if (window.location.pathname !== '/cover-letter') {
@@ -422,27 +499,26 @@ export default function App() {
       }
       return;
     }
-    if (viewName === 'career-iq' || viewName === '/career-iq') {
-      setView('career-iq');
-      if (window.location.pathname !== '/career-iq') {
-        window.history.pushState({}, '', '/career-iq');
+    if (viewName === 'workspace' || viewName === 'career-iq' || viewName === '/career-iq' || viewName === '/workspace') {
+      setView('workspace');
+      setInitialRoom(undefined);
+      if (window.location.pathname !== '/workspace') {
+        window.history.pushState({}, '', '/workspace');
       }
       return;
     }
-    const validViews: View[] = ['landing', 'coach', 'resume-v2', 'pricing', 'billing', 'affiliate', 'dashboard', 'tools', 'cover-letter', 'career-iq', 'admin'];
-    const newView = validViews.includes(viewName as View) ? (viewName as View) : 'landing';
+    const validViews: View[] = ['workspace', 'coach', 'resume-v2', 'pricing', 'billing', 'affiliate', 'tools', 'cover-letter', 'admin'];
+    const newView = validViews.includes(viewName as View) ? (viewName as View) : 'workspace';
     setView(newView);
     const paths: Record<View, string> = {
-      landing: '/app',
-      coach: '/app',
-      'resume-v2': '/app',
+      workspace: '/workspace',
+      coach: '/workspace',
+      'resume-v2': '/resume-builder/session',
       pricing: '/pricing',
       billing: '/billing',
       affiliate: '/affiliate',
-      dashboard: '/dashboard',
       tools: '/tools',
       'cover-letter': '/cover-letter',
-      'career-iq': '/career-iq',
       admin: '/admin',
     };
     const newPath = paths[newView];
@@ -508,24 +584,6 @@ export default function App() {
           </div>
         )}
 
-      {view === 'landing' && (
-        <LandingScreen
-          sessions={sessions}
-          resumes={resumes}
-          loading={sessionLoading}
-          resumesLoading={resumesLoading}
-          error={sessionError}
-          onNewSession={handleNewSession}
-          onResumeSession={handleResumeSession}
-          onDeleteSession={handleDeleteSession}
-          onLoadSessions={listSessions}
-          onLoadResumes={listResumes}
-          onSetDefaultResume={handleSetDefaultBaseResume}
-          onDeleteResume={handleDeleteBaseResume}
-          onNavigateToDashboard={() => navigateTo('dashboard')}
-        />
-      )}
-
       {view === 'coach' && !connected && !sessionComplete && !agentError && currentSession && !hasLiveWorkspaceState && (
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
@@ -574,7 +632,14 @@ export default function App() {
       {view === 'resume-v2' && (
         <V2ResumeScreen
           accessToken={accessToken}
-          onBack={() => { setV2SessionId(null); setView('landing'); }}
+          onBack={() => {
+            setV2SessionId(null);
+            setInitialRoom('resume');
+            setView('workspace');
+            if (`${window.location.pathname}${window.location.search}` !== '/workspace?room=resume') {
+              window.history.pushState({}, '', '/workspace?room=resume');
+            }
+          }}
           initialResumeText={intakeInitialResumeText}
           initialSessionId={v2SessionId ?? undefined}
           onSyncToMasterResume={handleSyncV2ResumeToMaster}
@@ -609,17 +674,15 @@ export default function App() {
               if (route === '/tools') navigateTo('tools');
               else if (route.startsWith('/tools/')) navigateTo(route);
               else if (route === '/cover-letter') navigateTo('cover-letter');
-              else if (route === '/app' || route === '/') navigateTo('landing');
+              else if (route === '/app' || route === '/' || route === '/workspace') navigateTo('workspace');
               else if (route === '/onboarding') {
-                setInitialRoom('onboarding');
-                navigateTo('career-iq');
+                navigateTo('/workspace?room=career-profile');
               }
-              else if (route.startsWith('/career-iq')) {
+              else if (route.startsWith('/career-iq') || route.startsWith('/workspace')) {
                 const roomParam = new URL(route, 'http://x').searchParams.get('room');
-                setInitialRoom(roomParam ?? undefined);
-                navigateTo('career-iq');
+                navigateTo(roomParam ? `/workspace?room=${roomParam}` : 'workspace');
               }
-              else navigateTo('landing');
+              else navigateTo('workspace');
             }}
           />
           <Suspense fallback={null}>
@@ -631,7 +694,7 @@ export default function App() {
               onNavigate={(room) => {
                 setToolsCoachOpen(false);
                 setInitialRoom(room);
-                navigateTo('career-iq');
+                navigateTo(`/workspace?room=${room}`);
               }}
             />
           </Suspense>
@@ -646,7 +709,7 @@ export default function App() {
         />
       )}
 
-      {view === 'career-iq' && (
+      {view === 'workspace' && (
         <CareerIQScreen
           userName={displayName}
           onNavigate={navigateTo}
@@ -656,17 +719,8 @@ export default function App() {
           onNewSession={handleNewSession}
           onResumeSession={handleResumeSession}
           initialRoom={initialRoom}
-        />
-      )}
-
-      {view === 'dashboard' && (
-        <DashboardScreen
-          accessToken={accessToken}
-          sessions={sessions}
-          resumes={resumes}
           onLoadSessions={listSessions}
           onLoadResumes={listResumes}
-          onResumeSession={handleResumeSession}
           onDeleteSession={handleDeleteSession}
           onGetSessionResume={getSessionResume}
           onGetSessionCoverLetter={getSessionCoverLetter}
@@ -676,9 +730,6 @@ export default function App() {
           onGetResumeHistory={getResumeHistory}
           onSetDefaultResume={handleSetDefaultBaseResume}
           onDeleteResume={handleDeleteBaseResume}
-          loading={sessionLoading}
-          resumesLoading={resumesLoading}
-          error={sessionError}
         />
       )}
 

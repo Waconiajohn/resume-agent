@@ -1,56 +1,48 @@
 /**
- * useGapChat — Per-item conversational coaching for gap analysis
+ * useFinalReviewChat — Per-concern conversational coaching for Final Review
  *
- * Manages independent chat histories per gap requirement.
- * Each item has its own conversation that persists across navigation.
- * Chat state lives in component memory — not persisted to DB.
- *
- * Hardened against: stale closures, ghost conversations after reset,
- * unmount leaks, and rapid double-sends.
+ * Mirrors the gap coaching thread model, but each thread is keyed by
+ * final-review concern id instead of requirement text.
  */
 
 import { useCallback, useReducer, useRef } from 'react';
 import { API_BASE } from '@/lib/api';
-import type { CoachingThreadSnapshot, GapChatMessage, GapChatContext } from '@/types/resume-v2';
+import type { CoachingThreadSnapshot, FinalReviewChatContext, GapChatMessage } from '@/types/resume-v2';
+import { MAX_TURNS } from './useGapChat';
 
-export const MAX_TURNS = 10;
-
-interface GapItemChatState {
+interface FinalReviewChatItemState {
   messages: GapChatMessage[];
   isLoading: boolean;
-  /** The language the user has accepted for "Add to Resume" */
   resolvedLanguage: string | null;
   error: string | null;
 }
 
-interface GapChatState {
-  /** Keyed by normalized requirement string */
-  items: Record<string, GapItemChatState>;
-  /** Incremented on RESET — stale async responses are dropped */
+interface FinalReviewChatState {
+  items: Record<string, FinalReviewChatItemState>;
   generation: number;
 }
 
-type GapChatAction =
-  | { type: 'SEND_START'; requirement: string; userMessage: string }
-  | { type: 'SEND_SUCCESS'; requirement: string; message: GapChatMessage; generation: number }
-  | { type: 'SEND_ERROR'; requirement: string; error: string; generation: number; rollbackMessage?: string }
-  | { type: 'RESOLVE'; requirement: string; language: string }
-  | { type: 'CLEAR_RESOLUTION'; requirement: string }
+type FinalReviewChatAction =
+  | { type: 'SEND_START'; concernId: string; userMessage: string }
+  | { type: 'SEND_SUCCESS'; concernId: string; message: GapChatMessage; generation: number }
+  | { type: 'SEND_ERROR'; concernId: string; error: string; generation: number; rollbackMessage?: string }
+  | { type: 'RESOLVE'; concernId: string; language: string }
+  | { type: 'CLEAR_RESOLUTION'; concernId: string }
   | { type: 'HYDRATE'; snapshot: CoachingThreadSnapshot | null }
   | { type: 'RESET' };
 
-function normalizeKey(requirement: string): string {
-  return requirement.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
+function normalizeKey(concernId: string): string {
+  return concernId.trim().toLowerCase();
 }
 
-function getOrCreate(state: GapChatState, key: string): GapItemChatState {
+function getOrCreate(state: FinalReviewChatState, key: string): FinalReviewChatItemState {
   return state.items[key] ?? { messages: [], isLoading: false, resolvedLanguage: null, error: null };
 }
 
-function reducer(state: GapChatState, action: GapChatAction): GapChatState {
+function reducer(state: FinalReviewChatState, action: FinalReviewChatAction): FinalReviewChatState {
   switch (action.type) {
     case 'SEND_START': {
-      const key = normalizeKey(action.requirement);
+      const key = normalizeKey(action.concernId);
       const item = getOrCreate(state, key);
       return {
         ...state,
@@ -58,7 +50,7 @@ function reducer(state: GapChatState, action: GapChatAction): GapChatState {
           ...state.items,
           [key]: {
             ...item,
-            messages: [...item.messages, { role: 'user', content: action.userMessage }],
+            messages: [...item.messages, { role: 'user', content: action.userMessage, candidateInputUsed: true }],
             isLoading: true,
             error: null,
           },
@@ -66,9 +58,8 @@ function reducer(state: GapChatState, action: GapChatAction): GapChatState {
       };
     }
     case 'SEND_SUCCESS': {
-      // Drop if from a stale generation (reset happened while in-flight)
       if (action.generation !== state.generation) return state;
-      const key = normalizeKey(action.requirement);
+      const key = normalizeKey(action.concernId);
       const item = getOrCreate(state, key);
       return {
         ...state,
@@ -83,13 +74,11 @@ function reducer(state: GapChatState, action: GapChatAction): GapChatState {
       };
     }
     case 'SEND_ERROR': {
-      // Drop if from a stale generation
       if (action.generation !== state.generation) return state;
-      const key = normalizeKey(action.requirement);
+      const key = normalizeKey(action.concernId);
       const item = getOrCreate(state, key);
-      // Roll back the optimistic user message so it's not stranded
       const rolledBackMessages = action.rollbackMessage
-        ? item.messages.filter((m, i) => !(m.role === 'user' && m.content === action.rollbackMessage && i === item.messages.length - 1))
+        ? item.messages.filter((message, index) => !(message.role === 'user' && message.content === action.rollbackMessage && index === item.messages.length - 1))
         : item.messages;
       return {
         ...state,
@@ -105,7 +94,7 @@ function reducer(state: GapChatState, action: GapChatAction): GapChatState {
       };
     }
     case 'RESOLVE': {
-      const key = normalizeKey(action.requirement);
+      const key = normalizeKey(action.concernId);
       const item = getOrCreate(state, key);
       return {
         ...state,
@@ -119,7 +108,7 @@ function reducer(state: GapChatState, action: GapChatAction): GapChatState {
       };
     }
     case 'CLEAR_RESOLUTION': {
-      const key = normalizeKey(action.requirement);
+      const key = normalizeKey(action.concernId);
       const item = getOrCreate(state, key);
       return {
         ...state,
@@ -156,63 +145,49 @@ function reducer(state: GapChatState, action: GapChatAction): GapChatState {
   }
 }
 
-export function useGapChat(accessToken: string | null, sessionId: string) {
+export function useFinalReviewChat(accessToken: string | null, sessionId: string) {
   const [state, dispatch] = useReducer(reducer, { items: {}, generation: 0 });
 
-  // Refs for reading current state without stale closures
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // AbortController for in-flight requests — aborted on reset
   const abortRef = useRef<AbortController | null>(null);
-
-  // Per-key send guard to prevent rapid double-sends
   const sendingKeysRef = useRef(new Set<string>());
 
-  // Stable getItemState — reads from ref, no dependency on state.items
-  const getItemState = useCallback((requirement: string): GapItemChatState | undefined => {
-    return stateRef.current.items[normalizeKey(requirement)];
+  const getItemState = useCallback((concernId: string): FinalReviewChatItemState | undefined => {
+    return stateRef.current.items[normalizeKey(concernId)];
   }, []);
 
   const sendMessage = useCallback(async (
-    requirement: string,
+    concernId: string,
     message: string,
-    context: GapChatContext,
-    classification: 'partial' | 'missing' | 'strong',
+    context: FinalReviewChatContext,
   ) => {
     if (!accessToken || !sessionId) return;
 
-    const key = normalizeKey(requirement);
-
-    // Prevent concurrent sends for the same item
+    const key = normalizeKey(concernId);
     if (sendingKeysRef.current.has(key)) return;
 
-    // Read current state from ref (not stale closure)
     const currentItems = stateRef.current.items;
     const item = currentItems[key];
-
-    // Enforce turn cap using current state
-    const userTurns = (item?.messages.filter(m => m.role === 'user').length ?? 0) + 1;
+    const userTurns = (item?.messages.filter(chatMessage => chatMessage.role === 'user').length ?? 0) + 1;
     if (userTurns > MAX_TURNS) return;
 
     sendingKeysRef.current.add(key);
     const generation = stateRef.current.generation;
+    dispatch({ type: 'SEND_START', concernId, userMessage: message });
 
-    dispatch({ type: 'SEND_START', requirement, userMessage: message });
-
-    // Build conversation history from current state (before dispatch mutated it)
     const existingMessages = item?.messages ?? [];
     const apiMessages = [
-      ...existingMessages.map(m => ({ role: m.role, content: m.content })),
+      ...existingMessages.map(chatMessage => ({ role: chatMessage.role, content: chatMessage.content })),
       { role: 'user' as const, content: message },
     ];
 
-    // Create abort controller for this request
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/gap-chat`, {
+      const response = await fetch(`${API_BASE}/pipeline/${sessionId}/final-review-chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,16 +195,24 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
         },
         signal: controller.signal,
         body: JSON.stringify({
-          requirement,
-          classification,
+          concern_id: concernId,
           messages: apiMessages,
           context: {
-            evidence: context.evidence,
-            current_strategy: context.currentStrategy,
-            ai_reasoning: context.aiReasoning,
-            inferred_metric: context.inferredMetric,
-            job_description_excerpt: context.jobDescriptionExcerpt,
-            candidate_experience_summary: context.candidateExperienceSummary,
+            concern_type: context.concernType,
+            severity: context.severity,
+            observation: context.observation,
+            why_it_hurts: context.whyItHurts,
+            fix_strategy: context.fixStrategy,
+            target_section: context.targetSection,
+            related_requirement: context.relatedRequirement,
+            suggested_resume_edit: context.suggestedResumeEdit,
+            role_title: context.roleTitle,
+            company_name: context.companyName,
+            job_description_fit: context.jobDescriptionFit,
+            benchmark_alignment: context.benchmarkAlignment,
+            business_impact: context.businessImpact,
+            clarity_and_credibility: context.clarityAndCredibility,
+            resume_excerpt: context.resumeExcerpt,
           },
         }),
       });
@@ -250,7 +233,7 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
 
       dispatch({
         type: 'SEND_SUCCESS',
-        requirement,
+        concernId,
         generation,
         message: {
           role: 'assistant',
@@ -262,15 +245,14 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
           recommendedNextAction: result.recommended_next_action,
         },
       });
-    } catch (err) {
-      // Don't dispatch error for aborted requests
-      if (err instanceof DOMException && err.name === 'AbortError') return;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
 
       dispatch({
         type: 'SEND_ERROR',
-        requirement,
+        concernId,
         generation,
-        error: err instanceof Error ? err.message : 'Chat failed',
+        error: error instanceof Error ? error.message : 'Chat failed',
         rollbackMessage: message,
       });
     } finally {
@@ -281,12 +263,12 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
     }
   }, [accessToken, sessionId]);
 
-  const acceptLanguage = useCallback((requirement: string, language: string) => {
-    dispatch({ type: 'RESOLVE', requirement, language });
+  const acceptLanguage = useCallback((concernId: string, language: string) => {
+    dispatch({ type: 'RESOLVE', concernId, language });
   }, []);
 
-  const clearResolvedLanguage = useCallback((requirement: string) => {
-    dispatch({ type: 'CLEAR_RESOLUTION', requirement });
+  const clearResolvedLanguage = useCallback((concernId: string) => {
+    dispatch({ type: 'CLEAR_RESOLUTION', concernId });
   }, []);
 
   const hydrateSnapshot = useCallback((snapshot: CoachingThreadSnapshot | null) => {
@@ -304,19 +286,16 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
         },
       ]),
     );
-
     return { items };
   }, []);
 
   const resetChat = useCallback(() => {
-    // Abort any in-flight requests before resetting
     abortRef.current?.abort();
     abortRef.current = null;
     sendingKeysRef.current.clear();
     dispatch({ type: 'RESET' });
   }, []);
 
-  // Compute summary stats
   const resolvedCount = Object.values(state.items).filter(item => item.resolvedLanguage !== null).length;
   const isAnyLoading = Object.values(state.items).some(item => item.isLoading);
 
@@ -333,4 +312,4 @@ export function useGapChat(accessToken: string | null, sessionId: string) {
   };
 }
 
-export type GapChatHook = ReturnType<typeof useGapChat>;
+export type FinalReviewChatHook = ReturnType<typeof useFinalReviewChat>;

@@ -2,8 +2,9 @@ import { GlassCard } from '@/components/GlassCard';
 import type { CareerIQRoom } from './Sidebar';
 
 const ROOM_INFO: Record<string, { title: string; description: string }> = {
-  dashboard: { title: 'Dashboard', description: '' },
+  dashboard: { title: 'Workspace Home', description: '' },
   resume: { title: 'Resume Builder', description: 'AI-powered resume tailored to every job you apply for.' },
+  'career-profile': { title: 'Career Profile', description: 'Define the story, strengths, and direction that power every tool in your workspace.' },
   linkedin: { title: 'LinkedIn Studio', description: 'Profile optimization, content creation, and posting calendar.' },
   jobs: { title: 'Job Command Center', description: 'Search, match, pipeline, and daily momentum tracking.' },
   networking: { title: 'Smart Referrals', description: 'Import connections, find jobs at their companies, referral bonuses, and AI outreach.' },

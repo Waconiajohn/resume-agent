@@ -12,6 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse-parser';
+import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
 import type { GapCoachingResponse, PreScores, V2PersistedDraftState, V2PipelineData, V2SSEEvent, V2Stage } from '@/types/resume-v2';
 
 const INITIAL_DATA: V2PipelineData = {
@@ -103,6 +104,8 @@ export function useV2Pipeline(accessToken: string | null) {
 
     if (event.type === 'pipeline_complete') {
       setIsComplete(true);
+    } else if (event.type === 'pipeline_error') {
+      setIsComplete(false);
     }
   }, []);
 
@@ -241,51 +244,28 @@ export function useV2Pipeline(accessToken: string | null) {
 
       if (!response.ok) return false;
 
-      const body = await response.json() as {
-        version?: string;
-        pipeline_data?: {
-          jobIntelligence: V2PipelineData['jobIntelligence'];
-          candidateIntelligence: V2PipelineData['candidateIntelligence'];
-          benchmarkCandidate: V2PipelineData['benchmarkCandidate'];
-          gapAnalysis: V2PipelineData['gapAnalysis'];
-          preScores: V2PipelineData['preScores'];
-          narrativeStrategy: V2PipelineData['narrativeStrategy'];
-          resumeDraft: V2PipelineData['resumeDraft'];
-          assembly: V2PipelineData['assembly'];
-        };
-        draft_state?: V2PersistedDraftState | null;
-        inputs?: { resume_text: string; job_description: string };
-      };
+      const body = await response.json() as LoadSessionResponseBody;
+      const hydrated = hydrateV2SessionLoad(sessionId, body);
+      if (!hydrated) return false;
 
-      if (body.version !== 'v2' || !body.pipeline_data) return false;
-
-      const pd = body.pipeline_data;
-      setData({
-        sessionId,
-        stage: 'complete',
-        jobIntelligence: pd.jobIntelligence ?? null,
-        candidateIntelligence: pd.candidateIntelligence ?? null,
-        benchmarkCandidate: pd.benchmarkCandidate ?? null,
-        gapAnalysis: pd.gapAnalysis ?? null,
-        gapCoachingCards: null, // Not persisted — coaching is a live interaction
-        preScores: pd.preScores ?? null,
-        narrativeStrategy: pd.narrativeStrategy ?? null,
-        resumeDraft: pd.resumeDraft ?? null,
-        assembly: pd.assembly ?? null,
-        error: null,
-        stageMessages: [],
-      });
-      setIsComplete(true);
+      abortRef.current?.abort();
+      setData(hydrated.data);
+      setIsComplete(hydrated.isComplete);
       setIsConnected(false);
+      setIsStarting(false);
+
+      if (hydrated.shouldReconnect) {
+        void connectSSE(sessionId);
+      }
 
       return {
-        ...(body.inputs ?? { resume_text: '', job_description: '' }),
-        draftState: body.draft_state ?? null,
+        ...hydrated.inputs,
+        draftState: hydrated.draftState,
       };
     } catch {
       return false;
     }
-  }, [accessToken]);
+  }, [accessToken, connectSSE]);
 
   const saveDraftState = useCallback(async (
     sessionId: string,

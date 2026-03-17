@@ -226,14 +226,13 @@ describe('Sidebar', () => {
     render(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Career Profile')).toBeInTheDocument();
     expect(screen.getByText('Resume Builder')).toBeInTheDocument();
     expect(screen.getByText('LinkedIn Studio')).toBeInTheDocument();
     expect(screen.getByText('Job Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Smart Referrals')).toBeInTheDocument();
     expect(screen.getByText('Interview Lab')).toBeInTheDocument();
-    expect(screen.getByText('Financial Wellness')).toBeInTheDocument();
-    expect(screen.getByText('Live Sessions')).toBeInTheDocument();
+    expect(screen.getByText('Salary & Negotiation')).toBeInTheDocument();
   });
 
   it('disables gated rooms when dashboardState is new-user', () => {
@@ -243,12 +242,10 @@ describe('Sidebar', () => {
     // Resume Builder is gated
     const resumeButton = screen.getByText('Resume Builder').closest('button');
     expect(resumeButton).toBeDisabled();
-    // Dashboard is not gated
-    const dashboardButton = screen.getByText('Dashboard').closest('button');
-    expect(dashboardButton).not.toBeDisabled();
-    // Live Sessions is not gated
-    const liveButton = screen.getByText('Live Sessions').closest('button');
-    expect(liveButton).not.toBeDisabled();
+    const homeButton = screen.getByText('Home').closest('button');
+    expect(homeButton).not.toBeDisabled();
+    const profileButton = screen.getByText('Career Profile').closest('button');
+    expect(profileButton).not.toBeDisabled();
   });
 
   it('shows lock icon on gated rooms when new-user', () => {
@@ -481,7 +478,7 @@ describe('ZoneYourDay', () => {
         dashboardState="new-user"
       />,
     );
-    expect(screen.getByText('Define your Why-Me story')).toBeInTheDocument();
+    expect(screen.getByText('Build your Career Profile')).toBeInTheDocument();
   });
 
   it('strong state shows "Refine your Why-Me story" action', () => {
@@ -516,7 +513,7 @@ describe('ZoneYourDay', () => {
         dashboardState="refining"
       />,
     );
-    expect(screen.getByText('Refine your Why-Me story')).toBeInTheDocument();
+    expect(screen.getByText('Strengthen your Career Profile')).toBeInTheDocument();
   });
 
   it('displays greeting with first name', () => {

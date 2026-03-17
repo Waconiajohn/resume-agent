@@ -49,11 +49,11 @@ export function ProcessStepGuideCard({
       {!compact && (
         <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">What we're doing</div>
+            <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">What happens in this phase</div>
             <div className="mt-1 text-xs leading-relaxed text-white/72">{contract.systemDoes}</div>
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">What you can do</div>
+            <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">What you should do</div>
             <div className="mt-1 text-xs leading-relaxed text-white/72">{userDoesOverride ?? contract.userDoes}</div>
           </div>
         </div>

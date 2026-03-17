@@ -1,0 +1,289 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { RewriteQueuePanel } from '../panels/RewriteQueuePanel';
+import { ReviewInboxCard } from '../cards/ReviewInboxCard';
+import { ExportBar } from '../ExportBar';
+import type {
+  CoachingThreadSnapshot,
+  GapAnalysis,
+  GapChatContext,
+  JobIntelligence,
+  ResumeDraft,
+} from '@/types/resume-v2';
+import type { EditAction, EditContext, PendingEdit } from '@/hooks/useInlineEdit';
+
+vi.mock('lucide-react', () => {
+  const Icon = ({ className }: { className?: string }) => <svg data-testid="icon" className={className} aria-hidden="true" />;
+  return {
+    AlertCircle: Icon,
+    CheckCircle2: Icon,
+    ChevronRight: Icon,
+    Clipboard: Icon,
+    ClipboardCheck: Icon,
+    Clock3: Icon,
+    Download: Icon,
+    FileType2: Icon,
+    Loader2: Icon,
+    MessagesSquare: Icon,
+    RotateCcw: Icon,
+    Send: Icon,
+    Sparkles: Icon,
+    Target: Icon,
+  };
+});
+
+function makeResumeDraft(): ResumeDraft {
+  return {
+    header: {
+      name: 'Jane Doe',
+      phone: '555-0100',
+      email: 'jane@example.com',
+      branded_title: 'VP Operations',
+    },
+    executive_summary: {
+      content: 'Operations leader with cross-functional delivery experience.',
+      is_new: false,
+      addresses_requirements: [],
+    },
+    core_competencies: ['Leadership', 'Operational Strategy'],
+    selected_accomplishments: [],
+    professional_experience: [
+      {
+        company: 'Acme Corp',
+        title: 'VP Operations',
+        start_date: 'Jan 2021',
+        end_date: 'Present',
+        scope_statement: 'Led a multi-site operating team across product and customer operations.',
+        scope_statement_is_new: false,
+        scope_statement_addresses_requirements: [],
+        bullets: [
+          {
+            text: 'Directed cross-functional programs spanning product, operations, and customer support.',
+            is_new: false,
+            addresses_requirements: [],
+          },
+        ],
+      },
+    ],
+    education: [{ degree: 'BS Business', institution: 'Northwestern', year: '2010' }],
+    certifications: [],
+  };
+}
+
+function makeJobIntelligence(): JobIntelligence {
+  return {
+    company_name: 'TechCorp',
+    role_title: 'VP Operations',
+    seniority_level: 'VP',
+    core_competencies: [
+      {
+        competency: 'Executive stakeholder leadership',
+        importance: 'must_have',
+        evidence_from_jd: 'Lead alignment across executive stakeholders and operating teams.',
+      },
+    ],
+    strategic_responsibilities: ['Drive operating cadence across departments'],
+    business_problems: ['Improve execution quality'],
+    cultural_signals: ['Ownership'],
+    hidden_hiring_signals: ['Needs an operator who can align leaders quickly'],
+    language_keywords: ['cross-functional', 'stakeholder', 'operating cadence'],
+    industry: 'SaaS',
+  };
+}
+
+function makeGapAnalysis(): GapAnalysis {
+  return {
+    requirements: [
+      {
+        requirement: 'Executive stakeholder leadership',
+        importance: 'must_have',
+        classification: 'partial',
+        evidence: [],
+        source: 'job_description',
+        source_evidence: 'Lead alignment across executive stakeholders and operating teams.',
+        score_domain: 'ats',
+      },
+    ],
+    coverage_score: 50,
+    score_breakdown: {
+      job_description: {
+        addressed: 0,
+        total: 1,
+        strong: 0,
+        partial: 1,
+        missing: 0,
+        coverage_score: 50,
+      },
+      benchmark: {
+        addressed: 0,
+        total: 0,
+        strong: 0,
+        partial: 0,
+        missing: 0,
+        coverage_score: 0,
+      },
+    },
+    strength_summary: 'Strong operating foundation.',
+    critical_gaps: [],
+    pending_strategies: [],
+  };
+}
+
+function makeGapChatSnapshot(): CoachingThreadSnapshot {
+  return {
+    items: {
+      'executive stakeholder leadership': {
+        messages: [
+          {
+            role: 'assistant',
+            content: 'You likely have this experience already. Let me help you position it more clearly.',
+            suggestedLanguage: 'Aligned executive, product, and operations stakeholders around weekly priorities to improve execution quality.',
+            currentQuestion: 'Which senior leaders did you work with most often?',
+            recommendedNextAction: 'review_edit',
+            candidateInputUsed: true,
+          },
+        ],
+        resolvedLanguage: null,
+        error: null,
+      },
+    },
+  };
+}
+
+function QueueHarness({
+  onRequestEdit,
+  onSendMessage,
+  onAcknowledgeWarnings,
+}: {
+  onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: EditContext) => void;
+  onSendMessage: (...args: unknown[]) => void;
+  onAcknowledgeWarnings: () => void;
+}) {
+  const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(null);
+  const resume = makeResumeDraft();
+  const gapChatSnapshot = makeGapChatSnapshot();
+
+  return (
+    <div>
+      <RewriteQueuePanel
+        jobIntelligence={makeJobIntelligence()}
+        positioningAssessment={null}
+        gapAnalysis={makeGapAnalysis()}
+        benchmarkCandidate={null}
+        currentResume={resume}
+        gapCoachingCards={null}
+        gapChat={{
+          getItemState: () => gapChatSnapshot.items['executive stakeholder leadership'],
+          sendMessage: onSendMessage,
+        } as never}
+        gapChatSnapshot={gapChatSnapshot}
+        buildChatContext={(requirement: string): GapChatContext => ({
+          evidence: [],
+          currentStrategy: undefined,
+          aiReasoning: 'Show stakeholder alignment more explicitly.',
+          inferredMetric: undefined,
+          jobDescriptionExcerpt: requirement,
+          candidateExperienceSummary: 'Led cross-functional operations programs.',
+        })}
+        finalReviewResult={null}
+        finalReviewChat={null}
+        finalReviewChatSnapshot={null}
+        buildFinalReviewChatContext={() => null}
+        resolvedFinalReviewConcernIds={[]}
+        onRequirementClick={vi.fn()}
+        onRequestEdit={(selectedText, section, action, customInstruction, editContext) => {
+          onRequestEdit(selectedText, section, action, customInstruction, editContext);
+          setPendingEdit({
+            section,
+            originalText: selectedText,
+            replacement: 'Pending diff review',
+            action,
+            editContext,
+          });
+        }}
+        onRequestHiringManagerReview={vi.fn()}
+        isEditing={false}
+      />
+
+      <div className="mt-6">
+        <ReviewInboxCard pendingEdit={pendingEdit} />
+      </div>
+
+      {pendingEdit && (
+        <div data-testid="diff-review" className="mt-3">
+          Pending diff review for {pendingEdit.section}
+        </div>
+      )}
+
+      <div className="mt-6">
+        <ExportBar
+          resume={resume}
+          companyName="TechCorp"
+          jobTitle="VP Operations"
+          atsScore={88}
+          hasCompletedFinalReview
+          isFinalReviewStale
+          unresolvedCriticalCount={1}
+          queueNeedsAttentionCount={1}
+          queuePartialCount={0}
+          nextQueueItemLabel="Executive stakeholder leadership"
+          warningsAcknowledged={false}
+          onAcknowledgeWarnings={onAcknowledgeWarnings}
+        />
+      </div>
+    </div>
+  );
+}
+
+beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+  window.scrollTo = vi.fn() as typeof window.scrollTo;
+});
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+describe('rewrite queue browser flow', () => {
+  it('connects queue coaching, rewrite variants, inbox state, and export warnings', () => {
+    const onRequestEdit = vi.fn();
+    const onSendMessage = vi.fn();
+    const onAcknowledgeWarnings = vi.fn();
+
+    render(
+      <QueueHarness
+        onRequestEdit={onRequestEdit}
+        onSendMessage={onSendMessage}
+        onAcknowledgeWarnings={onAcknowledgeWarnings}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Review Edit' })[0]);
+    expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Metrics-First' }));
+    expect(onSendMessage).toHaveBeenCalledWith(
+      'Executive stakeholder leadership',
+      expect.stringContaining('metrics-first'),
+      expect.any(Object),
+      'partial',
+    );
+
+    fireEvent.click(screen.getByTestId('accept-language'));
+    expect(onRequestEdit).toHaveBeenCalledTimes(1);
+
+    expect(screen.getByText('Review Inbox')).toBeInTheDocument();
+    expect(screen.getByText(/Requirement: Executive stakeholder leadership/i)).toBeInTheDocument();
+    expect(screen.getByText(/Uses candidate-provided detail/i)).toBeInTheDocument();
+    expect(screen.getByTestId('diff-review')).toBeInTheDocument();
+
+    expect(screen.getByText(/Final Review is out of date because the resume changed after the last review\./i)).toBeInTheDocument();
+    expect(screen.getByText(/The rewrite queue still has 1 needs-attention item/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'I understand, enable export' }));
+    expect(onAcknowledgeWarnings).toHaveBeenCalledTimes(1);
+  });
+});

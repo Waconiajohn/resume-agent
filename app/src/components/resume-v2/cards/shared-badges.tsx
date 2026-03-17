@@ -2,7 +2,13 @@ import { CheckCircle2, Shuffle, X } from 'lucide-react';
 
 // ─── Status badge (filled pill) ────────────────────────────────────────────────
 
-export function StatusBadge({ status }: { status: 'strong' | 'repositioned' | 'gap' }) {
+export function StatusBadge({
+  status,
+  labelOverride,
+}: {
+  status: 'strong' | 'repositioned' | 'gap';
+  labelOverride?: string;
+}) {
   switch (status) {
     case 'strong':
       return (
@@ -15,7 +21,7 @@ export function StatusBadge({ status }: { status: 'strong' | 'repositioned' | 'g
           }}
         >
           <CheckCircle2 className="h-2.5 w-2.5" aria-hidden="true" />
-          Direct Match
+          {labelOverride ?? 'Already Covered'}
         </span>
       );
     case 'repositioned':
@@ -29,7 +35,7 @@ export function StatusBadge({ status }: { status: 'strong' | 'repositioned' | 'g
           }}
         >
           <Shuffle className="h-2.5 w-2.5" aria-hidden="true" />
-          Positioned
+          {labelOverride ?? 'Partially Covered'}
         </span>
       );
     case 'gap':
@@ -43,7 +49,7 @@ export function StatusBadge({ status }: { status: 'strong' | 'repositioned' | 'g
           }}
         >
           <X className="h-2.5 w-2.5" aria-hidden="true" />
-          Gap
+          {labelOverride ?? 'Not Addressed'}
         </span>
       );
   }

@@ -15,17 +15,17 @@ interface ZoneYourDayProps {
 
 function getRotatingInsight(state: DashboardState): string {
   if (state === 'new-user') {
-    return 'Let\'s start by defining what makes you exceptional. Your Why-Me story is the foundation everything else builds on.';
+    return 'Start by building your Career Profile. It gives the rest of the platform the story, strengths, and direction to work from.';
   }
   if (state === 'refining') {
-    return 'Your Why-Me story is taking shape. Strengthen your signals and every agent will produce sharper results.';
+    return 'Your Career Profile is taking shape. Tightening it up will make every resume, interview, and LinkedIn recommendation sharper.';
   }
-  return 'Your signals are strong — time to find roles that match your positioning.';
+  return 'Your profile is strong. Use it to target better-fit roles and tailor stronger applications.';
 }
 
 const ACTIONS_BY_STATE: Record<DashboardState, string> = {
-  'new-user': 'Define your Why-Me story',
-  refining: 'Refine your Why-Me story',
+  'new-user': 'Build your Career Profile',
+  refining: 'Strengthen your Career Profile',
   strong: 'Find matching roles',
 };
 
@@ -80,12 +80,11 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe, 
           </div>
         </div>
 
-        {/* Right: Why-Me Indicator + Streak */}
+        {/* Right: profile signals */}
         <div className="flex flex-col items-end gap-3 flex-shrink-0">
-          {/* Why-Me Strength */}
           <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
             <div className="text-[11px] font-medium text-white/40 uppercase tracking-wider mb-2">
-              Why-Me Strength
+              Career Profile Signals
             </div>
             <div className="flex gap-4">
               <SignalDot level={signals.clarity} label="Clarity" />

@@ -82,34 +82,26 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
         <nav className="hidden lg:flex items-center gap-1">
           {email && (
             <button
+              onClick={() => onNavigate?.('workspace')}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#98b3ff]/80 hover:bg-[#98b3ff]/10 hover:text-[#98b3ff] transition-colors"
+            >
+              Workspace
+            </button>
+          )}
+          {email && (
+            <button
+              onClick={() => onNavigate?.('/workspace?room=resume')}
+              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+            >
+              Resume Builder
+            </button>
+          )}
+          {email && (
+            <button
               onClick={() => onNavigate?.('tools')}
               className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
             >
               Tools
-            </button>
-          )}
-          {email && (
-            <button
-              onClick={() => onNavigate?.('/tools/job-applier')}
-              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-            >
-              Job Applier
-            </button>
-          )}
-          {email && (
-            <button
-              onClick={() => onNavigate?.('career-iq')}
-              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#98b3ff]/80 hover:bg-[#98b3ff]/10 hover:text-[#98b3ff] transition-colors"
-            >
-              CareerIQ
-            </button>
-          )}
-          {email && (
-            <button
-              onClick={() => onNavigate?.('dashboard')}
-              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-            >
-              Dashboard
             </button>
           )}
           <button
@@ -124,14 +116,6 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
             >
               Billing
-            </button>
-          )}
-          {email && (
-            <button
-              onClick={() => onNavigate?.('affiliate')}
-              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-            >
-              Affiliate
             </button>
           )}
         </nav>
@@ -230,34 +214,26 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             <nav className="flex flex-col flex-1 px-2 py-3 gap-0.5 overflow-y-auto">
               {email && (
                 <button
+                  onClick={() => handleNavClick('workspace')}
+                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+                >
+                  Workspace
+                </button>
+              )}
+              {email && (
+                <button
+                  onClick={() => handleNavClick('/workspace?room=resume')}
+                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+                >
+                  Resume Builder
+                </button>
+              )}
+              {email && (
+                <button
                   onClick={() => handleNavClick('tools')}
                   className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
                 >
                   Tools
-                </button>
-              )}
-              {email && (
-                <button
-                  onClick={() => handleNavClick('/tools/job-applier')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-                >
-                  Job Applier
-                </button>
-              )}
-              {email && (
-                <button
-                  onClick={() => handleNavClick('career-iq')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left font-medium text-[#98b3ff]/80 hover:bg-[#98b3ff]/10 hover:text-[#98b3ff] transition-colors"
-                >
-                  CareerIQ
-                </button>
-              )}
-              {email && (
-                <button
-                  onClick={() => handleNavClick('dashboard')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-                >
-                  Dashboard
                 </button>
               )}
               <button
@@ -272,14 +248,6 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                   className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
                 >
                   Billing
-                </button>
-              )}
-              {email && (
-                <button
-                  onClick={() => handleNavClick('affiliate')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-                >
-                  Affiliate
                 </button>
               )}
             </nav>

@@ -5,23 +5,18 @@ import {
   Linkedin,
   Search,
   Mic,
-  Heart,
-  Video,
   ChevronLeft,
   ChevronRight,
   Lock,
   DollarSign,
   User,
-  Sparkles,
-  Target,
-  Network,
-  FileEdit,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { DashboardState } from './useWhyMeStory';
 
 export type CareerIQRoom =
   | 'dashboard'
+  | 'career-profile'
   | 'resume'
   | 'linkedin'
   | 'jobs'
@@ -54,41 +49,22 @@ interface RoomGroup {
 
 const ROOM_GROUPS: RoomGroup[] = [
   {
-    label: 'Your Foundation',
+    label: 'Start Here',
     rooms: [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Your daily briefing', gated: false },
-      { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'AI-powered resume tailored to every job', gated: true },
+      { id: 'dashboard', label: 'Home', icon: LayoutDashboard, description: 'Your daily workspace view', gated: false },
+      { id: 'career-profile', label: 'Career Profile', icon: User, description: 'Define the story every tool uses', gated: false },
+      { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'Build, review, and save tailored resumes', gated: true },
     ],
   },
   {
-    label: 'LinkedIn & Brand',
+    label: 'Active Search',
     rooms: [
-      { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile, content & calendar', gated: true },
-      { id: 'personal-brand', label: 'Personal Brand', icon: Sparkles, description: 'Brand audit & positioning', gated: true },
-      { id: 'executive-bio', label: 'Executive Documents', icon: FileEdit, description: 'Bios & case studies', gated: true },
-    ],
-  },
-  {
-    label: 'Job Search & Networking',
-    rooms: [
+      { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile and content updates', gated: true },
       { id: 'jobs', label: 'Job Command Center', icon: Search, description: 'Matches, pipeline & momentum', gated: true },
-      { id: 'networking', label: 'Smart Referrals', icon: Network, description: 'Connections, referrals & outreach', gated: true },
-    ],
-  },
-  {
-    label: 'Interview & Offers',
-    rooms: [
       { id: 'interview', label: 'Interview Lab', icon: Mic, description: 'Prep, mock, debrief & follow-up', gated: true },
       { id: 'salary-negotiation', label: 'Salary & Negotiation', icon: DollarSign, description: 'Benchmarks, scripts & simulation', gated: true },
-      { id: 'ninety-day-plan', label: '90-Day Plan', icon: Target, description: 'First 90 days roadmap', gated: true },
     ],
   },
-];
-
-/** Utility rooms shown below a divider — not part of the journey groups */
-const UTILITY_ROOMS: RoomGroup['rooms'] = [
-  { id: 'financial', label: 'Financial Wellness', icon: Heart, description: 'Retirement & planner matching', gated: true },
-  { id: 'learning', label: 'Live Sessions', icon: Video, description: 'Coaching, replays & office hours', gated: false },
 ];
 
 export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, coachData }: SidebarProps) {
@@ -184,18 +160,12 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
           </div>
         ))}
 
-        {/* Utility footer — divider + non-journey tools */}
-        <div className="mt-2 pt-2 border-t border-white/[0.06]">
-          <div className="space-y-0.5">
-            {UTILITY_ROOMS.map(renderRoomButton)}
-          </div>
-        </div>
       </nav>
 
       <div className="px-3 pb-4 pt-2 border-t border-white/[0.06]">
         {!collapsed && (
           <div className="text-[11px] text-white/50 text-center">
-            CareerIQ Platform
+            Workspace
           </div>
         )}
       </div>
