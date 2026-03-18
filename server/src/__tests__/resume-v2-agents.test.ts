@@ -31,8 +31,14 @@ vi.mock('../lib/json-repair.js', () => ({
 }));
 
 vi.mock('../lib/logger.js', () => ({
-  default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) },
-  createSessionLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  default: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    child: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  },
+  createSessionLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
 // Perplexity is used by benchmark-candidate for industry research; stub it out
@@ -617,6 +623,17 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(userMessage).toContain('I also managed vendor contracts');
     });
 
+    it('uses strict JSON guardrails in the primary prompt', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(GAP_ANALYSIS_OUTPUT);
+
+      await runGapAnalysis(input);
+
+      const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.messages[0].content).toContain('Return JSON only.');
+    });
+
     it('uses MODEL_PRIMARY', async () => {
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
       mockRepairJSON.mockReturnValueOnce(GAP_ANALYSIS_OUTPUT);
@@ -1129,6 +1146,17 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       const userMessage: string = mockLlmChat.mock.calls[0][0].messages[0].content;
       expect(userMessage).toContain('cloud-native');
       expect(userMessage).toContain('platform engineering');
+    });
+
+    it('uses strict JSON guardrails in the primary prompt', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(ATS_OUTPUT);
+
+      await runATSOptimization(input);
+
+      const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.messages[0].content).toContain('Return JSON only.');
     });
 
     it('uses MODEL_LIGHT', async () => {

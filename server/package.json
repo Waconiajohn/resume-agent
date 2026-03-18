@@ -11,6 +11,7 @@
     "load:profile:quick": "node scripts/load-profile.mjs --users=12 --read-requests=600 --read-concurrency=60 --sse-hold-users=12 --sse-hold-ms=5000 --sse-churn-requests=80 --sse-churn-concurrency=24 --pipeline-requests=24 --pipeline-concurrency=24",
     "load:profile:tiers": "node scripts/load-profile-tiers.mjs",
     "load:profile:tiers:quick": "node scripts/load-profile-tiers.mjs --tiers=small",
+    "qa:real": "node --env-file=.env --disable-warning=DEP0040 --import tsx scripts/run-real-session-quality.ts",
     "check:migrations": "node scripts/check-migration-drift.mjs --json=true",
     "check:ready": "node scripts/check-ready.mjs",
     "gate:staging": "npm run check:migrations && npm run check:ready",

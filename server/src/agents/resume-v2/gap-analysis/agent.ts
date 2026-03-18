@@ -25,6 +25,14 @@ import type {
   RequirementSource,
 } from '../types.js';
 
+const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
+- Return exactly one JSON object.
+- The first character of your response must be { and the last character must be }.
+- Use double-quoted JSON keys and string values.
+- Do not wrap the JSON in markdown fences.
+- Do not add commentary, analysis, bullets, or notes outside the JSON object.
+- If a field is uncertain, use an empty string, empty array, or omit the optional field instead of prose.`;
+
 const SYSTEM_PROMPT = `You are a $3,000/engagement executive resume strategist. Your specialty: finding creative, TRUTHFUL ways to close gaps between what a candidate has and what a job requires.
 
 You NEVER fabricate experience. But you are CREATIVELY AGGRESSIVE about reframing real experience to close gaps:
@@ -125,7 +133,9 @@ RULES:
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Write as a coaching conversation — explain your reasoning to the candidate. Show your math. Be specific about what evidence you found and why it works. This text will be shown directly to the user.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate 1-3 targeted questions that could surface hidden experience relevant to this gap. Questions MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Each question should have a rationale (why it matters) and looking_for (what kind of answer would help).
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
-- Be honest about critical_gaps — don't stretch beyond what's defensible.`;
+- Be honest about critical_gaps — don't stretch beyond what's defensible.
+
+${JSON_OUTPUT_GUARDRAILS}`;
 
 export async function runGapAnalysis(
   input: GapAnalysisInput,
@@ -277,6 +287,7 @@ function buildUserMessage(input: GapAnalysisInput): string {
   parts.push(
     '',
     'Compare this candidate against EVERY requirement in the canonical requirement catalog. Classify each as strong/partial/missing. For partial and missing, propose creative positioning strategies.',
+    'Return JSON only. Do not include markdown fences or any explanation outside the JSON object.',
   );
 
   return parts.join('\n');

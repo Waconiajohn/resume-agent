@@ -12,6 +12,15 @@ Use this checklist when reviewing `resume-v2` against real resumes and real job 
 
 When possible, also run this checklist against 3-5 real user resumes and JDs from different functions and seniority levels.
 
+## Recommended Command
+
+Use the server QA script so the run picks up `.env`, avoids the noisy `DEP0040` toolchain warning, and writes artifacts consistently:
+
+```bash
+cd /Users/johnschrup/Documents/New\ project/resume-agent/server
+npm run qa:real
+```
+
 ## What Good Looks Like
 
 - The app explains what the AI is doing in plain English.

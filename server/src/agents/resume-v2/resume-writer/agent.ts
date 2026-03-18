@@ -16,6 +16,8 @@ import logger from '../../../lib/logger.js';
 import { getResumeRulesPrompt } from '../knowledge/resume-rules.js';
 import type { ResumeWriterInput, ResumeDraftOutput } from '../types.js';
 
+const loggedFuzzyExperienceFramingMatches = new Set<string>();
+
 const SYSTEM_PROMPT = `You are the #1 executive resume writer in the country. Your clients pay $3,000+ per engagement. You've placed candidates at Google, McKinsey, Fortune 100 C-suites, and PE-backed growth companies.
 
 You are writing a COMPLETE 2-page executive resume. Not an outline. Not suggestions. The finished product.
@@ -179,42 +181,93 @@ export async function runResumeWriter(
 /**
  * Looks up the experience framing for a company name using progressive fuzzy matching.
  * Tries: (1) exact match, (2) case-insensitive match, (3) one name includes the other.
- * Logs a warning when falling back to fuzzy match so drift is visible in server logs.
+ * Normalizes common "Title at Company" patterns first and logs fuzzy fallback only once.
  */
 function lookupExperienceFraming(
   framingMap: Record<string, string>,
   companyName: string,
 ): string | undefined {
+  const normalizedFramingMap = buildExperienceFramingAliasMap(framingMap);
+
   // 1. Exact match
-  if (framingMap[companyName] !== undefined) {
-    return framingMap[companyName];
+  if (normalizedFramingMap[companyName] !== undefined) {
+    return normalizedFramingMap[companyName];
   }
 
   const normalizedTarget = companyName.toLowerCase();
 
-  for (const key of Object.keys(framingMap)) {
+  for (const key of Object.keys(normalizedFramingMap)) {
     const normalizedKey = key.toLowerCase();
 
     // 2. Case-insensitive match
     if (normalizedKey === normalizedTarget) {
-      console.warn(
-        `[ResumeWriter] experience_framing fuzzy match (case-insensitive): ` +
-        `resume company="${companyName}" matched framing key="${key}"`,
-      );
-      return framingMap[key];
+      logFuzzyExperienceFramingMatch('case-insensitive', companyName, key);
+      return normalizedFramingMap[key];
     }
 
     // 3. Substring includes match (either direction)
     if (normalizedKey.includes(normalizedTarget) || normalizedTarget.includes(normalizedKey)) {
-      console.warn(
-        `[ResumeWriter] experience_framing fuzzy match (includes): ` +
-        `resume company="${companyName}" matched framing key="${key}"`,
-      );
-      return framingMap[key];
+      logFuzzyExperienceFramingMatch('includes', companyName, key);
+      return normalizedFramingMap[key];
     }
   }
 
   return undefined;
+}
+
+function buildExperienceFramingAliasMap(
+  framingMap: Record<string, string>,
+): Record<string, string> {
+  const aliases: Record<string, string> = { ...framingMap };
+
+  for (const [key, value] of Object.entries(framingMap)) {
+    for (const alias of extractExperienceFramingAliases(key)) {
+      if (aliases[alias] === undefined) {
+        aliases[alias] = value;
+      }
+    }
+  }
+
+  return aliases;
+}
+
+function extractExperienceFramingAliases(key: string): string[] {
+  const aliases = new Set<string>();
+  const trimmed = key.trim();
+  if (!trimmed) return [];
+
+  aliases.add(trimmed);
+
+  const companyAfterAt = trimmed.match(/\b(?:at|@)\s+(.+)$/i)?.[1]?.trim();
+  if (companyAfterAt) {
+    aliases.add(companyAfterAt);
+  }
+
+  const segments = trimmed.split(/\s+[|/]\s+|\s+[—–-]\s+/).map((segment) => segment.trim()).filter(Boolean);
+  for (const segment of segments) {
+    if (segment.length >= 3) aliases.add(segment);
+  }
+
+  return Array.from(aliases);
+}
+
+function logFuzzyExperienceFramingMatch(
+  mode: 'case-insensitive' | 'includes',
+  companyName: string,
+  matchedKey: string,
+): void {
+  const dedupeKey = `${mode}::${companyName.toLowerCase()}::${matchedKey.toLowerCase()}`;
+  if (loggedFuzzyExperienceFramingMatches.has(dedupeKey)) return;
+  loggedFuzzyExperienceFramingMatches.add(dedupeKey);
+
+  logger.debug(
+    {
+      match_mode: mode,
+      resume_company: companyName,
+      framing_key: matchedKey,
+    },
+    'Resume Writer: experience_framing used fuzzy match',
+  );
 }
 
 function buildUserMessage(input: ResumeWriterInput): string {

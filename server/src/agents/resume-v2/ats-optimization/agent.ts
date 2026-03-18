@@ -13,6 +13,14 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import type { ATSOptimizationInput, ATSOptimizationOutput } from '../types.js';
 
+const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
+- Return exactly one JSON object.
+- The first character of your response must be { and the last character must be }.
+- Use double-quoted JSON keys and string values.
+- Do not wrap the JSON in markdown fences.
+- Do not add commentary, analysis, or notes outside the JSON object.
+- If data is uncertain, use an empty array instead of prose.`;
+
 const SYSTEM_PROMPT = `You are an ATS (Applicant Tracking System) optimization specialist. You know exactly how resume parsing algorithms work and how to maximize keyword match scores WITHOUT making the resume sound like a keyword-stuffed mess.
 
 OUTPUT FORMAT: Return valid JSON:
@@ -36,7 +44,9 @@ RULES:
 - Only count must-have and important phrases/keywords, not nice-to-haves
 - natural_phrasing: suggest ACTUAL resume text that incorporates the keyword naturally
 - formatting_issues: flag anything that would trip up ATS parsing (tables, multi-column, images, unusual section headers)
-- Readability for humans comes FIRST — keyword optimization second`;
+- Readability for humans comes FIRST — keyword optimization second
+
+${JSON_OUTPUT_GUARDRAILS}`;
 
 export async function runATSOptimization(
   input: ATSOptimizationInput,
@@ -48,7 +58,7 @@ export async function runATSOptimization(
     .map(c => `[${c.importance}] ${c.competency}`)
     .join('\n');
 
-  const userMessage = `## Resume to Analyze\n\n${resumeText}\n\n## JD Keywords\n${keywords}\n\n## Required Competencies\n${competencies}\n\nScore this resume's ATS match and suggest improvements.`;
+  const userMessage = `## Resume to Analyze\n\n${resumeText}\n\n## JD Keywords\n${keywords}\n\n## Required Competencies\n${competencies}\n\nScore this resume's ATS match and suggest improvements. Return JSON only.`;
 
   // Attempt 1
   const response = await llm.chat({
