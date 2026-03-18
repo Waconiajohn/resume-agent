@@ -2,12 +2,13 @@
  * Resume V2 — LLM Agent Unit Tests
  *
  * Tests all 9 LLM-calling agents in the Resume V2 pipeline.
- * Each agent follows the same pattern: single prompt → repairJSON → retry on failure.
+ * Most agents follow: single prompt → repairJSON → retry on failure.
+ * Groq-sensitive agents now fall back deterministically instead of crashing.
  *
  * For each agent we verify:
  * 1. Successful parse on first attempt → returns parsed output
  * 2. Retry on first parse failure → returns retry result
- * 3. Both attempts fail → throws Error
+ * 3. Both attempts fail → either deterministic fallback or throws Error (depending on agent)
  * 4. AbortSignal is forwarded to llm.chat
  */
 
@@ -311,15 +312,16 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockRepairJSON).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts return unparseable responses', async () => {
+    it('falls back deterministically when both attempts return unparseable responses', async () => {
       mockLlmChat
         .mockResolvedValueOnce({ text: 'bad1' })
         .mockResolvedValueOnce({ text: 'bad2' });
       mockRepairJSON.mockReturnValue(null);
 
-      await expect(runJobIntelligence(input)).rejects.toThrow(
-        'Job Intelligence agent returned unparseable response after 2 attempts',
-      );
+      const result = await runJobIntelligence(input);
+
+      expect(result.role_title.length).toBeGreaterThan(0);
+      expect(result.core_competencies.length).toBeGreaterThan(0);
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
@@ -383,15 +385,16 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts return unparseable responses', async () => {
+    it('falls back deterministically when both attempts return unparseable responses', async () => {
       mockLlmChat
         .mockResolvedValueOnce({ text: 'bad1' })
         .mockResolvedValueOnce({ text: 'bad2' });
       mockRepairJSON.mockReturnValue(null);
 
-      await expect(runCandidateIntelligence(input)).rejects.toThrow(
-        'Candidate Intelligence agent returned unparseable response after 2 attempts',
-      );
+      const result = await runCandidateIntelligence(input);
+
+      expect(result.contact.name).toBe('Jane Smith');
+      expect(result.raw_text).toBe(input.resume_text);
     });
 
     it('forwards AbortSignal to llm.chat', async () => {
@@ -729,15 +732,16 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts fail', async () => {
+    it('falls back deterministically when both attempts fail', async () => {
       mockLlmChat
         .mockResolvedValueOnce({ text: 'bad1' })
         .mockResolvedValueOnce({ text: 'bad2' });
       mockRepairJSON.mockReturnValue(null);
 
-      await expect(runNarrativeStrategy(input)).rejects.toThrow(
-        'Narrative Strategy agent returned unparseable response after 2 attempts',
-      );
+      const result = await runNarrativeStrategy(input);
+
+      expect(result.primary_narrative.length).toBeGreaterThan(0);
+      expect(result.why_me_story).toContain('VP of Engineering');
     });
 
     it('forwards AbortSignal to llm.chat', async () => {
@@ -954,15 +958,16 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts fail', async () => {
+    it('falls back deterministically when both attempts fail', async () => {
       mockLlmChat
         .mockResolvedValueOnce({ text: 'bad1' })
         .mockResolvedValueOnce({ text: 'bad2' });
       mockRepairJSON.mockReturnValue(null);
 
-      await expect(runTruthVerification(input)).rejects.toThrow(
-        'Truth Verification agent returned unparseable response after 2 attempts',
-      );
+      const result = await runTruthVerification(input);
+
+      expect(result.claims.length).toBeGreaterThan(0);
+      expect(result.truth_score).toBeGreaterThanOrEqual(0);
     });
 
     it('forwards AbortSignal to llm.chat', async () => {

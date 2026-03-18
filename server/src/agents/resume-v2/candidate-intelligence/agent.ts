@@ -81,44 +81,64 @@ export async function runCandidateIntelligence(
   input: CandidateIntelligenceInput,
   signal?: AbortSignal,
 ): Promise<CandidateIntelligenceOutput> {
-  // Attempt 1
-  const response = await llm.chat({
-    model: MODEL_MID,
-    system: SYSTEM_PROMPT,
-    messages: [
-      { role: 'user' as const, content: `Parse this resume into a structured candidate profile:\n\n${input.resume_text}` },
-    ],
-    max_tokens: 8192,
-    signal,
-  });
+  let parsed: CandidateIntelligenceOutput | null = null;
 
-  let parsed = repairJSON<CandidateIntelligenceOutput>(response.text);
-
-  if (!parsed) {
-    // Attempt 2: retry with explicit JSON-only instruction
-    logger.warn(
-      { rawSnippet: response.text.substring(0, 500) },
-      'Candidate Intelligence: first attempt unparseable, retrying with stricter prompt',
-    );
-
-    const retry = await llm.chat({
+  try {
+    const response = await llm.chat({
       model: MODEL_MID,
-      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      system: SYSTEM_PROMPT,
       messages: [
-        { role: 'user' as const, content: `${SYSTEM_PROMPT}\n\nParse this resume into a structured candidate profile:\n\n${input.resume_text}` },
+        { role: 'user' as const, content: `Parse this resume into a structured candidate profile:\n\n${input.resume_text}` },
       ],
       max_tokens: 8192,
       signal,
     });
 
-    parsed = repairJSON<CandidateIntelligenceOutput>(retry.text);
+    parsed = repairJSON<CandidateIntelligenceOutput>(response.text);
 
     if (!parsed) {
-      logger.error(
-        { rawSnippet: retry.text.substring(0, 500) },
-        'Candidate Intelligence: both attempts returned unparseable response',
+      logger.warn(
+        { rawSnippet: response.text.substring(0, 500) },
+        'Candidate Intelligence: first attempt unparseable, retrying with stricter prompt',
       );
-      throw new Error('Candidate Intelligence agent returned unparseable response after 2 attempts');
+    }
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Candidate Intelligence: first attempt failed, using deterministic fallback',
+    );
+    parsed = buildDeterministicCandidateIntelligence(input);
+  }
+
+  if (!parsed) {
+    try {
+      const retry = await llm.chat({
+        model: MODEL_MID,
+        system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+        messages: [
+          { role: 'user' as const, content: `${SYSTEM_PROMPT}\n\nParse this resume into a structured candidate profile:\n\n${input.resume_text}` },
+        ],
+        max_tokens: 8192,
+        signal,
+      });
+
+      parsed = repairJSON<CandidateIntelligenceOutput>(retry.text);
+
+      if (!parsed) {
+        logger.error(
+          { rawSnippet: retry.text.substring(0, 500) },
+          'Candidate Intelligence: retry returned unparseable response, using deterministic fallback',
+        );
+        parsed = buildDeterministicCandidateIntelligence(input);
+      }
+    } catch (error) {
+      if (shouldRethrowForAbort(error, signal)) throw error;
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Candidate Intelligence: retry failed, using deterministic fallback',
+      );
+      parsed = buildDeterministicCandidateIntelligence(input);
     }
   }
 
@@ -136,4 +156,223 @@ export async function runCandidateIntelligence(
   parsed.raw_text = input.resume_text;
 
   return parsed;
+}
+
+function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function buildDeterministicCandidateIntelligence(
+  input: CandidateIntelligenceInput,
+): CandidateIntelligenceOutput {
+  const text = input.resume_text.replace(/\r/g, '');
+  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  const lowerText = text.toLowerCase();
+
+  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? '';
+  const phone = text.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0] ?? '';
+  const linkedin = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s)]+/i)?.[0]
+    ?? text.match(/linkedin\.com\/[^\s)]+/i)?.[0]
+    ?? '';
+  const name = inferName(lines);
+  const location = inferLocation(lines);
+  const technologies = inferTechnologies(lowerText);
+  const quantified_outcomes = extractQuantifiedOutcomes(lines);
+  const experience = extractExperience(lines);
+  const education = extractEducation(lines);
+  const certifications = extractCertifications(lines);
+  const career_themes = inferCareerThemes(lowerText, technologies);
+  const leadership_scope = inferLeadershipScope(lines);
+  const operational_scale = inferOperationalScale(quantified_outcomes, lines);
+  const career_span_years = inferCareerSpanYears(text);
+  const hidden_accomplishments = inferHiddenAccomplishments(career_themes, technologies, quantified_outcomes);
+
+  return {
+    contact: {
+      name,
+      email,
+      phone,
+      linkedin,
+      location,
+    },
+    career_themes,
+    leadership_scope,
+    quantified_outcomes,
+    industry_depth: inferIndustryDepth(lowerText),
+    technologies,
+    operational_scale,
+    career_span_years,
+    experience,
+    education,
+    certifications,
+    hidden_accomplishments,
+    raw_text: input.resume_text,
+  };
+}
+
+function inferName(lines: string[]): string {
+  const firstLine = lines[0] ?? '';
+  if (firstLine.length > 0 && firstLine.length < 60 && !/@|\d{3}|\bresume\b/i.test(firstLine)) {
+    return firstLine;
+  }
+  return '';
+}
+
+function inferLocation(lines: string[]): string {
+  return lines.find((line) => /\b[A-Z][a-z]+,\s*[A-Z]{2}\b/.test(line)) ?? '';
+}
+
+function inferTechnologies(lowerText: string): string[] {
+  const known = [
+    'aws', 'azure', 'gcp', 'kubernetes', 'docker', 'terraform', 'python', 'java',
+    'typescript', 'javascript', 'salesforce', 'hubspot', 'sap', 'oracle', 'sql',
+    'power bi', 'tableau', 'excel', 'jira', 'servicenow',
+  ];
+  return known
+    .filter((item) => lowerText.includes(item))
+    .map((item) => item.split(' ').map(capitalizeToken).join(' '));
+}
+
+function extractQuantifiedOutcomes(lines: string[]): CandidateIntelligenceOutput['quantified_outcomes'] {
+  return lines
+    .filter((line) => /[%$]|\b\d+(?:\.\d+)?\s?(?:million|billion|k|m)?\b/i.test(line))
+    .slice(0, 10)
+    .map((line) => ({
+      outcome: line,
+      metric_type: inferMetricType(line),
+      value: extractMetricValue(line),
+    }));
+}
+
+function extractExperience(lines: string[]): CandidateIntelligenceOutput['experience'] {
+  const bulletLines = lines.filter((line) => /^[-*•]/.test(line)).map((line) => line.replace(/^[-*•]\s*/, ''));
+  if (bulletLines.length > 0) {
+    return [{
+      company: 'Prior Experience',
+      title: 'Career Experience',
+      start_date: '',
+      end_date: '',
+      bullets: bulletLines.slice(0, 12),
+      inferred_scope: {},
+    }];
+  }
+
+  const roleLines = lines.filter((line) => /\b(manager|director|vp|vice president|engineer|lead|head|chief|specialist)\b/i.test(line));
+  const title = roleLines[0] ?? 'Career Experience';
+  return [{
+    company: 'Prior Experience',
+    title,
+    start_date: '',
+    end_date: '',
+    bullets: lines.slice(1, 10),
+    inferred_scope: {},
+  }];
+}
+
+function extractEducation(lines: string[]): CandidateIntelligenceOutput['education'] {
+  return lines
+    .filter((line) => /\b(BS|BA|MS|MBA|MA|PhD|Bachelor|Master|University|College)\b/i.test(line))
+    .slice(0, 4)
+    .map((line) => {
+      const year = line.match(/\b(19|20)\d{2}\b/)?.[0];
+      return {
+        degree: line,
+        institution: line,
+        year,
+      };
+    });
+}
+
+function extractCertifications(lines: string[]): string[] {
+  return dedupeStrings(lines.filter((line) => /\b(certified|certification|certificate|PMP|AWS|CFA|SHRM|PE)\b/i.test(line)).slice(0, 6));
+}
+
+function inferCareerThemes(lowerText: string, technologies: string[]): string[] {
+  const themes: string[] = [];
+  if (/\boperations|operational\b/.test(lowerText)) themes.push('Operations leadership');
+  if (/\bengineering|technical|platform\b/.test(lowerText)) themes.push('Technical execution');
+  if (/\bstrategy|strategic\b/.test(lowerText)) themes.push('Strategic planning');
+  if (/\btransform|change\b/.test(lowerText)) themes.push('Transformation leadership');
+  if (/\bgrowth|revenue|sales\b/.test(lowerText)) themes.push('Growth orientation');
+  if (/\bproject|program\b/.test(lowerText)) themes.push('Program delivery');
+  if (themes.length === 0 && technologies.length > 0) themes.push('Technology-enabled leadership');
+  return themes.length > 0 ? themes.slice(0, 5) : ['Cross-functional leadership'];
+}
+
+function inferLeadershipScope(lines: string[]): string {
+  const line = lines.find((entry) => /\b(team|managed|led|supervised|directed|oversaw)\b/i.test(entry));
+  return line ?? 'Leadership scope not clearly stated in the source resume.';
+}
+
+function inferOperationalScale(
+  quantifiedOutcomes: CandidateIntelligenceOutput['quantified_outcomes'],
+  lines: string[],
+): string {
+  return quantifiedOutcomes[0]?.outcome
+    ?? lines.find((line) => /\b(global|regional|enterprise|multi-site|multi site|nationwide)\b/i.test(line))
+    ?? 'Operational scale not clearly stated in the source resume.';
+}
+
+function inferCareerSpanYears(text: string): number {
+  const years = Array.from(text.matchAll(/\b(19|20)\d{2}\b/g), (match) => Number(match[0]));
+  if (years.length < 2) return 0;
+  return Math.max(0, Math.max(...years) - Math.min(...years));
+}
+
+function inferHiddenAccomplishments(
+  careerThemes: string[],
+  technologies: string[],
+  quantifiedOutcomes: CandidateIntelligenceOutput['quantified_outcomes'],
+): string[] {
+  const items = [
+    careerThemes[0] ? `${careerThemes[0]} across adjacent roles and business contexts` : '',
+    technologies[0] ? `Applied ${technologies[0]} in a way that likely supported broader business outcomes` : '',
+    quantifiedOutcomes[0]?.outcome ? `Delivered measurable outcomes that can be positioned more prominently in the resume narrative` : '',
+  ].filter(Boolean);
+  return dedupeStrings(items).slice(0, 5);
+}
+
+function inferIndustryDepth(lowerText: string): string[] {
+  const industries = [
+    ['healthcare', 'Healthcare'],
+    ['finance', 'Financial Services'],
+    ['fintech', 'FinTech'],
+    ['saas', 'SaaS'],
+    ['software', 'Technology'],
+    ['energy', 'Energy'],
+    ['manufacturing', 'Manufacturing'],
+    ['retail', 'Retail'],
+    ['telecom', 'Telecommunications'],
+  ].filter(([needle]) => lowerText.includes(needle)).map(([, label]) => label);
+
+  return industries.length > 0 ? dedupeStrings(industries) : ['Industry not clearly specified'];
+}
+
+function inferMetricType(line: string): 'money' | 'time' | 'volume' | 'scope' {
+  if (/[$]|million|billion|\barr\b|\brevenue\b/i.test(line)) return 'money';
+  if (/\b(days?|hours?|weeks?|months?|years?)\b|%/i.test(line) && /reduc|improv|acceler|faster/i.test(line)) return 'time';
+  if (/\b(users?|customers?|clients?|accounts?|sites?|locations?)\b/i.test(line)) return 'volume';
+  return 'scope';
+}
+
+function extractMetricValue(line: string): string {
+  return line.match(/[$]?\d[\d,]*(?:\.\d+)?\s?(?:%|million|billion|k|m)?/i)?.[0] ?? 'Not specified';
+}
+
+function capitalizeToken(token: string): string {
+  return token.charAt(0).toUpperCase() + token.slice(1);
+}
+
+function dedupeStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(value.trim());
+  }
+  return result;
 }

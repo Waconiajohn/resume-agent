@@ -58,40 +58,56 @@ export async function runTruthVerification(
 
   const userMessage = `## Resume Draft to Verify\n\n${resumeText}\n\n## Original Resume (source of truth)\n\n${input.original_resume}\n\nVerify every claim in the draft against the original resume.`;
 
-  // Attempt 1
-  const response = await llm.chat({
-    model: MODEL_PRIMARY,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: 8192,
-    signal,
-  });
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
+      max_tokens: 8192,
+      signal,
+    });
 
-  const parsed = repairJSON<TruthVerificationOutput>(response.text);
-  if (parsed) return parsed;
+    const parsed = repairJSON<TruthVerificationOutput>(response.text);
+    if (parsed) return parsed;
 
-  // Attempt 2: retry with explicit JSON-only instruction
-  logger.warn(
-    { rawSnippet: response.text.substring(0, 500) },
-    'Truth Verification: first attempt unparseable, retrying with stricter prompt',
-  );
+    logger.warn(
+      { rawSnippet: response.text.substring(0, 500) },
+      'Truth Verification: first attempt unparseable, retrying with stricter prompt',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Truth Verification: first attempt failed, using deterministic fallback',
+    );
+    return buildDeterministicTruthVerification(input);
+  }
 
-  const retry = await llm.chat({
-    model: MODEL_PRIMARY,
-    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
-    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
-    max_tokens: 8192,
-    signal,
-  });
+  try {
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      max_tokens: 8192,
+      signal,
+    });
 
-  const retryParsed = repairJSON<TruthVerificationOutput>(retry.text);
-  if (retryParsed) return retryParsed;
+    const retryParsed = repairJSON<TruthVerificationOutput>(retry.text);
+    if (retryParsed) return retryParsed;
 
-  logger.error(
-    { rawSnippet: retry.text.substring(0, 500) },
-    'Truth Verification: both attempts returned unparseable response',
-  );
-  throw new Error('Truth Verification agent returned unparseable response after 2 attempts');
+    logger.error(
+      { rawSnippet: retry.text.substring(0, 500) },
+      'Truth Verification: retry returned unparseable response, using deterministic fallback',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Truth Verification: retry failed, using deterministic fallback',
+    );
+  }
+
+  return buildDeterministicTruthVerification(input);
 }
 
 function formatDraftForVerification(input: TruthVerificationInput): string {
@@ -136,3 +152,124 @@ function formatDraftForVerification(input: TruthVerificationInput): string {
 
   return parts.join('\n');
 }
+
+function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function buildDeterministicTruthVerification(
+  input: TruthVerificationInput,
+): TruthVerificationOutput {
+  const sourceText = `${input.original_resume}\n${input.candidate.raw_text}`.toLowerCase();
+  const claims = collectDraftClaims(input).map((item) => {
+    const normalizedClaim = normalizeText(item.claim);
+    const claimTokens = tokenize(normalizedClaim);
+    const sourceTokens = tokenize(sourceText);
+    const sharedTokens = claimTokens.filter((token) => sourceTokens.includes(token));
+    const overlapScore = claimTokens.length > 0 ? sharedTokens.length / claimTokens.length : 0;
+    const claimNumbers = item.claim.match(/[$]?\d[\d,]*(?:\.\d+)?\s?(?:%|million|billion|k|m)?/gi) ?? [];
+    const metricsSupported = claimNumbers.length > 0
+      && claimNumbers.every((metric) => sourceText.includes(metric.toLowerCase()));
+    const sourceFound = metricsSupported
+      || overlapScore >= 0.65
+      || sourceText.includes(normalizedClaim);
+
+    const confidence = classifyConfidence(item.claim, sourceFound, overlapScore, claimNumbers, sourceText);
+    const source_text = sourceFound ? extractSupportingSourceLine(sourceText, claimTokens) : '';
+    const note = confidence === 'verified'
+      ? ''
+      : confidence === 'plausible'
+        ? 'The wording is adjacent to the source material but not fully verbatim.'
+        : claimNumbers.length > 0
+          ? 'The numeric or scope language is not fully supported by the available source text.'
+          : 'This statement needs closer proof from the original resume before it should be trusted.';
+
+    return {
+      claim: item.claim,
+      section: item.section,
+      source_found: sourceFound,
+      source_text,
+      confidence,
+      note: note || undefined,
+    };
+  });
+
+  const flagged_items = claims
+    .filter((claim) => claim.confidence === 'unverified' || claim.confidence === 'fabricated')
+    .slice(0, 12)
+    .map((claim) => ({
+      claim: claim.claim,
+      issue: claim.confidence === 'fabricated'
+        ? 'The claim introduces unsupported numeric or scope detail.'
+        : 'The claim needs stronger source support before it should stay in the resume.',
+      recommendation: 'Tighten the wording to match the original resume or add direct source evidence before keeping it.',
+    }));
+
+  const trustworthyCount = claims.filter((claim) => claim.confidence === 'verified' || claim.confidence === 'plausible').length;
+  const truth_score = claims.length > 0 ? Math.round((trustworthyCount / claims.length) * 100) : 100;
+
+  return {
+    claims,
+    truth_score,
+    flagged_items,
+  };
+}
+
+function collectDraftClaims(input: TruthVerificationInput): Array<{ claim: string; section: string }> {
+  const claims: Array<{ claim: string; section: string }> = [];
+  const pushClaim = (claim: string, section: string) => {
+    const trimmed = claim.trim();
+    if (!trimmed) return;
+    claims.push({ claim: trimmed, section });
+  };
+
+  pushClaim(input.draft.executive_summary.content, 'executive_summary');
+  input.draft.selected_accomplishments.forEach((item) => pushClaim(item.content, 'selected_accomplishments'));
+  input.draft.professional_experience.forEach((experience) => {
+    pushClaim(experience.scope_statement, `${experience.company} scope_statement`);
+    experience.bullets.forEach((bullet) => pushClaim(bullet.text, `${experience.company} bullet`));
+  });
+  input.draft.education.forEach((education) => pushClaim(`${education.degree} ${education.institution} ${education.year ?? ''}`.trim(), 'education'));
+  input.draft.certifications.forEach((certification) => pushClaim(certification, 'certifications'));
+
+  return claims.slice(0, 40);
+}
+
+function classifyConfidence(
+  claim: string,
+  sourceFound: boolean,
+  overlapScore: number,
+  claimNumbers: string[],
+  sourceText: string,
+): 'verified' | 'plausible' | 'unverified' | 'fabricated' {
+  if (sourceFound) return 'verified';
+  if (overlapScore >= 0.45) return 'plausible';
+  if (claimNumbers.length > 0 && claimNumbers.some((metric) => !sourceText.includes(metric.toLowerCase()))) {
+    return 'fabricated';
+  }
+  return 'unverified';
+}
+
+function extractSupportingSourceLine(sourceText: string, claimTokens: string[]): string {
+  const sourceLines = sourceText.split('\n').map((line) => line.trim()).filter(Boolean);
+  return sourceLines.find((line) => claimTokens.filter((token) => line.includes(token)).length >= Math.min(3, claimTokens.length)) ?? '';
+}
+
+function normalizeText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9$%.,\s-]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function tokenize(value: string): string[] {
+  return value
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
+}
+
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'over', 'under', 'was', 'were',
+  'are', 'has', 'have', 'had', 'led', 'drive', 'drove', 'built', 'build', 'managed', 'management',
+  'across', 'through', 'within', 'while', 'then', 'than',
+]);

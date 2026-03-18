@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildFinalReviewPrompts,
+  extractHardRequirementRisksFromGapAnalysis,
   stabilizeFinalReviewResult,
 } from '../routes/resume-v2-pipeline-support.js';
 
@@ -133,5 +134,60 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.six_second_scan.top_signals_seen).toHaveLength(1);
     expect(stabilized.six_second_scan.top_signals_seen[0]?.signal).toContain('strong background');
     expect(stabilized.six_second_scan.decision).toBe('continue_reading');
+  });
+
+  it('forces hard requirement risks to remain visible in the final verdict', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: "Bachelor's degree in engineering",
+          classification: 'missing',
+        },
+        {
+          requirement: 'PE certification',
+          classification: 'partial',
+        },
+      ],
+    });
+
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Promising first pass.',
+        top_signals_seen: [
+          {
+            signal: '17 years of drilling operations experience',
+            why_it_matters: 'Shows strong operating depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'strong_interview_candidate',
+        summary: 'Strong drilling operator with compelling field depth.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, { hardRequirementRisks: hardRisks });
+
+    expect(stabilized.hiring_manager_verdict.rating).toBe('needs_improvement');
+    expect(stabilized.concerns[0]?.severity).toBe('critical');
+    expect(stabilized.concerns[0]?.related_requirement).toContain("Bachelor's degree");
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('PE certification'))).toBe(true);
+    expect(stabilized.hiring_manager_verdict.summary).toMatch(/screening risk|hard requirement/i);
   });
 });

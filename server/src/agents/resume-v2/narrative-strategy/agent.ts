@@ -202,40 +202,180 @@ export async function runNarrativeStrategy(
 ): Promise<NarrativeStrategyOutput> {
   const userMessage = buildUserMessage(input);
 
-  // Attempt 1
-  const response = await llm.chat({
-    model: MODEL_PRIMARY,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: 16384,
-    signal,
-  });
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
+      max_tokens: 16384,
+      signal,
+    });
 
-  const parsed = repairJSON<NarrativeStrategyOutput>(response.text);
-  if (parsed) return parsed;
+    const parsed = repairJSON<NarrativeStrategyOutput>(response.text);
+    if (parsed) return parsed;
 
-  // Attempt 2: retry with explicit JSON-only instruction
-  logger.warn(
-    { rawSnippet: response.text.substring(0, 500) },
-    'Narrative Strategy: first attempt unparseable, retrying with stricter prompt',
-  );
+    logger.warn(
+      { rawSnippet: response.text.substring(0, 500) },
+      'Narrative Strategy: first attempt unparseable, retrying with stricter prompt',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Narrative Strategy: first attempt failed, using deterministic fallback',
+    );
+    return buildDeterministicNarrativeStrategy(input);
+  }
 
-  const retry = await llm.chat({
-    model: MODEL_PRIMARY,
-    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
-    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
-    max_tokens: 16384,
-    signal,
-  });
+  try {
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      max_tokens: 16384,
+      signal,
+    });
 
-  const retryParsed = repairJSON<NarrativeStrategyOutput>(retry.text);
-  if (retryParsed) return retryParsed;
+    const retryParsed = repairJSON<NarrativeStrategyOutput>(retry.text);
+    if (retryParsed) return retryParsed;
 
-  logger.error(
-    { rawSnippet: retry.text.substring(0, 500) },
-    'Narrative Strategy: both attempts returned unparseable response',
-  );
-  throw new Error('Narrative Strategy agent returned unparseable response after 2 attempts');
+    logger.error(
+      { rawSnippet: retry.text.substring(0, 500) },
+      'Narrative Strategy: retry returned unparseable response, using deterministic fallback',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Narrative Strategy: retry failed, using deterministic fallback',
+    );
+  }
+
+  return buildDeterministicNarrativeStrategy(input);
+}
+
+function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function buildDeterministicNarrativeStrategy(
+  input: NarrativeStrategyInput,
+): NarrativeStrategyOutput {
+  const strongestTheme = input.career_profile?.positioning.core_strengths[0]
+    ?? input.candidate.career_themes[0]
+    ?? input.job_intelligence.core_competencies[0]?.competency
+    ?? 'Business leadership';
+  const roleKeyword = extractRoleKeyword(input.job_intelligence.role_title);
+  const primary_narrative = buildPrimaryNarrative(strongestTheme, roleKeyword);
+  const supporting_themes = dedupeStrings([
+    ...input.candidate.career_themes,
+    ...input.job_intelligence.core_competencies.slice(0, 3).map((item) => item.competency),
+  ]).slice(0, 5);
+  const scaleIndicator = input.candidate.leadership_scope || input.candidate.operational_scale || 'Enterprise execution';
+  const branded_title = `${primary_narrative} | ${input.job_intelligence.industry || input.job_intelligence.role_title} | ${truncateScaleIndicator(scaleIndicator)}`;
+  const approvedOrPartialStrategies = input.approved_strategies.length > 0
+    ? input.approved_strategies
+    : input.gap_analysis.requirements
+      .filter((requirement) => requirement.classification !== 'strong' && requirement.strategy)
+      .map((requirement) => ({ requirement: requirement.requirement, strategy: requirement.strategy! }));
+
+  const topOutcome = input.candidate.quantified_outcomes[0];
+  const topExperience = input.candidate.experience[0];
+  const hardGaps = new Set(input.gap_analysis.critical_gaps.map((gap) => gap.toLowerCase()));
+
+  return {
+    primary_narrative,
+    narrative_angle_rationale: `This angle stays anchored in the candidate's strongest proven theme (${strongestTheme}) while still aligning to ${input.job_intelligence.role_title}. It avoids over-claiming around unresolved hard gaps and keeps the story defensible.`,
+    supporting_themes,
+    branded_title,
+    narrative_origin: input.career_profile?.narrative.colleagues_came_for_what
+      ? `The candidate has consistently been pulled into work where ${input.career_profile.narrative.colleagues_came_for_what.toLowerCase()}.`
+      : `Their background shows a repeated pattern of stepping into roles where ${strongestTheme.toLowerCase()} mattered most.`,
+    unique_differentiators: dedupeStrings([
+      ...input.career_profile?.positioning.differentiators ?? [],
+      ...input.candidate.hidden_accomplishments,
+      topOutcome ? `Documented outcome: ${topOutcome.outcome}` : '',
+      topExperience ? `Hands-on chapter: ${topExperience.title} at ${topExperience.company}` : '',
+    ]).slice(0, 5),
+    why_me_story: [
+      `The most credible way to position this candidate for ${input.job_intelligence.role_title} is through the lens of ${primary_narrative.toLowerCase()}. Their background already shows repeated evidence of ${strongestTheme.toLowerCase()}, which is more defensible than forcing a narrative around a requirement they have not clearly proven yet.`,
+      topExperience
+        ? `That story is strongest in their work as ${topExperience.title} at ${topExperience.company}, where the resume already points to ${topExperience.bullets.slice(0, 2).join(' and ')}. ${topOutcome ? `The measurable proof starts with ${topOutcome.outcome}.` : ''}`
+        : `Their resume already shows adjacent proof that can be organized around the role's core needs without inventing new credentials or experiences.`,
+      approvedOrPartialStrategies.length > 0
+        ? `The transferability case comes from truthful adjacent evidence. ${approvedOrPartialStrategies.slice(0, 2).map((item) => `${item.requirement}: ${item.strategy.positioning}`).join(' ')}`
+        : `The positioning should focus on the strongest direct overlap with the job description first, then carefully frame adjacent strengths only where the resume already supports them.`,
+      hardGaps.size > 0
+        ? `Any unresolved hard requirements still need to be treated as explicit risk. The narrative should not pretend those gaps are solved; it should instead show why the candidate remains interview-worthy despite them.`
+        : `Because the strongest evidence is already present, the narrative can stay assertive without drifting into exaggeration.`,
+    ].join('\n\n'),
+    why_me_concise: `I am strongest when the role needs ${strongestTheme.toLowerCase()} backed by real operating proof. For ${input.job_intelligence.role_title}, that lets me connect directly to the job's most important responsibilities without overselling the gaps that still need to be addressed honestly.`,
+    why_me_best_line: topOutcome
+      ? `I bring ${strongestTheme.toLowerCase()} backed by outcomes like ${topOutcome.outcome}.`
+      : `I bring proven ${strongestTheme.toLowerCase()} that maps directly to this role's priorities.`,
+    gap_positioning_map: approvedOrPartialStrategies.slice(0, 6).map((item) => ({
+      requirement: item.requirement,
+      narrative_positioning: item.strategy.positioning,
+      where_to_feature: 'Professional experience bullets tied to the strongest adjacent role',
+      narrative_justification: hardGaps.has(item.requirement.toLowerCase())
+        ? 'Use this only as adjacent context. It does not erase the hard requirement risk.'
+        : `This is truthful adjacent evidence that helps the hiring manager understand transferable strength for ${item.requirement}.`,
+    })),
+    interview_talking_points: dedupeStrings([
+      topExperience ? `Walk through the most relevant chapter from ${topExperience.title} at ${topExperience.company}, especially how it maps to this role's priorities.` : '',
+      topOutcome ? `Tell the story behind ${topOutcome.outcome} and what decisions made that result possible.` : '',
+      supporting_themes[1] ? `Explain how ${supporting_themes[1].toLowerCase()} shows up across multiple roles, not just one title.` : '',
+      hardGaps.size > 0 ? 'Prepare a direct, credible answer for any unresolved hard requirement risk and pivot back to the strongest proven evidence.' : '',
+    ]).slice(0, 5),
+    section_guidance: {
+      summary_angle: `Lead with ${primary_narrative.toLowerCase()} and the strongest proven role-fit evidence before addressing stretch positioning.`,
+      competency_themes: supporting_themes.slice(0, 4),
+      accomplishment_priorities: dedupeStrings([
+        topOutcome ? `Feature ${topOutcome.outcome} early because it proves measurable business impact.` : '',
+        topExperience ? `Prioritize bullets from ${topExperience.company} that show the strongest overlap with ${input.job_intelligence.role_title}.` : '',
+        hardGaps.size > 0 ? 'Do not let unresolved hard requirements dominate the summary; treat them honestly elsewhere.' : '',
+      ]).slice(0, 4),
+      experience_framing: Object.fromEntries(
+        input.candidate.experience.slice(0, 5).map((experience) => [
+          experience.company,
+          `Frame this chapter as evidence of ${primary_narrative.toLowerCase()} through ${experience.title.toLowerCase()} scope and outcomes.`,
+        ]),
+      ),
+    },
+  };
+}
+
+function buildPrimaryNarrative(strongestTheme: string, roleKeyword: string): string {
+  const left = strongestTheme.split(/\s+/).slice(0, 2).map(capitalizeWord).join(' ');
+  const right = roleKeyword.split(/\s+/).slice(0, 1).map(capitalizeWord).join(' ');
+  return dedupeStrings([left, right]).join(' ').trim() || 'Role-Fit Leader';
+}
+
+function extractRoleKeyword(roleTitle: string): string {
+  const match = roleTitle.match(/\b(operations|engineering|marketing|sales|product|finance|strategy|technology|drilling|commercial)\b/i);
+  return match?.[1] ?? 'Leader';
+}
+
+function truncateScaleIndicator(value: string): string {
+  return value.split(/[.;]/)[0]?.trim().slice(0, 60) || 'Enterprise execution';
+}
+
+function capitalizeWord(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function dedupeStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(value.trim());
+  }
+  return result;
 }
 
 function buildUserMessage(input: NarrativeStrategyInput): string {

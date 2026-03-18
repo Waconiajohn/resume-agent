@@ -42,6 +42,7 @@ import {
   finalReviewResultSchema,
   buildFinalReviewPrompts,
   stabilizeFinalReviewResult,
+  extractHardRequirementRisksFromGapAnalysis,
 } from './resume-v2-pipeline-support.js';
 
 export const resumeV2Pipeline = new Hono();
@@ -988,7 +989,11 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
   const sessionBenchmark = pipelineData && typeof pipelineData.benchmarkCandidate === 'object'
     ? pipelineData.benchmarkCandidate as Record<string, unknown>
     : null;
+  const sessionGapAnalysis = pipelineData && typeof pipelineData.gapAnalysis === 'object'
+    ? pipelineData.gapAnalysis
+    : null;
   const careerProfile = await loadCareerProfileContext(userId);
+  const hardRequirementRisks = extractHardRequirementRisksFromGapAnalysis(sessionGapAnalysis);
 
   const mergedJobRequirements = job_requirements
     ?? requirements
@@ -1110,7 +1115,7 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
       return c.json({ error: 'Review failed — unparseable response' }, 500);
     }
 
-    const stabilizedResult = stabilizeFinalReviewResult(validated.data);
+    const stabilizedResult = stabilizeFinalReviewResult(validated.data, { hardRequirementRisks });
 
     logger.info({
       session_id: sessionId,

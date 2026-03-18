@@ -424,6 +424,33 @@ export const finalReviewResultSchema = z.object({
 
 export type FinalReviewResult = z.infer<typeof finalReviewResultSchema>;
 
+function normalizeReviewText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function isHardRequirementRequirement(value: string): boolean {
+  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/i.test(value);
+}
+
+export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown): string[] {
+  if (!gapAnalysis || typeof gapAnalysis !== 'object') return [];
+  const requirements = (gapAnalysis as { requirements?: unknown }).requirements;
+  if (!Array.isArray(requirements)) return [];
+
+  return Array.from(new Set(
+    requirements
+      .filter((item): item is { requirement?: unknown; classification?: unknown } => !!item && typeof item === 'object')
+      .map((item) => ({
+        requirement: typeof item.requirement === 'string' ? item.requirement.trim() : '',
+        classification: typeof item.classification === 'string' ? item.classification : '',
+      }))
+      .filter((item) => item.requirement.length > 0)
+      .filter((item) => isHardRequirementRequirement(item.requirement))
+      .filter((item) => item.classification !== 'strong')
+      .map((item) => item.requirement),
+  ));
+}
+
 function isPositiveRecruiterSignalCandidate(result: FinalReviewResult): boolean {
   return result.hiring_manager_verdict.rating === 'strong_interview_candidate'
     || result.hiring_manager_verdict.rating === 'possible_interview';
@@ -461,7 +488,10 @@ function createRecruiterSignalFromSummary(summary: string) {
   };
 }
 
-export function stabilizeFinalReviewResult(result: FinalReviewResult): FinalReviewResult {
+export function stabilizeFinalReviewResult(
+  result: FinalReviewResult,
+  options?: { hardRequirementRisks?: string[] },
+): FinalReviewResult {
   const normalized: FinalReviewResult = {
     ...result,
     six_second_scan: {
@@ -480,6 +510,7 @@ export function stabilizeFinalReviewResult(result: FinalReviewResult): FinalRevi
     },
     improvement_summary: [...result.improvement_summary],
   };
+  const hardRequirementRisks = Array.from(new Set((options?.hardRequirementRisks ?? []).filter(Boolean)));
 
   if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
     normalized.six_second_scan.top_signals_seen = createRecruiterSignalsFromWins(normalized);
@@ -525,6 +556,49 @@ export function stabilizeFinalReviewResult(result: FinalReviewResult): FinalRevi
 
   if (!normalized.six_second_scan.reason.trim()) {
     normalized.six_second_scan.reason = normalized.hiring_manager_verdict.summary;
+  }
+
+  if (hardRequirementRisks.length > 0) {
+    const existingMissingSignals = new Set(
+      normalized.six_second_scan.important_signals_missing.map((item) => normalizeReviewText(item.signal)),
+    );
+    for (const requirement of hardRequirementRisks) {
+      if (existingMissingSignals.has(normalizeReviewText(requirement))) continue;
+      normalized.six_second_scan.important_signals_missing.push({
+        signal: requirement,
+        why_it_matters: 'This looks like a hard requirement and can create real screening risk if it is not clearly evidenced.',
+      });
+    }
+
+    const hasCriticalHardConcern = normalized.concerns.some((concern) => (
+      concern.severity === 'critical'
+      && normalizeReviewText(concern.related_requirement ?? concern.observation).includes(normalizeReviewText(hardRequirementRisks[0]))
+    ));
+
+    if (!hasCriticalHardConcern) {
+      normalized.concerns.unshift({
+        id: 'hard_requirement_risk',
+        severity: 'critical',
+        type: 'credibility_risk',
+        observation: `Hard requirement not clearly evidenced: ${hardRequirementRisks[0]}`,
+        why_it_hurts: 'This can screen the candidate out before interview selection if the credential or threshold is truly missing or not explicit.',
+        target_section: 'Education, Certifications, or Summary',
+        related_requirement: hardRequirementRisks[0],
+        fix_strategy: 'If the requirement is real, add direct proof. If it is not, keep the risk visible and avoid overstating fit.',
+        requires_candidate_input: true,
+        clarifying_question: 'Do you actually have this hard requirement, and if so, where should it be shown explicitly on the resume?',
+      });
+    }
+
+    if (normalized.hiring_manager_verdict.rating === 'strong_interview_candidate') {
+      normalized.hiring_manager_verdict.rating = hardRequirementRisks.length > 1
+        ? 'needs_improvement'
+        : 'possible_interview';
+    }
+
+    if (!/hard requirement|screen(?:-| )out|credential|degree|certification|license/i.test(normalized.hiring_manager_verdict.summary)) {
+      normalized.hiring_manager_verdict.summary = `${normalized.hiring_manager_verdict.summary} One important caveat: ${hardRequirementRisks[0]} is not clearly evidenced yet and could become a screening risk.`;
+    }
   }
 
   return normalized;
