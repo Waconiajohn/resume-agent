@@ -800,6 +800,19 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(userMessage).toContain('deep cloud expertise');
     });
 
+    it('uses strict JSON guardrails and compact output instructions in the primary prompt', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(NARRATIVE_OUTPUT);
+
+      await runNarrativeStrategy(input);
+
+      const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.system).toContain('exactly 3 themes');
+      expect(llmCall.system).toContain('3 concise paragraphs');
+      expect(llmCall.messages[0].content).toContain('Return compact JSON only.');
+    });
+
     it('omits benchmark differentiators block when not provided', async () => {
       const inputNoDiffs: NarrativeStrategyInput = {
         ...input,

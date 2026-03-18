@@ -15,6 +15,14 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import type { NarrativeStrategyInput, NarrativeStrategyOutput } from '../types.js';
 
+const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
+- Return exactly one JSON object.
+- The first character of your response must be { and the last character must be }.
+- Use double-quoted JSON keys and string values.
+- Do not wrap the JSON in markdown fences.
+- Do not add markdown headings, emphasis markers, commentary, or notes outside the JSON object.
+- Keep arrays compact and include only the strongest items requested.`;
+
 const SYSTEM_PROMPT = `You are a master brand strategist and narrative architect who has positioned 500+ executives for career transitions. You create the narrative that makes a hiring manager say "this is the one" before they finish reading the first page.
 
 Your job: take everything the analysis has revealed about this candidate and this role, and craft a POSITIONING STRATEGY that makes the candidate the benchmark everyone else is measured against. Not one of several strong candidates — THE standard every other candidate is compared against.
@@ -153,14 +161,14 @@ Return valid JSON matching this exact structure:
 {
   "primary_narrative": "2-3 word positioning label (e.g., 'Enterprise Transformation Leader')",
   "narrative_angle_rationale": "1-2 sentences: why THIS positioning angle is the winning choice for this specific role",
-  "supporting_themes": ["3-5 themes that reinforce the primary narrative"],
+  "supporting_themes": ["exactly 3 themes that reinforce the primary narrative"],
   "branded_title": "Full branded title line for the resume header — targets the role they WANT",
   "narrative_origin": "1-2 sentences on why this person genuinely cares about this type of work — grounded in their history",
   "unique_differentiators": [
-    "3-5 specific things that make this candidate's positioning unique — not generic strengths, but the unusual combinations and experiences that nobody else is likely to have"
+    "exactly 3 specific things that make this candidate's positioning unique — not generic strengths, but the unusual combinations and experiences that nobody else is likely to have"
   ],
-  "why_me_story": "Full 'Why Me' positioning story (4-6 paragraphs). Opens with a moment. Builds through all 5 layers. Specific, evidence-based, impossible to apply to anyone else.",
-  "why_me_concise": "2-3 sentence elevator pitch version. Sharpest possible distillation. Could be said verbally in 45 seconds.",
+  "why_me_story": "Full 'Why Me' positioning story (3 concise paragraphs). Opens with a moment. Builds through all 5 layers. Specific, evidence-based, impossible to apply to anyone else.",
+  "why_me_concise": "Exactly 2 sentences. Sharpest possible distillation. Could be said verbally in 45 seconds.",
   "why_me_best_line": "The single most powerful verbal line — what they'd say if they had 10 seconds with the hiring manager",
   "gap_positioning_map": [
     {
@@ -171,12 +179,12 @@ Return valid JSON matching this exact structure:
     }
   ],
   "interview_talking_points": [
-    "3-5 key stories the candidate should tell in interviews that reinforce the narrative arc. Each should be a 1-2 sentence story prompt referencing a specific real moment from their background."
+    "exactly 3 key stories the candidate should tell in interviews that reinforce the narrative arc. Each should be a 1 sentence story prompt referencing a specific real moment from their background."
   ],
   "section_guidance": {
     "summary_angle": "how to open the executive summary — should lead with narrative positioning, not generic accomplishments",
-    "competency_themes": ["how to group/frame core competencies to reinforce narrative themes"],
-    "accomplishment_priorities": ["which accomplishments to feature and exactly why they reinforce the narrative"],
+    "competency_themes": ["2-3 compact theme labels showing how to group/frame core competencies to reinforce narrative themes"],
+    "accomplishment_priorities": ["2-4 compact priorities showing which accomplishments to feature and exactly why they reinforce the narrative"],
     "experience_framing": {
       "Company Name": "how to frame this role within the narrative arc — what story does this chapter tell?"
     }
@@ -194,7 +202,9 @@ Return valid JSON matching this exact structure:
 - gap_positioning_map: include an entry for every partial or missing requirement that has an approved strategy. Empty array only if there are no gaps.
 - interview_talking_points: must reference actual moments from their background. Not generic advice — specific story prompts.
 - Only choose narratives the candidate can actually defend. If they're a support operations leader, do not brand them as a revenue architect unless the gap analysis found genuine revenue evidence.
-- If benchmark differentiators are provided, use them as raw material for Layer 3 — the unique combination angle.`;
+- If benchmark differentiators are provided, use them as raw material for Layer 3 — the unique combination angle.
+
+${JSON_OUTPUT_GUARDRAILS}`;
 
 export async function runNarrativeStrategy(
   input: NarrativeStrategyInput,
@@ -546,7 +556,7 @@ function buildUserMessage(input: NarrativeStrategyInput): string {
 
   parts.push(
     '',
-    'Craft a positioning strategy that makes this candidate the benchmark for this role. Apply all 5 narrative layers. Every choice must be supported by the evidence above. Ensure the narrative is specific enough to ONLY apply to this candidate.',
+    'Craft a positioning strategy that makes this candidate the benchmark for this role. Apply all 5 narrative layers. Every choice must be supported by the evidence above. Ensure the narrative is specific enough to ONLY apply to this candidate. Return compact JSON only.',
   );
 
   return parts.join('\n');
