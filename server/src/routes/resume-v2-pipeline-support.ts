@@ -429,26 +429,49 @@ function normalizeReviewText(value: string): string {
 }
 
 function isHardRequirementRequirement(value: string): boolean {
-  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/i.test(value);
+  if (isPreferredOnlyRequirement(value)) return false;
+  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|foreign equivalent|years of experience|year experience|minimum of \d+ years|\d+\+?\s+years?)\b/i.test(value);
+}
+
+function isPreferredOnlyRequirement(value: string): boolean {
+  const normalized = value.toLowerCase();
+  const hasPreferredSignal = /\b(preferred|preference|preferred qualification|nice to have|bonus|plus)\b/.test(normalized);
+  const hasRequiredSignal = /\b(required|must have|must-have|minimum|mandatory|screen(?:-| )out|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(normalized);
+  return hasPreferredSignal && !hasRequiredSignal;
 }
 
 export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown): string[] {
   if (!gapAnalysis || typeof gapAnalysis !== 'object') return [];
   const requirements = (gapAnalysis as { requirements?: unknown }).requirements;
-  if (!Array.isArray(requirements)) return [];
+  const criticalGaps = (gapAnalysis as { critical_gaps?: unknown }).critical_gaps;
 
-  return Array.from(new Set(
-    requirements
-      .filter((item): item is { requirement?: unknown; classification?: unknown } => !!item && typeof item === 'object')
+  const requirementRisks = Array.isArray(requirements)
+    ? requirements
+      .filter((item): item is { requirement?: unknown; classification?: unknown; source?: unknown } => !!item && typeof item === 'object')
       .map((item) => ({
         requirement: typeof item.requirement === 'string' ? item.requirement.trim() : '',
         classification: typeof item.classification === 'string' ? item.classification : '',
+        source: item.source === 'benchmark' ? 'benchmark' : 'job_description',
       }))
       .filter((item) => item.requirement.length > 0)
+      .filter((item) => item.source === 'job_description')
       .filter((item) => isHardRequirementRequirement(item.requirement))
       .filter((item) => item.classification !== 'strong')
-      .map((item) => item.requirement),
-  ));
+      .map((item) => item.requirement)
+    : [];
+
+  const criticalGapRisks = Array.isArray(criticalGaps)
+    ? criticalGaps
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .filter((item) => isHardRequirementRequirement(item))
+    : [];
+
+  return Array.from(new Set([
+    ...requirementRisks,
+    ...criticalGapRisks,
+  ]));
 }
 
 function isPositiveRecruiterSignalCandidate(result: FinalReviewResult): boolean {
@@ -510,7 +533,10 @@ export function stabilizeFinalReviewResult(
     },
     improvement_summary: [...result.improvement_summary],
   };
-  const hardRequirementRisks = Array.from(new Set((options?.hardRequirementRisks ?? []).filter(Boolean)));
+  const hardRequirementRisks = filterContradictedHardRequirementRisks(
+    Array.from(new Set((options?.hardRequirementRisks ?? []).filter(Boolean))),
+    normalized,
+  );
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
   if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
@@ -638,6 +664,39 @@ function capFitAssessment(
   return order[current] <= order[cap] ? current : cap;
 }
 
+function filterContradictedHardRequirementRisks(
+  risks: string[],
+  result: FinalReviewResult,
+): string[] {
+  const signalCorpus = [
+    ...result.six_second_scan.top_signals_seen.map((item) => item.signal),
+    ...result.top_wins.map((item) => item.win),
+    result.hiring_manager_verdict.summary,
+  ].join(' \n ');
+
+  return risks.filter((risk) => !isYearsThresholdContradictedByEvidence(risk, signalCorpus));
+}
+
+function isYearsThresholdContradictedByEvidence(
+  risk: string,
+  signalCorpus: string,
+): boolean {
+  const requiredYears = extractYearsThreshold(risk);
+  if (requiredYears === null) return false;
+
+  const evidencedYears = Array.from(signalCorpus.matchAll(/\b(\d+)\+?\s+years?\b/gi))
+    .map((match) => Number(match[1]))
+    .filter((value) => Number.isFinite(value));
+
+  if (evidencedYears.length === 0) return false;
+  return Math.max(...evidencedYears) >= requiredYears;
+}
+
+function extractYearsThreshold(text: string): number | null {
+  const match = text.match(/\b(?:minimum of\s*)?(\d+)\+?\s+years?\b/i);
+  return match ? Number(match[1]) : null;
+}
+
 export function buildFinalReviewPrompts({
   companyName,
   roleTitle,
@@ -659,9 +718,7 @@ export function buildFinalReviewPrompts({
   benchmarkRequirements: string[];
   careerProfile: CareerProfileV2 | null;
 }) {
-  const hardRequirements = jobRequirements.filter((requirement) => (
-    /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/i.test(requirement)
-  ));
+  const hardRequirements = jobRequirements.filter((requirement) => isHardRequirementRequirement(requirement));
 
   const requirementsList = jobRequirements.length
     ? `\n\nJOB REQUIREMENTS TO EVALUATE:\n${jobRequirements.map((requirement) => `- ${requirement}`).join('\n')}`

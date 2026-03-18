@@ -50,6 +50,26 @@ describe('resume-v2 final review prompts', () => {
     expect(prompts.userPrompt).not.toContain('POTENTIAL HARD REQUIREMENTS / SCREEN-OUT RISKS');
   });
 
+  it('does not treat preferred-only qualifications as hard screen-out risks', () => {
+    const prompts = buildFinalReviewPrompts({
+      companyName: 'Meridian Consumer Brands',
+      roleTitle: 'Chief Marketing Officer',
+      resumeText: 'Transformational marketing leader with consumer growth wins.',
+      jobDescription: 'MBA preferred. 15+ years of progressive marketing leadership required.',
+      jobRequirements: [
+        'MBA preferred',
+        '15+ years of progressive marketing leadership in consumer products/CPG',
+      ],
+      hiddenSignals: [],
+      benchmarkProfileSummary: undefined,
+      benchmarkRequirements: [],
+      careerProfile: null,
+    });
+
+    expect(prompts.userPrompt).toContain('15+ years of progressive marketing leadership in consumer products/CPG');
+    expect(prompts.userPrompt).not.toContain('POTENTIAL HARD REQUIREMENTS / SCREEN-OUT RISKS:\n- MBA preferred');
+  });
+
   it('stabilizes contradictory recruiter-scan output using the stronger final-review signals', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
@@ -192,6 +212,102 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
     expect(stabilized.fit_assessment.benchmark_alignment).toBe('moderate');
     expect(stabilized.fit_assessment.clarity_and_credibility).toBe('weak');
+  });
+
+  it('ignores preferred-only qualifications when extracting hard requirement risks', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: 'MBA preferred',
+          classification: 'missing',
+          source: 'job_description',
+        },
+        {
+          requirement: '15+ years of progressive marketing leadership in consumer products/CPG',
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+    });
+
+    expect(hardRisks).toEqual([
+      '15+ years of progressive marketing leadership in consumer products/CPG',
+    ]);
+  });
+
+  it('ignores benchmark-only credential gaps when extracting hard requirement risks', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: 'MBA',
+          classification: 'missing',
+          source: 'benchmark',
+        },
+        {
+          requirement: "Bachelor's degree in engineering",
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+    });
+
+    expect(hardRisks).toEqual([
+      "Bachelor's degree in engineering",
+    ]);
+  });
+
+  it('includes explicit hard-risk critical gaps even when the requirement list is incomplete', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [],
+      critical_gaps: [
+        "Bachelor's degree in engineering or operations management",
+        'Experience in PE-backed manufacturing environments',
+      ],
+    });
+
+    expect(hardRisks).toEqual([
+      "Bachelor's degree in engineering or operations management",
+    ]);
+  });
+
+  it('suppresses years-threshold risks when final review already shows sufficient years of experience', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12 years of experience driving cloud infrastructure strategy',
+            why_it_matters: 'Clears the years threshold.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong cloud architect with 12 years of experience in cloud infrastructure and architecture.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, { hardRequirementRisks: ['10+ years in cloud infrastructure/architecture roles'] });
+
+    expect(stabilized.concerns.some((concern) => concern.id === 'hard_requirement_risk')).toBe(false);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('10+ years'))).toBe(false);
+    expect(stabilized.fit_assessment.job_description_fit).toBe('strong');
   });
 
   it('caps fit-assessment optimism when a single hard requirement risk remains', () => {

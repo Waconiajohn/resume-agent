@@ -698,7 +698,14 @@ function dedupeStrings(values: string[]): string[] {
 
 function isHardRequirement(requirement: string, sourceEvidence?: string): boolean {
   const combined = `${requirement} ${sourceEvidence ?? ''}`.toLowerCase();
+  if (isPreferredOnlyQualification(combined)) return false;
   return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|requirement|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(combined);
+}
+
+function isPreferredOnlyQualification(text: string): boolean {
+  const hasPreferredSignal = /\b(preferred|preference|preferred qualification|nice to have|bonus|plus)\b/.test(text);
+  const hasRequiredSignal = /\b(required|must have|must-have|minimum|mandatory|screen(?:-| )out|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(text);
+  return hasPreferredSignal && !hasRequiredSignal;
 }
 
 function defaultCategoryForSource(source: RequirementSource): RequirementCategory {
