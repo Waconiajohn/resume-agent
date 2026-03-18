@@ -537,8 +537,8 @@ Return JSON:
       summaryResult = JSON.parse(repairJSON(summaryResponse.text) ?? summaryResponse.text);
     } catch {
       summaryResult = {
-        executive_summary: 'A strategic 90-day onboarding plan designed to accelerate leadership impact.',
-        plan_headline: '90-Day Strategic Onboarding Plan',
+        executive_summary: 'A strategic 30-60-90 onboarding plan designed to accelerate leadership impact.',
+        plan_headline: '30-60-90 Strategic Onboarding Plan',
         stakeholder_timeline: [],
         success_metrics: [],
       };
@@ -549,7 +549,7 @@ Return JSON:
     const candidateName = state.resume_data?.name ?? 'Executive';
 
     // Header
-    reportParts.push(`# ${candidateName} — 90-Day Strategic Onboarding Plan`);
+    reportParts.push(`# ${candidateName} — 30-60-90 Strategic Onboarding Plan`);
     reportParts.push(`**${state.role_context.target_role} at ${state.role_context.target_company}**`);
     reportParts.push('');
 
@@ -659,7 +659,7 @@ Return JSON:
     // Success metrics
     const successMetrics = Array.isArray(summaryResult.success_metrics) ? summaryResult.success_metrics.map(String) : [];
     if (successMetrics.length > 0) {
-      reportParts.push('## 90-Day Success Metrics');
+      reportParts.push('## 30-60-90 Success Metrics');
       reportParts.push('');
       for (const metric of successMetrics) {
         reportParts.push(`- ${metric}`);

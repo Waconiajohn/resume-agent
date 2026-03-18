@@ -19,7 +19,7 @@ const ROOM_INFO: Record<string, { title: string; description: string }> = {
   'thank-you-note': { title: 'Interview Lab', description: 'Thank You Notes have moved to Interview Lab.' },
   'network-intelligence': { title: 'Smart Referrals', description: 'Network Intelligence has moved to Smart Referrals.' },
   'personal-brand': { title: 'Career Profile', description: 'Personal brand work now lives inside Career Profile.' },
-  'ninety-day-plan': { title: 'Interview Lab', description: '90-Day Plan has moved into Interview Lab.' },
+  'ninety-day-plan': { title: 'Interview Lab', description: '30-60-90 Day Plan has moved into Interview Lab.' },
 };
 
 const FALLBACK = { title: 'Coming Soon', description: 'This room is being built by the agent team.' };

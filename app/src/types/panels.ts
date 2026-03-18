@@ -443,7 +443,7 @@ export interface NoteReviewData {
   quality_score?: number;
 }
 
-// --- Stakeholder Review (90-Day Plan) ---
+// --- Stakeholder Review (30-60-90 Day Plan) ---
 export interface StakeholderItem {
   name_or_role: string;
   relationship_type: string;

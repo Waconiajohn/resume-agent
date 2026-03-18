@@ -40,6 +40,7 @@ function makeSession(overrides: Partial<CoachSession> = {}): CoachSession {
     product_type: 'resume_v2',
     company_name: 'Acme Corp',
     job_title: 'VP Engineering',
+    job_stage: 'applied',
     created_at: '2026-01-01T12:00:00Z',
     updated_at: '2026-01-02T12:00:00Z',
     ...overrides,
@@ -76,12 +77,13 @@ afterEach(() => {
 });
 
 describe('SessionHistoryTab', () => {
-  it('renders company, role, date, and status for saved sessions', () => {
+  it('renders company, role, date, and stage-aware status for saved sessions', () => {
     render(<SessionHistoryTab {...makeProps()} />);
 
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
     expect(screen.getByText('VP Engineering')).toBeInTheDocument();
     expect(screen.getAllByText('Completed').length).toBeGreaterThan(0);
+    expect(screen.getByText('Applied')).toBeInTheDocument();
     expect(screen.getByText('Jan 1, 2026')).toBeInTheDocument();
   });
 
@@ -206,7 +208,7 @@ describe('SessionHistoryTab', () => {
       />,
     );
 
-    expect(screen.getByText('Job record')).toBeInTheDocument();
+    expect(screen.getByText('Job workspace')).toBeInTheDocument();
     expect(screen.getAllByText('Acme Corp')).toHaveLength(1);
     expect(screen.getByText('Resume')).toBeInTheDocument();
     expect(screen.getAllByText('Cover Letter').length).toBeGreaterThan(0);
@@ -214,5 +216,25 @@ describe('SessionHistoryTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /^open$/i }));
 
     expect(onResumeSession).toHaveBeenCalledWith('letter-1');
+  });
+
+  it('shows interview assets only when the job stage reaches interviewing', () => {
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          sessions: [
+            makeSession({
+              id: 'resume-1',
+              product_type: 'resume_v2',
+              job_stage: 'interviewing',
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/Available now: Interview Lab/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Interview Lab/i })).toBeInTheDocument();
+    expect(screen.getByText(/30-60-90 Day Plan/i)).toBeInTheDocument();
   });
 });

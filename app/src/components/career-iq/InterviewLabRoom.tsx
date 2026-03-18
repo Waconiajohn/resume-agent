@@ -870,7 +870,7 @@ const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string 
   },
   documents: {
     label: 'Documents',
-    description: 'Create the 90-day plan and other interview leave-behinds when they will help you stand out.',
+    description: 'Create the 30-60-90 plan and other interview leave-behinds when they will help you stand out.',
   },
   follow_up: {
     label: 'Follow-Up',
@@ -1193,7 +1193,7 @@ export function InterviewLabRoom({
           usagePoints={[
             'The prep report leans on the same story and proof themes used in Resume Builder.',
             'Mock interview coaching uses your saved positioning instead of starting cold.',
-            'Thank-you notes and 90-day plans should reinforce the exact same narrative.',
+            'Thank-you notes and 30-60-90 plans should reinforce the exact same narrative.',
           ]}
           onOpenProfile={onOpenCareerProfile}
         />
@@ -1319,18 +1319,18 @@ export function InterviewLabRoom({
               </div>
               <h2 className="mt-2 text-lg font-semibold text-white/88">Build documents without leaving the lab</h2>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-                Keep your prep story, proof points, and interview strategy in the same room. The 90-day plan should feel like one more move in the interview workflow, not a completely separate product.
+                Keep your prep story, proof points, and interview strategy in the same room. The 30-60-90 day plan should feel like one more move in the interview workflow, not a completely separate product.
               </p>
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
                   <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Documents</div>
-                  <h3 className="mt-2 text-base font-semibold text-white/84">90-Day Plan</h3>
+                  <h3 className="mt-2 text-base font-semibold text-white/84">30-60-90 Day Plan</h3>
                   <p className="mt-2 text-sm leading-relaxed text-white/52">
-                    Use this when you need to show how you would step into the role, prioritize fast, and create confidence before an offer decision is made.
+                    Use this when you need to show how you would step into the role, sequence the first 30, 60, and 90 days, and create confidence before an offer decision is made.
                   </p>
                   <GlassButton variant="ghost" onClick={handleOpenNinetyDayPlan} className="mt-4 text-[13px]">
                     <ClipboardList size={14} className="mr-1.5" />
-                    Open 90-Day Plan
+                    Open 30-60-90 Day Plan
                   </GlassButton>
                 </div>
 
@@ -1366,11 +1366,11 @@ export function InterviewLabRoom({
                   Back to Documents
                 </button>
                 <div className="mt-4 text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  90-Day Plan
+                  30-60-90 Day Plan
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-white/88">Stay in the interview workflow while you build the leave-behind</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-                  This document should make the interviewer feel your first 90 days are already taking shape. Keep the positioning story consistent with your prep report and mock-interview answers.
+                  This document should make the interviewer feel your first 30, 60, and 90 days are already taking shape. Keep the positioning story consistent with your prep report and mock-interview answers.
                 </p>
               </GlassCard>
               <NinetyDayPlanRoom />

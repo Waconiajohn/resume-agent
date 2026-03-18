@@ -655,16 +655,8 @@ test.describe('Smoke: Career IQ rooms', () => {
     });
   });
 
-  test('Personal Brand room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Personal Brand');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('90-Day Plan room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, '90-Day Plan');
+  test('Career Profile room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Career Profile');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,

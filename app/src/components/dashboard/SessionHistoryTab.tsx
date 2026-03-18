@@ -24,6 +24,7 @@ interface SessionHistoryTabProps {
   loading: boolean;
   onLoadSessions: (filters?: { limit?: number; status?: string }) => void;
   onResumeSession: (id: string) => void;
+  onNavigate?: (route: string) => void;
   onDeleteSession: (id: string) => Promise<boolean>;
   onGetSessionResume: (id: string) => Promise<FinalResume | null>;
   onGetSessionCoverLetter: (id: string) => Promise<{ letter: string; quality_score?: number | null } | null>;
@@ -34,9 +35,76 @@ interface SessionJobRecord {
   company: string;
   role: string;
   createdAt: string;
+  jobStage: string | null;
   latestSession: CoachSession;
   status: ReturnType<typeof formatStatus>;
   assets: CoachSession[];
+}
+
+function formatJobStage(stage?: string | null): { label: string; classes: string } {
+  switch (stage) {
+    case 'researching':
+      return { label: 'Researching', classes: 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]' };
+    case 'applied':
+      return { label: 'Applied', classes: 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]' };
+    case 'screening':
+      return { label: 'Screening', classes: 'border-[#f0d99f]/25 bg-[#f0d99f]/10 text-[#f3e4b5]' };
+    case 'interviewing':
+      return { label: 'Interviewing', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+    case 'offer':
+      return { label: 'Offer', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+    case 'closed_won':
+      return { label: 'Accepted', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+    case 'closed_lost':
+      return { label: 'Closed', classes: 'border-white/[0.10] bg-white/[0.04] text-white/60' };
+    case 'saved':
+    default:
+      return { label: 'Saved', classes: 'border-white/[0.10] bg-white/[0.04] text-white/60' };
+  }
+}
+
+function stageAwareActions(stage?: string | null): {
+  unlocked: string[];
+  nextActionLabel: string;
+  nextActionRoute?: string;
+} {
+  switch (stage) {
+    case 'interviewing':
+      return {
+        unlocked: ['Interview Lab', 'Thank You Note', '30-60-90 Day Plan'],
+        nextActionLabel: 'Open Interview Lab',
+        nextActionRoute: '/workspace?room=interview',
+      };
+    case 'offer':
+      return {
+        unlocked: ['Salary Negotiation', 'Interview Lab'],
+        nextActionLabel: 'Open Salary Negotiation',
+        nextActionRoute: '/workspace?room=salary-negotiation',
+      };
+    case 'closed_won':
+      return {
+        unlocked: ['Archive-worthy assets'],
+        nextActionLabel: 'Reopen Job Workspace',
+      };
+    case 'closed_lost':
+      return {
+        unlocked: ['Reference-only assets'],
+        nextActionLabel: 'Reopen Job Workspace',
+      };
+    case 'screening':
+      return {
+        unlocked: ['Resume', 'Cover Letter'],
+        nextActionLabel: 'Keep this workspace lean until an interview is scheduled',
+      };
+    case 'researching':
+    case 'applied':
+    case 'saved':
+    default:
+      return {
+        unlocked: ['Resume', 'Cover Letter'],
+        nextActionLabel: 'Interview assets unlock when the job reaches interviewing',
+      };
+  }
 }
 
 function humanizeProductType(type: string): string {
@@ -106,6 +174,7 @@ function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
         company: session.company_name?.trim() || 'Untitled company',
         role: session.job_title?.trim() || 'Untitled role',
         createdAt: session.created_at,
+        jobStage: session.job_stage ?? null,
         latestSession: session,
         status: formatStatus(session.pipeline_status ?? session.pipeline_stage),
         assets: [session],
@@ -118,6 +187,9 @@ function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
       existing.latestSession = session;
       existing.status = formatStatus(session.pipeline_status ?? session.pipeline_stage);
       existing.createdAt = session.created_at;
+    }
+    if (session.job_stage && !existing.jobStage) {
+      existing.jobStage = session.job_stage;
     }
   }
 
@@ -158,6 +230,7 @@ export function SessionHistoryTab({
   loading,
   onLoadSessions,
   onResumeSession,
+  onNavigate,
   onDeleteSession,
   onGetSessionResume,
   onGetSessionCoverLetter,
@@ -228,9 +301,9 @@ export function SessionHistoryTab({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-white/85">Past tailored work</h3>
+          <h3 className="text-sm font-semibold text-white/85">Job Workspaces</h3>
           <p className="mt-1 text-xs text-white/45">
-            Reopen the exact resume or cover letter you built for a specific company and role.
+            Each record stays lightweight until the job advances. Interview and offer-stage assets only show up when the stage justifies them.
           </p>
         </div>
 
@@ -271,11 +344,11 @@ export function SessionHistoryTab({
       </div>
 
       <GlassCard className="overflow-hidden p-0">
-        <div className="hidden grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1fr)_260px] gap-4 border-b border-white/[0.06] px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-white/35 lg:grid">
+        <div className="hidden grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1.15fr)_280px] gap-4 border-b border-white/[0.06] px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-white/35 lg:grid">
           <div>Company and role</div>
           <div>Date</div>
-          <div>Status</div>
-          <div>Assets</div>
+          <div>Stage</div>
+          <div>Assets and unlocks</div>
           <div>Actions</div>
         </div>
 
@@ -302,15 +375,17 @@ export function SessionHistoryTab({
                 accumulator[type] = (accumulator[type] ?? 0) + 1;
                 return accumulator;
               }, {});
+              const jobStage = formatJobStage(record.jobStage);
+              const stageActions = stageAwareActions(record.jobStage);
 
               return (
                 <div key={record.key} className="px-5 py-4">
-                  <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1fr)_260px] lg:items-center">
+                  <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_130px_130px_minmax(0,1.15fr)_280px] lg:items-start">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="truncate text-sm font-semibold text-white/85">{record.company}</div>
                         <span className="rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-2 py-0.5 text-[10px] text-[#c9d7ff]">
-                          Job record
+                          Job workspace
                         </span>
                       </div>
                       <div className="mt-1 truncate text-xs text-white/45">{record.role}</div>
@@ -319,20 +394,28 @@ export function SessionHistoryTab({
                     <div className="text-xs text-white/55">{formatDate(record.createdAt)}</div>
 
                     <div>
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${record.status.classes}`}>
-                        {record.status.label}
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${jobStage.classes}`}>
+                        {jobStage.label}
                       </span>
+                      <div className="mt-2 text-[11px] text-white/40">
+                        Pipeline state: {record.status.label}
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(assetCounts).map(([type, count]) => (
-                        <span
-                          key={type}
-                          className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/50"
-                        >
-                          {assetBadgeLabel(type)}{count > 1 ? ` (${count})` : ''}
-                        </span>
-                      ))}
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(assetCounts).map(([type, count]) => (
+                          <span
+                            key={type}
+                            className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/50"
+                          >
+                            {assetBadgeLabel(type)}{count > 1 ? ` (${count})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-[11px] text-white/42">
+                        Available now: {stageActions.unlocked.join(' • ')}
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -363,8 +446,24 @@ export function SessionHistoryTab({
                           Delete
                         </button>
                       )}
+                      {stageActions.nextActionRoute && (
+                        <GlassButton
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => onNavigate?.(stageActions.nextActionRoute!)}
+                        >
+                          <FileText size={12} className="mr-1.5" />
+                          {stageActions.nextActionLabel}
+                        </GlassButton>
+                      )}
                     </div>
                   </div>
+                  {!stageActions.nextActionRoute && (
+                    <div className="mt-3 text-[11px] text-white/38">
+                      {stageActions.nextActionLabel}
+                    </div>
+                  )}
                 </div>
               );
             })}

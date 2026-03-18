@@ -18,7 +18,7 @@ const AUDIT_PAGES = [
     slug: 'resume-builder',
     path: '/workspace?room=resume',
     readyRole: 'heading',
-    readyText: 'One home for tailored resumes and your master resume',
+    readyText: 'One home for stage-aware job workspaces and your master resume',
   },
   {
     slug: 'interview-lab',

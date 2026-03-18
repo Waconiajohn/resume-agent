@@ -11,7 +11,7 @@ import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 
 const TABS = [
-  { id: 'sessions', label: 'Tailored Resumes' },
+  { id: 'sessions', label: 'Job Workspaces' },
   { id: 'master_resume', label: 'Master Resume' },
 ];
 
@@ -87,9 +87,9 @@ export function ResumeWorkshopRoom({
             <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
               Resume Builder
             </div>
-            <h1 className="mt-2 text-xl font-semibold text-white/90">One home for tailored resumes and your master resume</h1>
+            <h1 className="mt-2 text-xl font-semibold text-white/90">One home for stage-aware job workspaces and your master resume</h1>
             <p className="mt-2 text-sm leading-relaxed text-white/50">
-              Each tailored application is saved by company, job title, and date so you can reopen the exact version you used. Strong edits can then be promoted into your master resume when they deserve to live on.
+              Each target role stays grouped by company, job title, and date. Early-stage work stays lean, and interview or offer assets only surface when the application actually reaches those stages.
             </p>
           </div>
 
@@ -107,9 +107,9 @@ export function ResumeWorkshopRoom({
         <div className="mt-5 grid gap-3 lg:grid-cols-3">
           <SummaryCard
             icon={FileText}
-            title="Tailored work"
+            title="Job workspaces"
             value={`${tailoredCount}`}
-            description="Saved by company, job title, and date."
+            description="Saved by company, job title, date, and current application stage."
           />
           <SummaryCard
             icon={LibraryBig}
@@ -144,6 +144,7 @@ export function ResumeWorkshopRoom({
               loading={loading}
               onLoadSessions={onLoadSessions}
               onResumeSession={onResumeSession}
+              onNavigate={onNavigate}
               onDeleteSession={onDeleteSession}
               onGetSessionResume={onGetSessionResume}
               onGetSessionCoverLetter={onGetSessionCoverLetter}

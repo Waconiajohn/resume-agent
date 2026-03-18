@@ -315,7 +315,7 @@ function ReportView({
             <Map size={20} className="text-[#afc4ff]" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[18px] font-semibold text-white/90">90-Day Success Plan</h2>
+            <h2 className="text-[18px] font-semibold text-white/90">30-60-90 Success Plan</h2>
             <p className="text-[13px] text-white/50 mt-0.5">
               {targetRole}
               {targetCompany ? ` — ${targetCompany}` : ''}
@@ -577,7 +577,7 @@ export function NinetyDayPlanRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">90-Day Success Plan</h1>
+          <h1 className="text-xl font-semibold text-white/90">30-60-90 Success Plan</h1>
           <p className="text-[13px] text-white/40 mt-1">
             Stakeholder map ready for review
           </p>
@@ -592,7 +592,7 @@ export function NinetyDayPlanRoom() {
             <span className="text-white/80 font-medium">{stakeholderCount} stakeholder{stakeholderCount !== 1 ? 's' : ''}</span>{' '}
             and identified{' '}
             <span className="text-white/80 font-medium">{quickWinCount} quick win{quickWinCount !== 1 ? 's' : ''}</span>{' '}
-            for your first 30 days. Click below to begin writing your 90-day plan.
+            for your first 30 days. Click below to begin writing your 30-60-90 day plan.
           </p>
           <div className="flex gap-3">
             <GlassButton
@@ -601,7 +601,7 @@ export function NinetyDayPlanRoom() {
               className="text-[13px] px-5 py-2.5"
             >
               <Map size={14} className="mr-1.5" />
-              Write My 90-Day Plan
+              Write My 30-60-90 Plan
             </GlassButton>
             <GlassButton variant="ghost" onClick={handleReset} size="sm">
               <ArrowLeft size={13} className="mr-1.5" />
@@ -618,7 +618,7 @@ export function NinetyDayPlanRoom() {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">90-Day Success Plan</h1>
+          <h1 className="text-xl font-semibold text-white/90">30-60-90 Success Plan</h1>
           <p className="text-[13px] text-white/40 mt-1">
             Building your stakeholder map and phased success plan
           </p>
@@ -669,9 +669,9 @@ export function NinetyDayPlanRoom() {
           <Map size={20} className="text-[#afc4ff]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">90-Day Success Plan</h1>
+          <h1 className="text-xl font-semibold text-white/90">30-60-90 Success Plan</h1>
           <p className="text-[13px] text-white/40 leading-relaxed mt-1">
-            Generate a role-specific 90-day success plan with stakeholder map, quick wins, and
+            Generate a role-specific 30-60-90 success plan with stakeholder map, quick wins, and
             phased milestones — built around your narrative, not a generic template.
           </p>
         </div>

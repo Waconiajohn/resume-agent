@@ -22,6 +22,7 @@ export interface CoachSession {
   last_panel_type?: string | null;
   company_name?: string | null;
   job_title?: string | null;
+  job_stage?: string | null;
   product_type?: string;
   created_at: string;
   updated_at: string;

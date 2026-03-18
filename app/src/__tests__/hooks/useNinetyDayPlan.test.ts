@@ -161,13 +161,13 @@ describe('useNinetyDayPlan', () => {
   it('handles plan_complete event (sets report, qualityScore, status=complete)', () => {
     const event = makeEvent('plan_complete', {
       session_id: 'test-uuid',
-      report: '# 90-Day Strategic Plan',
+      report: '# 30-60-90 Strategic Plan',
       quality_score: 92,
       phase_count: 3,
     });
 
     const parsed = JSON.parse(event.data);
-    expect(parsed.report).toBe('# 90-Day Strategic Plan');
+    expect(parsed.report).toBe('# 30-60-90 Strategic Plan');
     expect(parsed.quality_score).toBe(92);
     expect(parsed.phase_count).toBe(3);
   });

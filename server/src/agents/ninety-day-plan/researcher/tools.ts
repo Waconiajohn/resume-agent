@@ -228,7 +228,7 @@ const mapStakeholdersTool: ResearcherTool = {
       message: `Mapping stakeholders for ${state.role_context.target_role}...`,
     });
 
-    const stakeholderPrompt = `Map the key stakeholders for this executive onboarding. Identify everyone the new leader needs to build relationships with in the first 90 days.
+    const stakeholderPrompt = `Map the key stakeholders for this executive onboarding. Identify everyone the new leader needs to build relationships with across the first 30, 60, and 90 days.
 
 ${NINETY_DAY_PLAN_RULES}
 

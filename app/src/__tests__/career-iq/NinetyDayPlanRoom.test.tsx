@@ -58,7 +58,7 @@ const runningState = {
 const completeState = {
   ...idleState,
   status: 'complete' as const,
-  report: '# 90-Day Success Plan\n\n## Days 1–30: Listen & Learn\n\nPriority: build trust, understand the landscape.',
+  report: '# 30-60-90 Success Plan\n\n## Days 1–30: Listen & Learn\n\nPriority: build trust, understand the landscape.',
   qualityScore: 90,
 };
 
@@ -81,7 +81,7 @@ describe('NinetyDayPlanRoom', () => {
 
   it('renders without crashing', () => {
     render(<NinetyDayPlanRoom />);
-    expect(screen.getByText('90-Day Plan Generator')).toBeInTheDocument();
+    expect(screen.getAllByText('30-60-90 Success Plan').length).toBeGreaterThan(0);
   });
 
   it('shows the three phase overview pills', () => {
@@ -116,10 +116,10 @@ describe('NinetyDayPlanRoom', () => {
     expect(screen.getByText('Mapping key stakeholders')).toBeInTheDocument();
   });
 
-  it('shows 90-Day Success Plan report in complete state', () => {
+  it('shows 30-60-90 Success Plan report in complete state', () => {
     vi.mocked(useNinetyDayPlan).mockReturnValue(completeState);
     render(<NinetyDayPlanRoom />);
-    expect(screen.getAllByText('90-Day Success Plan').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('30-60-90 Success Plan').length).toBeGreaterThan(0);
     expect(screen.getByText('Quality 90%')).toBeInTheDocument();
   });
 

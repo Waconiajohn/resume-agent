@@ -9,11 +9,13 @@ test.describe('workspace guided flows', () => {
   test('reopens a saved resume job record and runs Final Review before export acknowledgement', async ({ page }) => {
     await page.goto('/workspace?room=resume', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /One home for tailored resumes and your master resume/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i })).toBeVisible();
     await expect(page.getByText('TechCorp').first()).toBeVisible();
     await expect(page.getByText('VP Operations').first()).toBeVisible();
-    await expect(page.getByText('Resume').first()).toBeVisible();
-    await expect(page.getByText('Cover Letter').first()).toBeVisible();
+    await expect(page.getByText('Interviewing').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /View Resume/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /View Letter/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Open Interview Lab/i }).first()).toBeVisible();
 
     await page.getByRole('button', { name: /^open$/i }).first().click();
 
@@ -34,17 +36,17 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('button', { name: /Download PDF/i })).toBeEnabled();
   });
 
-  test('organizes Interview Lab into sections and opens the 90-day plan from Documents', async ({ page }) => {
+  test('organizes Interview Lab into sections and opens the 30-60-90 plan from Documents', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Interview Lab' }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Documents' }).click();
 
-    await expect(page.getByRole('heading', { name: '90-Day Plan' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '30-60-90 Day Plan' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Thank You Note' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Open 90-Day Plan/i }).click();
-    await expect(page.getByRole('heading', { name: /90-Day Success Plan/i }).first()).toBeVisible();
+    await page.getByRole('button', { name: /Open 30-60-90 Day Plan/i }).click();
+    await expect(page.getByRole('heading', { name: /30-60-90 Success Plan/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Back to Documents/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Back to Documents/i }).click();
