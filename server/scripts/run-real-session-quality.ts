@@ -18,6 +18,7 @@ import {
   buildFinalReviewPrompts,
   extractHardRequirementRisksFromGapAnalysis,
   finalReviewResultSchema,
+  getEffectiveHardRequirementRisks,
   stabilizeFinalReviewResult,
 } from '../src/routes/resume-v2-pipeline-support.js';
 
@@ -214,8 +215,9 @@ async function runRealSessionQa() {
 
     const repaired = repairJSON<unknown>(reviewResponse.text);
     const parsedReview = finalReviewResultSchema.parse(repaired);
-    const hardRisks = extractHardRequirementRisksFromGapAnalysis(pipelineState.gap_analysis);
-    const finalReview = stabilizeFinalReviewResult(parsedReview, { hardRequirementRisks: hardRisks });
+    const rawHardRisks = extractHardRequirementRisksFromGapAnalysis(pipelineState.gap_analysis);
+    const effectiveHardRisks = getEffectiveHardRequirementRisks(parsedReview, rawHardRisks);
+    const finalReview = stabilizeFinalReviewResult(parsedReview, { hardRequirementRisks: rawHardRisks });
 
     const artifact = {
       label,
@@ -226,7 +228,7 @@ async function runRealSessionQa() {
       role_title: pipelineState.job_intelligence.role_title,
       job_requirement_count: jobRequirements.length,
       benchmark_requirement_count: benchmarkRequirements.length,
-      hard_requirement_risks: hardRisks,
+      hard_requirement_risks: effectiveHardRisks,
       gap_strength_summary: pipelineState.gap_analysis.strength_summary,
       critical_gaps: pipelineState.gap_analysis.critical_gaps,
       recruiter_scan: finalReview.six_second_scan,
@@ -247,7 +249,7 @@ async function runRealSessionQa() {
       role_title: pipelineState.job_intelligence.role_title,
       recruiter_decision: finalReview.six_second_scan.decision,
       verdict: finalReview.hiring_manager_verdict.rating,
-      hard_requirement_risks: hardRisks.length,
+      hard_requirement_risks: effectiveHardRisks.length,
       critical_concerns: finalReview.concerns.filter((item) => item.severity === 'critical').length,
       top_signal_preview: finalReview.six_second_scan.top_signals_seen[0]?.signal ?? null,
     });

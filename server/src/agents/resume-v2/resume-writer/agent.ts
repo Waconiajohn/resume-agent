@@ -18,6 +18,14 @@ import type { ResumeWriterInput, ResumeDraftOutput } from '../types.js';
 
 const loggedFuzzyExperienceFramingMatches = new Set<string>();
 
+const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
+- Return exactly one JSON object.
+- The first character of your response must be { and the last character must be }.
+- Use double-quoted JSON keys and string values.
+- Do not wrap the JSON in markdown fences.
+- Do not add introductions like "Here is the complete resume" or any other prose outside the JSON object.
+- Keep field values concise and resume-ready.`;
+
 const SYSTEM_PROMPT = `You are the #1 executive resume writer in the country. Your clients pay $3,000+ per engagement. You've placed candidates at Google, McKinsey, Fortune 100 C-suites, and PE-backed growth companies.
 
 You are writing a COMPLETE 2-page executive resume. Not an outline. Not suggestions. The finished product.
@@ -118,7 +126,9 @@ CRITICAL RULES:
 5. Last 10-15 years detailed, older roles in earlier_career (company/title/dates only)
 6. No graduation dates for candidates 45+ (career span > 20 years)
 7. Every bullet starts with a strong action verb — NEVER "responsible for"
-8. Quantify across money, time, volume, scope wherever possible`;
+8. Quantify across money, time, volume, scope wherever possible
+
+${JSON_OUTPUT_GUARDRAILS}`;
 
 export async function runResumeWriter(
   input: ResumeWriterInput,
@@ -320,7 +330,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
       ? `\n  Scope: team=${exp.inferred_scope.team_size ?? '?'}, budget=${exp.inferred_scope.budget ?? '?'}, geo=${exp.inferred_scope.geography ?? '?'}`
       : '';
     parts.push(`\n### ${exp.title} at ${exp.company} (${exp.start_date}–${exp.end_date})${scope}`);
-    for (const bullet of exp.bullets) {
+    for (const bullet of exp.bullets.slice(0, 4)) {
       parts.push(`  - ${bullet}`);
     }
     // Add experience framing from narrative strategy using fuzzy company name lookup.
@@ -360,7 +370,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     '',
     '## WHY ME STORY — YOUR NORTH STAR',
     '(This narrative arc must be reinforced in every section. Do not copy verbatim — let it shape every framing decision.)',
-    input.narrative.why_me_story.slice(0, 6000),
+    input.narrative.why_me_story.slice(0, 3000),
   );
 
   if (input.narrative.unique_differentiators && input.narrative.unique_differentiators.length > 0) {
@@ -389,6 +399,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
   parts.push(
     '',
     'Now write the complete resume. Every section reinforces the Why Me narrative. Every bullet answers: "Does this prove why I am THE candidate?" Mark is_new correctly.',
+    'Return JSON only. Do not write any introduction, explanation, or markdown fences.',
   );
 
   return parts.join('\n');

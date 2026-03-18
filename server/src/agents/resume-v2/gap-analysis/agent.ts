@@ -126,10 +126,13 @@ RULES:
 - For STRONG matches: provide the evidence. No strategy needed.
 - For PARTIAL matches: provide evidence AND a creative strategy to strengthen the positioning.
 - For MISSING matches: provide a creative strategy if ANY adjacent experience exists. If truly missing, put it in critical_gaps.
+- For benchmark items marked nice_to_have: only include a strategy when you find strong adjacent evidence. If the item is simply absent, leave strategy blank and do not add it to pending_strategies.
 - HARD REQUIREMENT RULE: If the requirement is a degree, certification, license, years-of-experience threshold, or other explicit screen-out credential and the candidate does not clearly have it, classify it as missing and include it in critical_gaps. Do NOT use adjacent experience as if it fully solves the missing credential.
 - If you offer adjacent framing for a hard requirement, the language must stay soft and truthful. It may explain related experience, but it cannot imply the candidate possesses the missing credential.
 - QUICK WIN RULE: Prefer strategies where the candidate already has nearby evidence that is simply under-explained on the resume. Those are the best items to strengthen first.
-- pending_strategies: include ALL strategies for partial/missing requirements. These go to the user for approval before being used in the resume.
+- pending_strategies: include the strategies that are worth coaching on before writing. Always include job_description strategies. For benchmark nice_to_have items, only include them when the strategy is genuinely useful.
+- evidence: keep evidence arrays compact — use at most 2 short strings per requirement.
+- source_evidence: keep it short and specific, ideally under 12 words.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
@@ -266,11 +269,11 @@ function buildUserMessage(input: GapAnalysisInput): string {
       const scope = e.inferred_scope
         ? ` (scope: team=${e.inferred_scope.team_size ?? '?'}, budget=${e.inferred_scope.budget ?? '?'}, geo=${e.inferred_scope.geography ?? '?'})`
         : '';
-      return `- ${e.title} at ${e.company} (${e.start_date}–${e.end_date})${scope}\n  ${e.bullets.slice(0, 5).join('\n  ')}`;
+      return `- ${e.title} at ${e.company} (${e.start_date}–${e.end_date})${scope}\n  ${e.bullets.slice(0, 3).join('\n  ')}`;
     }),
     '',
     'Hidden accomplishments detected:',
-    ...input.candidate.hidden_accomplishments.map(h => `- ${h}`),
+    ...input.candidate.hidden_accomplishments.slice(0, 5).map(h => `- ${h}`),
     '',
     `Technologies: ${input.candidate.technologies.join(', ')}`,
     `Certifications: ${input.candidate.certifications.join(', ')}`,
@@ -288,6 +291,9 @@ function buildUserMessage(input: GapAnalysisInput): string {
     '',
     'Compare this candidate against EVERY requirement in the canonical requirement catalog. Classify each as strong/partial/missing. For partial and missing, propose creative positioning strategies.',
     'Keep the output compact. Use exactly 1 targeted interview question per strategy and keep ai_reasoning brief.',
+    canonicalRequirements.length > 35
+      ? 'High-volume mode: focus detailed strategies on job-description requirements and only coach benchmark nice-to-have items when the adjacent evidence is genuinely strong.'
+      : 'Focus coaching detail on the requirements with the strongest adjacent evidence.',
     'Return JSON only. Do not include markdown fences or any explanation outside the JSON object.',
   );
 
@@ -296,6 +302,9 @@ function buildUserMessage(input: GapAnalysisInput): string {
 
 function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
   const requirements = output.requirements.map(normalizeRequirement);
+  const strongRequirements = requirements
+    .filter((requirement) => requirement.classification === 'strong')
+    .map((requirement) => requirement.requirement);
   const hardGapRequirements = requirements
     .filter((requirement) => (
       requirement.classification === 'missing' &&
@@ -309,7 +318,7 @@ function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
   const total = jobBreakdown.total + benchmarkBreakdown.total;
   const addressed = jobBreakdown.addressed + benchmarkBreakdown.addressed;
   const criticalGaps = dedupeStrings([
-    ...(output.critical_gaps ?? []),
+    ...(output.critical_gaps ?? []).filter((gap) => !isRequirementAlreadySatisfiedByStrongMatch(gap, strongRequirements)),
     ...hardGapRequirements,
   ]);
   const pendingStrategies = (output.pending_strategies ?? []).filter((item) => (
@@ -503,10 +512,11 @@ function evaluateRequirement(
   const requirementText = `${requirement.requirement} ${requirement.source_evidence}`.trim();
   const hardRequirement = isHardRequirement(requirement.requirement, requirement.source_evidence);
   const educationText = input.candidate.education.map((item) => `${item.degree} ${item.institution}`).join(' ');
-  const certificationText = input.candidate.certifications.join(' ');
+  const candidateCertifications = input.candidate.certifications.filter(Boolean);
+  const certificationText = candidateCertifications.join(' ');
   const combinedCredentialText = `${educationText} ${certificationText}`.toLowerCase();
 
-  if (/\byears? of experience\b|\bminimum of \d+ years\b/.test(requirementText.toLowerCase())) {
+  if (/\byears? of experience\b|\bminimum of \d+ years\b|\b\d+\+?\s+years?\b/.test(requirementText.toLowerCase())) {
     const requiredYears = extractRequiredYears(requirementText);
     if (requiredYears !== null) {
       const meetsRequirement = input.candidate.career_span_years >= requiredYears;
@@ -520,10 +530,10 @@ function evaluateRequirement(
   }
 
   if (/\b(certification|certified|license|licensed|licensure)\b/.test(requirementText.toLowerCase())) {
-    const directMatch = combinedCredentialText.includes(requirement.requirement.toLowerCase());
+    const directMatch = matchesCredentialRequirement(requirement.requirement, candidateCertifications);
     return {
       classification: directMatch ? 'strong' : 'missing',
-      evidence: directMatch ? input.candidate.certifications.filter(Boolean) : [],
+      evidence: directMatch ? candidateCertifications : [],
     };
   }
 
@@ -696,14 +706,59 @@ function dedupeStrings(values: string[]): string[] {
   return result;
 }
 
+function isRequirementAlreadySatisfiedByStrongMatch(
+  risk: string,
+  strongRequirements: string[],
+): boolean {
+  const normalizedRisk = normalizeForSet(risk);
+  if (strongRequirements.some((item) => normalizeForSet(item) === normalizedRisk)) {
+    return true;
+  }
+
+  const riskYears = extractRequiredYears(risk);
+  if (riskYears !== null) {
+    const strongYears = strongRequirements
+      .map((item) => extractRequiredYears(item))
+      .filter((value): value is number => value !== null);
+    if (strongYears.some((value) => value >= riskYears)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function canonicalizeCredentialText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(preferred|preference|preferred qualification|nice[- ]to[- ]have|bonus|plus|required|requirement)\b/g, ' ')
+    .replace(/\b(certification|certified|license|licensed|licensure)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function matchesCredentialRequirement(requirement: string, certifications: string[]): boolean {
+  const normalizedRequirement = canonicalizeCredentialText(requirement);
+  if (!normalizedRequirement) return false;
+
+  return certifications.some((certification) => {
+    const normalizedCertification = canonicalizeCredentialText(certification);
+    if (!normalizedCertification) return false;
+    return normalizedCertification.includes(normalizedRequirement)
+      || normalizedRequirement.includes(normalizedCertification);
+  });
+}
+
 function isHardRequirement(requirement: string, sourceEvidence?: string): boolean {
   const combined = `${requirement} ${sourceEvidence ?? ''}`.toLowerCase();
   if (isPreferredOnlyQualification(combined)) return false;
-  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|requirement|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(combined);
+  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|requirement|foreign equivalent|years of experience|year experience|minimum of \d+ years|\d+\+?\s+years?)\b/.test(combined);
 }
 
 function isPreferredOnlyQualification(text: string): boolean {
-  const hasPreferredSignal = /\b(preferred|preference|preferred qualification|nice to have|bonus|plus)\b/.test(text);
+  const hasPreferredSignal = /\b(preferred|preference|preferred qualification|nice[- ]to[- ]have|bonus|plus)\b/.test(text);
   const hasRequiredSignal = /\b(required|must have|must-have|minimum|mandatory|screen(?:-| )out|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(text);
   return hasPreferredSignal && !hasRequiredSignal;
 }

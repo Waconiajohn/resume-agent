@@ -435,7 +435,7 @@ function isHardRequirementRequirement(value: string): boolean {
 
 function isPreferredOnlyRequirement(value: string): boolean {
   const normalized = value.toLowerCase();
-  const hasPreferredSignal = /\b(preferred|preference|preferred qualification|nice to have|bonus|plus)\b/.test(normalized);
+  const hasPreferredSignal = /\b(preferred|preference|preferred qualification|nice[- ]to[- ]have|bonus|plus)\b/.test(normalized);
   const hasRequiredSignal = /\b(required|must have|must-have|minimum|mandatory|screen(?:-| )out|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(normalized);
   return hasPreferredSignal && !hasRequiredSignal;
 }
@@ -445,7 +445,7 @@ export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown)
   const requirements = (gapAnalysis as { requirements?: unknown }).requirements;
   const criticalGaps = (gapAnalysis as { critical_gaps?: unknown }).critical_gaps;
 
-  const requirementRisks = Array.isArray(requirements)
+  const parsedRequirements = Array.isArray(requirements)
     ? requirements
       .filter((item): item is { requirement?: unknown; classification?: unknown; source?: unknown } => !!item && typeof item === 'object')
       .map((item) => ({
@@ -454,11 +454,18 @@ export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown)
         source: item.source === 'benchmark' ? 'benchmark' : 'job_description',
       }))
       .filter((item) => item.requirement.length > 0)
+    : [];
+
+  const strongJobRequirements = parsedRequirements
+    .filter((item) => item.source === 'job_description')
+    .filter((item) => item.classification === 'strong')
+    .map((item) => item.requirement);
+
+  const requirementRisks = parsedRequirements
       .filter((item) => item.source === 'job_description')
       .filter((item) => isHardRequirementRequirement(item.requirement))
       .filter((item) => item.classification !== 'strong')
-      .map((item) => item.requirement)
-    : [];
+      .map((item) => item.requirement);
 
   const criticalGapRisks = Array.isArray(criticalGaps)
     ? criticalGaps
@@ -466,6 +473,7 @@ export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown)
       .map((item) => item.trim())
       .filter((item) => item.length > 0)
       .filter((item) => isHardRequirementRequirement(item))
+      .filter((item) => !isHardRequirementAlreadySatisfied(item, strongJobRequirements))
     : [];
 
   return Array.from(new Set([
@@ -533,9 +541,9 @@ export function stabilizeFinalReviewResult(
     },
     improvement_summary: [...result.improvement_summary],
   };
-  const hardRequirementRisks = filterContradictedHardRequirementRisks(
-    Array.from(new Set((options?.hardRequirementRisks ?? []).filter(Boolean))),
+  const hardRequirementRisks = getEffectiveHardRequirementRisks(
     normalized,
+    options?.hardRequirementRisks ?? [],
   );
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
@@ -584,6 +592,11 @@ export function stabilizeFinalReviewResult(
   if (!normalized.six_second_scan.reason.trim()) {
     normalized.six_second_scan.reason = normalized.hiring_manager_verdict.summary;
   }
+
+  normalized.six_second_scan.important_signals_missing = normalized.six_second_scan.important_signals_missing.map((item) => ({
+    ...item,
+    why_it_matters: softenPreferredQualificationRiskLanguage(item.signal, item.why_it_matters),
+  }));
 
   if (hardRequirementRisks.length > 0) {
     const existingMissingSignals = new Set(
@@ -656,6 +669,16 @@ export function stabilizeFinalReviewResult(
   return normalized;
 }
 
+export function getEffectiveHardRequirementRisks(
+  result: FinalReviewResult,
+  hardRequirementRisks: string[],
+): string[] {
+  return filterContradictedHardRequirementRisks(
+    Array.from(new Set(hardRequirementRisks.filter(Boolean))),
+    result,
+  );
+}
+
 function capFitAssessment(
   current: 'strong' | 'moderate' | 'weak',
   cap: 'strong' | 'moderate' | 'weak',
@@ -677,6 +700,28 @@ function filterContradictedHardRequirementRisks(
   return risks.filter((risk) => !isYearsThresholdContradictedByEvidence(risk, signalCorpus));
 }
 
+function isHardRequirementAlreadySatisfied(
+  risk: string,
+  strongRequirements: string[],
+): boolean {
+  const normalizedRisk = normalizeReviewText(risk);
+  if (strongRequirements.some((item) => normalizeReviewText(item) === normalizedRisk)) {
+    return true;
+  }
+
+  const riskYears = extractYearsThreshold(risk);
+  if (riskYears !== null) {
+    const strongestYears = strongRequirements
+      .map((item) => extractYearsThreshold(item))
+      .filter((value): value is number => value !== null);
+    if (strongestYears.some((value) => value >= riskYears)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function isYearsThresholdContradictedByEvidence(
   risk: string,
   signalCorpus: string,
@@ -695,6 +740,14 @@ function isYearsThresholdContradictedByEvidence(
 function extractYearsThreshold(text: string): number | null {
   const match = text.match(/\b(?:minimum of\s*)?(\d+)\+?\s+years?\b/i);
   return match ? Number(match[1]) : null;
+}
+
+function softenPreferredQualificationRiskLanguage(signal: string, whyItMatters: string): string {
+  if (!/preferred qualification|preferred|nice to have|bonus|plus/i.test(`${signal} ${whyItMatters}`)) {
+    return whyItMatters;
+  }
+
+  return whyItMatters.replace(/screen(?:-| )out risk/gi, 'competitive disadvantage');
 }
 
 export function buildFinalReviewPrompts({

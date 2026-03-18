@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildFinalReviewPrompts,
   extractHardRequirementRisksFromGapAnalysis,
+  getEffectiveHardRequirementRisks,
   stabilizeFinalReviewResult,
 } from '../routes/resume-v2-pipeline-support.js';
 
@@ -270,8 +271,25 @@ describe('resume-v2 final review prompts', () => {
     ]);
   });
 
+  it('ignores critical-gap years risks that are already satisfied by a strong requirement match', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: '10+ years in cloud infrastructure/architecture roles',
+          classification: 'strong',
+          source: 'job_description',
+        },
+      ],
+      critical_gaps: [
+        '10+ years in cloud infrastructure/architecture roles',
+      ],
+    });
+
+    expect(hardRisks).toEqual([]);
+  });
+
   it('suppresses years-threshold risks when final review already shows sufficient years of experience', () => {
-    const stabilized = stabilizeFinalReviewResult({
+    const result: Parameters<typeof stabilizeFinalReviewResult>[0] = {
       six_second_scan: {
         decision: 'continue_reading',
         reason: 'Strong first impression.',
@@ -303,8 +321,11 @@ describe('resume-v2 final review prompts', () => {
         reframing_opportunities: [],
       },
       improvement_summary: [],
-    }, { hardRequirementRisks: ['10+ years in cloud infrastructure/architecture roles'] });
+    };
+    const effectiveRisks = getEffectiveHardRequirementRisks(result, ['10+ years in cloud infrastructure/architecture roles']);
+    const stabilized = stabilizeFinalReviewResult(result, { hardRequirementRisks: ['10+ years in cloud infrastructure/architecture roles'] });
 
+    expect(effectiveRisks).toEqual([]);
     expect(stabilized.concerns.some((concern) => concern.id === 'hard_requirement_risk')).toBe(false);
     expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('10+ years'))).toBe(false);
     expect(stabilized.fit_assessment.job_description_fit).toBe('strong');
@@ -350,5 +371,49 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.benchmark_alignment).toBe('moderate');
     expect(stabilized.fit_assessment.business_impact).toBe('strong');
     expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
+  });
+
+  it('softens preferred-qualification missing-signal language so it is not treated like a screen-out risk', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Solid first impression.',
+        top_signals_seen: [
+          {
+            signal: '18 years of manufacturing leadership',
+            why_it_matters: 'Shows strong operations depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'APICS CSCP or CPIM certification',
+            why_it_matters: 'Lack of this certification may be a screen-out risk, as it is a preferred qualification for the role',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong manufacturing operator with good scale.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toContain('competitive disadvantage');
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).not.toContain('screen-out risk');
   });
 });

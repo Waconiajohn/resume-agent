@@ -13,6 +13,14 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import type { TruthVerificationInput, TruthVerificationOutput } from '../types.js';
 
+const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
+- Return exactly one JSON object.
+- The first character of your response must be { and the last character must be }.
+- Use double-quoted JSON keys and string values.
+- Do not wrap the JSON in markdown fences.
+- Do not add commentary, bullets, or notes outside the JSON object.
+- Keep source_text and note concise; use an empty string when there is nothing useful to add.`;
+
 const SYSTEM_PROMPT = `You are a fact-checker for executive resumes. Your job: verify that EVERY claim in this resume can be traced to the candidate's original resume or structured profile data.
 
 For each claim (bullet point, metric, accomplishment, scope statement), determine:
@@ -48,7 +56,9 @@ RULES:
 - truth_score = (verified + plausible) / total claims × 100
 - "plausible" inferences are acceptable (budget from team size, etc.) — don't flag these
 - Flag anything "unverified" or "fabricated" in flagged_items
-- Be strict but fair — creative positioning of REAL experience is fine, inventing experience is not`;
+- Be strict but fair — creative positioning of REAL experience is fine, inventing experience is not
+
+${JSON_OUTPUT_GUARDRAILS}`;
 
 export async function runTruthVerification(
   input: TruthVerificationInput,
@@ -56,7 +66,7 @@ export async function runTruthVerification(
 ): Promise<TruthVerificationOutput> {
   const resumeText = formatDraftForVerification(input);
 
-  const userMessage = `## Resume Draft to Verify\n\n${resumeText}\n\n## Original Resume (source of truth)\n\n${input.original_resume}\n\nVerify every claim in the draft against the original resume.`;
+  const userMessage = `## Resume Draft to Verify\n\n${resumeText}\n\n## Original Resume (source of truth)\n\n${input.original_resume}\n\nVerify every claim in the draft against the original resume. Return JSON only.`;
 
   try {
     const response = await llm.chat({

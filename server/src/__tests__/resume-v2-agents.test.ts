@@ -632,6 +632,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
       expect(llmCall.system).toContain('Generate EXACTLY 1 targeted question');
+      expect(llmCall.system).toContain('For benchmark items marked nice_to_have: only include a strategy when you find strong adjacent evidence');
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
       expect(llmCall.messages[0].content).toContain('Keep the output compact.');
     });
@@ -707,6 +708,80 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.critical_gaps).toContain('Bachelor’s degree in Chemical Engineering or related field');
       expect(result.pending_strategies).toEqual([]);
       expect(result.requirements[0]?.classification).toBe('missing');
+    });
+
+    it('deterministic fallback treats explicit years thresholds as strong when career span clears them', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const yearsInput: GapAnalysisInput = {
+        ...input,
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: '10+ years in cloud infrastructure/architecture roles',
+              importance: 'must_have',
+              evidence_from_jd: 'Required qualification: 10+ years in cloud infrastructure/architecture roles',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+      };
+
+      const result = await runGapAnalysis(yearsInput);
+      const yearsRequirement = result.requirements.find((item) => item.requirement.includes('10+ years'));
+
+      expect(yearsRequirement?.classification).toBe('strong');
+      expect(result.critical_gaps).not.toContain('10+ years in cloud infrastructure/architecture roles');
+    });
+
+    it('deterministic fallback matches certifications even when the requirement includes certification labels', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const certificationInput: GapAnalysisInput = {
+        ...input,
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'AWS Solutions Architect certification',
+              importance: 'must_have',
+              evidence_from_jd: 'Required qualification: AWS Solutions Architect – Professional certification',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+      };
+
+      const result = await runGapAnalysis(certificationInput);
+      const certificationRequirement = result.requirements.find((item) => item.requirement.includes('AWS Solutions Architect'));
+
+      expect(certificationRequirement?.classification).toBe('strong');
+      expect(result.critical_gaps).not.toContain('AWS Solutions Architect certification');
+    });
+
+    it('deterministic fallback does not treat nice-to-have certifications as hard gaps', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const preferredCertificationInput: GapAnalysisInput = {
+        ...input,
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'AWS Solutions Architect – Professional certification (nice-to-have)',
+              importance: 'nice_to_have',
+              evidence_from_jd: 'Nice-to-have qualification',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+      };
+
+      const result = await runGapAnalysis(preferredCertificationInput);
+
+      expect(result.critical_gaps).toEqual([]);
+      expect(result.requirements[0]?.classification).toBe('strong');
     });
   });
 
@@ -957,6 +1032,18 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(userMessage).toContain('Budget Management');
     });
 
+    it('uses strict JSON guardrails in the primary prompt', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
+
+      await runResumeWriter(input);
+
+      const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.system).toContain('Do not add introductions like "Here is the complete resume"');
+      expect(llmCall.messages[0].content).toContain('Return JSON only. Do not write any introduction');
+    });
+
     it('uses MODEL_PRIMARY', async () => {
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
       mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
@@ -1059,6 +1146,18 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       const userMessage: string = mockLlmChat.mock.calls[0][0].messages[0].content;
       expect(userMessage).toContain('Resume Draft to Verify');
       expect(userMessage).toContain('Jane Smith');
+    });
+
+    it('uses strict JSON guardrails in the primary prompt', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(TRUTH_OUTPUT);
+
+      await runTruthVerification(input);
+
+      const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.system).toContain('Do not wrap the JSON in markdown fences');
+      expect(llmCall.messages[0].content).toContain('Return JSON only.');
     });
 
     it('uses MODEL_PRIMARY', async () => {
@@ -1283,7 +1382,10 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.system).toContain('Maximum 5 findings');
+      expect(llmCall.system).toContain('Focus on the most visible tone issues first');
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
+      expect(llmCall.messages[0].content).toContain('Return at most 5 findings');
     });
 
     it('uses MODEL_MID', async () => {

@@ -19,7 +19,8 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Use double-quoted JSON keys and string values.
 - Do not wrap the JSON in markdown fences.
 - Do not add commentary, introductions, or notes outside the JSON object.
-- If there are no findings, return an empty findings array instead of prose.`;
+- If there are no findings, return an empty findings array instead of prose.
+- Keep the output compact: return at most 5 findings.`;
 
 const SYSTEM_PROMPT = `You are an executive communications director who has edited 1,000+ C-suite resumes. You can spot junior language, AI-generated phrasing, and generic filler from a mile away.
 
@@ -48,10 +49,12 @@ OUTPUT FORMAT: Return valid JSON:
 
 RULES:
 - tone_score: 100 = perfect executive voice, deduct 3 points per finding
-- suggestion: don't just flag — REWRITE the problematic text in proper executive voice
+- suggestion: don't just flag — REWRITE the problematic text in proper executive voice, keeping the rewrite short and crisp
 - Be specific: "Led cross-functional team" is fine. "Responsible for leading teams" is not.
 - Executives use: "drove," "orchestrated," "championed," "spearheaded," "influenced," "architected"
 - Executives DON'T use: "helped," "assisted," "supported," "worked on," "was responsible for"
+- Focus on the most visible tone issues first: headline, summary, selected accomplishments, and the first bullets under each role.
+- Return only the highest-value tone issues. Maximum 5 findings.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -61,7 +64,7 @@ export async function runExecutiveTone(
 ): Promise<ExecutiveToneOutput> {
   const resumeText = formatDraftForTone(input);
 
-  const userMessage = `Audit this resume for executive tone:\n\n${resumeText}\n\nReturn JSON only.`;
+  const userMessage = `Audit this resume for executive tone:\n\n${resumeText}\n\nReturn JSON only. Return at most 5 findings, keep each suggestion concise, and focus on the most visible issues first.`;
 
   try {
     const response = await llm.chat({
@@ -121,15 +124,15 @@ function formatDraftForTone(input: ExecutiveToneInput): string {
     `SUMMARY: ${d.executive_summary.content}`,
     '',
     'SELECTED ACCOMPLISHMENTS:',
-    ...d.selected_accomplishments.map(a => `- ${a.content}`),
+    ...d.selected_accomplishments.slice(0, 5).map(a => `- ${a.content}`),
     '',
     'PROFESSIONAL EXPERIENCE:',
   ];
 
-  for (const exp of d.professional_experience) {
+  for (const exp of d.professional_experience.slice(0, 4)) {
     parts.push(`\n${exp.title} at ${exp.company}`);
     parts.push(`Scope: ${exp.scope_statement}`);
-    for (const b of exp.bullets) {
+    for (const b of exp.bullets.slice(0, 3)) {
       parts.push(`- ${b.text}`);
     }
   }
@@ -190,7 +193,7 @@ function buildDeterministicExecutiveToneFallback(input: ExecutiveToneInput): Exe
     experience.bullets.forEach((bullet) => inspect(bullet.text, `${experience.company} bullet`));
   });
 
-  const deduped = dedupeToneFindings(findings).slice(0, 20);
+  const deduped = dedupeToneFindings(findings).slice(0, 5);
   const toneScore = Math.max(40, 100 - (deduped.length * 3));
 
   return {
