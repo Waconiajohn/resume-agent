@@ -538,7 +538,7 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
     const serialized = JSON.stringify(session);
     const originalGetItem = Storage.prototype.getItem;
 
-    Storage.prototype.getItem = function patchedGetItem(key: string) {
+    Storage.prototype.getItem = function (key: string) {
       if (typeof key === 'string' && key.includes('auth-token')) {
         return serialized;
       }
