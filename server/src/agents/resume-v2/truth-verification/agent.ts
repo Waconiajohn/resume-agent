@@ -73,6 +73,7 @@ export async function runTruthVerification(
       model: MODEL_PRIMARY,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
       max_tokens: 8192,
       signal,
     });
@@ -98,6 +99,7 @@ export async function runTruthVerification(
       model: MODEL_PRIMARY,
       system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
       messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
       max_tokens: 8192,
       signal,
     });

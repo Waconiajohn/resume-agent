@@ -71,6 +71,7 @@ export async function runExecutiveTone(
       model: MODEL_MID,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
       max_tokens: 4096,
       signal,
     });
@@ -96,6 +97,7 @@ export async function runExecutiveTone(
       model: MODEL_MID,
       system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
       messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
       max_tokens: 4096,
       signal,
     });

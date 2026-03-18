@@ -633,6 +633,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(llmCall.system).toContain('The first character of your response must be {');
       expect(llmCall.system).toContain('Generate EXACTLY 1 targeted question');
       expect(llmCall.system).toContain('For benchmark items marked nice_to_have: only include a strategy when you find strong adjacent evidence');
+      expect(llmCall.response_format).toEqual({ type: 'json_object' });
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
       expect(llmCall.messages[0].content).toContain('Keep the output compact.');
     });
@@ -1041,6 +1042,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
       expect(llmCall.system).toContain('Do not add introductions like "Here is the complete resume"');
+      expect(llmCall.response_format).toEqual({ type: 'json_object' });
       expect(llmCall.messages[0].content).toContain('Return JSON only. Do not write any introduction');
     });
 
@@ -1157,6 +1159,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
       expect(llmCall.system).toContain('Do not wrap the JSON in markdown fences');
+      expect(llmCall.response_format).toEqual({ type: 'json_object' });
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
     });
 
@@ -1384,6 +1387,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(llmCall.system).toContain('The first character of your response must be {');
       expect(llmCall.system).toContain('Maximum 5 findings');
       expect(llmCall.system).toContain('Focus on the most visible tone issues first');
+      expect(llmCall.response_format).toEqual({ type: 'json_object' });
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
       expect(llmCall.messages[0].content).toContain('Return at most 5 findings');
     });

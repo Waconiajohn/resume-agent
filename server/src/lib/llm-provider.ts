@@ -12,6 +12,7 @@ export interface ChatParams {
   messages: ChatMessage[];
   tools?: ToolDef[];
   tool_choice?: { type: 'any' } | { type: 'auto' } | { type: 'none' };
+  response_format?: { type: 'json_object' };
   max_tokens: number;
   signal?: AbortSignal;
   session_id?: string;
@@ -605,6 +606,10 @@ export class ZAIProvider implements LLMProvider {
       } else {
         body.tool_choice = 'auto';
       }
+    }
+
+    if (params.response_format) {
+      body.response_format = params.response_format;
     }
 
     return body;
