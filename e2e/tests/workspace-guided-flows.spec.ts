@@ -59,6 +59,34 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('heading', { name: /Build documents without leaving the lab/i })).toBeVisible();
   });
 
+  test('opens the first-class job workspace and reopens exact saved later-stage assets', async ({ page }) => {
+    await page.goto('/workspace?room=resume', { waitUntil: 'domcontentloaded' });
+
+    await page.getByRole('button', { name: /Full Page/i }).first().click();
+    await expect(page).toHaveURL(/\/workspace\/job\/job-offerco$/);
+    await expect(page.locator('h1', { hasText: 'OfferCo' })).toBeVisible();
+    await expect(page.getByText(/Exact assets reopen from here/i)).toBeVisible();
+
+    await page.goto('/workspace/job/job-techcorp', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /Review Saved Prep/i }).first().click();
+    await expect(page).toHaveURL(/room=interview/);
+    await expect(page).toHaveURL(/focus=prep/);
+    await expect(page).toHaveURL(/session=mock-interview-prep-session/);
+    await expect(page.getByText('Lead with executive operating cadence and cross-functional alignment.')).toBeVisible();
+
+    await page.goto('/workspace/job/job-techcorp', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /Review Saved Note/i }).first().click();
+    await expect(page).toHaveURL(/focus=thank-you/);
+    await expect(page).toHaveURL(/session=mock-thank-you-session/);
+    await expect(page.getByText(/thoughtful conversation about operating cadence/i)).toBeVisible();
+
+    await page.goto('/workspace/job/job-offerco', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /Review Saved Strategy/i }).first().click();
+    await expect(page).toHaveURL(/room=salary-negotiation/);
+    await expect(page).toHaveURL(/session=mock-nego-session/);
+    await expect(page.getByText(/scope, market position, and first-year risk offset/i)).toBeVisible();
+  });
+
   test('redirects legacy personal-brand room links into Career Profile', async ({ page }) => {
     await page.goto('/workspace?room=personal-brand', { waitUntil: 'domcontentloaded' });
 

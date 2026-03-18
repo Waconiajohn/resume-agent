@@ -15,6 +15,7 @@ import { createInterviewPrepProductConfig } from '../agents/interview-prep/produ
 import { FF_INTERVIEW_PREP } from '../lib/feature-flags.js';
 import { loadAgentContextBundle } from '../lib/career-profile-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { InterviewPrepState, InterviewPrepSSEEvent } from '../agents/interview-prep/types.js';
 
@@ -81,4 +82,62 @@ export const interviewPrepRoutes = createProductRoutes<InterviewPrepState, Inter
   },
 
   momentumActivityType: 'interview_prep_completed',
+});
+
+interviewPrepRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
+  if (!FF_INTERVIEW_PREP) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+
+  const { data, error } = await supabaseAdmin
+    .from('interview_prep_reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id }, 'GET /interview-prep/reports/latest: query failed');
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No reports found' }, 404);
+  }
+
+  return c.json({ report: data });
+});
+
+interviewPrepRoutes.get('/reports/session/:sessionId', rateLimitMiddleware(30, 60_000), async (c) => {
+  if (!FF_INTERVIEW_PREP) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+  const sessionId = c.req.param('sessionId');
+  const parsed = z.string().uuid().safeParse(sessionId);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('interview_prep_reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('session_id', parsed.data)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id, sessionId: parsed.data }, 'GET /interview-prep/reports/session/:sessionId: query failed');
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No report found for session' }, 404);
+  }
+
+  return c.json({ report: data });
 });

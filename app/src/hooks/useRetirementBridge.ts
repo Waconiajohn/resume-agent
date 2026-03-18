@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
+import { createProductSession } from '@/lib/create-product-session';
 import { supabase } from '@/lib/supabase';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -195,10 +196,6 @@ export function useRetirementBridge() {
       setPhase('error');
       return;
     }
-    tokenRef.current = token;
-
-    const sessionId = crypto.randomUUID();
-    sessionIdRef.current = sessionId;
 
     phaseRef.current = 'generating_questions';
     setPhase('generating_questions');
@@ -207,13 +204,19 @@ export function useRetirementBridge() {
     setSummary(null);
 
     try {
+      const { accessToken, session } = await createProductSession({
+        productType: 'retirement_bridge',
+      });
+      tokenRef.current = accessToken;
+      sessionIdRef.current = session.id;
+
       const res = await fetch(`${API_BASE}/retirement-bridge/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ session_id: sessionId }),
+        body: JSON.stringify({ session_id: session.id }),
       });
 
       if (!res.ok) {
@@ -225,7 +228,7 @@ export function useRetirementBridge() {
         return;
       }
 
-      connectSSE(sessionId);
+      connectSSE(session.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (mountedRef.current) {

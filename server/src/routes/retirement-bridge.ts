@@ -20,6 +20,7 @@ import { FF_RETIREMENT_BRIDGE } from '../lib/feature-flags.js';
 import { getUserContext } from '../lib/platform-context.js';
 import { getEmotionalBaseline } from '../lib/emotional-baseline.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import logger from '../lib/logger.js';
 import type { RetirementBridgeState, RetirementBridgeSSEEvent } from '../agents/retirement-bridge/types.js';
 
@@ -50,9 +51,10 @@ export const retirementBridgeRoutes = createProductRoutes<RetirementBridgeState,
     const transformed: Record<string, unknown> = { ...input };
 
     try {
-      const [baseline, profileRows, strategyRows] = await Promise.all([
+      const [baseline, profileRows, careerProfileRows, strategyRows] = await Promise.all([
         getEmotionalBaseline(userId),
         getUserContext(userId, 'client_profile'),
+        getUserContext(userId, 'career_profile'),
         getUserContext(userId, 'positioning_strategy'),
       ]);
 
@@ -60,6 +62,9 @@ export const retirementBridgeRoutes = createProductRoutes<RetirementBridgeState,
 
       if (profileRows.length > 0) {
         platformContext.client_profile = profileRows[0].content;
+      }
+      if (careerProfileRows.length > 0) {
+        platformContext.career_profile = careerProfileRows[0].content;
       }
       if (strategyRows.length > 0) {
         platformContext.positioning_strategy = strategyRows[0].content;
@@ -81,4 +86,62 @@ export const retirementBridgeRoutes = createProductRoutes<RetirementBridgeState,
     return transformed;
   },
   momentumActivityType: 'retirement_assessment_completed',
+});
+
+retirementBridgeRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async (c) => {
+  if (!FF_RETIREMENT_BRIDGE) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+
+  const { data, error } = await supabaseAdmin
+    .from('retirement_readiness_assessments')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id }, 'GET /retirement-bridge/reports/latest: query failed');
+    return c.json({ error: 'Failed to fetch assessment' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No assessments found' }, 404);
+  }
+
+  return c.json({ report: data });
+});
+
+retirementBridgeRoutes.get('/reports/session/:sessionId', rateLimitMiddleware(30, 60_000), async (c) => {
+  if (!FF_RETIREMENT_BRIDGE) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+  const sessionId = c.req.param('sessionId');
+  const parsed = z.string().uuid().safeParse(sessionId);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('retirement_readiness_assessments')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('session_id', parsed.data)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id, sessionId: parsed.data }, 'GET /retirement-bridge/reports/session/:sessionId: query failed');
+    return c.json({ error: 'Failed to fetch assessment' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No assessment found for session' }, 404);
+  }
+
+  return c.json({ report: data });
 });

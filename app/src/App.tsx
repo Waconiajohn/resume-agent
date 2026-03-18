@@ -15,6 +15,7 @@ import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
+import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
 import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
@@ -524,6 +525,20 @@ export default function App() {
                     initialResumeText={intakeInitialResumeText}
                     initialSessionId={v2SessionId ?? undefined}
                     onSyncToMasterResume={handleSyncV2ResumeToMaster}
+                  />
+                )}
+              />
+              <Route
+                path="/workspace/job/:jobId"
+                element={(
+                  <JobWorkspaceRoute
+                    sessions={sessions}
+                    loading={sessionLoading}
+                    onLoadSessions={listSessions}
+                    onResumeSession={handleResumeSession}
+                    onNavigate={navigateTo}
+                    onGetSessionResume={getSessionResume}
+                    onGetSessionCoverLetter={getSessionCoverLetter}
                   />
                 )}
               />

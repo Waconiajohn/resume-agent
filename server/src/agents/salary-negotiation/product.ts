@@ -131,6 +131,7 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
       session_id: sessionId,
       user_id: userId,
       current_stage: 'research',
+      job_application_id: input.job_application_id as string | undefined,
       offer_details: input.offer_details as SalaryNegotiationState['offer_details'],
       current_compensation: input.current_compensation as SalaryNegotiationState['current_compensation'],
       target_context: {
@@ -296,6 +297,8 @@ export function createSalaryNegotiationProductConfig(): ProductConfig<SalaryNego
           .from('salary_negotiation_reports')
           .insert({
             user_id: state.user_id,
+            session_id: state.session_id,
+            job_application_id: state.job_application_id ?? null,
             offer_company: state.offer_details.company,
             offer_role: state.offer_details.role,
             target_industry: state.target_context?.target_industry ?? '',

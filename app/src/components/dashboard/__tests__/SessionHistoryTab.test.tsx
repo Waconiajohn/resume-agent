@@ -290,6 +290,30 @@ describe('SessionHistoryTab', () => {
     expect(onMoveJobStage).toHaveBeenCalledWith('job-app-1', 'offer');
   });
 
+  it('can open a first-class job workspace screen for linked applications', () => {
+    const onNavigate = vi.fn();
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          onNavigate,
+          sessions: [
+            makeSession({
+              id: 'resume-1',
+              product_type: 'resume_v2',
+              job_application_id: 'job-app-1',
+              job_stage: 'interviewing',
+            }),
+          ],
+          jobApplications: [makeApplication({ id: 'job-app-1' })],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /full page/i }));
+
+    expect(onNavigate).toHaveBeenCalledWith('/workspace/job/job-app-1');
+  });
+
   it('shows later-stage assets inside the job workspace when they are linked to the same job application', () => {
     const onNavigate = vi.fn();
     render(
@@ -340,8 +364,8 @@ describe('SessionHistoryTab', () => {
     expect(screen.getAllByText('30-60-90 Plan').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Salary Negotiation').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: /open strategy/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /review saved strategy/i })[0]);
 
-    expect(onNavigate).toHaveBeenCalledWith('/workspace?room=salary-negotiation&job=job-app-1&company=Acme+Corp&role=VP+Engineering');
+    expect(onNavigate).toHaveBeenCalledWith('/workspace?room=salary-negotiation&job=job-app-1&company=Acme+Corp&role=VP+Engineering&session=nego-1');
   });
 });

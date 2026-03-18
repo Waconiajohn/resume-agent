@@ -110,6 +110,81 @@ const MOCK_SESSIONS = [
     updated_at: '2026-03-10T17:10:00.000Z',
   },
   {
+    id: 'mock-interview-prep-session',
+    status: 'completed',
+    current_phase: 'quality_review',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-techcorp',
+    pipeline_status: 'complete',
+    pipeline_stage: 'complete',
+    company_name: 'TechCorp',
+    job_title: 'VP Operations',
+    job_stage: 'interviewing',
+    product_type: 'interview_prep',
+    created_at: '2026-03-11T12:00:00.000Z',
+    updated_at: '2026-03-11T12:30:00.000Z',
+  },
+  {
+    id: 'mock-thank-you-session',
+    status: 'completed',
+    current_phase: 'quality_review',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-techcorp',
+    pipeline_status: 'complete',
+    pipeline_stage: 'complete',
+    company_name: 'TechCorp',
+    job_title: 'VP Operations',
+    job_stage: 'interviewing',
+    product_type: 'thank_you_note',
+    created_at: '2026-03-12T13:00:00.000Z',
+    updated_at: '2026-03-12T13:20:00.000Z',
+  },
+  {
+    id: 'mock-plan-session',
+    status: 'completed',
+    current_phase: 'quality_review',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-techcorp',
+    pipeline_status: 'complete',
+    pipeline_stage: 'complete',
+    company_name: 'TechCorp',
+    job_title: 'VP Operations',
+    job_stage: 'interviewing',
+    product_type: 'ninety_day_plan',
+    created_at: '2026-03-12T14:00:00.000Z',
+    updated_at: '2026-03-12T14:20:00.000Z',
+  },
+  {
+    id: 'mock-offer-resume-session',
+    status: 'completed',
+    current_phase: 'quality_review',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-offerco',
+    pipeline_status: 'complete',
+    pipeline_stage: 'complete',
+    company_name: 'OfferCo',
+    job_title: 'Chief Operating Officer',
+    job_stage: 'offer',
+    product_type: 'resume_v2',
+    created_at: '2026-03-13T12:00:00.000Z',
+    updated_at: '2026-03-13T12:30:00.000Z',
+  },
+  {
+    id: 'mock-nego-session',
+    status: 'completed',
+    current_phase: 'quality_review',
+    master_resume_id: 'resume-default',
+    job_application_id: 'job-offerco',
+    pipeline_status: 'complete',
+    pipeline_stage: 'complete',
+    company_name: 'OfferCo',
+    job_title: 'Chief Operating Officer',
+    job_stage: 'offer',
+    product_type: 'salary_negotiation',
+    created_at: '2026-03-13T13:00:00.000Z',
+    updated_at: '2026-03-13T13:15:00.000Z',
+  },
+  {
     id: 'mock-second-resume-session',
     status: 'active',
     current_phase: 'gap_analysis',
@@ -157,6 +232,23 @@ const MOCK_APPLICATIONS = [
     ],
     created_at: '2026-03-12T08:00:00.000Z',
     updated_at: '2026-03-12T15:45:00.000Z',
+  },
+  {
+    id: 'job-offerco',
+    role_title: 'Chief Operating Officer',
+    company_name: 'OfferCo',
+    stage: 'offer',
+    source: 'manual',
+    next_action: 'Review the saved negotiation strategy before responding to the offer.',
+    next_action_due: '2026-03-19T13:00:00.000Z',
+    stage_history: [
+      { stage: 'saved', at: '2026-03-11T10:00:00.000Z' },
+      { stage: 'applied', at: '2026-03-11T12:00:00.000Z' },
+      { stage: 'interviewing', at: '2026-03-12T09:00:00.000Z' },
+      { stage: 'offer', at: '2026-03-13T11:00:00.000Z' },
+    ],
+    created_at: '2026-03-11T10:00:00.000Z',
+    updated_at: '2026-03-13T11:00:00.000Z',
   },
 ];
 
@@ -457,6 +549,46 @@ const MOCK_FINAL_REVIEW_RESULT = {
   ],
 } as const;
 
+const EXACT_REPORTS = {
+  'interview-prep': {
+    'mock-interview-prep-session': {
+      report_markdown: '# Interview Prep\n\n## Top Story\nLead with executive operating cadence and cross-functional alignment.',
+      quality_score: 91,
+    },
+  },
+  'thank-you-note': {
+    'mock-thank-you-session': {
+      report_markdown: '# Thank You Notes\n\n## TechCorp Panel\nThank you for the thoughtful conversation about operating cadence.',
+      quality_score: 88,
+    },
+  },
+  'ninety-day-plan': {
+    'mock-plan-session': {
+      report_markdown: '# 30-60-90 Success Plan\n\n## Days 1-30\nListen, learn, and map executive stakeholders.',
+      quality_score: 90,
+    },
+  },
+  'salary-negotiation': {
+    'mock-nego-session': {
+      report_markdown: '# Negotiation Playbook\n\n## Opening Position\nLead with scope, market position, and first-year risk offset.',
+      quality_score: 89,
+    },
+  },
+  'retirement-bridge': {
+    'mock-retirement-session': {
+      session_id: 'mock-retirement-session',
+      overall_readiness: 'yellow',
+      readiness_summary: {
+        dimensions: [],
+        overall_readiness: 'yellow',
+        key_observations: ['Healthcare bridge needs discussion.'],
+        recommended_planner_topics: ['Healthcare bridge options'],
+        shareable_summary: 'A planner should pressure-test healthcare bridge assumptions before a transition.',
+      },
+    },
+  },
+} as const;
+
 function buildJsonResponse(body: unknown) {
   return {
     status: 200,
@@ -523,6 +655,31 @@ async function fulfillApiRoute(route: Route) {
         { context_type: 'client_profile', source_product: 'onboarding', updated_at: new Date().toISOString() },
       ],
     }));
+    return;
+  }
+
+  const sessionReportMatch = path.match(/^\/api\/([^/]+)\/reports\/session\/([^/]+)$/);
+  if (sessionReportMatch && method === 'GET') {
+    const [, productSlug, sessionId] = sessionReportMatch;
+    const report = (EXACT_REPORTS as Record<string, Record<string, unknown>>)[productSlug]?.[sessionId];
+    if (report) {
+      await route.fulfill(buildJsonResponse({ report }));
+      return;
+    }
+    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'No report found' }) });
+    return;
+  }
+
+  const latestReportMatch = path.match(/^\/api\/([^/]+)\/reports\/latest$/);
+  if (latestReportMatch && method === 'GET') {
+    const [, productSlug] = latestReportMatch;
+    const reportMap = (EXACT_REPORTS as Record<string, Record<string, unknown>>)[productSlug];
+    const firstReport = reportMap ? Object.values(reportMap)[0] : null;
+    if (firstReport) {
+      await route.fulfill(buildJsonResponse({ report: firstReport }));
+      return;
+    }
+    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'No report found' }) });
     return;
   }
 

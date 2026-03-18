@@ -26,6 +26,7 @@ import {
   type ReadinessDimension,
   type RetirementReadinessSummary,
 } from '@/hooks/useRetirementBridge';
+import { usePriorResult } from '@/hooks/usePriorResult';
 import { usePlannerHandoff } from '@/hooks/usePlannerHandoff';
 
 // ─── Static content ───────────────────────────────────────────────────────────
@@ -687,14 +688,27 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 interface FinancialWellnessRoomProps {
   careerProfileSummary?: CareerProfileSummary;
   onOpenCareerProfile?: () => void;
+  initialSessionId?: string;
 }
 
 export function FinancialWellnessRoom({
   careerProfileSummary,
   onOpenCareerProfile,
+  initialSessionId,
 }: FinancialWellnessRoomProps = {}) {
   const { phase, questions, summary, error, startAssessment, submitResponses, reset } =
     useRetirementBridge();
+  const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{
+    readiness_summary?: RetirementReadinessSummary;
+    overall_readiness?: ReadinessSignal;
+    created_at?: string;
+    session_id?: string;
+  }>({
+    productSlug: 'retirement-bridge',
+    skip: phase !== 'idle',
+    sessionId: initialSessionId,
+  });
+  const savedSummary = priorResult?.readiness_summary ?? null;
 
   const handleStart = useCallback(() => {
     void startAssessment();
@@ -708,6 +722,37 @@ export function FinancialWellnessRoom({
   );
 
   const renderLeftPanel = () => {
+    if (phase === 'idle' && savedSummary) {
+      return (
+        <div className="space-y-4">
+          <GlassCard className="p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  Saved Bridge
+                </div>
+                <h3 className="mt-2 text-[16px] font-semibold text-white/84">
+                  {initialSessionId ? 'Review this saved Retirement Bridge assessment' : 'Your latest Retirement Bridge assessment is ready'}
+                </h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-white/48">
+                  Reopen the saved bridge to review the planner discussion topics, or start a fresh assessment if your situation has changed.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <GlassButton variant="ghost" size="sm" onClick={clearPrior}>
+                  Hide Saved Bridge
+                </GlassButton>
+                <GlassButton variant="primary" size="sm" onClick={handleStart}>
+                  Start New Assessment
+                </GlassButton>
+              </div>
+            </div>
+          </GlassCard>
+          <RetirementBridgeCard summary={savedSummary} />
+        </div>
+      );
+    }
+
     if (phase === 'idle') {
       return <EmptyStateCard onStart={handleStart} loading={false} />;
     }
@@ -775,7 +820,7 @@ export function FinancialWellnessRoom({
           </div>
 
           <ContextLoadedBadge
-            contextTypes={['emotional_baseline', 'client_profile']}
+            contextTypes={['career_profile', 'emotional_baseline', 'client_profile']}
             className="mt-1"
           />
         </div>
@@ -794,7 +839,42 @@ export function FinancialWellnessRoom({
             <div className="mt-2 text-sm font-semibold text-white/84">Prepare for a planner conversation with more clarity, less fear, and better context</div>
           </div>
         </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          {[
+            {
+              step: '1',
+              title: 'Assess',
+              copy: 'Answer the guided bridge questions across income, healthcare, debt, taxes, and lifestyle impact.',
+            },
+            {
+              step: '2',
+              title: 'Review',
+              copy: 'Look at which dimensions feel stable, unclear, or high priority before you make any big decisions.',
+            },
+            {
+              step: '3',
+              title: 'Take to Planner',
+              copy: 'Use the output as a planner-prep brief, not as financial advice or a substitute for fiduciary guidance.',
+            },
+          ].map((item) => (
+            <div key={item.step} className="rounded-xl border border-white/[0.08] bg-black/10 p-4">
+              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">Step {item.step}</div>
+              <div className="mt-2 text-sm font-semibold text-white/84">{item.title}</div>
+              <div className="mt-2 text-[12px] leading-relaxed text-white/48">{item.copy}</div>
+            </div>
+          ))}
+        </div>
       </GlassCard>
+
+      {priorLoading ? (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 text-[12px] text-white/35">
+            <Loader2 size={12} className="animate-spin" />
+            Loading saved bridge...
+          </div>
+        </GlassCard>
+      ) : null}
 
       {/* Bridge Analysis + Planner side-by-side */}
       <div className="flex flex-col lg:flex-row gap-6">

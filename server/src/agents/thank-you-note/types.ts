@@ -74,6 +74,7 @@ export interface ThankYouNoteState extends BaseState {
   session_id: string;
   user_id: string;
   current_stage: string;
+  job_application_id?: string;
 
   /** Interviewers to write notes for */
   interviewers: InterviewerContext[];

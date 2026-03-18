@@ -6,6 +6,8 @@ interface UsePriorResultOptions {
   productSlug: string;
   /** Skip loading (e.g., when pipeline is already running) */
   skip?: boolean;
+  /** Fetch an exact saved result for a specific product session */
+  sessionId?: string;
 }
 
 interface UsePriorResultReturn<T = Record<string, unknown>> {
@@ -17,39 +19,55 @@ interface UsePriorResultReturn<T = Record<string, unknown>> {
 export function usePriorResult<T = Record<string, unknown>>({
   productSlug,
   skip = false,
+  sessionId,
 }: UsePriorResultOptions): UsePriorResultReturn<T> {
-  const cacheKey = `prior_result_${productSlug}`;
-  const [priorResult, setPriorResult] = useState<T | null>(() => {
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      return cached ? (JSON.parse(cached) as T) : null;
-    } catch {
-      return null;
-    }
-  });
+  const cacheKey = `prior_result_${productSlug}_${sessionId ?? 'latest'}`;
+  const [priorResult, setPriorResult] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const mounted = useRef(true);
 
   useEffect(() => {
     mounted.current = true;
 
-    if (skip) return;
+    if (skip) {
+      setLoading(false);
+      return () => {
+        mounted.current = false;
+      };
+    }
 
-    // If already cached, don't re-fetch
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) return;
+    let cached: T | null = null;
+    try {
+      const cachedValue = sessionStorage.getItem(cacheKey);
+      cached = cachedValue ? (JSON.parse(cachedValue) as T) : null;
+    } catch {
+      cached = null;
+    }
+
+    setPriorResult(cached);
+    if (cached) {
+      setLoading(false);
+      return () => {
+        mounted.current = false;
+      };
+    }
+
+    const endpoint = sessionId
+      ? `/api/${productSlug}/reports/session/${sessionId}`
+      : `/api/${productSlug}/reports/latest`;
 
     setLoading(true);
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const token = session?.access_token ?? '';
-      return fetch(`/api/${productSlug}/reports/latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    })
-      .then(async (r) => {
-        if (r.status === 404) return null; // No prior result — not an error
-        if (!r.ok) return null;
-        const json = await r.json() as { report?: T; feature_disabled?: boolean } | null;
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        const token = session?.access_token ?? '';
+        return fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      })
+      .then(async (response) => {
+        if (response.status === 404) return null;
+        if (!response.ok) return null;
+        const json = await response.json() as { report?: T; feature_disabled?: boolean } | null;
         if (json && 'feature_disabled' in json) return null;
         return json as { report: T } | null;
       })
@@ -63,13 +81,15 @@ export function usePriorResult<T = Record<string, unknown>>({
         setLoading(false);
       })
       .catch(() => {
-        if (mounted.current) setLoading(false);
+        if (mounted.current) {
+          setLoading(false);
+        }
       });
 
     return () => {
       mounted.current = false;
     };
-  }, [productSlug, skip]);
+  }, [cacheKey, productSlug, sessionId, skip]);
 
   const clearPrior = useCallback(() => {
     sessionStorage.removeItem(cacheKey);

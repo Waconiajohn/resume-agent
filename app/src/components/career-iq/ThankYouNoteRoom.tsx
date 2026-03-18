@@ -575,12 +575,14 @@ interface ThankYouNoteRoomProps {
   initialCompany?: string;
   initialRole?: string;
   initialJobApplicationId?: string;
+  initialSessionId?: string;
 }
 
 export function ThankYouNoteRoom({
   initialCompany,
   initialRole,
   initialJobApplicationId,
+  initialSessionId,
 }: ThankYouNoteRoomProps = {}) {
   const [company, setCompany] = useState(initialCompany ?? '');
   const [role, setRole] = useState(initialRole ?? '');
@@ -607,6 +609,7 @@ export function ThankYouNoteRoom({
   const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{ report_markdown?: string; quality_score?: number }>({
     productSlug: 'thank-you-note',
     skip: isPipelineActive,
+    sessionId: initialSessionId,
   });
 
   // Auto-load resume on mount
@@ -708,6 +711,24 @@ export function ThankYouNoteRoom({
     );
   }
 
+  if (status === 'idle' && initialSessionId && priorResult?.report_markdown) {
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <ReportView
+          report={priorResult.report_markdown}
+          qualityScore={priorResult.quality_score ?? null}
+          company={company}
+          role={role}
+          interviewType={interviewType}
+          onReset={() => {
+            clearPrior();
+            handleReset();
+          }}
+        />
+      </div>
+    );
+  }
+
   // Running
   if (status === 'connecting' || status === 'running') {
     return (
@@ -784,7 +805,9 @@ export function ThankYouNoteRoom({
       {priorResult && !isPipelineActive && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
+            <h3 className="text-sm font-medium text-white/70">
+              {initialSessionId ? 'Saved note for this job' : 'Previous Result'}
+            </h3>
             <button
               type="button"
               onClick={clearPrior}

@@ -27,12 +27,16 @@ import { markdownToHtml } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useInterviewPrep } from '@/hooks/useInterviewPrep';
+import { usePriorResult } from '@/hooks/usePriorResult';
 import { supabase } from '@/lib/supabase';
 import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
 import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
-import { NinetyDayPlanRoom } from '@/components/career-iq/NinetyDayPlanRoom';
+import {
+  InterviewLabDocumentsPanel,
+  type InterviewLabDocumentsView,
+} from '@/components/career-iq/interview-lab/InterviewLabDocumentsPanel';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import type { CareerProfileSummary } from './career-profile-summary';
 
@@ -66,6 +70,7 @@ interface InterviewLabRoomProps {
   initialRole?: string;
   initialJobApplicationId?: string;
   initialFocus?: string;
+  initialAssetSessionId?: string;
 }
 
 export interface PipelineInterviewCard {
@@ -860,7 +865,6 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 
 type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
 type LabSection = 'prep' | 'practice' | 'documents' | 'follow_up';
-type DocumentsView = 'overview' | 'ninety_day_plan';
 type FollowUpView = 'overview' | 'thank_you';
 
 const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string }> = {
@@ -898,11 +902,12 @@ export function InterviewLabRoom({
   initialRole,
   initialJobApplicationId,
   initialFocus,
+  initialAssetSessionId,
 }: InterviewLabRoomProps) {
   const [history, setHistory] = useState<PastInterview[]>(loadHistory);
   const [viewMode, setViewMode] = useState<ViewMode>('lab');
   const [activeSection, setActiveSection] = useState<LabSection>('prep');
-  const [documentsView, setDocumentsView] = useState<DocumentsView>('overview');
+  const [documentsView, setDocumentsView] = useState<InterviewLabDocumentsView>('overview');
   const [followUpView, setFollowUpView] = useState<FollowUpView>('overview');
   const [activeCompany, setActiveCompany] = useState(initialCompany ?? '');
   const [activeRole, setActiveRole] = useState(initialRole ?? '');
@@ -926,12 +931,26 @@ export function InterviewLabRoom({
     startPipeline,
     reset,
   } = useInterviewPrep();
+  const { priorResult: savedPrepResult, loading: savedPrepLoading } = usePriorResult<{
+    report_markdown?: string;
+    quality_score?: number;
+  }>({
+    productSlug: 'interview-prep',
+    skip: status !== 'idle' || initialFocus !== 'prep' || !initialAssetSessionId,
+    sessionId: initialAssetSessionId,
+  });
 
   useEffect(() => {
     if (status === 'complete' && report) {
       setViewMode('report');
     }
   }, [status, report]);
+
+  useEffect(() => {
+    if (initialFocus === 'prep' && initialAssetSessionId && savedPrepResult?.report_markdown) {
+      setViewMode('report');
+    }
+  }, [initialAssetSessionId, initialFocus, savedPrepResult?.report_markdown]);
 
   useEffect(() => {
     if (initialCompany) {
@@ -1120,11 +1139,6 @@ export function InterviewLabRoom({
     setMockInterviewConfig(null);
   }, []);
 
-  const handleOpenNinetyDayPlan = useCallback(() => {
-    setActiveSection('documents');
-    setDocumentsView('ninety_day_plan');
-  }, []);
-
   if (viewMode === 'debrief') {
     return (
       <DebriefForm
@@ -1147,14 +1161,17 @@ export function InterviewLabRoom({
     );
   }
 
-  if (viewMode === 'report' && report) {
+  const displayedPrepReport = report ?? savedPrepResult?.report_markdown ?? null;
+  const displayedPrepQualityScore = qualityScore ?? savedPrepResult?.quality_score ?? null;
+
+  if (viewMode === 'report' && displayedPrepReport) {
     return (
       <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
         <PrepReport
           company={activeCompany}
           role={activeRole}
-          report={report}
-          qualityScore={qualityScore}
+          report={displayedPrepReport}
+          qualityScore={displayedPrepQualityScore}
           onBack={handleBack}
         />
       </div>
@@ -1268,6 +1285,15 @@ export function InterviewLabRoom({
         </div>
       )}
 
+      {savedPrepLoading && initialFocus === 'prep' && initialAssetSessionId && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 text-[12px] text-white/35">
+            <Loader2 size={12} className="animate-spin" />
+            Loading saved interview prep...
+          </div>
+        </GlassCard>
+      )}
+
       <div className="grid gap-3 lg:grid-cols-4">
         {(Object.entries(LAB_SECTION_COPY) as Array<[LabSection, { label: string; description: string }]>).map(([sectionId, section]) => {
           const isActive = activeSection === sectionId;
@@ -1361,74 +1387,19 @@ export function InterviewLabRoom({
 
       {activeSection === 'documents' && (
         <div className="space-y-4">
-          {documentsView === 'overview' ? (
-            <GlassCard className="p-5">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                Interview leave-behinds
-              </div>
-              <h2 className="mt-2 text-lg font-semibold text-white/88">Build documents without leaving the lab</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-                Keep your prep story, proof points, and interview strategy in the same room. The 30-60-90 day plan should feel like one more move in the interview workflow, not a completely separate product.
-              </p>
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Documents</div>
-                  <h3 className="mt-2 text-base font-semibold text-white/84">30-60-90 Day Plan</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/52">
-                    Use this when you need to show how you would step into the role, sequence the first 30, 60, and 90 days, and create confidence before an offer decision is made.
-                  </p>
-                  <GlassButton variant="ghost" onClick={handleOpenNinetyDayPlan} className="mt-4 text-[13px]">
-                    <ClipboardList size={14} className="mr-1.5" />
-                    Open 30-60-90 Day Plan
-                  </GlassButton>
-                </div>
-
-                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Next document</div>
-                  <h3 className="mt-2 text-base font-semibold text-white/84">Thank You Note</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/52">
-                    Follow-up lives in the next section because it happens after the conversation, but it should reinforce the exact same story.
-                  </p>
-                  <GlassButton
-                    variant="ghost"
-                    onClick={() => {
-                      setActiveSection('follow_up');
-                      setFollowUpView('thank_you');
-                    }}
-                    className="mt-4 text-[13px]"
-                  >
-                    <Mail size={14} className="mr-1.5" />
-                    Open Thank You Note
-                  </GlassButton>
-                </div>
-              </div>
-            </GlassCard>
-          ) : (
-            <div className="space-y-4">
-              <GlassCard className="p-5">
-                <button
-                  type="button"
-                  onClick={() => setDocumentsView('overview')}
-                  className="inline-flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium"
-                >
-                  <ArrowLeft size={14} />
-                  Back to Documents
-                </button>
-                <div className="mt-4 text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  30-60-90 Day Plan
-                </div>
-                <h2 className="mt-2 text-lg font-semibold text-white/88">Stay in the interview workflow while you build the leave-behind</h2>
-                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-                  This document should make the interviewer feel your first 30, 60, and 90 days are already taking shape. Keep the positioning story consistent with your prep report and mock-interview answers.
-                </p>
-              </GlassCard>
-              <NinetyDayPlanRoom
-                initialTargetRole={activeRole}
-                initialTargetCompany={activeCompany}
-                initialJobApplicationId={activeJobApplicationId}
-              />
-            </div>
-          )}
+          <InterviewLabDocumentsPanel
+            documentsView={documentsView}
+            activeCompany={activeCompany}
+            activeRole={activeRole}
+            activeJobApplicationId={activeJobApplicationId}
+            initialFocus={initialFocus}
+            initialAssetSessionId={initialAssetSessionId}
+            onDocumentsViewChange={setDocumentsView}
+            onOpenThankYou={() => {
+              setActiveSection('follow_up');
+              setFollowUpView('thank_you');
+            }}
+          />
         </div>
       )}
 
@@ -1461,6 +1432,7 @@ export function InterviewLabRoom({
               initialCompany={activeCompany}
               initialRole={activeRole}
               initialJobApplicationId={activeJobApplicationId}
+              initialSessionId={initialFocus === 'thank-you' ? initialAssetSessionId : undefined}
             />
           )}
 

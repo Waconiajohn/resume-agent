@@ -125,6 +125,7 @@ export interface NinetyDayPlanState extends BaseState {
   session_id: string;
   user_id: string;
   current_stage: string;
+  job_application_id?: string;
 
   /** Role context for the target position */
   role_context: RoleContext;

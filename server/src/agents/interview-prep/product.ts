@@ -232,6 +232,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
           .from('interview_prep_reports')
           .insert({
             user_id: state.user_id,
+            session_id: state.session_id,
             job_application_id: state.job_application_id ?? null,
             company_name: state.jd_analysis?.company_name ?? 'Unknown',
             role_title: state.jd_analysis?.role_title ?? 'Unknown',

@@ -732,6 +732,8 @@ interface SalaryNegotiationRoomProps {
   prefillRole?: string;
   /** Job application id linked to this negotiation workspace. */
   prefillJobApplicationId?: string;
+  /** Exact saved negotiation session to reopen. */
+  initialSessionId?: string;
   /** Called once after the prefill values have been applied to the form. */
   onPrefillConsumed?: () => void;
   careerProfileSummary?: CareerProfileSummary;
@@ -742,6 +744,7 @@ export function SalaryNegotiationRoom({
   prefillCompany,
   prefillRole,
   prefillJobApplicationId,
+  initialSessionId,
   onPrefillConsumed,
   careerProfileSummary,
   onOpenCareerProfile,
@@ -791,6 +794,7 @@ export function SalaryNegotiationRoom({
   const { priorResult, loading: priorLoading, clearPrior } = usePriorResult<{ report_markdown?: string; quality_score?: number }>({
     productSlug: 'salary-negotiation',
     skip: isPipelineActive,
+    sessionId: initialSessionId,
   });
 
   useEffect(() => {
@@ -865,6 +869,23 @@ export function SalaryNegotiationRoom({
           strategyReviewData={strategyReviewData}
           offerBaseSalary={form.offerBaseSalary ? Number(form.offerBaseSalary) : undefined}
           onReset={handleReset}
+        />
+      </div>
+    );
+  }
+
+  if (status === 'idle' && initialSessionId && priorResult?.report_markdown) {
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <ReportView
+          report={priorResult.report_markdown}
+          qualityScore={priorResult.quality_score ?? null}
+          strategyReviewData={null}
+          offerBaseSalary={form.offerBaseSalary ? Number(form.offerBaseSalary) : undefined}
+          onReset={() => {
+            clearPrior();
+            handleReset();
+          }}
         />
       </div>
     );
@@ -1040,7 +1061,9 @@ export function SalaryNegotiationRoom({
       {priorResult && !isPipelineActive && showPriorResult && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
+            <h3 className="text-sm font-medium text-white/70">
+              {initialSessionId ? 'Saved strategy for this job' : 'Previous Result'}
+            </h3>
             <div className="flex items-center gap-2">
               <button
                 type="button"

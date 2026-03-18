@@ -451,12 +451,14 @@ interface NinetyDayPlanRoomProps {
   initialTargetRole?: string;
   initialTargetCompany?: string;
   initialJobApplicationId?: string;
+  initialSessionId?: string;
 }
 
 export function NinetyDayPlanRoom({
   initialTargetRole,
   initialTargetCompany,
   initialJobApplicationId,
+  initialSessionId,
 }: NinetyDayPlanRoomProps = {}) {
   const [targetRole, setTargetRole] = useState(initialTargetRole ?? '');
   const [targetCompany, setTargetCompany] = useState(initialTargetCompany ?? '');
@@ -489,6 +491,7 @@ export function NinetyDayPlanRoom({
   }>({
     productSlug: 'ninety-day-plan',
     skip: isPipelineActive,
+    sessionId: initialSessionId,
   });
 
   // Auto-load resume on mount
@@ -581,6 +584,23 @@ export function NinetyDayPlanRoom({
           targetRole={targetRole}
           targetCompany={targetCompany}
           onReset={handleReset}
+        />
+      </div>
+    );
+  }
+
+  if (status === 'idle' && initialSessionId && priorResult?.report_markdown) {
+    return (
+      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        <ReportView
+          report={priorResult.report_markdown}
+          qualityScore={priorResult.quality_score ?? null}
+          targetRole={targetRole}
+          targetCompany={targetCompany}
+          onReset={() => {
+            clearPrior();
+            handleReset();
+          }}
         />
       </div>
     );
@@ -713,7 +733,9 @@ export function NinetyDayPlanRoom({
       {priorResult && !isPipelineActive && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
+            <h3 className="text-sm font-medium text-white/70">
+              {initialSessionId ? 'Saved plan for this job' : 'Previous Result'}
+            </h3>
             <button
               type="button"
               onClick={clearPrior}

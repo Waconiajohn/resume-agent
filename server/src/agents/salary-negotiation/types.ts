@@ -174,6 +174,7 @@ export interface SalaryNegotiationState extends BaseState {
   session_id: string;
   user_id: string;
   current_stage: string;
+  job_application_id?: string;
 
   /** Details of the offer being negotiated */
   offer_details: {

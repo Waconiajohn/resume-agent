@@ -127,3 +127,35 @@ thankYouNoteRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async
 
   return c.json({ report: data });
 });
+
+thankYouNoteRoutes.get('/reports/session/:sessionId', rateLimitMiddleware(30, 60_000), async (c) => {
+  if (!FF_THANK_YOU_NOTE) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+  const sessionId = c.req.param('sessionId');
+  const parsed = z.string().uuid().safeParse(sessionId);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid session id' }, 400);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('thank_you_note_reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('session_id', parsed.data)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id, sessionId: parsed.data }, 'GET /thank-you-note/reports/session/:sessionId: query failed');
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No reports found' }, 404);
+  }
+
+  return c.json({ report: data });
+});

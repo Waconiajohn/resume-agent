@@ -86,6 +86,7 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
       session_id: sessionId,
       user_id: userId,
       current_stage: 'writing',
+      job_application_id: input.job_application_id as string | undefined,
       interviewers: (input.interviewers as InterviewerContext[] | undefined) ?? ([] as InterviewerContext[]),
       interview_context: {
         company: String((input as Record<string, unknown>).company ?? ''),
@@ -215,6 +216,8 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
           .from('thank_you_note_reports')
           .insert({
             user_id: state.user_id,
+            session_id: state.session_id,
+            job_application_id: state.job_application_id ?? null,
             report_markdown: data.report,
             quality_score: data.quality_score,
             notes: data.notes,

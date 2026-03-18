@@ -101,6 +101,7 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
       session_id: sessionId,
       user_id: userId,
       current_stage: 'research',
+      job_application_id: input.job_application_id as string | undefined,
       role_context: input.role_context as NinetyDayPlanState['role_context'] ?? {
         target_role: '',
         target_company: '',
@@ -255,6 +256,8 @@ export function createNinetyDayPlanProductConfig(): ProductConfig<NinetyDayPlanS
           .from('ninety_day_plan_reports')
           .insert({
             user_id: state.user_id,
+            session_id: state.session_id,
+            job_application_id: state.job_application_id ?? null,
             report_markdown: data.report,
             quality_score: data.quality_score,
             phases: data.phases,

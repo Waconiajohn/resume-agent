@@ -162,12 +162,14 @@ export function CareerIQScreen({
     const company = params.get('company');
     const role = params.get('role');
     const focus = params.get('focus');
+    const sessionId = params.get('session');
 
     return {
       jobApplicationId: jobApplicationId?.trim() || undefined,
       company: company?.trim() || undefined,
       role: role?.trim() || undefined,
       focus: focus?.trim() || undefined,
+      sessionId: sessionId?.trim() || undefined,
     };
   }, [location.search]);
 
@@ -387,7 +389,13 @@ export function CareerIQScreen({
     }
 
     if (activeRoom === 'financial') {
-      return <FinancialWellnessRoom careerProfileSummary={summary} onOpenCareerProfile={openCareerProfile} />;
+      return (
+        <FinancialWellnessRoom
+          careerProfileSummary={summary}
+          onOpenCareerProfile={openCareerProfile}
+          initialSessionId={workspaceLaunchContext.sessionId}
+        />
+      );
     }
 
     if (activeRoom === 'linkedin') {
@@ -422,6 +430,7 @@ export function CareerIQScreen({
           initialRole={workspaceLaunchContext.role}
           initialJobApplicationId={workspaceLaunchContext.jobApplicationId}
           initialFocus={workspaceLaunchContext.focus}
+          initialAssetSessionId={workspaceLaunchContext.sessionId}
         />
       );
     }
@@ -436,6 +445,7 @@ export function CareerIQScreen({
           prefillCompany={salaryNegoPrefill?.company ?? workspaceLaunchContext.company}
           prefillRole={salaryNegoPrefill?.role ?? workspaceLaunchContext.role}
           prefillJobApplicationId={workspaceLaunchContext.jobApplicationId}
+          initialSessionId={workspaceLaunchContext.sessionId}
           onPrefillConsumed={() => setSalaryNegoPrefill(null)}
           careerProfileSummary={summary}
           onOpenCareerProfile={openCareerProfile}
