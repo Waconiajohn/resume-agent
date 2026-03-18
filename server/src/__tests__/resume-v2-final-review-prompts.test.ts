@@ -189,5 +189,50 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.related_requirement).toContain("Bachelor's degree");
     expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('PE certification'))).toBe(true);
     expect(stabilized.hiring_manager_verdict.summary).toMatch(/screening risk|hard requirement/i);
+    expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
+    expect(stabilized.fit_assessment.benchmark_alignment).toBe('moderate');
+    expect(stabilized.fit_assessment.clarity_and_credibility).toBe('weak');
+  });
+
+  it('caps fit-assessment optimism when a single hard requirement risk remains', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Promising first pass.',
+        top_signals_seen: [
+          {
+            signal: '$180M revenue growth experience',
+            why_it_matters: 'Demonstrates commercial impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong consumer marketing leader with meaningful growth wins.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, { hardRequirementRisks: ['MBA'] });
+
+    expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
+    expect(stabilized.fit_assessment.job_description_fit).toBe('moderate');
+    expect(stabilized.fit_assessment.benchmark_alignment).toBe('moderate');
+    expect(stabilized.fit_assessment.business_impact).toBe('strong');
+    expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
   });
 });

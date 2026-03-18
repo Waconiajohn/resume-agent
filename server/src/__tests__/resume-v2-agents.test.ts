@@ -631,7 +631,9 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.system).toContain('Generate EXACTLY 1 targeted question');
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
+      expect(llmCall.messages[0].content).toContain('Keep the output compact.');
     });
 
     it('uses MODEL_PRIMARY', async () => {
@@ -1258,6 +1260,17 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(userMessage).toContain('SUMMARY');
       expect(userMessage).toContain('SELECTED ACCOMPLISHMENTS');
       expect(userMessage).toContain('PROFESSIONAL EXPERIENCE');
+    });
+
+    it('uses strict JSON guardrails in the primary prompt', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(TONE_OUTPUT);
+
+      await runExecutiveTone(input);
+
+      const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.messages[0].content).toContain('Return JSON only.');
     });
 
     it('uses MODEL_MID', async () => {

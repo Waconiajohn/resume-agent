@@ -13,6 +13,14 @@ import logger from '../../../lib/logger.js';
 import { BANNED_PHRASES } from '../knowledge/resume-rules.js';
 import type { ExecutiveToneInput, ExecutiveToneOutput } from '../types.js';
 
+const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
+- Return exactly one JSON object.
+- The first character of your response must be { and the last character must be }.
+- Use double-quoted JSON keys and string values.
+- Do not wrap the JSON in markdown fences.
+- Do not add commentary, introductions, or notes outside the JSON object.
+- If there are no findings, return an empty findings array instead of prose.`;
+
 const SYSTEM_PROMPT = `You are an executive communications director who has edited 1,000+ C-suite resumes. You can spot junior language, AI-generated phrasing, and generic filler from a mile away.
 
 Your job: audit this resume for tone. Every sentence should sound like it was written BY an executive, FOR an executive audience.
@@ -43,7 +51,9 @@ RULES:
 - suggestion: don't just flag — REWRITE the problematic text in proper executive voice
 - Be specific: "Led cross-functional team" is fine. "Responsible for leading teams" is not.
 - Executives use: "drove," "orchestrated," "championed," "spearheaded," "influenced," "architected"
-- Executives DON'T use: "helped," "assisted," "supported," "worked on," "was responsible for"`;
+- Executives DON'T use: "helped," "assisted," "supported," "worked on," "was responsible for"
+
+${JSON_OUTPUT_GUARDRAILS}`;
 
 export async function runExecutiveTone(
   input: ExecutiveToneInput,
@@ -51,7 +61,7 @@ export async function runExecutiveTone(
 ): Promise<ExecutiveToneOutput> {
   const resumeText = formatDraftForTone(input);
 
-  const userMessage = `Audit this resume for executive tone:\n\n${resumeText}`;
+  const userMessage = `Audit this resume for executive tone:\n\n${resumeText}\n\nReturn JSON only.`;
 
   try {
     const response = await llm.chat({

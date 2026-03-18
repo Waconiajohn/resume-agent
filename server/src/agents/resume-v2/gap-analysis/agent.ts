@@ -64,7 +64,7 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
         "positioning": "how to phrase it on the resume",
         "inferred_metric": "$3M+ payroll budget (optional — only if inferring a number)",
         "inference_rationale": "team of 40 × $85K avg = $3.4M, backed off to $3M+ (optional)",
-        "ai_reasoning": "2-3 sentence conversational explanation for the candidate. Write as if you're coaching them: explain what you found, why it's relevant, and what math/logic supports it. Example: 'I noticed you managed a team of 40 at Company X. At roughly $85K average compensation, that's approximately $3.4M in payroll alone. I've backed this off to $3M+ so you can comfortably defend the number in an interview.'",
+        "ai_reasoning": "1-2 concise coaching sentences. Explain what you found, why it is relevant, and any math/logic in under 45 words.",
         "interview_questions": [
           {
             "question": "Your resume mentions managing operations at Company X. Can you tell us about the team size, budget responsibility, and geographic scope?",
@@ -104,10 +104,10 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
         "positioning": "proposed resume phrasing",
         "inferred_metric": "conservative number if applicable",
         "inference_rationale": "the math/logic",
-        "ai_reasoning": "2-3 sentence conversational explanation for the candidate. Write as if you're coaching them: explain what you found, why it's relevant, and what math/logic supports it. Example: 'I noticed you managed a team of 40 at Company X. At roughly $85K average compensation, that's approximately $3.4M in payroll alone. I've backed this off to $3M+ so you can comfortably defend the number in an interview.'",
+        "ai_reasoning": "1-2 concise coaching sentences. Explain what you found, why it is relevant, and any math/logic in under 45 words.",
         "interview_questions": [
           {
-            "question": "targeted question referencing specific roles/companies from the resume",
+            "question": "one targeted question referencing specific roles/companies from the resume",
             "rationale": "why this question could surface useful evidence",
             "looking_for": "what kind of answer would strengthen the positioning"
           }
@@ -130,8 +130,8 @@ RULES:
 - If you offer adjacent framing for a hard requirement, the language must stay soft and truthful. It may explain related experience, but it cannot imply the candidate possesses the missing credential.
 - QUICK WIN RULE: Prefer strategies where the candidate already has nearby evidence that is simply under-explained on the resume. Those are the best items to strengthen first.
 - pending_strategies: include ALL strategies for partial/missing requirements. These go to the user for approval before being used in the resume.
-- ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Write as a coaching conversation — explain your reasoning to the candidate. Show your math. Be specific about what evidence you found and why it works. This text will be shown directly to the user.
-- interview_questions: REQUIRED for every strategy (partial and missing). Generate 1-3 targeted questions that could surface hidden experience relevant to this gap. Questions MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Each question should have a rationale (why it matters) and looking_for (what kind of answer would help).
+- ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
+- interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
 - Be honest about critical_gaps — don't stretch beyond what's defensible.
 
@@ -287,6 +287,7 @@ function buildUserMessage(input: GapAnalysisInput): string {
   parts.push(
     '',
     'Compare this candidate against EVERY requirement in the canonical requirement catalog. Classify each as strong/partial/missing. For partial and missing, propose creative positioning strategies.',
+    'Keep the output compact. Use exactly 1 targeted interview question per strategy and keep ai_reasoning brief.',
     'Return JSON only. Do not include markdown fences or any explanation outside the JSON object.',
   );
 

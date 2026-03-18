@@ -511,6 +511,7 @@ export function stabilizeFinalReviewResult(
     improvement_summary: [...result.improvement_summary],
   };
   const hardRequirementRisks = Array.from(new Set((options?.hardRequirementRisks ?? []).filter(Boolean)));
+  const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
   if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
     normalized.six_second_scan.top_signals_seen = createRecruiterSignalsFromWins(normalized);
@@ -601,7 +602,40 @@ export function stabilizeFinalReviewResult(
     }
   }
 
+  const effectiveCriticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
+  if (hardRequirementRisks.length > 0 || effectiveCriticalConcernCount > 0) {
+    const jobFitCap = hardRequirementRisks.length > 1 ? 'weak' : 'moderate';
+    normalized.fit_assessment.job_description_fit = capFitAssessment(
+      normalized.fit_assessment.job_description_fit,
+      jobFitCap,
+    );
+    normalized.fit_assessment.clarity_and_credibility = capFitAssessment(
+      normalized.fit_assessment.clarity_and_credibility,
+      hardRequirementRisks.length > 1 || effectiveCriticalConcernCount > 1 ? 'weak' : 'moderate',
+    );
+
+    if (hardRequirementRisks.length > 0) {
+      normalized.fit_assessment.benchmark_alignment = capFitAssessment(
+        normalized.fit_assessment.benchmark_alignment,
+        'moderate',
+      );
+    }
+  } else if (criticalConcernCount > 0) {
+    normalized.fit_assessment.clarity_and_credibility = capFitAssessment(
+      normalized.fit_assessment.clarity_and_credibility,
+      'moderate',
+    );
+  }
+
   return normalized;
+}
+
+function capFitAssessment(
+  current: 'strong' | 'moderate' | 'weak',
+  cap: 'strong' | 'moderate' | 'weak',
+): 'strong' | 'moderate' | 'weak' {
+  const order = { strong: 3, moderate: 2, weak: 1 } as const;
+  return order[current] <= order[cap] ? current : cap;
 }
 
 export function buildFinalReviewPrompts({
