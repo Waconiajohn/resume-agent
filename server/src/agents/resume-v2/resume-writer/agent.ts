@@ -218,13 +218,24 @@ function lookupExperienceFraming(
 }
 
 function buildUserMessage(input: ResumeWriterInput): string {
+  const competencyThemes = Array.isArray(input.narrative.section_guidance.competency_themes)
+    ? input.narrative.section_guidance.competency_themes
+    : [];
+  const accomplishmentPriorities = Array.isArray(input.narrative.section_guidance.accomplishment_priorities)
+    ? input.narrative.section_guidance.accomplishment_priorities
+    : [];
+  const experienceFraming = input.narrative.section_guidance.experience_framing
+    && typeof input.narrative.section_guidance.experience_framing === 'object'
+    ? input.narrative.section_guidance.experience_framing
+    : {};
+
   const parts: string[] = [
     '## YOUR STRATEGIC DIRECTION',
     `Primary narrative: ${input.narrative.primary_narrative}`,
     `Branded title: ${input.narrative.branded_title}`,
     `Summary angle: ${input.narrative.section_guidance.summary_angle}`,
-    `Competency themes: ${input.narrative.section_guidance.competency_themes.join(', ')}`,
-    `Accomplishment priorities: ${input.narrative.section_guidance.accomplishment_priorities.join('; ')}`,
+    `Competency themes: ${competencyThemes.join(', ')}`,
+    `Accomplishment priorities: ${accomplishmentPriorities.join('; ')}`,
     '',
   ];
 
@@ -263,7 +274,7 @@ function buildUserMessage(input: ResumeWriterInput): string {
     // The LLM may return slightly different company names (e.g. "Acme Corp" vs "Acme"),
     // so fall back through: exact → case-insensitive → substring-includes.
     const framing = lookupExperienceFraming(
-      input.narrative.section_guidance.experience_framing,
+      experienceFraming,
       exp.company,
     );
     if (framing) {

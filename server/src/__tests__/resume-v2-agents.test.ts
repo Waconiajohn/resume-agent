@@ -805,6 +805,31 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
         expect.objectContaining({ model: 'model-primary' }),
       );
     });
+
+    it('normalizes malformed section guidance arrays from parseable model output', async () => {
+      const malformedNarrative = {
+        ...NARRATIVE_OUTPUT,
+        section_guidance: {
+          ...NARRATIVE_OUTPUT.section_guidance,
+          competency_themes: 'Cloud-Native Architecture, Engineering Org Design',
+          accomplishment_priorities: 'Platform reliability wins; Team growth achievements',
+        },
+      } as unknown as NarrativeStrategyOutput;
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(malformedNarrative);
+
+      const result = await runNarrativeStrategy(input);
+
+      expect(result.section_guidance.competency_themes).toEqual([
+        'Cloud-Native Architecture',
+        'Engineering Org Design',
+      ]);
+      expect(result.section_guidance.accomplishment_priorities).toEqual([
+        'Platform reliability wins',
+        'Team growth achievements',
+      ]);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────

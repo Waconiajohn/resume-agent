@@ -212,7 +212,8 @@ export async function runNarrativeStrategy(
     });
 
     const parsed = repairJSON<NarrativeStrategyOutput>(response.text);
-    if (parsed) return parsed;
+    const normalized = parsed ? normalizeNarrativeStrategyOutput(parsed, input) : null;
+    if (normalized) return normalized;
 
     logger.warn(
       { rawSnippet: response.text.substring(0, 500) },
@@ -237,7 +238,8 @@ export async function runNarrativeStrategy(
     });
 
     const retryParsed = repairJSON<NarrativeStrategyOutput>(retry.text);
-    if (retryParsed) return retryParsed;
+    const retryNormalized = retryParsed ? normalizeNarrativeStrategyOutput(retryParsed, input) : null;
+    if (retryNormalized) return retryNormalized;
 
     logger.error(
       { rawSnippet: retry.text.substring(0, 500) },
@@ -252,6 +254,53 @@ export async function runNarrativeStrategy(
   }
 
   return buildDeterministicNarrativeStrategy(input);
+}
+
+function normalizeNarrativeStrategyOutput(
+  output: NarrativeStrategyOutput,
+  input: NarrativeStrategyInput,
+): NarrativeStrategyOutput | null {
+  if (!output || typeof output !== 'object') return null;
+
+  const raw = output as unknown as Record<string, unknown>;
+  const fallback = buildDeterministicNarrativeStrategy(input);
+  const sectionGuidance = raw.section_guidance;
+  const sectionGuidanceRecord = sectionGuidance && typeof sectionGuidance === 'object' && !Array.isArray(sectionGuidance)
+    ? sectionGuidance as Record<string, unknown>
+    : {};
+  const gapMap = Array.isArray(raw.gap_positioning_map)
+    ? (raw.gap_positioning_map as unknown[])
+    : [];
+
+  return {
+    primary_narrative: toStringValue(raw.primary_narrative, fallback.primary_narrative),
+    narrative_angle_rationale: toStringValue(raw.narrative_angle_rationale, fallback.narrative_angle_rationale),
+    supporting_themes: toStringArray(raw.supporting_themes, fallback.supporting_themes),
+    branded_title: toStringValue(raw.branded_title, fallback.branded_title),
+    narrative_origin: toStringValue(raw.narrative_origin, fallback.narrative_origin),
+    unique_differentiators: toStringArray(raw.unique_differentiators, fallback.unique_differentiators),
+    why_me_story: toStringValue(raw.why_me_story, fallback.why_me_story),
+    why_me_concise: toStringValue(raw.why_me_concise, fallback.why_me_concise),
+    why_me_best_line: toStringValue(raw.why_me_best_line, fallback.why_me_best_line),
+    gap_positioning_map: gapMap.length > 0
+      ? gapMap
+        .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && !Array.isArray(item)))
+        .map((item) => ({
+          requirement: toStringValue(item.requirement, ''),
+          narrative_positioning: toStringValue(item.narrative_positioning, ''),
+          where_to_feature: toStringValue(item.where_to_feature, ''),
+          narrative_justification: toStringValue(item.narrative_justification, ''),
+        }))
+        .filter((item) => item.requirement.length > 0)
+      : fallback.gap_positioning_map,
+    interview_talking_points: toStringArray(raw.interview_talking_points, fallback.interview_talking_points),
+    section_guidance: {
+      summary_angle: toStringValue(sectionGuidanceRecord.summary_angle, fallback.section_guidance.summary_angle),
+      competency_themes: toStringArray(sectionGuidanceRecord.competency_themes, fallback.section_guidance.competency_themes),
+      accomplishment_priorities: toStringArray(sectionGuidanceRecord.accomplishment_priorities, fallback.section_guidance.accomplishment_priorities),
+      experience_framing: toStringMap(sectionGuidanceRecord.experience_framing, fallback.section_guidance.experience_framing),
+    },
+  };
 }
 
 function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
@@ -376,6 +425,41 @@ function dedupeStrings(values: string[]): string[] {
     result.push(value.trim());
   }
   return result;
+}
+
+function toStringValue(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function toStringArray(value: unknown, fallback: string[]): string[] {
+  if (Array.isArray(value)) {
+    const items = value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (items.length > 0) return items;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const split = value
+      .split(/\r?\n|;|,/)
+      .map((item) => item.replace(/^[-*•]\s*/, '').trim())
+      .filter(Boolean);
+    if (split.length > 0) return split;
+  }
+
+  return fallback;
+}
+
+function toStringMap(value: unknown, fallback: Record<string, string>): Record<string, string> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => typeof item === 'string' && item.trim().length > 0)
+      .map(([key, item]) => [key, (item as string).trim()] as const);
+    if (entries.length > 0) return Object.fromEntries(entries);
+  }
+
+  return fallback;
 }
 
 function buildUserMessage(input: NarrativeStrategyInput): string {
