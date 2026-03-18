@@ -33,9 +33,13 @@ export const interviewPrepRoutes = createProductRoutes<InterviewPrepState, Inter
 
   onBeforeStart: async (input, _c, _session) => {
     const sessionId = input.session_id as string;
+    const jobApplicationId = typeof input.job_application_id === 'string' ? input.job_application_id : null;
     const { error } = await supabaseAdmin
       .from('coach_sessions')
-      .update({ product_type: 'interview_prep' })
+      .update({
+        product_type: 'interview_prep',
+        ...(jobApplicationId ? { job_application_id: jobApplicationId } : {}),
+      })
       .eq('id', sessionId);
     if (error) {
       logger.warn({ session_id: sessionId, error: error.message }, 'Interview prep: failed to set product_type');

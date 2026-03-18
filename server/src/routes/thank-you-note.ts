@@ -27,6 +27,7 @@ const startSchema = z.object({
   role: z.string().max(200),
   interview_date: z.string().optional(),
   interview_type: z.string().max(100).optional(),
+  job_application_id: z.string().uuid().optional(),
   interviewers: z.array(
     z.object({
       name: z.string().max(200),
@@ -45,9 +46,13 @@ export const thankYouNoteRoutes = createProductRoutes<ThankYouNoteState, ThankYo
 
   onBeforeStart: async (input, _c, _session) => {
     const sessionId = input.session_id as string;
+    const jobApplicationId = typeof input.job_application_id === 'string' ? input.job_application_id : null;
     const { error } = await supabaseAdmin
       .from('coach_sessions')
-      .update({ product_type: 'thank_you_note' })
+      .update({
+        product_type: 'thank_you_note',
+        ...(jobApplicationId ? { job_application_id: jobApplicationId } : {}),
+      })
       .eq('id', sessionId);
     if (error) {
       logger.warn({ session_id: sessionId, error: error.message }, 'Thank-you note: failed to set product_type');

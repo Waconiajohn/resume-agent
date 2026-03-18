@@ -232,7 +232,7 @@ describe('SessionHistoryTab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^open$/i }));
 
-    expect(onResumeSession).toHaveBeenCalledWith('letter-1');
+    expect(onResumeSession).toHaveBeenCalledWith('resume-1');
   });
 
   it('shows interview assets only when the job stage reaches interviewing', () => {
@@ -288,5 +288,60 @@ describe('SessionHistoryTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Offer' }));
 
     expect(onMoveJobStage).toHaveBeenCalledWith('job-app-1', 'offer');
+  });
+
+  it('shows later-stage assets inside the job workspace when they are linked to the same job application', () => {
+    const onNavigate = vi.fn();
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          onNavigate,
+          sessions: [
+            makeSession({
+              id: 'resume-1',
+              product_type: 'resume_v2',
+              job_application_id: 'job-app-1',
+              job_stage: 'offer',
+            }),
+            makeSession({
+              id: 'prep-1',
+              product_type: 'interview_prep',
+              job_application_id: 'job-app-1',
+              job_stage: 'offer',
+            }),
+            makeSession({
+              id: 'note-1',
+              product_type: 'thank_you_note',
+              job_application_id: 'job-app-1',
+              job_stage: 'offer',
+            }),
+            makeSession({
+              id: 'plan-1',
+              product_type: 'ninety_day_plan',
+              job_application_id: 'job-app-1',
+              job_stage: 'offer',
+            }),
+            makeSession({
+              id: 'nego-1',
+              product_type: 'salary_negotiation',
+              job_application_id: 'job-app-1',
+              job_stage: 'offer',
+            }),
+          ],
+          jobApplications: [makeApplication({ id: 'job-app-1', stage: 'offer' })],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /view workspace/i }));
+
+    expect(screen.getAllByText('Interview Prep').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Thank You Note').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('30-60-90 Plan').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Salary Negotiation').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /open strategy/i }));
+
+    expect(onNavigate).toHaveBeenCalledWith('/workspace?room=salary-negotiation&job=job-app-1&company=Acme+Corp&role=VP+Engineering');
   });
 });

@@ -91,6 +91,12 @@ describe('ThankYouNoteRoom', () => {
     expect(screen.getByPlaceholderText('e.g. VP of Supply Chain')).toBeInTheDocument();
   });
 
+  it('prefills company and role when opened from Interview Lab job context', () => {
+    render(<ThankYouNoteRoom initialCompany="Acme Corp" initialRole="VP Engineering" />);
+    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('VP Engineering')).toBeInTheDocument();
+  });
+
   it('shows interviewers section with one card by default', () => {
     render(<ThankYouNoteRoom />);
     expect(screen.getByText('Interviewers')).toBeInTheDocument();

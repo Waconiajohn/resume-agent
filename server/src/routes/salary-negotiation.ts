@@ -35,6 +35,7 @@ const startSchema = z.object({
   target_role: z.string().max(200).optional(),
   target_industry: z.string().max(200).optional(),
   target_seniority: z.string().max(200).optional(),
+  job_application_id: z.string().uuid().optional(),
 });
 
 export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationState, SalaryNegotiationSSEEvent>({
@@ -44,9 +45,13 @@ export const salaryNegotiationRoutes = createProductRoutes<SalaryNegotiationStat
 
   onBeforeStart: async (input, _c, _session) => {
     const sessionId = input.session_id as string;
+    const jobApplicationId = typeof input.job_application_id === 'string' ? input.job_application_id : null;
     const { error } = await supabaseAdmin
       .from('coach_sessions')
-      .update({ product_type: 'salary_negotiation' })
+      .update({
+        product_type: 'salary_negotiation',
+        ...(jobApplicationId ? { job_application_id: jobApplicationId } : {}),
+      })
       .eq('id', sessionId);
     if (error) {
       logger.warn({ session_id: sessionId, error: error.message }, 'Salary negotiation: failed to set product_type');

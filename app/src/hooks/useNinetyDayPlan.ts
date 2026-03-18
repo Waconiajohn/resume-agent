@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { createProductSession } from '@/lib/create-product-session';
 import { safeString, safeNumber } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
@@ -33,6 +33,7 @@ export interface NinetyDayPlanInput {
   targetIndustry?: string;
   reportingTo?: string;
   teamSize?: string;
+  jobApplicationId?: string;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -267,17 +268,6 @@ export function useNinetyDayPlan() {
   const startPipeline = useCallback(
     async (input: NinetyDayPlanInput): Promise<boolean> => {
       if (statusRef.current !== 'idle') return false;
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? null;
-      if (!token) {
-        setState((prev) => ({ ...prev, status: 'error', error: 'Not authenticated' }));
-        return false;
-      }
-      accessTokenRef.current = token;
-
-      const sessionId = crypto.randomUUID();
-      sessionIdRef.current = sessionId;
-      reconnectAttemptsRef.current = 0;
 
       setState({
         status: 'connecting',
@@ -291,20 +281,29 @@ export function useNinetyDayPlan() {
       });
 
       try {
+        const { accessToken, session } = await createProductSession({
+          productType: 'ninety_day_plan',
+          jobApplicationId: input.jobApplicationId,
+        });
+        accessTokenRef.current = accessToken;
+        sessionIdRef.current = session.id;
+        reconnectAttemptsRef.current = 0;
+
         const res = await fetch(`${API_BASE}/ninety-day-plan/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
-            session_id: sessionId,
+            session_id: session.id,
             resume_text: input.resumeText,
             target_role: input.targetRole,
             target_company: input.targetCompany,
             target_industry: input.targetIndustry,
             reporting_to: input.reportingTo,
             team_size: input.teamSize,
+            job_application_id: input.jobApplicationId,
           }),
         });
 
@@ -318,7 +317,7 @@ export function useNinetyDayPlan() {
           return false;
         }
 
-        connectSSE(sessionId);
+        connectSSE(session.id);
         return true;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

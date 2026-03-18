@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { createProductSession } from '@/lib/create-product-session';
 import { safeString, safeNumber } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
@@ -33,6 +33,7 @@ export interface SalaryNegotiationInput {
   currentEquity?: string;
   targetRole?: string;
   targetIndustry?: string;
+  jobApplicationId?: string;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -262,17 +263,6 @@ export function useSalaryNegotiation() {
   const startPipeline = useCallback(
     async (input: SalaryNegotiationInput): Promise<boolean> => {
       if (statusRef.current !== 'idle') return false;
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? null;
-      if (!token) {
-        setState((prev) => ({ ...prev, status: 'error', error: 'Not authenticated' }));
-        return false;
-      }
-      accessTokenRef.current = token;
-
-      const sessionId = crypto.randomUUID();
-      sessionIdRef.current = sessionId;
-      reconnectAttemptsRef.current = 0;
 
       setState({
         status: 'connecting',
@@ -285,14 +275,22 @@ export function useSalaryNegotiation() {
       });
 
       try {
+        const { accessToken, session } = await createProductSession({
+          productType: 'salary_negotiation',
+          jobApplicationId: input.jobApplicationId,
+        });
+        accessTokenRef.current = accessToken;
+        sessionIdRef.current = session.id;
+        reconnectAttemptsRef.current = 0;
+
         const res = await fetch(`${API_BASE}/salary-negotiation/start`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
-            session_id: sessionId,
+            session_id: session.id,
             resume_text: input.resumeText,
             offer_company: input.offerCompany,
             offer_role: input.offerRole,
@@ -305,6 +303,7 @@ export function useSalaryNegotiation() {
             current_equity: input.currentEquity,
             target_role: input.targetRole,
             target_industry: input.targetIndustry,
+            job_application_id: input.jobApplicationId,
           }),
         });
 
@@ -318,7 +317,7 @@ export function useSalaryNegotiation() {
           return false;
         }
 
-        connectSSE(sessionId);
+        connectSSE(session.id);
         return true;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

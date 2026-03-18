@@ -730,6 +730,8 @@ interface SalaryNegotiationRoomProps {
   prefillCompany?: string;
   /** Role pre-filled from a pipeline Offer card (SN1-2). */
   prefillRole?: string;
+  /** Job application id linked to this negotiation workspace. */
+  prefillJobApplicationId?: string;
   /** Called once after the prefill values have been applied to the form. */
   onPrefillConsumed?: () => void;
   careerProfileSummary?: CareerProfileSummary;
@@ -739,6 +741,7 @@ interface SalaryNegotiationRoomProps {
 export function SalaryNegotiationRoom({
   prefillCompany,
   prefillRole,
+  prefillJobApplicationId,
   onPrefillConsumed,
   careerProfileSummary,
   onOpenCareerProfile,
@@ -753,16 +756,24 @@ export function SalaryNegotiationRoom({
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
 
-  // SN1-2: Notify parent that prefill data was consumed so it can clear its state.
-  // The form was already initialized with the prefill values in the useState initializer
-  // above, so this effect only needs to fire the callback once on mount.
-  const prefillConsumedRef = useRef(false);
+  const prefillConsumedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!prefillConsumedRef.current && (prefillCompany != null || prefillRole != null)) {
-      prefillConsumedRef.current = true;
+    const prefillKey = `${prefillCompany ?? ''}::${prefillRole ?? ''}`;
+    if ((prefillCompany != null || prefillRole != null) && prefillConsumedRef.current !== prefillKey) {
+      prefillConsumedRef.current = prefillKey;
       onPrefillConsumed?.();
     }
   }, [prefillCompany, prefillRole, onPrefillConsumed]);
+
+  useEffect(() => {
+    if (prefillCompany != null || prefillRole != null) {
+      setForm((prev) => ({
+        ...prev,
+        offerCompany: prefillCompany ?? prev.offerCompany,
+        offerRole: prefillRole ?? prev.offerRole,
+      }));
+    }
+  }, [prefillCompany, prefillRole]);
 
   const {
     status,
@@ -835,8 +846,9 @@ export function SalaryNegotiationRoom({
       currentEquity: form.currentEquity.trim() || undefined,
       targetRole: form.targetRole.trim() || undefined,
       targetIndustry: form.targetIndustry.trim() || undefined,
+      jobApplicationId: prefillJobApplicationId,
     });
-  }, [canSubmit, form, resumeText, startPipeline]);
+  }, [canSubmit, form, prefillJobApplicationId, resumeText, startPipeline]);
 
   const handleReset = useCallback(() => {
     reset();

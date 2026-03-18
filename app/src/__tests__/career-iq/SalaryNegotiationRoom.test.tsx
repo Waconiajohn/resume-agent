@@ -96,6 +96,12 @@ describe('SalaryNegotiationRoom', () => {
     expect(roleFields.length).toBeGreaterThan(0);
   });
 
+  it('prefills company and role from the job workspace context', () => {
+    render(<SalaryNegotiationRoom prefillCompany="Acme Corp" prefillRole="VP Operations" />);
+    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue('VP Operations').length).toBeGreaterThan(0);
+  });
+
   it('does not call startPipeline when required fields are empty', () => {
     render(<SalaryNegotiationRoom />);
     fireEvent.click(screen.getByRole('button', { name: /Build Negotiation Strategy/i }));

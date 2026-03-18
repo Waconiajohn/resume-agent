@@ -447,9 +447,19 @@ const INPUT_CLASS =
 
 // --- Main component ---
 
-export function NinetyDayPlanRoom() {
-  const [targetRole, setTargetRole] = useState('');
-  const [targetCompany, setTargetCompany] = useState('');
+interface NinetyDayPlanRoomProps {
+  initialTargetRole?: string;
+  initialTargetCompany?: string;
+  initialJobApplicationId?: string;
+}
+
+export function NinetyDayPlanRoom({
+  initialTargetRole,
+  initialTargetCompany,
+  initialJobApplicationId,
+}: NinetyDayPlanRoomProps = {}) {
+  const [targetRole, setTargetRole] = useState(initialTargetRole ?? '');
+  const [targetCompany, setTargetCompany] = useState(initialTargetCompany ?? '');
   const [targetIndustry, setTargetIndustry] = useState('');
   const [reportingTo, setReportingTo] = useState('');
   const [teamSize, setTeamSize] = useState('');
@@ -514,6 +524,15 @@ export function NinetyDayPlanRoom() {
     };
   }, []);
 
+  useEffect(() => {
+    if (initialTargetRole) {
+      setTargetRole(initialTargetRole);
+    }
+    if (initialTargetCompany) {
+      setTargetCompany(initialTargetCompany);
+    }
+  }, [initialTargetCompany, initialTargetRole]);
+
   const handleSubmit = useCallback(async () => {
     setFormError(null);
 
@@ -540,16 +559,17 @@ export function NinetyDayPlanRoom() {
       targetIndustry: targetIndustry.trim() || undefined,
       reportingTo: reportingTo.trim() || undefined,
       teamSize: teamSize.trim() || undefined,
+      jobApplicationId: initialJobApplicationId,
     });
-  }, [targetRole, targetCompany, targetIndustry, reportingTo, teamSize, manualResumeText, startPipeline]);
+  }, [initialJobApplicationId, targetRole, targetCompany, targetIndustry, reportingTo, teamSize, manualResumeText, startPipeline]);
 
   const handleReset = useCallback(() => {
     reset();
     setFormError(null);
     setResumeLoaded(false);
-    setTargetRole('');
-    setTargetCompany('');
-  }, [reset]);
+    setTargetRole(initialTargetRole ?? '');
+    setTargetCompany(initialTargetCompany ?? '');
+  }, [initialTargetCompany, initialTargetRole, reset]);
 
   // Complete → report
   if (status === 'complete' && report) {

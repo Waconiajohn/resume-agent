@@ -62,6 +62,10 @@ interface InterviewLabRoomProps {
   pipelineInterviews?: PipelineInterviewCard[];
   careerProfileSummary?: CareerProfileSummary;
   onOpenCareerProfile?: () => void;
+  initialCompany?: string;
+  initialRole?: string;
+  initialJobApplicationId?: string;
+  initialFocus?: string;
 }
 
 export interface PipelineInterviewCard {
@@ -890,14 +894,19 @@ export function InterviewLabRoom({
   pipelineInterviews,
   careerProfileSummary,
   onOpenCareerProfile,
+  initialCompany,
+  initialRole,
+  initialJobApplicationId,
+  initialFocus,
 }: InterviewLabRoomProps) {
   const [history, setHistory] = useState<PastInterview[]>(loadHistory);
   const [viewMode, setViewMode] = useState<ViewMode>('lab');
   const [activeSection, setActiveSection] = useState<LabSection>('prep');
   const [documentsView, setDocumentsView] = useState<DocumentsView>('overview');
   const [followUpView, setFollowUpView] = useState<FollowUpView>('overview');
-  const [activeCompany, setActiveCompany] = useState('');
-  const [activeRole, setActiveRole] = useState('');
+  const [activeCompany, setActiveCompany] = useState(initialCompany ?? '');
+  const [activeRole, setActiveRole] = useState(initialRole ?? '');
+  const [activeJobApplicationId, setActiveJobApplicationId] = useState<string | undefined>(initialJobApplicationId);
   const [loadingInputs, setLoadingInputs] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [jdWarning, setJdWarning] = useState(false);
@@ -925,6 +934,44 @@ export function InterviewLabRoom({
   }, [status, report]);
 
   useEffect(() => {
+    if (initialCompany) {
+      setActiveCompany(initialCompany);
+    }
+    if (initialRole) {
+      setActiveRole(initialRole);
+    }
+    if (initialJobApplicationId) {
+      setActiveJobApplicationId(initialJobApplicationId);
+    }
+  }, [initialCompany, initialRole, initialJobApplicationId]);
+
+  useEffect(() => {
+    if (initialFocus === 'plan') {
+      setActiveSection('documents');
+      setDocumentsView('ninety_day_plan');
+      setFollowUpView('overview');
+      return;
+    }
+    if (initialFocus === 'thank-you') {
+      setActiveSection('follow_up');
+      setFollowUpView('thank_you');
+      setDocumentsView('overview');
+      return;
+    }
+    if (initialFocus === 'practice') {
+      setActiveSection('practice');
+      setDocumentsView('overview');
+      setFollowUpView('overview');
+      return;
+    }
+    if (initialFocus === 'prep') {
+      setActiveSection('prep');
+      setDocumentsView('overview');
+      setFollowUpView('overview');
+    }
+  }, [initialFocus]);
+
+  useEffect(() => {
     if (activeSection !== 'documents' && documentsView !== 'overview') {
       setDocumentsView('overview');
     }
@@ -936,6 +983,7 @@ export function InterviewLabRoom({
   const handleGeneratePrep = useCallback(async (interview: UpcomingInterview) => {
     setActiveCompany(interview.company);
     setActiveRole(interview.role);
+    setActiveJobApplicationId(interview.jobApplicationId);
     setLoadingInputs(true);
     setInputError(null);
     setJdWarning(false);
@@ -997,9 +1045,10 @@ export function InterviewLabRoom({
   const handleBack = useCallback(() => {
     reset();
     setViewMode('lab');
-    setActiveCompany('');
-    setActiveRole('');
-  }, [reset]);
+    setActiveCompany(initialCompany ?? '');
+    setActiveRole(initialRole ?? '');
+    setActiveJobApplicationId(initialJobApplicationId);
+  }, [initialCompany, initialJobApplicationId, initialRole, reset]);
 
   const handleUpdateOutcome = useCallback((id: string, outcome: PastInterview['outcome']) => {
     setHistory((prev) => {
@@ -1373,7 +1422,11 @@ export function InterviewLabRoom({
                   This document should make the interviewer feel your first 30, 60, and 90 days are already taking shape. Keep the positioning story consistent with your prep report and mock-interview answers.
                 </p>
               </GlassCard>
-              <NinetyDayPlanRoom />
+              <NinetyDayPlanRoom
+                initialTargetRole={activeRole}
+                initialTargetCompany={activeCompany}
+                initialJobApplicationId={activeJobApplicationId}
+              />
             </div>
           )}
         </div>
@@ -1403,7 +1456,13 @@ export function InterviewLabRoom({
             </div>
           </GlassCard>
 
-          {followUpView === 'thank_you' && <ThankYouNoteRoom />}
+          {followUpView === 'thank_you' && (
+            <ThankYouNoteRoom
+              initialCompany={activeCompany}
+              initialRole={activeRole}
+              initialJobApplicationId={activeJobApplicationId}
+            />
+          )}
 
           <InterviewHistory
             history={history}

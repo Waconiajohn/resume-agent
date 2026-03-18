@@ -239,9 +239,16 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.02] overflow-hidden">
       {/* Header */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
       >
         <div className="h-8 w-8 rounded-full bg-[#A396E2]/10 flex items-center justify-center flex-shrink-0">
@@ -266,7 +273,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
           )}
           {expanded ? <ChevronUp size={14} className="text-white/25" /> : <ChevronDown size={14} className="text-white/25" />}
         </div>
-      </button>
+      </div>
 
       {/* Body */}
       {expanded && (
@@ -564,9 +571,19 @@ function makeEmptyInterviewer(): InterviewerInput & { _id: number } {
 
 // --- Main component ---
 
-export function ThankYouNoteRoom() {
-  const [company, setCompany] = useState('');
-  const [role, setRole] = useState('');
+interface ThankYouNoteRoomProps {
+  initialCompany?: string;
+  initialRole?: string;
+  initialJobApplicationId?: string;
+}
+
+export function ThankYouNoteRoom({
+  initialCompany,
+  initialRole,
+  initialJobApplicationId,
+}: ThankYouNoteRoomProps = {}) {
+  const [company, setCompany] = useState(initialCompany ?? '');
+  const [role, setRole] = useState(initialRole ?? '');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewType, setInterviewType] = useState('video');
   const [interviewers, setInterviewers] = useState<(InterviewerInput & { _id: number })[]>([makeEmptyInterviewer()]);
@@ -619,6 +636,15 @@ export function ThankYouNoteRoom() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    if (initialCompany) {
+      setCompany(initialCompany);
+    }
+    if (initialRole) {
+      setRole(initialRole);
+    }
+  }, [initialCompany, initialRole]);
+
   const handleAddInterviewer = () => {
     setInterviewers((prev) => [...prev, makeEmptyInterviewer()]);
   };
@@ -654,14 +680,17 @@ export function ThankYouNoteRoom() {
       interviewDate: interviewDate || undefined,
       interviewType,
       interviewers: validInterviewers,
+      jobApplicationId: initialJobApplicationId,
     });
-  }, [company, role, interviewDate, interviewType, interviewers, resumeLoaded, startPipeline]);
+  }, [company, initialJobApplicationId, role, interviewDate, interviewType, interviewers, resumeLoaded, startPipeline]);
 
   const handleReset = useCallback(() => {
     reset();
     setFormError(null);
     setResumeLoaded(false);
-  }, [reset]);
+    setCompany(initialCompany ?? '');
+    setRole(initialRole ?? '');
+  }, [initialCompany, initialRole, reset]);
 
   // Complete → report
   if (status === 'complete' && report) {

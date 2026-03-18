@@ -56,6 +56,16 @@ const JOB_WORKSPACE_STAGES: PipelineStage[] = [
   'closed_lost',
 ];
 
+const WORKSPACE_PRODUCT_TYPES = new Set([
+  'resume',
+  'resume_v2',
+  'cover_letter',
+  'interview_prep',
+  'thank_you_note',
+  'ninety_day_plan',
+  'salary_negotiation',
+]);
+
 function isPipelineStage(value?: string | null): value is PipelineStage {
   return JOB_WORKSPACE_STAGES.includes(value as PipelineStage);
 }
@@ -96,20 +106,17 @@ function formatJobStage(stage?: string | null): { label: string; classes: string
 function stageAwareActions(stage?: string | null): {
   unlocked: string[];
   nextActionLabel: string;
-  nextActionRoute?: string;
 } {
   switch (stage) {
     case 'interviewing':
       return {
         unlocked: ['Interview Lab', 'Thank You Note', '30-60-90 Day Plan'],
         nextActionLabel: 'Open Interview Lab',
-        nextActionRoute: '/workspace?room=interview',
       };
     case 'offer':
       return {
         unlocked: ['Salary Negotiation', 'Interview Lab'],
         nextActionLabel: 'Open Salary Negotiation',
-        nextActionRoute: '/workspace?room=salary-negotiation',
       };
     case 'closed_won':
       return {
@@ -153,15 +160,48 @@ function productTypeForSession(session: CoachSession): string {
   return session.product_type ?? 'resume';
 }
 
+function isResumeProductType(type: string): boolean {
+  return type === 'resume' || type === 'resume_v2';
+}
+
+function isWorkspaceProductType(type: string): boolean {
+  return WORKSPACE_PRODUCT_TYPES.has(type);
+}
+
 function getUniqueProductTypes(sessions: CoachSession[]): string[] {
   const types = new Set<string>();
   for (const session of sessions) {
     const type = productTypeForSession(session);
-    if (type === 'resume' || type === 'resume_v2' || type === 'cover_letter') {
+    if (isWorkspaceProductType(type)) {
       types.add(type);
     }
   }
   return Array.from(types).sort();
+}
+
+function buildWorkspaceRoomRoute(
+  room: 'interview' | 'salary-negotiation',
+  context: {
+    company: string;
+    role: string;
+    jobApplicationId?: string | null;
+  },
+  focus?: 'prep' | 'plan' | 'thank-you',
+): string {
+  const params = new URLSearchParams({ room });
+  if (context.jobApplicationId) {
+    params.set('job', context.jobApplicationId);
+  }
+  if (context.company) {
+    params.set('company', context.company);
+  }
+  if (context.role) {
+    params.set('role', context.role);
+  }
+  if (focus) {
+    params.set('focus', focus);
+  }
+  return `/workspace?${params.toString()}`;
 }
 
 function formatDate(dateString: string): string {
@@ -324,7 +364,7 @@ export function SessionHistoryTab({
   const filteredSessions = allSessions.filter((session) => {
     const type = productTypeForSession(session);
     const matchesProduct = productFilter === 'all' || type === productFilter;
-    const matchesSupportedType = type === 'resume' || type === 'resume_v2' || type === 'cover_letter';
+    const matchesSupportedType = isWorkspaceProductType(type);
     return matchesProduct && matchesSupportedType && matchesStatusFilter(session, statusFilter);
   });
   const jobRecords = useMemo(() => buildJobRecords(filteredSessions), [filteredSessions]);
@@ -448,8 +488,8 @@ export function SessionHistoryTab({
         ) : (
           <div className="divide-y divide-white/[0.04]">
             {jobRecords.map((record) => {
-              const resumeAsset = record.assets.find((session) => productTypeForSession(session) !== 'cover_letter');
-              const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter');
+              const resumeAsset = record.assets.find((session) => isResumeProductType(productTypeForSession(session))) ?? null;
+              const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter') ?? null;
               const application = record.jobApplicationId ? applicationsById.get(record.jobApplicationId) : undefined;
               const assetCounts = record.assets.reduce<Record<string, number>>((accumulator, session) => {
                 const type = productTypeForSession(session);
@@ -459,6 +499,12 @@ export function SessionHistoryTab({
               const activeStage = application?.stage ?? record.jobStage;
               const jobStage = formatJobStage(activeStage);
               const stageActions = stageAwareActions(activeStage);
+              const nextActionRoute = activeStage === 'interviewing'
+                ? buildWorkspaceRoomRoute('interview', record, 'prep')
+                : activeStage === 'offer'
+                ? buildWorkspaceRoomRoute('salary-negotiation', record)
+                : null;
+              const reopenSessionId = resumeAsset?.id ?? record.latestSession.id;
 
               return (
                 <div key={record.key} className="px-5 py-4">
@@ -510,7 +556,7 @@ export function SessionHistoryTab({
                         <BriefcaseBusiness size={12} className="mr-1.5" />
                         {selectedWorkspaceKey === record.key ? 'Workspace Open' : 'View Workspace'}
                       </GlassButton>
-                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(record.latestSession.id)}>
+                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(reopenSessionId)}>
                         <ExternalLink size={12} className="mr-1.5" />
                         Open
                       </GlassButton>
@@ -537,12 +583,12 @@ export function SessionHistoryTab({
                           Delete
                         </button>
                       )}
-                      {stageActions.nextActionRoute && (
+                      {nextActionRoute && (
                         <GlassButton
                           size="sm"
                           variant="ghost"
                           className="h-8 px-3 text-xs"
-                          onClick={() => onNavigate?.(stageActions.nextActionRoute!)}
+                          onClick={() => onNavigate?.(nextActionRoute)}
                         >
                           <FileText size={12} className="mr-1.5" />
                           {stageActions.nextActionLabel}
@@ -550,7 +596,7 @@ export function SessionHistoryTab({
                       )}
                     </div>
                   </div>
-                  {!stageActions.nextActionRoute && (
+                  {!nextActionRoute && (
                     <div className="mt-3 text-[11px] text-white/38">
                       {stageActions.nextActionLabel}
                     </div>
@@ -624,11 +670,20 @@ function JobWorkspacePanel({
   onViewResume: (sessionId: string) => void;
   onViewCoverLetter: (sessionId: string) => void;
 }) {
-  const resumeAsset = record.assets.find((session) => productTypeForSession(session) !== 'cover_letter') ?? null;
+  const resumeAsset = record.assets.find((session) => isResumeProductType(productTypeForSession(session))) ?? null;
   const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter') ?? null;
+  const interviewPrepAsset = record.assets.find((session) => productTypeForSession(session) === 'interview_prep') ?? null;
+  const thankYouAsset = record.assets.find((session) => productTypeForSession(session) === 'thank_you_note') ?? null;
+  const ninetyDayPlanAsset = record.assets.find((session) => productTypeForSession(session) === 'ninety_day_plan') ?? null;
+  const salaryNegotiationAsset = record.assets.find((session) => productTypeForSession(session) === 'salary_negotiation') ?? null;
   const activeStage = application?.stage ?? (isPipelineStage(record.jobStage) ? record.jobStage : 'saved');
   const activeStageBadge = formatJobStage(activeStage);
   const stageActions = stageAwareActions(activeStage);
+  const reopenSessionId = resumeAsset?.id ?? record.latestSession.id;
+  const interviewPrepRoute = buildWorkspaceRoomRoute('interview', record, 'prep');
+  const thankYouRoute = buildWorkspaceRoomRoute('interview', record, 'thank-you');
+  const ninetyDayPlanRoute = buildWorkspaceRoomRoute('interview', record, 'plan');
+  const salaryNegotiationRoute = buildWorkspaceRoomRoute('salary-negotiation', record);
   const stageHistory = Array.isArray(application?.stage_history) && application?.stage_history.length > 0
     ? application.stage_history
     : [{ stage: activeStage, at: record.latestSession.updated_at }];
@@ -696,7 +751,7 @@ function JobWorkspacePanel({
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Assets</div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
                   <FileText size={14} className="text-[#98b3ff]" />
@@ -738,6 +793,94 @@ function JobWorkspacePanel({
                   )}
                 </div>
               </div>
+
+              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+                  <Mic size={14} className="text-[#98b3ff]" />
+                  Interview Prep
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                  {interviewPrepAsset
+                    ? 'Saved to this job workspace. Reopen Interview Lab to review or extend the prep.'
+                    : activeStage === 'interviewing' || activeStage === 'offer'
+                    ? 'Ready to generate now that the job is in interviews.'
+                    : 'Interview prep stays hidden until the application reaches interviewing.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(interviewPrepAsset || activeStage === 'interviewing' || activeStage === 'offer') && (
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(interviewPrepRoute)}>
+                      <Mic size={12} className="mr-1.5" />
+                      Open Interview Lab
+                    </GlassButton>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+                  <Mail size={14} className="text-[#98b3ff]" />
+                  Thank You Note
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                  {thankYouAsset
+                    ? 'Saved follow-up for this job. Reopen the note inside Interview Lab.'
+                    : activeStage === 'interviewing' || activeStage === 'offer'
+                    ? 'Available when you need post-interview follow-up.'
+                    : 'Follow-up unlocks only after the job reaches interview stages.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(thankYouAsset || activeStage === 'interviewing' || activeStage === 'offer') && (
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(thankYouRoute)}>
+                      <Mail size={12} className="mr-1.5" />
+                      Open Note
+                    </GlassButton>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+                  <FileText size={14} className="text-[#98b3ff]" />
+                  30-60-90 Plan
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                  {ninetyDayPlanAsset
+                    ? 'Saved to this workspace for later interview rounds.'
+                    : activeStage === 'interviewing' || activeStage === 'offer'
+                    ? 'Ready when you need a leave-behind for later rounds.'
+                    : 'Keep this closed until the job is deep enough to justify interview leave-behinds.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(ninetyDayPlanAsset || activeStage === 'interviewing' || activeStage === 'offer') && (
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(ninetyDayPlanRoute)}>
+                      <FileText size={12} className="mr-1.5" />
+                      Open Plan
+                    </GlassButton>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+                  <Sparkles size={14} className="text-[#98b3ff]" />
+                  Salary Negotiation
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                  {salaryNegotiationAsset
+                    ? 'Saved offer-stage strategy for this job workspace.'
+                    : activeStage === 'offer'
+                    ? 'Unlocked now that the process is at offer stage.'
+                    : 'Negotiation prep stays out of the way until there is a live offer.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(salaryNegotiationAsset || activeStage === 'offer') && (
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(salaryNegotiationRoute)}>
+                      <Sparkles size={12} className="mr-1.5" />
+                      Open Strategy
+                    </GlassButton>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -748,18 +891,18 @@ function JobWorkspacePanel({
               Available now: {stageActions.unlocked.join(' • ')}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(record.latestSession.id)}>
+              <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(reopenSessionId)}>
                 <BriefcaseBusiness size={12} className="mr-1.5" />
                 Reopen Tailored Work
               </GlassButton>
               {activeStage === 'interviewing' && (
-                <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/workspace?room=interview')}>
+                <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(interviewPrepRoute)}>
                   <Mic size={12} className="mr-1.5" />
                   Open Interview Lab
                 </GlassButton>
               )}
               {activeStage === 'offer' && (
-                <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/workspace?room=salary-negotiation')}>
+                <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(salaryNegotiationRoute)}>
                   <Sparkles size={12} className="mr-1.5" />
                   Open Salary Negotiation
                 </GlassButton>

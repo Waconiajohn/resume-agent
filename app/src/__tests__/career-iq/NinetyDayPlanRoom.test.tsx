@@ -97,6 +97,12 @@ describe('NinetyDayPlanRoom', () => {
     expect(screen.getByPlaceholderText('e.g. Medtronic')).toBeInTheDocument();
   });
 
+  it('prefills role and company when launched from a job workspace', () => {
+    render(<NinetyDayPlanRoom initialTargetRole="VP Operations" initialTargetCompany="Acme Corp" />);
+    expect(screen.getByDisplayValue('VP Operations')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+  });
+
   it('does not call startPipeline when required fields are empty', () => {
     render(<NinetyDayPlanRoom />);
     fireEvent.click(screen.getByText('Generate Plan'));

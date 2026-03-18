@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import { useCareerProfile } from './CareerProfileContext';
@@ -130,6 +131,7 @@ export function CareerIQScreen({
   onSetDefaultResume,
   onDeleteResume,
 }: CareerIQScreenProps) {
+  const location = useLocation();
   const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toValidRoom(initialRoom));
   const {
     profile,
@@ -154,6 +156,20 @@ export function CareerIQScreen({
   const { recommendation: coachRec, loading: coachLoading, refresh: refreshCoachRec } = useCoachRecommendation();
   const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
   const [salaryNegoPrefill, setSalaryNegoPrefill] = useState<{ company: string; role: string } | null>(null);
+  const workspaceLaunchContext = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const jobApplicationId = params.get('job');
+    const company = params.get('company');
+    const role = params.get('role');
+    const focus = params.get('focus');
+
+    return {
+      jobApplicationId: jobApplicationId?.trim() || undefined,
+      company: company?.trim() || undefined,
+      role: role?.trim() || undefined,
+      focus: focus?.trim() || undefined,
+    };
+  }, [location.search]);
 
   useEffect(() => {
     if (initialRoom) {
@@ -402,6 +418,10 @@ export function CareerIQScreen({
           pipelineInterviews={pipelineInterviews}
           careerProfileSummary={summary}
           onOpenCareerProfile={openCareerProfile}
+          initialCompany={workspaceLaunchContext.company}
+          initialRole={workspaceLaunchContext.role}
+          initialJobApplicationId={workspaceLaunchContext.jobApplicationId}
+          initialFocus={workspaceLaunchContext.focus}
         />
       );
     }
@@ -413,8 +433,9 @@ export function CareerIQScreen({
     if (activeRoom === 'salary-negotiation') {
       return (
         <SalaryNegotiationRoom
-          prefillCompany={salaryNegoPrefill?.company}
-          prefillRole={salaryNegoPrefill?.role}
+          prefillCompany={salaryNegoPrefill?.company ?? workspaceLaunchContext.company}
+          prefillRole={salaryNegoPrefill?.role ?? workspaceLaunchContext.role}
+          prefillJobApplicationId={workspaceLaunchContext.jobApplicationId}
           onPrefillConsumed={() => setSalaryNegoPrefill(null)}
           careerProfileSummary={summary}
           onOpenCareerProfile={openCareerProfile}
