@@ -854,8 +854,10 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 
 // --- Main component ---
 
-type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview' | 'thank-you' | 'ninety-day-plan';
+type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
 type LabSection = 'prep' | 'practice' | 'documents' | 'follow_up';
+type DocumentsView = 'overview' | 'ninety_day_plan';
+type FollowUpView = 'overview' | 'thank_you';
 
 const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string }> = {
   prep: {
@@ -892,6 +894,8 @@ export function InterviewLabRoom({
   const [history, setHistory] = useState<PastInterview[]>(loadHistory);
   const [viewMode, setViewMode] = useState<ViewMode>('lab');
   const [activeSection, setActiveSection] = useState<LabSection>('prep');
+  const [documentsView, setDocumentsView] = useState<DocumentsView>('overview');
+  const [followUpView, setFollowUpView] = useState<FollowUpView>('overview');
   const [activeCompany, setActiveCompany] = useState('');
   const [activeRole, setActiveRole] = useState('');
   const [loadingInputs, setLoadingInputs] = useState(false);
@@ -919,6 +923,15 @@ export function InterviewLabRoom({
       setViewMode('report');
     }
   }, [status, report]);
+
+  useEffect(() => {
+    if (activeSection !== 'documents' && documentsView !== 'overview') {
+      setDocumentsView('overview');
+    }
+    if (activeSection !== 'follow_up' && followUpView !== 'overview') {
+      setFollowUpView('overview');
+    }
+  }, [activeSection, documentsView, followUpView]);
 
   const handleGeneratePrep = useCallback(async (interview: UpcomingInterview) => {
     setActiveCompany(interview.company);
@@ -1060,24 +1073,8 @@ export function InterviewLabRoom({
 
   const handleOpenNinetyDayPlan = useCallback(() => {
     setActiveSection('documents');
-    setViewMode('ninety-day-plan');
+    setDocumentsView('ninety_day_plan');
   }, []);
-
-  if (viewMode === 'thank-you') {
-    return (
-      <div className="flex flex-col gap-4 p-6 max-w-[1400px] mx-auto">
-        <button
-          type="button"
-          onClick={() => setViewMode('lab')}
-          className="flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium w-fit"
-        >
-          <ArrowLeft size={14} />
-          Back to Interview Lab
-        </button>
-        <ThankYouNoteRoom />
-      </div>
-    );
-  }
 
   if (viewMode === 'debrief') {
     return (
@@ -1098,22 +1095,6 @@ export function InterviewLabRoom({
         companyName={mockInterviewConfig.companyName}
         onBack={handleMockInterviewBack}
       />
-    );
-  }
-
-  if (viewMode === 'ninety-day-plan') {
-    return (
-      <div className="flex flex-col gap-4 p-6 max-w-[1400px] mx-auto">
-        <button
-          type="button"
-          onClick={() => setViewMode('lab')}
-          className="flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium w-fit"
-        >
-          <ArrowLeft size={14} />
-          Back to Interview Lab
-        </button>
-        <NinetyDayPlanRoom />
-      </div>
     );
   }
 
@@ -1330,52 +1311,108 @@ export function InterviewLabRoom({
       )}
 
       {activeSection === 'documents' && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <GlassCard className="p-5">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-              Interview Leave-Behinds
-            </div>
-            <h2 className="mt-2 text-lg font-semibold text-white/88">90-Day Plan Document</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/54">
-              Use this when you need to show how you would step into the role, prioritize fast, and create confidence before an offer decision is made.
-            </p>
-            <GlassButton variant="ghost" onClick={handleOpenNinetyDayPlan} className="mt-4 text-[13px]">
-              <ClipboardList size={14} className="mr-1.5" />
-              Open 90-Day Plan Document
-            </GlassButton>
-          </GlassCard>
+        <div className="space-y-4">
+          {documentsView === 'overview' ? (
+            <GlassCard className="p-5">
+              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                Interview leave-behinds
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-white/88">Build documents without leaving the lab</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
+                Keep your prep story, proof points, and interview strategy in the same room. The 90-day plan should feel like one more move in the interview workflow, not a completely separate product.
+              </p>
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                  <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Documents</div>
+                  <h3 className="mt-2 text-base font-semibold text-white/84">90-Day Plan</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/52">
+                    Use this when you need to show how you would step into the role, prioritize fast, and create confidence before an offer decision is made.
+                  </p>
+                  <GlassButton variant="ghost" onClick={handleOpenNinetyDayPlan} className="mt-4 text-[13px]">
+                    <ClipboardList size={14} className="mr-1.5" />
+                    Open 90-Day Plan
+                  </GlassButton>
+                </div>
 
-          <GlassCard className="p-5">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-              Follow-Up Assets
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                  <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Next document</div>
+                  <h3 className="mt-2 text-base font-semibold text-white/84">Thank You Note</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/52">
+                    Follow-up lives in the next section because it happens after the conversation, but it should reinforce the exact same story.
+                  </p>
+                  <GlassButton
+                    variant="ghost"
+                    onClick={() => {
+                      setActiveSection('follow_up');
+                      setFollowUpView('thank_you');
+                    }}
+                    className="mt-4 text-[13px]"
+                  >
+                    <Mail size={14} className="mr-1.5" />
+                    Open Thank You Note
+                  </GlassButton>
+                </div>
+              </div>
+            </GlassCard>
+          ) : (
+            <div className="space-y-4">
+              <GlassCard className="p-5">
+                <button
+                  type="button"
+                  onClick={() => setDocumentsView('overview')}
+                  className="inline-flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium"
+                >
+                  <ArrowLeft size={14} />
+                  Back to Documents
+                </button>
+                <div className="mt-4 text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  90-Day Plan
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-white/88">Stay in the interview workflow while you build the leave-behind</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
+                  This document should make the interviewer feel your first 90 days are already taking shape. Keep the positioning story consistent with your prep report and mock-interview answers.
+                </p>
+              </GlassCard>
+              <NinetyDayPlanRoom />
             </div>
-            <h2 className="mt-2 text-lg font-semibold text-white/88">Thank You Notes</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/54">
-              Create fast, thoughtful follow-up notes that reinforce the same positioning story you used in the interview.
-            </p>
-            <GlassButton
-              variant="ghost"
-              onClick={() => {
-                setActiveSection('follow_up');
-                setViewMode('thank-you');
-              }}
-              className="mt-4 text-[13px]"
-            >
-              <Mail size={14} className="mr-1.5" />
-              Open Thank You Notes
-            </GlassButton>
-          </GlassCard>
+          )}
         </div>
       )}
 
       {activeSection === 'follow_up' && (
-        <InterviewHistory
-          history={history}
-          onUpdateOutcome={handleUpdateOutcome}
-          onAdd={handleAddInterview}
-          onAddDebrief={handleAddDebriefClick}
-          debriefCount={debriefs.length}
-        />
+        <div className="space-y-4">
+          <GlassCard className="p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  Follow-Up
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-white/88">Close the loop without breaking the narrative</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/54">
+                  Your debriefs, thank-you note, and next-step follow-up should all reinforce the same positioning story you used during prep and practice.
+                </p>
+              </div>
+              <GlassButton
+                variant="ghost"
+                onClick={() => setFollowUpView((current) => (current === 'thank_you' ? 'overview' : 'thank_you'))}
+                className="text-[13px]"
+              >
+                <Mail size={14} className="mr-1.5" />
+                {followUpView === 'thank_you' ? 'Hide Thank You Note' : 'Open Thank You Note'}
+              </GlassButton>
+            </div>
+          </GlassCard>
+
+          {followUpView === 'thank_you' && <ThankYouNoteRoom />}
+
+          <InterviewHistory
+            history={history}
+            onUpdateOutcome={handleUpdateOutcome}
+            onAdd={handleAddInterview}
+            onAddDebrief={handleAddDebriefClick}
+            debriefCount={debriefs.length}
+          />
+        </div>
       )}
     </div>
   );

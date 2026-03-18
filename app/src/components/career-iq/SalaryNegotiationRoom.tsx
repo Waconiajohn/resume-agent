@@ -748,6 +748,7 @@ export function SalaryNegotiationRoom({
     offerCompany: prefillCompany ?? '',
     offerRole: prefillRole ?? '',
   }));
+  const [showPriorResult, setShowPriorResult] = useState(false);
   const [resumeText, setResumeText] = useState('');
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
@@ -959,21 +960,62 @@ export function SalaryNegotiationRoom({
         />
       )}
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-[#afc4ff]/10 p-2.5 border border-[#afc4ff]/20">
-            <DollarSign size={20} className="text-[#afc4ff]" />
+      <GlassCard className="p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-[#afc4ff]/10 p-2.5 border border-[#afc4ff]/20">
+                <DollarSign size={20} className="text-[#afc4ff]" />
+              </div>
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#afc4ff]/70">
+                  Negotiation Prep
+                </div>
+                <h1 className="mt-1 text-xl font-semibold text-white/90">Build one clear compensation strategy before you respond</h1>
+              </div>
+            </div>
+            <p className="mt-3 text-[13px] leading-relaxed text-white/48">
+              This should feel like a guided strategy brief, not a report generator. Load the offer, anchor it to your market story, and walk away with leverage points plus language you can actually use.
+            </p>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-white/90">Salary Negotiation</h1>
-            <p className="text-[13px] text-white/40">Get a personalized playbook with market benchmarks, leverage points, and word-for-word scripts</p>
+
+          <div className="flex flex-wrap gap-2">
+            {priorResult && !isPipelineActive && (
+              <GlassButton
+                variant="ghost"
+                onClick={() => setShowPriorResult((current) => !current)}
+                className="text-[13px]"
+              >
+                {showPriorResult ? 'Hide previous strategy' : 'Review previous strategy'}
+              </GlassButton>
+            )}
+            <GlassButton variant="ghost" onClick={() => onOpenCareerProfile?.()} className="text-[13px]">
+              <Target size={14} className="mr-1.5" />
+              Review Career Profile
+            </GlassButton>
           </div>
         </div>
-      </div>
-      <ContextLoadedBadge
-        contextTypes={['career_profile', 'positioning_strategy', 'emotional_baseline']}
-        className="mb-3"
-      />
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What goes in</div>
+            <div className="mt-2 text-sm font-semibold text-white/84">Offer details, current baseline, and the story behind your leverage</div>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What comes out</div>
+            <div className="mt-2 text-sm font-semibold text-white/84">Market benchmarks, negotiation posture, and scripts you can actually say out loud</div>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">How to use it</div>
+            <div className="mt-2 text-sm font-semibold text-white/84">Decide what to press, what to trade, and when to hold the line</div>
+          </div>
+        </div>
+
+        <ContextLoadedBadge
+          contextTypes={['career_profile', 'positioning_strategy', 'emotional_baseline']}
+          className="mt-5"
+        />
+      </GlassCard>
 
       {priorLoading && (
         <GlassCard className="p-4">
@@ -983,18 +1025,27 @@ export function SalaryNegotiationRoom({
           </div>
         </GlassCard>
       )}
-      {priorResult && !isPipelineActive && (
+      {priorResult && !isPipelineActive && showPriorResult && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white/70">Previous Result</h3>
-            <button
-              type="button"
-              onClick={clearPrior}
-              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
-            >
-              <RotateCcw className="w-3 h-3" />
-              New Analysis
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPriorResult(false)}
+                className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+              >
+                Hide
+              </button>
+              <button
+                type="button"
+                onClick={clearPrior}
+                className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                New Analysis
+              </button>
+            </div>
           </div>
           <div
             className="prose prose-invert prose-sm max-w-none text-white/80 max-h-96 overflow-y-auto"
@@ -1003,31 +1054,50 @@ export function SalaryNegotiationRoom({
         </GlassCard>
       )}
 
-      {resumeLoading ? (
-        <div className="flex items-center gap-2 text-[12px] text-white/35">
-          <Loader2 size={12} className="animate-spin" />
-          Loading your resume...
-        </div>
-      ) : resumeText.length > 50 ? (
-        <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
-          <Check size={12} />
-          Resume loaded from Resume Strategist
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70 mb-1">
-            <AlertCircle size={12} />
-            No master resume found — paste your resume below
+      <GlassCard className="p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">Resume context</div>
+            <h2 className="mt-2 text-base font-semibold text-white/86">Negotiation quality improves when the platform can see your full scope and proof</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/50">
+              If your master resume is already saved, we will use it. If not, paste it here so the negotiation strategy can reflect your real level, impact, and credibility.
+            </p>
           </div>
-          <TextareaField
-            label="Your Resume"
-            value={resumeText}
-            onChange={setResumeText}
-            placeholder="Paste your full resume text here..."
-            rows={5}
-          />
+          {resumeText.length > 50 && !resumeLoading && (
+            <div className="rounded-full border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[#b5dec2]/78">
+              Resume loaded
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="mt-4">
+          {resumeLoading ? (
+            <div className="flex items-center gap-2 text-[12px] text-white/35">
+              <Loader2 size={12} className="animate-spin" />
+              Loading your resume...
+            </div>
+          ) : resumeText.length > 50 ? (
+            <div className="flex items-center gap-2 text-[12px] text-[#b5dec2]/70">
+              <Check size={12} />
+              Resume loaded from Resume Builder / master resume.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 text-[12px] text-[#f0d99f]/70 mb-1">
+                <AlertCircle size={12} />
+                No master resume found — paste your resume below
+              </div>
+              <TextareaField
+                label="Your Resume"
+                value={resumeText}
+                onChange={setResumeText}
+                placeholder="Paste your full resume text here..."
+                rows={5}
+              />
+            </div>
+          )}
+        </div>
+      </GlassCard>
 
       {resumeError && (
         <div className="flex items-center gap-2 text-[12px] text-[#f0b8b8]">

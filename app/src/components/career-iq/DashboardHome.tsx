@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, FileText, Search, Target } from 'lucide-react';
-import { ZoneYourDay } from './ZoneYourDay';
 import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
 import { CoachingNudgeBar } from './CoachingNudgeBar';
 import { GlassCard } from '@/components/GlassCard';
@@ -224,16 +223,44 @@ export function DashboardHome({
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
   const firstMomentumNudge = nudges.length > 0 ? nudges[0] : null;
   const showMomentumNudge = Boolean(firstMomentumNudge && !dismissed[firstMomentumNudge.id]);
-  const spotlightFirst = useMemo(
-    () => Boolean(coachRecommendation && dashboardState === 'new-user' && !showMomentumNudge),
-    [coachRecommendation, dashboardState, showMomentumNudge],
-  );
-
   const handleDismiss = (key: string) => {
     const updated = { ...dismissed, [key]: true };
     setDismissed(updated);
     saveDismissed(updated);
   };
+  const supportSurface = useMemo(() => {
+    if (showMomentumNudge && firstMomentumNudge) {
+      return (
+        <CoachingNudgeBar
+          nudges={[firstMomentumNudge]}
+          onDismiss={(nudgeId) => {
+            handleDismiss(nudgeId);
+            onDismissNudge?.(nudgeId);
+          }}
+        />
+      );
+    }
+
+    return (
+      <CoachSpotlight
+        userName={userName}
+        recommendation={coachRecommendation ?? null}
+        loading={coachLoading}
+        onNavigateRoom={onNavigateRoom}
+        onOpenCoach={onOpenCoach}
+      />
+    );
+  }, [
+    coachLoading,
+    coachRecommendation,
+    firstMomentumNudge,
+    handleDismiss,
+    onDismissNudge,
+    onNavigateRoom,
+    onOpenCoach,
+    showMomentumNudge,
+    userName,
+  ]);
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
@@ -247,50 +274,38 @@ export function DashboardHome({
         onRefineWhyMe={onRefineWhyMe}
       />
 
-      {spotlightFirst && (
-        <CoachSpotlight
-          userName={userName}
-          recommendation={coachRecommendation ?? null}
-          loading={coachLoading}
-          onNavigateRoom={onNavigateRoom}
-          onOpenCoach={onOpenCoach}
-        />
-      )}
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="space-y-4">
+          <GlassCard className="p-5">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
+              Secondary lane
+            </div>
+            <h2 className="mt-2 text-base font-semibold text-white/86">One support surface, not five competing prompts</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/50">
+              Workspace Home should tell you the single best next move, then give you one supporting prompt that helps you execute it.
+            </p>
+          </GlassCard>
+          {supportSurface}
+        </div>
 
-      <ZoneYourDay
-        userName={userName}
-        signals={signals}
-        dashboardState={dashboardState}
-        onRefineWhyMe={onRefineWhyMe}
-        onNavigateRoom={onNavigateRoom}
-      />
-
-      {showMomentumNudge && firstMomentumNudge && (
-        <CoachingNudgeBar
-          nudges={[firstMomentumNudge]}
-          onDismiss={(nudgeId) => {
-            handleDismiss(nudgeId);
-            onDismissNudge?.(nudgeId);
-          }}
-        />
-      )}
-
-      {!spotlightFirst && (
-        <CoachSpotlight
-          userName={userName}
-          recommendation={coachRecommendation ?? null}
-          loading={coachLoading}
-          onNavigateRoom={onNavigateRoom}
-          onOpenCoach={onOpenCoach}
-        />
-      )}
-
-      <ZoneYourPipeline
-        onNavigateRoom={onNavigateRoom}
-        mockCards={mockPipelineCards}
-        onInterviewPrepClick={onInterviewPrepClick}
-        onNegotiationPrepClick={onNegotiationPrepClick}
-      />
+        <div className="space-y-4">
+          <GlassCard className="p-5">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
+              Active applications
+            </div>
+            <h2 className="mt-2 text-base font-semibold text-white/86">Your pipeline should be the only other thing competing for attention here</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/50">
+              Reopen live roles, see what stage they are in, and jump straight into the next resume, interview, or negotiation action without scanning a crowded dashboard.
+            </p>
+          </GlassCard>
+          <ZoneYourPipeline
+            onNavigateRoom={onNavigateRoom}
+            mockCards={mockPipelineCards}
+            onInterviewPrepClick={onInterviewPrepClick}
+            onNegotiationPrepClick={onNegotiationPrepClick}
+          />
+        </div>
+      </div>
     </div>
   );
 }

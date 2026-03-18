@@ -80,7 +80,7 @@ describe('SalaryNegotiationRoom', () => {
 
   it('renders without crashing', () => {
     render(<SalaryNegotiationRoom />);
-    expect(screen.getByText('Salary Negotiation')).toBeInTheDocument();
+    expect(screen.getByText('Build one clear compensation strategy before you respond')).toBeInTheDocument();
   });
 
   it('shows The Offer section with company field', () => {

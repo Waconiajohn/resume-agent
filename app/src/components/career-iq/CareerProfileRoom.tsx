@@ -182,79 +182,81 @@ export function CareerProfileRoom({
                   AI Career Intake
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-white/88">
-                  Question {currentIndex + 1} of {questions.length}
+                  One question, one confirmation, one stronger profile update
                 </h2>
-                <p className="mt-2 text-sm leading-relaxed text-white/58">{currentQuestion.question}</p>
+                <p className="mt-2 text-sm leading-relaxed text-white/58">
+                  The goal here is not to race through a form. It is to let the AI ask the next best question, reflect back what it heard, and let you confirm or refine it before the platform uses it everywhere else.
+                </p>
               </div>
               <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-white/45">
-                {formatCategory(currentQuestion.category)}
+                {formatCategory(currentQuestion.category)} · {currentIndex + 1}/{questions.length}
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
-                  Why AI is asking this
+            <div className="mt-5 space-y-4">
+              <div className="rounded-2xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.05] p-5">
+                <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/74">
+                  <Brain size={13} />
+                  AI strategist
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-white/72">
+                <p className="mt-3 text-base leading-relaxed text-white/88">{currentQuestion.question}</p>
+                <p className="mt-3 text-sm leading-relaxed text-white/58">
                   {currentQuestion.purpose || `This answer helps the platform understand your ${formatCategory(currentQuestion.category)} so every tool stops guessing.`}
                 </p>
               </div>
-              <div className="rounded-xl border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] p-4">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
-                  What is updating live
+
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
+                  Your answer
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-white/74">{liveReflection}</p>
+                <textarea
+                  value={currentResponse}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setResponses((prev) => ({ ...prev, [currentQuestion.id]: value }));
+                  }}
+                  placeholder="Answer in your own words. Include proof, constraints, scope, and the language you naturally use to describe your value."
+                  className={cn(
+                    'mt-3 min-h-[180px] w-full rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3',
+                    'text-sm leading-relaxed text-white/85 placeholder:text-white/30',
+                    'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
+                  )}
+                />
               </div>
             </div>
-
-            <textarea
-              value={currentResponse}
-              onChange={(event) => {
-                const value = event.target.value;
-                setResponses((prev) => ({ ...prev, [currentQuestion.id]: value }));
-              }}
-              placeholder="Answer in your own words. Include proof, constraints, scope, and the language you naturally use to describe your value."
-              className={cn(
-                'mt-5 min-h-[180px] w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3',
-                'text-sm leading-relaxed text-white/85 placeholder:text-white/30',
-                'focus:border-[#98b3ff]/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98b3ff]/35',
-              )}
-            />
 
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <ConversationHint
                 label="Answered"
                 value={`${answeredItems.length}`}
-                detail="These answers are already shaping your shared profile."
+                detail="Only confirmed answers should shape the shared profile."
               />
               <ConversationHint
-                label="Remaining"
-                value={`${remainingCount}`}
+                label="Up next"
+                value={remainingCount === 0 ? 'Build profile' : `${remainingCount} more`}
                 detail="The intake stays focused on the biggest missing context."
               />
               <ConversationHint
                 label="What to include"
-                value="Proof"
+                value="Proof + scope"
                 detail="Use examples, metrics, seniority, constraints, and the language you would use in real conversation."
               />
             </div>
 
-            {answeredItems.length > 0 && (
-              <div className="mt-5 rounded-2xl border border-white/[0.06] bg-black/15 px-4 py-4">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">
-                  What the AI already learned
-                </div>
-                <div className="mt-3 space-y-3">
-                  {answeredItems.slice(Math.max(answeredItems.length - 3, 0)).map((item) => (
-                    <div key={item.question.id} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3">
-                      <p className="text-xs font-medium text-white/70">{item.question.question}</p>
-                      <p className="mt-1 text-sm leading-6 text-white/56">{clipText(item.response, 180)}</p>
-                    </div>
-                  ))}
-                </div>
+            <div className="mt-5 rounded-2xl border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-4 py-4">
+              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
+                AI reflection before this answer is reused
               </div>
-            )}
+              <p className="mt-3 text-sm leading-relaxed text-white/74">{liveReflection}</p>
+              <div className="mt-4 space-y-2">
+                {buildInterpretationPoints(currentQuestion, currentResponse).map((point) => (
+                  <div key={point} className="flex items-start gap-2 text-sm leading-6 text-white/68">
+                    <CheckCircle2 size={14} className="mt-1 shrink-0 text-[#b5dec2]" />
+                    <span>{point}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <button
@@ -264,7 +266,7 @@ export function CareerProfileRoom({
                 className="inline-flex items-center gap-1.5 text-sm text-white/45 transition-colors hover:text-white/70 disabled:cursor-not-allowed disabled:text-white/20"
               >
                 <ChevronLeft size={16} />
-                Previous answer
+                Review previous answer
               </button>
 
               <div className="flex items-center gap-2">
@@ -272,20 +274,62 @@ export function CareerProfileRoom({
                   <GlassButton
                     variant="primary"
                     onClick={() => setCurrentIndex((index) => Math.min(questions.length - 1, index + 1))}
+                    disabled={currentResponse.trim().length === 0}
                   >
-                    Save and continue
+                    Confirm and continue
                     <ArrowRight size={14} className="ml-1.5" />
                   </GlassButton>
                 ) : (
-                  <GlassButton variant="primary" onClick={() => void handleSubmit()} disabled={!readyToSubmit || submitting}>
-                    {submitting ? 'Submitting...' : 'Build Career Profile'}
+                  <GlassButton variant="primary" onClick={() => void handleSubmit()} disabled={!readyToSubmit || submitting || currentResponse.trim().length === 0}>
+                    {submitting ? 'Submitting...' : 'Confirm and build Career Profile'}
                   </GlassButton>
                 )}
               </div>
             </div>
           </GlassCard>
 
-          <GlassCard className="p-6">
+          <div className="space-y-6">
+            <GlassCard className="p-6">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-[#98b3ff]" />
+                <h3 className="text-sm font-semibold text-white/86">Conversation map</h3>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-white/54">
+                This keeps the intake focused. You should always know what has already been confirmed, what the AI is asking now, and what is still missing.
+              </p>
+
+              <div className="mt-4 space-y-3">
+                {questions.map((question, index) => {
+                  const value = responses[question.id] ?? '';
+                  const isCurrent = question.id === currentQuestion.id;
+                  const isAnswered = value.trim().length > 0;
+                  return (
+                    <div
+                      key={question.id}
+                      className={cn(
+                        'rounded-xl border px-3 py-3 transition-colors',
+                        isCurrent
+                          ? 'border-[#98b3ff]/24 bg-[#98b3ff]/[0.08]'
+                          : isAnswered
+                            ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.05]'
+                            : 'border-white/[0.06] bg-white/[0.025]',
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs font-medium text-white/75">
+                          {index + 1}. {clipText(question.question, 90)}
+                        </div>
+                        <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
+                          {isCurrent ? 'Current' : isAnswered ? 'Confirmed' : 'Queued'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-6">
             <div className="flex items-center gap-2">
               <Brain size={16} className="text-[#98b3ff]" />
               <h3 className="text-sm font-semibold text-white/86">Live profile preview</h3>
@@ -344,7 +388,8 @@ export function CareerProfileRoom({
                 </div>
               </div>
             </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
         </div>
       )}
 
@@ -516,6 +561,21 @@ function PreviewBlock({ label, value }: { label: string; value: string }) {
       <div className="mt-2 text-sm leading-relaxed text-white/72">{value}</div>
     </div>
   );
+}
+
+function buildInterpretationPoints(question: AssessmentQuestion, response: string): string[] {
+  if (response.trim().length === 0) {
+    return [
+      `This answer will sharpen your ${formatCategory(question.category)} story before Resume Builder, LinkedIn, and Interview Lab reuse it.`,
+      'Add concrete proof, scope, constraints, or language you would naturally use in a live conversation.',
+    ];
+  }
+
+  return [
+    `Carry forward this proof theme: "${clipText(response, 96)}"`,
+    question.purpose || `Use this answer to reduce guesswork around your ${formatCategory(question.category)} profile.`,
+    'If the wording still feels off, revise it now. Once confirmed, the rest of the platform will treat it as part of your shared story.',
+  ];
 }
 
 function formatCategory(category: string): string {

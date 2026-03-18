@@ -10,7 +10,6 @@
 
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
@@ -23,44 +22,26 @@ import { llm } from '../lib/llm.js';
 import { MODEL_MID, MODEL_LIGHT, MODEL_PRIMARY } from '../lib/model-constants.js';
 import { repairJSON } from '../lib/json-repair.js';
 import { loadCareerProfileContext } from '../lib/career-profile-context.js';
-
-const startSchema = z.object({
-  resume_text: z.string().min(50, 'Resume must be at least 50 characters').max(50000, 'Resume must be at most 50,000 characters'),
-  job_description: z.string().min(50, 'Job description must be at least 50 characters').max(50000, 'Job description must be at most 50,000 characters'),
-  user_context: z.string().optional(),
-  gap_coaching_responses: z.array(z.object({
-    requirement: z.string().min(1),
-    action: z.enum(['approve', 'context', 'skip']),
-    user_context: z.string().optional(),
-  })).optional(),
-  pre_scores: z.object({
-    ats_match: z.number().int().min(0).max(100),
-    keywords_found: z.array(z.string()),
-    keywords_missing: z.array(z.string()),
-  }).optional(),
-});
-
-const EDIT_ACTIONS = ['strengthen', 'add_metrics', 'shorten', 'add_keywords', 'rewrite', 'custom', 'not_my_voice'] as const;
-type EditAction = typeof EDIT_ACTIONS[number];
-
-const editContextSchema = z.object({
-  requirement: z.string().optional(),
-  evidence: z.array(z.string()).optional(),
-  strategy: z.string().optional(),
-}).optional();
-
-const editSchema = z.object({
-  action: z.enum(EDIT_ACTIONS),
-  selected_text: z.string().min(5, 'Selected text must be at least 5 characters'),
-  section: z.string().min(1, 'Section is required'),
-  full_resume_context: z.string().min(1, 'Full resume context is required'),
-  job_description: z.string().min(1, 'Job description is required'),
-  custom_instruction: z.string().optional(),
-  /** Section-only context (reduces tokens when available) */
-  section_context: z.string().optional(),
-  /** Requirement/evidence/strategy context for intelligent edits */
-  edit_context: editContextSchema,
-});
+import {
+  startSchema,
+  editSchema,
+  type EditAction,
+  type StoredV2Snapshot,
+  createInitialSnapshot,
+  applyEventToSnapshot,
+  gapResponseSchema,
+  draftStateSchema,
+  buildEditSystemPrompt,
+  rescoreSchema,
+  polishSchema,
+  integrateKeywordSchema,
+  gapChatSchema,
+  structuredCoachingResponseSchema,
+  finalReviewChatSchema,
+  hiringManagerReviewSchema,
+  finalReviewResultSchema,
+  buildFinalReviewPrompts,
+} from './resume-v2-pipeline-support.js';
 
 export const resumeV2Pipeline = new Hono();
 
@@ -73,158 +54,6 @@ let totalFailed = 0;
 
 export function getV2PipelineRouteStats() {
   return { active_pipelines: activePipelines, total_started: totalStarted, total_completed: totalCompleted, total_failed: totalFailed };
-}
-
-type StoredV2PipelineData = {
-  stage: V2PipelineStage;
-  jobIntelligence: unknown | null;
-  candidateIntelligence: unknown | null;
-  benchmarkCandidate: unknown | null;
-  gapAnalysis: unknown | null;
-  gapCoachingCards: unknown[] | null;
-  preScores: unknown | null;
-  narrativeStrategy: unknown | null;
-  resumeDraft: unknown | null;
-  assembly: unknown | null;
-  error: string | null;
-  stageMessages: Array<{
-    stage: V2PipelineStage;
-    message: string;
-    type: 'start' | 'complete';
-    duration_ms?: number;
-  }>;
-};
-
-type StoredV2Snapshot = {
-  version: 'v2';
-  pipeline_data: StoredV2PipelineData;
-  inputs: {
-    resume_text: string;
-    job_description: string;
-  };
-  draft_state: unknown | null;
-  updated_at: string;
-};
-
-function createInitialPipelineData(): StoredV2PipelineData {
-  return {
-    stage: 'intake',
-    jobIntelligence: null,
-    candidateIntelligence: null,
-    benchmarkCandidate: null,
-    gapAnalysis: null,
-    gapCoachingCards: null,
-    preScores: null,
-    narrativeStrategy: null,
-    resumeDraft: null,
-    assembly: null,
-    error: null,
-    stageMessages: [],
-  };
-}
-
-function createInitialSnapshot(resumeText: string, jobDescription: string): StoredV2Snapshot {
-  return {
-    version: 'v2',
-    pipeline_data: createInitialPipelineData(),
-    inputs: {
-      resume_text: resumeText,
-      job_description: jobDescription,
-    },
-    draft_state: null,
-    updated_at: new Date().toISOString(),
-  };
-}
-
-function applyEventToSnapshot(snapshot: StoredV2Snapshot, event: V2PipelineSSEEvent): {
-  pipelineStatus?: 'running' | 'complete' | 'error';
-  pipelineStage?: V2PipelineStage;
-} {
-  const pipelineData = snapshot.pipeline_data;
-
-  switch (event.type) {
-    case 'stage_start':
-      pipelineData.stage = event.stage;
-      pipelineData.stageMessages.push({
-        stage: event.stage,
-        message: event.message,
-        type: 'start',
-      });
-      break;
-
-    case 'stage_complete':
-      pipelineData.stageMessages.push({
-        stage: event.stage,
-        message: event.message,
-        type: 'complete',
-        duration_ms: event.duration_ms,
-      });
-      break;
-
-    case 'job_intelligence':
-      pipelineData.jobIntelligence = event.data;
-      break;
-
-    case 'candidate_intelligence':
-      pipelineData.candidateIntelligence = event.data;
-      break;
-
-    case 'benchmark_candidate':
-      pipelineData.benchmarkCandidate = event.data;
-      break;
-
-    case 'gap_analysis':
-      pipelineData.gapAnalysis = event.data;
-      break;
-
-    case 'pre_scores':
-      pipelineData.preScores = event.data;
-      break;
-
-    case 'gap_coaching':
-      pipelineData.gapCoachingCards = event.data;
-      break;
-
-    case 'narrative_strategy':
-      pipelineData.narrativeStrategy = event.data;
-      break;
-
-    case 'resume_draft':
-      pipelineData.resumeDraft = event.data;
-      break;
-
-    case 'assembly_complete':
-      pipelineData.assembly = event.data;
-      break;
-
-    case 'pipeline_complete':
-      pipelineData.stage = 'complete';
-      pipelineData.error = null;
-      return {
-        pipelineStatus: 'complete',
-        pipelineStage: 'complete',
-      };
-
-    case 'pipeline_error':
-      pipelineData.stage = event.stage;
-      pipelineData.error = event.error;
-      return {
-        pipelineStatus: 'error',
-        pipelineStage: event.stage,
-      };
-
-    case 'verification_complete':
-    case 'transparency':
-      break;
-
-    default:
-      break;
-  }
-
-  return {
-    pipelineStatus: 'running',
-    pipelineStage: pipelineData.stage,
-  };
 }
 
 // ─── POST /start ─────────────────────────────────────────────────────
@@ -371,14 +200,6 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
 
 // ─── POST /:sessionId/respond-gaps ──────────────────────────────────
 
-const gapResponseSchema = z.object({
-  responses: z.array(z.object({
-    requirement: z.string().min(1),
-    action: z.enum(['approve', 'context', 'skip']),
-    user_context: z.string().optional(),
-  })),
-});
-
 resumeV2Pipeline.post('/:sessionId/respond-gaps', authMiddleware, rateLimitMiddleware(10, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
@@ -409,71 +230,6 @@ resumeV2Pipeline.post('/:sessionId/respond-gaps', authMiddleware, rateLimitMiddl
 });
 
 // ─── PUT /:sessionId/draft-state ───────────────────────────────────
-
-const draftStateSchema = z.object({
-  draft_state: z.object({
-    editable_resume: z.unknown().nullable(),
-    master_save_mode: z.enum(['session_only', 'master_resume']),
-    gap_chat_state: z.object({
-      items: z.record(z.string(), z.object({
-        messages: z.array(z.object({
-          role: z.enum(['user', 'assistant']),
-          content: z.string().max(4000),
-          suggestedLanguage: z.string().max(4000).optional(),
-          followUpQuestion: z.string().max(2000).optional(),
-          currentQuestion: z.string().max(2000).optional(),
-          needsCandidateInput: z.boolean().optional(),
-          recommendedNextAction: z.enum(['answer_question', 'review_edit', 'try_another_angle', 'skip', 'confirm']).optional(),
-          candidateInputUsed: z.boolean().optional(),
-        })).max(30),
-        resolvedLanguage: z.string().max(4000).nullable(),
-        error: z.string().max(1000).nullable(),
-      })),
-    }).nullable().optional(),
-    final_review_state: z.object({
-      result: z.unknown().nullable(),
-      resolved_concern_ids: z.array(z.string()).max(100),
-      acknowledged_export_warnings: z.boolean(),
-      is_stale: z.boolean().optional(),
-      reviewed_resume_text: z.string().max(100_000).nullable().optional(),
-      last_run_at: z.string().optional(),
-    }).nullable().optional(),
-    final_review_chat_state: z.object({
-      items: z.record(z.string(), z.object({
-        messages: z.array(z.object({
-          role: z.enum(['user', 'assistant']),
-          content: z.string().max(4000),
-          suggestedLanguage: z.string().max(4000).optional(),
-          followUpQuestion: z.string().max(2000).optional(),
-          currentQuestion: z.string().max(2000).optional(),
-          needsCandidateInput: z.boolean().optional(),
-          recommendedNextAction: z.enum(['answer_question', 'review_edit', 'try_another_angle', 'skip', 'confirm']).optional(),
-          candidateInputUsed: z.boolean().optional(),
-        })).max(30),
-        resolvedLanguage: z.string().max(4000).nullable(),
-        error: z.string().max(1000).nullable(),
-      })),
-    }).nullable().optional(),
-    post_review_polish: z.object({
-      status: z.enum(['idle', 'running', 'complete', 'error']),
-      message: z.string().max(1000),
-      result: z.object({
-        ats_score: z.number().int().min(0).max(100),
-        keywords_found: z.array(z.string().max(200)).max(100),
-        keywords_missing: z.array(z.string().max(200)).max(100),
-        top_suggestions: z.array(z.string().max(1000)).max(10),
-        tone_score: z.number().int().min(0).max(100),
-        tone_findings: z.array(z.string().max(1000)).max(20),
-      }).nullable(),
-      last_triggered_by_concern_id: z.string().nullable().optional(),
-      updated_at: z.string().optional(),
-    }).nullable().optional(),
-    master_promotion_state: z.object({
-      selected_item_ids: z.array(z.string().max(200)).max(500),
-    }).nullable().optional(),
-    updated_at: z.string(),
-  }).nullable(),
-});
 
 resumeV2Pipeline.put('/:sessionId/draft-state', authMiddleware, rateLimitMiddleware(60, 60_000), async (c) => {
   const user = c.get('user');
@@ -616,29 +372,6 @@ resumeV2Pipeline.get('/:sessionId/result', authMiddleware, async (c) => {
 
 // ─── POST /:sessionId/edit ───────────────────────────────────────────
 
-function buildEditSystemPrompt(action: EditAction, customInstruction?: string): string {
-  const base = `You are an expert executive resume editor. You will receive a selected piece of resume text and must return an improved replacement.
-
-You MUST respond with valid JSON in exactly this format:
-{ "replacement": "<your improved text here>" }
-
-Do not include any explanation, preamble, or markdown. Only return the JSON object.
-
-IMPORTANT: Never fabricate achievements, metrics, or claims. Every fact in the replacement must be traceable to the original text or surrounding resume context.`;
-
-  const instructions: Record<EditAction, string> = {
-    strengthen: `Rewrite the selected text to be more impactful. Use stronger action verbs, sharper language, and executive-caliber voice. Eliminate weak qualifiers and passive constructions. Preserve all factual claims. CRITICAL: Do NOT fabricate metrics, percentages, dollar amounts, or team sizes. Only sharpen language and strengthen action verbs. If the original text lacks specific numbers, do not add made-up numbers. Preserve all factual claims exactly as stated.`,
-    add_metrics: `Enhance the selected text by adding or strengthening quantified results. Infer plausible numbers ONLY from the surrounding resume context — if explicit figures are absent, use conservative ranges (e.g., "team of 10+" rather than "team of 47") or directional language (e.g., "reduced costs by over 15%"). Every metric must be defensible given the context. Do NOT invent specific dollar amounts, exact percentages, or precise headcounts that aren't supported by the resume.`,
-    shorten: `Compress the selected text to its most essential form. Cut every word that does not carry meaning. Preserve all key accomplishments, metrics, and impact. The result should be tighter and punchier, not thinner.`,
-    add_keywords: `Naturally incorporate relevant keywords from the job description into the selected text. The integration must read fluently — never keyword-stuffed. Prioritize keywords that reflect genuine overlap with the candidate's experience. Do NOT change the meaning or add claims not present in the original text.`,
-    rewrite: `Completely rewrite the selected text from scratch while preserving all underlying information, accomplishments, and meaning. Aim for cleaner structure, stronger language, and greater readability.`,
-    custom: `Follow this instruction exactly: ${customInstruction ?? '(no instruction provided)'}`,
-    not_my_voice: `Rewrite the selected text to sound more authentic and human. Strip out corporate jargon, buzzwords, and formulaic resume-speak. The revised text should sound like how this specific professional actually talks about their work — direct, specific, and genuine.`,
-  };
-
-  return `${base}\n\n${instructions[action]}`;
-}
-
 resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
@@ -735,16 +468,6 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
 });
 
 // ─── POST /:sessionId/rescore ─────────────────────────────────────
-
-const rescoreSchema = z.object({
-  resume_text: z.string().min(50, 'Resume text is required'),
-  job_description: z.string().min(50, 'Job description is required'),
-});
-
-const polishSchema = z.object({
-  resume_text: z.string().min(50, 'Resume text is required'),
-  job_description: z.string().min(50, 'Job description is required'),
-});
 
 resumeV2Pipeline.post('/:sessionId/rescore', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
@@ -903,12 +626,6 @@ RULES:
 
 // ─── POST /:sessionId/integrate-keyword ─────────────────────────────
 
-const integrateKeywordSchema = z.object({
-  keyword: z.string().min(1, 'Keyword is required'),
-  resume_text: z.string().min(50, 'Resume text is required'),
-  job_description: z.string().min(50, 'Job description is required'),
-});
-
 resumeV2Pipeline.post('/:sessionId/integrate-keyword', authMiddleware, rateLimitMiddleware(20, 60_000), async (c) => {
   const user = c.get('user');
   const userId = user.id;
@@ -978,32 +695,6 @@ Return valid JSON only:
 });
 
 // ─── POST /:sessionId/gap-chat ────────────────────────────────────
-
-const gapChatSchema = z.object({
-  requirement: z.string().min(1).max(1000).trim(),
-  classification: z.enum(['partial', 'missing', 'strong']),
-  messages: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string().max(2000),
-  })).max(20),
-  context: z.object({
-    evidence: z.array(z.string().max(1000)).max(20),
-    current_strategy: z.string().max(2000).optional(),
-    ai_reasoning: z.string().max(2000).optional(),
-    inferred_metric: z.string().max(500).optional(),
-    job_description_excerpt: z.string().max(5000),
-    candidate_experience_summary: z.string().max(3000),
-  }),
-});
-
-const structuredCoachingResponseSchema = z.object({
-  response: z.string(),
-  suggested_resume_language: z.string().optional(),
-  follow_up_question: z.string().optional(),
-  current_question: z.string().optional(),
-  needs_candidate_input: z.boolean().optional(),
-  recommended_next_action: z.enum(['answer_question', 'review_edit', 'try_another_angle', 'skip', 'confirm']).optional(),
-});
 
 const GAP_CHAT_SYSTEM = `You are a $3,000/engagement executive resume strategist having a coaching conversation with a candidate about a specific gap on their resume.
 
@@ -1123,39 +814,6 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
 });
 
 // ─── POST /:sessionId/final-review-chat ───────────────────────────
-
-const finalReviewChatSchema = z.object({
-  concern_id: z.string().min(1).max(200).trim(),
-  messages: z.array(z.object({
-    role: z.enum(['user', 'assistant']),
-    content: z.string().max(2000),
-  })).max(20),
-  context: z.object({
-    concern_type: z.enum([
-      'missing_evidence',
-      'weak_positioning',
-      'missing_metric',
-      'unclear_scope',
-      'benchmark_gap',
-      'clarity_issue',
-      'credibility_risk',
-    ]),
-    severity: z.enum(['critical', 'moderate', 'minor']),
-    observation: z.string().max(2000),
-    why_it_hurts: z.string().max(2000),
-    fix_strategy: z.string().max(3000),
-    target_section: z.string().max(500).optional(),
-    related_requirement: z.string().max(1000).optional(),
-    suggested_resume_edit: z.string().max(3000).optional(),
-    role_title: z.string().max(500),
-    company_name: z.string().max(500),
-    job_description_fit: z.enum(['strong', 'moderate', 'weak']).optional(),
-    benchmark_alignment: z.enum(['strong', 'moderate', 'weak']).optional(),
-    business_impact: z.enum(['strong', 'moderate', 'weak']).optional(),
-    clarity_and_credibility: z.enum(['strong', 'moderate', 'weak']).optional(),
-    resume_excerpt: z.string().max(6000),
-  }),
-});
 
 const FINAL_REVIEW_CHAT_SYSTEM = `You are the follow-up coach inside the Final Review stage of a premium resume rewrite workflow.
 
@@ -1278,93 +936,6 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
 });
 
 // ─── POST /:sessionId/hiring-manager-review ────────────────────────
-
-const hiringManagerReviewSchema = z.object({
-  resume_text: z.string().min(50, 'Resume text is required'),
-  job_description: z.string().min(50, 'Job description is required'),
-  company_name: z.string().min(1, 'Company name is required'),
-  role_title: z.string().min(1, 'Role title is required'),
-  /** Legacy alias for job requirements */
-  requirements: z.array(z.string()).optional(),
-  /** Key requirements from job intelligence — helps ground the review */
-  job_requirements: z.array(z.string()).optional(),
-  /** Hidden hiring signals from job intelligence */
-  hidden_signals: z.array(z.string()).optional(),
-  /** Benchmark profile summary — secondary lens, not primary hiring gate */
-  benchmark_profile_summary: z.string().optional(),
-  /** Benchmark requirements/differentiators used for competitive comparison */
-  benchmark_requirements: z.array(z.string()).optional(),
-});
-
-const finalReviewResultSchema = z.object({
-  six_second_scan: z.object({
-    decision: z.enum(['continue_reading', 'skip']),
-    reason: z.string(),
-    top_signals_seen: z.array(z.object({
-      signal: z.string(),
-      why_it_matters: z.string(),
-      visible_in_top_third: z.boolean(),
-    })).default([]),
-    important_signals_missing: z.array(z.object({
-      signal: z.string(),
-      why_it_matters: z.string(),
-    })).default([]),
-  }),
-  hiring_manager_verdict: z.object({
-    rating: z.enum([
-      'strong_interview_candidate',
-      'possible_interview',
-      'needs_improvement',
-      'likely_rejected',
-    ]),
-    summary: z.string(),
-  }),
-  fit_assessment: z.object({
-    job_description_fit: z.enum(['strong', 'moderate', 'weak']),
-    benchmark_alignment: z.enum(['strong', 'moderate', 'weak']),
-    business_impact: z.enum(['strong', 'moderate', 'weak']),
-    clarity_and_credibility: z.enum(['strong', 'moderate', 'weak']),
-  }),
-  top_wins: z.array(z.object({
-    win: z.string(),
-    why_powerful: z.string(),
-    aligned_requirement: z.string(),
-    prominent_enough: z.boolean(),
-    repositioning_recommendation: z.string(),
-  })).default([]),
-  concerns: z.array(z.object({
-    id: z.string(),
-    severity: z.enum(['critical', 'moderate', 'minor']),
-    type: z.enum([
-      'missing_evidence',
-      'weak_positioning',
-      'missing_metric',
-      'unclear_scope',
-      'benchmark_gap',
-      'clarity_issue',
-      'credibility_risk',
-    ]),
-    observation: z.string(),
-    why_it_hurts: z.string(),
-    target_section: z.string().optional(),
-    related_requirement: z.string().optional(),
-    fix_strategy: z.string(),
-    suggested_resume_edit: z.string().optional(),
-    requires_candidate_input: z.boolean().default(false),
-    clarifying_question: z.string().optional(),
-  })).default([]),
-  structure_recommendations: z.array(z.object({
-    issue: z.string(),
-    recommendation: z.string(),
-    priority: z.enum(['high', 'medium', 'low']),
-  })).default([]),
-  benchmark_comparison: z.object({
-    advantages_vs_benchmark: z.array(z.string()).default([]),
-    gaps_vs_benchmark: z.array(z.string()).default([]),
-    reframing_opportunities: z.array(z.string()).default([]),
-  }),
-  improvement_summary: z.array(z.string()).default([]),
-});
 
 resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateLimitMiddleware(10, 60_000), async (c) => {
   const user = c.get('user');
@@ -1495,120 +1066,19 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
     ),
   ];
 
-  const requirementsList = mergedJobRequirements.length
-    ? `\n\nJOB REQUIREMENTS TO EVALUATE:\n${mergedJobRequirements.map(r => `- ${r}`).join('\n')}`
-    : '';
-
-  const hiddenSignals = mergedHiddenSignals.length
-    ? `\n\nHIDDEN HIRING SIGNALS:\n${mergedHiddenSignals.map(s => `- ${s}`).join('\n')}`
-    : '';
-
-  const benchmarkProfile = mergedBenchmarkProfileSummary
-    ? `\n\nBENCHMARK CANDIDATE PROFILE:\n${mergedBenchmarkProfileSummary}`
-    : '';
-
-  const benchmarkRequirementsList = mergedBenchmarkRequirements.length
-    ? `\n\nBENCHMARK REQUIREMENTS AND DIFFERENTIATORS:\n${mergedBenchmarkRequirements.map(r => `- ${r}`).join('\n')}`
-    : '';
-  const careerProfileBlock = careerProfile
-    ? `\n\nCAREER PROFILE:\nProfile summary: ${careerProfile.profile_summary}\nTarget roles: ${careerProfile.targeting.target_roles.join(', ') || 'Not yet defined'}\nCore strengths: ${careerProfile.positioning.core_strengths.join(', ') || 'Not yet defined'}\nProof themes: ${careerProfile.positioning.proof_themes.join(', ') || 'Not yet defined'}\nDifferentiators: ${careerProfile.positioning.differentiators.join(', ') || 'Not yet defined'}\nKnown for: ${careerProfile.narrative.known_for_what || 'Not yet defined'}\nConstraints: ${careerProfile.preferences.constraints.join(', ') || 'None recorded'}`
-    : '';
-
-  const systemPrompt = `You are running the final review for a tailored resume targeting the ${role_title} position at ${company_name}.
-
-This final review has two distinct lenses:
-1. A 6-second recruiter scan: would a skim reader keep reading?
-2. A hiring manager review: would this candidate earn an interview?
-
-Evaluation priorities:
-- Primary standard: fit for the actual job description.
-- Secondary standard: competitiveness relative to a strong benchmark candidate.
-- Do NOT let benchmark-only gaps outweigh strong job-description fit.
-- Treat benchmark gaps as competitive disadvantages unless they directly affect success in the role.
-- Be skeptical, commercial, and specific.
-- If something is not clearly shown on the resume, treat it as missing or only partially evidenced.
-- Do not fabricate experience, metrics, certifications, scope, or credentials.
-
-Return valid JSON only in this exact shape:
-{
-  "six_second_scan": {
-    "decision": "continue_reading" | "skip",
-    "reason": "1-2 sentence explanation",
-    "top_signals_seen": [
-      {
-        "signal": "what stands out immediately",
-        "why_it_matters": "why a recruiter or hiring manager cares",
-        "visible_in_top_third": true
-      }
-    ],
-    "important_signals_missing": [
-      {
-        "signal": "what should have been obvious but was not",
-        "why_it_matters": "why its absence hurts"
-      }
-    ]
-  },
-  "hiring_manager_verdict": {
-    "rating": "strong_interview_candidate" | "possible_interview" | "needs_improvement" | "likely_rejected",
-    "summary": "2-3 sentence hiring manager reaction"
-  },
-  "fit_assessment": {
-    "job_description_fit": "strong" | "moderate" | "weak",
-    "benchmark_alignment": "strong" | "moderate" | "weak",
-    "business_impact": "strong" | "moderate" | "weak",
-    "clarity_and_credibility": "strong" | "moderate" | "weak"
-  },
-  "top_wins": [
-    {
-      "win": "candidate's strongest accomplishment or selling point",
-      "why_powerful": "why this matters for the target role",
-      "aligned_requirement": "job or benchmark requirement it supports",
-      "prominent_enough": true,
-      "repositioning_recommendation": "how to move or emphasize it if needed"
-    }
-  ],
-  "concerns": [
-    {
-      "id": "concern_1",
-      "severity": "critical" | "moderate" | "minor",
-      "type": "missing_evidence" | "weak_positioning" | "missing_metric" | "unclear_scope" | "benchmark_gap" | "clarity_issue" | "credibility_risk",
-      "observation": "specific problem in the resume",
-      "why_it_hurts": "why this weakens interview odds",
-      "target_section": "section to fix",
-      "related_requirement": "job or benchmark requirement tied to this issue",
-      "fix_strategy": "specific recommendation phrased as a resume edit instruction",
-      "suggested_resume_edit": "optional sample rewrite if justified",
-      "requires_candidate_input": true,
-      "clarifying_question": "only include if an answer from the candidate could materially improve this item"
-    }
-  ],
-  "structure_recommendations": [
-    {
-      "issue": "structural problem",
-      "recommendation": "specific fix",
-      "priority": "high" | "medium" | "low"
-    }
-  ],
-  "benchmark_comparison": {
-    "advantages_vs_benchmark": ["where the candidate already compares well"],
-    "gaps_vs_benchmark": ["where the candidate looks weaker"],
-    "reframing_opportunities": ["truthful ways to position adjacent or like-kind experience more competitively"]
-  },
-  "improvement_summary": ["highest-value change 1", "highest-value change 2", "highest-value change 3"]
-}
-
-RULES:
-- Job-description fit should drive the verdict.
-- Benchmark alignment should be treated as a secondary competitiveness signal.
-- Every concern must have a concrete fix strategy.
-- Ask no more than 3 clarifying questions total.
-- Only ask a clarifying question when the answer could materially improve a truthful resume bullet.
-- Limit the output to the highest-value findings.
-- Do not include markdown fences or commentary outside the JSON object.`;
+  const { systemPrompt, userPrompt } = buildFinalReviewPrompts({
+    companyName: company_name,
+    roleTitle: role_title,
+    resumeText: resume_text,
+    jobDescription: job_description,
+    jobRequirements: mergedJobRequirements,
+    hiddenSignals: mergedHiddenSignals,
+    benchmarkProfileSummary: mergedBenchmarkProfileSummary,
+    benchmarkRequirements: mergedBenchmarkRequirements,
+    careerProfile,
+  });
 
   try {
-    const userPrompt = `FINAL TAILORED RESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}${requirementsList}${hiddenSignals}${benchmarkProfile}${benchmarkRequirementsList}${careerProfileBlock}\n\nRun the final review.`;
-
     const response = await llm.chat({
       model: MODEL_PRIMARY,
       system: systemPrompt,

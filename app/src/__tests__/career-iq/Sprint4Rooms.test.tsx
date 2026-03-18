@@ -201,7 +201,7 @@ describe('InterviewLabRoom', () => {
   it('surfaces the 90-day plan as an interview document action', () => {
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByRole('button', { name: /documents/i }));
-    expect(screen.getByRole('button', { name: /90-day plan document/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open 90-day plan/i })).toBeInTheDocument();
   });
 
   it('allows adding a new interview entry', () => {

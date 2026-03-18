@@ -45,13 +45,13 @@ describe('CareerProfileRoom', () => {
       />,
     );
 
-    expect(screen.getByText('Why AI is asking this')).toBeInTheDocument();
-    expect(screen.getByText('What is updating live')).toBeInTheDocument();
-    expect(screen.queryByText('What the AI already learned')).not.toBeInTheDocument();
+    expect(screen.getByText(/one question, one confirmation/i)).toBeInTheDocument();
+    expect(screen.getByText('AI strategist')).toBeInTheDocument();
+    expect(screen.getByText('Conversation map')).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'I am targeting VP Operations or COO roles in SaaS.' } });
 
-    expect(screen.getByText(/The AI is hearing/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /build career profile/i })).toBeInTheDocument();
+    expect(screen.getByText(/carry forward this proof theme/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /confirm and build career profile/i })).toBeInTheDocument();
   });
 });

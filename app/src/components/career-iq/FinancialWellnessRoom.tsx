@@ -112,16 +112,15 @@ function EmptyStateCard({ onStart, loading }: { onStart: () => void; loading: bo
 
       <div className="max-w-sm">
         <h3 className="text-[16px] font-semibold text-white/85 mb-2">
-          Retirement Readiness Assessment
+          Retirement Bridge Assessment
         </h3>
         <p className="text-[13px] text-white/45 leading-relaxed">
-          Answer a short set of questions across 7 financial dimensions. The assessment surfaces
-          the right questions to bring to a fiduciary planner — it does not give financial advice.
+          Answer a short set of questions across 7 financial dimensions. The goal is to clarify where the bridge may feel strong, fragile, or ambiguous before you sit down with a fiduciary planner.
         </p>
       </div>
 
       <div className="grid grid-cols-3 gap-3 w-full max-w-sm text-[12px] text-white/35">
-        {['~5 minutes', '7 dimensions', 'No financial advice'].map((label) => (
+        {['~5 minutes', '7 bridge checks', 'No financial advice'].map((label) => (
           <div
             key={label}
             className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2"
@@ -151,7 +150,7 @@ function EmptyStateCard({ onStart, loading }: { onStart: () => void; loading: bo
       </GlassButton>
 
       <p className="text-[11px] text-white/20">
-        We surface questions — your planner provides advice.
+        We surface the questions and blind spots. Your planner provides the advice.
       </p>
     </GlassCard>
   );
@@ -763,17 +762,39 @@ export function FinancialWellnessRoom({
         />
       )}
 
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white/90">Financial Wellness</h1>
-        <p className="text-[13px] text-white/40">
-          Understand your financial position and connect with fiduciary planners who specialize
-          in career transitions.
-        </p>
-        <ContextLoadedBadge
-          contextTypes={['emotional_baseline', 'client_profile']}
-          className="mt-2"
-        />
-      </div>
+      <GlassCard className="p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+              Financial Wellness
+            </div>
+            <h1 className="mt-2 text-lg font-semibold text-white/90">Retirement Bridge</h1>
+            <p className="mt-3 text-[13px] leading-relaxed text-white/48">
+              This is not a generic calculator and it is not financial advice. It is a guided bridge assessment that helps you organize the right questions, risks, and transition signals before you speak with a fiduciary planner.
+            </p>
+          </div>
+
+          <ContextLoadedBadge
+            contextTypes={['emotional_baseline', 'client_profile']}
+            className="mt-1"
+          />
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What this does</div>
+            <div className="mt-2 text-sm font-semibold text-white/84">Surfaces the planner conversations you should have before making a high-stakes transition decision</div>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">What it does not do</div>
+            <div className="mt-2 text-sm font-semibold text-white/84">Replace fiduciary advice, portfolio planning, or tax guidance</div>
+          </div>
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">Best use</div>
+            <div className="mt-2 text-sm font-semibold text-white/84">Prepare for a planner conversation with more clarity, less fear, and better context</div>
+          </div>
+        </div>
+      </GlassCard>
 
       {/* Bridge Analysis + Planner side-by-side */}
       <div className="flex flex-col lg:flex-row gap-6">

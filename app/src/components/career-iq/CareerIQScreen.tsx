@@ -40,9 +40,7 @@ const LEGACY_REDIRECTS: Record<string, CareerIQRoom> = {
   'ninety-day-plan': 'interview',
 };
 
-const COMING_SOON_ROOMS = new Set<string>([
-  'salary-negotiation',
-]);
+const COMING_SOON_ROOMS = new Set<string>();
 
 function toValidRoom(value: string | undefined): CareerIQRoom {
   if (!value) return 'dashboard';

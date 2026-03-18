@@ -40,14 +40,15 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('heading', { name: 'Interview Lab' }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Documents' }).click();
 
-    await expect(page.getByRole('heading', { name: '90-Day Plan Document' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Thank You Notes' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '90-Day Plan' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Thank You Note' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Open 90-Day Plan Document/i }).click();
-    await expect(page.getByRole('button', { name: /Back to Interview Lab/i })).toBeVisible();
+    await page.getByRole('button', { name: /Open 90-Day Plan/i }).click();
+    await expect(page.getByRole('heading', { name: /90-Day Success Plan/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back to Documents/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /Back to Interview Lab/i }).click();
-    await expect(page.getByRole('heading', { name: 'Interview Lab' }).first()).toBeVisible();
+    await page.getByRole('button', { name: /Back to Documents/i }).click();
+    await expect(page.getByRole('heading', { name: /Build documents without leaving the lab/i })).toBeVisible();
   });
 
   test('redirects legacy personal-brand room links into Career Profile', async ({ page }) => {
