@@ -192,6 +192,7 @@ export function FinalReviewConcernThread({
   onCloseThread,
 }: FinalReviewConcernThreadProps) {
   const [inputValue, setInputValue] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSentRef = useRef('');
@@ -269,19 +270,11 @@ export function FinalReviewConcernThread({
         <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-3 py-2.5">
           <button
             type="button"
-            onClick={() => sendQuickMessage('Please ask me one targeted follow-up question that would make this resume evidence stronger.')}
+            onClick={() => setShowAdvanced((previous) => !previous)}
             disabled={isLoading}
             className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-2.5 py-1 text-[11px] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
           >
-            Ask Another Question
-          </button>
-          <button
-            type="button"
-            onClick={() => sendQuickMessage('Please try another truthful angle for this concern and suggest different resume language.')}
-            disabled={isLoading}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
-          >
-            Try Another Angle
+            {showAdvanced ? 'Hide More Options' : 'More Options'}
           </button>
           {onCloseThread && (
             <button
@@ -295,8 +288,30 @@ export function FinalReviewConcernThread({
         </div>
       )}
 
-      {!resolvedLanguage && (
+      {!resolvedLanguage && showAdvanced && (
         <div className="space-y-2 px-3 pb-2.5">
+          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-[0.08em] text-white/38">More ways to answer</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => sendQuickMessage('Please ask me one targeted follow-up question that would make this resume evidence stronger.')}
+                disabled={isLoading}
+                className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-2.5 py-1 text-[11px] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
+              >
+                Ask Another Question
+              </button>
+              <button
+                type="button"
+                onClick={() => sendQuickMessage('Please try another truthful angle for this concern and suggest different resume language.')}
+                disabled={isLoading}
+                className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+              >
+                Try Another Angle
+              </button>
+            </div>
+          </div>
+
           <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
             <p className="text-[11px] uppercase tracking-[0.08em] text-white/38">Evidence Shortcuts</p>
             <div className="mt-2 flex flex-wrap gap-2">

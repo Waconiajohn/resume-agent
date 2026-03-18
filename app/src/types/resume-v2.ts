@@ -438,6 +438,13 @@ export interface FinalReviewResult {
 
 export type RewriteQueueSource = 'job_description' | 'benchmark' | 'final_review';
 
+export type RewriteQueueCategory =
+  | 'quick_win'
+  | 'proof_upgrade'
+  | 'hard_gap'
+  | 'benchmark_stretch'
+  | 'final_review_issue';
+
 export type RewriteQueueStatus =
   | 'already_covered'
   | 'partially_addressed'
@@ -450,10 +457,11 @@ export type RewriteQueueBucket =
   | 'resolved';
 
 export type RewriteQueueAction =
-  | 'open_coaching'
+  | 'answer_question'
   | 'review_edit'
   | 'review_suggested_fix'
   | 'view_in_resume'
+  | 'check_hard_requirement'
   | 'rerun_final_review'
   | 'verify';
 
@@ -474,11 +482,14 @@ export interface RewriteQueueItem {
   id: string;
   kind: 'requirement' | 'final_review';
   source: RewriteQueueSource;
+  category: RewriteQueueCategory;
   title: string;
   status: RewriteQueueStatus;
   bucket: RewriteQueueBucket;
   isResolved: boolean;
   whyItMatters: string;
+  aiPlan: string;
+  userInstruction: string;
   currentEvidence: RewriteQueueEvidence[];
   sourceEvidence: RewriteQueueEvidence[];
   recommendedNextStep: RewriteQueueNextStep;
@@ -492,6 +503,7 @@ export interface RewriteQueueItem {
   candidateInputNeeded?: boolean;
   coachingReasoning?: string;
   starterQuestion?: string;
+  riskNote?: string;
 }
 
 export interface RewriteQueueSummary {

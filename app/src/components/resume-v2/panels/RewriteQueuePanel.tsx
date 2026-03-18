@@ -5,7 +5,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   MessagesSquare,
-  Sparkles,
+  ShieldAlert,
   Target,
 } from 'lucide-react';
 import type {
@@ -20,7 +20,6 @@ import type {
   PositioningAssessment,
   ResumeDraft,
   RewriteQueueItem,
-  RewriteQueueStatus,
 } from '@/types/resume-v2';
 import type { EditAction, EditContext } from '@/hooks/useInlineEdit';
 import type { HiringManagerConcern } from '@/hooks/useHiringManagerReview';
@@ -29,7 +28,6 @@ import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 import { buildEditContext, findBulletForRequirement } from '../utils/coaching-actions';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { GapChatThread } from './GapChatThread';
-import { FinalReviewConcernThread } from '../cards/FinalReviewConcernThread';
 
 interface RewriteQueuePanelProps {
   jobIntelligence: JobIntelligence;
@@ -57,25 +55,19 @@ interface RewriteQueuePanelProps {
   isEditing?: boolean;
 }
 
-const STATUS_STYLES: Record<RewriteQueueStatus, string> = {
-  already_covered: 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.06] text-[#b5dec2]',
-  partially_addressed: 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.06] text-[#afc4ff]',
-  needs_more_evidence: 'border-[#f0d99f]/20 bg-[#f0d99f]/[0.06] text-[#f0d99f]',
-  not_addressed: 'border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.06] text-[#f0b8b8]',
-};
-
-const STATUS_LABELS: Record<RewriteQueueStatus, string> = {
-  already_covered: 'Already Covered',
-  partially_addressed: 'Partially Addressed',
-  needs_more_evidence: 'Needs More Evidence',
-  not_addressed: 'Not Addressed',
-};
-
 const SOURCE_LABELS = {
   job_description: 'Job Description',
   benchmark: 'Benchmark',
   final_review: 'Final Review',
 } as const;
+
+const CATEGORY_LABELS: Record<RewriteQueueItem['category'], string> = {
+  quick_win: 'Quick Win',
+  proof_upgrade: 'Needs Proof',
+  hard_gap: 'Hard Requirement',
+  benchmark_stretch: 'Benchmark Stretch',
+  final_review_issue: 'Final Review',
+};
 
 const BUCKETS: Array<{
   id: RewriteQueueItem['bucket'];
@@ -84,17 +76,17 @@ const BUCKETS: Array<{
 }> = [
   {
     id: 'needs_attention',
-    title: 'Needs Attention',
-    description: 'These are the highest-value items to work next.',
+    title: 'Fix First',
+    description: 'Start here. These items affect the core job match or carry the clearest next move.',
   },
   {
     id: 'partially_addressed',
-    title: 'Partially Addressed',
-    description: 'You have movement here, but the draft still needs stronger proof or wording.',
+    title: 'Can Be Stronger',
+    description: 'These items have some movement already, but they are not yet carrying enough proof.',
   },
   {
     id: 'resolved',
-    title: 'Resolved',
+    title: 'Done',
     description: 'These items already have accepted evidence in the current draft.',
   },
 ];
@@ -116,95 +108,51 @@ function QueueStat({
   );
 }
 
-function ItemMeta({ item }: { item: RewriteQueueItem }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${STATUS_STYLES[item.status]}`}>
-        {STATUS_LABELS[item.status]}
-      </span>
-      <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
-        {SOURCE_LABELS[item.source]}
-      </span>
-    </div>
-  );
-}
-
-function EvidenceSummary({
-  currentCount,
-  sourceCount,
-  needsCandidateInput,
-}: {
-  currentCount: number;
-  sourceCount: number;
-  needsCandidateInput?: boolean;
-}) {
-  const evidenceLabel = currentCount === 0
-    ? 'No accepted proof in the resume yet.'
-    : `${currentCount} accepted proof point${currentCount === 1 ? '' : 's'} already exist${currentCount === 1 ? 's' : ''} in the draft.`;
-  const sourceLabel = `${sourceCount} source note${sourceCount === 1 ? '' : 's'} back this item.`;
-
-  return (
-    <p className="text-xs leading-5 text-white/46">
-      {evidenceLabel} {sourceLabel} {needsCandidateInput ? 'The AI still needs one more detail from the candidate.' : ''}
-    </p>
-  );
-}
-
-function EvidenceList({
-  label,
-  items,
-}: {
-  label: string;
-  items: RewriteQueueItem['currentEvidence'];
-}) {
-  if (items.length === 0) {
+function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
+  const firstEvidence = item.currentEvidence[0];
+  if (!firstEvidence) {
     return (
-      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/42">
-        {label}: no accepted resume evidence yet.
-      </div>
+      <p className="text-sm leading-6 text-white/52">
+        Nothing on the current resume proves this yet.
+      </p>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">{label}</p>
-      {items.slice(0, 2).map((item, index) => (
-        <div key={`${item.text}-${index}`} className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {item.section && (
-              <span className="text-[11px] text-white/42">{item.section}</span>
-            )}
-            {item.isNew && (
-              <span className="rounded-full border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#b5dec2]">
-                New
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm leading-6 text-white/74">{item.text}</p>
-        </div>
-      ))}
+    <div className="rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">
+        Current proof
+        {firstEvidence.section ? ` · ${firstEvidence.section}` : ''}
+      </p>
+      <p className="mt-1 text-sm leading-6 text-white/72">{firstEvidence.text}</p>
     </div>
   );
 }
 
-function SecondaryMeta({ item }: { item: RewriteQueueItem }) {
-  const tokens = [
-    item.importance ? `Importance: ${item.importance.replaceAll('_', ' ')}` : null,
-    item.severity ? `Severity: ${item.severity}` : null,
-  ].filter(Boolean);
-
-  if (tokens.length === 0) return null;
-
+function EvidenceList({
+  title,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  items: RewriteQueueItem['currentEvidence'];
+  emptyLabel: string;
+}) {
   return (
-    <div className="flex flex-wrap gap-2">
-      {tokens.map((token) => (
-        <span
-          key={token}
-          className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/38"
-        >
-          {token}
-        </span>
-      ))}
+    <div className="space-y-2">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">{title}</p>
+      {items.length === 0 ? (
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm leading-6 text-white/50">
+          {emptyLabel}
+        </div>
+      ) : (
+        items.slice(0, 2).map((item, index) => (
+          <div key={`${item.text}-${index}`} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            {item.section && <p className="text-[11px] text-white/42">{item.section}</p>}
+            <p className="mt-1 text-sm leading-6 text-white/74">{item.text}</p>
+          </div>
+        ))
+      )}
     </div>
   );
 }
@@ -220,18 +168,19 @@ export function RewriteQueuePanel({
   gapChatSnapshot,
   buildChatContext,
   finalReviewResult,
-  finalReviewChat,
+  finalReviewChat: _finalReviewChat,
   finalReviewChatSnapshot,
-  buildFinalReviewChatContext,
+  buildFinalReviewChatContext: _buildFinalReviewChatContext,
   resolvedFinalReviewConcernIds = [],
   onRequirementClick,
   onRequestEdit,
-  onApplyFinalReviewRecommendation,
-  onRequestHiringManagerReview,
+  onApplyFinalReviewRecommendation: _onApplyFinalReviewRecommendation,
+  onRequestHiringManagerReview: _onRequestHiringManagerReview,
   isEditing = false,
 }: RewriteQueuePanelProps) {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
+  const [placementWarnings, setPlacementWarnings] = useState<Record<string, string>>({});
 
   const queue = useMemo(() => buildRewriteQueue({
     jobIntelligence,
@@ -255,23 +204,10 @@ export function RewriteQueuePanel({
     resolvedFinalReviewConcernIds,
   ]);
 
-  const concernMap = useMemo(() => new Map(
-    (finalReviewResult?.concerns ?? []).map((concern) => [concern.id, concern]),
-  ), [finalReviewResult]);
   const nextItem = queue.nextItem;
 
   const handlePrimaryAction = (item: RewriteQueueItem) => {
-    if (item.kind === 'final_review' && item.concernId) {
-      const concern = concernMap.get(item.concernId);
-      if (concern && item.recommendedNextStep.action === 'review_suggested_fix') {
-        onApplyFinalReviewRecommendation?.(concern);
-        return;
-      }
-      setExpandedItemId((previous) => previous === item.id ? null : item.id);
-      return;
-    }
-
-    if (item.requirement && item.status === 'already_covered') {
+    if (item.status === 'already_covered' && item.requirement && item.currentEvidence.some((evidence) => Boolean(evidence.section))) {
       onRequirementClick(item.requirement);
       return;
     }
@@ -281,130 +217,131 @@ export function RewriteQueuePanel({
 
   const renderThread = (item: RewriteQueueItem) => {
     if (expandedItemId !== item.id) return null;
-
-    if (item.kind === 'requirement' && item.requirement && gapChat && buildChatContext) {
-      const chatState = gapChat.getItemState(item.requirement);
-      const chatContext = buildChatContext(item.requirement);
-      if (!currentResume || !onRequestEdit) return null;
-
-      return (
-        <GapChatThread
-          requirement={item.requirement}
-          classification={item.classification === 'strong' ? 'strong' : item.classification === 'partial' ? 'partial' : 'missing'}
-          messages={chatState?.messages ?? []}
-          isLoading={chatState?.isLoading ?? false}
-          error={chatState?.error ?? null}
-          resolvedLanguage={chatState?.resolvedLanguage ?? null}
-          onSendMessage={gapChat.sendMessage}
-          onAcceptLanguage={(requirement, language, candidateInputUsed) => {
-            const target = findBulletForRequirement(requirement, positioningAssessment, currentResume);
-            const fallbackTarget = !target && currentResume.professional_experience[0]?.bullets[0]
-              ? {
-                  text: currentResume.professional_experience[0].bullets[0].text,
-                  section: `Professional Experience - ${currentResume.professional_experience[0].company}`,
-                }
-              : null;
-            const editTarget = target ?? fallbackTarget;
-            if (!editTarget) return;
-
-            onRequestEdit(
-              editTarget.text,
-              editTarget.section,
-              'custom',
-              `Naturally integrate this coached resume language into the text: "${language}". This addresses the requirement: "${requirement}".`,
-              buildEditContext(
-                requirement,
-                item.currentEvidence.map((evidence) => evidence.text),
-                language,
-                {
-                  origin: 'gap',
-                  candidateInputUsed,
-                  scoreDomain: item.source === 'benchmark' ? 'benchmark' : 'job_description',
-                },
-              ),
-            );
-          }}
-          context={chatContext}
-          isEditing={isEditing}
-          onSkip={() => setExpandedItemId(null)}
-        />
-      );
+    if (item.kind !== 'requirement' || !item.requirement || !gapChat || !buildChatContext || !currentResume || !onRequestEdit) {
+      return null;
     }
 
-    if (item.kind === 'final_review' && item.concernId && finalReviewChat && buildFinalReviewChatContext) {
-      const concern = concernMap.get(item.concernId);
-      if (!concern) return null;
-      const chatState = finalReviewChat.getItemState(item.concernId);
-      const chatContext = buildFinalReviewChatContext(concern);
-      if (!chatContext) return null;
+    const chatState = gapChat.getItemState(item.requirement);
+    const chatContext = buildChatContext(item.requirement);
 
-      return (
-        <FinalReviewConcernThread
-          concernId={item.concernId}
-          messages={chatState?.messages ?? []}
-          isLoading={chatState?.isLoading ?? false}
-          error={chatState?.error ?? null}
-          resolvedLanguage={chatState?.resolvedLanguage ?? null}
-          onSendMessage={finalReviewChat.sendMessage}
-          onReviewEdit={(concernId, language, candidateInputUsed) => {
-            const mappedConcern = concernMap.get(concernId);
-            if (!mappedConcern) return;
-            onApplyFinalReviewRecommendation?.(mappedConcern, language, candidateInputUsed);
-          }}
-          context={chatContext}
-          isEditing={isEditing}
-          onCloseThread={() => setExpandedItemId(null)}
-        />
-      );
-    }
+    return (
+      <GapChatThread
+        requirement={item.requirement}
+        classification={item.classification === 'strong' ? 'strong' : item.classification === 'partial' ? 'partial' : 'missing'}
+        messages={chatState?.messages ?? []}
+        isLoading={chatState?.isLoading ?? false}
+        error={chatState?.error ?? null}
+        resolvedLanguage={chatState?.resolvedLanguage ?? null}
+        onSendMessage={gapChat.sendMessage}
+        onAcceptLanguage={(requirement, language, candidateInputUsed) => {
+          const target = findBulletForRequirement(requirement, positioningAssessment, currentResume);
+          if (!target) {
+            setPlacementWarnings((previous) => ({
+              ...previous,
+              [item.id]: 'We could not place this automatically yet. Open a section on the resume first or answer one more question so we can anchor the edit in the right place.',
+            }));
+            return;
+          }
 
-    return null;
+          setPlacementWarnings((previous) => {
+            const next = { ...previous };
+            delete next[item.id];
+            return next;
+          });
+
+          onRequestEdit(
+            target.text,
+            target.section,
+            'custom',
+            `Naturally integrate this coached resume language into the text: "${language}". This addresses the requirement: "${requirement}".`,
+            buildEditContext(
+              requirement,
+              item.currentEvidence.map((evidence) => evidence.text),
+              language,
+              {
+                origin: 'gap',
+                candidateInputUsed,
+                scoreDomain: item.source === 'benchmark' ? 'benchmark' : 'job_description',
+              },
+            ),
+          );
+        }}
+        context={chatContext}
+        isEditing={isEditing}
+        onSkip={() => setExpandedItemId(null)}
+      />
+    );
   };
 
   return (
     <div className="h-full overflow-y-auto bg-[#0b1018]">
-      <div className="px-5 py-5 space-y-4 border-b border-white/[0.06]">
+      <div className="space-y-4 border-b border-white/[0.06] px-5 py-5">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 rounded-xl border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] p-2.5">
             <Target className="h-4 w-4 text-[#afc4ff]" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-white/88">Rewrite Queue</h2>
+            <h2 className="text-base font-semibold text-white/88">What to Fix Next</h2>
             <p className="mt-1 text-sm leading-6 text-white/54">
-              Work this queue from top to bottom. Every item explains why it matters, what evidence exists today, and the next best move. Nothing advances until the actual resume edit is accepted.
+              AI already read your resume, studied the job description, built a benchmark candidate, and compared that work against your current draft.
+              Work one issue at a time. Answer the next question or review the next edit. Nothing changes on the resume until you accept the edit.
             </p>
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <QueueStat label="Needs Attention" value={queue.summary.needsAttention} tone="border-[#f0b8b8]/16 bg-[#f0b8b8]/[0.05]" />
-          <QueueStat label="Partially Addressed" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
-          <QueueStat label="Resolved" value={queue.summary.resolved} tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]" />
+          <QueueStat label="Fix First" value={queue.summary.needsAttention} tone="border-[#f0b8b8]/16 bg-[#f0b8b8]/[0.05]" />
+          <QueueStat label="Can Be Stronger" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
+          <QueueStat label="Done" value={queue.summary.resolved} tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]" />
         </div>
 
         {nextItem && (
           <div className="rounded-2xl border border-[#afc4ff]/16 bg-[#0f1622] px-4 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">Recommended Next Move</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">Recommended Next Step</p>
                 <p className="mt-2 text-sm font-semibold text-white/86">{nextItem.title}</p>
-                <p className="mt-1 text-sm leading-6 text-white/54">{nextItem.recommendedNextStep.detail}</p>
               </div>
-              <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
-                {SOURCE_LABELS[nextItem.source]}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
+                  {SOURCE_LABELS[nextItem.source]}
+                </span>
+                <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
+                  {CATEGORY_LABELS[nextItem.category]}
+                </span>
+              </div>
             </div>
+
             <div className="mt-3 space-y-3 rounded-xl border border-white/[0.06] bg-black/15 px-3 py-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Why this is next</p>
-                <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.whyItMatters}</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Why this matters</p>
+                <p className="mt-1 text-sm leading-6 text-white/68">{nextItem.whyItMatters}</p>
               </div>
-              <EvidenceSummary currentCount={nextItem.currentEvidence.length} sourceCount={nextItem.sourceEvidence.length} needsCandidateInput={nextItem.candidateInputNeeded} />
+
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What AI will do</p>
+                <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.aiPlan}</p>
+              </div>
+
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What you should do now</p>
+                <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.userInstruction}</p>
+              </div>
+
+              <CurrentProofPreview item={nextItem} />
+
               {nextItem.starterQuestion && (
                 <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.04] px-3 py-2 text-xs leading-5 text-white/72">
                   First question: {nextItem.starterQuestion}
                 </div>
               )}
+
+              {nextItem.riskNote && (
+                <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
+                  {nextItem.riskNote}
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -429,34 +366,13 @@ export function RewriteQueuePanel({
             </div>
           </div>
         )}
-
-        {!finalReviewResult && onRequestHiringManagerReview && (
-          <div className="rounded-xl border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-4 py-3">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#f0d99f]" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white/82">Final Review joins the queue after the draft is ready.</p>
-                <p className="mt-1 text-sm leading-6 text-white/56">
-                  Once you like the core rewrite, run Final Review. Its recruiter-scan and hiring-manager concerns will appear in this same queue.
-                </p>
-                <button
-                  type="button"
-                  onClick={onRequestHiringManagerReview}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#f0d99f]/24 bg-[#f0d99f]/10 px-3 py-2 text-xs font-medium text-[#f0d99f] transition-colors hover:bg-[#f0d99f]/16"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Run Final Review
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="px-5 py-5 space-y-5">
+      <div className="space-y-5 px-5 py-5">
         {BUCKETS.map((bucket) => {
           const items = queue.items.filter((item) => item.bucket === bucket.id);
           if (items.length === 0) return null;
+
           const isResolvedBucket = bucket.id === 'resolved';
           const bucketOpen = !isResolvedBucket || showResolved;
 
@@ -478,134 +394,162 @@ export function RewriteQueuePanel({
                       className="h-3.5 w-3.5 transition-transform"
                       style={{ transform: bucketOpen ? 'rotate(90deg)' : 'none' }}
                     />
-                    {bucketOpen ? 'Hide Resolved' : `Show Resolved (${items.length})`}
+                    {bucketOpen ? 'Hide Done' : `Show Done (${items.length})`}
                   </button>
                 )}
               </div>
 
               {bucketOpen && (
                 <div className="space-y-3">
-                {items.map((item) => {
-                  const canViewResume = Boolean(item.requirement ?? item.relatedRequirement);
-                  const isExpanded = expandedItemId === item.id;
-                  const isPrimary = queue.nextItem?.id === item.id;
+                  {items.map((item) => {
+                    const hasViewableEvidence = item.currentEvidence.some((evidence) => Boolean(evidence.section));
+                    const isExpanded = expandedItemId === item.id;
+                    const isPrimary = nextItem?.id === item.id;
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border px-4 py-4 transition-colors ${
-                        isExpanded
-                          ? isPrimary
-                            ? 'border-[#afc4ff]/28 bg-[#afc4ff]/[0.06]'
-                            : 'border-white/[0.14] bg-white/[0.045]'
-                          : isPrimary
-                            ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
-                            : 'border-white/[0.06] bg-white/[0.025]'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5">
-                          {item.bucket === 'resolved' ? (
-                            <CheckCircle2 className="h-4 w-4 shrink-0 text-[#b5dec2]" />
-                          ) : isPrimary ? (
-                            <Target className="h-4 w-4 shrink-0 text-[#afc4ff]" />
-                          ) : (
-                            <AlertCircle className="h-4 w-4 shrink-0 text-white/24" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1 space-y-3">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1 space-y-3">
-                              <div className="flex flex-wrap items-center gap-2">
-                                {isPrimary && item.bucket !== 'resolved' && (
-                                  <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
-                                    Work this now
-                                  </span>
-                                )}
-                                <ItemMeta item={item} />
-                              </div>
-
-                              <div>
-                                <p className="text-sm font-semibold leading-6 text-white/88">{item.title}</p>
-                                <p className="mt-1 text-sm leading-6 text-white/56">{item.recommendedNextStep.detail}</p>
-                              </div>
-
-                              <EvidenceSummary currentCount={item.currentEvidence.length} sourceCount={item.sourceEvidence.length} needsCandidateInput={item.candidateInputNeeded} />
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => setExpandedItemId((previous) => previous === item.id ? null : item.id)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] text-white/56 transition-colors hover:bg-white/[0.06] hover:text-white/78"
-                              aria-expanded={isExpanded}
-                              aria-label={`Toggle details for ${item.title}`}
-                            >
-                              <ChevronRight
-                                className="h-3.5 w-3.5 transition-transform"
-                                style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
-                              />
-                              {isExpanded ? 'Hide Details' : 'Show Details'}
-                            </button>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => handlePrimaryAction(item)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
-                            >
-                              <MessagesSquare className="h-3.5 w-3.5" />
-                              {item.recommendedNextStep.label}
-                            </button>
-
-                            {canViewResume && (
-                              <button
-                                type="button"
-                                onClick={() => onRequirementClick(item.requirement ?? item.relatedRequirement!)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
-                              >
-                                <ClipboardCheck className="h-3.5 w-3.5" />
-                                View in Resume
-                              </button>
+                    return (
+                      <div
+                        key={item.id}
+                        className={`rounded-2xl border px-4 py-4 transition-colors ${
+                          isExpanded
+                            ? isPrimary
+                              ? 'border-[#afc4ff]/28 bg-[#afc4ff]/[0.06]'
+                              : 'border-white/[0.14] bg-white/[0.045]'
+                            : isPrimary
+                              ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04]'
+                              : 'border-white/[0.06] bg-white/[0.025]'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5">
+                            {item.bucket === 'resolved' ? (
+                              <CheckCircle2 className="h-4 w-4 shrink-0 text-[#b5dec2]" />
+                            ) : item.category === 'hard_gap' ? (
+                              <ShieldAlert className="h-4 w-4 shrink-0 text-[#f0d99f]" />
+                            ) : isPrimary ? (
+                              <Target className="h-4 w-4 shrink-0 text-[#afc4ff]" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 shrink-0 text-white/26" />
                             )}
                           </div>
 
-                          {isExpanded && (
-                            <div className="space-y-3 rounded-2xl border border-white/[0.06] bg-black/15 px-3 py-3">
-                              <div>
-                                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Why it matters</p>
-                                <p className="mt-1 text-sm leading-6 text-white/68">{item.whyItMatters}</p>
+                          <div className="min-w-0 flex-1 space-y-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1 space-y-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {isPrimary && item.bucket !== 'resolved' && (
+                                    <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
+                                      Work this now
+                                    </span>
+                                  )}
+                                  <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
+                                    {SOURCE_LABELS[item.source]}
+                                  </span>
+                                  <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                                    item.category === 'hard_gap'
+                                      ? 'border-[#f0d99f]/18 bg-[#f0d99f]/[0.06] text-[#f0d99f]'
+                                      : 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] text-[#afc4ff]'
+                                  }`}>
+                                    {CATEGORY_LABELS[item.category]}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <p className="text-sm font-semibold leading-6 text-white/88">{item.title}</p>
+                                  <p className="mt-1 text-sm leading-6 text-white/58">{item.whyItMatters}</p>
+                                </div>
+
+                                <CurrentProofPreview item={item} />
                               </div>
 
-                              {item.starterQuestion && item.bucket !== 'resolved' && (
-                                <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
-                                  First question to unlock this item: {item.starterQuestion}
-                                </div>
-                              )}
-
-                              {item.coachingReasoning && item.bucket !== 'resolved' && (
-                                <div className="rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 text-xs leading-5 text-white/52">
-                                  AI angle: {item.coachingReasoning}
-                                </div>
-                              )}
-
-                              <SecondaryMeta item={item} />
-
-                              <EvidenceList label="Current resume evidence" items={item.currentEvidence} />
-
-                              {item.sourceEvidence.length > 0 && (
-                                <EvidenceList label="Why this is on the queue" items={item.sourceEvidence} />
-                              )}
-
-                              {renderThread(item)}
+                              <button
+                                type="button"
+                                onClick={() => setExpandedItemId((previous) => previous === item.id ? null : item.id)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] text-white/56 transition-colors hover:bg-white/[0.06] hover:text-white/78"
+                                aria-expanded={isExpanded}
+                                aria-label={`Toggle details for ${item.title}`}
+                              >
+                                <ChevronRight
+                                  className="h-3.5 w-3.5 transition-transform"
+                                  style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
+                                />
+                                {isExpanded ? 'Hide Details' : 'Show Details'}
+                              </button>
                             </div>
-                          )}
+
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handlePrimaryAction(item)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
+                              >
+                                <MessagesSquare className="h-3.5 w-3.5" />
+                                {item.recommendedNextStep.label}
+                              </button>
+
+                              {hasViewableEvidence && item.requirement && (
+                                <button
+                                  type="button"
+                                  onClick={() => onRequirementClick(item.requirement!)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
+                                >
+                                  <ClipboardCheck className="h-3.5 w-3.5" />
+                                  View Current Proof
+                                </button>
+                              )}
+                            </div>
+
+                            {isExpanded && (
+                              <div className="space-y-3 rounded-2xl border border-white/[0.06] bg-black/15 px-3 py-3">
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What AI is doing</p>
+                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.aiPlan}</p>
+                                </div>
+
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What you should do</p>
+                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.userInstruction}</p>
+                                </div>
+
+                                {item.starterQuestion && item.bucket !== 'resolved' && (
+                                  <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-2 text-xs leading-5 text-white/72">
+                                    First question: {item.starterQuestion}
+                                  </div>
+                                )}
+
+                                {item.riskNote && (
+                                  <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
+                                    {item.riskNote}
+                                  </div>
+                                )}
+
+                                <EvidenceList
+                                  title="What the resume says today"
+                                  items={item.currentEvidence}
+                                  emptyLabel="Nothing on the current resume proves this yet."
+                                />
+
+                                {item.sourceEvidence.length > 0 && (
+                                  <EvidenceList
+                                    title="Why AI flagged this"
+                                    items={item.sourceEvidence}
+                                    emptyLabel="No source excerpt is available for this item."
+                                  />
+                                )}
+
+                                {placementWarnings[item.id] && (
+                                  <div className="rounded-lg border border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] px-3 py-2 text-xs leading-5 text-[#f0b8b8]">
+                                    {placementWarnings[item.id]}
+                                  </div>
+                                )}
+
+                                {renderThread(item)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
                 </div>
               )}
             </section>

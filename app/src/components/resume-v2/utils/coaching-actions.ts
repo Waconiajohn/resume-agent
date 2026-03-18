@@ -57,32 +57,72 @@ export function findBulletForRequirement(
     }
   }
 
-  // Fallback: find first bullet in resume that mentions the requirement
-  const reqWords = requirement.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  let bestMatch: { text: string; section: string; score: number } | null = null;
+  const normalizedRequirement = normalizeRequirement(requirement);
+  const exactMatch = (requirements: string[] | undefined) => (
+    (requirements ?? []).some((item) => normalizeRequirement(item) === normalizedRequirement)
+  );
 
-  for (const exp of resume.professional_experience) {
-    const section = `Professional Experience - ${exp.company}`;
-    for (const bullet of exp.bullets) {
-      const bulletLower = bullet.text.toLowerCase();
-      const score = reqWords.filter(w => bulletLower.includes(w)).length / Math.max(reqWords.length, 1);
-      if (!bestMatch || score > bestMatch.score) {
-        bestMatch = { text: bullet.text, section, score };
-      }
-    }
+  if (exactMatch(resume.executive_summary.addresses_requirements)) {
+    return {
+      text: resume.executive_summary.content,
+      section: 'Executive Summary',
+    };
   }
 
-  if (!bestMatch && resume.professional_experience.length > 0) {
-    const first = resume.professional_experience[0];
-    if (first.bullets.length > 0) {
-      bestMatch = {
-        text: first.bullets[0].text,
-        section: `Professional Experience - ${first.company}`,
-        score: 0,
+  for (const accomplishment of resume.selected_accomplishments) {
+    if (exactMatch(accomplishment.addresses_requirements)) {
+      return {
+        text: accomplishment.content,
+        section: 'Selected Accomplishments',
       };
     }
   }
 
+  for (const exp of resume.professional_experience) {
+    const section = `Professional Experience - ${exp.company}`;
+    if (exactMatch(exp.scope_statement_addresses_requirements)) {
+      return { text: exp.scope_statement, section };
+    }
+    for (const bullet of exp.bullets) {
+      if (exactMatch(bullet.addresses_requirements)) {
+        return { text: bullet.text, section };
+      }
+    }
+  }
+
+  // Fallback: search for meaningful overlap across the actual resume sections,
+  // but do not force the edit into a random first bullet when the match is weak.
+  const reqWords = requirement.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const candidates: Array<{ text: string; section: string }> = [
+    { text: resume.executive_summary.content, section: 'Executive Summary' },
+  ];
+
+  for (const accomplishment of resume.selected_accomplishments) {
+    candidates.push({ text: accomplishment.content, section: 'Selected Accomplishments' });
+  }
+
+  for (const exp of resume.professional_experience) {
+    const section = `Professional Experience - ${exp.company}`;
+    candidates.push({ text: exp.scope_statement, section });
+    for (const bullet of exp.bullets) {
+      candidates.push({ text: bullet.text, section });
+    }
+  }
+
+  const rankedCandidates = candidates
+    .map((candidate) => {
+      const textLower = candidate.text.toLowerCase();
+      const overlapCount = reqWords.filter(w => textLower.includes(w)).length;
+      return {
+        ...candidate,
+        overlapCount,
+        score: overlapCount / Math.max(reqWords.length, 1),
+      };
+    })
+    .filter((candidate) => candidate.overlapCount >= 2 || candidate.score >= 0.4)
+    .sort((left, right) => right.score - left.score);
+
+  const bestMatch = rankedCandidates[0];
   return bestMatch ? { text: bestMatch.text, section: bestMatch.section } : null;
 }
 

@@ -33,6 +33,7 @@ import type { GapChatContext } from '@/types/resume-v2';
 import { scrollToBullet } from './useStrategyThread';
 import { ReviewInboxCard } from './cards/ReviewInboxCard';
 import { GuidedWorkflowCard, ResumeWorkspaceRail } from './ResumeWorkspaceRail';
+import { ResumeAiWorklogCard } from './ResumeAiWorklogCard';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 
 interface V2StreamingDisplayProps {
@@ -459,6 +460,19 @@ export function V2StreamingDisplay({
                   {editError}
                 </div>
               )}
+
+              <ResumeAiWorklogCard
+                currentResume={displayResume}
+                jobIntelligence={data.jobIntelligence ?? null}
+                benchmarkCandidate={data.benchmarkCandidate ?? null}
+                gapAnalysis={data.gapAnalysis ?? null}
+                nextQueueItem={rewriteQueue?.nextItem ?? null}
+                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0 }}
+                hasFinalReview={Boolean(hiringManagerResult)}
+                isFinalReviewStale={isFinalReviewStale}
+                unresolvedCriticalCount={unresolvedCriticalConcerns.length}
+                postReviewPolish={postReviewPolish}
+              />
 
               <GuidedWorkflowCard
                 hasFinalReview={Boolean(hiringManagerResult)}

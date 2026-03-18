@@ -69,13 +69,13 @@ export function GuidedWorkflowCard({
   const currentStep = hasActiveQueueWork
     ? 'gap_analysis'
     : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0 || postReviewPolish?.status === 'running'
-      ? 'quality_review'
-      : 'section_writing';
+      ? 'section_writing'
+      : 'quality_review';
 
   const nextOverride = queueNeedsAttention > 0
     ? `Next: work the highest-priority queue item${nextQueueItemLabel ? `, starting with "${nextQueueItemLabel}".` : '.'}`
     : queuePartials > 0
-      ? 'Next: tighten the partially addressed queue items so the proof is stronger before export.'
+      ? 'Next: tighten the remaining partial items so the proof is strong enough before you trust the final score.'
       : !hasFinalReview
         ? 'Next: run Final Review to pressure-test the draft before export.'
         : isFinalReviewStale
@@ -87,7 +87,7 @@ export function GuidedWorkflowCard({
   const userDoesOverride = queueNeedsAttention > 0
     ? 'Use the rewrite queue on the left one item at a time. Generate options, send the best one to diff review, and only count it after you accept the edit.'
     : queuePartials > 0
-      ? 'The draft has movement, but some items still need stronger proof or cleaner language. Work those partial items before you rely on the final score.'
+      ? 'The draft has movement, but some items still need stronger proof. Work those before you rely on the final score.'
       : !hasFinalReview
         ? 'The core rewrite is in place. Run Final Review next so the recruiter scan and hiring manager verdict can challenge what you built.'
         : isFinalReviewStale
@@ -97,10 +97,22 @@ export function GuidedWorkflowCard({
             : 'Confirm the final wording, review any AI-added language, and export when satisfied.';
 
   const phaseLabel = hasActiveQueueWork
-    ? 'Close the Gaps'
+    ? 'Fix the Resume'
     : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
-      ? 'Run Final Review'
+      ? 'Pressure-Test the Draft'
       : 'Polish and Export';
+
+  const summaryOverride = hasActiveQueueWork
+    ? 'We are working through the highest-value resume gaps one issue at a time so the rewrite stays truthful and easier to review.'
+    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
+      ? 'We are pressure-testing the draft with a recruiter scan and a hiring manager review before you export it.'
+      : 'We are refreshing tone, ATS readiness, and export status so you know what is actually ready to use.';
+
+  const systemDoesOverride = hasActiveQueueWork
+    ? 'We compare the draft against the job description first, use the benchmark as a secondary check, ask targeted follow-up questions, and draft edits only after the evidence is clear.'
+    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
+      ? 'We run the six-second recruiter skim, the hiring manager critique, and the final issue check to see what would still block an interview.'
+      : 'We refresh tone, ATS coverage, and final readiness after the last accepted changes so the export reflects the current draft.';
 
   return (
     <div className="space-y-3">
@@ -137,6 +149,9 @@ export function GuidedWorkflowCard({
         step={currentStep}
         tone={!hasFinalReview ? 'action' : unresolvedCriticalCount > 0 ? 'review' : 'export'}
         compact
+        titleOverride={phaseLabel}
+        summaryOverride={summaryOverride}
+        systemDoesOverride={systemDoesOverride}
         userDoesOverride={userDoesOverride}
         nextOverride={nextOverride}
       />

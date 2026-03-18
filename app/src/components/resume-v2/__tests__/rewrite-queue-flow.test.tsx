@@ -45,7 +45,7 @@ function makeResumeDraft(): ResumeDraft {
     executive_summary: {
       content: 'Operations leader with cross-functional delivery experience.',
       is_new: false,
-      addresses_requirements: [],
+      addresses_requirements: ['Executive stakeholder leadership'],
     },
     core_competencies: ['Leadership', 'Operational Strategy'],
     selected_accomplishments: [],
@@ -261,9 +261,12 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
+    expect(screen.getByRole('heading', { name: 'What to Fix Next' })).toBeInTheDocument();
+
     fireEvent.click(screen.getAllByRole('button', { name: 'Review Edit' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: 'More Options' }));
     fireEvent.click(screen.getByRole('button', { name: 'Metrics-First' }));
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',

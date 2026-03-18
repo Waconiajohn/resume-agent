@@ -258,6 +258,7 @@ export function GapChatThread({
   onSkip,
 }: GapChatThreadProps) {
   const [inputValue, setInputValue] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -376,8 +377,8 @@ export function GapChatThread({
         >
           <button
             type="button"
-            onClick={() => sendQuickMessage('Ask me one targeted follow-up question that would help prove this requirement truthfully.')}
-            disabled={isLoading || atTurnLimit}
+            onClick={() => setShowAdvanced((previous) => !previous)}
+            disabled={isLoading}
             className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               color: '#afc4ff',
@@ -385,20 +386,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.15)',
             }}
           >
-            Ask Another Question
-          </button>
-          <button
-            type="button"
-            onClick={() => sendQuickMessage('Try another truthful angle and suggest different resume language for this requirement.')}
-            disabled={isLoading || atTurnLimit}
-            className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{
-              color: REPORT_COLORS.secondary,
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.10)',
-            }}
-          >
-            Try Another Angle
+            {showAdvanced ? 'Hide More Options' : 'More Options'}
           </button>
           {onSkip && (
             <button
@@ -417,8 +405,48 @@ export function GapChatThread({
         </div>
       )}
 
-      {!resolvedLanguage && !atTurnLimit && (
+      {!resolvedLanguage && !atTurnLimit && showAdvanced && (
         <div className="px-3 pb-2.5 space-y-2.5">
+          <div
+            className="rounded-lg px-3 py-2"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <p style={{ fontSize: 11, color: REPORT_COLORS.tertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              More ways to answer
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => sendQuickMessage('Ask me one targeted follow-up question that would help prove this requirement truthfully.')}
+                disabled={isLoading}
+                className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  color: '#afc4ff',
+                  backgroundColor: 'rgba(175,196,255,0.06)',
+                  border: '1px solid rgba(175,196,255,0.15)',
+                }}
+              >
+                Ask Another Question
+              </button>
+              <button
+                type="button"
+                onClick={() => sendQuickMessage('Try another truthful angle and suggest different resume language for this requirement.')}
+                disabled={isLoading}
+                className="rounded-lg px-2.5 py-1 text-[11px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  color: REPORT_COLORS.secondary,
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                }}
+              >
+                Try Another Angle
+              </button>
+            </div>
+          </div>
+
           <div
             className="rounded-lg px-3 py-2"
             style={{

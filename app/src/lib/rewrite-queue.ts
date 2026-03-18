@@ -8,6 +8,7 @@ import type {
   JobIntelligence,
   RequirementGap,
   ResumeDraft,
+  RewriteQueueCategory,
   RewriteQueueEvidence,
   RewriteQueueItem,
   RewriteQueueSource,
@@ -18,27 +19,9 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
-function bucketForStatus(status: RewriteQueueItem['status']): RewriteQueueItem['bucket'] {
-  if (status === 'already_covered') return 'resolved';
-  if (status === 'partially_addressed') return 'partially_addressed';
-  return 'needs_attention';
-}
-
-function sourceLabel(source: RewriteQueueSource): string {
-  if (source === 'job_description') return 'job description';
-  if (source === 'benchmark') return 'benchmark';
-  return 'final review';
-}
-
 function importanceWeight(importance?: RequirementGap['importance']): number {
   if (importance === 'must_have') return 0;
   if (importance === 'important') return 1;
-  return 2;
-}
-
-function severityWeight(severity?: RewriteQueueItem['severity']): number {
-  if (severity === 'critical') return 0;
-  if (severity === 'moderate') return 1;
   return 2;
 }
 
@@ -46,6 +29,39 @@ function bucketWeight(bucket: RewriteQueueItem['bucket']): number {
   if (bucket === 'needs_attention') return 0;
   if (bucket === 'partially_addressed') return 1;
   return 2;
+}
+
+function categoryWeight(category: RewriteQueueCategory): number {
+  switch (category) {
+    case 'quick_win':
+      return 0;
+    case 'proof_upgrade':
+      return 1;
+    case 'hard_gap':
+      return 2;
+    case 'benchmark_stretch':
+      return 3;
+    case 'final_review_issue':
+    default:
+      return 4;
+  }
+}
+
+function actionWeight(action: RewriteQueueItem['recommendedNextStep']['action']): number {
+  switch (action) {
+    case 'review_edit':
+    case 'review_suggested_fix':
+      return 0;
+    case 'answer_question':
+      return 1;
+    case 'check_hard_requirement':
+      return 2;
+    case 'view_in_resume':
+    case 'verify':
+    case 'rerun_final_review':
+    default:
+      return 3;
+  }
 }
 
 function latestAssistantMessage(snapshot: CoachingThreadSnapshot | null | undefined, key: string): GapChatMessage | null {
@@ -116,50 +132,6 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
   return evidence;
 }
 
-function extractTargetSectionEvidence(resume: ResumeDraft | null | undefined, section: string | undefined): RewriteQueueEvidence[] {
-  if (!resume || !section) return [];
-  const sectionLower = section.toLowerCase();
-
-  if (sectionLower.includes('summary')) {
-    return [{
-      text: resume.executive_summary.content,
-      source: 'resume',
-      section: 'Executive Summary',
-      isNew: resume.executive_summary.is_new,
-    }];
-  }
-
-  if (sectionLower.includes('accomplishment')) {
-    return resume.selected_accomplishments.slice(0, 2).map((item) => ({
-      text: item.content,
-      source: 'resume' as const,
-      section: 'Selected Accomplishments',
-      isNew: item.is_new,
-    }));
-  }
-
-  for (const experience of resume.professional_experience) {
-    if (sectionLower.includes(experience.company.toLowerCase()) || sectionLower.includes(experience.title.toLowerCase())) {
-      return [
-        {
-          text: experience.scope_statement,
-          source: 'resume' as const,
-          section: `Professional Experience - ${experience.company}`,
-          isNew: experience.scope_statement_is_new ?? false,
-        },
-        ...experience.bullets.slice(0, 2).map((bullet) => ({
-          text: bullet.text,
-          source: 'resume' as const,
-          section: `Professional Experience - ${experience.company}`,
-          isNew: bullet.is_new,
-        })),
-      ].filter((item) => item.text.trim().length > 0);
-    }
-  }
-
-  return [];
-}
-
 function sourceEvidenceForRequirement(args: {
   requirement: RequirementGap;
   jobIntelligence: JobIntelligence;
@@ -202,17 +174,64 @@ function sourceEvidenceForRequirement(args: {
   return evidence;
 }
 
+function hardRequirementText(requirement: string, sourceEvidence: RewriteQueueEvidence[]): boolean {
+  const combined = [requirement, ...sourceEvidence.map((item) => item.text)].join(' ').toLowerCase();
+  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|foreign equivalent|pe\b|pmp\b|cpa\b|rn\b)\b/.test(combined);
+}
+
 function whyRequirementMatters(source: RewriteQueueSource, sourceEvidence: RewriteQueueEvidence[]): string {
-  if (sourceEvidence.length > 0) {
-    return sourceEvidence[0].text;
+  const primarySourceText = sourceEvidence[0]?.text?.trim();
+
+  if (hardRequirementText(primarySourceText ?? '', sourceEvidence)) {
+    return 'This looks like a hard requirement and could become a real screen-out risk if it is truly missing.';
   }
+
   if (source === 'job_description') {
-    return 'This comes directly from the target job description and affects fit and ATS coverage.';
+    return primarySourceText || 'This comes straight from the job description and affects how closely your resume matches the role.';
   }
+
   if (source === 'benchmark') {
-    return 'This is a benchmark expectation that improves competitiveness against stronger candidates.';
+    return primarySourceText || 'This is common among stronger candidates and can improve competitiveness once the core job fit is in place.';
   }
+
   return 'This issue affects the final interview-readiness verdict.';
+}
+
+function categoryForRequirement(args: {
+  source: RewriteQueueSource;
+  status: RewriteQueueItem['status'];
+  liveEvidenceCount: number;
+  inferredEvidenceCount: number;
+  hasSuggestedLanguage: boolean;
+  isHardRequirement: boolean;
+}): RewriteQueueCategory {
+  if (args.status === 'already_covered') {
+    return args.source === 'benchmark' ? 'benchmark_stretch' : 'quick_win';
+  }
+
+  if (args.isHardRequirement && args.liveEvidenceCount === 0) {
+    return 'hard_gap';
+  }
+
+  if (args.source === 'benchmark') {
+    return 'benchmark_stretch';
+  }
+
+  if (args.hasSuggestedLanguage || args.liveEvidenceCount > 0 || args.inferredEvidenceCount > 0) {
+    return 'quick_win';
+  }
+
+  return 'proof_upgrade';
+}
+
+function bucketForItem(
+  status: RewriteQueueItem['status'],
+  category: RewriteQueueCategory,
+): RewriteQueueItem['bucket'] {
+  if (status === 'already_covered') return 'resolved';
+  if (category === 'benchmark_stretch') return 'partially_addressed';
+  if (status === 'partially_addressed' && category !== 'hard_gap') return 'partially_addressed';
+  return 'needs_attention';
 }
 
 export function buildRewriteQueue(args: {
@@ -234,7 +253,7 @@ export function buildRewriteQueue(args: {
     (args.gapCoachingCards ?? []).map((card) => [normalize(card.requirement), card]),
   );
 
-  const requirementItems: RewriteQueueItem[] = args.gapAnalysis.requirements.map((requirement) => {
+  const items = args.gapAnalysis.requirements.map((requirement) => {
     const normalizedRequirement = normalize(requirement.requirement);
     const source = requirement.source ?? (requirement.score_domain === 'benchmark' ? 'benchmark' : 'job_description');
     const coachingCard = coachingLookup.get(normalizedRequirement);
@@ -246,44 +265,82 @@ export function buildRewriteQueue(args: {
       jobIntelligence: args.jobIntelligence,
       benchmarkCandidate: args.benchmarkCandidate,
     });
+    const isHardRequirement = hardRequirementText(requirement.requirement, sourceEvidence);
+    const hasSuggestedLanguage = Boolean(latestAssistant?.suggestedLanguage);
 
     const status: RewriteQueueItem['status'] = requirement.classification === 'strong'
       ? 'already_covered'
       : acceptedLanguage || liveEvidence.some((item) => item.isNew)
         ? 'partially_addressed'
-        : requirement.classification === 'partial' || latestAssistant?.needsCandidateInput || Boolean(latestAssistant?.currentQuestion)
+        : requirement.classification === 'partial' || liveEvidence.length > 0 || latestAssistant?.needsCandidateInput || Boolean(latestAssistant?.currentQuestion)
           ? 'needs_more_evidence'
           : 'not_addressed';
+
+    const category = categoryForRequirement({
+      source,
+      status,
+      liveEvidenceCount: liveEvidence.length,
+      inferredEvidenceCount: requirement.evidence.length,
+      hasSuggestedLanguage,
+      isHardRequirement,
+    });
 
     const recommendedNextStep = status === 'already_covered'
       ? {
           action: 'view_in_resume' as const,
-          label: 'View in Resume',
-          detail: 'Confirm the existing evidence is still the strongest proof for this requirement.',
+          label: 'Check Current Proof',
+          detail: 'Confirm the current resume line is still the strongest proof for this requirement.',
         }
-      : latestAssistant?.suggestedLanguage
+      : category === 'hard_gap'
         ? {
-            action: 'review_edit' as const,
-            label: 'Review Edit',
-            detail: 'A suggested rewrite is ready to send into the diff review.',
+            action: 'check_hard_requirement' as const,
+            label: 'Check This Requirement',
+            detail: 'Confirm whether you actually have this credential or degree. If not, keep it visible as a real risk.',
           }
-        : {
-            action: 'open_coaching' as const,
-            label: status === 'not_addressed' ? 'Close This Gap' : 'Answer One Question',
-            detail: status === 'not_addressed'
-              ? `Open coaching and find truthful, like-kind evidence for this ${sourceLabel(source)} requirement.`
-              : 'Open coaching to gather one more detail and strengthen the proof.',
-          };
+        : hasSuggestedLanguage
+          ? {
+              action: 'review_edit' as const,
+              label: 'Review Edit',
+              detail: 'A stronger line is ready. Review it and only accept it if it is fully true.',
+            }
+          : {
+              action: 'answer_question' as const,
+              label: 'Answer 1 Question',
+              detail: category === 'benchmark_stretch'
+                ? 'Answer one targeted question so we can decide whether this stretch item is really supportable.'
+                : status === 'not_addressed'
+                  ? 'Answer one targeted question so we can find truthful proof for this job requirement and draft the right edit.'
+                  : 'Answer one targeted question so we can strengthen the proof already on the page.',
+            };
+
+    const aiPlan = category === 'hard_gap'
+      ? 'We will confirm whether you truly have this requirement. If you do, we will add proof. If you do not, we will keep it visible as a real risk.'
+      : category === 'benchmark_stretch'
+        ? 'We are checking whether you have adjacent experience that can truthfully strengthen this stretch item without distracting from the core job fit.'
+        : category === 'quick_win'
+          ? 'We already found nearby evidence or a draft line we can strengthen quickly with one focused question and a cleaner rewrite.'
+          : 'We need one or two better details before this becomes believable resume proof.';
+
+    const userInstruction = category === 'hard_gap'
+      ? 'Confirm whether you actually have this requirement. Do not stretch it. If you do not have it, leave it marked as a real risk.'
+      : category === 'benchmark_stretch'
+        ? 'Only work this if it is real and supportable. Core job-description fit comes first.'
+        : status === 'already_covered'
+          ? 'Read the current proof on the resume and make sure it still belongs in the strongest place.'
+          : 'Answer the next question or review the proposed edit. Accept it only if it is fully accurate and supportable.';
 
     return {
       id: `requirement:${source}:${normalizedRequirement}`,
-      kind: 'requirement',
+      kind: 'requirement' as const,
       source,
+      category,
       title: requirement.requirement,
       status,
-      bucket: bucketForStatus(status),
+      bucket: bucketForItem(status, category),
       isResolved: status === 'already_covered',
       whyItMatters: whyRequirementMatters(source, sourceEvidence),
+      aiPlan,
+      userInstruction,
       currentEvidence: liveEvidence.length > 0
         ? liveEvidence
         : requirement.evidence.map((text) => ({ text, source: 'resume' as const })),
@@ -295,82 +352,29 @@ export function buildRewriteQueue(args: {
       candidateInputNeeded: latestAssistant?.needsCandidateInput ?? false,
       coachingReasoning: coachingCard?.ai_reasoning ?? requirement.strategy?.ai_reasoning,
       starterQuestion: latestAssistant?.currentQuestion ?? coachingCard?.interview_questions?.[0]?.question,
+      riskNote: category === 'hard_gap'
+        ? 'If this is truly missing, keep it visible as a real risk instead of forcing it into the resume.'
+        : undefined,
     };
-  });
-
-  const finalReviewItems: RewriteQueueItem[] = (args.finalReviewResult?.concerns ?? []).map((concern) => {
-    const relatedEvidence = concern.related_requirement
-      ? collectResumeEvidenceForRequirement(args.currentResume, concern.related_requirement)
-      : [];
-    const sectionEvidence = relatedEvidence.length > 0
-      ? []
-      : extractTargetSectionEvidence(args.currentResume, concern.target_section);
-    const latestAssistant = latestAssistantMessage(args.finalReviewChatSnapshot, concern.id);
-    const isResolved = (args.resolvedFinalReviewConcernIds ?? []).includes(concern.id);
-
-    const status: RewriteQueueItem['status'] = isResolved
-      ? 'already_covered'
-      : resolvedLanguage(args.finalReviewChatSnapshot, concern.id) || relatedEvidence.some((item) => item.isNew)
-        ? 'partially_addressed'
-        : concern.requires_candidate_input || latestAssistant?.needsCandidateInput || Boolean(concern.clarifying_question)
-          ? 'needs_more_evidence'
-          : 'not_addressed';
-
-    const recommendedNextStep = isResolved
-      ? {
-          action: 'verify' as const,
-          label: 'Verify Outcome',
-          detail: 'Check that the accepted edit still reads naturally in the draft.',
-        }
-      : concern.suggested_resume_edit
-        ? {
-            action: 'review_suggested_fix' as const,
-            label: 'Review Suggested Fix',
-            detail: 'A concrete rewrite is already available for this hiring-manager concern.',
-          }
-        : {
-            action: 'open_coaching' as const,
-            label: concern.requires_candidate_input ? 'Answer Clarifying Question' : 'Open Coaching',
-            detail: concern.requires_candidate_input
-              ? 'Give one specific detail so the concern can be turned into a truthful resume edit.'
-              : 'Open coaching to produce a stronger, more credible fix.',
-          };
-
-    return {
-      id: `final_review:${normalize(concern.id)}`,
-      kind: 'final_review',
-      source: 'final_review',
-      title: concern.related_requirement ?? concern.observation,
-      status,
-      bucket: bucketForStatus(status),
-      isResolved,
-      whyItMatters: concern.why_it_hurts,
-      currentEvidence: relatedEvidence.length > 0 ? relatedEvidence : sectionEvidence,
-      sourceEvidence: [{ text: concern.observation, source: 'final_review' }],
-      recommendedNextStep,
-      concernId: concern.id,
-      relatedRequirement: concern.related_requirement,
-      targetSection: concern.target_section,
-      severity: concern.severity,
-      candidateInputNeeded: concern.requires_candidate_input || latestAssistant?.needsCandidateInput,
-      coachingReasoning: concern.fix_strategy,
-      starterQuestion: latestAssistant?.currentQuestion ?? concern.clarifying_question,
-    };
-  });
-
-  const items = [...finalReviewItems, ...requirementItems].sort((left, right) => {
+  }).sort((left, right) => {
     const bucketDiff = bucketWeight(left.bucket) - bucketWeight(right.bucket);
     if (bucketDiff !== 0) return bucketDiff;
 
-    const severityDiff = severityWeight(left.severity) - severityWeight(right.severity);
-    if (severityDiff !== 0) return severityDiff;
+    const categoryDiff = categoryWeight(left.category) - categoryWeight(right.category);
+    if (categoryDiff !== 0) return categoryDiff;
 
-    const leftSource = left.source === 'final_review' ? -1 : left.source === 'job_description' ? 0 : 1;
-    const rightSource = right.source === 'final_review' ? -1 : right.source === 'job_description' ? 0 : 1;
+    const actionDiff = actionWeight(left.recommendedNextStep.action) - actionWeight(right.recommendedNextStep.action);
+    if (actionDiff !== 0) return actionDiff;
+
+    const leftSource = left.source === 'job_description' ? 0 : left.source === 'benchmark' ? 1 : 2;
+    const rightSource = right.source === 'job_description' ? 0 : right.source === 'benchmark' ? 1 : 2;
     if (leftSource !== rightSource) return leftSource - rightSource;
 
     const importanceDiff = importanceWeight(left.importance) - importanceWeight(right.importance);
     if (importanceDiff !== 0) return importanceDiff;
+
+    const evidenceDiff = right.currentEvidence.length - left.currentEvidence.length;
+    if (evidenceDiff !== 0) return evidenceDiff;
 
     return left.title.localeCompare(right.title);
   });

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildRewriteQueue } from '../rewrite-queue';
-import type { CoachingThreadSnapshot, FinalReviewResult, GapAnalysis, JobIntelligence, ResumeDraft } from '@/types/resume-v2';
+import type { FinalReviewResult, GapAnalysis, JobIntelligence, ResumeDraft } from '@/types/resume-v2';
 
 function makeJobIntelligence(): JobIntelligence {
   return {
@@ -25,31 +25,6 @@ function makeJobIntelligence(): JobIntelligence {
     hidden_hiring_signals: [],
     language_keywords: [],
     industry: 'Manufacturing',
-  };
-}
-
-function makeGapAnalysis(): GapAnalysis {
-  return {
-    requirements: [
-      {
-        requirement: 'Operational excellence',
-        source: 'job_description',
-        importance: 'must_have',
-        classification: 'strong',
-        evidence: ['Improved fill rate by 14%.'],
-      },
-      {
-        requirement: 'Executive stakeholder communication',
-        source: 'job_description',
-        importance: 'important',
-        classification: 'missing',
-        evidence: [],
-      },
-    ],
-    coverage_score: 50,
-    strength_summary: 'Strong operator, but executive communication needs clearer proof.',
-    critical_gaps: ['Executive stakeholder communication'],
-    pending_strategies: [],
   };
 }
 
@@ -132,48 +107,85 @@ function makeFinalReviewResult(): FinalReviewResult {
 }
 
 describe('rewrite-queue', () => {
-  it('prioritizes unresolved critical final-review concerns ahead of requirements and summarizes queue counts', () => {
+  it('keeps the active queue focused on rewrite work instead of mixing in final review concerns', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Operational excellence',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'strong',
+          evidence: ['Improved fill rate by 14%.'],
+        },
+        {
+          requirement: 'Executive stakeholder communication',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'missing',
+          evidence: [],
+        },
+      ],
+      coverage_score: 50,
+      strength_summary: 'Strong operator, but executive communication needs clearer proof.',
+      critical_gaps: ['Executive stakeholder communication'],
+      pending_strategies: [],
+    };
+
     const queue = buildRewriteQueue({
       jobIntelligence: makeJobIntelligence(),
-      gapAnalysis: makeGapAnalysis(),
+      gapAnalysis,
       currentResume: makeResume(),
       finalReviewResult: makeFinalReviewResult(),
-      resolvedFinalReviewConcernIds: [],
-      gapChatSnapshot: {
-        items: {
-          'executive stakeholder communication': {
-            messages: [],
-            resolvedLanguage: 'Presented weekly operating reviews to the executive team.',
-            error: null,
-          },
-        },
-      } satisfies CoachingThreadSnapshot,
     });
 
-    expect(queue.nextItem?.kind).toBe('final_review');
-    expect(queue.nextItem?.concernId).toBe('concern_1');
-    expect(queue.items[0].status).toBe('needs_more_evidence');
-    expect(queue.items.find((item) => item.requirement === 'Operational excellence')?.status).toBe('already_covered');
-    expect(queue.items.find((item) => item.requirement === 'Executive stakeholder communication')?.status).toBe('partially_addressed');
+    expect(queue.items.every((item) => item.kind === 'requirement')).toBe(true);
+    expect(queue.nextItem?.requirement).toBe('Executive stakeholder communication');
+    expect(queue.nextItem?.category).toBe('quick_win');
+    expect(queue.nextItem?.recommendedNextStep.action).toBe('answer_question');
     expect(queue.summary).toEqual({
-      total: 3,
+      total: 2,
       needsAttention: 1,
-      partiallyAddressed: 1,
+      partiallyAddressed: 0,
       resolved: 1,
     });
   });
 
-  it('moves final-review concerns into the resolved bucket after the accepted edit is marked resolved', () => {
+  it('marks likely credential requirements as hard gaps and ranks quick wins ahead of them', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Executive stakeholder communication',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'partial',
+          evidence: ['Presented operating updates to senior leaders.'],
+        },
+        {
+          requirement: 'Bachelor’s degree in engineering or related field',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'missing',
+          evidence: [],
+          source_evidence: 'Bachelor’s degree in engineering or related field required.',
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
     const queue = buildRewriteQueue({
       jobIntelligence: makeJobIntelligence(),
-      gapAnalysis: makeGapAnalysis(),
+      gapAnalysis,
       currentResume: makeResume(),
-      finalReviewResult: makeFinalReviewResult(),
-      resolvedFinalReviewConcernIds: ['concern_1'],
     });
 
-    const concern = queue.items.find((item) => item.concernId === 'concern_1');
-    expect(concern?.status).toBe('already_covered');
-    expect(concern?.bucket).toBe('resolved');
+    const hardGap = queue.items.find((item) => item.requirement?.includes('Bachelor'))!;
+
+    expect(queue.nextItem?.requirement).toBe('Executive stakeholder communication');
+    expect(hardGap.category).toBe('hard_gap');
+    expect(hardGap.recommendedNextStep.action).toBe('check_hard_requirement');
+    expect(hardGap.riskNote).toMatch(/real risk/i);
   });
 });
