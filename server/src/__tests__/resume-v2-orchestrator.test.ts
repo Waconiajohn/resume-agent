@@ -37,6 +37,9 @@ const mockRunTruthVerification    = vi.hoisted(() => vi.fn());
 const mockRunATSOptimization      = vi.hoisted(() => vi.fn());
 const mockRunExecutiveTone        = vi.hoisted(() => vi.fn());
 const mockRunAssembly             = vi.hoisted(() => vi.fn());
+const mockStartUsageTracking      = vi.hoisted(() => vi.fn(() => ({ input_tokens: 120, output_tokens: 80 })));
+const mockSetUsageTrackingContext = vi.hoisted(() => vi.fn());
+const mockStopUsageTracking       = vi.hoisted(() => vi.fn());
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -78,6 +81,12 @@ vi.mock('../agents/resume-v2/executive-tone/agent.js', () => ({
 
 vi.mock('../agents/resume-v2/assembly/agent.js', () => ({
   runAssembly: mockRunAssembly,
+}));
+
+vi.mock('../lib/llm-provider.js', () => ({
+  startUsageTracking: mockStartUsageTracking,
+  setUsageTrackingContext: mockSetUsageTrackingContext,
+  stopUsageTracking: mockStopUsageTracking,
 }));
 
 vi.mock('../lib/logger.js', () => ({
@@ -303,6 +312,7 @@ beforeEach(() => {
   mockRunATSOptimization.mockResolvedValue(ATS_OPTIMIZATION);
   mockRunExecutiveTone.mockResolvedValue(EXECUTIVE_TONE);
   mockRunAssembly.mockReturnValue(ASSEMBLY_OUTPUT); // synchronous
+  mockStartUsageTracking.mockReturnValue({ input_tokens: 120, output_tokens: 80 });
 });
 
 // ─── Pipeline flow ────────────────────────────────────────────────────────────
@@ -555,11 +565,22 @@ describe('pipeline flow — final state', () => {
     expect(state.user_context).toBe('Targeting director-level roles');
   });
 
-  it('initialises token_usage with zeros', async () => {
+  it('stores accumulated token usage from the usage tracker', async () => {
     const { options } = makeOptions();
     const state = await runV2Pipeline(options);
 
-    expect(state.token_usage).toEqual({ input_tokens: 0, output_tokens: 0, estimated_cost_usd: 0 });
+    expect(state.token_usage.input_tokens).toBe(120);
+    expect(state.token_usage.output_tokens).toBe(80);
+    expect(state.token_usage.estimated_cost_usd).toBeGreaterThanOrEqual(0);
+  });
+
+  it('starts and stops usage tracking around the pipeline', async () => {
+    const { options } = makeOptions();
+    await runV2Pipeline(options);
+
+    expect(mockStartUsageTracking).toHaveBeenCalledWith('test-session-001', 'test-user-001');
+    expect(mockSetUsageTrackingContext).toHaveBeenCalledWith('test-session-001');
+    expect(mockStopUsageTracking).toHaveBeenCalledWith('test-session-001');
   });
 });
 

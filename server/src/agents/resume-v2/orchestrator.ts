@@ -13,6 +13,8 @@
  */
 
 import logger from '../../lib/logger.js';
+import { MODEL_LIGHT, MODEL_MID, MODEL_PRIMARY, MODEL_PRICING } from '../../lib/model-constants.js';
+import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../../lib/llm-provider.js';
 import { runJobIntelligence } from './job-intelligence/agent.js';
 import { runCandidateIntelligence } from './candidate-intelligence/agent.js';
 import { runBenchmarkCandidate } from './benchmark-candidate/agent.js';
@@ -55,6 +57,8 @@ export interface RunPipelineOptions {
 
 export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2PipelineState> {
   const { emit, signal } = options;
+  const usageAcc = startUsageTracking(options.session_id, options.user_id);
+  setUsageTrackingContext(options.session_id);
   const state: V2PipelineState = {
     session_id: options.session_id,
     user_id: options.user_id,
@@ -278,6 +282,11 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     // ─── Complete ────────────────────────────────────────────────────
     state.current_stage = 'complete';
+    state.token_usage = {
+      input_tokens: usageAcc.input_tokens,
+      output_tokens: usageAcc.output_tokens,
+      estimated_cost_usd: calculateEstimatedCost(usageAcc),
+    };
     emit({ type: 'pipeline_complete', session_id: options.session_id });
 
     const totalMs = Date.now() - startTime;
@@ -292,10 +301,33 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
     return state;
 
   } catch (error) {
+    state.token_usage = {
+      input_tokens: usageAcc.input_tokens,
+      output_tokens: usageAcc.output_tokens,
+      estimated_cost_usd: calculateEstimatedCost(usageAcc),
+    };
     const stage = state.current_stage;
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: options.session_id, stage, error: message }, 'Resume v2 pipeline error');
     emit({ type: 'pipeline_error', stage, error: message });
     throw error;
+  } finally {
+    stopUsageTracking(options.session_id);
   }
+}
+
+function calculateEstimatedCost(usage: { input_tokens: number; output_tokens: number }): number {
+  const lightPrice = MODEL_PRICING[MODEL_LIGHT] ?? { input: 0, output: 0 };
+  const midPrice = MODEL_PRICING[MODEL_MID] ?? { input: 0, output: 0 };
+  const primaryPrice = MODEL_PRICING[MODEL_PRIMARY] ?? { input: 0, output: 0 };
+
+  const blendedInput = lightPrice.input * 0.5 + midPrice.input * 0.3 + primaryPrice.input * 0.2;
+  const blendedOutput = lightPrice.output * 0.5 + midPrice.output * 0.3 + primaryPrice.output * 0.2;
+
+  return Number(
+    (
+      (usage.input_tokens / 1_000_000) * blendedInput +
+      (usage.output_tokens / 1_000_000) * blendedOutput
+    ).toFixed(4),
+  );
 }

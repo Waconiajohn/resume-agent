@@ -19,6 +19,7 @@ import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
 import { runV2Pipeline } from '../agents/resume-v2/orchestrator.js';
 import type { V2PipelineSSEEvent, V2PipelineStage } from '../agents/resume-v2/types.js';
 import { llm } from '../lib/llm.js';
+import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../lib/llm-provider.js';
 import { MODEL_MID, MODEL_LIGHT, MODEL_PRIMARY } from '../lib/model-constants.js';
 import { repairJSON } from '../lib/json-repair.js';
 import { loadCareerProfileContext } from '../lib/career-profile-context.js';
@@ -46,6 +47,20 @@ import {
 } from './resume-v2-pipeline-support.js';
 
 export const resumeV2Pipeline = new Hono();
+
+async function withTrackedSessionUsage<T>(
+  sessionId: string,
+  userId: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  startUsageTracking(sessionId, userId);
+  setUsageTrackingContext(sessionId);
+  try {
+    return await work();
+  } finally {
+    stopUsageTracking(sessionId);
+  }
+}
 
 // ─── Metrics ─────────────────────────────────────────────────────────
 
@@ -442,12 +457,12 @@ resumeV2Pipeline.post('/:sessionId/edit', authMiddleware, rateLimitMiddleware(30
   const userMessage = messageParts.join('\n');
 
   try {
-    const response = await llm.chat({
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
       model: MODEL_MID,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
       max_tokens: 1024,
-    });
+    }));
 
     const parsed_response = repairJSON<{ replacement: string }>(response.text);
 
@@ -498,7 +513,7 @@ resumeV2Pipeline.post('/:sessionId/rescore', authMiddleware, rateLimitMiddleware
   const { resume_text, job_description } = parsed.data;
 
   try {
-    const response = await llm.chat({
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
       model: MODEL_LIGHT,
       system: `You are an ATS scoring specialist. Score how well a resume matches a job description.
 
@@ -520,7 +535,7 @@ RULES:
         content: `RESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}\n\nScore the ATS match.`,
       }],
       max_tokens: 2048,
-    });
+    }));
 
     const result = repairJSON<{
       ats_score: number;
@@ -570,7 +585,7 @@ resumeV2Pipeline.post('/:sessionId/polish', authMiddleware, rateLimitMiddleware(
   const { resume_text, job_description } = parsed.data;
 
   try {
-    const response = await llm.chat({
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
       model: MODEL_MID,
       system: `You are a final resume polish specialist. Evaluate the tailored resume for both ATS match and executive tone after a revision round.
 
@@ -596,7 +611,7 @@ RULES:
         content: `RESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}\n\nEvaluate this revised resume for final polish.`,
       }],
       max_tokens: 2048,
-    });
+    }));
 
     const result = repairJSON<{
       ats_score: number;
@@ -657,7 +672,7 @@ resumeV2Pipeline.post('/:sessionId/integrate-keyword', authMiddleware, rateLimit
   logger.info({ session_id: sessionId, keyword }, 'Keyword integration requested');
 
   try {
-    const response = await llm.chat({
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
       model: MODEL_MID,
       system: `You are an expert resume editor. You will receive a resume, a job description, and a missing keyword/phrase.
 
@@ -675,7 +690,7 @@ Return valid JSON only:
         content: `MISSING KEYWORD/PHRASE: "${keyword}"\n\nRESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}\n\nFind the best place to integrate this keyword naturally.`,
       }],
       max_tokens: 1024,
-    });
+    }));
 
     const result = repairJSON<{
       original_text: string;
@@ -787,12 +802,12 @@ resumeV2Pipeline.post('/:sessionId/gap-chat', authMiddleware, rateLimitMiddlewar
   ];
 
   try {
-    const response = await llm.chat({
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
       model: MODEL_MID,
       system: GAP_CHAT_SYSTEM,
       messages: llmMessages,
       max_tokens: 1024,
-    });
+    }));
 
     const repaired = repairJSON<unknown>(response.text);
     const result = structuredCoachingResponseSchema.safeParse(repaired);
@@ -910,12 +925,12 @@ resumeV2Pipeline.post('/:sessionId/final-review-chat', authMiddleware, rateLimit
   ];
 
   try {
-    const response = await llm.chat({
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
       model: MODEL_MID,
       system: FINAL_REVIEW_CHAT_SYSTEM,
       messages: llmMessages,
       max_tokens: 1024,
-    });
+    }));
 
     const repaired = repairJSON<unknown>(response.text);
     const result = structuredCoachingResponseSchema.safeParse(repaired);
@@ -1085,23 +1100,23 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
   });
 
   try {
-    const response = await llm.chat({
+    const response = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
       model: MODEL_PRIMARY,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
       max_tokens: 4096,
-    });
+    }));
 
     let repaired = repairJSON<unknown>(response.text);
     let validated = finalReviewResultSchema.safeParse(repaired);
 
     if (!validated.success) {
-      const retry = await llm.chat({
+      const retry = await withTrackedSessionUsage(sessionId, userId, async () => llm.chat({
         model: MODEL_PRIMARY,
         system: 'Return ONLY valid JSON. No markdown fences. No commentary. Start with { and end with }.',
         messages: [{ role: 'user', content: `${systemPrompt}\n\n${userPrompt}` }],
         max_tokens: 4096,
-      });
+      }));
 
       repaired = repairJSON<unknown>(retry.text);
       validated = finalReviewResultSchema.safeParse(repaired);

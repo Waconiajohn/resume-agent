@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { supabaseAdmin } from '../src/lib/supabase.js';
 import { loadCareerProfileContext } from '../src/lib/career-profile-context.js';
 import { llm } from '../src/lib/llm.js';
+import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../src/lib/llm-provider.js';
 import { MODEL_PRIMARY } from '../src/lib/model-constants.js';
 import { repairJSON } from '../src/lib/json-repair.js';
 import { runV2Pipeline } from '../src/agents/resume-v2/orchestrator.js';
@@ -196,12 +197,20 @@ async function runRealSessionQa() {
       careerProfile: careerProfile ?? null,
     });
 
-    const reviewResponse = await llm.chat({
-      model: MODEL_PRIMARY,
-      system: prompts.systemPrompt,
-      messages: [{ role: 'user', content: prompts.userPrompt }],
-      max_tokens: 1800,
-    });
+    const reviewTrackingSessionId = `${pipelineState.session_id}:final-review`;
+    startUsageTracking(reviewTrackingSessionId, session.user_id);
+    setUsageTrackingContext(reviewTrackingSessionId);
+    let reviewResponse: Awaited<ReturnType<typeof llm.chat>>;
+    try {
+      reviewResponse = await llm.chat({
+        model: MODEL_PRIMARY,
+        system: prompts.systemPrompt,
+        messages: [{ role: 'user', content: prompts.userPrompt }],
+        max_tokens: 1800,
+      });
+    } finally {
+      stopUsageTracking(reviewTrackingSessionId);
+    }
 
     const repaired = repairJSON<unknown>(reviewResponse.text);
     const parsedReview = finalReviewResultSchema.parse(repaired);
