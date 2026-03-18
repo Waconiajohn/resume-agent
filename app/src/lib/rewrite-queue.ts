@@ -88,12 +88,13 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
   );
 
   if (matchesRequirement(resume.executive_summary.addresses_requirements)) {
-    evidence.push({
-      text: resume.executive_summary.content,
-      source: 'resume',
-      section: 'Executive Summary',
-      isNew: resume.executive_summary.is_new,
-    });
+      evidence.push({
+        text: resume.executive_summary.content,
+        source: 'resume',
+        section: 'Executive Summary',
+        isNew: resume.executive_summary.is_new,
+        basis: 'mapped',
+      });
   }
 
   for (const accomplishment of resume.selected_accomplishments) {
@@ -103,6 +104,7 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
         source: 'resume',
         section: 'Selected Accomplishments',
         isNew: accomplishment.is_new,
+        basis: 'mapped',
       });
     }
   }
@@ -114,6 +116,7 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
         source: 'resume',
         section: `Professional Experience - ${experience.company}`,
         isNew: experience.scope_statement_is_new ?? false,
+        basis: 'mapped',
       });
     }
 
@@ -124,6 +127,7 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
           source: 'resume',
           section: `Professional Experience - ${experience.company}`,
           isNew: bullet.is_new,
+          basis: 'mapped',
         });
       }
     }
@@ -148,11 +152,13 @@ function sourceEvidenceForRequirement(args: {
       evidence.push({
         text: competency.evidence_from_jd,
         source: 'job_description',
+        basis: 'source',
       });
     } else if (args.requirement.source_evidence) {
       evidence.push({
         text: args.requirement.source_evidence,
         source: 'job_description',
+        basis: 'source',
       });
     }
   }
@@ -161,6 +167,7 @@ function sourceEvidenceForRequirement(args: {
     evidence.push({
       text: args.requirement.source_evidence,
       source: 'benchmark',
+      basis: 'source',
     });
   }
 
@@ -168,6 +175,7 @@ function sourceEvidenceForRequirement(args: {
     evidence.push({
       text: args.benchmarkCandidate.ideal_profile_summary,
       source: 'benchmark',
+      basis: 'source',
     });
   }
 
@@ -346,7 +354,7 @@ export function buildRewriteQueue(args: {
       userInstruction,
       currentEvidence: liveEvidence.length > 0
         ? liveEvidence
-        : inferredEvidence.map((text) => ({ text, source: 'resume' as const })),
+        : inferredEvidence.map((text) => ({ text, source: 'resume' as const, basis: 'nearby' as const })),
       sourceEvidence,
       recommendedNextStep,
       requirement: requirement.requirement,

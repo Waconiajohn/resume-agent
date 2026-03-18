@@ -191,6 +191,37 @@ describe('rewrite-queue', () => {
     expect(queue.summary.hardGapCount).toBe(1);
   });
 
+  it('marks inferred resume lines as nearby proof instead of current mapped proof', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Executive stakeholder communication',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'missing',
+          evidence: ['Presented weekly updates to senior leaders during plant turnaround meetings.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const resume = makeResume();
+    resume.executive_summary.addresses_requirements = [];
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: resume,
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.currentEvidence[0]?.basis).toBe('nearby');
+    expect(queue.items[0]?.currentEvidence[0]?.section).toBeUndefined();
+  });
+
   it('does not crash when a live gap-analysis requirement omits the evidence array', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [

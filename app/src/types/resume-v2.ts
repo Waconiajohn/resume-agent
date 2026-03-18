@@ -470,6 +470,7 @@ export interface RewriteQueueEvidence {
   source: 'resume' | 'job_description' | 'benchmark' | 'final_review';
   section?: string;
   isNew?: boolean;
+  basis?: 'mapped' | 'nearby' | 'source';
 }
 
 export interface RewriteQueueNextStep {

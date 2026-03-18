@@ -77,7 +77,7 @@ const BUCKETS: Array<{
   {
     id: 'needs_attention',
     title: 'Fix First',
-    description: 'Start here. These items affect the core job match or carry the clearest next move.',
+    description: 'Start with the small group of highest-value fixes. We keep this list short so you always know what to do next.',
   },
   {
     id: 'partially_addressed',
@@ -91,19 +91,24 @@ const BUCKETS: Array<{
   },
 ];
 
+const FIX_FIRST_VISIBLE_LIMIT = 5;
+
 function QueueStat({
   label,
   value,
   tone,
+  detail,
 }: {
   label: string;
   value: number;
   tone: string;
+  detail?: string;
 }) {
   return (
     <div className={`rounded-xl border px-3 py-3 ${tone}`}>
       <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">{label}</p>
       <p className="mt-2 text-base font-semibold text-white/86">{value}</p>
+      {detail && <p className="mt-1 text-[11px] leading-4 text-white/42">{detail}</p>}
     </div>
   );
 }
@@ -118,12 +123,19 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
     );
   }
 
+  const isNearbyEvidence = firstEvidence.basis === 'nearby';
+
   return (
     <div className="rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2">
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">
-        Current proof
+        {isNearbyEvidence ? 'Nearby proof we can strengthen' : 'Current proof'}
         {firstEvidence.section ? ` · ${firstEvidence.section}` : ''}
       </p>
+      {isNearbyEvidence && (
+        <p className="mt-1 text-xs leading-5 text-white/48">
+          We found related experience nearby, but it is not yet direct proof for this requirement.
+        </p>
+      )}
       <p className="mt-1 text-sm leading-6 text-white/72">{firstEvidence.text}</p>
     </div>
   );
@@ -148,7 +160,14 @@ function EvidenceList({
       ) : (
         items.slice(0, 2).map((item, index) => (
           <div key={`${item.text}-${index}`} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-            {item.section && <p className="text-[11px] text-white/42">{item.section}</p>}
+            <div className="flex flex-wrap items-center gap-2">
+              {item.section && <p className="text-[11px] text-white/42">{item.section}</p>}
+              {item.basis === 'nearby' && (
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-white/38">
+                  Nearby proof
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-sm leading-6 text-white/74">{item.text}</p>
           </div>
         ))
@@ -180,6 +199,7 @@ export function RewriteQueuePanel({
 }: RewriteQueuePanelProps) {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
+  const [showAllFixFirst, setShowAllFixFirst] = useState(false);
   const [placementWarnings, setPlacementWarnings] = useState<Record<string, string>>({});
 
   const queue = useMemo(() => buildRewriteQueue({
@@ -205,6 +225,8 @@ export function RewriteQueuePanel({
   ]);
 
   const nextItem = queue.nextItem;
+  const visibleFixFirstCount = Math.min(queue.summary.needsAttention, FIX_FIRST_VISIBLE_LIMIT);
+  const queuedAfterFixFirst = Math.max(queue.summary.needsAttention - FIX_FIRST_VISIBLE_LIMIT, 0);
 
   const handlePrimaryAction = (item: RewriteQueueItem) => {
     if (item.status === 'already_covered' && item.requirement && item.currentEvidence.some((evidence) => Boolean(evidence.section))) {
@@ -290,7 +312,12 @@ export function RewriteQueuePanel({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <QueueStat label="Fix First" value={queue.summary.needsAttention} tone="border-[#f0b8b8]/16 bg-[#f0b8b8]/[0.05]" />
+          <QueueStat
+            label="Fix First Now"
+            value={visibleFixFirstCount}
+            detail={queuedAfterFixFirst > 0 ? `${queuedAfterFixFirst} more queued after these` : undefined}
+            tone="border-[#f0b8b8]/16 bg-[#f0b8b8]/[0.05]"
+          />
           <QueueStat label="Can Be Stronger" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
           <QueueStat label="Done" value={queue.summary.resolved} tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]" />
         </div>
@@ -374,7 +401,12 @@ export function RewriteQueuePanel({
           if (items.length === 0) return null;
 
           const isResolvedBucket = bucket.id === 'resolved';
+          const isFixFirstBucket = bucket.id === 'needs_attention';
           const bucketOpen = !isResolvedBucket || showResolved;
+          const visibleItems = isFixFirstBucket && !showAllFixFirst
+            ? items.slice(0, FIX_FIRST_VISIBLE_LIMIT)
+            : items;
+          const hiddenFixFirstCount = isFixFirstBucket ? Math.max(items.length - visibleItems.length, 0) : 0;
 
           return (
             <section key={bucket.id} className="space-y-3" aria-label={bucket.title}>
@@ -383,25 +415,33 @@ export function RewriteQueuePanel({
                   <h3 className="text-sm font-semibold text-white/84">{bucket.title}</h3>
                   <p className="mt-1 text-xs leading-5 text-white/46">{bucket.description}</p>
                 </div>
-                {isResolvedBucket && (
+                {(isResolvedBucket || hiddenFixFirstCount > 0) && (
                   <button
                     type="button"
-                    onClick={() => setShowResolved((previous) => !previous)}
+                    onClick={() => {
+                      if (isResolvedBucket) {
+                        setShowResolved((previous) => !previous);
+                        return;
+                      }
+                      setShowAllFixFirst((previous) => !previous);
+                    }}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] text-white/56 transition-colors hover:bg-white/[0.06] hover:text-white/78"
-                    aria-expanded={bucketOpen}
+                    aria-expanded={isResolvedBucket ? bucketOpen : showAllFixFirst}
                   >
                     <ChevronRight
                       className="h-3.5 w-3.5 transition-transform"
-                      style={{ transform: bucketOpen ? 'rotate(90deg)' : 'none' }}
+                      style={{ transform: (isResolvedBucket ? bucketOpen : showAllFixFirst) ? 'rotate(90deg)' : 'none' }}
                     />
-                    {bucketOpen ? 'Hide Done' : `Show Done (${items.length})`}
+                    {isResolvedBucket
+                      ? (bucketOpen ? 'Hide Done' : `Show Done (${items.length})`)
+                      : (showAllFixFirst ? 'Show fewer first-priority items' : `Show all queued issues (${hiddenFixFirstCount})`)}
                   </button>
                 )}
               </div>
 
               {bucketOpen && (
                 <div className="space-y-3">
-                  {items.map((item) => {
+                  {visibleItems.map((item) => {
                     const hasViewableEvidence = item.currentEvidence.some((evidence) => Boolean(evidence.section));
                     const isExpanded = expandedItemId === item.id;
                     const isPrimary = nextItem?.id === item.id;

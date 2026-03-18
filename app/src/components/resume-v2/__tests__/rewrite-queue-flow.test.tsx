@@ -131,6 +131,42 @@ function makeGapAnalysis(): GapAnalysis {
   };
 }
 
+function makeOverflowGapAnalysis(): GapAnalysis {
+  return {
+    requirements: Array.from({ length: 6 }, (_, index) => ({
+      requirement: `Job requirement ${index + 1}`,
+      importance: 'important' as const,
+      classification: 'missing' as const,
+      evidence: [],
+      source: 'job_description' as const,
+      source_evidence: `Required qualification ${index + 1}.`,
+      score_domain: 'ats' as const,
+    })),
+    coverage_score: 0,
+    score_breakdown: {
+      job_description: {
+        addressed: 0,
+        total: 6,
+        strong: 0,
+        partial: 0,
+        missing: 6,
+        coverage_score: 0,
+      },
+      benchmark: {
+        addressed: 0,
+        total: 0,
+        strong: 0,
+        partial: 0,
+        missing: 0,
+        coverage_score: 0,
+      },
+    },
+    strength_summary: 'Needs stronger proof.',
+    critical_gaps: [],
+    pending_strategies: [],
+  };
+}
+
 function makeGapChatSnapshot(): CoachingThreadSnapshot {
   return {
     items: {
@@ -156,10 +192,12 @@ function QueueHarness({
   onRequestEdit,
   onSendMessage,
   onAcknowledgeWarnings,
+  gapAnalysis = makeGapAnalysis(),
 }: {
   onRequestEdit: (selectedText: string, section: string, action: EditAction, customInstruction?: string, editContext?: EditContext) => void;
   onSendMessage: (...args: unknown[]) => void;
   onAcknowledgeWarnings: () => void;
+  gapAnalysis?: GapAnalysis;
 }) {
   const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(null);
   const resume = makeResumeDraft();
@@ -170,7 +208,7 @@ function QueueHarness({
       <RewriteQueuePanel
         jobIntelligence={makeJobIntelligence()}
         positioningAssessment={null}
-        gapAnalysis={makeGapAnalysis()}
+        gapAnalysis={gapAnalysis}
         benchmarkCandidate={null}
         currentResume={resume}
         gapCoachingCards={null}
@@ -288,5 +326,20 @@ describe('rewrite queue browser flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'I understand, enable export' }));
     expect(onAcknowledgeWarnings).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps fix-first visible scope limited and labels nearby evidence honestly', () => {
+    render(
+      <QueueHarness
+        onRequestEdit={vi.fn()}
+        onSendMessage={vi.fn()}
+        onAcknowledgeWarnings={vi.fn()}
+        gapAnalysis={makeOverflowGapAnalysis()}
+      />,
+    );
+
+    expect(screen.getByText('Fix First Now')).toBeInTheDocument();
+    expect(screen.getByText('1 more queued after these')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show all queued issues (1)' })).toBeInTheDocument();
   });
 });
