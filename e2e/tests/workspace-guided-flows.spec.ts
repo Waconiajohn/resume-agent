@@ -17,6 +17,12 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('button', { name: /View Letter/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Interview Lab/i }).first()).toBeVisible();
 
+    await page.getByRole('button', { name: /View Workspace/i }).first().click();
+
+    await expect(page.getByText('Stage control')).toBeVisible();
+    await expect(page.getByText('Unlocked next')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Offer' })).toBeVisible();
+
     await page.getByRole('button', { name: /^open$/i }).first().click();
 
     await expect(page).toHaveURL(/\/resume-builder\/session$/);

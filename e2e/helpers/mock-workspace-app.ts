@@ -126,6 +126,40 @@ const MOCK_SESSIONS = [
   },
 ];
 
+const MOCK_APPLICATIONS = [
+  {
+    id: 'job-techcorp',
+    role_title: 'VP Operations',
+    company_name: 'TechCorp',
+    stage: 'interviewing',
+    source: 'manual',
+    next_action: 'Run interview prep and tighten the 30-60-90 story.',
+    next_action_due: '2026-03-18T15:00:00.000Z',
+    stage_history: [
+      { stage: 'saved', at: '2026-03-08T10:00:00.000Z' },
+      { stage: 'applied', at: '2026-03-09T11:00:00.000Z' },
+      { stage: 'interviewing', at: '2026-03-11T09:30:00.000Z' },
+    ],
+    created_at: '2026-03-08T10:00:00.000Z',
+    updated_at: '2026-03-11T09:30:00.000Z',
+  },
+  {
+    id: 'job-betaco',
+    role_title: 'Chief of Staff',
+    company_name: 'BetaCo',
+    stage: 'applied',
+    source: 'manual',
+    next_action: 'Hold interview assets until this moves past screening.',
+    next_action_due: '2026-03-20T14:00:00.000Z',
+    stage_history: [
+      { stage: 'saved', at: '2026-03-12T08:00:00.000Z' },
+      { stage: 'applied', at: '2026-03-12T15:45:00.000Z' },
+    ],
+    created_at: '2026-03-12T08:00:00.000Z',
+    updated_at: '2026-03-12T15:45:00.000Z',
+  },
+];
+
 const MOCK_RESUMES = [
   {
     id: 'resume-default',
@@ -443,6 +477,18 @@ async function fulfillApiRoute(route: Route) {
 
   if (path === '/api/sessions' && method === 'POST') {
     await route.fulfill(buildJsonResponse({ session: { id: 'mock-created-session' } }));
+    return;
+  }
+
+  if (path === '/api/applications' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ applications: MOCK_APPLICATIONS, count: MOCK_APPLICATIONS.length }));
+    return;
+  }
+
+  if (/^\/api\/applications\/[^/]+\/stage$/.test(path) && method === 'PATCH') {
+    const applicationId = path.split('/')[3] ?? '';
+    const matched = MOCK_APPLICATIONS.find((application) => application.id === applicationId) ?? MOCK_APPLICATIONS[0];
+    await route.fulfill(buildJsonResponse({ ...matched, updated_at: new Date().toISOString() }));
     return;
   }
 

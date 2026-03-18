@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ExternalLink, FileText, Trash2 } from 'lucide-react';
+import { BriefcaseBusiness, Clock3, ExternalLink, FileText, Loader2, Mail, Mic, Sparkles, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
 import { GlassCard } from '@/components/GlassCard';
@@ -8,6 +8,7 @@ import { SessionResumeModal } from '@/components/dashboard/SessionResumeModal';
 import { SessionCoverLetterModal } from '@/components/dashboard/SessionCoverLetterModal';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
+import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
 
 type StatusFilter = 'all' | 'complete' | 'running' | 'error';
 type ProductFilter = 'all' | string;
@@ -21,10 +22,12 @@ const FILTER_OPTIONS: Array<{ id: StatusFilter; label: string }> = [
 
 interface SessionHistoryTabProps {
   sessions: CoachSession[];
+  jobApplications?: Application[];
   loading: boolean;
   onLoadSessions: (filters?: { limit?: number; status?: string }) => void;
   onResumeSession: (id: string) => void;
   onNavigate?: (route: string) => void;
+  onMoveJobStage?: (id: string, stage: PipelineStage) => Promise<boolean>;
   onDeleteSession: (id: string) => Promise<boolean>;
   onGetSessionResume: (id: string) => Promise<FinalResume | null>;
   onGetSessionCoverLetter: (id: string) => Promise<{ letter: string; quality_score?: number | null } | null>;
@@ -35,10 +38,37 @@ interface SessionJobRecord {
   company: string;
   role: string;
   createdAt: string;
+  jobApplicationId: string | null;
   jobStage: string | null;
   latestSession: CoachSession;
   status: ReturnType<typeof formatStatus>;
   assets: CoachSession[];
+}
+
+const JOB_WORKSPACE_STAGES: PipelineStage[] = [
+  'saved',
+  'researching',
+  'applied',
+  'screening',
+  'interviewing',
+  'offer',
+  'closed_won',
+  'closed_lost',
+];
+
+function isPipelineStage(value?: string | null): value is PipelineStage {
+  return JOB_WORKSPACE_STAGES.includes(value as PipelineStage);
+}
+
+function stageLabel(stage: PipelineStage): string {
+  switch (stage) {
+    case 'closed_won':
+      return 'Accepted';
+    case 'closed_lost':
+      return 'Closed';
+    default:
+      return stage.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  }
 }
 
 function formatJobStage(stage?: string | null): { label: string; classes: string } {
@@ -155,6 +185,14 @@ function formatStatus(status?: string | null): { label: string; classes: string 
 }
 
 function buildJobRecordKey(session: CoachSession): string {
+  const fallbackKey = buildFallbackJobRecordKey(session);
+  if (session.job_application_id?.trim()) {
+    return `jobapp::${session.job_application_id}`;
+  }
+  return fallbackKey;
+}
+
+function buildFallbackJobRecordKey(session: CoachSession): string {
   const company = session.company_name?.trim().toLowerCase() || 'untitled-company';
   const role = session.job_title?.trim().toLowerCase() || 'untitled-role';
   const date = session.created_at.slice(0, 10);
@@ -163,9 +201,19 @@ function buildJobRecordKey(session: CoachSession): string {
 
 function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
   const grouped = new Map<string, SessionJobRecord>();
+  const preferredAppIdByFallbackKey = new Map<string, string>();
 
   for (const session of sessions) {
-    const key = buildJobRecordKey(session);
+    const fallbackKey = buildFallbackJobRecordKey(session);
+    if (session.job_application_id?.trim()) {
+      preferredAppIdByFallbackKey.set(fallbackKey, session.job_application_id);
+    }
+  }
+
+  for (const session of sessions) {
+    const fallbackKey = buildFallbackJobRecordKey(session);
+    const resolvedJobApplicationId = session.job_application_id ?? preferredAppIdByFallbackKey.get(fallbackKey) ?? null;
+    const key = resolvedJobApplicationId ? `jobapp::${resolvedJobApplicationId}` : buildJobRecordKey(session);
     const existing = grouped.get(key);
 
     if (!existing) {
@@ -174,6 +222,7 @@ function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
         company: session.company_name?.trim() || 'Untitled company',
         role: session.job_title?.trim() || 'Untitled role',
         createdAt: session.created_at,
+        jobApplicationId: resolvedJobApplicationId,
         jobStage: session.job_stage ?? null,
         latestSession: session,
         status: formatStatus(session.pipeline_status ?? session.pipeline_stage),
@@ -187,6 +236,9 @@ function buildJobRecords(sessions: CoachSession[]): SessionJobRecord[] {
       existing.latestSession = session;
       existing.status = formatStatus(session.pipeline_status ?? session.pipeline_stage);
       existing.createdAt = session.created_at;
+    }
+    if (resolvedJobApplicationId && !existing.jobApplicationId) {
+      existing.jobApplicationId = resolvedJobApplicationId;
     }
     if (session.job_stage && !existing.jobStage) {
       existing.jobStage = session.job_stage;
@@ -227,10 +279,12 @@ function matchesStatusFilter(session: CoachSession, filter: StatusFilter): boole
 
 export function SessionHistoryTab({
   sessions,
+  jobApplications = [],
   loading,
   onLoadSessions,
   onResumeSession,
   onNavigate,
+  onMoveJobStage,
   onDeleteSession,
   onGetSessionResume,
   onGetSessionCoverLetter,
@@ -239,6 +293,8 @@ export function SessionHistoryTab({
   const [productFilter, setProductFilter] = useState<ProductFilter>('all');
   const [viewingResumeSessionId, setViewingResumeSessionId] = useState<string | null>(null);
   const [viewingCoverLetterSessionId, setViewingCoverLetterSessionId] = useState<string | null>(null);
+  const [selectedWorkspaceKey, setSelectedWorkspaceKey] = useState<string | null>(null);
+  const [savingStage, setSavingStage] = useState<PipelineStage | null>(null);
   const [extraSessions, setExtraSessions] = useState<CoachSession[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -272,6 +328,20 @@ export function SessionHistoryTab({
     return matchesProduct && matchesSupportedType && matchesStatusFilter(session, statusFilter);
   });
   const jobRecords = useMemo(() => buildJobRecords(filteredSessions), [filteredSessions]);
+  const applicationsById = useMemo(
+    () => new Map(jobApplications.map((application) => [application.id, application])),
+    [jobApplications],
+  );
+  const selectedWorkspace = useMemo(
+    () => jobRecords.find((record) => record.key === selectedWorkspaceKey) ?? null,
+    [jobRecords, selectedWorkspaceKey],
+  );
+
+  useEffect(() => {
+    if (selectedWorkspaceKey && !jobRecords.some((record) => record.key === selectedWorkspaceKey)) {
+      setSelectedWorkspaceKey(null);
+    }
+  }, [jobRecords, selectedWorkspaceKey]);
 
   const handleLoadMore = useCallback(async () => {
     setLoadingMore(true);
@@ -296,6 +366,16 @@ export function SessionHistoryTab({
       setLoadingMore(false);
     }
   }, [extraSessions.length, sessions.length, statusFilter]);
+
+  const handleMoveWorkspaceStage = useCallback(async (record: SessionJobRecord, stage: PipelineStage) => {
+    if (!record.jobApplicationId || !onMoveJobStage) return false;
+    setSavingStage(stage);
+    try {
+      return await onMoveJobStage(record.jobApplicationId, stage);
+    } finally {
+      setSavingStage(null);
+    }
+  }, [onMoveJobStage]);
 
   return (
     <div className="space-y-4">
@@ -370,13 +450,15 @@ export function SessionHistoryTab({
             {jobRecords.map((record) => {
               const resumeAsset = record.assets.find((session) => productTypeForSession(session) !== 'cover_letter');
               const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter');
+              const application = record.jobApplicationId ? applicationsById.get(record.jobApplicationId) : undefined;
               const assetCounts = record.assets.reduce<Record<string, number>>((accumulator, session) => {
                 const type = productTypeForSession(session);
                 accumulator[type] = (accumulator[type] ?? 0) + 1;
                 return accumulator;
               }, {});
-              const jobStage = formatJobStage(record.jobStage);
-              const stageActions = stageAwareActions(record.jobStage);
+              const activeStage = application?.stage ?? record.jobStage;
+              const jobStage = formatJobStage(activeStage);
+              const stageActions = stageAwareActions(activeStage);
 
               return (
                 <div key={record.key} className="px-5 py-4">
@@ -419,6 +501,15 @@ export function SessionHistoryTab({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <GlassButton
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-3 text-xs"
+                        onClick={() => setSelectedWorkspaceKey(record.key)}
+                      >
+                        <BriefcaseBusiness size={12} className="mr-1.5" />
+                        {selectedWorkspaceKey === record.key ? 'Workspace Open' : 'View Workspace'}
+                      </GlassButton>
                       <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(record.latestSession.id)}>
                         <ExternalLink size={12} className="mr-1.5" />
                         Open
@@ -471,6 +562,20 @@ export function SessionHistoryTab({
         )}
       </GlassCard>
 
+      {selectedWorkspace && (
+        <JobWorkspacePanel
+          record={selectedWorkspace}
+          application={selectedWorkspace.jobApplicationId ? applicationsById.get(selectedWorkspace.jobApplicationId) : undefined}
+          onClose={() => setSelectedWorkspaceKey(null)}
+          onMoveJobStage={onMoveJobStage ? handleMoveWorkspaceStage : undefined}
+          savingStage={savingStage}
+          onResumeSession={onResumeSession}
+          onNavigate={onNavigate}
+          onViewResume={(sessionId) => setViewingResumeSessionId(sessionId)}
+          onViewCoverLetter={(sessionId) => setViewingCoverLetterSessionId(sessionId)}
+        />
+      )}
+
       {hasMore && (
         <div className="flex justify-center">
           <GlassButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => void handleLoadMore()} disabled={loadingMore}>
@@ -495,5 +600,219 @@ export function SessionHistoryTab({
         />
       )}
     </div>
+  );
+}
+
+function JobWorkspacePanel({
+  record,
+  application,
+  onClose,
+  onMoveJobStage,
+  savingStage,
+  onResumeSession,
+  onNavigate,
+  onViewResume,
+  onViewCoverLetter,
+}: {
+  record: SessionJobRecord;
+  application?: Application;
+  onClose: () => void;
+  onMoveJobStage?: (record: SessionJobRecord, stage: PipelineStage) => Promise<boolean>;
+  savingStage: PipelineStage | null;
+  onResumeSession: (id: string) => void;
+  onNavigate?: (route: string) => void;
+  onViewResume: (sessionId: string) => void;
+  onViewCoverLetter: (sessionId: string) => void;
+}) {
+  const resumeAsset = record.assets.find((session) => productTypeForSession(session) !== 'cover_letter') ?? null;
+  const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter') ?? null;
+  const activeStage = application?.stage ?? (isPipelineStage(record.jobStage) ? record.jobStage : 'saved');
+  const activeStageBadge = formatJobStage(activeStage);
+  const stageActions = stageAwareActions(activeStage);
+  const stageHistory = Array.isArray(application?.stage_history) && application?.stage_history.length > 0
+    ? application.stage_history
+    : [{ stage: activeStage, at: record.latestSession.updated_at }];
+
+  return (
+    <GlassCard className="space-y-5 p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+            Job Workspace
+          </div>
+          <h3 className="mt-2 text-lg font-semibold text-white/88">{record.company}</h3>
+          <p className="mt-1 text-sm text-white/48">{record.role}</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${activeStageBadge.classes}`}>
+            {activeStageBadge.label}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/72"
+            aria-label="Close workspace"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+        <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Stage control</div>
+        <p className="mt-2 text-sm leading-relaxed text-white/52">
+          Keep this workspace lean until the process advances. Interview and offer assets only light up when the stage earns them.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {JOB_WORKSPACE_STAGES.map((stage) => {
+            const active = activeStage === stage;
+            return (
+              <button
+                key={stage}
+                type="button"
+                disabled={!application || !onMoveJobStage || active || savingStage === stage}
+                onClick={() => void onMoveJobStage?.(record, stage)}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                  active
+                    ? 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]'
+                    : 'border-white/[0.08] bg-white/[0.03] text-white/52 hover:bg-white/[0.06] hover:text-white/78'
+                }`}
+              >
+                {savingStage === stage ? <Loader2 size={12} className="animate-spin" /> : null}
+                {stageLabel(stage)}
+              </button>
+            );
+          })}
+        </div>
+        {!application && (
+          <p className="mt-3 text-[11px] text-white/38">
+            This tailored work is not yet linked to a tracked job application, so the stage shown here is read-only.
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Assets</div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+                  <FileText size={14} className="text-[#98b3ff]" />
+                  Tailored Resume
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                  {resumeAsset ? 'Open the active session or preview the saved resume text.' : 'No tailored resume is saved to this workspace yet.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {resumeAsset && (
+                    <>
+                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(resumeAsset.id)}>
+                        <ExternalLink size={12} className="mr-1.5" />
+                        Open Session
+                      </GlassButton>
+                      <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onViewResume(resumeAsset.id)}>
+                        <FileText size={12} className="mr-1.5" />
+                        View
+                      </GlassButton>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
+                  <Mail size={14} className="text-[#98b3ff]" />
+                  Cover Letter
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+                  {coverLetterAsset ? 'Preview the saved letter or reopen the parent session.' : 'Generate or save a cover letter only when the application actually needs one.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {coverLetterAsset && (
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onViewCoverLetter(coverLetterAsset.id)}>
+                      <Mail size={12} className="mr-1.5" />
+                      View Letter
+                    </GlassButton>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Unlocked next</div>
+            <div className="mt-3 text-sm font-medium text-white/80">{stageActions.nextActionLabel}</div>
+            <p className="mt-2 text-[12px] leading-relaxed text-white/48">
+              Available now: {stageActions.unlocked.join(' • ')}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onResumeSession(record.latestSession.id)}>
+                <BriefcaseBusiness size={12} className="mr-1.5" />
+                Reopen Tailored Work
+              </GlassButton>
+              {activeStage === 'interviewing' && (
+                <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/workspace?room=interview')}>
+                  <Mic size={12} className="mr-1.5" />
+                  Open Interview Lab
+                </GlassButton>
+              )}
+              {activeStage === 'offer' && (
+                <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/workspace?room=salary-negotiation')}>
+                  <Sparkles size={12} className="mr-1.5" />
+                  Open Salary Negotiation
+                </GlassButton>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+          <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-white/40">
+            <Clock3 size={12} />
+            Stage history
+          </div>
+          <div className="mt-4 space-y-3">
+            {stageHistory.map((entry, index) => {
+              const stage = isPipelineStage(entry.stage) ? entry.stage : activeStage;
+              return (
+                <div key={`${entry.stage}-${entry.at}-${index}`} className="flex items-start gap-3">
+                  <div className="mt-1 h-2 w-2 rounded-full bg-[#98b3ff]/70" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-white/78">{stageLabel(stage)}</div>
+                    <div className="mt-1 text-[12px] text-white/42">
+                      {new Date(entry.at).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {application?.next_action && (
+            <div className="mt-5 rounded-xl border border-white/[0.08] bg-black/10 p-3">
+              <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Next action</div>
+              <p className="mt-2 text-sm text-white/74">{application.next_action}</p>
+              {application.next_action_due && (
+                <p className="mt-1 text-[12px] text-white/42">
+                  Due {new Date(application.next_action_due).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </GlassCard>
   );
 }

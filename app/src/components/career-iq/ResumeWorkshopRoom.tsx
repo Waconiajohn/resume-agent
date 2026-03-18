@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FileText, LibraryBig, Plus, Sparkles } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
+import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import type { CareerProfileSummary } from './career-profile-summary';
 import type { CoachSession } from '@/types/session';
@@ -59,11 +60,17 @@ export function ResumeWorkshopRoom({
   onDeleteResume = async () => false,
 }: ResumeWorkshopRoomProps) {
   const [activeTab, setActiveTab] = useState('sessions');
+  const applicationPipeline = useApplicationPipeline();
+  const { applications: jobApplications, moveToStage, fetchApplications } = applicationPipeline;
   const defaultResume = useMemo(() => resumes.find((item) => item.is_default), [resumes]);
   const tailoredCount = sessions.filter((session) => {
     const type = session.product_type ?? 'resume';
     return type === 'resume' || type === 'resume_v2' || type === 'cover_letter';
   }).length;
+
+  useEffect(() => {
+    void fetchApplications();
+  }, [fetchApplications]);
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
@@ -141,10 +148,12 @@ export function ResumeWorkshopRoom({
           {activeTab === 'sessions' && (
             <SessionHistoryTab
               sessions={sessions}
+              jobApplications={jobApplications}
               loading={loading}
               onLoadSessions={onLoadSessions}
               onResumeSession={onResumeSession}
               onNavigate={onNavigate}
+              onMoveJobStage={moveToStage}
               onDeleteSession={onDeleteSession}
               onGetSessionResume={onGetSessionResume}
               onGetSessionCoverLetter={onGetSessionCoverLetter}

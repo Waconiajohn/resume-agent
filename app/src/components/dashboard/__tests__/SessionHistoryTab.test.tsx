@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { SessionHistoryTab } from '../SessionHistoryTab';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
+import type { Application } from '@/hooks/useApplicationPipeline';
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -61,12 +62,28 @@ function makeFinalResume(): FinalResume {
 function makeProps(overrides: Record<string, unknown> = {}) {
   return {
     sessions: [makeSession()],
+    jobApplications: [],
     loading: false,
     onLoadSessions: vi.fn(),
     onResumeSession: vi.fn(),
+    onMoveJobStage: vi.fn().mockResolvedValue(true),
     onDeleteSession: vi.fn().mockResolvedValue(true),
     onGetSessionResume: vi.fn().mockResolvedValue(makeFinalResume()),
     onGetSessionCoverLetter: vi.fn().mockResolvedValue({ letter: 'Hello there' }),
+    ...overrides,
+  };
+}
+
+function makeApplication(overrides: Partial<Application> = {}): Application {
+  return {
+    id: 'job-app-1',
+    role_title: 'VP Engineering',
+    company_name: 'Acme Corp',
+    stage: 'interviewing',
+    source: 'manual',
+    stage_history: [{ stage: 'interviewing', at: '2026-01-02T12:00:00Z' }],
+    created_at: '2026-01-01T12:00:00Z',
+    updated_at: '2026-01-02T12:00:00Z',
     ...overrides,
   };
 }
@@ -236,5 +253,40 @@ describe('SessionHistoryTab', () => {
     expect(screen.getByText(/Available now: Interview Lab/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Open Interview Lab/i })).toBeInTheDocument();
     expect(screen.getByText(/30-60-90 Day Plan/i)).toBeInTheDocument();
+  });
+
+  it('opens a job workspace panel with stage controls and stage-aware actions', () => {
+    const onMoveJobStage = vi.fn().mockResolvedValue(true);
+    render(
+      <SessionHistoryTab
+        {...makeProps({
+          onMoveJobStage,
+          sessions: [
+            makeSession({
+              id: 'resume-1',
+              product_type: 'resume_v2',
+              job_application_id: 'job-app-1',
+              job_stage: 'interviewing',
+            }),
+          ],
+          jobApplications: [
+            makeApplication({
+              id: 'job-app-1',
+              next_action: 'Run interview prep and tighten the 30-60-90 story.',
+            }),
+          ],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /view workspace/i }));
+
+    expect(screen.getByText('Stage control')).toBeInTheDocument();
+    expect(screen.getByText(/Run interview prep and tighten the 30-60-90 story\./i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Open Interview Lab/i }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Offer' }));
+
+    expect(onMoveJobStage).toHaveBeenCalledWith('job-app-1', 'offer');
   });
 });
