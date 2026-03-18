@@ -59,7 +59,7 @@ export function ResumeAiWorklogCard({
   benchmarkCandidate: BenchmarkCandidate | null | undefined;
   gapAnalysis: GapAnalysis | null | undefined;
   nextQueueItem: RewriteQueueItem | null | undefined;
-  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number };
+  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number; hardGapCount: number };
   hasFinalReview: boolean;
   isFinalReviewStale: boolean;
   unresolvedCriticalCount: number;

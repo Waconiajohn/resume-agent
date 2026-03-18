@@ -467,7 +467,7 @@ export function V2StreamingDisplay({
                 benchmarkCandidate={data.benchmarkCandidate ?? null}
                 gapAnalysis={data.gapAnalysis ?? null}
                 nextQueueItem={rewriteQueue?.nextItem ?? null}
-                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0 }}
+                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
                 hasFinalReview={Boolean(hiringManagerResult)}
                 isFinalReviewStale={isFinalReviewStale}
                 unresolvedCriticalCount={unresolvedCriticalConcerns.length}
@@ -480,7 +480,7 @@ export function V2StreamingDisplay({
                 unresolvedCriticalCount={unresolvedCriticalConcerns.length}
                 coverageAddressed={jobBreakdown.addressed}
                 coverageTotal={jobBreakdown.total}
-                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0 }}
+                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
                 nextQueueItemLabel={rewriteQueue?.nextItem?.title}
                 postReviewPolish={postReviewPolish}
               />
@@ -556,7 +556,7 @@ export function V2StreamingDisplay({
                   finalReviewChat={finalReviewChat}
                   buildFinalReviewChatContext={buildFinalReviewChatContext}
                   isEditing={isEditing}
-                  queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0 }}
+                  queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
                   nextQueueItemLabel={rewriteQueue?.nextItem?.title}
                   jobBreakdown={{
                     addressed: jobBreakdown.addressed,

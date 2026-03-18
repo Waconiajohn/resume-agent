@@ -7,6 +7,11 @@ export interface AuthUser {
   accessToken: string;
 }
 
+const E2E_MOCK_AUTH_ENABLED = process.env.E2E_MOCK_AUTH === 'true';
+const E2E_MOCK_AUTH_TOKEN = process.env.E2E_MOCK_AUTH_TOKEN ?? 'mock-e2e-access-token';
+const E2E_MOCK_AUTH_USER_ID = process.env.E2E_MOCK_AUTH_USER_ID ?? '5b756a7a-3e35-4465-bcf4-69d92f160f21';
+const E2E_MOCK_AUTH_EMAIL = process.env.E2E_MOCK_AUTH_EMAIL ?? 'e2e@example.com';
+
 declare module 'hono' {
   interface ContextVariableMap {
     user: AuthUser;
@@ -121,6 +126,18 @@ export function resetAuthCacheForTests() {
   remoteAuthFailures = 0;
 }
 
+export function resolveE2EMockUser(token: string): AuthUser | null {
+  if (!E2E_MOCK_AUTH_ENABLED || token !== E2E_MOCK_AUTH_TOKEN) {
+    return null;
+  }
+
+  return {
+    id: E2E_MOCK_AUTH_USER_ID,
+    email: E2E_MOCK_AUTH_EMAIL,
+    accessToken: token,
+  };
+}
+
 export async function authMiddleware(c: Context, next: Next) {
   const authHeader = c.req.header('Authorization');
 
@@ -129,6 +146,14 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 
   const token = authHeader.slice(7);
+
+  const mockUser = resolveE2EMockUser(token);
+  if (mockUser) {
+    cacheUser(token, mockUser);
+    c.set('user', mockUser);
+    await next();
+    return;
+  }
 
   // Check cache first to avoid remote call
   const cached = getCachedUser(token);

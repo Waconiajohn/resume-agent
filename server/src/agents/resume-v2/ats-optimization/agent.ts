@@ -60,7 +60,8 @@ export async function runATSOptimization(
   });
 
   const parsed = repairJSON<ATSOptimizationOutput>(response.text);
-  if (parsed) return parsed;
+  const normalized = parsed ? normalizeATSOptimizationOutput(parsed, input) : null;
+  if (normalized) return normalized;
 
   // Attempt 2: retry with explicit JSON-only instruction
   logger.warn(
@@ -77,13 +78,14 @@ export async function runATSOptimization(
   });
 
   const retryParsed = repairJSON<ATSOptimizationOutput>(retry.text);
-  if (retryParsed) return retryParsed;
+  const retryNormalized = retryParsed ? normalizeATSOptimizationOutput(retryParsed, input) : null;
+  if (retryNormalized) return retryNormalized;
 
-  logger.error(
+  logger.warn(
     { rawSnippet: retry.text.substring(0, 500) },
-    'ATS Optimization: both attempts returned unparseable response',
+    'ATS Optimization: both attempts returned unparseable response, using deterministic fallback',
   );
-  throw new Error('ATS Optimization agent returned unparseable response after 2 attempts');
+  return buildDeterministicATSFallback(input);
 }
 
 function formatDraftForATS(input: ATSOptimizationInput): string {
@@ -111,4 +113,117 @@ function formatDraftForATS(input: ATSOptimizationInput): string {
   }
 
   return parts.join('\n');
+}
+
+function normalizeATSOptimizationOutput(
+  output: ATSOptimizationOutput,
+  input: ATSOptimizationInput,
+): ATSOptimizationOutput | null {
+  if (!output || typeof output !== 'object') return null;
+
+  const fallback = buildDeterministicATSFallback(input);
+  const keywordsFound = sanitizeStringArray(output.keywords_found);
+  const keywordsMissing = sanitizeStringArray(output.keywords_missing);
+  const suggestions = Array.isArray(output.keyword_suggestions)
+    ? output.keyword_suggestions
+      .filter((item): item is ATSOptimizationOutput['keyword_suggestions'][number] => Boolean(item && typeof item === 'object'))
+      .map((item) => ({
+        keyword: typeof item.keyword === 'string' ? item.keyword.trim() : '',
+        suggested_placement: typeof item.suggested_placement === 'string' ? item.suggested_placement.trim() : 'executive_summary',
+        natural_phrasing: typeof item.natural_phrasing === 'string' ? item.natural_phrasing.trim() : '',
+      }))
+      .filter((item) => item.keyword.length > 0)
+    : [];
+  const formattingIssues = sanitizeStringArray(output.formatting_issues);
+
+  const matchScore = typeof output.match_score === 'number' && Number.isFinite(output.match_score)
+    ? Math.max(0, Math.min(100, Math.round(output.match_score)))
+    : fallback.match_score;
+
+  const normalizedFound = keywordsFound.length > 0 ? keywordsFound : fallback.keywords_found;
+  const normalizedMissing = keywordsMissing.length > 0 ? keywordsMissing : fallback.keywords_missing;
+  const normalizedSuggestions = suggestions.length > 0
+    ? suggestions
+    : fallback.keyword_suggestions.filter((item) => normalizedMissing.includes(item.keyword));
+
+  return {
+    match_score: matchScore,
+    keywords_found: dedupeStrings(normalizedFound),
+    keywords_missing: dedupeStrings(normalizedMissing.filter((keyword) => !normalizedFound.includes(keyword))),
+    keyword_suggestions: dedupeSuggestions(normalizedSuggestions),
+    formatting_issues: dedupeStrings(formattingIssues),
+  };
+}
+
+function buildDeterministicATSFallback(input: ATSOptimizationInput): ATSOptimizationOutput {
+  const resumeText = formatDraftForATS(input).toLowerCase();
+  const keywordUniverse = dedupeStrings([
+    ...input.job_intelligence.language_keywords,
+    ...input.job_intelligence.core_competencies
+      .filter((competency) => competency.importance !== 'nice_to_have')
+      .map((competency) => competency.competency),
+  ]).filter(Boolean);
+
+  const keywordsFound = keywordUniverse.filter((keyword) => resumeText.includes(keyword.toLowerCase()));
+  const keywordsMissing = keywordUniverse.filter((keyword) => !resumeText.includes(keyword.toLowerCase()));
+  const totalKeywords = keywordUniverse.length || (keywordsFound.length + keywordsMissing.length);
+  const matchScore = totalKeywords > 0
+    ? Math.round((keywordsFound.length / totalKeywords) * 100)
+    : 100;
+
+  return {
+    match_score: matchScore,
+    keywords_found: keywordsFound,
+    keywords_missing: keywordsMissing,
+    keyword_suggestions: keywordsMissing.slice(0, 5).map((keyword) => ({
+      keyword,
+      suggested_placement: chooseKeywordPlacement(keyword),
+      natural_phrasing: buildNaturalKeywordSuggestion(keyword),
+    })),
+    formatting_issues: [],
+  };
+}
+
+function sanitizeStringArray(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return values
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function dedupeStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const key = value.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(value.trim());
+  }
+  return result;
+}
+
+function dedupeSuggestions(
+  suggestions: ATSOptimizationOutput['keyword_suggestions'],
+): ATSOptimizationOutput['keyword_suggestions'] {
+  const seen = new Set<string>();
+  const result: ATSOptimizationOutput['keyword_suggestions'] = [];
+  for (const suggestion of suggestions) {
+    const key = suggestion.keyword.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(suggestion);
+  }
+  return result;
+}
+
+function chooseKeywordPlacement(keyword: string): string {
+  return keyword.includes(' ') || keyword.length > 18
+    ? 'executive_summary'
+    : 'core_competencies';
+}
+
+function buildNaturalKeywordSuggestion(keyword: string): string {
+  return `Add truthful proof of ${keyword} in a summary line or experience bullet rather than listing it without context.`;
 }

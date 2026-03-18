@@ -18,6 +18,7 @@ interface ExportBarProps {
   hasCompletedFinalReview?: boolean;
   isFinalReviewStale?: boolean;
   unresolvedCriticalCount?: number;
+  unresolvedHardGapCount?: number;
   queueNeedsAttentionCount?: number;
   queuePartialCount?: number;
   nextQueueItemLabel?: string;
@@ -35,6 +36,7 @@ export function ExportBar({
   hasCompletedFinalReview = false,
   isFinalReviewStale = false,
   unresolvedCriticalCount = 0,
+  unresolvedHardGapCount = 0,
   queueNeedsAttentionCount = 0,
   queuePartialCount = 0,
   nextQueueItemLabel,
@@ -49,6 +51,7 @@ export function ExportBar({
     hasCompletedFinalReview,
     isFinalReviewStale,
     unresolvedCriticalCount,
+    unresolvedHardGapCount,
     warningsAcknowledged,
   });
 
@@ -63,6 +66,7 @@ export function ExportBar({
       has_completed_final_review: hasCompletedFinalReview,
       is_final_review_stale: isFinalReviewStale,
       unresolved_critical_count: unresolvedCriticalCount,
+      unresolved_hard_gap_count: unresolvedHardGapCount,
       queue_needs_attention_count: queueNeedsAttentionCount,
       queue_partial_count: queuePartialCount,
     });
@@ -85,6 +89,7 @@ export function ExportBar({
     queueNeedsAttentionCount,
     queuePartialCount,
     unresolvedCriticalCount,
+    unresolvedHardGapCount,
   ]);
 
   const handlePdf = useCallback(async () => {
@@ -94,6 +99,7 @@ export function ExportBar({
       has_completed_final_review: hasCompletedFinalReview,
       is_final_review_stale: isFinalReviewStale,
       unresolved_critical_count: unresolvedCriticalCount,
+      unresolved_hard_gap_count: unresolvedHardGapCount,
       queue_needs_attention_count: queueNeedsAttentionCount,
       queue_partial_count: queuePartialCount,
     });
@@ -116,6 +122,7 @@ export function ExportBar({
     queueNeedsAttentionCount,
     queuePartialCount,
     unresolvedCriticalCount,
+    unresolvedHardGapCount,
   ]);
 
   const handleCopy = useCallback(async () => {
@@ -127,6 +134,7 @@ export function ExportBar({
       has_completed_final_review: hasCompletedFinalReview,
       is_final_review_stale: isFinalReviewStale,
       unresolved_critical_count: unresolvedCriticalCount,
+      unresolved_hard_gap_count: unresolvedHardGapCount,
       queue_needs_attention_count: queueNeedsAttentionCount,
       queue_partial_count: queuePartialCount,
     });
@@ -146,6 +154,7 @@ export function ExportBar({
     queuePartialCount,
     resume,
     unresolvedCriticalCount,
+    unresolvedHardGapCount,
   ]);
 
   return (
@@ -165,6 +174,9 @@ export function ExportBar({
                 )}
                 {unresolvedCriticalCount > 0 && (
                   <p>{unresolvedCriticalCount} critical Final Review concern{unresolvedCriticalCount === 1 ? '' : 's'} still remain unresolved.</p>
+                )}
+                {unresolvedHardGapCount > 0 && (
+                  <p>{unresolvedHardGapCount} hard requirement risk{unresolvedHardGapCount === 1 ? '' : 's'} still remain on the draft. These may still create screening risk if they are truly missing.</p>
                 )}
                 {(queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
                   <p>

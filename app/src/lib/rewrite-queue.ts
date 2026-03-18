@@ -260,6 +260,9 @@ export function buildRewriteQueue(args: {
     const acceptedLanguage = resolvedLanguage(args.gapChatSnapshot, requirement.requirement);
     const latestAssistant = latestAssistantMessage(args.gapChatSnapshot, requirement.requirement);
     const liveEvidence = collectResumeEvidenceForRequirement(args.currentResume, requirement.requirement);
+    const inferredEvidence = Array.isArray(requirement.evidence)
+      ? requirement.evidence.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : [];
     const sourceEvidence = sourceEvidenceForRequirement({
       requirement,
       jobIntelligence: args.jobIntelligence,
@@ -280,7 +283,7 @@ export function buildRewriteQueue(args: {
       source,
       status,
       liveEvidenceCount: liveEvidence.length,
-      inferredEvidenceCount: requirement.evidence.length,
+      inferredEvidenceCount: inferredEvidence.length,
       hasSuggestedLanguage,
       isHardRequirement,
     });
@@ -343,7 +346,7 @@ export function buildRewriteQueue(args: {
       userInstruction,
       currentEvidence: liveEvidence.length > 0
         ? liveEvidence
-        : requirement.evidence.map((text) => ({ text, source: 'resume' as const })),
+        : inferredEvidence.map((text) => ({ text, source: 'resume' as const })),
       sourceEvidence,
       recommendedNextStep,
       requirement: requirement.requirement,
@@ -384,12 +387,14 @@ export function buildRewriteQueue(args: {
     if (item.bucket === 'needs_attention') accumulator.needsAttention += 1;
     if (item.bucket === 'partially_addressed') accumulator.partiallyAddressed += 1;
     if (item.bucket === 'resolved') accumulator.resolved += 1;
+    if (item.category === 'hard_gap' && item.bucket !== 'resolved') accumulator.hardGapCount += 1;
     return accumulator;
   }, {
     total: 0,
     needsAttention: 0,
     partiallyAddressed: 0,
     resolved: 0,
+    hardGapCount: 0,
   });
 
   return {

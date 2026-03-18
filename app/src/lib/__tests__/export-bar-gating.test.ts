@@ -7,6 +7,7 @@ describe('export-bar-gating', () => {
       hasCompletedFinalReview: true,
       isFinalReviewStale: true,
       unresolvedCriticalCount: 0,
+      unresolvedHardGapCount: 0,
       warningsAcknowledged: false,
     })).toEqual({
       hasWarnings: true,
@@ -19,6 +20,7 @@ describe('export-bar-gating', () => {
       hasCompletedFinalReview: true,
       isFinalReviewStale: true,
       unresolvedCriticalCount: 1,
+      unresolvedHardGapCount: 0,
       warningsAcknowledged: true,
     })).toEqual({
       hasWarnings: true,
@@ -31,10 +33,24 @@ describe('export-bar-gating', () => {
       hasCompletedFinalReview: true,
       isFinalReviewStale: false,
       unresolvedCriticalCount: 0,
+      unresolvedHardGapCount: 0,
       warningsAcknowledged: false,
     })).toEqual({
       hasWarnings: false,
       exportBlocked: false,
+    });
+  });
+
+  it('treats unresolved hard gaps as export warnings until the user acknowledges them', () => {
+    expect(getExportGateState({
+      hasCompletedFinalReview: true,
+      isFinalReviewStale: false,
+      unresolvedCriticalCount: 0,
+      unresolvedHardGapCount: 2,
+      warningsAcknowledged: false,
+    })).toEqual({
+      hasWarnings: true,
+      exportBlocked: true,
     });
   });
 });

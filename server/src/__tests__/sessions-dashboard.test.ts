@@ -229,6 +229,39 @@ describe('GET /api/sessions — enriched session list', () => {
     expect(s.job_title).toBe('Director');
   });
 
+  it('falls back to linked job application company, title, and status when panel data is missing', async () => {
+    const rawRow = {
+      id: VALID_SESSION_ID,
+      status: 'completed',
+      current_phase: 'quality_review',
+      pipeline_status: 'complete',
+      pipeline_stage: 'complete',
+      input_tokens_used: 120,
+      output_tokens_used: 80,
+      estimated_cost_usd: 0.05,
+      last_panel_type: null,
+      last_panel_data: null,
+      job_applications: {
+        company: 'TechVision Solutions',
+        title: 'Senior Cloud Architect',
+        status: 'interviewing',
+      },
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-02T00:00:00Z',
+    };
+
+    mockFrom.mockReturnValue(makeChain({ data: [rawRow], error: null }));
+
+    const app = makeApp();
+    const res = await callApp(app, '/api/sessions');
+    expect(res.status).toBe(200);
+    const body = await res.json() as { sessions: unknown[] };
+    const s = body.sessions[0] as Record<string, unknown>;
+    expect(s.company_name).toBe('TechVision Solutions');
+    expect(s.job_title).toBe('Senior Cloud Architect');
+    expect(s.job_stage).toBe('interviewing');
+  });
+
   it('returns empty array when user has no sessions', async () => {
     mockFrom.mockReturnValue(makeChain({ data: [], error: null }));
 

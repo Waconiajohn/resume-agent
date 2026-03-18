@@ -2,6 +2,7 @@ export interface ExportGateInput {
   hasCompletedFinalReview?: boolean;
   isFinalReviewStale?: boolean;
   unresolvedCriticalCount?: number;
+  unresolvedHardGapCount?: number;
   warningsAcknowledged?: boolean;
 }
 
@@ -14,9 +15,10 @@ export function getExportGateState({
   hasCompletedFinalReview = false,
   isFinalReviewStale = false,
   unresolvedCriticalCount = 0,
+  unresolvedHardGapCount = 0,
   warningsAcknowledged = false,
 }: ExportGateInput): ExportGateState {
-  const hasWarnings = !hasCompletedFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0;
+  const hasWarnings = !hasCompletedFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0 || unresolvedHardGapCount > 0;
   return {
     hasWarnings,
     exportBlocked: hasWarnings && !warningsAcknowledged,

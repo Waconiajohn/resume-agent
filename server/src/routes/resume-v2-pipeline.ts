@@ -41,6 +41,7 @@ import {
   hiringManagerReviewSchema,
   finalReviewResultSchema,
   buildFinalReviewPrompts,
+  stabilizeFinalReviewResult,
 } from './resume-v2-pipeline-support.js';
 
 export const resumeV2Pipeline = new Hono();
@@ -1109,10 +1110,12 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
       return c.json({ error: 'Review failed — unparseable response' }, 500);
     }
 
+    const stabilizedResult = stabilizeFinalReviewResult(validated.data);
+
     logger.info({
       session_id: sessionId,
-      rating: validated.data.hiring_manager_verdict.rating,
-      recruiter_decision: validated.data.six_second_scan.decision,
+      rating: stabilizedResult.hiring_manager_verdict.rating,
+      recruiter_decision: stabilizedResult.six_second_scan.decision,
     }, 'Hiring manager review completed');
 
     const existingSnapshot = (session.tailored_sections as Record<string, unknown> | null) ?? {};
@@ -1122,7 +1125,7 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
     const nextDraftState = {
       ...existingDraftState,
       final_review_state: {
-        result: validated.data,
+        result: stabilizedResult,
         resolved_concern_ids: [],
         acknowledged_export_warnings: false,
         is_stale: false,
@@ -1150,7 +1153,7 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
       logger.warn({ session_id: sessionId, error: persistError }, 'Failed to persist final review state');
     }
 
-    return c.json(validated.data);
+    return c.json(stabilizedResult);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error({ session_id: sessionId, error: message }, 'Hiring manager review failed');

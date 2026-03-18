@@ -511,6 +511,7 @@ export interface RewriteQueueSummary {
   needsAttention: number;
   partiallyAddressed: number;
   resolved: number;
+  hardGapCount: number;
 }
 
 export interface FinalReviewPersistedState {

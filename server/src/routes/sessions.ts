@@ -775,7 +775,7 @@ sessions.get('/', async (c) => {
 
   let query = supabaseAdmin
     .from('coach_sessions')
-    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, product_type, job_application_id, created_at, updated_at, job_applications(company, title, stage)', { count: 'exact' })
+    .select('id, status, current_phase, pipeline_status, pipeline_stage, input_tokens_used, output_tokens_used, estimated_cost_usd, last_panel_type, last_panel_data, product_type, job_application_id, created_at, updated_at, job_applications(company, title, status)', { count: 'exact' })
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -806,7 +806,7 @@ sessions.get('/', async (c) => {
       last_panel_type: row.last_panel_type ?? null,
       company_name: (resume?.company_name as string) ?? (panelData?.company_name as string) ?? (row.job_applications as Record<string, unknown> | null)?.company as string ?? null,
       job_title: (resume?.job_title as string) ?? (panelData?.job_title as string) ?? (row.job_applications as Record<string, unknown> | null)?.title as string ?? null,
-      job_stage: (row.job_applications as Record<string, unknown> | null)?.stage as string ?? null,
+      job_stage: (row.job_applications as Record<string, unknown> | null)?.status as string ?? null,
       job_application_id: row.job_application_id ?? null,
       product_type: (row.product_type as string) ?? 'resume',
       created_at: row.created_at,

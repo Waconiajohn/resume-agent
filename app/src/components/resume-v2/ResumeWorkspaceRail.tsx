@@ -58,12 +58,13 @@ export function GuidedWorkflowCard({
   unresolvedCriticalCount: number;
   coverageAddressed: number;
   coverageTotal: number;
-  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number };
+  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number; hardGapCount: number };
   nextQueueItemLabel?: string;
   postReviewPolish?: PostReviewPolishState;
 }) {
   const queueNeedsAttention = queueSummary.needsAttention;
   const queuePartials = queueSummary.partiallyAddressed;
+  const hardGapCount = queueSummary.hardGapCount;
   const hasActiveQueueWork = queueNeedsAttention > 0 || queuePartials > 0;
 
   const currentStep = hasActiveQueueWork
@@ -76,6 +77,8 @@ export function GuidedWorkflowCard({
     ? `Next: work the highest-priority queue item${nextQueueItemLabel ? `, starting with "${nextQueueItemLabel}".` : '.'}`
     : queuePartials > 0
       ? 'Next: tighten the remaining partial items so the proof is strong enough before you trust the final score.'
+      : hardGapCount > 0
+        ? `Next: review the ${hardGapCount} hard requirement risk${hardGapCount === 1 ? '' : 's'} so you know what may still block screening.`
       : !hasFinalReview
         ? 'Next: run Final Review to pressure-test the draft before export.'
         : isFinalReviewStale
@@ -88,6 +91,8 @@ export function GuidedWorkflowCard({
     ? 'Use the rewrite queue on the left one item at a time. Generate options, send the best one to diff review, and only count it after you accept the edit.'
     : queuePartials > 0
       ? 'The draft has movement, but some items still need stronger proof. Work those before you rely on the final score.'
+      : hardGapCount > 0
+        ? 'Review the hard requirements honestly. If you have them, surface proof. If you do not, keep them visible as real risks instead of stretching the truth.'
       : !hasFinalReview
         ? 'The core rewrite is in place. Run Final Review next so the recruiter scan and hiring manager verdict can challenge what you built.'
         : isFinalReviewStale
@@ -98,18 +103,24 @@ export function GuidedWorkflowCard({
 
   const phaseLabel = hasActiveQueueWork
     ? 'Fix the Resume'
+    : hardGapCount > 0
+      ? 'Review Hard Requirements'
     : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
       ? 'Pressure-Test the Draft'
       : 'Polish and Export';
 
   const summaryOverride = hasActiveQueueWork
     ? 'We are working through the highest-value resume gaps one issue at a time so the rewrite stays truthful and easier to review.'
+    : hardGapCount > 0
+      ? 'We are separating normal proof-building from real hard requirements so you know what can be strengthened and what may still carry screen-out risk.'
     : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
       ? 'We are pressure-testing the draft with a recruiter scan and a hiring manager review before you export it.'
       : 'We are refreshing tone, ATS readiness, and export status so you know what is actually ready to use.';
 
   const systemDoesOverride = hasActiveQueueWork
     ? 'We compare the draft against the job description first, use the benchmark as a secondary check, ask targeted follow-up questions, and draft edits only after the evidence is clear.'
+    : hardGapCount > 0
+      ? 'We flag hard credentials, degrees, licenses, or other screen-out requirements separately so they are not disguised as normal coaching work.'
     : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
       ? 'We run the six-second recruiter skim, the hiring manager critique, and the final issue check to see what would still block an interview.'
       : 'We refresh tone, ATS coverage, and final readiness after the last accepted changes so the export reflects the current draft.';
@@ -126,6 +137,11 @@ export function GuidedWorkflowCard({
             <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-white/60">
               Queue: {queueNeedsAttention} attention / {queuePartials} partial
             </span>
+            {hardGapCount > 0 && (
+              <span className="rounded-full border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[#f0d99f]/85">
+                Hard risks: {hardGapCount}
+              </span>
+            )}
             <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-2.5 py-1 text-[#afc4ff]/85">
               Coverage: {coverageAddressed}/{coverageTotal}
             </span>
@@ -327,7 +343,7 @@ function FinalReadinessSummaryCard({
   hasFinalReview: boolean;
   isFinalReviewStale: boolean;
   unresolvedCriticalCount: number;
-  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number };
+  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number; hardGapCount: number };
   nextQueueItemLabel?: string;
   postReviewPolish?: PostReviewPolishState;
 }) {
@@ -365,6 +381,12 @@ function FinalReadinessSummaryCard({
         <div className="rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 text-xs leading-5 text-white/62">
           The rewrite queue still has {queueSummary.needsAttention} needs-attention item{queueSummary.needsAttention === 1 ? '' : 's'} and {queueSummary.partiallyAddressed} partial item{queueSummary.partiallyAddressed === 1 ? '' : 's'}.
           {nextQueueItemLabel ? ` The clearest next move is "${nextQueueItemLabel}".` : ''}
+        </div>
+      )}
+
+      {queueSummary.hardGapCount > 0 && (
+        <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/68">
+          {queueSummary.hardGapCount} hard requirement risk{queueSummary.hardGapCount === 1 ? '' : 's'} still remain. These are the items most likely to create a real screening problem if they are truly missing.
         </div>
       )}
 
@@ -642,7 +664,7 @@ export function ResumeWorkspaceRail({
   finalReviewChat?: FinalReviewChatHook | null;
   buildFinalReviewChatContext?: (concern: HiringManagerConcern) => FinalReviewChatContext | null;
   isEditing: boolean;
-  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number };
+  queueSummary: { needsAttention: number; partiallyAddressed: number; resolved: number; hardGapCount: number };
   nextQueueItemLabel?: string;
   jobBreakdown: { addressed: number; total: number; partial: number; missing: number; coverageScore: number };
   benchmarkBreakdown: { addressed: number; total: number; partial: number; missing: number; coverageScore: number };
@@ -728,6 +750,7 @@ export function ResumeWorkspaceRail({
         hasCompletedFinalReview={Boolean(hiringManagerResult)}
         isFinalReviewStale={isFinalReviewStale}
         unresolvedCriticalCount={unresolvedCriticalConcerns.length}
+        unresolvedHardGapCount={queueSummary.hardGapCount}
         queueNeedsAttentionCount={queueSummary.needsAttention}
         queuePartialCount={queueSummary.partiallyAddressed}
         nextQueueItemLabel={nextQueueItemLabel}

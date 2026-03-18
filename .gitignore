@@ -1,10 +1,14 @@
 node_modules/
 dist/
 *.tsbuildinfo
-.env
-.env.local
-app/.env
-server/.env
+
+# Environment secrets
+.env*
+!.env.example
+!app/.env.example
+!server/.env.example
+app/.env*
+server/.env*
 *.log
 .DS_Store
 *.png

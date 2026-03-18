@@ -8,13 +8,22 @@ setup('authenticate', async ({ page }) => {
   // /app shows AuthGate (/ shows SalesPage)
   await page.goto('/app');
 
-  // Fill login form
-  await page.getByPlaceholder('Email').fill('jjschrup@yahoo.com');
-  await page.getByPlaceholder('Password').fill('Scout123');
-  await page.getByRole('button', { name: /Sign In/i }).click();
+  const emailField = page.getByPlaceholder('Email');
+  const hasLoginForm = await emailField.isVisible().catch(() => false);
 
-  // Wait for authenticated landing screen
-  await page.getByRole('button', { name: /Start New Session/i }).waitFor({ timeout: 15_000 });
+  if (hasLoginForm) {
+    await emailField.fill('jjschrup@yahoo.com');
+    await page.getByPlaceholder('Password').fill('Scout123');
+    await page.getByRole('button', { name: /Sign In/i }).click();
+  }
+
+  // Wait for authenticated workspace shell. The app now lands in Workspace,
+  // not the legacy "Start New Session" screen.
+  await Promise.race([
+    page.getByRole('button', { name: /Open Resume Builder/i }).waitFor({ timeout: 20_000 }),
+    page.getByRole('button', { name: /Open Career Profile/i }).waitFor({ timeout: 20_000 }),
+    page.getByRole('button', { name: /Start New Session/i }).waitFor({ timeout: 20_000 }),
+  ]);
 
   // Save auth state
   await page.context().storageState({ path: '.auth/user.json' });

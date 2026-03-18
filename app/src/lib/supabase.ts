@@ -14,8 +14,17 @@ if (!supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 if (import.meta.env.VITE_E2E_MOCK_AUTH === 'true') {
+  const mockUserId = (import.meta.env.VITE_E2E_MOCK_USER_ID as string | undefined)
+    ?? '5b756a7a-3e35-4465-bcf4-69d92f160f21';
+  const mockEmail = (import.meta.env.VITE_E2E_MOCK_EMAIL as string | undefined)
+    ?? 'e2e@example.com';
+  const mockAccessToken = (import.meta.env.VITE_E2E_MOCK_ACCESS_TOKEN as string | undefined)
+    ?? 'mock-e2e-access-token';
+  const mockRefreshToken = (import.meta.env.VITE_E2E_MOCK_REFRESH_TOKEN as string | undefined)
+    ?? 'mock-e2e-refresh-token';
+
   let mockUser: User = {
-    id: 'mock-e2e-user-id',
+    id: mockUserId,
     app_metadata: { provider: 'email', providers: ['email'] },
     user_metadata: {
       full_name: 'E2E User',
@@ -24,12 +33,12 @@ if (import.meta.env.VITE_E2E_MOCK_AUTH === 'true') {
     },
     aud: 'authenticated',
     created_at: '2026-01-01T00:00:00.000Z',
-    email: 'e2e@example.com',
+    email: mockEmail,
   } as User;
 
   let mockSession: Session = {
-    access_token: 'mock-e2e-access-token',
-    refresh_token: 'mock-e2e-refresh-token',
+    access_token: mockAccessToken,
+    refresh_token: mockRefreshToken,
     expires_in: 3600,
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     token_type: 'bearer',

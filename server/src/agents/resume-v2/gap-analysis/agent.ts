@@ -17,6 +17,8 @@ import logger from '../../../lib/logger.js';
 import type {
   GapAnalysisInput,
   GapAnalysisOutput,
+  GapClassification,
+  GapStrategy,
   RequirementCategory,
   RequirementCoverageBreakdown,
   RequirementGap,
@@ -116,6 +118,9 @@ RULES:
 - For STRONG matches: provide the evidence. No strategy needed.
 - For PARTIAL matches: provide evidence AND a creative strategy to strengthen the positioning.
 - For MISSING matches: provide a creative strategy if ANY adjacent experience exists. If truly missing, put it in critical_gaps.
+- HARD REQUIREMENT RULE: If the requirement is a degree, certification, license, years-of-experience threshold, or other explicit screen-out credential and the candidate does not clearly have it, classify it as missing and include it in critical_gaps. Do NOT use adjacent experience as if it fully solves the missing credential.
+- If you offer adjacent framing for a hard requirement, the language must stay soft and truthful. It may explain related experience, but it cannot imply the candidate possesses the missing credential.
+- QUICK WIN RULE: Prefer strategies where the candidate already has nearby evidence that is simply under-explained on the resume. Those are the best items to strengthen first.
 - pending_strategies: include ALL strategies for partial/missing requirements. These go to the user for approval before being used in the resume.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Write as a coaching conversation — explain your reasoning to the candidate. Show your math. Be specific about what evidence you found and why it works. This text will be shown directly to the user.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate 1-3 targeted questions that could surface hidden experience relevant to this gap. Questions MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Each question should have a rationale (why it matters) and looking_for (what kind of answer would help).
@@ -128,40 +133,56 @@ export async function runGapAnalysis(
 ): Promise<GapAnalysisOutput> {
   const userMessage = buildUserMessage(input);
 
-  // Attempt 1
-  const response = await llm.chat({
-    model: MODEL_PRIMARY,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: 8192,
-    signal,
-  });
+  try {
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
+      max_tokens: 8192,
+      signal,
+    });
 
-  const parsed = repairJSON<GapAnalysisOutput>(response.text);
-  if (parsed) return normalizeGapAnalysis(parsed);
+    const parsed = repairJSON<GapAnalysisOutput>(response.text);
+    if (parsed) return normalizeGapAnalysis(parsed);
 
-  // Attempt 2: retry with explicit JSON-only instruction
-  logger.warn(
-    { rawSnippet: response.text.substring(0, 500) },
-    'Gap Analysis: first attempt unparseable, retrying with stricter prompt',
-  );
+    logger.warn(
+      { rawSnippet: response.text.substring(0, 500) },
+      'Gap Analysis: first attempt unparseable, retrying with stricter prompt',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Gap Analysis: first attempt failed, using deterministic fallback',
+    );
+    return buildDeterministicGapAnalysis(input);
+  }
 
-  const retry = await llm.chat({
-    model: MODEL_PRIMARY,
-    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
-    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
-    max_tokens: 8192,
-    signal,
-  });
+  try {
+    const retry = await llm.chat({
+      model: MODEL_PRIMARY,
+      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      max_tokens: 8192,
+      signal,
+    });
 
-  const retryParsed = repairJSON<GapAnalysisOutput>(retry.text);
-  if (retryParsed) return normalizeGapAnalysis(retryParsed);
+    const retryParsed = repairJSON<GapAnalysisOutput>(retry.text);
+    if (retryParsed) return normalizeGapAnalysis(retryParsed);
 
-  logger.error(
-    { rawSnippet: retry.text.substring(0, 500) },
-    'Gap Analysis: both attempts returned unparseable response',
-  );
-  throw new Error('Gap Analysis agent returned unparseable response after 2 attempts');
+    logger.error(
+      { rawSnippet: retry.text.substring(0, 500) },
+      'Gap Analysis: retry returned unparseable response, using deterministic fallback',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Gap Analysis: retry failed, using deterministic fallback',
+    );
+  }
+
+  return buildDeterministicGapAnalysis(input);
 }
 
 function buildUserMessage(input: GapAnalysisInput): string {
@@ -263,21 +284,377 @@ function buildUserMessage(input: GapAnalysisInput): string {
 
 function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
   const requirements = output.requirements.map(normalizeRequirement);
+  const hardGapRequirements = requirements
+    .filter((requirement) => (
+      requirement.classification === 'missing' &&
+      isHardRequirement(requirement.requirement, requirement.source_evidence)
+    ))
+    .map((requirement) => requirement.requirement);
+
+  const hardGapSet = new Set(hardGapRequirements.map(normalizeForSet));
   const jobBreakdown = computeCoverageBreakdown(requirements, 'job_description');
   const benchmarkBreakdown = computeCoverageBreakdown(requirements, 'benchmark');
   const total = jobBreakdown.total + benchmarkBreakdown.total;
   const addressed = jobBreakdown.addressed + benchmarkBreakdown.addressed;
+  const criticalGaps = dedupeStrings([
+    ...(output.critical_gaps ?? []),
+    ...hardGapRequirements,
+  ]);
+  const pendingStrategies = (output.pending_strategies ?? []).filter((item) => (
+    !hardGapSet.has(normalizeForSet(item.requirement))
+  ));
 
   return {
     ...output,
     requirements,
     coverage_score: total > 0 ? Math.round((addressed / total) * 100) : 0,
+    critical_gaps: criticalGaps,
+    pending_strategies: pendingStrategies,
     score_breakdown: {
       job_description: jobBreakdown,
       benchmark: benchmarkBreakdown,
     },
   };
 }
+
+function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function buildDeterministicGapAnalysis(input: GapAnalysisInput): GapAnalysisOutput {
+  const corpus = buildEvidenceCorpus(input);
+  const requirements = buildCanonicalRequirements(input).map((seed) => {
+    const evaluation = evaluateRequirement(seed, corpus, input);
+    const requirement: RequirementGap = {
+      requirement: seed.requirement,
+      source: seed.source,
+      category: seed.category,
+      score_domain: seed.source === 'job_description' ? 'ats' : 'benchmark',
+      importance: seed.importance,
+      classification: evaluation.classification,
+      evidence: evaluation.evidence,
+      source_evidence: seed.source_evidence,
+      ...(evaluation.strategy ? { strategy: evaluation.strategy } : {}),
+    };
+    return requirement;
+  });
+
+  const strongHighlights = requirements
+    .filter((requirement) => requirement.classification === 'strong')
+    .slice(0, 3)
+    .map((requirement) => requirement.requirement);
+
+  const criticalGaps = requirements
+    .filter((requirement) => requirement.classification === 'missing' && isHardRequirement(requirement.requirement, requirement.source_evidence))
+    .map((requirement) => requirement.requirement);
+
+  const pendingStrategies = requirements
+    .filter((requirement) => requirement.strategy && requirement.classification !== 'strong')
+    .filter((requirement) => !criticalGaps.some((gap) => normalizeForSet(gap) === normalizeForSet(requirement.requirement)))
+    .map((requirement) => ({
+      requirement: requirement.requirement,
+      strategy: requirement.strategy!,
+    }));
+
+  const summary = strongHighlights.length > 0
+    ? `The candidate already shows credible evidence for ${strongHighlights.slice(0, 2).join(' and ')}. The strongest next moves are the items with nearby proof that can be reframed more clearly for this role.`
+    : 'The candidate has adjacent experience, but the current resume does not yet surface enough direct proof. The strongest next moves are the requirements with nearby evidence that can be tightened first.';
+
+  return normalizeGapAnalysis({
+    requirements,
+    coverage_score: 0,
+    strength_summary: summary,
+    critical_gaps: criticalGaps,
+    pending_strategies: pendingStrategies,
+  });
+}
+
+type CanonicalRequirementSeed = {
+  requirement: string;
+  source: RequirementSource;
+  category: RequirementCategory;
+  importance: RequirementGap['importance'];
+  source_evidence: string;
+};
+
+type EvidenceEntry = {
+  text: string;
+  origin: string;
+};
+
+function buildCanonicalRequirements(input: GapAnalysisInput): CanonicalRequirementSeed[] {
+  return [
+    ...input.job_intelligence.core_competencies.map((competency) => ({
+      requirement: competency.competency,
+      source: 'job_description' as const,
+      category: 'core_competency' as const,
+      importance: competency.importance,
+      source_evidence: competency.evidence_from_jd,
+    })),
+    ...input.job_intelligence.strategic_responsibilities.map((responsibility) => ({
+      requirement: responsibility,
+      source: 'job_description' as const,
+      category: 'strategic_responsibility' as const,
+      importance: 'important' as const,
+      source_evidence: 'Strategic responsibility explicitly present in the job description',
+    })),
+    {
+      requirement: input.benchmark.expected_leadership_scope,
+      source: 'benchmark' as const,
+      category: 'benchmark_leadership' as const,
+      importance: 'important' as const,
+      source_evidence: 'Leadership scope expected of the benchmark candidate',
+    },
+    ...input.benchmark.expected_achievements.map((achievement) => ({
+      requirement: `${achievement.area}: ${achievement.description}`,
+      source: 'benchmark' as const,
+      category: 'benchmark_achievement' as const,
+      importance: 'important' as const,
+      source_evidence: `Typical metrics: ${achievement.typical_metrics}`,
+    })),
+    ...input.benchmark.expected_technical_skills.map((skill) => ({
+      requirement: skill,
+      source: 'benchmark' as const,
+      category: 'benchmark_skill' as const,
+      importance: 'important' as const,
+      source_evidence: 'Benchmark technical skill',
+    })),
+    ...input.benchmark.expected_certifications.map((certification) => ({
+      requirement: certification,
+      source: 'benchmark' as const,
+      category: 'benchmark_certification' as const,
+      importance: 'nice_to_have' as const,
+      source_evidence: 'Benchmark certification expectation',
+    })),
+    ...input.benchmark.expected_industry_knowledge.map((knowledge) => ({
+      requirement: knowledge,
+      source: 'benchmark' as const,
+      category: 'benchmark_industry' as const,
+      importance: 'important' as const,
+      source_evidence: 'Benchmark industry knowledge',
+    })),
+    ...input.benchmark.differentiators.map((differentiator) => ({
+      requirement: differentiator,
+      source: 'benchmark' as const,
+      category: 'benchmark_differentiator' as const,
+      importance: 'nice_to_have' as const,
+      source_evidence: 'What the benchmark candidate does better than the field',
+    })),
+  ];
+}
+
+function buildEvidenceCorpus(input: GapAnalysisInput): EvidenceEntry[] {
+  const entries: EvidenceEntry[] = [
+    { text: input.candidate.leadership_scope, origin: 'leadership scope' },
+    { text: input.candidate.operational_scale, origin: 'operational scale' },
+    ...input.candidate.career_themes.map((theme) => ({ text: theme, origin: 'career theme' })),
+    ...input.candidate.hidden_accomplishments.map((item) => ({ text: item, origin: 'hidden accomplishment' })),
+    ...input.candidate.technologies.map((item) => ({ text: item, origin: 'technology' })),
+    ...input.candidate.certifications.map((item) => ({ text: item, origin: 'certification' })),
+    ...input.candidate.education.map((item) => ({
+      text: `${item.degree} ${item.institution}${item.year ? ` ${item.year}` : ''}`.trim(),
+      origin: 'education',
+    })),
+    ...input.candidate.quantified_outcomes.map((item) => ({
+      text: `${item.outcome}: ${item.value}`,
+      origin: 'quantified outcome',
+    })),
+    ...input.candidate.experience.flatMap((experience) => ([
+      { text: `${experience.title} at ${experience.company}`, origin: 'experience header' },
+      ...experience.bullets.map((bullet) => ({ text: bullet, origin: `${experience.company} bullet` })),
+    ])),
+  ];
+
+  if (input.career_profile) {
+    entries.push(
+      ...input.career_profile.positioning.core_strengths.map((item) => ({ text: item, origin: 'career profile strength' })),
+      ...input.career_profile.positioning.proof_themes.map((item) => ({ text: item, origin: 'career profile proof theme' })),
+      ...input.career_profile.positioning.differentiators.map((item) => ({ text: item, origin: 'career profile differentiator' })),
+      ...input.career_profile.positioning.adjacent_positioning.map((item) => ({ text: item, origin: 'career profile adjacent positioning' })),
+    );
+  }
+
+  return entries.filter((entry) => entry.text && entry.text.trim().length > 0);
+}
+
+function evaluateRequirement(
+  requirement: CanonicalRequirementSeed,
+  corpus: EvidenceEntry[],
+  input: GapAnalysisInput,
+): {
+  classification: GapClassification;
+  evidence: string[];
+  strategy?: GapStrategy;
+} {
+  const requirementText = `${requirement.requirement} ${requirement.source_evidence}`.trim();
+  const hardRequirement = isHardRequirement(requirement.requirement, requirement.source_evidence);
+  const educationText = input.candidate.education.map((item) => `${item.degree} ${item.institution}`).join(' ');
+  const certificationText = input.candidate.certifications.join(' ');
+  const combinedCredentialText = `${educationText} ${certificationText}`.toLowerCase();
+
+  if (/\byears? of experience\b|\bminimum of \d+ years\b/.test(requirementText.toLowerCase())) {
+    const requiredYears = extractRequiredYears(requirementText);
+    if (requiredYears !== null) {
+      const meetsRequirement = input.candidate.career_span_years >= requiredYears;
+      return {
+        classification: meetsRequirement ? 'strong' : 'missing',
+        evidence: meetsRequirement
+          ? [`Career span: ${input.candidate.career_span_years} years`]
+          : [],
+      };
+    }
+  }
+
+  if (/\b(certification|certified|license|licensed|licensure)\b/.test(requirementText.toLowerCase())) {
+    const directMatch = combinedCredentialText.includes(requirement.requirement.toLowerCase());
+    return {
+      classification: directMatch ? 'strong' : 'missing',
+      evidence: directMatch ? input.candidate.certifications.filter(Boolean) : [],
+    };
+  }
+
+  if (/\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|foreign equivalent)\b/.test(requirementText.toLowerCase())) {
+    const directMatch = combinedCredentialText.length > 0;
+    return {
+      classification: directMatch ? 'strong' : 'missing',
+      evidence: directMatch ? input.candidate.education.map((item) => `${item.degree} — ${item.institution}`) : [],
+    };
+  }
+
+  const rankedEvidence = rankEvidence(requirementText, corpus);
+  const topEvidence = rankedEvidence.slice(0, 3);
+  const evidence = topEvidence.map((item) => item.text);
+  const topScore = topEvidence[0]?.score ?? 0;
+  const hasNearEvidence = evidence.length > 0;
+
+  const classification: GapClassification = hardRequirement
+    ? (topScore >= 3 ? 'strong' : 'missing')
+    : topScore >= 3
+      ? 'strong'
+      : hasNearEvidence
+        ? 'partial'
+        : 'missing';
+
+  if (classification === 'strong') {
+    return { classification, evidence };
+  }
+
+  const adjacentEvidence = evidence[0] ?? input.candidate.leadership_scope ?? input.candidate.operational_scale;
+  if (!adjacentEvidence) {
+    return { classification, evidence };
+  }
+
+  const strategy = buildFallbackStrategy(requirement, adjacentEvidence, input, hardRequirement);
+  return {
+    classification,
+    evidence,
+    strategy,
+  };
+}
+
+function rankEvidence(requirementText: string, corpus: EvidenceEntry[]): Array<EvidenceEntry & { score: number }> {
+  const keywords = extractKeywords(requirementText);
+
+  return corpus
+    .map((entry) => ({
+      ...entry,
+      score: scoreEvidence(entry.text, keywords),
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score || left.text.length - right.text.length);
+}
+
+function buildFallbackStrategy(
+  requirement: CanonicalRequirementSeed,
+  adjacentEvidence: string,
+  input: GapAnalysisInput,
+  hardRequirement: boolean,
+): GapStrategy {
+  const firstExperience = input.candidate.experience[0];
+  const companyReference = firstExperience ? `${firstExperience.title} at ${firstExperience.company}` : 'your recent work';
+  const gentlePositioning = hardRequirement
+    ? `Acknowledge the credential gap honestly, then use ${adjacentEvidence} to show related experience without implying the missing requirement is already met.`
+    : `Use ${adjacentEvidence} to strengthen how the resume proves ${requirement.requirement}.`;
+
+  return {
+    real_experience: adjacentEvidence,
+    positioning: gentlePositioning,
+    ai_reasoning: hardRequirement
+      ? `I found adjacent evidence in ${companyReference}, but this still looks like a true hard requirement. The safest move is to surface the related experience honestly while keeping the missing credential visible as a real screening risk.`
+      : `I found nearby proof in ${companyReference}. This looks more like an under-explained fit gap than a true miss, so the next move is to tighten the wording and add one specific detail the hiring team will care about.`,
+    interview_questions: [
+      {
+        question: `In ${companyReference}, what specific example best proves "${requirement.requirement}"?`,
+        rationale: 'A concrete example will turn the adjacent evidence into stronger, more defensible resume language.',
+        looking_for: 'Scope, scale, stakeholders, measurable outcomes, or technical depth tied directly to the requirement.',
+      },
+    ],
+  };
+}
+
+function extractRequiredYears(text: string): number | null {
+  const match = text.match(/\b(?:minimum of\s*)?(\d+)\+?\s+years?\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+function extractKeywords(text: string): string[] {
+  const tokens = text
+    .toLowerCase()
+    .replace(/[^a-z0-9+.#/-]+/g, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3);
+
+  return [...new Set(tokens.filter((token) => !STOP_WORDS.has(token)))];
+}
+
+function scoreEvidence(text: string, keywords: string[]): number {
+  const haystack = text.toLowerCase();
+  let score = 0;
+  for (const keyword of keywords) {
+    if (haystack.includes(keyword)) score += 1;
+  }
+  return score;
+}
+
+const STOP_WORDS = new Set([
+  'and',
+  'the',
+  'for',
+  'with',
+  'that',
+  'this',
+  'from',
+  'into',
+  'your',
+  'their',
+  'have',
+  'has',
+  'had',
+  'are',
+  'was',
+  'were',
+  'will',
+  'role',
+  'job',
+  'candidate',
+  'experience',
+  'required',
+  'requirement',
+  'must',
+  'have',
+  'nice',
+  'important',
+  'support',
+  'provide',
+  'including',
+  'other',
+  'related',
+  'field',
+  'level',
+]);
 
 function normalizeRequirement(requirement: RequirementGap): RequirementGap {
   const source: RequirementSource = requirement.source === 'benchmark' ? 'benchmark' : 'job_description';
@@ -289,6 +666,27 @@ function normalizeRequirement(requirement: RequirementGap): RequirementGap {
     score_domain: requirement.score_domain ?? (source === 'job_description' ? 'ats' : 'benchmark'),
     source_evidence: requirement.source_evidence,
   };
+}
+
+function normalizeForSet(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function dedupeStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const key = normalizeForSet(value);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+  return result;
+}
+
+function isHardRequirement(requirement: string, sourceEvidence?: string): boolean {
+  const combined = `${requirement} ${sourceEvidence ?? ''}`.toLowerCase();
+  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|requirement|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(combined);
 }
 
 function defaultCategoryForSource(source: RequirementSource): RequirementCategory {

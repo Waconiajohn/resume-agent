@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const TEST_USER_ID = process.env.TEST_USER_ID || '5b756a7a-3e35-4465-bcf4-69d92f160f21';
+const API_PORT = process.env.E2E_API_PORT || '3001';
 
 function loadSupabaseConfig(): { url: string; serviceKey: string } {
   const envPath = resolve(process.cwd(), 'server/.env');
@@ -75,7 +76,7 @@ export async function cleanupBeforeTest(): Promise<void> {
   // 3. Reset in-memory SSE rate-limit state on the server
   // eslint-disable-next-line no-console
   console.log('[cleanup] Resetting SSE rate-limit state...');
-  const rlRes = await fetch('http://localhost:3001/api/admin/reset-rate-limits', {
+  const rlRes = await fetch(`http://localhost:${API_PORT}/api/admin/reset-rate-limits`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });

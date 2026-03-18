@@ -13,6 +13,7 @@ import {
   getCachedUser,
   getAuthCacheStats,
   resetAuthCacheForTests,
+  resolveE2EMockUser,
   type AuthUser,
 } from '../middleware/auth.js';
 
@@ -83,6 +84,10 @@ describe('auth cache', () => {
 
     expect(getCachedUser(expiredToken)).toBeNull();
     expect(getAuthCacheStats().active_tokens).toBe(0);
+  });
+
+  it('does not resolve an e2e mock user when the env flag is off', () => {
+    expect(resolveE2EMockUser('mock-e2e-access-token')).toBeNull();
   });
 });
 

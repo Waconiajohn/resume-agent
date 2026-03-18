@@ -148,16 +148,22 @@ const GAP_ANALYSIS_OUTPUT: GapAnalysisOutput = {
     {
       requirement: 'Cloud Architecture',
       source: 'job_description',
+      category: 'core_competency',
+      score_domain: 'ats',
       importance: 'must_have',
       classification: 'strong',
       evidence: ['Built cloud platform on AWS'],
+      source_evidence: undefined,
     },
     {
       requirement: 'Budget Management',
       source: 'benchmark',
+      category: 'benchmark_achievement',
+      score_domain: 'benchmark',
       importance: 'important',
       classification: 'partial',
       evidence: ['Managed $3M payroll'],
+      source_evidence: undefined,
       strategy: {
         real_experience: 'Led 40-person team at ~$85K average',
         positioning: '$3M+ payroll budget accountability',
@@ -167,7 +173,25 @@ const GAP_ANALYSIS_OUTPUT: GapAnalysisOutput = {
       },
     },
   ],
-  coverage_score: 82,
+  coverage_score: 100,
+  score_breakdown: {
+    job_description: {
+      total: 1,
+      strong: 1,
+      partial: 0,
+      missing: 0,
+      addressed: 1,
+      coverage_score: 100,
+    },
+    benchmark: {
+      total: 1,
+      strong: 0,
+      partial: 1,
+      missing: 0,
+      addressed: 1,
+      coverage_score: 100,
+    },
+  },
   strength_summary: 'Strong cloud and leadership background aligns well with the VP role.',
   critical_gaps: ['No direct P&L ownership'],
   pending_strategies: [
@@ -493,6 +517,19 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(userMessage).toContain('VP of Engineering');
       expect(userMessage).toContain('Cloud Architecture');
     });
+
+    it('adds realism guardrails so the benchmark does not drift into fantasy-candidate territory', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(BENCHMARK_OUTPUT);
+
+      await runBenchmarkCandidate(input);
+
+      const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.system).toContain('strongest REALISTIC candidate');
+      expect(llmCall.system).toContain('Do NOT use prestige stand-ins like FAANG');
+      expect(llmCall.messages[0].content).toContain('Guardrails:');
+      expect(llmCall.messages[0].content).toContain('Keep the benchmark tightly tied to the actual role.');
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -527,15 +564,28 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts fail', async () => {
+    it('falls back deterministically when both parse attempts fail', async () => {
       mockLlmChat
         .mockResolvedValueOnce({ text: 'bad1' })
         .mockResolvedValueOnce({ text: 'bad2' });
       mockRepairJSON.mockReturnValue(null);
 
-      await expect(runGapAnalysis(input)).rejects.toThrow(
-        'Gap Analysis agent returned unparseable response after 2 attempts',
-      );
+      const result = await runGapAnalysis(input);
+
+      expect(result.requirements.length).toBeGreaterThan(0);
+      expect(result.score_breakdown?.job_description.total).toBeGreaterThan(0);
+      expect(result.strength_summary.length).toBeGreaterThan(0);
+    });
+
+    it('falls back deterministically when the LLM times out', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.requirements.length).toBeGreaterThan(0);
+      expect(result.score_breakdown?.job_description.total).toBeGreaterThan(0);
+      expect(result.critical_gaps).toBeDefined();
+      expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
     it('forwards AbortSignal to llm.chat', async () => {
@@ -573,6 +623,68 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledWith(
         expect.objectContaining({ model: 'model-primary' }),
       );
+    });
+
+    it('promotes missing hard requirements into critical gaps and removes them from coaching strategies', async () => {
+      const hardGapOutput: GapAnalysisOutput = {
+        requirements: [
+          {
+            requirement: 'Bachelor’s degree in Chemical Engineering or related field',
+            source: 'job_description',
+            category: 'core_competency',
+            score_domain: 'ats',
+            importance: 'must_have',
+            classification: 'missing',
+            evidence: [],
+            source_evidence: 'Bachelor’s degree or higher in Chemical Engineering, Civil Engineering, Mechanical Engineering, Petroleum Engineering, other related engineering field, or foreign equivalent.',
+            strategy: {
+              real_experience: 'Hands-on drilling engineering work in field operations',
+              positioning: 'Strong working knowledge of drilling engineering principles through field operations leadership',
+              ai_reasoning: 'You have adjacent drilling operations experience, but that does not equal the degree requirement.',
+              interview_questions: [
+                {
+                  question: 'Do you hold any engineering degree or foreign equivalent that is not currently listed on the resume?',
+                  rationale: 'The JD explicitly calls for the credential, so we need to confirm whether it exists before we decide how to position the risk.',
+                  looking_for: 'A real degree, foreign equivalent, or confirmation that it is truly missing',
+                },
+              ],
+            },
+          },
+        ],
+        coverage_score: 0,
+        score_breakdown: {
+          job_description: { total: 1, strong: 0, partial: 0, missing: 1, addressed: 0, coverage_score: 0 },
+          benchmark: { total: 0, strong: 0, partial: 0, missing: 0, addressed: 0, coverage_score: 0 },
+        },
+        strength_summary: 'Strong field operations experience.',
+        critical_gaps: [],
+        pending_strategies: [
+          {
+            requirement: 'Bachelor’s degree in Chemical Engineering or related field',
+            strategy: {
+              real_experience: 'Field drilling leadership',
+              positioning: 'Related engineering exposure across drilling operations',
+              ai_reasoning: 'Adjacent operations exposure exists, but the credential itself is still unresolved.',
+              interview_questions: [
+                {
+                  question: 'Do you have the degree but it is simply missing from the resume?',
+                  rationale: 'We should only treat this as a proof gap if the credential actually exists.',
+                  looking_for: 'Confirmation of the credential or confirmation that it is truly absent',
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(hardGapOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.critical_gaps).toContain('Bachelor’s degree in Chemical Engineering or related field');
+      expect(result.pending_strategies).toEqual([]);
+      expect(result.requirements[0]?.classification).toBe('missing');
     });
   });
 
@@ -944,15 +1056,26 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts fail', async () => {
+    it('falls back to deterministic ATS scoring when both attempts are unparseable', async () => {
       mockLlmChat
         .mockResolvedValueOnce({ text: 'bad1' })
         .mockResolvedValueOnce({ text: 'bad2' });
       mockRepairJSON.mockReturnValue(null);
 
-      await expect(runATSOptimization(input)).rejects.toThrow(
-        'ATS Optimization agent returned unparseable response after 2 attempts',
+      const result = await runATSOptimization(input);
+
+      expect(result.match_score).toBeGreaterThanOrEqual(0);
+      expect(result.match_score).toBeLessThanOrEqual(100);
+      expect(result.keywords_found).toContain('cloud-native');
+      expect(result.keywords_missing).toContain('P&L ownership');
+      expect(result.keyword_suggestions[0]).toEqual(
+        expect.objectContaining({
+          keyword: expect.any(String),
+          suggested_placement: expect.any(String),
+          natural_phrasing: expect.stringContaining('truthful proof'),
+        }),
       );
+      expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
     it('forwards AbortSignal to llm.chat', async () => {
@@ -1033,15 +1156,26 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts fail', async () => {
+    it('falls back deterministically when both attempts fail', async () => {
       mockLlmChat
         .mockResolvedValueOnce({ text: 'bad1' })
         .mockResolvedValueOnce({ text: 'bad2' });
       mockRepairJSON.mockReturnValue(null);
 
-      await expect(runExecutiveTone(input)).rejects.toThrow(
-        'Executive Tone agent returned unparseable response after 2 attempts',
-      );
+      const result = await runExecutiveTone(input);
+
+      expect(result.tone_score).toBeGreaterThan(0);
+      expect(Array.isArray(result.findings)).toBe(true);
+    });
+
+    it('falls back deterministically when the first attempt times out', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const result = await runExecutiveTone(input);
+
+      expect(result.tone_score).toBeGreaterThan(0);
+      expect(Array.isArray(result.findings)).toBe(true);
+      expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
     it('forwards AbortSignal to llm.chat', async () => {

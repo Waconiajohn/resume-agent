@@ -147,6 +147,7 @@ describe('rewrite-queue', () => {
       needsAttention: 1,
       partiallyAddressed: 0,
       resolved: 1,
+      hardGapCount: 0,
     });
   });
 
@@ -187,5 +188,35 @@ describe('rewrite-queue', () => {
     expect(hardGap.category).toBe('hard_gap');
     expect(hardGap.recommendedNextStep.action).toBe('check_hard_requirement');
     expect(hardGap.riskNote).toMatch(/real risk/i);
+    expect(queue.summary.hardGapCount).toBe(1);
+  });
+
+  it('does not crash when a live gap-analysis requirement omits the evidence array', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Executive stakeholder communication',
+          source: 'job_description',
+          importance: 'important',
+          classification: 'missing',
+          evidence: undefined as unknown as string[],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(Array.isArray(queue.items[0]?.currentEvidence)).toBe(true);
+    expect(queue.items[0]?.requirement).toBe('Executive stakeholder communication');
+    expect(queue.summary.total).toBe(1);
   });
 });

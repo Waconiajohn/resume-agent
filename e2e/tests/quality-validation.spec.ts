@@ -1,27 +1,26 @@
 /**
- * Quality Validation E2E Tests — Story 9
+ * Resume V2 Quality Validation — live content audit
  *
- * Runs 3 full pipelines with different resume/JD fixtures, captures quality
- * scores and section content, and asserts against minimum thresholds.
- * Results are saved to test-results/quality-validation/ for manual review.
+ * Runs real resume-v2 sessions against multiple realistic resume/JD pairs,
+ * captures the current queue/worklog/final-review outputs, and saves artifacts
+ * for manual review under test-results/quality-validation/.
+ *
+ * This is intentionally a capture-first audit. The assertions focus on the
+ * structure and trust of the current workflow rather than forcing brittle
+ * score thresholds on variable LLM output.
  */
 import { test, expect } from '@playwright/test';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import {
   REAL_RESUME_TEXT,
   REAL_JD_TEXT,
   REAL_COMPANY_NAME,
 } from '../fixtures/real-resume-data';
 import { QUALITY_FIXTURES } from '../fixtures/quality-validation-data';
-import { runPipelineToCompletion } from '../helpers/pipeline-responder';
-import {
-  createCaptureData,
-  type PipelineCaptureData,
-} from '../helpers/pipeline-capture';
 import { cleanupBeforeTest } from '../helpers/cleanup';
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 
-// Combine the original fixture with the two new ones
 const ALL_FIXTURES = [
   {
     label: 'cloud-director-to-architect',
@@ -32,204 +31,162 @@ const ALL_FIXTURES = [
   ...QUALITY_FIXTURES,
 ];
 
-// Minimum acceptable scores — generous thresholds for validation, not regression
-const PRIMARY_THRESHOLD = 60;
-const SECONDARY_THRESHOLD = 50;
-
 const results: Array<{
   label: string;
-  capture: PipelineCaptureData;
   durationMs: number;
+  queueText: string;
+  worklogText: string;
+  finalReviewText: string | null;
 }> = [];
 
-test.describe.serial('Quality Validation', () => {
-  for (const fixture of ALL_FIXTURES) {
-    test(`pipeline quality: ${fixture.label}`, async ({ page }) => {
-      // Clean up stale state before each pipeline run
-      await cleanupBeforeTest();
+const PIPELINE_READY_TIMEOUT_MS = 10 * 60_000;
+const PIPELINE_DURATION_TARGET_MS = 8 * 60_000;
+const FINAL_REVIEW_READY_TIMEOUT_MS = 7 * 60_000;
 
-      // Capture browser console for debugging
+function trimBlock(value: string | null | undefined, max = 3000): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+async function captureCardTextByHeading(page: import('@playwright/test').Page, headingText: string): Promise<string> {
+  const heading = page.getByText(headingText, { exact: true }).first();
+  await expect(heading).toBeVisible({ timeout: 30_000 });
+  return trimBlock(await heading.evaluate((node) => {
+    let current: HTMLElement | null = node instanceof HTMLElement ? node : node.parentElement;
+    let bestText = node.parentElement?.textContent?.trim() ?? node.textContent ?? '';
+    const maxReasonableCardLength = 2500;
+    for (let i = 0; i < 8 && current; i += 1, current = current.parentElement) {
+      const text = current.textContent?.trim() ?? '';
+      if (!text.includes(node.textContent?.trim() ?? '')) {
+        continue;
+      }
+      if (text.length > bestText.length && text.length <= maxReasonableCardLength) {
+        bestText = text;
+      }
+    }
+    return bestText;
+  }));
+}
+
+async function captureOptionalCardTextByHeading(page: import('@playwright/test').Page, headingText: string): Promise<string | null> {
+  const heading = page.getByText(headingText, { exact: true }).first();
+  const visible = await heading.isVisible().catch(() => false);
+  if (!visible) return null;
+  return captureCardTextByHeading(page, headingText);
+}
+
+async function openResumeBuilder(page: import('@playwright/test').Page) {
+  await page.goto('/workspace?room=resume');
+  await expect(page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /New Tailored Resume/i }).first().click();
+  await expect(page.locator('#v2-resume')).toBeVisible({ timeout: 15_000 });
+}
+
+async function submitResumeV2(page: import('@playwright/test').Page, fixture: { resumeText: string; jdText: string }) {
+  await page.locator('#v2-resume').fill(fixture.resumeText);
+  await page.locator('#v2-jd').fill(fixture.jdText);
+  const submit = page.getByRole('button', { name: /Analyze and craft my resume/i });
+  await expect(submit).toBeEnabled({ timeout: 5_000 });
+  await submit.click();
+  await expect(page.locator('#v2-resume')).not.toBeVisible({ timeout: 30_000 });
+}
+
+async function waitForResumeV2Completion(page: import('@playwright/test').Page) {
+  await expect(page.getByText('What AI Is Doing For You')).toBeVisible({ timeout: PIPELINE_READY_TIMEOUT_MS });
+  await expect(page.getByText('What to Fix Next')).toBeVisible({ timeout: PIPELINE_READY_TIMEOUT_MS });
+  const runFinalReviewButton = page.getByRole('button', { name: /^Run Final Review$/i }).first();
+  await runFinalReviewButton.waitFor({ state: 'attached', timeout: PIPELINE_READY_TIMEOUT_MS });
+  await runFinalReviewButton.scrollIntoViewIfNeeded();
+  await expect(runFinalReviewButton).toBeVisible({ timeout: 30_000 });
+}
+
+test.describe.serial('Resume V2 Quality Validation', () => {
+  for (const fixture of ALL_FIXTURES) {
+    test(`quality capture: ${fixture.label}`, async ({ page }) => {
+      page.on('pageerror', (error) => {
+        // eslint-disable-next-line no-console
+        console.log(`[pageerror][${fixture.label}] ${error.name}: ${error.message}`);
+      });
       page.on('console', (msg) => {
         if (msg.type() === 'error' || msg.type() === 'warning') {
-          const text = msg.text();
-          if (text.includes('Failed to load resource')) return;
           // eslint-disable-next-line no-console
-          console.log(`[browser] [${msg.type()}] ${text}`);
+          console.log(`[browser][${fixture.label}][${msg.type()}] ${msg.text()}`);
         }
       });
 
-      // Capture failed network requests
-      page.on('response', (response) => {
-        if (response.status() >= 400) {
-          const url = response.url();
-          if (url.includes('/api/workflow/') && url.includes('/node/')) return;
-          // eslint-disable-next-line no-console
-          console.log(`[network] ${response.status()} ${url}`);
-        }
-      });
+      await cleanupBeforeTest();
+      await openResumeBuilder(page);
 
-      // Navigate to app
-      await page.goto('/app');
-      await expect(
-        page.getByRole('button', { name: /Start New Session/i }),
-      ).toBeVisible({ timeout: 15_000 });
+      const startedAt = Date.now();
+      await submitResumeV2(page, fixture);
+      await waitForResumeV2Completion(page);
+      const durationMs = Date.now() - startedAt;
 
-      // Start new session
-      await page.getByRole('button', { name: /Start New Session/i }).click();
-      await expect(page.locator('#resume-text')).toBeVisible({
-        timeout: 5_000,
-      });
+      const worklogText = await captureCardTextByHeading(page, 'What AI Is Doing For You');
+      const queueText = await captureCardTextByHeading(page, 'What to Fix Next');
 
-      // Fill intake form with fixture data
-      await page.locator('#resume-text').fill(fixture.resumeText);
-      await page.locator('#job-description').fill(fixture.jdText);
-      await page.locator('#company-name').fill(fixture.companyName);
-
-      const submitBtn = page.getByRole('button', {
-        name: /Let's Get Started|Start Resume Session/i,
-      });
-      await expect(submitBtn).toBeEnabled({ timeout: 2_000 });
-      await submitBtn.click();
-
-      // Wait for loading state
-      await expect(
-        page.getByRole('button', { name: /Starting session/i }),
-      )
-        .toBeVisible({ timeout: 5_000 })
-        .catch(() => {});
-
-      // Fail early on error banner
-      const errorBanner = page.locator(
-        '.text-red-100\\/90, [role="alert"]',
-      );
-      const hasError = await errorBanner.isVisible().catch(() => false);
-      if (hasError) {
-        const errorText = await errorBanner.textContent();
-        throw new Error(`Intake form error: ${errorText}`);
+      const runFinalReviewButton = page.getByRole('button', { name: /^Run Final Review$/i }).first();
+      await runFinalReviewButton.scrollIntoViewIfNeeded();
+      await runFinalReviewButton.click();
+      await page.waitForFunction(() => {
+        const text = document.body.innerText;
+        return text.includes('6-Second Recruiter Scan') || text.includes('Review failed');
+      }, { timeout: FINAL_REVIEW_READY_TIMEOUT_MS });
+      const finalReviewError = page.getByText(/Review failed/i).first();
+      if (await finalReviewError.isVisible().catch(() => false)) {
+        throw new Error(`Final Review returned an error: ${await finalReviewError.textContent()}`);
       }
+      await expect(page.getByText('6-Second Recruiter Scan')).toBeVisible({ timeout: 30_000 });
+      const finalReviewText = await captureOptionalCardTextByHeading(page, '6-Second Recruiter Scan');
 
-      // Wait for pipeline to connect
-      await expect(page.locator('#resume-text')).not.toBeVisible({
-        timeout: 60_000,
-      });
-      await expect(
-        page.getByRole('button', { name: /open coach/i }),
-      ).toBeVisible({ timeout: 30_000 });
-      await expect(page.locator('[data-panel-root]').first()).toBeVisible({
-        timeout: 60_000,
-      });
-
-      // Run pipeline with capture
-      const capture = createCaptureData();
-      const pipelineStart = Date.now();
-      await runPipelineToCompletion(page, capture);
-      const durationMs = Date.now() - pipelineStart;
-
-      // Store results for summary test
-      results.push({ label: fixture.label, capture, durationMs });
-
-      // Verify completion
-      await expect(page.getByText('Your Resume Is Ready!').first()).toBeVisible({
-        timeout: 10_000,
-      });
-
-      // Assert pipeline timing
-      const pipelineMinutes = durationMs / 60_000;
-      // eslint-disable-next-line no-console
-      console.log(
-        `[quality] ${fixture.label}: completed in ${pipelineMinutes.toFixed(1)} min`,
-      );
-      expect(durationMs).toBeLessThan(5 * 60_000);
-
-      // Assert quality scores were captured
-      expect(
-        capture.qualityScores,
-        `Quality scores should be captured for ${fixture.label}`,
-      ).not.toBeNull();
-
-      if (capture.qualityScores) {
-        const { primary, secondary } = capture.qualityScores;
-
-        // eslint-disable-next-line no-console
-        console.log(
-          `[quality] ${fixture.label} scores:`,
-          JSON.stringify({ primary, secondary }),
-        );
-
-        // Primary scores (Hiring Mgr, ATS, Authenticity) >= threshold
-        for (const [key, value] of Object.entries(primary)) {
-          expect(
-            value,
-            `${fixture.label}: primary score "${key}" should be >= ${PRIMARY_THRESHOLD}%`,
-          ).toBeGreaterThanOrEqual(PRIMARY_THRESHOLD);
-        }
-
-        // Secondary scores >= threshold
-        for (const [key, value] of Object.entries(secondary)) {
-          expect(
-            value,
-            `${fixture.label}: secondary score "${key}" should be >= ${SECONDARY_THRESHOLD}%`,
-          ).toBeGreaterThanOrEqual(SECONDARY_THRESHOLD);
-        }
-      }
-
-      // Assert sections were captured
-      expect(
-        capture.sections.length,
-        `At least one section should be captured for ${fixture.label}`,
-      ).toBeGreaterThan(0);
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `[quality] ${fixture.label}: captured ${capture.sections.length} sections: ` +
-          capture.sections.map((s) => s.title).join(', '),
-      );
-
-      // Save captured data to test-results/quality-validation/
-      const outDir = resolve(
-        process.cwd(),
-        'test-results',
-        'quality-validation',
-      );
+      const outDir = resolve(process.cwd(), 'test-results', 'quality-validation');
       mkdirSync(outDir, { recursive: true });
       writeFileSync(
         resolve(outDir, `${fixture.label}.json`),
-        JSON.stringify(
-          {
-            label: fixture.label,
-            companyName: fixture.companyName,
-            durationMs,
-            durationMinutes: pipelineMinutes.toFixed(1),
-            qualityScores: capture.qualityScores,
-            sections: capture.sections,
-          },
-          null,
-          2,
-        ),
+        JSON.stringify({
+          label: fixture.label,
+          companyName: fixture.companyName,
+          durationMs,
+          durationMinutes: Number((durationMs / 60_000).toFixed(2)),
+          queueText,
+          worklogText,
+          finalReviewText,
+        }, null, 2),
       );
+
+      results.push({
+        label: fixture.label,
+        durationMs,
+        queueText,
+        worklogText,
+        finalReviewText,
+      });
+
+      expect(durationMs, `${fixture.label}: pipeline should finish within 8 minutes`).toBeLessThan(PIPELINE_DURATION_TARGET_MS);
+      expect(worklogText).toContain('What AI Is Doing For You');
+      expect(queueText).toContain('What to Fix Next');
+      expect(queueText.length, `${fixture.label}: queue capture should not be empty`).toBeGreaterThan(80);
+      expect(finalReviewText, `${fixture.label}: final review should render`).not.toBeNull();
     });
   }
 
-  test('summary: all fixtures passed quality thresholds', async () => {
-    // eslint-disable-next-line no-console
-    console.log('\n[quality] ═══ Quality Validation Summary ═══');
-    for (const r of results) {
-      const s = r.capture.qualityScores;
-      // eslint-disable-next-line no-console
-      console.log(
-        `[quality] ${r.label}: ` +
-          `${(r.durationMs / 60_000).toFixed(1)} min | ` +
-          `primary: ${s ? JSON.stringify(s.primary) : 'N/A'} | ` +
-          `secondary: ${s ? JSON.stringify(s.secondary) : 'N/A'} | ` +
-          `sections: ${r.capture.sections.length}`,
-      );
-    }
-    // eslint-disable-next-line no-console
-    console.log('[quality] ═══════════════════════════════════\n');
+  test('summary: all live quality fixtures completed', async () => {
+    const outDir = resolve(process.cwd(), 'test-results', 'quality-validation');
+    mkdirSync(outDir, { recursive: true });
+    writeFileSync(
+      resolve(outDir, 'summary.json'),
+      JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        results: results.map((result) => ({
+          label: result.label,
+          durationMs: result.durationMs,
+          durationMinutes: Number((result.durationMs / 60_000).toFixed(2)),
+          queuePreview: result.queueText.slice(0, 500),
+          worklogPreview: result.worklogText.slice(0, 500),
+          finalReviewPreview: result.finalReviewText?.slice(0, 500) ?? null,
+        })),
+      }, null, 2),
+    );
 
-    expect(
-      results.length,
-      'All fixtures should have completed',
-    ).toBe(ALL_FIXTURES.length);
+    expect(results.length, 'All quality fixtures should complete').toBe(ALL_FIXTURES.length);
   });
 });

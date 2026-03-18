@@ -4,6 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { API_BASE } from '@/lib/api';
+import { normalizeFinalReviewResult } from '@/lib/final-review-normalize';
 import type { FinalReviewConcern, FinalReviewResult } from '@/types/resume-v2';
 
 export type HiringManagerConcern = FinalReviewConcern;
@@ -48,7 +49,10 @@ export function useHiringManagerReview(
         throw new Error(err.error || 'Review failed');
       }
 
-      const data = await response.json() as HiringManagerReviewResult;
+      const data = normalizeFinalReviewResult(await response.json());
+      if (!data) {
+        throw new Error('Review failed — invalid response shape');
+      }
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Review failed');
@@ -62,8 +66,8 @@ export function useHiringManagerReview(
     setError(null);
   }, []);
 
-  const hydrateResult = useCallback((nextResult: HiringManagerReviewResult | null) => {
-    setResult(nextResult);
+  const hydrateResult = useCallback((nextResult: unknown) => {
+    setResult(normalizeFinalReviewResult(nextResult));
     setError(null);
   }, []);
 

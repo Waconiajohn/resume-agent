@@ -396,11 +396,12 @@ function shutdown(signal: string) {
 }
 
 const port = parseInt(process.env.PORT ?? '3001');
+const host = process.env.HOST ?? '0.0.0.0';
 
 export function startServer() {
   if (server) return server;
 
-  logger.info({ port }, 'Resume Agent server starting');
+  logger.info({ port, host }, 'Resume Agent server starting');
 
   // Run startup registry validation — warns about tools missing model_tier.
   // All agents register on module load (via their route imports above), so the
@@ -413,8 +414,8 @@ export function startServer() {
 
   startHotReload();
 
-  server = serve({ fetch: app.fetch, port });
-  logger.info({ port }, `Server running at http://localhost:${port}`);
+  server = serve({ fetch: app.fetch, port, hostname: host });
+  logger.info({ port, host }, `Server running at http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));

@@ -140,6 +140,11 @@ Gaps are not problems. They are narrative opportunities. For each partial or mis
 - Explain HOW to frame it so it reads as relevant, not compensatory
 - Explain the narrative justification — why does the adjacent experience actually transfer?
 
+But do NOT let unresolved hard requirements drive the narrative:
+- If the candidate is missing a degree, license, certification, or other explicit screen-out credential, do not build the primary narrative as if that gap has been solved.
+- Approved strategies are useful only when they are truthful positioning aids, not when they would erase a real hard gap.
+- Keep the primary narrative anchored in the strongest direct evidence and the most defensible role-fit themes.
+
 ---
 
 ## OUTPUT FORMAT

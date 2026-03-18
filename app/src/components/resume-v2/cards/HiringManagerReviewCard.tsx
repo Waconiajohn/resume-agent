@@ -103,6 +103,9 @@ const CONCERN_LABELS: Record<HiringManagerConcern['type'], string> = {
   credibility_risk: 'Credibility Risk',
 };
 
+const FALLBACK_VERDICT = VERDICT_CONFIG.needs_improvement;
+const FALLBACK_SCAN = SCAN_CONFIG.skip;
+
 function SectionHeader({
   icon: Icon,
   title,
@@ -271,8 +274,12 @@ export function HiringManagerReviewCard({
 
   if (!result) return null;
 
-  const verdictTone = VERDICT_CONFIG[result.hiring_manager_verdict.rating];
-  const recruiterTone = SCAN_CONFIG[result.six_second_scan.decision];
+  const verdictTone = result.hiring_manager_verdict?.rating
+    ? VERDICT_CONFIG[result.hiring_manager_verdict.rating] ?? FALLBACK_VERDICT
+    : FALLBACK_VERDICT;
+  const recruiterTone = result.six_second_scan?.decision
+    ? SCAN_CONFIG[result.six_second_scan.decision] ?? FALLBACK_SCAN
+    : FALLBACK_SCAN;
 
   return (
     <GlassCard className="p-5 animate-[card-enter_500ms_ease-out_forwards]">

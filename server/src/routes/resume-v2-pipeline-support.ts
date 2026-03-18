@@ -422,6 +422,114 @@ export const finalReviewResultSchema = z.object({
   improvement_summary: z.array(z.string()).default([]),
 });
 
+export type FinalReviewResult = z.infer<typeof finalReviewResultSchema>;
+
+function isPositiveRecruiterSignalCandidate(result: FinalReviewResult): boolean {
+  return result.hiring_manager_verdict.rating === 'strong_interview_candidate'
+    || result.hiring_manager_verdict.rating === 'possible_interview';
+}
+
+function createRecruiterSignalsFromWins(result: FinalReviewResult) {
+  return result.top_wins.slice(0, 3).map((win) => ({
+    signal: win.win,
+    why_it_matters: win.why_powerful,
+    visible_in_top_third: win.prominent_enough,
+  }));
+}
+
+function createMissingSignalsFromConcerns(result: FinalReviewResult) {
+  return result.concerns
+    .filter((concern) => concern.severity !== 'minor')
+    .slice(0, 3)
+    .map((concern) => ({
+      signal: concern.related_requirement || concern.observation,
+      why_it_matters: concern.why_it_hurts,
+    }));
+}
+
+function hasPositiveSummaryLanguage(summary: string): boolean {
+  return /\b(strong|compelling|impressive|solid|credible|good fit|well-aligned|well aligned|well-suited|well suited|promising)\b/i.test(summary);
+}
+
+function createRecruiterSignalFromSummary(summary: string) {
+  const firstSentence = summary.split(/(?<=[.!?])\s+/)[0]?.trim() || summary.trim();
+  const signal = firstSentence.length > 140 ? `${firstSentence.slice(0, 137).trim()}...` : firstSentence;
+  return {
+    signal,
+    why_it_matters: 'This was the clearest positive signal described in the deeper hiring-manager review.',
+    visible_in_top_third: false,
+  };
+}
+
+export function stabilizeFinalReviewResult(result: FinalReviewResult): FinalReviewResult {
+  const normalized: FinalReviewResult = {
+    ...result,
+    six_second_scan: {
+      ...result.six_second_scan,
+      top_signals_seen: [...result.six_second_scan.top_signals_seen],
+      important_signals_missing: [...result.six_second_scan.important_signals_missing],
+    },
+    top_wins: [...result.top_wins],
+    concerns: [...result.concerns],
+    structure_recommendations: [...result.structure_recommendations],
+    benchmark_comparison: {
+      ...result.benchmark_comparison,
+      advantages_vs_benchmark: [...result.benchmark_comparison.advantages_vs_benchmark],
+      gaps_vs_benchmark: [...result.benchmark_comparison.gaps_vs_benchmark],
+      reframing_opportunities: [...result.benchmark_comparison.reframing_opportunities],
+    },
+    improvement_summary: [...result.improvement_summary],
+  };
+
+  if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
+    normalized.six_second_scan.top_signals_seen = createRecruiterSignalsFromWins(normalized);
+  }
+
+  if (
+    normalized.six_second_scan.top_signals_seen.length === 0
+    && hasPositiveSummaryLanguage(normalized.hiring_manager_verdict.summary)
+  ) {
+    normalized.six_second_scan.top_signals_seen = [
+      createRecruiterSignalFromSummary(normalized.hiring_manager_verdict.summary),
+    ];
+  }
+
+  if (normalized.six_second_scan.important_signals_missing.length === 0 && normalized.concerns.length > 0) {
+    normalized.six_second_scan.important_signals_missing = createMissingSignalsFromConcerns(normalized);
+  }
+
+  if (
+    normalized.six_second_scan.decision === 'skip'
+    && normalized.six_second_scan.top_signals_seen.length > 0
+    && normalized.hiring_manager_verdict.rating !== 'likely_rejected'
+  ) {
+    normalized.six_second_scan.decision = 'continue_reading';
+  }
+
+  if (
+    isPositiveRecruiterSignalCandidate(normalized)
+    && normalized.six_second_scan.top_signals_seen.length > 0
+    && normalized.six_second_scan.decision !== 'continue_reading'
+  ) {
+    normalized.six_second_scan.decision = 'continue_reading';
+  }
+
+  if (
+    normalized.hiring_manager_verdict.rating !== 'likely_rejected'
+    && hasPositiveSummaryLanguage(normalized.hiring_manager_verdict.summary)
+    && normalized.six_second_scan.top_signals_seen.length > 0
+    && normalized.six_second_scan.decision === 'skip'
+  ) {
+    normalized.six_second_scan.decision = 'continue_reading';
+  }
+
+  if (!normalized.six_second_scan.reason.trim()) {
+    normalized.six_second_scan.reason = normalized.hiring_manager_verdict.summary;
+  }
+
+  return normalized;
+}
+
 export function buildFinalReviewPrompts({
   companyName,
   roleTitle,
@@ -443,8 +551,16 @@ export function buildFinalReviewPrompts({
   benchmarkRequirements: string[];
   careerProfile: CareerProfileV2 | null;
 }) {
+  const hardRequirements = jobRequirements.filter((requirement) => (
+    /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/i.test(requirement)
+  ));
+
   const requirementsList = jobRequirements.length
     ? `\n\nJOB REQUIREMENTS TO EVALUATE:\n${jobRequirements.map((requirement) => `- ${requirement}`).join('\n')}`
+    : '';
+
+  const hardRequirementsBlock = hardRequirements.length
+    ? `\n\nPOTENTIAL HARD REQUIREMENTS / SCREEN-OUT RISKS:\n${hardRequirements.map((requirement) => `- ${requirement}`).join('\n')}`
     : '';
 
   const hiddenSignalsBlock = hiddenSignals.length
@@ -474,6 +590,7 @@ Evaluation priorities:
 - Secondary standard: competitiveness relative to a strong benchmark candidate.
 - Do NOT let benchmark-only gaps outweigh strong job-description fit.
 - Treat benchmark gaps as competitive disadvantages unless they directly affect success in the role.
+- If the resume appears to miss a hard requirement such as a degree, certification, license, or clearly required credential, call that out directly as a screen-out risk rather than pretending adjacent experience fully solves it.
 - Be skeptical, commercial, and specific.
 - If something is not clearly shown on the resume, treat it as missing or only partially evidenced.
 - Do not fabricate experience, metrics, certifications, scope, or credentials.
@@ -549,13 +666,22 @@ Return valid JSON only in this exact shape:
 RULES:
 - Job-description fit should drive the verdict.
 - Benchmark alignment should be treated as a secondary competitiveness signal.
+- Hard requirements that are not clearly evidenced should be elevated as real screening risks.
+- The recruiter scan, top_signals_seen list, and hiring manager verdict must be internally consistent.
+- Every positive claim must point to specific resume evidence, not generic praise about the summary or competencies.
+- top_signals_seen.signal should name a concrete accomplishment, scope indicator, credential, title line, or metric the recruiter can actually see in the top third.
+- Avoid vague statements like "clear executive summary", "strong background", or "relevant skills" unless they are paired with the exact proof that makes them credible.
+- important_signals_missing should name the exact missing proof, metric, credential, or scope statement that a recruiter would expect to see quickly.
+- The hiring_manager_verdict.summary should cite at least one concrete strength or concern from the resume, not only general impressions.
+- If the resume shows credible, role-relevant strengths, populate top_signals_seen instead of leaving it empty.
+- Reserve "skip" for genuinely weak top-third impressions or true screen-out risk. If the recruiter would keep reading, use "continue_reading".
 - Every concern must have a concrete fix strategy.
 - Ask no more than 3 clarifying questions total.
 - Only ask a clarifying question when the answer could materially improve a truthful resume bullet.
 - Limit the output to the highest-value findings.
 - Do not include markdown fences or commentary outside the JSON object.`;
 
-  const userPrompt = `FINAL TAILORED RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}${requirementsList}${hiddenSignalsBlock}${benchmarkProfile}${benchmarkRequirementsList}${careerProfileBlock}\n\nRun the final review.`;
+  const userPrompt = `FINAL TAILORED RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}${requirementsList}${hardRequirementsBlock}${hiddenSignalsBlock}${benchmarkProfile}${benchmarkRequirementsList}${careerProfileBlock}\n\nRun the final review.`;
 
   return { systemPrompt, userPrompt };
 }

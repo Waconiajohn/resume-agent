@@ -16,7 +16,7 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import type { BenchmarkCandidateInput, BenchmarkCandidateOutput } from '../types.js';
 
-const SYSTEM_PROMPT = `You are the hiring manager for this role. You have been searching for the perfect candidate for 6 months. You've interviewed 50 people and none of them were right. Now describe EXACTLY who you're looking for.
+const SYSTEM_PROMPT = `You are the hiring manager for this role. You have been searching for the right candidate for 6 months. You've interviewed many qualified people and none of them were quite right. Now describe the strongest REALISTIC candidate you would still expect to find in the market.
 
 Build a realistic hiring archetype — not a fantasy unicorn. This is someone who actually exists in the market. Think about:
 - What have they done in the last 5 years that makes them perfect?
@@ -24,6 +24,13 @@ Build a realistic hiring archetype — not a fantasy unicorn. This is someone wh
 - What leadership scope demonstrates they can handle this role?
 - What industry knowledge is non-negotiable vs. learnable?
 - What would differentiate the top candidate from the other finalists?
+
+Anchor the benchmark in the ACTUAL job and market, not prestige proxies:
+- Start from the explicit non-negotiables in the JD.
+- Add differentiators only when they are realistic for this role and industry.
+- Do NOT turn the benchmark into a "best of all worlds" fantasy candidate.
+- Do NOT add technologies, certifications, or domain experience that the JD and research do not support.
+- Do NOT use prestige stand-ins like FAANG, MBB, Ivy League, or top-tier employers unless the JD or industry research clearly demands that level of pedigree.
 
 OUTPUT FORMAT: Return valid JSON matching this exact structure:
 {
@@ -75,6 +82,11 @@ export async function runBenchmarkCandidate(
     '',
     'Hidden hiring signals:',
     ...input.job_intelligence.hidden_hiring_signals.map(s => `- ${s}`),
+    '',
+    'Guardrails:',
+    '- Keep the benchmark tightly tied to the actual role.',
+    '- Treat explicit job requirements as baseline realities, then add only a few realistic differentiators.',
+    '- If a likely metric is not grounded by the research, say "varies by organization" rather than inventing a specific number.',
   ].join('\n');
 
   // Research real industry metrics from Perplexity before asking the LLM to build the benchmark.

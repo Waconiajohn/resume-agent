@@ -53,40 +53,56 @@ export async function runExecutiveTone(
 
   const userMessage = `Audit this resume for executive tone:\n\n${resumeText}`;
 
-  // Attempt 1
-  const response = await llm.chat({
-    model: MODEL_MID,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: 4096,
-    signal,
-  });
+  try {
+    const response = await llm.chat({
+      model: MODEL_MID,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
+      max_tokens: 4096,
+      signal,
+    });
 
-  const parsed = repairJSON<ExecutiveToneOutput>(response.text);
-  if (parsed) return parsed;
+    const parsed = repairJSON<ExecutiveToneOutput>(response.text);
+    if (parsed) return parsed;
 
-  // Attempt 2: retry with explicit JSON-only instruction
-  logger.warn(
-    { rawSnippet: response.text.substring(0, 500) },
-    'Executive Tone: first attempt unparseable, retrying with stricter prompt',
-  );
+    logger.warn(
+      { rawSnippet: response.text.substring(0, 500) },
+      'Executive Tone: first attempt unparseable, retrying with stricter prompt',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Executive Tone: first attempt failed, using deterministic fallback',
+    );
+    return buildDeterministicExecutiveToneFallback(input);
+  }
 
-  const retry = await llm.chat({
-    model: MODEL_MID,
-    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
-    messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
-    max_tokens: 4096,
-    signal,
-  });
+  try {
+    const retry = await llm.chat({
+      model: MODEL_MID,
+      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      max_tokens: 4096,
+      signal,
+    });
 
-  const retryParsed = repairJSON<ExecutiveToneOutput>(retry.text);
-  if (retryParsed) return retryParsed;
+    const retryParsed = repairJSON<ExecutiveToneOutput>(retry.text);
+    if (retryParsed) return retryParsed;
 
-  logger.error(
-    { rawSnippet: retry.text.substring(0, 500) },
-    'Executive Tone: both attempts returned unparseable response',
-  );
-  throw new Error('Executive Tone agent returned unparseable response after 2 attempts');
+    logger.error(
+      { rawSnippet: retry.text.substring(0, 500) },
+      'Executive Tone: retry returned unparseable response, using deterministic fallback',
+    );
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Executive Tone: retry failed, using deterministic fallback',
+    );
+  }
+
+  return buildDeterministicExecutiveToneFallback(input);
 }
 
 function formatDraftForTone(input: ExecutiveToneInput): string {
@@ -109,4 +125,96 @@ function formatDraftForTone(input: ExecutiveToneInput): string {
   }
 
   return parts.join('\n');
+}
+
+function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function buildDeterministicExecutiveToneFallback(input: ExecutiveToneInput): ExecutiveToneOutput {
+  const findings: ExecutiveToneOutput['findings'] = [];
+  const bannedPhrasesFound = new Set<string>();
+
+  const inspect = (text: string, section: string) => {
+    const normalized = text.toLowerCase();
+
+    for (const phrase of BANNED_PHRASES) {
+      if (normalized.includes(phrase.toLowerCase())) {
+        bannedPhrasesFound.add(phrase);
+        findings.push({
+          text,
+          section,
+          issue: 'banned_phrase',
+          suggestion: rewriteDeterministically(text, phrase),
+        });
+        return;
+      }
+    }
+
+    if (/\bwas responsible for\b/i.test(text)) {
+      findings.push({
+        text,
+        section,
+        issue: 'passive_voice',
+        suggestion: rewriteDeterministically(text, 'was responsible for'),
+      });
+      return;
+    }
+
+    if (/\b(helped|assisted|supported|worked on)\b/i.test(text)) {
+      findings.push({
+        text,
+        section,
+        issue: 'junior_language',
+        suggestion: rewriteDeterministically(text),
+      });
+    }
+  };
+
+  inspect(input.draft.executive_summary.content, 'executive_summary');
+  input.draft.selected_accomplishments.forEach((item) => inspect(item.content, 'selected_accomplishments'));
+  input.draft.professional_experience.forEach((experience) => {
+    inspect(experience.scope_statement, `${experience.company} scope_statement`);
+    experience.bullets.forEach((bullet) => inspect(bullet.text, `${experience.company} bullet`));
+  });
+
+  const deduped = dedupeToneFindings(findings).slice(0, 20);
+  const toneScore = Math.max(40, 100 - (deduped.length * 3));
+
+  return {
+    findings: deduped,
+    tone_score: toneScore,
+    banned_phrases_found: [...bannedPhrasesFound],
+  };
+}
+
+function rewriteDeterministically(text: string, trigger?: string): string {
+  let rewritten = text
+    .replace(/\bwas responsible for\b/gi, 'Led')
+    .replace(/\bresponsible for\b/gi, 'Led')
+    .replace(/\bhelped\b/gi, 'Advanced')
+    .replace(/\bassisted\b/gi, 'Supported')
+    .replace(/\bsupported\b/gi, 'Enabled')
+    .replace(/\bworked on\b/gi, 'Executed');
+
+  if (trigger) {
+    const escaped = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    rewritten = rewritten.replace(new RegExp(escaped, 'ig'), 'Led');
+  }
+
+  return rewritten;
+}
+
+function dedupeToneFindings(findings: ExecutiveToneOutput['findings']): ExecutiveToneOutput['findings'] {
+  const seen = new Set<string>();
+  const result: ExecutiveToneOutput['findings'] = [];
+  for (const finding of findings) {
+    const key = `${finding.section}::${finding.issue}::${finding.text}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(finding);
+  }
+  return result;
 }
