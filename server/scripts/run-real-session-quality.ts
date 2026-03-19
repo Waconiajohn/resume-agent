@@ -218,8 +218,12 @@ async function runRealSessionQa() {
     const parsedReview = finalReviewResultSchema.parse(repaired);
     const rawHardRisks = extractHardRequirementRisksFromGapAnalysis(pipelineState.gap_analysis);
     const materialJobFitRisks = extractMaterialJobFitRisksFromGapAnalysis(pipelineState.gap_analysis);
-    const effectiveHardRisks = getEffectiveHardRequirementRisks(parsedReview, rawHardRisks);
-    const finalReview = stabilizeFinalReviewResult(parsedReview, { hardRequirementRisks: rawHardRisks, materialJobFitRisks });
+    const effectiveHardRisks = getEffectiveHardRequirementRisks(parsedReview, rawHardRisks, finalResumeText);
+    const finalReview = stabilizeFinalReviewResult(parsedReview, {
+      hardRequirementRisks: rawHardRisks,
+      materialJobFitRisks,
+      resumeText: finalResumeText,
+    });
 
     const artifact = {
       label,

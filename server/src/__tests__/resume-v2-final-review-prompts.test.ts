@@ -626,6 +626,51 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.summary).not.toMatch(/screening risk|not clearly evidenced/i);
   });
 
+  it('treats alternative degree branches as satisfied when one valid field is explicit in the draft', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong operations leadership and execution background.',
+        top_signals_seen: [
+          {
+            signal: '18 years of progressive operations/manufacturing leadership',
+            why_it_matters: 'Shows the required leadership tenure.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong operations executive with meaningful cost savings and multi-site leadership.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      hardRequirementRisks: [
+        "Bachelor's degree in engineering or operations management",
+      ],
+      resumeText: 'EDUCATION\nM.S. Industrial Engineering, Texas A&M University\nB.S. Mechanical Engineering, Ohio State University',
+    });
+
+    expect(stabilized.concerns.some((concern) => concern.id === 'hard_requirement_risk')).toBe(false);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes("Bachelor's degree"))).toBe(false);
+    expect(stabilized.hiring_manager_verdict.summary).not.toMatch(/screening risk|not clearly evidenced/i);
+  });
+
   it('extracts material must-have job-fit risks from partial threshold gaps without treating them as hard credentials', () => {
     const risks = extractMaterialJobFitRisksFromGapAnalysis({
       requirements: [

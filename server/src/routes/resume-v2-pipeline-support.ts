@@ -1081,7 +1081,7 @@ function getDegreeFieldEvidencePatterns(requirement: string): RegExp[] {
   if (/\bmarketing\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('marketing'));
   if (/\bbusiness\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('business'));
 
-  if (patterns.length === 0 && /\bengineering|engineer\b/.test(requirement)) {
+  if (/\bengineering|engineer\b/.test(requirement)) {
     patterns.push(buildDegreeFieldPattern('engineering'));
   }
 
