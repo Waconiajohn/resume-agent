@@ -2086,10 +2086,10 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
     const TONE_OUTPUT: ExecutiveToneOutput = {
       findings: [
         {
-          text: 'was responsible for managing the team',
-          section: 'professional_experience',
-          issue: 'passive_voice',
-          suggestion: 'Orchestrated and directed a 40-person engineering organization',
+          text: 'Engineering leader who has scaled cloud platforms from startup to enterprise...',
+          section: 'executive_summary',
+          issue: 'generic_filler',
+          suggestion: 'Cloud infrastructure executive who scaled platforms from startup to enterprise.',
         },
       ],
       tone_score: 88,
@@ -2163,6 +2163,36 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(result.findings.some((finding) => finding.issue === 'generic_filler')).toBe(true);
       expect(result.tone_score).toBeLessThan(96);
+    });
+
+    it('recovers parseable JSON from provider failed_generation and drops findings that are not verbatim in the draft', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error(
+        'groq API error 400: {"error":{"message":"Failed to generate JSON.","type":"invalid_request_error","code":"json_validate_failed","failed_generation":"{\\n  \\"findings\\": [\\n    {\\n      \\"text\\": \\"Engineering leader who has scaled cloud platforms from startup to enterprise...\\",\\n      \\"section\\": \\"executive_summary\\",\\n      \\"issue\\": \\"generic_filler\\",\\n      \\"suggestion\\": \\"Cloud infrastructure executive who scaled platforms from startup to enterprise.\\"\\n    },\\n    {\\n      \\"text\\": \\"\\\\\\"Proven track record\\\\\\" is not present but could be improved\\",\\n      \\"section\\": \\"SUMMARY\\",\\n      \\"issue\\": \\"generic_filler\\",\\n      \\"suggestion\\": \\"Use stronger language\\"\\n    }\\n  ],\\n  \\"tone_score\\": 88,\\n  \\"banned_phrases_found\\": []\\n}"}}',
+      ));
+      mockRepairJSON.mockReturnValueOnce({
+        findings: [
+          {
+            text: 'Engineering leader who has scaled cloud platforms from startup to enterprise...',
+            section: 'executive_summary',
+            issue: 'generic_filler',
+            suggestion: 'Cloud infrastructure executive who scaled platforms from startup to enterprise.',
+          },
+          {
+            text: '"Proven track record" is not present but could be improved',
+            section: 'SUMMARY',
+            issue: 'generic_filler',
+            suggestion: 'Use stronger language',
+          },
+        ],
+        tone_score: 88,
+        banned_phrases_found: [],
+      });
+
+      const result = await runExecutiveTone(input);
+
+      expect(result.findings).toHaveLength(1);
+      expect(result.findings[0]?.text).toBe('Engineering leader who has scaled cloud platforms from startup to enterprise...');
+      expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
     it('forwards AbortSignal to llm.chat', async () => {

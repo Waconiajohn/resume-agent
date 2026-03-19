@@ -88,7 +88,7 @@ Return JSON only.
       signal,
     });
 
-    const parsed = repairJSON<ExecutiveToneOutput>(response.text);
+    const parsed = normalizeExecutiveToneOutput(repairJSON<ExecutiveToneOutput>(response.text), resumeText);
     if (parsed) return parsed;
 
     logger.warn(
@@ -97,6 +97,14 @@ Return JSON only.
     );
   } catch (error) {
     if (shouldRethrowForAbort(error, signal)) throw error;
+    const salvaged = tryRecoverExecutiveToneFromProviderError(error, resumeText);
+    if (salvaged) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Executive Tone: recovered parseable JSON from provider failed_generation payload',
+      );
+      return salvaged;
+    }
     logger.warn(
       { error: error instanceof Error ? error.message : String(error) },
       'Executive Tone: first attempt failed, using deterministic fallback',
@@ -114,7 +122,7 @@ Return JSON only.
       signal,
     });
 
-    const retryParsed = repairJSON<ExecutiveToneOutput>(retry.text);
+    const retryParsed = normalizeExecutiveToneOutput(repairJSON<ExecutiveToneOutput>(retry.text), resumeText);
     if (retryParsed) return retryParsed;
 
     logger.error(
@@ -123,6 +131,14 @@ Return JSON only.
     );
   } catch (error) {
     if (shouldRethrowForAbort(error, signal)) throw error;
+    const salvaged = tryRecoverExecutiveToneFromProviderError(error, resumeText);
+    if (salvaged) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Executive Tone: recovered parseable JSON from retry failed_generation payload',
+      );
+      return salvaged;
+    }
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },
       'Executive Tone: retry failed, using deterministic fallback',
@@ -158,6 +174,76 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
   if (error instanceof DOMException && error.name === 'AbortError') return true;
   return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function tryRecoverExecutiveToneFromProviderError(
+  error: unknown,
+  resumeText: string,
+): ExecutiveToneOutput | null {
+  const failedGeneration = extractFailedGeneration(error);
+  if (!failedGeneration) return null;
+
+  const repaired = repairJSON<ExecutiveToneOutput>(failedGeneration);
+  return normalizeExecutiveToneOutput(repaired, resumeText);
+}
+
+function extractFailedGeneration(error: unknown): string | null {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = message.match(/"failed_generation":"((?:\\.|[^"])*)"/);
+  if (!match?.[1]) return null;
+
+  try {
+    return JSON.parse(`"${match[1]}"`);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeExecutiveToneOutput(
+  parsed: ExecutiveToneOutput | null,
+  resumeText: string,
+): ExecutiveToneOutput | null {
+  if (!parsed) return null;
+
+  const findings = Array.isArray(parsed.findings)
+    ? dedupeToneFindings(parsed.findings.filter((finding) => isValidExecutiveToneFinding(finding, resumeText))).slice(0, 5)
+    : [];
+  const bannedPhrasesFound = Array.isArray(parsed.banned_phrases_found)
+    ? dedupeStrings(parsed.banned_phrases_found.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean))
+    : [];
+
+  const toneScore = Number.isFinite(parsed.tone_score)
+    ? Math.max(40, Math.min(100, parsed.tone_score))
+    : Math.max(40, 96 - (findings.length * 4));
+
+  if (findings.length === 0 && bannedPhrasesFound.length === 0 && !Number.isFinite(parsed.tone_score)) {
+    return null;
+  }
+
+  return {
+    findings,
+    tone_score: toneScore,
+    banned_phrases_found: bannedPhrasesFound,
+  };
+}
+
+function isValidExecutiveToneFinding(
+  finding: unknown,
+  resumeText: string,
+): finding is ExecutiveToneOutput['findings'][number] {
+  if (!finding || typeof finding !== 'object') return false;
+  const entry = finding as Record<string, unknown>;
+  const text = typeof entry.text === 'string' ? entry.text.trim() : '';
+  const section = typeof entry.section === 'string' ? entry.section.trim() : '';
+  const issue = typeof entry.issue === 'string' ? entry.issue.trim() : '';
+  const suggestion = typeof entry.suggestion === 'string' ? entry.suggestion.trim() : '';
+
+  if (!text || !section || !suggestion) return false;
+  if (!['junior_language', 'ai_generated', 'generic_filler', 'passive_voice', 'banned_phrase'].includes(issue)) {
+    return false;
+  }
+
+  return resumeText.includes(text);
 }
 
 function buildDeterministicExecutiveToneFallback(input: ExecutiveToneInput): ExecutiveToneOutput {
@@ -263,6 +349,10 @@ function dedupeToneFindings(findings: ExecutiveToneOutput['findings']): Executiv
     result.push(finding);
   }
   return result;
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
 }
 
 const GENERIC_FILLER_PATTERNS = [
