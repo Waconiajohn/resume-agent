@@ -444,6 +444,80 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.raw_text).toBe(input.resume_text);
     });
 
+    it('salvages specific degree majors from the source resume when model output is too generic', async () => {
+      const detailedEducationInput: CandidateIntelligenceInput = {
+        resume_text: [
+          'Luke Bibler',
+          'Senior Drilling Engineer',
+          'EDUCATION | TECHNOLOGY',
+          'Additional operational context and formatting noise',
+          'Bachelor of Science (B.S.) degree in Mechanical Engineering & Math, Southern Methodist University Technology',
+        ].join('\n'),
+      };
+      const genericEducationOutput: CandidateIntelligenceOutput = {
+        ...CANDIDATE_OUTPUT,
+        contact: {
+          ...CANDIDATE_OUTPUT.contact,
+          name: 'Luke Bibler',
+        },
+        education: [
+          {
+            degree: 'Bachelor of Science (B.S.)',
+            institution: 'Southern Methodist University',
+            year: undefined,
+          },
+        ],
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(genericEducationOutput);
+
+      const result = await runCandidateIntelligence(detailedEducationInput);
+
+      expect(result.education[0]?.degree).toContain('Mechanical Engineering');
+      expect(result.education[0]?.institution).toBe('Southern Methodist University');
+    });
+
+    it('deterministic fallback preserves degree majors from education lines', async () => {
+      const detailedEducationInput: CandidateIntelligenceInput = {
+        resume_text: [
+          'Luke Bibler',
+          'Senior Drilling Engineer',
+          'Reduced BHA failures by 20% across multi-well pads',
+          'Bachelor of Science (B.S.) degree in Mechanical Engineering & Math, Southern Methodist University Technology',
+        ].join('\n'),
+      };
+      mockLlmChat
+        .mockResolvedValueOnce({ text: 'bad1' })
+        .mockResolvedValueOnce({ text: 'bad2' });
+      mockRepairJSON.mockReturnValue(null);
+
+      const result = await runCandidateIntelligence(detailedEducationInput);
+
+      expect(result.education[0]?.degree).toContain('Mechanical Engineering');
+      expect(result.education[0]?.institution).toBe('Southern Methodist University');
+    });
+
+    it('prefers clean degree matches over oversized noisy education blobs', async () => {
+      const detailedEducationInput: CandidateIntelligenceInput = {
+        resume_text: [
+          'Luke Bibler',
+          'Senior Drilling Engineer',
+          'Managed a $350 million annual drilling budget',
+          'Bachelor of Science (B.S.) degree in Mechanical Engineering & Math, Southern Methodist University Technology',
+          'OpenWells; PowerBI; Corva; Mobilize',
+        ].join(' '),
+      };
+      mockLlmChat
+        .mockResolvedValueOnce({ text: 'bad1' })
+        .mockResolvedValueOnce({ text: 'bad2' });
+      mockRepairJSON.mockReturnValue(null);
+
+      const result = await runCandidateIntelligence(detailedEducationInput);
+
+      expect(result.education[0]?.degree).toBe('Bachelor of Science (B.S.) degree in Mechanical Engineering & Math');
+      expect(result.education[0]?.institution).toBe('Southern Methodist University');
+    });
+
     it('uses MODEL_MID', async () => {
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
       mockRepairJSON.mockReturnValueOnce(CANDIDATE_OUTPUT);
@@ -1244,6 +1318,40 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       expect(result.executive_summary.content).toContain('12 years in cloud infrastructure/architecture roles');
       expect(result.executive_summary.content).toContain('Operational excellence leader driving manufacturing scale and transformation.');
+    });
+
+    it('preserves detailed candidate education when the model output downgrades it to a generic degree', async () => {
+      const parsedDraftWithGenericEducation: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        education: [
+          {
+            degree: 'Bachelor of Science (B.S.)',
+            institution: 'Southern Methodist University',
+            year: '',
+          },
+        ],
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(parsedDraftWithGenericEducation);
+
+      const detailedEducationInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          education: [
+            {
+              degree: 'Bachelor of Science (B.S.) degree in Mechanical Engineering & Math',
+              institution: 'Southern Methodist University',
+              year: '',
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(detailedEducationInput);
+
+      expect(result.education[0]?.degree).toBe('Bachelor of Science (B.S.) degree in Mechanical Engineering & Math');
+      expect(result.education[0]?.institution).toBe('Southern Methodist University');
     });
 
     it('does not treat descriptor-only wording as sufficient when the years number is still missing', async () => {

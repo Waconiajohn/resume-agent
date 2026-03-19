@@ -211,6 +211,8 @@ export async function runResumeWriter(
     };
   }
 
+  parsed.education = preserveCandidateEducationDetail(parsed.education, input.candidate.education ?? []);
+
   return parsed;
 }
 
@@ -468,6 +470,85 @@ function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOut
     education: input.candidate.education ?? [],
     certifications: input.candidate.certifications ?? [],
   };
+}
+
+function preserveCandidateEducationDetail(
+  draftEducation: ResumeDraftOutput['education'],
+  candidateEducation: Array<{ degree: string; institution: string; year?: string }>,
+): ResumeDraftOutput['education'] {
+  if (candidateEducation.length === 0) return draftEducation;
+  if (draftEducation.length === 0) return candidateEducation.map((entry) => ({ ...entry }));
+
+  const merged = draftEducation.map((draftEntry) => {
+    const fallback = candidateEducation.find((candidateEntry) => {
+      const sameInstitution = normalizeEducationValue(candidateEntry.institution) === normalizeEducationValue(draftEntry.institution);
+      const sameLevel = inferEducationDegreeLevel(candidateEntry.degree) === inferEducationDegreeLevel(draftEntry.degree);
+      return sameInstitution || Boolean(inferEducationDegreeLevel(candidateEntry.degree) && sameLevel);
+    });
+
+    if (!fallback) return draftEntry;
+
+    return {
+      degree: isGenericEducationDegree(draftEntry.degree) && !isGenericEducationDegree(fallback.degree)
+        ? fallback.degree
+        : draftEntry.degree || fallback.degree,
+      institution: draftEntry.institution || fallback.institution,
+      year: draftEntry.year || fallback.year || '',
+    };
+  });
+
+  return dedupeEducationEntries(merged);
+}
+
+function normalizeEducationValue(value: string | undefined): string {
+  return (value ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function inferEducationDegreeLevel(value: string | undefined): 'bachelor' | 'master' | 'doctorate' | 'mba' | '' {
+  const normalized = normalizeEducationValue(value);
+  if (/\bmba\b/.test(normalized)) return 'mba';
+  if (/\b(phd|doctorate|doctor)\b/.test(normalized)) return 'doctorate';
+  if (/\b(master|m\.?s\.?|m\.?a\.?)\b/.test(normalized)) return 'master';
+  if (/\b(bachelor|b\.?s\.?|b\.?a\.?)\b/.test(normalized)) return 'bachelor';
+  return '';
+}
+
+function isGenericEducationDegree(value: string | undefined): boolean {
+  const normalized = normalizeEducationValue(value)
+    .replace(/\((?:b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?)\)/g, '')
+    .trim();
+  if (!normalized) return true;
+  return /^(bachelor(?: of science| of arts)?|master(?: of science| of arts)?|b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?|mba|phd|doctorate)(?: degree)?$/i.test(normalized);
+}
+
+function dedupeEducationEntries(
+  entries: ResumeDraftOutput['education'],
+): ResumeDraftOutput['education'] {
+  const deduped: ResumeDraftOutput['education'] = [];
+
+  for (const entry of entries) {
+    const existingIndex = deduped.findIndex((candidate) => {
+      const sameInstitution = normalizeEducationValue(candidate.institution) === normalizeEducationValue(entry.institution);
+      const sameLevel = inferEducationDegreeLevel(candidate.degree) === inferEducationDegreeLevel(entry.degree);
+      return sameInstitution || Boolean(inferEducationDegreeLevel(candidate.degree) && sameLevel);
+    });
+
+    if (existingIndex === -1) {
+      deduped.push(entry);
+      continue;
+    }
+
+    const current = deduped[existingIndex];
+    deduped[existingIndex] = {
+      degree: isGenericEducationDegree(current.degree) && !isGenericEducationDegree(entry.degree)
+        ? entry.degree
+        : current.degree,
+      institution: current.institution || entry.institution,
+      year: current.year || entry.year || '',
+    };
+  }
+
+  return deduped;
 }
 
 function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {

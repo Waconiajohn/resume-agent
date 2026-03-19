@@ -153,6 +153,7 @@ export async function runCandidateIntelligence(
   }
 
   // Preserve full raw text for downstream agents
+  parsed.education = salvageEducationFromResume(parsed.education, input.resume_text);
   parsed.raw_text = input.resume_text;
 
   return parsed;
@@ -181,7 +182,7 @@ function buildDeterministicCandidateIntelligence(
   const technologies = inferTechnologies(lowerText);
   const quantified_outcomes = extractQuantifiedOutcomes(lines);
   const experience = extractExperience(lines);
-  const education = extractEducation(lines);
+  const education = extractEducation(lines, text);
   const certifications = extractCertifications(lines);
   const career_themes = inferCareerThemes(lowerText, technologies);
   const leadership_scope = inferLeadershipScope(lines);
@@ -271,18 +272,19 @@ function extractExperience(lines: string[]): CandidateIntelligenceOutput['experi
   }];
 }
 
-function extractEducation(lines: string[]): CandidateIntelligenceOutput['education'] {
-  return lines
-    .filter((line) => /\b(BS|BA|MS|MBA|MA|PhD|Bachelor|Master|University|College)\b/i.test(line))
-    .slice(0, 4)
-    .map((line) => {
-      const year = line.match(/\b(19|20)\d{2}\b/)?.[0];
-      return {
-        degree: line,
-        institution: line,
-        year,
-      };
-    });
+function extractEducation(
+  lines: string[],
+  fullText = lines.join('\n'),
+): CandidateIntelligenceOutput['education'] {
+  const fromLines = lines
+    .filter((line) => /\b(BS|BA|MS|MBA|MA|PhD|Bachelor|Master|University|College|School|Institute)\b/i.test(line))
+    .slice(0, 8)
+    .map(parseEducationLine)
+    .filter((entry): entry is CandidateIntelligenceOutput['education'][number] => Boolean(entry));
+
+  const fromText = extractEducationFromText(fullText);
+
+  return dedupeEducationEntries([...fromText, ...fromLines]);
 }
 
 function extractCertifications(lines: string[]): string[] {
@@ -375,4 +377,261 @@ function dedupeStrings(values: string[]): string[] {
     result.push(value.trim());
   }
   return result;
+}
+
+function salvageEducationFromResume(
+  existing: CandidateIntelligenceOutput['education'],
+  resumeText: string,
+): CandidateIntelligenceOutput['education'] {
+  const lines = resumeText.replace(/\r/g, '').split('\n').map((line) => line.trim()).filter(Boolean);
+  const extracted = extractEducation(lines, resumeText);
+  if (extracted.length === 0) return existing;
+  if (existing.length === 0) return extracted;
+
+  return dedupeEducationEntries([
+    ...existing.map((entry) => enrichEducationEntry(entry, findEducationFallback(entry, extracted))),
+    ...extracted,
+  ]);
+}
+
+function enrichEducationEntry(
+  current: CandidateIntelligenceOutput['education'][number],
+  fallback?: CandidateIntelligenceOutput['education'][number],
+): CandidateIntelligenceOutput['education'][number] {
+  if (!fallback) return current;
+
+  const currentDegree = current.degree ?? '';
+  const fallbackDegree = fallback.degree ?? '';
+  const currentInstitution = current.institution ?? '';
+  const fallbackInstitution = fallback.institution ?? '';
+
+  const degree = isEducationDegreeTooGeneric(currentDegree) && !isEducationDegreeTooGeneric(fallbackDegree)
+    ? fallbackDegree
+    : currentDegree || fallbackDegree;
+
+  const institution = isEducationInstitutionTooGeneric(currentInstitution) && !isEducationInstitutionTooGeneric(fallbackInstitution)
+    ? fallbackInstitution
+    : currentInstitution || fallbackInstitution;
+
+  return {
+    degree,
+    institution,
+    year: current.year ?? fallback.year,
+  };
+}
+
+function parseEducationLine(
+  rawLine: string,
+): CandidateIntelligenceOutput['education'][number] | null {
+  const line = rawLine
+    .replace(/\s+/g, ' ')
+    .replace(/\bEDUCATION\b\s*(?:\|\s*\w+)?/i, '')
+    .trim()
+    .replace(/^[-*•]\s*/, '');
+
+  if (!line) return null;
+
+  const preciseMatch = extractEducationFromText(line)[0];
+  if (preciseMatch) {
+    return preciseMatch;
+  }
+
+  const year = line.match(/\b(19|20)\d{2}\b/)?.[0];
+  const institutionMatches = Array.from(
+    line.matchAll(/[A-Z][A-Za-z&.\- ]*(?:University|College|School|Institute|Academy)[A-Za-z&.\- ]*/g),
+    (match) => match[0].trim(),
+  ).filter(Boolean);
+  const institution = institutionMatches.at(-1) ?? line;
+
+  let degree = line;
+  if (institutionMatches.length > 0) {
+    degree = line
+      .replace(institution, '')
+      .replace(/[,\-|]+$/g, '')
+      .replace(/\s+,/g, ',')
+      .trim();
+  }
+
+  degree = degree
+    .replace(/\bdegree\b/gi, 'degree')
+    .replace(/\s+,/g, ',')
+    .trim();
+
+  if (!degree && institution) {
+    degree = institution;
+  }
+
+  return {
+    degree: degree || line,
+    institution,
+    year,
+  };
+}
+
+function isEducationDegreeTooGeneric(value: string): boolean {
+  const normalized = value
+    .toLowerCase()
+    .replace(/\((?:b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?)\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized) return true;
+  return /^(bachelor(?: of science| of arts)?|master(?: of science| of arts)?|b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?|mba|phd|doctorate)(?: degree)?$/i.test(normalized);
+}
+
+function isEducationInstitutionTooGeneric(value: string): boolean {
+  const normalized = value.toLowerCase().trim();
+  return !normalized || /\b(bachelor|master|mba|phd|degree|b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?)\b/.test(normalized);
+}
+
+function dedupeEducationEntries(
+  entries: CandidateIntelligenceOutput['education'],
+): CandidateIntelligenceOutput['education'] {
+  const deduped: CandidateIntelligenceOutput['education'] = [];
+
+  for (const entry of entries) {
+    const normalizedInstitution = (entry.institution ?? '').toLowerCase().trim();
+    const normalizedDegree = (entry.degree ?? '').toLowerCase().trim();
+    const existingIndex = deduped.findIndex((candidate) => {
+      const candidateInstitution = (candidate.institution ?? '').toLowerCase().trim();
+      const candidateDegree = (candidate.degree ?? '').toLowerCase().trim();
+      const entryLevel = inferDegreeLevel(entry.degree ?? '');
+      const candidateLevel = inferDegreeLevel(candidate.degree ?? '');
+      return (
+        (normalizedInstitution && normalizedInstitution === candidateInstitution)
+        || (normalizedDegree && normalizedDegree === candidateDegree)
+        || Boolean(entryLevel && candidateLevel && entryLevel === candidateLevel)
+      );
+    });
+
+    if (existingIndex === -1) {
+      deduped.push(entry);
+      continue;
+    }
+
+    deduped[existingIndex] = pickPreferredEducationEntry(deduped[existingIndex], entry);
+  }
+
+  return deduped;
+}
+
+function findEducationFallback(
+  current: CandidateIntelligenceOutput['education'][number],
+  extracted: CandidateIntelligenceOutput['education'],
+): CandidateIntelligenceOutput['education'][number] | undefined {
+  const currentInstitution = (current.institution ?? '').toLowerCase().trim();
+  const currentDegree = (current.degree ?? '').toLowerCase().trim();
+  const currentLevel = inferDegreeLevel(current.degree ?? '');
+
+  return extracted.find((entry) => {
+    const entryInstitution = (entry.institution ?? '').toLowerCase().trim();
+    const entryDegree = (entry.degree ?? '').toLowerCase().trim();
+    const entryLevel = inferDegreeLevel(entry.degree ?? '');
+
+    if (currentInstitution && entryInstitution && currentInstitution === entryInstitution) {
+      return true;
+    }
+
+    if (currentDegree && entryDegree && currentDegree === entryDegree) {
+      return true;
+    }
+
+    return Boolean(currentLevel && entryLevel && currentLevel === entryLevel);
+  });
+}
+
+function inferDegreeLevel(value: string): 'bachelor' | 'master' | 'doctorate' | 'mba' | '' {
+  const normalized = value.toLowerCase();
+  if (/\bmba\b/.test(normalized)) return 'mba';
+  if (/\b(phd|doctorate|doctor)\b/.test(normalized)) return 'doctorate';
+  if (/\b(master|m\.?s\.?|m\.?a\.?)\b/.test(normalized)) return 'master';
+  if (/\b(bachelor|b\.?s\.?|b\.?a\.?)\b/.test(normalized)) return 'bachelor';
+  return '';
+}
+
+function pickPreferredEducationEntry(
+  left: CandidateIntelligenceOutput['education'][number],
+  right: CandidateIntelligenceOutput['education'][number],
+): CandidateIntelligenceOutput['education'][number] {
+  const enrichedLeft = enrichEducationEntry(left, right);
+  const enrichedRight = enrichEducationEntry(right, left);
+
+  return scoreEducationEntry(enrichedRight) > scoreEducationEntry(enrichedLeft)
+    ? enrichedRight
+    : enrichedLeft;
+}
+
+function scoreEducationEntry(entry: CandidateIntelligenceOutput['education'][number]): number {
+  const degree = entry.degree ?? '';
+  const institution = entry.institution ?? '';
+  let score = 0;
+
+  if (looksLikeNoisyEducationText(degree)) score -= 8;
+  if (looksLikeNoisyEducationText(institution)) score -= 4;
+  if (!isEducationDegreeTooGeneric(degree)) score += 4;
+  if (/\b(in|major|concentration|specialization)\b/i.test(degree)) score += 3;
+  if (/\b(engineering|science|business|math|finance|marketing|operations|computer)\b/i.test(degree)) score += 2;
+  if (!isEducationInstitutionTooGeneric(institution)) score += 2;
+  if (entry.year) score += 1;
+  if (degree.length > 24 && degree.length < 120) score += 1;
+
+  return score;
+}
+
+function extractEducationFromText(text: string): CandidateIntelligenceOutput['education'] {
+  const normalized = text.replace(/\r/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
+
+  const degreePrefix = String.raw`\b(?:Bachelor|Master|Doctor(?:ate)?|Associate|MBA|PhD|B\.?\s*S\.?|B\.?\s*A\.?|M\.?\s*S\.?|M\.?\s*A\.?)\b`;
+  const pattern = new RegExp(
+    `${degreePrefix}[^,;|\\n]{0,140}?(?:\\s+degree)?\\s*,?\\s*(?:from\\s+)?([A-Z][A-Za-z&.\\- ]+(?:University|College|School|Institute|Academy)(?:\\s+(?:of|at|and|the|&|[A-Z][A-Za-z&.\\-]+)){0,6})\\b`,
+    'gi',
+  );
+  const matches = Array.from(normalized.matchAll(pattern));
+  const entries: CandidateIntelligenceOutput['education'] = [];
+
+  for (const match of matches) {
+    const degree = cleanEducationDegree(extractDegreePortion(match[0] ?? '', match[1] ?? ''));
+    const institution = cleanEducationInstitution(match[1] ?? '');
+    const trailingSlice = normalized.slice(match.index ?? 0, (match.index ?? 0) + (match[0]?.length ?? 0) + 12);
+    const year = trailingSlice.match(/\b(19|20)\d{2}\b/)?.[0];
+
+    if (!degree || !institution) continue;
+    entries.push({ degree, institution, year });
+  }
+
+  return dedupeEducationEntries(entries);
+}
+
+function extractDegreePortion(matchText: string, institution: string): string {
+  return matchText.replace(institution, '').replace(/[,\-|]+$/g, '').trim();
+}
+
+function cleanEducationDegree(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/\s+,/g, ',')
+    .replace(/(?:\s*\|\s*[A-Z][A-Za-z ]+)+$/g, '')
+    .replace(/[,\-|]+$/g, '')
+    .trim();
+}
+
+function cleanEducationInstitution(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/\s+,/g, ',')
+    .replace(/\b(?:Technology|Skills|Certifications|Experience|Professional Experience|Summary)\b.*$/i, '')
+    .replace(/[,\-|]+$/g, '')
+    .trim();
+}
+
+function looksLikeNoisyEducationText(value: string): boolean {
+  const normalized = value.trim();
+  if (!normalized) return false;
+  return (
+    normalized.length > 140
+    || /@/.test(normalized)
+    || /\(\d{3}\)|\d{3}[-.)\s]\d{3}[-.\s]\d{4}/.test(normalized)
+    || /[•]/.test(normalized)
+    || /\b(?:managed|drilled|reduced|improved|implemented|developed|supervised)\b/i.test(normalized)
+  );
 }

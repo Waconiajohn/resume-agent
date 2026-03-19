@@ -956,7 +956,10 @@ function filterContradictedHardRequirementRisks(
     resumeText ?? '',
   ].join(' \n ');
 
-  return risks.filter((risk) => !isYearsThresholdContradictedByEvidence(risk, signalCorpus));
+  return risks.filter((risk) => !(
+    isYearsThresholdContradictedByEvidence(risk, signalCorpus)
+    || isCredentialRequirementContradictedByEvidence(risk, signalCorpus)
+  ));
 }
 
 function filterContradictedMaterialJobFitRisks(
@@ -1020,6 +1023,77 @@ function isMaterialRequirementContradictedByEvidence(
   }
 
   return isDollarThresholdContradictedByEvidence(risk, signalCorpus);
+}
+
+function isCredentialRequirementContradictedByEvidence(
+  risk: string,
+  signalCorpus: string,
+): boolean {
+  const normalizedRisk = normalizeReviewText(risk);
+  const normalizedCorpus = normalizeReviewText(signalCorpus);
+
+  if (/\b(certification|certified|license|licensed|licensure)\b/.test(normalizedRisk)) {
+    const credentialKeywords = normalizedRisk
+      .replace(/\b(required|required preferred|preferred|or related field|foreign equivalent)\b/g, ' ')
+      .split(/\s+/)
+      .filter((token) => token.length > 3 && !['certification', 'certified', 'license', 'licensed', 'licensure'].includes(token));
+
+    return credentialKeywords.some((token) => normalizedCorpus.includes(token));
+  }
+
+  if (!/\b(bachelor|master|mba|phd|doctorate|degree|foreign equivalent)\b/.test(normalizedRisk)) {
+    return false;
+  }
+
+  const levelPattern = getDegreeLevelEvidencePattern(normalizedRisk);
+  if (!levelPattern.test(signalCorpus)) {
+    return false;
+  }
+
+  const fieldPatterns = getDegreeFieldEvidencePatterns(normalizedRisk);
+  if (fieldPatterns.length === 0) {
+    return true;
+  }
+
+  return fieldPatterns.some((pattern) => pattern.test(signalCorpus));
+}
+
+function getDegreeLevelEvidencePattern(requirement: string): RegExp {
+  if (/\b(phd|doctorate|doctor)\b/.test(requirement)) {
+    return /\b(phd|doctorate|doctor)\b/i;
+  }
+
+  if (/\b(master|ms|ma|mba)\b/.test(requirement)) {
+    return /\b(master|m\.?\s*s\.?|m\.?\s*a\.?|mba|phd|doctorate|doctor)\b/i;
+  }
+
+  return /\b(bachelor|b\.?\s*s\.?|b\.?\s*a\.?|beng|bsc|master|m\.?\s*s\.?|m\.?\s*a\.?|mba|phd|doctorate|doctor)\b/i;
+}
+
+function getDegreeFieldEvidencePatterns(requirement: string): RegExp[] {
+  const patterns: RegExp[] = [];
+
+  if (/\bmechanical engineering\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('mechanical engineering'));
+  if (/\bchemical engineering\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('chemical engineering'));
+  if (/\bcivil engineering\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('civil engineering'));
+  if (/\bpetroleum engineering\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('petroleum engineering'));
+  if (/\boperations management\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('operations management'));
+  if (/\bmarketing\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('marketing'));
+  if (/\bbusiness\b/.test(requirement)) patterns.push(buildDegreeFieldPattern('business'));
+
+  if (patterns.length === 0 && /\bengineering|engineer\b/.test(requirement)) {
+    patterns.push(buildDegreeFieldPattern('engineering'));
+  }
+
+  return patterns;
+}
+
+function buildDegreeFieldPattern(field: string): RegExp {
+  const escapedField = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(
+    String.raw`\b(?:bachelor|b\.?\s*s\.?|b\.?\s*a\.?|beng|bsc|master|m\.?\s*s\.?|m\.?\s*a\.?|mba|phd|doctorate|doctor)[^.\n]{0,120}\b${escapedField}\b`,
+    'i',
+  );
 }
 
 function isDollarThresholdContradictedByEvidence(
