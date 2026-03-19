@@ -397,14 +397,14 @@ export const finalReviewResultSchema = z.object({
     repositioning_recommendation: z.string(),
   })).default([]),
   concerns: z.array(z.object({
-    id: z.string(),
-    severity: z.enum(['critical', 'moderate', 'minor']),
-    type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']),
+    id: z.string().catch('concern'),
+    severity: z.enum(['critical', 'moderate', 'minor']).catch('moderate'),
+    type: z.enum(['missing_evidence', 'weak_positioning', 'missing_metric', 'unclear_scope', 'benchmark_gap', 'clarity_issue', 'credibility_risk']).catch('missing_evidence'),
     observation: z.string(),
-    why_it_hurts: z.string(),
+    why_it_hurts: z.string().catch('This issue weakens interview odds.'),
     target_section: z.string().optional(),
     related_requirement: z.string().optional(),
-    fix_strategy: z.string(),
+    fix_strategy: z.string().catch('Strengthen the supporting proof before export.'),
     suggested_resume_edit: z.string().optional(),
     requires_candidate_input: z.boolean().default(false),
     clarifying_question: z.string().optional(),
@@ -567,8 +567,13 @@ function areEquivalentHardRequirementRisks(left: string, right: string): boolean
 function isMaterialMustHaveGapRequirement(value: string): boolean {
   const normalized = value.toLowerCase();
   if (isPreferredOnlyRequirement(normalized)) return false;
+  if (isAdministrativeAvailabilityRequirement(normalized)) return false;
   return /\d/.test(normalized)
     || /\b(board|executive presence|p&l|profit and loss|budget|revenue|team|teams|people|organization|portfolio|multi-brand|global|multi-region|dtc|e-?commerce)\b/.test(normalized);
+}
+
+function isAdministrativeAvailabilityRequirement(value: string): boolean {
+  return /\b(travel|willing(?:ness)? to travel|ability to travel|relocat(?:e|ion)|work authorization|authorized to work|visa|sponsorship|commute|on-?site|onsite|hybrid|remote|shift work|weekend availability|overnight)\b/i.test(value);
 }
 
 export function extractMaterialJobFitRisksFromGapAnalysis(gapAnalysis: unknown): string[] {
@@ -593,6 +598,7 @@ export function extractMaterialJobFitRisksFromGapAnalysis(gapAnalysis: unknown):
       .filter((item) => item.importance === 'must_have')
       .filter((item) => item.classification !== 'strong')
       .filter((item) => !isHardRequirementRequirement(item.requirement))
+      .filter((item) => !isAdministrativeAvailabilityRequirement(item.requirement))
       .filter((item) => item.classification === 'missing' || isMaterialMustHaveGapRequirement(item.requirement))
       .map((item) => item.requirement),
   ));
@@ -1019,6 +1025,10 @@ function isMaterialRequirementContradictedByEvidence(
   signalCorpus: string,
 ): boolean {
   if (isYearsThresholdContradictedByEvidence(risk, signalCorpus)) {
+    return true;
+  }
+
+  if (isCredentialRequirementContradictedByEvidence(risk, signalCorpus)) {
     return true;
   }
 

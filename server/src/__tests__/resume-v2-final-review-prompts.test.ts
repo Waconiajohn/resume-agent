@@ -4,6 +4,7 @@ import {
   buildFinalReviewPrompts,
   extractHardRequirementRisksFromGapAnalysis,
   extractMaterialJobFitRisksFromGapAnalysis,
+  finalReviewResultSchema,
   getEffectiveHardRequirementRisks,
   stabilizeFinalReviewResult,
 } from '../routes/resume-v2-pipeline-support.js';
@@ -692,6 +693,65 @@ describe('resume-v2 final review prompts', () => {
     expect(risks).toEqual(['Build and lead a 40+ person marketing organization']);
   });
 
+  it('does not treat travel availability as a resume-based material job-fit risk', () => {
+    const risks = extractMaterialJobFitRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: 'Ability to travel up to 20% of the time',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'missing',
+        },
+      ],
+    });
+
+    expect(risks).toEqual([]);
+  });
+
+  it('drops material degree risks when the drafted resume already shows a valid credential branch', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong operations leadership and scale.',
+        top_signals_seen: [
+          {
+            signal: 'Transformational Operations Leader with 18 years of experience and $175M P&L',
+            why_it_matters: 'Shows the scale expected for the role.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong manufacturing operator with visible scale and financial ownership.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      materialJobFitRisks: [
+        "Bachelor's degree in engineering or operations management",
+      ],
+      resumeText: 'EDUCATION\nM.S. Industrial Engineering, Texas A&M University\nB.S. Mechanical Engineering, Ohio State University',
+    });
+
+    expect(stabilized.concerns.some((concern) => concern.id === 'material_job_fit_risk')).toBe(false);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes("Bachelor's degree"))).toBe(false);
+  });
+
   it('caps final-review optimism when material must-have job-fit risks remain after gap analysis fallback', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
@@ -876,5 +936,44 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toContain('competitive disadvantage');
     expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).not.toContain('screen-out risk');
+  });
+
+  it('fills missing concern explanation fields when the final-review model omits them', () => {
+    const parsed = finalReviewResultSchema.parse({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Promising candidate.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          observation: 'Board-level communication is not explicit.',
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(parsed.concerns[0]?.why_it_hurts).toBe('This issue weakens interview odds.');
+    expect(parsed.concerns[0]?.fix_strategy).toBe('Strengthen the supporting proof before export.');
+    expect(parsed.concerns[0]?.severity).toBe('moderate');
+    expect(parsed.concerns[0]?.type).toBe('missing_evidence');
   });
 });

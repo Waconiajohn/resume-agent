@@ -777,6 +777,122 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.pending_strategies.some((item) => item.requirement === 'Differentiator 6')).toBe(false);
     });
 
+    it('prefers deterministic hard-requirement evidence when the model marks a satisfied degree as missing', async () => {
+      const engineeringDegreeInput: GapAnalysisInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          education: [
+            { degree: 'M.S. Industrial Engineering', institution: 'Texas A&M University', year: '2010' },
+            { degree: 'B.S. Mechanical Engineering', institution: 'Ohio State University', year: '2006' },
+          ],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'Bachelor’s degree in engineering or operations management',
+              importance: 'must_have',
+              evidence_from_jd: 'Required qualification',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+        benchmark: {
+          ...BENCHMARK_OUTPUT,
+          expected_achievements: Array.from({ length: 12 }, (_, index) => ({
+            area: `Achievement ${index + 1}`,
+            description: `Drive result ${index + 1}`,
+            typical_metrics: `${(index + 1) * 10}% improvement`,
+          })),
+          expected_technical_skills: Array.from({ length: 14 }, (_, index) => `Skill ${index + 1}`),
+          expected_industry_knowledge: Array.from({ length: 6 }, (_, index) => `Industry Domain ${index + 1}`),
+          expected_certifications: Array.from({ length: 4 }, (_, index) => `Certification ${index + 1}`),
+          differentiators: Array.from({ length: 6 }, (_, index) => `Differentiator ${index + 1}`),
+        },
+      };
+
+      const modeledOutput: GapAnalysisOutput = {
+        requirements: [
+          {
+            requirement: 'Bachelor’s degree in engineering or operations management',
+            source: 'job_description',
+            category: 'core_competency',
+            score_domain: 'ats',
+            importance: 'must_have',
+            classification: 'missing',
+            evidence: [],
+            source_evidence: 'Required qualification',
+          },
+        ],
+        coverage_score: 0,
+        score_breakdown: {
+          job_description: { total: 1, strong: 0, partial: 0, missing: 1, addressed: 0, coverage_score: 0 },
+          benchmark: { total: 0, strong: 0, partial: 0, missing: 0, addressed: 0, coverage_score: 0 },
+        },
+        strength_summary: 'Model drifted on the degree requirement.',
+        critical_gaps: ['Bachelor’s degree in engineering or operations management'],
+        pending_strategies: [],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(modeledOutput);
+
+      const result = await runGapAnalysis(engineeringDegreeInput);
+      const degreeRequirement = result.requirements.find((item) => item.requirement.includes('engineering or operations management'));
+
+      expect(degreeRequirement?.classification).toBe('strong');
+      expect(result.critical_gaps).not.toContain('Bachelor’s degree in engineering or operations management');
+    });
+
+    it('drops equivalent degree critical gaps when the modeled requirement is already strong', async () => {
+      const modeledOutput: GapAnalysisOutput = {
+        requirements: [
+          {
+            requirement: 'Bachelor’s degree in engineering or operations management; MBA or MS preferred',
+            source: 'job_description',
+            category: 'core_competency',
+            score_domain: 'ats',
+            importance: 'must_have',
+            classification: 'strong',
+            evidence: ['M.S. Industrial Engineering'],
+            source_evidence: 'Required qualification',
+          },
+        ],
+        coverage_score: 100,
+        score_breakdown: {
+          job_description: { total: 1, strong: 1, partial: 0, missing: 0, addressed: 1, coverage_score: 100 },
+          benchmark: { total: 0, strong: 0, partial: 0, missing: 0, addressed: 0, coverage_score: 0 },
+        },
+        strength_summary: 'The candidate clearly satisfies the required degree.',
+        critical_gaps: ['Bachelor’s degree in engineering or operations management'],
+        pending_strategies: [],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(modeledOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.critical_gaps).not.toContain('Bachelor’s degree in engineering or operations management');
+      expect(result.requirements[0]?.classification).toBe('strong');
+    });
+
+    it('ignores malformed pending_strategies payloads instead of crashing', async () => {
+      const malformedPendingStrategiesOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        pending_strategies: { requirement: 'Budget Management' },
+      } as unknown as GapAnalysisOutput;
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(malformedPendingStrategiesOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.pending_strategies).toEqual([]);
+      expect(result.requirements[0]?.requirement).toBe('Cloud Architecture');
+    });
+
     it('promotes missing hard requirements into critical gaps and removes them from coaching strategies', async () => {
       const hardGapOutput: GapAnalysisOutput = {
         requirements: [

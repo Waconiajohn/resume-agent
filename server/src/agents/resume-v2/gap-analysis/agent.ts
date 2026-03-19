@@ -167,7 +167,7 @@ export async function runGapAnalysis(
       return normalizeGapAnalysis(
         shouldBackfillFromDeterministic
           ? mergeWithDeterministicBackfill(parsed, input, fullRequirementSeeds)
-          : parsed,
+          : reconcileModeledHardRequirements(parsed, input),
       );
     }
 
@@ -199,7 +199,7 @@ export async function runGapAnalysis(
       return normalizeGapAnalysis(
         shouldBackfillFromDeterministic
           ? mergeWithDeterministicBackfill(retryParsed, input, fullRequirementSeeds)
-          : retryParsed,
+          : reconcileModeledHardRequirements(retryParsed, input),
       );
     }
 
@@ -405,8 +405,9 @@ function mergeWithDeterministicBackfill(
   const deterministicRequirementsByKey = new Map(
     deterministic.requirements.map((requirement) => [requirementKey(requirement), requirement] as const),
   );
+  const modelPendingStrategies = Array.isArray(output.pending_strategies) ? output.pending_strategies : [];
   const modelPendingStrategiesByKey = new Map(
-    (output.pending_strategies ?? []).map((item) => {
+    modelPendingStrategies.map((item) => {
       const seed = findRequirementSeed(item.requirement, fullRequirementSeeds);
       const key = requirementKey({
         requirement: item.requirement,
@@ -419,9 +420,19 @@ function mergeWithDeterministicBackfill(
   const mergedRequirements = fullRequirementSeeds.map((seed) => {
     const key = requirementKey(seed);
     const modeled = modelRequirementsByKey.get(key);
-    if (modeled) return modeled;
-
     const deterministicRequirement = deterministicRequirementsByKey.get(key);
+    if (modeled) {
+      if (
+        deterministicRequirement
+        && shouldPreferDeterministicRequirement(modeled, deterministicRequirement, seed)
+      ) {
+        return shouldSuppressBackfilledStrategy(deterministicRequirement)
+          ? { ...deterministicRequirement, strategy: undefined }
+          : deterministicRequirement;
+      }
+      return modeled;
+    }
+
     if (!deterministicRequirement) {
       return normalizeRequirement({
         requirement: seed.requirement,
@@ -455,6 +466,40 @@ function mergeWithDeterministicBackfill(
   };
 }
 
+function reconcileModeledHardRequirements(
+  output: GapAnalysisOutput,
+  input: GapAnalysisInput,
+): GapAnalysisOutput {
+  const deterministic = buildDeterministicGapAnalysis(input);
+  const deterministicRequirementsByKey = new Map(
+    deterministic.requirements.map((requirement) => [requirementKey(requirement), requirement] as const),
+  );
+
+  const requirements = output.requirements.map((requirement) => {
+    const normalizedRequirement = normalizeRequirement(requirement);
+    const deterministicRequirement = deterministicRequirementsByKey.get(requirementKey(normalizedRequirement));
+    if (!deterministicRequirement) {
+      return normalizedRequirement;
+    }
+
+    return shouldPreferDeterministicRequirement(
+      normalizedRequirement,
+      deterministicRequirement,
+      {
+        requirement: normalizedRequirement.requirement,
+        source_evidence: normalizedRequirement.source_evidence ?? '',
+      },
+    )
+      ? deterministicRequirement
+      : normalizedRequirement;
+  });
+
+  return {
+    ...output,
+    requirements,
+  };
+}
+
 function findRequirementSeed(
   requirement: string,
   fullRequirementSeeds: CanonicalRequirementSeed[],
@@ -469,6 +514,30 @@ function shouldSuppressBackfilledStrategy(requirement: RequirementGap): boolean 
     && requirement.classification === 'missing';
 }
 
+function shouldPreferDeterministicRequirement(
+  modeled: RequirementGap,
+  deterministic: RequirementGap,
+  seed: Pick<CanonicalRequirementSeed, 'requirement' | 'source_evidence'>,
+): boolean {
+  if (!isHardRequirement(seed.requirement, seed.source_evidence)) {
+    return false;
+  }
+
+  return classificationRank(deterministic.classification) > classificationRank(modeled.classification);
+}
+
+function classificationRank(classification: GapClassification): number {
+  switch (classification) {
+    case 'strong':
+      return 3;
+    case 'partial':
+      return 2;
+    case 'missing':
+    default:
+      return 1;
+  }
+}
+
 function requirementKey(
   requirement: Pick<CanonicalRequirementSeed, 'requirement' | 'source'> | Pick<RequirementGap, 'requirement' | 'source'>,
 ): string {
@@ -477,6 +546,7 @@ function requirementKey(
 
 function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
   const requirements = output.requirements.map(normalizeRequirement);
+  const rawPendingStrategies = Array.isArray(output.pending_strategies) ? output.pending_strategies : [];
   const strongRequirements = requirements
     .filter((requirement) => requirement.classification === 'strong')
     .map((requirement) => requirement.requirement);
@@ -496,7 +566,7 @@ function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
     ...(output.critical_gaps ?? []).filter((gap) => !isRequirementAlreadySatisfiedByStrongMatch(gap, strongRequirements)),
     ...hardGapRequirements,
   ]);
-  const pendingStrategies = (output.pending_strategies ?? []).filter((item) => (
+  const pendingStrategies = rawPendingStrategies.filter((item) => (
     !hardGapSet.has(normalizeForSet(item.requirement))
   ));
 
@@ -917,7 +987,42 @@ function isRequirementAlreadySatisfiedByStrongMatch(
     }
   }
 
+  if (isEquivalentCredentialRequirement(risk, strongRequirements)) {
+    return true;
+  }
+
   return false;
+}
+
+function isEquivalentCredentialRequirement(
+  risk: string,
+  strongRequirements: string[],
+): boolean {
+  const normalizedRisk = canonicalizeCredentialText(risk);
+  if (!normalizedRisk) return false;
+
+  const riskLooksCredentialLike = /\b(bachelor|master|mba|phd|doctorate|degree|engineering|operations management|business|marketing|certification|certified|license|licensed|licensure)\b/.test(normalizedRisk);
+  if (!riskLooksCredentialLike) return false;
+
+  return strongRequirements.some((requirement) => {
+    const normalizedRequirement = canonicalizeCredentialText(requirement);
+    if (!normalizedRequirement) return false;
+    if (normalizedRequirement === normalizedRisk) return true;
+    if (normalizedRequirement.includes(normalizedRisk) || normalizedRisk.includes(normalizedRequirement)) return true;
+
+    const stopTokens = new Set(['bachelor', 'bachelors', 'master', 'masters', 'mba', 'phd', 'doctorate', 'degree', 'higher', 'field', 'fields', 'foreign', 'equivalent', 'other', 'related', 'relevant', 'or', 'and', 'required', 'preferred', 'preference']);
+    const riskTokens = normalizedRisk.split(/\s+/).filter((token) => token.length >= 3 && !stopTokens.has(token));
+    const requirementTokens = normalizedRequirement.split(/\s+/).filter((token) => token.length >= 3 && !stopTokens.has(token));
+
+    if (riskTokens.length === 0 || requirementTokens.length === 0) {
+      return false;
+    }
+
+    const riskSet = new Set(riskTokens);
+    const requirementSet = new Set(requirementTokens);
+    const sharedCount = [...riskSet].filter((token) => requirementSet.has(token)).length;
+    return sharedCount >= Math.min(riskSet.size, requirementSet.size);
+  });
 }
 
 function canonicalizeCredentialText(value: string): string {
@@ -950,12 +1055,13 @@ function matchesDegreeRequirement(
   if (education.length === 0) return false;
 
   const normalizedRequirement = canonicalizeCredentialText(requirement);
-  const requiresBachelors = /\b(bachelor|bs|ba|beng|bsc)\b/.test(normalizedRequirement);
-  const requiresMasters = /\b(master|ms|ma|mba)\b/.test(normalizedRequirement);
+  const requiresBachelors = /\b(bachelor|b\s*s|b\s*a|bs|ba|beng|bsc)\b/.test(normalizedRequirement);
+  const requiresMasters = /\b(master|m\s*s|m\s*a|ms|ma|mba)\b/.test(normalizedRequirement);
   const requiresDoctorate = /\b(phd|doctorate|doctor)\b/.test(normalizedRequirement);
   const requiresEngineering = /\bengineering|engineer\b/.test(normalizedRequirement);
   const requiresBusiness = /\bbusiness|operations management|management\b/.test(normalizedRequirement);
   const requiresMarketing = /\bmarketing\b/.test(normalizedRequirement);
+  const hasAlternativeBranches = /\bor\b/.test(normalizedRequirement);
 
   return education.some((item) => {
     const degreeText = canonicalizeCredentialText(`${item.degree} ${item.institution}`);
@@ -964,12 +1070,23 @@ function matchesDegreeRequirement(
     const levelMatch = requiresDoctorate
       ? /\b(phd|doctorate|doctor)\b/.test(degreeText)
       : requiresMasters
-        ? /\b(master|ms|ma|mba)\b/.test(degreeText)
+        ? /\b(master|m\s*s|m\s*a|ms|ma|mba)\b/.test(degreeText)
         : requiresBachelors
-          ? /\b(bachelor|bs|ba|beng|bsc)\b/.test(degreeText)
+          ? /\b(bachelor|b\s*s|b\s*a|bs|ba|beng|bsc)\b/.test(degreeText)
           : true;
 
     if (!levelMatch) return false;
+
+    const branchChecks = [
+      requiresEngineering ? /\bengineering|engineer\b/.test(degreeText) : null,
+      requiresBusiness ? /\bbusiness|operations management|management|mba\b/.test(degreeText) : null,
+      requiresMarketing ? /\bmarketing\b/.test(degreeText) : null,
+    ].filter((value): value is boolean => value !== null);
+
+    if (branchChecks.length > 1 && hasAlternativeBranches) {
+      return branchChecks.some(Boolean);
+    }
+
     if (requiresEngineering && !/\bengineering|engineer\b/.test(degreeText)) return false;
     if (requiresBusiness && !/\bbusiness|operations management|management|mba\b/.test(degreeText)) return false;
     if (requiresMarketing && !/\bmarketing\b/.test(degreeText)) return false;
