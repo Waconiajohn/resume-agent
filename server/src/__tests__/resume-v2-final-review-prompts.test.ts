@@ -1162,6 +1162,80 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.summary).toContain('Direct proof of Talent development and building high-performing teams is still thinner than it needs to be for this role');
   });
 
+  it('rebuilds improvement_summary from the real concerns instead of keeping generic filler', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '$14.2M in cumulative cost savings',
+            why_it_matters: 'Shows scale and business impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Demonstrated success in talent development and building high-performing teams',
+            why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong manufacturing operations leader with meaningful cost savings.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'material_job_fit_risk',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Must-have role-fit evidence is still thin: Demonstrated success in talent development and building high-performing teams',
+          why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+          target_section: 'Summary or most relevant experience bullets',
+          related_requirement: 'Demonstrated success in talent development and building high-performing teams',
+          fix_strategy: 'Prioritize direct proof for this requirement before treating the draft as final.',
+          requires_candidate_input: true,
+          clarifying_question: 'What is the strongest example from your background that proves this?',
+        },
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'The candidate lacks clear evidence of post-acquisition integration experience.',
+          why_it_hurts: 'This omission may raise concerns about readiness for the role.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Lead post-acquisition operational integration for 2-3 planned acquisitions',
+          fix_strategy: 'Add specific examples or a brief description of any experience related to post-acquisition integration, even if it was not a primary responsibility, to address this gap. Only add sample language that is already directly supported by the resume or by a truthful candidate clarification.',
+          requires_candidate_input: true,
+          clarifying_question: 'Can you describe any acquisition or merger integration work you have done?',
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [
+        'Consider adding a career progression timeline for clarity',
+        'Use clear headings and white space to make the resume easier to read',
+      ],
+    });
+
+    expect(stabilized.improvement_summary).toEqual([
+      'Add direct proof of Demonstrated success in talent development and building high-performing teams.',
+      'Add specific examples or a brief description of any experience related to post-acquisition integration, even if it was not a primary responsibility, to address this gap.',
+    ]);
+  });
+
   it('fills missing concern explanation fields when the final-review model omits them', () => {
     const parsed = finalReviewResultSchema.parse({
       six_second_scan: {

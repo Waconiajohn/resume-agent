@@ -1106,6 +1106,7 @@ export function stabilizeFinalReviewResult(
   }
 
   normalized.hiring_manager_verdict.summary = softenContradictedSummaryClaims(normalized);
+  normalized.improvement_summary = buildImprovementSummaryFromConcerns(normalized);
 
   return normalized;
 }
@@ -1231,6 +1232,96 @@ function removeContradictedYearsConcernLanguage(
   ));
 
   return filtered.length > 0 ? filtered.join(' ') : summary;
+}
+
+function buildImprovementSummaryFromConcerns(result: FinalReviewResult): string[] {
+  const prioritizedConcerns = [...result.concerns]
+    .sort((left, right) => severityRank(left.severity) - severityRank(right.severity));
+
+  const nextSteps: string[] = [];
+  const seen = new Set<string>();
+
+  const add = (value: string | null) => {
+    if (!value) return;
+    const normalized = normalizeReviewText(value);
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    nextSteps.push(value);
+  };
+
+  for (const concern of prioritizedConcerns) {
+    if (concern.type === 'benchmark_gap') continue;
+    add(createImprovementSummaryItemFromConcern(concern));
+    if (nextSteps.length >= 3) break;
+  }
+
+  if (nextSteps.length > 0) {
+    return nextSteps;
+  }
+
+  for (const item of result.improvement_summary) {
+    const cleaned = cleanImprovementSummaryText(item);
+    if (!cleaned || isGenericImprovementSummaryText(cleaned)) continue;
+    add(cleaned);
+    if (nextSteps.length >= 3) break;
+  }
+
+  return nextSteps;
+}
+
+function severityRank(severity: 'critical' | 'moderate' | 'minor'): number {
+  if (severity === 'critical') return 0;
+  if (severity === 'moderate') return 1;
+  return 2;
+}
+
+function createImprovementSummaryItemFromConcern(
+  concern: FinalReviewResult['concerns'][number],
+): string | null {
+  const requirement = cleanImprovementSummaryText(concern.related_requirement ?? '');
+  const fixStrategy = cleanConcernFixStrategy(concern.fix_strategy ?? '');
+
+  if (concern.id === 'material_job_fit_risk' && requirement) {
+    return `Add direct proof of ${requirement}.`;
+  }
+
+  if (fixStrategy && !isGenericImprovementSummaryText(fixStrategy)) {
+    return fixStrategy;
+  }
+
+  if (requirement) {
+    return `Add direct proof of ${requirement}.`;
+  }
+
+  const observation = cleanImprovementSummaryText(concern.observation ?? '');
+  if (!observation) return null;
+  if (/must-have role-fit evidence is still thin:/i.test(observation)) {
+    return `Add direct proof of ${observation.replace(/^must-have role-fit evidence is still thin:\s*/i, '')}.`;
+  }
+
+  return null;
+}
+
+function cleanConcernFixStrategy(value: string): string {
+  const cleaned = cleanImprovementSummaryText(
+    value
+      .replace(/Only add sample language.*$/i, '')
+      .replace(/Prioritize direct proof for this requirement before treating the draft as final\.?/i, '')
+      .trim(),
+  );
+
+  return cleaned;
+}
+
+function cleanImprovementSummaryText(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/\s+\./g, '.')
+    .trim();
+}
+
+function isGenericImprovementSummaryText(value: string): boolean {
+  return /\b(white space|section breaks|clear headings|formatting|reformat|reorganizing|career progression timeline|timeline for clarity|make the resume easier to read|for clarity|more technical metrics|more data points)\b/i.test(value);
 }
 
 function isMaterialRequirementContradictedByEvidence(

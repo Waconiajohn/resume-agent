@@ -641,7 +641,7 @@ function tryRecoverGapAnalysisFromProviderError(
   const failedGeneration = extractFailedGeneration(error);
   if (!failedGeneration) return null;
 
-  const repaired = repairJSON<GapAnalysisOutput>(failedGeneration);
+  const repaired = repairJSON<GapAnalysisOutput>(normalizeFailedGenerationForRepair(failedGeneration));
   if (!repaired) return null;
 
   return normalizeGapAnalysis(
@@ -661,6 +661,13 @@ function extractFailedGeneration(error: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+function normalizeFailedGenerationForRepair(value: string): string {
+  return value
+    .replace(/"([A-Za-z_][A-Za-z0-9_]*)=\s*\[/g, '"$1": [')
+    .replace(/"([A-Za-z_][A-Za-z0-9_]*)=\s*\{/g, '"$1": {')
+    .replace(/"\s*,\s*\n/g, '",\n');
 }
 
 function buildDeterministicGapAnalysis(input: GapAnalysisInput): GapAnalysisOutput {
