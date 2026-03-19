@@ -915,6 +915,16 @@ function sanitizeConcernSuggestedEdit(
     return concern;
   }
 
+  if (/^(none|n\/a|not without)/i.test(suggestedEdit) || /without explicit candidate input/i.test(suggestedEdit)) {
+    return {
+      ...concern,
+      suggested_resume_edit: undefined,
+      requires_candidate_input: true,
+      clarifying_question: concern.clarifying_question
+        ?? 'What truthful example or missing detail would let us strengthen this point without inventing experience?',
+    };
+  }
+
   if (!isSpeculativeSuggestedEdit(concern, suggestedEdit, evidenceCorpus)) {
     return concern;
   }
@@ -932,7 +942,7 @@ function sanitizeConcernSuggestedEdit(
 }
 
 function requirementLooksCredentialBased(concern: FinalReviewResult['concerns'][number]): boolean {
-  return /\b(certification|certified|certificate|license|licensed|licensure|degree|bachelor'?s|master'?s|mba|cpa|pe|pmp)\b/i
+  return /\b(certification|certified|certificate|license|licensed|licensure|degree|bachelor'?s|master'?s|mba|cpa|pmp)\b|\bpe\b(?!-)/i
     .test(`${concern.related_requirement ?? ''} ${concern.observation}`);
 }
 
@@ -949,16 +959,21 @@ function removeUnsupportedCredentialGuidance(text: string): string {
 function sanitizeConcernGuidance(
   concern: FinalReviewResult['concerns'][number],
 ): FinalReviewResult['concerns'][number] {
+  const requirement = cleanImprovementSummaryText(concern.related_requirement ?? '');
   if (requirementLooksCredentialBased(concern)) {
     return concern;
   }
 
-  const fixStrategy = concern.fix_strategy
+  let fixStrategy = concern.fix_strategy
     ? removeUnsupportedCredentialGuidance(concern.fix_strategy)
     : concern.fix_strategy;
   const clarifyingQuestion = concern.clarifying_question
     ? removeUnsupportedCredentialGuidance(concern.clarifying_question)
     : concern.clarifying_question;
+
+  if (fixStrategy && requirement && (concern.id === 'material_job_fit_risk' || isLowSignalFixStrategy(fixStrategy))) {
+    fixStrategy = buildRequirementProofAction(requirement, concern.requires_candidate_input);
+  }
 
   return {
     ...concern,
@@ -1212,6 +1227,7 @@ export function stabilizeFinalReviewResult(
     }
   }
 
+  normalized.concerns = normalized.concerns.map((concern) => sanitizeConcernGuidance(concern));
   normalized.concerns = dedupeNearEquivalentConcerns(normalized.concerns);
   normalized.hiring_manager_verdict.summary = softenContradictedSummaryClaims(normalized);
   normalized.improvement_summary = buildImprovementSummaryFromConcerns(normalized);
@@ -1390,7 +1406,11 @@ function createImprovementSummaryItemFromConcern(
   const fixStrategy = cleanConcernFixStrategy(concern.fix_strategy ?? '', concern.requires_candidate_input);
 
   if (concern.id === 'material_job_fit_risk' && requirement) {
-    return `Add direct proof of ${requirement}.`;
+    return buildRequirementProofAction(requirement, concern.requires_candidate_input);
+  }
+
+  if (fixStrategy && requirement && isLowSignalFixStrategy(fixStrategy)) {
+    return buildRequirementProofAction(requirement, concern.requires_candidate_input);
   }
 
   if (fixStrategy && !isGenericImprovementSummaryText(fixStrategy)) {
@@ -1418,6 +1438,12 @@ function cleanConcernFixStrategy(value: string, requiresCandidateInput: boolean)
       .trim(),
   );
 
+  const lowSignalAction = isLowSignalFixStrategy(cleaned);
+  const requirementMatch = cleaned.match(/\b(?:for|of|showing|highlighting)\s+(.+)$/i);
+  if (lowSignalAction && !requirementMatch) {
+    cleaned = cleaned.replace(/\.$/, '');
+  }
+
   if (
     requiresCandidateInput
     && /^(add|consider adding|highlight)\b/i.test(cleaned)
@@ -1427,6 +1453,43 @@ function cleanConcernFixStrategy(value: string, requiresCandidateInput: boolean)
   }
 
   return cleaned;
+}
+
+function buildRequirementProofAction(requirement: string, requiresCandidateInput: boolean): string {
+  return requiresCandidateInput
+    ? `If true, add one concrete example showing ${requirement}.`
+    : `Add one concrete example showing ${requirement}.`;
+}
+
+function isLowSignalFixStrategy(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (!/^(if true,\s*)?(add|consider adding|highlight|provide)\b/i.test(normalized)) {
+    return false;
+  }
+
+  return [
+    'specific example',
+    'specific examples',
+    'specific detail',
+    'specific details',
+    'specific metric',
+    'specific metrics',
+    'specific context',
+    'specific information',
+    'more detail',
+    'more details',
+    'a statement',
+    'a brief statement',
+    'a brief statement or bullet point',
+    'a brief description',
+    'a bullet point',
+    'a bullet point or statement',
+    'bullet points',
+    'a separate section',
+    'mention',
+    'any relevant experience',
+    'any relevant experience or training',
+  ].some((fragment) => normalized.includes(fragment));
 }
 
 function cleanImprovementSummaryText(value: string): string {
@@ -1608,6 +1671,7 @@ function softenContradictedSummaryClaims(result: FinalReviewResult): string {
 
   const hasRealFitConcern = result.hiring_manager_verdict.rating === 'needs_improvement'
     || result.concerns.some((concern) => concern.severity === 'critical')
+    || result.concerns.some((concern) => concern.id === 'material_job_fit_risk')
     || result.six_second_scan.important_signals_missing.some((item) => /must-have|all requirements|role fit|does not yet prove/i.test(item.why_it_matters));
 
   if (
@@ -1627,17 +1691,28 @@ function softenContradictedSummaryClaims(result: FinalReviewResult): string {
 
   if (
     hasRealFitConcern
-    && !/validated more explicitly|key fit evidence is still incomplete|should be treated as a final interview-ready draft/i.test(summary)
+    && !/validated more explicitly|key fit evidence is still incomplete|should be treated as a final interview-ready draft|clearest remaining proof gap/i.test(summary)
   ) {
-    summary = `${summary} Key role-fit evidence should be validated more explicitly before this is treated as a final interview-ready draft.`;
+    const primaryConcern = result.concerns
+      .filter((concern) => concern.severity !== 'minor')
+      .map((concern) => cleanImprovementSummaryText(concern.related_requirement ?? concern.observation ?? ''))
+      .find(Boolean);
+
+    summary = primaryConcern
+      ? `${summary} The clearest remaining proof gap is ${primaryConcern}.`
+      : `${summary} One important proof gap still needs clearer evidence before this draft is final.`;
   }
 
   const overclaimedMissingSignal = findOverclaimedMissingSignal(summary, result);
   if (
     overclaimedMissingSignal
-    && !new RegExp(`direct proof of ${escapeRegExp(overclaimedMissingSignal)}`, 'i').test(summary)
+    && !new RegExp(`clearest remaining proof gap is ${escapeRegExp(overclaimedMissingSignal)}`, 'i').test(summary)
   ) {
-    summary = `${summary} Direct proof of ${overclaimedMissingSignal} is still thinner than it needs to be for this role.`;
+    summary = summary.replace(
+      /One important proof gap still needs clearer evidence before this draft is final\.?$/i,
+      '',
+    ).trim();
+    summary = `${summary} The clearest remaining proof gap is ${overclaimedMissingSignal}.`;
   }
 
   return summary;

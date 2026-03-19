@@ -857,6 +857,7 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.rating).toBe('needs_improvement');
     expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Build and lead a 40+ person marketing organization.');
     expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('40+ person marketing organization'))).toBe(true);
   });
 
@@ -908,6 +909,7 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
     expect(stabilized.concerns[0]?.severity).toBe('moderate');
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience architecting for regulated industries (financial services or healthcare).');
     expect(stabilized.fit_assessment.job_description_fit).toBe('moderate');
     expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
   });
@@ -1159,7 +1161,7 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     });
 
-    expect(stabilized.hiring_manager_verdict.summary).toContain('Direct proof of Talent development and building high-performing teams is still thinner than it needs to be for this role');
+    expect(stabilized.hiring_manager_verdict.summary).toContain('The clearest remaining proof gap is Talent development and building high-performing teams.');
   });
 
   it('rebuilds improvement_summary from the real concerns instead of keeping generic filler', () => {
@@ -1230,9 +1232,10 @@ describe('resume-v2 final review prompts', () => {
       ],
     });
 
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Demonstrated success in talent development and building high-performing teams.');
     expect(stabilized.improvement_summary).toEqual([
-      'Add direct proof of Demonstrated success in talent development and building high-performing teams.',
-      'If true, add specific examples or a brief description of any experience related to post-acquisition integration, even if it was not a primary responsibility, to address this gap.',
+      'If true, add one concrete example showing Demonstrated success in talent development and building high-performing teams.',
+      'If true, add one concrete example showing Lead post-acquisition operational integration for 2-3 planned acquisitions.',
     ]);
   });
 
@@ -1487,6 +1490,58 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
   });
 
+  it('removes placeholder suggested edits that only say candidate input is required', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Generated $14.2M in cumulative cost savings',
+            why_it_matters: 'Shows real operating impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong operator with one proof gap still to confirm.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Post-acquisition integration proof is not explicit.',
+          why_it_hurts: 'This is central to the role.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Lead post-acquisition operational integration',
+          fix_strategy: 'Add specific examples if they are real.',
+          suggested_resume_edit: 'None without explicit candidate input.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
+    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+  });
+
   it('removes suggested resume edits that introduce unsupported metrics', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
@@ -1595,6 +1650,407 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.related_requirement).toContain('regulated industries');
   });
 
+  it('rewrites low-signal improvement actions into requirement-specific next steps', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12 years in cloud architecture and platform engineering',
+            why_it_matters: 'Shows core cloud depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible cloud architect with one multi-cloud proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Azure or GCP experience is not explicit.',
+          why_it_hurts: 'The role asks for AWS plus one additional cloud.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Deep expertise in AWS and one additional cloud',
+          fix_strategy: 'Add specific examples',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Deep expertise in AWS and one additional cloud.');
+    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Deep expertise in AWS and one additional cloud.');
+  });
+
+  it('rewrites low-signal bullet-point guidance into requirement-specific concern text', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Built large-scale AWS infrastructure and reduced hosting costs by 35%',
+            why_it_matters: 'Shows strong platform impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong cloud leader with one multi-cloud proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Azure or GCP experience is not explicit.',
+          why_it_hurts: 'The role asks for AWS plus one additional cloud.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Experience with Azure or GCP',
+          fix_strategy: 'Consider adding a bullet point or a separate section to highlight any relevant experience with Azure or GCP.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience with Azure or GCP.');
+    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience with Azure or GCP.');
+  });
+
+  it('rewrites generic provide-more-examples guidance into requirement-specific concern text', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12+ years leading cloud architecture and platform engineering',
+            why_it_matters: 'Shows credible platform depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible cloud architect with one regulated-industry proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'weak_positioning',
+          observation: 'Compliance and security experience is not clearly highlighted.',
+          why_it_hurts: 'The job description emphasizes regulated-industry compliance and security depth.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Knowledge of compliance frameworks: SOC 2, HIPAA, or PCI-DSS',
+          fix_strategy: 'Provide more specific examples of experience in compliance and security in regulated industries in the professional experience section.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Knowledge of compliance frameworks: SOC 2, HIPAA, or PCI-DSS.');
+    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Knowledge of compliance frameworks: SOC 2, HIPAA, or PCI-DSS.');
+  });
+
+  it('rewrites generic add-more-detail guidance into requirement-specific concern text', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Improved plant throughput and reduced defect rates across three facilities',
+            why_it_matters: 'Shows strong operations impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible operations leader with one smart-manufacturing proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'weak_positioning',
+          observation: 'Industry 4.0 experience is not fully highlighted.',
+          why_it_hurts: 'The role asks for visible smart-manufacturing proof.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Experience with Industry 4.0 / smart manufacturing technologies',
+          fix_strategy: 'Consider adding more detail to the Professional Experience section about the candidate\'s experience with Industry 4.0 technologies.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience with Industry 4.0 / smart manufacturing technologies.');
+    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience with Industry 4.0 / smart manufacturing technologies.');
+  });
+
+  it('rewrites generic relevant-experience-or-training guidance into requirement-specific concern text', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '15 years of CPG marketing leadership with $180M P&L ownership',
+            why_it_matters: 'Shows credible senior marketing depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible consumer marketing leader with one PE-backed proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'missing_evidence',
+          observation: 'Lack of direct experience with PE-backed environments',
+          why_it_hurts: 'The role prefers experience in PE-backed environments.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Experience in PE-backed environments with focus on growth and value creation',
+          fix_strategy: 'Add any relevant experience or training related to PE-backed environments',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience in PE-backed environments with focus on growth and value creation.');
+    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience in PE-backed environments with focus on growth and value creation.');
+  });
+
+  it('rewrites generic brief-statement-or-bullet guidance into requirement-specific concern text', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '18 years of progressive operations leadership with $175M P&L oversight',
+            why_it_matters: 'Shows credible operations scale.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible operations leader with one investor-backed proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'missing_evidence',
+          observation: 'Limited direct mention of experience in PE-backed manufacturing environments',
+          why_it_hurts: 'The role prefers investor-backed manufacturing exposure.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Experience in PE-backed manufacturing environments',
+          fix_strategy: 'Add a brief statement or bullet point highlighting any relevant experience in PE-backed environments',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience in PE-backed manufacturing environments.');
+    expect(stabilized.improvement_summary[0]).toBe('If true, add one concrete example showing Experience in PE-backed manufacturing environments.');
+  });
+
+  it('does not misread PE-backed experience as a PE credential concern', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible operations leader with one investor-backed proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'missing_evidence',
+          observation: 'Limited direct mention of experience in PE-backed manufacturing environments',
+          why_it_hurts: 'The role prefers investor-backed manufacturing exposure.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Experience in PE-backed manufacturing environments',
+          fix_strategy: 'Add a brief statement or bullet point highlighting any relevant experience in PE-backed environments',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience in PE-backed manufacturing environments.');
+  });
+
+  it('uses a specific proof-gap sentence instead of generic final-draft boilerplate', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12 years in cloud infrastructure and architecture roles',
+            why_it_matters: 'Shows real seniority.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'The candidate is a credible fit for the role based on cloud infrastructure transformation and leadership experience.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'material_job_fit_risk',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Must-have role-fit evidence is still thin: Experience architecting for regulated industries',
+          why_it_hurts: 'This is central to the role.',
+          target_section: 'Summary',
+          related_requirement: 'Experience architecting for regulated industries',
+          fix_strategy: 'Prioritize direct proof for this requirement before treating the draft as final.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.hiring_manager_verdict.summary).toContain('The clearest remaining proof gap is Experience architecting for regulated industries.');
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('final interview-ready draft');
+  });
+
   it('removes certification guidance from non-credential experience concerns', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
@@ -1645,7 +2101,7 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.concerns[0]?.fix_strategy).not.toMatch(/certif/i);
     expect(stabilized.concerns[0]?.clarifying_question).not.toMatch(/certif/i);
-    expect(stabilized.concerns[0]?.fix_strategy).toContain('Add specific examples');
+    expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Deep expertise in AWS and one additional cloud.');
     expect(stabilized.concerns[0]?.clarifying_question).toContain('Azure or GCP');
   });
 });
