@@ -19,6 +19,8 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Use double-quoted JSON keys and string values.
 - Do not wrap the JSON in markdown fences.
 - Do not add commentary, analysis, or notes outside the JSON object.
+- Never use comments, inline annotations, or fragments like #, //, "(implied)", or "(not explicit)" inside the JSON.
+- keywords_found, keywords_missing, and formatting_issues must contain plain strings only — no explanations attached.
 - If data is uncertain, use an empty array instead of prose.`;
 
 const SYSTEM_PROMPT = `You are an ATS (Applicant Tracking System) optimization specialist. You know exactly how resume parsing algorithms work and how to maximize keyword match scores WITHOUT making the resume sound like a keyword-stuffed mess.
@@ -45,6 +47,7 @@ RULES:
 - natural_phrasing: suggest ACTUAL resume text that incorporates the keyword naturally
 - formatting_issues: flag anything that would trip up ATS parsing (tables, multi-column, images, unusual section headers)
 - Readability for humans comes FIRST — keyword optimization second
+- Never explain a keyword inside an array item. Put explanation into keyword_suggestions or omit it.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -65,6 +68,7 @@ export async function runATSOptimization(
     model: MODEL_LIGHT,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userMessage }],
+    response_format: { type: 'json_object' },
     max_tokens: 4096,
     signal,
   });
@@ -81,8 +85,9 @@ export async function runATSOptimization(
 
   const retry = await llm.chat({
     model: MODEL_LIGHT,
-    system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+    system: `You are a JSON extraction machine.\n${JSON_OUTPUT_GUARDRAILS}`,
     messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+    response_format: { type: 'json_object' },
     max_tokens: 4096,
     signal,
   });
@@ -132,17 +137,22 @@ function normalizeATSOptimizationOutput(
   if (!output || typeof output !== 'object') return null;
 
   const fallback = buildDeterministicATSFallback(input);
-  const keywordsFound = sanitizeStringArray(output.keywords_found);
-  const keywordsMissing = sanitizeStringArray(output.keywords_missing);
+  const keywordUniverse = buildKeywordUniverseMap(input);
+  const keywordsFound = sanitizeKeywordArray(output.keywords_found, keywordUniverse);
+  const keywordsMissing = sanitizeKeywordArray(output.keywords_missing, keywordUniverse);
   const suggestions = Array.isArray(output.keyword_suggestions)
     ? output.keyword_suggestions
       .filter((item): item is ATSOptimizationOutput['keyword_suggestions'][number] => Boolean(item && typeof item === 'object'))
       .map((item) => ({
-        keyword: typeof item.keyword === 'string' ? item.keyword.trim() : '',
+        keyword: typeof item.keyword === 'string' ? sanitizeKeywordText(item.keyword) : '',
         suggested_placement: typeof item.suggested_placement === 'string' ? item.suggested_placement.trim() : 'executive_summary',
         natural_phrasing: typeof item.natural_phrasing === 'string' ? item.natural_phrasing.trim() : '',
       }))
-      .filter((item) => item.keyword.length > 0)
+      .filter((item) => item.keyword.length > 0 && keywordUniverse.has(item.keyword.toLowerCase()))
+      .map((item) => ({
+        ...item,
+        keyword: keywordUniverse.get(item.keyword.toLowerCase()) ?? item.keyword,
+      }))
     : [];
   const formattingIssues = sanitizeStringArray(output.formatting_issues);
 
@@ -165,14 +175,24 @@ function normalizeATSOptimizationOutput(
   };
 }
 
-function buildDeterministicATSFallback(input: ATSOptimizationInput): ATSOptimizationOutput {
-  const resumeText = formatDraftForATS(input).toLowerCase();
-  const keywordUniverse = dedupeStrings([
+function buildKeywordList(input: ATSOptimizationInput): string[] {
+  return dedupeStrings([
     ...input.job_intelligence.language_keywords,
     ...input.job_intelligence.core_competencies
       .filter((competency) => competency.importance !== 'nice_to_have')
       .map((competency) => competency.competency),
   ]).filter(Boolean);
+}
+
+function buildKeywordUniverseMap(input: ATSOptimizationInput): Map<string, string> {
+  return new Map(
+    buildKeywordList(input).map((keyword) => [keyword.toLowerCase(), keyword] as const),
+  );
+}
+
+function buildDeterministicATSFallback(input: ATSOptimizationInput): ATSOptimizationOutput {
+  const resumeText = formatDraftForATS(input).toLowerCase();
+  const keywordUniverse = buildKeywordList(input);
 
   const keywordsFound = keywordUniverse.filter((keyword) => resumeText.includes(keyword.toLowerCase()));
   const keywordsMissing = keywordUniverse.filter((keyword) => !resumeText.includes(keyword.toLowerCase()));
@@ -200,6 +220,24 @@ function sanitizeStringArray(values: unknown): string[] {
     .filter((value): value is string => typeof value === 'string')
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function sanitizeKeywordArray(values: unknown, keywordUniverse: Map<string, string>): string[] {
+  if (!Array.isArray(values)) return [];
+
+  return values
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => sanitizeKeywordText(value))
+    .map((value) => keywordUniverse.get(value.toLowerCase()) ?? '')
+    .filter(Boolean);
+}
+
+function sanitizeKeywordText(value: string): string {
+  return value
+    .replace(/\s+#.*$/g, '')
+    .replace(/\s+\/\/.*$/g, '')
+    .replace(/\s+\([^)]*\)\s*$/g, '')
+    .trim();
 }
 
 function dedupeStrings(values: string[]): string[] {

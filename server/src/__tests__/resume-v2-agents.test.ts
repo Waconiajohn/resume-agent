@@ -1875,7 +1875,50 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.system).toContain('Never use comments, inline annotations');
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
+      expect(llmCall.response_format).toEqual({ type: 'json_object' });
+    });
+
+    it('drops annotated keyword entries that do not cleanly map back to the JD keyword universe', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce({
+        match_score: 92,
+        keywords_found: [
+          'cloud-native',
+          'platform engineering',
+          'cross-functional collaboration (implied)',
+        ],
+        keywords_missing: [
+          'P&L ownership # unclear from JD',
+          'made-up keyword',
+        ],
+        keyword_suggestions: [
+          {
+            keyword: 'P&L ownership (if applicable)',
+            suggested_placement: 'executive_summary',
+            natural_phrasing: 'Own full P&L accountability across engineering and infrastructure spend.',
+          },
+          {
+            keyword: 'invented keyword',
+            suggested_placement: 'core_competencies',
+            natural_phrasing: 'Invented keyword text',
+          },
+        ],
+        formatting_issues: [],
+      });
+
+      const result = await runATSOptimization(input);
+
+      expect(result.keywords_found).toEqual(['cloud-native', 'platform engineering']);
+      expect(result.keywords_missing).toEqual(['P&L ownership']);
+      expect(result.keyword_suggestions).toEqual([
+        {
+          keyword: 'P&L ownership',
+          suggested_placement: 'executive_summary',
+          natural_phrasing: 'Own full P&L accountability across engineering and infrastructure spend.',
+        },
+      ]);
     });
 
     it('uses MODEL_LIGHT', async () => {
