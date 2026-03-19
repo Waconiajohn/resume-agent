@@ -734,6 +734,55 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockRepairJSON).toHaveBeenCalledWith(expect.stringContaining('"critical_gaps": ['));
     });
 
+    it('salvages individual requirement objects from failed_generation when one malformed array chunk breaks the whole payload', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error(
+        'groq API error 400: {"error":{"message":"Failed to generate JSON.","type":"invalid_request_error","code":"json_validate_failed","failed_generation":"{\\n  \\"requirements\\": [\\n    {\\n      \\"requirement\\": \\"Cloud Architecture\\",\\n      \\"source\\": \\"job_description\\",\\n      \\"category\\": \\"core_competency\\",\\n      \\"score_domain\\": \\"ats\\",\\n      \\"importance\\": \\"must_have\\",\\n      \\"classification\\": \\"partial\\",\\n      \\"evidence\\": [\\"Built cloud platform on AWS\\"],\\n      \\"source_evidence\\": \\"Build and scale cloud platform\\",\\n      \\"strategy\\": {\\n        \\"real_experience\\": \\"Built cloud platform on AWS\\",\\n        \\"positioning\\": \\"Cloud platform builder\\",\\n        \\"ai_reasoning\\": \\"Nearby proof exists.\\",\\n        \\"interview_questions\\": [{\\n          \\"question\\": \\"Can you walk us through the cloud platform you built at Acme Startup?\\",\\n          \\"rationale\\": \\"Surface scope and architecture detail.\\",\\n          \\"looking_for\\": \\"Platform scale and architecture ownership.\\\"\\n        }]\\n      }\\n    ],\\n    {\\n      \\"requirement\\": \\"Team Leadership\\",\\n      \\"source\\": \\"job_description\\",\\n      \\"category\\": \\"core_competency\\",\\n      \\"score_domain\\": \\"ats\\",\\n      \\"importance\\": \\"important\\",\\n      \\"classification\\": \\"strong\\",\\n      \\"evidence\\": [\\"Scaled team from 10 to 40\\"],\\n      \\"source_evidence\\": \\"Lead 50+ engineers\\"\\n    }\\n  ],\\n  \\"coverage_score\\": 50,\\n  \\"score_breakdown\\": {\\"job_description\\": {\\"total\\": 2, \\"strong\\": 1, \\"partial\\": 1, \\"missing\\": 0, \\"addressed\\": 2, \\"coverage_score\\": 100}, \\"benchmark\\": {\\"total\\": 0, \\"strong\\": 0, \\"partial\\": 0, \\"missing\\": 0, \\"addressed\\": 0, \\"coverage_score\\": 0}},\\n  \\"strength_summary\\": \\"Recovered from partially parseable requirements\\",\\n  \\"critical_gaps\\": [],\\n  \\"pending_strategies\\": []\\n}"}}',
+      ));
+      mockRepairJSON
+        .mockReturnValueOnce(undefined)
+        .mockReturnValueOnce({
+          requirement: 'Cloud Architecture',
+          source: 'job_description',
+          category: 'core_competency',
+          score_domain: 'ats',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Built cloud platform on AWS'],
+          source_evidence: 'Build and scale cloud platform',
+          strategy: {
+            real_experience: 'Built cloud platform on AWS',
+            positioning: 'Cloud platform builder',
+            ai_reasoning: 'Nearby proof exists.',
+            interview_questions: [
+              {
+                question: 'Can you walk us through the cloud platform you built at Acme Startup?',
+                rationale: 'Surface scope and architecture detail.',
+                looking_for: 'Platform scale and architecture ownership.',
+              },
+            ],
+          },
+        })
+        .mockReturnValueOnce({
+          requirement: 'Team Leadership',
+          source: 'job_description',
+          category: 'core_competency',
+          score_domain: 'ats',
+          importance: 'important',
+          classification: 'strong',
+          evidence: ['Scaled team from 10 to 40'],
+          source_evidence: 'Lead 50+ engineers',
+        });
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.strength_summary).toBe('Recovered from partially parseable requirements');
+      expect(result.requirements.map((item) => item.requirement)).toEqual(
+        expect.arrayContaining(['Cloud Architecture', 'Team Leadership']),
+      );
+      expect(result.pending_strategies[0]?.requirement).toBe('Cloud Architecture');
+      expect(mockLlmChat).toHaveBeenCalledTimes(1);
+    });
+
     it('forwards AbortSignal to llm.chat', async () => {
       const controller = new AbortController();
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });

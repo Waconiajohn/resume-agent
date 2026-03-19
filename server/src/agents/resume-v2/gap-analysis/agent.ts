@@ -641,13 +641,23 @@ function tryRecoverGapAnalysisFromProviderError(
   const failedGeneration = extractFailedGeneration(error);
   if (!failedGeneration) return null;
 
-  const repaired = repairJSON<GapAnalysisOutput>(normalizeFailedGenerationForRepair(failedGeneration));
-  if (!repaired) return null;
+  const normalizedFailedGeneration = normalizeFailedGenerationForRepair(failedGeneration);
+  const repaired = repairJSON<GapAnalysisOutput>(normalizedFailedGeneration);
+  if (repaired) {
+    return normalizeGapAnalysis(
+      shouldBackfillFromDeterministic
+        ? mergeWithDeterministicBackfill(repaired, input, fullRequirementSeeds)
+        : reconcileModeledHardRequirements(repaired, input),
+    );
+  }
+
+  const partiallyRecovered = salvageGapAnalysisFromFailedGeneration(normalizedFailedGeneration);
+  if (!partiallyRecovered) return null;
 
   return normalizeGapAnalysis(
     shouldBackfillFromDeterministic
-      ? mergeWithDeterministicBackfill(repaired, input, fullRequirementSeeds)
-      : reconcileModeledHardRequirements(repaired, input),
+      ? mergeWithDeterministicBackfill(partiallyRecovered, input, fullRequirementSeeds)
+      : reconcileModeledHardRequirements(partiallyRecovered, input),
   );
 }
 
@@ -668,6 +678,127 @@ function normalizeFailedGenerationForRepair(value: string): string {
     .replace(/"([A-Za-z_][A-Za-z0-9_]*)=\s*\[/g, '"$1": [')
     .replace(/"([A-Za-z_][A-Za-z0-9_]*)=\s*\{/g, '"$1": {')
     .replace(/"\s*,\s*\n/g, '",\n');
+}
+
+function salvageGapAnalysisFromFailedGeneration(raw: string): GapAnalysisOutput | null {
+  const requirements = salvageRequirementObjects(raw);
+  const criticalGaps = salvageStringArrayField(raw, 'critical_gaps');
+  const strengthSummary = salvageStringField(raw, 'strength_summary');
+  const pendingStrategies = requirements
+    .filter((requirement) => requirement.classification !== 'strong' && Boolean(requirement.strategy))
+    .map((requirement) => ({
+      requirement: requirement.requirement,
+      strategy: requirement.strategy!,
+    }));
+
+  if (requirements.length === 0 && criticalGaps.length === 0 && !(strengthSummary?.trim())) {
+    return null;
+  }
+
+  return {
+    requirements,
+    coverage_score: 0,
+    score_breakdown: {
+      job_description: { total: 0, strong: 0, partial: 0, missing: 0, addressed: 0, coverage_score: 0 },
+      benchmark: { total: 0, strong: 0, partial: 0, missing: 0, addressed: 0, coverage_score: 0 },
+    },
+    strength_summary: strengthSummary ?? 'Recovered from partially parseable provider JSON.',
+    critical_gaps: criticalGaps,
+    pending_strategies: pendingStrategies,
+  };
+}
+
+function salvageRequirementObjects(raw: string): RequirementGap[] {
+  const requirementsSection = extractSectionBetweenTopLevelFields(raw, 'requirements', 'coverage_score');
+  if (!requirementsSection) return [];
+
+  const matches = Array.from(requirementsSection.matchAll(/"requirement"\s*:/g));
+  if (matches.length === 0) return [];
+
+  const objectStarts = matches
+    .map((match) => requirementsSection.lastIndexOf('{', match.index ?? 0))
+    .filter((index) => index >= 0);
+  const salvaged: RequirementGap[] = [];
+
+  for (let index = 0; index < objectStarts.length; index += 1) {
+    const start = objectStarts[index]!;
+    const end = index + 1 < objectStarts.length ? objectStarts[index + 1]! : requirementsSection.length;
+    const fragment = cleanPartialRequirementFragment(requirementsSection.slice(start, end));
+    if (!fragment) continue;
+
+    const repaired = repairJSON<RequirementGap>(fragment);
+    if (!repaired || typeof repaired.requirement !== 'string') continue;
+    salvaged.push(repaired);
+  }
+
+  return salvaged;
+}
+
+function extractSectionBetweenTopLevelFields(raw: string, field: string, nextField: string): string | null {
+  const fieldIndex = raw.indexOf(`"${field}"`);
+  if (fieldIndex === -1) return null;
+
+  const fieldColonIndex = raw.indexOf(':', fieldIndex);
+  if (fieldColonIndex === -1) return null;
+
+  const nextFieldIndex = raw.indexOf(`"${nextField}"`, fieldColonIndex + 1);
+  const endIndex = nextFieldIndex === -1 ? raw.length : nextFieldIndex;
+  return raw.slice(fieldColonIndex + 1, endIndex);
+}
+
+function cleanPartialRequirementFragment(fragment: string): string | null {
+  const firstBrace = fragment.indexOf('{');
+  const lastBrace = fragment.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+    return null;
+  }
+
+  let cleaned = fragment.slice(firstBrace, lastBrace + 1);
+
+  while ((cleaned.match(/\[/g) ?? []).length < (cleaned.match(/\]/g) ?? []).length && /\]\s*$/.test(cleaned)) {
+    cleaned = cleaned.replace(/\]\s*$/, '');
+  }
+
+  const openBracketCount = (cleaned.match(/\[/g) ?? []).length;
+  const closeBracketCount = (cleaned.match(/\]/g) ?? []).length;
+  if (openBracketCount > closeBracketCount) {
+    cleaned += ']'.repeat(openBracketCount - closeBracketCount);
+  }
+
+  const openBraceCount = (cleaned.match(/\{/g) ?? []).length;
+  const closeBraceCount = (cleaned.match(/\}/g) ?? []).length;
+  if (openBraceCount > closeBraceCount) {
+    cleaned += '}'.repeat(openBraceCount - closeBraceCount);
+  }
+
+  return cleaned;
+}
+
+function salvageStringField(raw: string, field: string): string | null {
+  const match = raw.match(new RegExp(`"${field}"\\s*:\\s*"((?:\\\\.|[^"])*)"`, 's'));
+  if (!match?.[1]) return null;
+
+  try {
+    return JSON.parse(`"${match[1]}"`);
+  } catch {
+    return null;
+  }
+}
+
+function salvageStringArrayField(raw: string, field: string): string[] {
+  const match = raw.match(new RegExp(`"${field}"\\s*:\\s*\\[([\\s\\S]*?)\\]`, 's'));
+  if (!match?.[1]) return [];
+
+  return Array.from(match[1].matchAll(/"((?:\\.|[^"])*)"/g))
+    .map((item) => {
+      try {
+        return JSON.parse(`"${item[1]}"`) as string;
+      } catch {
+        return '';
+      }
+    })
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function buildDeterministicGapAnalysis(input: GapAnalysisInput): GapAnalysisOutput {
