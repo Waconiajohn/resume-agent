@@ -605,6 +605,58 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('40+ person marketing organization'))).toBe(true);
   });
 
+  it('softens a single aggregated material job-fit concern when the recruiter still has clear positive signals', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12 years of experience driving cloud strategy and execution',
+            why_it_matters: 'Shows relevant seniority and scope.',
+            visible_in_top_third: true,
+          },
+          {
+            signal: '35% reduction in hosting costs through cloud migration',
+            why_it_matters: 'Shows concrete cloud impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'needs_improvement',
+        summary: 'The candidate has a strong background in cloud infrastructure and architecture, with achievements in cloud cost reduction and Kubernetes implementation.',
+      },
+      fit_assessment: {
+        job_description_fit: 'weak',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'weak',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      materialJobFitRisks: [
+        'Experience architecting for regulated industries (financial services or healthcare)',
+        'Knowledge of compliance frameworks: SOC 2, HIPAA, or PCI-DSS',
+      ],
+    });
+
+    expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
+    expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
+    expect(stabilized.concerns[0]?.severity).toBe('moderate');
+    expect(stabilized.fit_assessment.job_description_fit).toBe('moderate');
+    expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
+  });
+
   it('drops material must-have risks when stronger recruiter evidence already proves the financial threshold', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {

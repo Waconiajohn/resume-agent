@@ -665,6 +665,10 @@ function hasPositiveSummaryLanguage(summary: string): boolean {
   return /\b(strong|compelling|impressive|solid|credible|good fit|well-aligned|well aligned|well-suited|well suited|promising)\b/i.test(summary);
 }
 
+function hasInterviewPositiveSummaryLanguage(summary: string): boolean {
+  return /\b(invite(?:d)?(?:\s+\w+){0,4}\s+interview|likely invite(?:d)?|worth interviewing|interview-worthy|keep in the funnel)\b/i.test(summary);
+}
+
 function createRecruiterSignalFromSummary(summary: string) {
   const firstSentence = summary.split(/(?<=[.!?])\s+/)[0]?.trim() || summary.trim();
   const signal = firstSentence.length > 140 ? `${firstSentence.slice(0, 137).trim()}...` : firstSentence;
@@ -868,6 +872,39 @@ export function stabilizeFinalReviewResult(
       normalized.fit_assessment.clarity_and_credibility,
       materialJobFitRisks.length > 1 ? 'weak' : 'moderate',
     );
+  }
+
+  const criticalConcerns = normalized.concerns.filter((concern) => concern.severity === 'critical');
+  const singleAggregatedMaterialConcern = hardRequirementRisks.length === 0
+    && criticalConcerns.length === 1
+    && criticalConcerns[0]?.id === 'material_job_fit_risk'
+    && normalized.concerns.every((concern) => concern.id === 'material_job_fit_risk' || concern.severity !== 'critical');
+
+  if (
+    singleAggregatedMaterialConcern
+    && normalized.six_second_scan.decision === 'continue_reading'
+    && normalized.six_second_scan.top_signals_seen.length > 0
+    && (
+      hasInterviewPositiveSummaryLanguage(normalized.hiring_manager_verdict.summary)
+      || (normalized.fit_assessment.business_impact === 'strong' && normalized.six_second_scan.top_signals_seen.length >= 2)
+    )
+  ) {
+    normalized.concerns = normalized.concerns.map((concern) => (
+      concern.id === 'material_job_fit_risk'
+        ? { ...concern, severity: 'moderate' }
+        : concern
+    ));
+
+    if (normalized.hiring_manager_verdict.rating === 'needs_improvement') {
+      normalized.hiring_manager_verdict.rating = 'possible_interview';
+    }
+
+    if (normalized.fit_assessment.job_description_fit === 'weak') {
+      normalized.fit_assessment.job_description_fit = 'moderate';
+    }
+    if (normalized.fit_assessment.clarity_and_credibility === 'weak') {
+      normalized.fit_assessment.clarity_and_credibility = 'moderate';
+    }
   }
 
   return normalized;
