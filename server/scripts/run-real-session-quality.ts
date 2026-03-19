@@ -35,14 +35,25 @@ type SessionRow = {
   } | null;
 };
 
-const DEFAULT_SESSION_IDS = [
-  '9e97bdc5-9250-4918-8def-e66109b4e634',
-  '87062daa-0897-4ef7-a50e-550df7ba6ba4',
+const DEFAULT_BATCH_LIMIT = 5;
+const EXCLUDED_DEFAULT_QA_KEYWORDS = [
+  'conocophillips',
+  'drilling',
+  'petroleum',
+  'wellsite',
+  'rig ',
+  ' rig',
+  'reservoir',
+  'upstream',
+  'bha ',
+  ' bha',
+  'permian',
+  'oil and gas',
 ];
 
 function parseSessionIds(): string[] {
   const raw = process.env.REAL_QA_SESSION_IDS?.trim();
-  if (!raw) return DEFAULT_SESSION_IDS;
+  if (!raw) return [];
   return raw.split(',').map((value) => value.trim()).filter(Boolean);
 }
 
@@ -148,9 +159,67 @@ async function loadSessions(sessionIds: string[]): Promise<SessionRow[]> {
   return (data ?? []) as SessionRow[];
 }
 
+function normalizeSessionText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildSessionFingerprint(session: SessionRow): string {
+  const inputs = session.tailored_sections?.inputs ?? {};
+  const resumeText = typeof inputs.resume_text === 'string' ? inputs.resume_text : '';
+  const jobDescription = typeof inputs.job_description === 'string' ? inputs.job_description : '';
+  return `${normalizeSessionText(resumeText).slice(0, 300)}::${normalizeSessionText(jobDescription).slice(0, 300)}`;
+}
+
+function shouldExcludeFromDefaultQa(session: SessionRow): boolean {
+  const inputs = session.tailored_sections?.inputs ?? {};
+  const resumeText = typeof inputs.resume_text === 'string' ? inputs.resume_text : '';
+  const jobDescription = typeof inputs.job_description === 'string' ? inputs.job_description : '';
+  const haystack = normalizeSessionText(`${resumeText}\n${jobDescription}`);
+
+  return EXCLUDED_DEFAULT_QA_KEYWORDS.some((keyword) => haystack.includes(keyword));
+}
+
+async function loadDefaultSessions(limit = DEFAULT_BATCH_LIMIT): Promise<SessionRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from('coach_sessions')
+    .select('id, user_id, created_at, tailored_sections')
+    .order('created_at', { ascending: false })
+    .limit(60);
+
+  if (error) {
+    throw new Error(`Failed to load default QA sessions: ${error.message}`);
+  }
+
+  const seenFingerprints = new Set<string>();
+  const selected: SessionRow[] = [];
+
+  for (const session of (data ?? []) as SessionRow[]) {
+    const inputs = session.tailored_sections?.inputs ?? {};
+    const resumeText = typeof inputs.resume_text === 'string' ? inputs.resume_text : '';
+    const jobDescription = typeof inputs.job_description === 'string' ? inputs.job_description : '';
+    if (resumeText.length < 50 || jobDescription.length < 50) continue;
+    if (shouldExcludeFromDefaultQa(session)) continue;
+
+    const fingerprint = buildSessionFingerprint(session);
+    if (seenFingerprints.has(fingerprint)) continue;
+
+    seenFingerprints.add(fingerprint);
+    selected.push(session);
+
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
+}
+
 async function runRealSessionQa() {
   const sessionIds = parseSessionIds();
-  const sessions = await loadSessions(sessionIds);
+  const sessions = sessionIds.length > 0
+    ? await loadSessions(sessionIds)
+    : await loadDefaultSessions();
 
   if (sessions.length === 0) {
     throw new Error('No matching real QA sessions were found.');

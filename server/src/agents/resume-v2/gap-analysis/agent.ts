@@ -129,6 +129,7 @@ RULES:
 - For benchmark items marked nice_to_have: only include a strategy when you find strong adjacent evidence. If the item is simply absent, leave strategy blank and do not add it to pending_strategies.
 - HARD REQUIREMENT RULE: If the requirement is a degree, certification, license, years-of-experience threshold, or other explicit screen-out credential and the candidate does not clearly have it, classify it as missing and include it in critical_gaps. Do NOT use adjacent experience as if it fully solves the missing credential.
 - If you offer adjacent framing for a hard requirement, the language must stay soft and truthful. It may explain related experience, but it cannot imply the candidate possesses the missing credential.
+- Do not invent availability, travel, relocation, field-presence, on-call, or similar logistics requirements unless they are explicitly stated in the job description requirement itself.
 - QUICK WIN RULE: Prefer strategies where the candidate already has nearby evidence that is simply under-explained on the resume. Those are the best items to strengthen first.
 - pending_strategies: include the strategies that are worth coaching on before writing. Always include job_description strategies. For benchmark nice_to_have items, only include them when the strategy is genuinely useful.
 - evidence: keep evidence arrays compact — use at most 2 short strings per requirement.
@@ -563,11 +564,15 @@ function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
   const total = jobBreakdown.total + benchmarkBreakdown.total;
   const addressed = jobBreakdown.addressed + benchmarkBreakdown.addressed;
   const criticalGaps = dedupeStrings([
-    ...(output.critical_gaps ?? []).filter((gap) => !isRequirementAlreadySatisfiedByStrongMatch(gap, strongRequirements)),
+    ...(output.critical_gaps ?? [])
+      .filter((gap) => !isRequirementAlreadySatisfiedByStrongMatch(gap, strongRequirements))
+      .filter((gap) => !isLogisticsOnlyRequirement(gap)),
     ...hardGapRequirements,
   ]);
   const pendingStrategies = rawPendingStrategies.filter((item) => (
     !hardGapSet.has(normalizeForSet(item.requirement))
+    && !isLogisticsOnlyRequirement(item.requirement)
+    && Boolean(sanitizeGapStrategy(item.strategy))
   ));
 
   return {
@@ -575,7 +580,10 @@ function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
     requirements,
     coverage_score: total > 0 ? Math.round((addressed / total) * 100) : 0,
     critical_gaps: criticalGaps,
-    pending_strategies: pendingStrategies,
+    pending_strategies: pendingStrategies.map((item) => ({
+      requirement: item.requirement,
+      strategy: sanitizeGapStrategy(item.strategy)!,
+    })),
     score_breakdown: {
       job_description: jobBreakdown,
       benchmark: benchmarkBreakdown,
@@ -942,13 +950,19 @@ const STOP_WORDS = new Set([
 
 function normalizeRequirement(requirement: RequirementGap): RequirementGap {
   const source: RequirementSource = requirement.source === 'benchmark' ? 'benchmark' : 'job_description';
+  const evidence = Array.isArray(requirement.evidence)
+    ? requirement.evidence.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, 2)
+    : [];
+  const strategy = sanitizeGapStrategy(requirement.strategy);
 
   return {
     ...requirement,
     source,
     category: requirement.category ?? defaultCategoryForSource(source),
     score_domain: requirement.score_domain ?? (source === 'job_description' ? 'ats' : 'benchmark'),
+    evidence,
     source_evidence: requirement.source_evidence,
+    strategy: requirement.classification === 'strong' ? undefined : strategy,
   };
 }
 
@@ -966,6 +980,51 @@ function dedupeStrings(values: string[]): string[] {
     result.push(value);
   }
   return result;
+}
+
+function sanitizeGapStrategy(strategy: RequirementGap['strategy']): RequirementGap['strategy'] {
+  if (!strategy || typeof strategy !== 'object') return undefined;
+
+  const questions = Array.isArray(strategy.interview_questions)
+    ? strategy.interview_questions
+      .filter((item): item is NonNullable<GapStrategy['interview_questions']>[number] => Boolean(
+        item
+        && typeof item.question === 'string'
+        && typeof item.rationale === 'string'
+        && typeof item.looking_for === 'string',
+      ))
+      .map((item) => ({
+        question: item.question.trim(),
+        rationale: item.rationale.trim(),
+        looking_for: item.looking_for.trim(),
+      }))
+      .filter((item) => item.question && item.rationale && item.looking_for)
+      .slice(0, 1)
+    : [];
+
+  const normalized: GapStrategy = {
+    real_experience: typeof strategy.real_experience === 'string' ? strategy.real_experience.trim() : '',
+    positioning: typeof strategy.positioning === 'string' ? strategy.positioning.trim() : '',
+  };
+
+  if (!normalized.real_experience || !normalized.positioning) {
+    return undefined;
+  }
+
+  if (typeof strategy.inferred_metric === 'string' && strategy.inferred_metric.trim()) {
+    normalized.inferred_metric = strategy.inferred_metric.trim();
+  }
+  if (typeof strategy.inference_rationale === 'string' && strategy.inference_rationale.trim()) {
+    normalized.inference_rationale = strategy.inference_rationale.trim();
+  }
+  if (typeof strategy.ai_reasoning === 'string' && strategy.ai_reasoning.trim()) {
+    normalized.ai_reasoning = strategy.ai_reasoning.trim();
+  }
+  if (questions.length > 0) {
+    normalized.interview_questions = questions;
+  }
+
+  return normalized;
 }
 
 function isRequirementAlreadySatisfiedByStrongMatch(
@@ -992,6 +1051,14 @@ function isRequirementAlreadySatisfiedByStrongMatch(
   }
 
   return false;
+}
+
+function isLogisticsOnlyRequirement(value: string): boolean {
+  const normalized = normalizeForSet(value);
+  if (!normalized) return false;
+  const logisticsPattern = /\b(travel|relocation|on call|on-call|onsite|on-site|field presence|field support|shift schedule|weekend availability|availability)\b/;
+  const businessPattern = /\b(operations|execution|strategy|leadership|stakeholder|delivery|manufacturing|cloud|platform|program|product|marketing|finance|compliance)\b/;
+  return logisticsPattern.test(normalized) && !businessPattern.test(normalized);
 }
 
 function isEquivalentCredentialRequirement(

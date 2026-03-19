@@ -12,17 +12,17 @@ import {
 describe('resume-v2 final review prompts', () => {
   it('surfaces hard requirements as explicit screen-out risks in the final review prompt', () => {
     const prompts = buildFinalReviewPrompts({
-      companyName: 'Acme Energy',
-      roleTitle: 'Senior Drilling Engineer',
-      resumeText: 'Operations leader with drilling optimization experience.',
-      jobDescription: 'Bachelor’s degree in engineering required. Optimize drilling performance.',
+      companyName: 'Northstar Manufacturing',
+      roleTitle: 'Director of Manufacturing Engineering',
+      resumeText: 'Operations leader with manufacturing optimization experience.',
+      jobDescription: 'Bachelor’s degree in engineering required. Optimize plant performance through process data.',
       jobRequirements: [
-        'Bachelor’s degree in Chemical Engineering or related field required',
-        'Optimize drilling performance by analyzing drilling data',
+        'Bachelor’s degree in Industrial Engineering or related field required',
+        'Optimize plant performance by analyzing production and process data',
       ],
-      hiddenSignals: ['Needs someone who can support field operations daily'],
-      benchmarkProfileSummary: 'Strong drilling engineer with field depth and optimization wins.',
-      benchmarkRequirements: ['Project management', 'Wellsite communication'],
+      hiddenSignals: ['Needs someone who can support plant leaders with daily operational guidance'],
+      benchmarkProfileSummary: 'Strong manufacturing engineering leader with plant optimization wins.',
+      benchmarkRequirements: ['Project management', 'Plant-floor communication'],
       careerProfile: null,
     });
 
@@ -31,7 +31,7 @@ describe('resume-v2 final review prompts', () => {
     expect(prompts.systemPrompt).toContain('Every positive claim must point to specific resume evidence');
     expect(prompts.systemPrompt).toContain('Avoid vague statements like "clear executive summary"');
     expect(prompts.userPrompt).toContain('POTENTIAL HARD REQUIREMENTS / SCREEN-OUT RISKS');
-    expect(prompts.userPrompt).toContain('Bachelor’s degree in Chemical Engineering or related field required');
+    expect(prompts.userPrompt).toContain('Bachelor’s degree in Industrial Engineering or related field required');
   });
 
   it('omits the hard-requirements block when the job requirements are normal proof-building items', () => {
@@ -179,7 +179,7 @@ describe('resume-v2 final review prompts', () => {
         reason: 'Promising first pass.',
         top_signals_seen: [
           {
-            signal: '17 years of drilling operations experience',
+            signal: '18 years of multi-site operations leadership',
             why_it_matters: 'Shows strong operating depth.',
             visible_in_top_third: true,
           },
@@ -188,7 +188,7 @@ describe('resume-v2 final review prompts', () => {
       },
       hiring_manager_verdict: {
         rating: 'strong_interview_candidate',
-        summary: 'Strong drilling operator with compelling field depth.',
+        summary: 'Strong operations executive with compelling scale and execution depth.',
       },
       fit_assessment: {
         job_description_fit: 'strong',
@@ -289,7 +289,7 @@ describe('resume-v2 final review prompts', () => {
     const hardRisks = extractHardRequirementRisksFromGapAnalysis({
       requirements: [
         {
-          requirement: "Bachelor's degree or higher in Chemical Engineering, Civil Engineering, Mechanical Engineering, Petroleum Engineering, other related engineering field, or foreign equivalent",
+          requirement: "Bachelor's degree or higher in Industrial Engineering, Mechanical Engineering, Operations Management, or related field",
           classification: 'missing',
           source: 'job_description',
         },
@@ -309,7 +309,7 @@ describe('resume-v2 final review prompts', () => {
     const hardRisks = extractHardRequirementRisksFromGapAnalysis({
       requirements: [
         {
-          requirement: "Bachelor's degree or higher in Chemical Engineering, Civil Engineering, Mechanical Engineering, Petroleum Engineering, or related field",
+          requirement: "Bachelor's degree or higher in Industrial Engineering, Mechanical Engineering, Operations Management, or related field",
           classification: 'missing',
           source: 'job_description',
         },
@@ -586,11 +586,11 @@ describe('resume-v2 final review prompts', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
         decision: 'continue_reading',
-        reason: 'Strong drilling background and solid operational wins.',
+        reason: 'Strong manufacturing background and solid operational wins.',
         top_signals_seen: [
           {
-            signal: '17 years of experience in unconventional drilling operations',
-            why_it_matters: 'Shows deep drilling tenure.',
+            signal: '18 years of experience in manufacturing and operations leadership',
+            why_it_matters: 'Shows deep operations tenure.',
             visible_in_top_third: true,
           },
         ],
@@ -598,7 +598,7 @@ describe('resume-v2 final review prompts', () => {
       },
       hiring_manager_verdict: {
         rating: 'possible_interview',
-        summary: 'Strong drilling engineer with meaningful operational scale and cost discipline.',
+        summary: 'Strong operations executive with meaningful scale and process discipline.',
       },
       fit_assessment: {
         job_description_fit: 'moderate',
@@ -617,9 +617,9 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     }, {
       hardRequirementRisks: [
-        "Bachelor's degree or higher in Chemical Engineering, Civil Engineering, Mechanical Engineering, Petroleum Engineering, or related field",
+        "Bachelor's degree or higher in Industrial Engineering, Mechanical Engineering, Operations Management, or related field",
       ],
-      resumeText: 'EDUCATION\nBachelor of Science (B.S.) degree in Mechanical Engineering & Math, Southern Methodist University',
+      resumeText: 'EDUCATION\nBachelor of Science in Industrial Engineering, Georgia Institute of Technology',
     });
 
     expect(stabilized.concerns.some((concern) => concern.id === 'hard_requirement_risk')).toBe(false);

@@ -12,6 +12,15 @@ Use this checklist when reviewing `resume-v2` against real resumes and real job 
 
 When possible, also run this checklist against 3-5 real user resumes and JDs from different functions and seniority levels.
 
+Current default QA policy:
+
+- The default `qa:real` batch should favor representative customer roles first:
+  - IT / cloud / SaaS leadership
+  - operations leadership
+  - commercial / marketing leadership
+- The default batch should dedupe repeated reruns of the same pair.
+- Outlier domains should not dominate the acceptance gate. If you need to regression-test an edge case, pass explicit session IDs with `REAL_QA_SESSION_IDS=...` instead of making it part of the default batch.
+
 ## Recommended Command
 
 Use the server QA script so the run picks up `.env`, avoids the noisy `DEP0040` toolchain warning, and writes artifacts consistently:
@@ -19,6 +28,12 @@ Use the server QA script so the run picks up `.env`, avoids the noisy `DEP0040` 
 ```bash
 cd /Users/johnschrup/Documents/New\ project/resume-agent/server
 npm run qa:real
+```
+
+If you need to run a specific curated set, pass the session IDs explicitly:
+
+```bash
+REAL_QA_SESSION_IDS=id-1,id-2,id-3 npm run qa:real
 ```
 
 ## What Good Looks Like

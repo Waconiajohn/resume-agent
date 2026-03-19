@@ -447,23 +447,23 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
     it('salvages specific degree majors from the source resume when model output is too generic', async () => {
       const detailedEducationInput: CandidateIntelligenceInput = {
         resume_text: [
-          'Luke Bibler',
-          'Senior Drilling Engineer',
+          'Alex Morgan',
+          'Vice President of Operations',
           'EDUCATION | TECHNOLOGY',
           'Additional operational context and formatting noise',
-          'Bachelor of Science (B.S.) degree in Mechanical Engineering & Math, Southern Methodist University Technology',
+          'Bachelor of Science (B.S.) degree in Industrial Engineering & Mathematics, Georgia Institute of Technology College of Engineering',
         ].join('\n'),
       };
       const genericEducationOutput: CandidateIntelligenceOutput = {
         ...CANDIDATE_OUTPUT,
         contact: {
           ...CANDIDATE_OUTPUT.contact,
-          name: 'Luke Bibler',
+          name: 'Alex Morgan',
         },
         education: [
           {
             degree: 'Bachelor of Science (B.S.)',
-            institution: 'Southern Methodist University',
+            institution: 'Georgia Institute of Technology',
             year: undefined,
           },
         ],
@@ -473,17 +473,17 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runCandidateIntelligence(detailedEducationInput);
 
-      expect(result.education[0]?.degree).toContain('Mechanical Engineering');
-      expect(result.education[0]?.institution).toBe('Southern Methodist University');
+      expect(result.education[0]?.degree).toContain('Industrial Engineering');
+      expect(result.education[0]?.institution).toBe('Georgia Institute of Technology');
     });
 
     it('deterministic fallback preserves degree majors from education lines', async () => {
       const detailedEducationInput: CandidateIntelligenceInput = {
         resume_text: [
-          'Luke Bibler',
-          'Senior Drilling Engineer',
-          'Reduced BHA failures by 20% across multi-well pads',
-          'Bachelor of Science (B.S.) degree in Mechanical Engineering & Math, Southern Methodist University Technology',
+          'Alex Morgan',
+          'Vice President of Operations',
+          'Reduced manufacturing scrap by 20% across 4 facilities',
+          'Bachelor of Science (B.S.) degree in Industrial Engineering & Mathematics, Georgia Institute of Technology',
         ].join('\n'),
       };
       mockLlmChat
@@ -493,18 +493,18 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runCandidateIntelligence(detailedEducationInput);
 
-      expect(result.education[0]?.degree).toContain('Mechanical Engineering');
-      expect(result.education[0]?.institution).toBe('Southern Methodist University');
+      expect(result.education[0]?.degree).toContain('Industrial Engineering');
+      expect(result.education[0]?.institution).toBe('Georgia Institute of Technology');
     });
 
     it('prefers clean degree matches over oversized noisy education blobs', async () => {
       const detailedEducationInput: CandidateIntelligenceInput = {
         resume_text: [
-          'Luke Bibler',
-          'Senior Drilling Engineer',
-          'Managed a $350 million annual drilling budget',
-          'Bachelor of Science (B.S.) degree in Mechanical Engineering & Math, Southern Methodist University Technology',
-          'OpenWells; PowerBI; Corva; Mobilize',
+          'Alex Morgan',
+          'Vice President of Operations',
+          'Managed a $175 million operating budget across 4 facilities',
+          'Bachelor of Science (B.S.) degree in Industrial Engineering & Mathematics, Georgia Institute of Technology College of Engineering',
+          'Power BI; SAP; Tableau; NetSuite',
         ].join(' '),
       };
       mockLlmChat
@@ -514,8 +514,39 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runCandidateIntelligence(detailedEducationInput);
 
-      expect(result.education[0]?.degree).toBe('Bachelor of Science (B.S.) degree in Mechanical Engineering & Math');
-      expect(result.education[0]?.institution).toBe('Southern Methodist University');
+      expect(result.education[0]?.degree).toBe('Bachelor of Science (B.S.) degree in Industrial Engineering & Mathematics');
+      expect(result.education[0]?.institution).toBe('Georgia Institute of Technology');
+    });
+
+    it('normalizes single-object arrays from the model before returning candidate intelligence', async () => {
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce({
+        ...CANDIDATE_OUTPUT,
+        career_themes: 'Engineering Leadership',
+        technologies: 'AWS',
+        certifications: 'AWS Solutions Architect',
+        education: {
+          degree: 'Bachelor of Science in Industrial Engineering',
+          institution: 'Georgia Tech',
+          year: '2008',
+        },
+        experience: {
+          company: 'Acme Startup',
+          title: 'VP of Engineering',
+          start_date: 'Jan 2020',
+          end_date: 'Present',
+          bullets: 'Built cloud platform from scratch',
+        },
+      });
+
+      const result = await runCandidateIntelligence(input);
+
+      expect(result.career_themes).toEqual(['Engineering Leadership']);
+      expect(result.technologies).toEqual(['AWS']);
+      expect(result.certifications).toEqual(['AWS Solutions Architect']);
+      expect(result.education).toHaveLength(1);
+      expect(result.experience).toHaveLength(1);
+      expect(result.experience[0]?.bullets).toEqual(['Built cloud platform from scratch']);
     });
 
     it('uses MODEL_MID', async () => {
@@ -893,27 +924,85 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.requirements[0]?.requirement).toBe('Cloud Architecture');
     });
 
+    it('drops malformed strategy payloads and coerces malformed evidence arrays safely', async () => {
+      const malformedStrategyOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        requirements: [
+          {
+            ...GAP_ANALYSIS_OUTPUT.requirements[0],
+            evidence: 'Built cloud platform on AWS',
+            strategy: {
+              real_experience: 'Nearby cloud evidence exists',
+            },
+            classification: 'partial',
+          },
+        ],
+        pending_strategies: [
+          {
+            requirement: 'Cloud Architecture',
+            strategy: {
+              real_experience: 'Nearby cloud evidence exists',
+            },
+          },
+        ],
+      } as unknown as GapAnalysisOutput;
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(malformedStrategyOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.requirements[0]?.evidence).toEqual([]);
+      expect(result.requirements[0]?.strategy).toBeUndefined();
+      expect(result.pending_strategies).toEqual([]);
+    });
+
+    it('filters logistics-only critical gaps and pending strategies out of the normalized result', async () => {
+      const logisticsOutput: GapAnalysisOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        critical_gaps: ['Ability to travel up to 30%'],
+        pending_strategies: [
+          {
+            requirement: 'Ability to travel up to 30%',
+            strategy: {
+              real_experience: 'Operated across distributed teams',
+              positioning: 'Comfortable traveling to support field locations',
+              ai_reasoning: 'The requirement is logistics-oriented rather than a resume-fit issue.',
+            },
+          },
+        ],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(logisticsOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.critical_gaps).not.toContain('Ability to travel up to 30%');
+      expect(result.pending_strategies.some((item) => item.requirement.includes('travel'))).toBe(false);
+    });
+
     it('promotes missing hard requirements into critical gaps and removes them from coaching strategies', async () => {
       const hardGapOutput: GapAnalysisOutput = {
         requirements: [
           {
-            requirement: 'Bachelor’s degree in Chemical Engineering or related field',
+            requirement: 'PMP certification required',
             source: 'job_description',
             category: 'core_competency',
             score_domain: 'ats',
             importance: 'must_have',
             classification: 'missing',
             evidence: [],
-            source_evidence: 'Bachelor’s degree or higher in Chemical Engineering, Civil Engineering, Mechanical Engineering, Petroleum Engineering, other related engineering field, or foreign equivalent.',
+            source_evidence: 'PMP certification required',
             strategy: {
-              real_experience: 'Hands-on drilling engineering work in field operations',
-              positioning: 'Strong working knowledge of drilling engineering principles through field operations leadership',
-              ai_reasoning: 'You have adjacent drilling operations experience, but that does not equal the degree requirement.',
+              real_experience: 'Led complex cross-functional transformation programs across product and operations teams',
+              positioning: 'Deep program leadership using structured delivery practices across enterprise initiatives',
+              ai_reasoning: 'You have adjacent program leadership experience, but that does not equal the credential requirement.',
               interview_questions: [
                 {
-                  question: 'Do you hold any engineering degree or foreign equivalent that is not currently listed on the resume?',
+                  question: 'Do you currently hold a PMP certification that is missing from the resume, or have you completed any formal PMI-based training?',
                   rationale: 'The JD explicitly calls for the credential, so we need to confirm whether it exists before we decide how to position the risk.',
-                  looking_for: 'A real degree, foreign equivalent, or confirmation that it is truly missing',
+                  looking_for: 'Confirmation of the credential, active candidacy, or confirmation that it is truly missing',
                 },
               ],
             },
@@ -924,18 +1013,18 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           job_description: { total: 1, strong: 0, partial: 0, missing: 1, addressed: 0, coverage_score: 0 },
           benchmark: { total: 0, strong: 0, partial: 0, missing: 0, addressed: 0, coverage_score: 0 },
         },
-        strength_summary: 'Strong field operations experience.',
+        strength_summary: 'Strong program and operations leadership experience.',
         critical_gaps: [],
         pending_strategies: [
           {
-            requirement: 'Bachelor’s degree in Chemical Engineering or related field',
+            requirement: 'PMP certification required',
             strategy: {
-              real_experience: 'Field drilling leadership',
-              positioning: 'Related engineering exposure across drilling operations',
-              ai_reasoning: 'Adjacent operations exposure exists, but the credential itself is still unresolved.',
+              real_experience: 'Enterprise program leadership across major transformation initiatives',
+              positioning: 'Structured program delivery with PMO-style rigor across complex cross-functional work',
+              ai_reasoning: 'Adjacent delivery experience exists, but the credential itself is still unresolved.',
               interview_questions: [
                 {
-                  question: 'Do you have the degree but it is simply missing from the resume?',
+                  question: 'Do you have the PMP or equivalent certification but it is simply missing from the resume?',
                   rationale: 'We should only treat this as a proof gap if the credential actually exists.',
                   looking_for: 'Confirmation of the credential or confirmation that it is truly absent',
                 },
@@ -950,7 +1039,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const result = await runGapAnalysis(input);
 
-      expect(result.critical_gaps).toContain('Bachelor’s degree in Chemical Engineering or related field');
+      expect(result.critical_gaps).toContain('PMP certification required');
       expect(result.pending_strategies).toEqual([]);
       expect(result.requirements[0]?.classification).toBe('missing');
     });
@@ -1042,9 +1131,9 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
           ...JOB_INTEL_OUTPUT,
           core_competencies: [
             {
-              competency: 'Bachelor’s degree in Chemical Engineering or related engineering field',
+              competency: 'Bachelor’s degree in Industrial Engineering, Mechanical Engineering, or Operations Management',
               importance: 'must_have',
-              evidence_from_jd: 'Required qualification: Bachelor’s degree in Chemical Engineering, Mechanical Engineering, or related engineering field',
+              evidence_from_jd: 'Required qualification: Bachelor’s degree in Industrial Engineering, Mechanical Engineering, or Operations Management',
             },
           ],
           strategic_responsibilities: [],
@@ -1052,10 +1141,10 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       };
 
       const result = await runGapAnalysis(engineeringDegreeInput);
-      const degreeRequirement = result.requirements.find((item) => item.requirement.includes('Chemical Engineering'));
+      const degreeRequirement = result.requirements.find((item) => item.requirement.includes('Industrial Engineering'));
 
       expect(degreeRequirement?.classification).toBe('missing');
-      expect(result.critical_gaps).toContain('Bachelor’s degree in Chemical Engineering or related engineering field');
+      expect(result.critical_gaps).toContain('Bachelor’s degree in Industrial Engineering, Mechanical Engineering, or Operations Management');
     });
 
     it('deterministic fallback treats direct multi-cloud technology evidence as a strong match', async () => {

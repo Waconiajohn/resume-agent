@@ -13,6 +13,15 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import type { CandidateIntelligenceInput, CandidateIntelligenceOutput } from '../types.js';
 
+const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
+- Return exactly one JSON object.
+- The first character of your response must be { and the last character must be }.
+- Use double-quoted JSON keys and string values.
+- Do not wrap the JSON in markdown fences.
+- Do not add commentary, analysis, bullets, or notes outside the JSON object.
+- Keep arrays as arrays. Never replace an array with a single object or string.
+- If a field is uncertain, use an empty string, empty array, or 0 instead of prose.`;
+
 const SYSTEM_PROMPT = `You are a senior executive career strategist. You've reviewed 10,000+ executive resumes. Your job is to extract a structured profile from a resume, surfacing not just what's written but what's IMPLIED.
 
 Most executives' professional lives are only ~1% reflected on their resume. Your job is to surface the other 99%:
@@ -75,7 +84,9 @@ RULES:
 - Hidden accomplishments: what did they ACTUALLY achieve that isn't stated?
 - Career themes: look across the entire career, not just the most recent role
 - quantified_outcomes: extract EVERY metric mentioned anywhere on the resume
-- raw_text: include the first 200 characters for downstream verification`;
+- raw_text: include the first 200 characters for downstream verification
+
+${JSON_OUTPUT_GUARDRAILS}`;
 
 export async function runCandidateIntelligence(
   input: CandidateIntelligenceInput,
@@ -90,11 +101,12 @@ export async function runCandidateIntelligence(
       messages: [
         { role: 'user' as const, content: `Parse this resume into a structured candidate profile:\n\n${input.resume_text}` },
       ],
+      response_format: { type: 'json_object' },
       max_tokens: 8192,
       signal,
     });
 
-    parsed = repairJSON<CandidateIntelligenceOutput>(response.text);
+    parsed = normalizeCandidateIntelligence(repairJSON<CandidateIntelligenceOutput>(response.text), input.resume_text);
 
     if (!parsed) {
       logger.warn(
@@ -115,15 +127,16 @@ export async function runCandidateIntelligence(
     try {
       const retry = await llm.chat({
         model: MODEL_MID,
-        system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+        system: `You are a JSON extraction machine.\n${JSON_OUTPUT_GUARDRAILS}`,
         messages: [
           { role: 'user' as const, content: `${SYSTEM_PROMPT}\n\nParse this resume into a structured candidate profile:\n\n${input.resume_text}` },
         ],
+        response_format: { type: 'json_object' },
         max_tokens: 8192,
         signal,
       });
 
-      parsed = repairJSON<CandidateIntelligenceOutput>(retry.text);
+      parsed = normalizeCandidateIntelligence(repairJSON<CandidateIntelligenceOutput>(retry.text), input.resume_text);
 
       if (!parsed) {
         logger.error(
@@ -140,6 +153,11 @@ export async function runCandidateIntelligence(
       );
       parsed = buildDeterministicCandidateIntelligence(input);
     }
+  }
+
+  parsed = normalizeCandidateIntelligence(parsed, input.resume_text);
+  if (!parsed) {
+    parsed = buildDeterministicCandidateIntelligence(input);
   }
 
   // Guardrail: never allow placeholder names
@@ -163,6 +181,103 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
   if (error instanceof DOMException && error.name === 'AbortError') return true;
   return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function normalizeCandidateIntelligence(
+  parsed: CandidateIntelligenceOutput | null,
+  resumeText: string,
+): CandidateIntelligenceOutput | null {
+  if (!parsed) return null;
+
+  const normalizedEducation = coerceEducationArray(parsed.education);
+  const normalizedExperience = coerceExperienceArray(parsed.experience);
+
+  return {
+    contact: {
+      name: parsed.contact?.name ?? '',
+      email: parsed.contact?.email ?? '',
+      phone: parsed.contact?.phone ?? '',
+      linkedin: parsed.contact?.linkedin ?? '',
+      location: parsed.contact?.location ?? '',
+    },
+    career_themes: coerceStringArray(parsed.career_themes),
+    leadership_scope: parsed.leadership_scope ?? '',
+    quantified_outcomes: coerceQuantifiedOutcomes(parsed.quantified_outcomes),
+    industry_depth: coerceStringArray(parsed.industry_depth),
+    technologies: coerceStringArray(parsed.technologies),
+    operational_scale: parsed.operational_scale ?? '',
+    career_span_years: typeof parsed.career_span_years === 'number' && Number.isFinite(parsed.career_span_years)
+      ? parsed.career_span_years
+      : inferCareerSpanYears(resumeText),
+    experience: normalizedExperience,
+    education: normalizedEducation,
+    certifications: coerceStringArray(parsed.certifications),
+    hidden_accomplishments: coerceStringArray(parsed.hidden_accomplishments),
+    raw_text: parsed.raw_text ?? resumeText,
+  };
+}
+
+function coerceStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return dedupeStrings(value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean));
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+}
+
+function coerceExperienceArray(value: unknown): CandidateIntelligenceOutput['experience'] {
+  const items = Array.isArray(value) ? value : value && typeof value === 'object' ? [value] : [];
+  return items.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const entry = item as Record<string, unknown>;
+    return [{
+      company: typeof entry.company === 'string' ? entry.company : '',
+      title: typeof entry.title === 'string' ? entry.title : '',
+      start_date: typeof entry.start_date === 'string' ? entry.start_date : '',
+      end_date: typeof entry.end_date === 'string' ? entry.end_date : '',
+      bullets: coerceStringArray(entry.bullets),
+      inferred_scope: entry.inferred_scope && typeof entry.inferred_scope === 'object'
+        ? {
+            team_size: typeof (entry.inferred_scope as Record<string, unknown>).team_size === 'string' ? (entry.inferred_scope as Record<string, unknown>).team_size as string : undefined,
+            budget: typeof (entry.inferred_scope as Record<string, unknown>).budget === 'string' ? (entry.inferred_scope as Record<string, unknown>).budget as string : undefined,
+            geography: typeof (entry.inferred_scope as Record<string, unknown>).geography === 'string' ? (entry.inferred_scope as Record<string, unknown>).geography as string : undefined,
+            revenue_impact: typeof (entry.inferred_scope as Record<string, unknown>).revenue_impact === 'string' ? (entry.inferred_scope as Record<string, unknown>).revenue_impact as string : undefined,
+          }
+        : {},
+    }];
+  });
+}
+
+function coerceEducationArray(value: unknown): CandidateIntelligenceOutput['education'] {
+  const items = Array.isArray(value) ? value : value && typeof value === 'object' ? [value] : [];
+  return dedupeEducationEntries(items.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const entry = item as Record<string, unknown>;
+    const degree = typeof entry.degree === 'string' ? entry.degree.trim() : '';
+    const institution = typeof entry.institution === 'string' ? entry.institution.trim() : '';
+    const year = typeof entry.year === 'string' ? entry.year.trim() : undefined;
+    if (!degree && !institution) return [];
+    return [{ degree, institution, year }];
+  }));
+}
+
+function coerceQuantifiedOutcomes(value: unknown): CandidateIntelligenceOutput['quantified_outcomes'] {
+  const items = Array.isArray(value) ? value : value && typeof value === 'object' ? [value] : [];
+  return items.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const entry = item as Record<string, unknown>;
+    const outcome = typeof entry.outcome === 'string' ? entry.outcome.trim() : '';
+    if (!outcome) return [];
+    const metric_type = entry.metric_type === 'money' || entry.metric_type === 'time' || entry.metric_type === 'volume' || entry.metric_type === 'scope'
+      ? entry.metric_type
+      : inferMetricType(outcome);
+    const valueText = typeof entry.value === 'string' && entry.value.trim()
+      ? entry.value.trim()
+      : extractMetricValue(outcome);
+    return [{ outcome, metric_type, value: valueText }];
+  });
 }
 
 function buildDeterministicCandidateIntelligence(
@@ -619,7 +734,8 @@ function cleanEducationInstitution(value: string): string {
   return value
     .replace(/\s+/g, ' ')
     .replace(/\s+,/g, ',')
-    .replace(/\b(?:Technology|Skills|Certifications|Experience|Professional Experience|Summary)\b.*$/i, '')
+    .replace(/\b(?:College|School)\s+of\s+(?:Engineering|Business|Management|Technology)\b.*$/i, '')
+    .replace(/\b(?:Technology Skills|Technical Skills|Skills|Certifications|Experience|Professional Experience|Summary)\b.*$/i, '')
     .replace(/[,\-|]+$/g, '')
     .trim();
 }
