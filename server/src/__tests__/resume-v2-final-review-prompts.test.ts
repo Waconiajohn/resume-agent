@@ -1594,4 +1594,58 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
     expect(stabilized.concerns[0]?.related_requirement).toContain('regulated industries');
   });
+
+  it('removes certification guidance from non-credential experience concerns', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12 years in cloud architecture and platform engineering',
+            why_it_matters: 'Shows core cloud depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible cloud architect with one clear multi-cloud proof gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: "The candidate's experience with Azure or GCP is not clearly highlighted",
+          why_it_hurts: 'The job requires deep expertise in AWS and one additional cloud.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Deep expertise in AWS and one additional cloud',
+          fix_strategy: 'Add specific examples or certifications related to Azure or GCP to demonstrate the candidate’s experience with multiple clouds.',
+          requires_candidate_input: true,
+          clarifying_question: 'Can you provide examples of your experience working with Azure or GCP, or any relevant certifications you hold?',
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.concerns[0]?.fix_strategy).not.toMatch(/certif/i);
+    expect(stabilized.concerns[0]?.clarifying_question).not.toMatch(/certif/i);
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('Add specific examples');
+    expect(stabilized.concerns[0]?.clarifying_question).toContain('Azure or GCP');
+  });
 });

@@ -931,6 +931,42 @@ function sanitizeConcernSuggestedEdit(
   };
 }
 
+function requirementLooksCredentialBased(concern: FinalReviewResult['concerns'][number]): boolean {
+  return /\b(certification|certified|certificate|license|licensed|licensure|degree|bachelor'?s|master'?s|mba|cpa|pe|pmp)\b/i
+    .test(`${concern.related_requirement ?? ''} ${concern.observation}`);
+}
+
+function removeUnsupportedCredentialGuidance(text: string): string {
+  return text
+    .replace(/\s*,?\s*or certifications? related to [^,.?!;]+/gi, '')
+    .replace(/\s*,?\s*or any relevant certifications?(?: you hold)?/gi, '')
+    .replace(/\s*,?\s*including certifications?[^,.?!;]*/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.?!])/g, '$1')
+    .trim();
+}
+
+function sanitizeConcernGuidance(
+  concern: FinalReviewResult['concerns'][number],
+): FinalReviewResult['concerns'][number] {
+  if (requirementLooksCredentialBased(concern)) {
+    return concern;
+  }
+
+  const fixStrategy = concern.fix_strategy
+    ? removeUnsupportedCredentialGuidance(concern.fix_strategy)
+    : concern.fix_strategy;
+  const clarifyingQuestion = concern.clarifying_question
+    ? removeUnsupportedCredentialGuidance(concern.clarifying_question)
+    : concern.clarifying_question;
+
+  return {
+    ...concern,
+    fix_strategy: fixStrategy,
+    clarifying_question: clarifyingQuestion,
+  };
+}
+
 export function stabilizeFinalReviewResult(
   result: FinalReviewResult,
   options?: { hardRequirementRisks?: string[]; materialJobFitRisks?: string[]; resumeText?: string },
@@ -954,7 +990,9 @@ export function stabilizeFinalReviewResult(
     improvement_summary: [...result.improvement_summary],
   };
   const evidenceCorpus = buildResumeEvidenceCorpus(normalized, options?.resumeText);
-  normalized.concerns = normalized.concerns.map((concern) => sanitizeConcernSuggestedEdit(concern, evidenceCorpus));
+  normalized.concerns = normalized.concerns
+    .map((concern) => sanitizeConcernSuggestedEdit(concern, evidenceCorpus))
+    .map((concern) => sanitizeConcernGuidance(concern));
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
   if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
