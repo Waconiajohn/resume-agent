@@ -184,6 +184,14 @@ export async function runGapAnalysis(
     );
   } catch (error) {
     if (shouldRethrowForAbort(error, signal)) throw error;
+    const salvaged = tryRecoverGapAnalysisFromProviderError(error, input, fullRequirementSeeds, shouldBackfillFromDeterministic);
+    if (salvaged) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Gap Analysis: recovered parseable JSON from provider failed_generation payload',
+      );
+      return salvaged;
+    }
     logger.warn(
       { error: error instanceof Error ? error.message : String(error) },
       'Gap Analysis: first attempt failed, using deterministic fallback',
@@ -216,6 +224,14 @@ export async function runGapAnalysis(
     );
   } catch (error) {
     if (shouldRethrowForAbort(error, signal)) throw error;
+    const salvaged = tryRecoverGapAnalysisFromProviderError(error, input, fullRequirementSeeds, shouldBackfillFromDeterministic);
+    if (salvaged) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Gap Analysis: recovered parseable JSON from retry failed_generation payload',
+      );
+      return salvaged;
+    }
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },
       'Gap Analysis: retry failed, using deterministic fallback',
@@ -614,6 +630,37 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
   if (error instanceof DOMException && error.name === 'AbortError') return true;
   return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function tryRecoverGapAnalysisFromProviderError(
+  error: unknown,
+  input: GapAnalysisInput,
+  fullRequirementSeeds: CanonicalRequirementSeed[],
+  shouldBackfillFromDeterministic: boolean,
+): GapAnalysisOutput | null {
+  const failedGeneration = extractFailedGeneration(error);
+  if (!failedGeneration) return null;
+
+  const repaired = repairJSON<GapAnalysisOutput>(failedGeneration);
+  if (!repaired) return null;
+
+  return normalizeGapAnalysis(
+    shouldBackfillFromDeterministic
+      ? mergeWithDeterministicBackfill(repaired, input, fullRequirementSeeds)
+      : reconcileModeledHardRequirements(repaired, input),
+  );
+}
+
+function extractFailedGeneration(error: unknown): string | null {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = message.match(/"failed_generation":"((?:\\.|[^"])*)"/);
+  if (!match?.[1]) return null;
+
+  try {
+    return JSON.parse(`"${match[1]}"`);
+  } catch {
+    return null;
+  }
 }
 
 function buildDeterministicGapAnalysis(input: GapAnalysisInput): GapAnalysisOutput {

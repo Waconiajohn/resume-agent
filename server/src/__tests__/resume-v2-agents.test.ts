@@ -704,6 +704,21 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
+    it('recovers parseable JSON from provider failed_generation errors before using deterministic fallback', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error(
+        'groq API error 400: {"error":{"message":"Failed to generate JSON.","type":"invalid_request_error","code":"json_validate_failed","failed_generation":"{\\n  \\"requirements\\": [],\\n  \\"coverage_score\\": 100,\\n  \\"score_breakdown\\": {\\"job_description\\": {\\"total\\": 0, \\"strong\\": 0, \\"partial\\": 0, \\"missing\\": 0, \\"addressed\\": 0, \\"coverage_score\\": 0}, \\"benchmark\\": {\\"total\\": 0, \\"strong\\": 0, \\"partial\\": 0, \\"missing\\": 0, \\"addressed\\": 0, \\"coverage_score\\": 0}},\\n  \\"strength_summary\\": \\"Recovered from failed_generation\\",\\n  \\"critical_gaps\\": [\\"Cloud Architecture\\"],\\n  \\"pending_strategies\\": []\\n}"}}',
+      ));
+      mockRepairJSON.mockReturnValueOnce({
+        ...GAP_ANALYSIS_OUTPUT,
+        strength_summary: 'Recovered from failed_generation',
+      });
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.strength_summary).toBe('Recovered from failed_generation');
+      expect(mockLlmChat).toHaveBeenCalledTimes(1);
+    });
+
     it('forwards AbortSignal to llm.chat', async () => {
       const controller = new AbortController();
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
