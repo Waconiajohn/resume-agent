@@ -148,7 +148,7 @@ RULES:
 ${JSON_OUTPUT_GUARDRAILS}`;
 
 const HIGH_VOLUME_REQUIREMENT_THRESHOLD = 35;
-const HIGH_VOLUME_BENCHMARK_LIMIT = 12;
+const HIGH_VOLUME_BENCHMARK_LIMIT = 8;
 
 export async function runGapAnalysis(
   input: GapAnalysisInput,
