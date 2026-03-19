@@ -153,6 +153,8 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
 
   const requirement_map: PositioningAssessmentEntry[] = [];
   const strategies_applied: string[] = [];
+  const getAddresses = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
 
   for (const req of gap_analysis.requirements) {
     // Find bullets that address this requirement
@@ -160,7 +162,7 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
 
     for (const exp of draft.professional_experience) {
       for (const bullet of exp.bullets) {
-        if (bullet.addresses_requirements.some(r =>
+        if (getAddresses(bullet.addresses_requirements).some(r =>
           r.toLowerCase().includes(req.requirement.toLowerCase()) ||
           req.requirement.toLowerCase().includes(r.toLowerCase())
         )) {
@@ -174,7 +176,7 @@ function buildPositioningAssessment(input: AssemblyInput): PositioningAssessment
 
     // Check selected accomplishments too
     for (const acc of draft.selected_accomplishments) {
-      if (acc.addresses_requirements.some(r =>
+      if (getAddresses(acc.addresses_requirements).some(r =>
         r.toLowerCase().includes(req.requirement.toLowerCase()) ||
         req.requirement.toLowerCase().includes(r.toLowerCase())
       )) {

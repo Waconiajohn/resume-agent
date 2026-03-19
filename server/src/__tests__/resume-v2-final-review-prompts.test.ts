@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildFinalReviewPrompts,
   extractHardRequirementRisksFromGapAnalysis,
+  extractMaterialJobFitRisksFromGapAnalysis,
   getEffectiveHardRequirementRisks,
   stabilizeFinalReviewResult,
 } from '../routes/resume-v2-pipeline-support.js';
@@ -288,6 +289,53 @@ describe('resume-v2 final review prompts', () => {
     expect(hardRisks).toEqual([]);
   });
 
+  it('does not let preferred-only critical gaps re-enter as hard risks', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: 'MBA preferred',
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+      critical_gaps: ['MBA'],
+    });
+
+    expect(hardRisks).toEqual([]);
+  });
+
+  it('does not let benchmark-only credential gaps re-enter as hard risks through critical gaps', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: 'MBA',
+          classification: 'missing',
+          source: 'benchmark',
+        },
+      ],
+      critical_gaps: ['MBA'],
+    });
+
+    expect(hardRisks).toEqual([]);
+  });
+
+  it('keeps mixed required-plus-preferred degree strings as hard risks when the required degree is still missing', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: "Bachelor's degree in engineering or operations management; MBA or MS preferred",
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+      critical_gaps: ["Bachelor's degree in engineering or operations management"],
+    });
+
+    expect(hardRisks).toEqual([
+      "Bachelor's degree in engineering or operations management",
+    ]);
+  });
+
   it('suppresses years-threshold risks when final review already shows sufficient years of experience', () => {
     const result: Parameters<typeof stabilizeFinalReviewResult>[0] = {
       six_second_scan: {
@@ -371,6 +419,107 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.benchmark_alignment).toBe('moderate');
     expect(stabilized.fit_assessment.business_impact).toBe('strong');
     expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
+  });
+
+  it('drops contradicted years-threshold risks after stabilization adds positive recruiter signals from the summary', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: '',
+        top_signals_seen: [],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong cloud architect with 12 years of experience in cloud infrastructure and architecture.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, { hardRequirementRisks: ['10+ years in cloud infrastructure/architecture roles'] });
+
+    expect(stabilized.concerns.some((concern) => concern.id === 'hard_requirement_risk')).toBe(false);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('10+ years'))).toBe(false);
+    expect(stabilized.fit_assessment.job_description_fit).toBe('strong');
+  });
+
+  it('extracts material must-have job-fit risks from partial threshold gaps without treating them as hard credentials', () => {
+    const risks = extractMaterialJobFitRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: 'Build and lead a 40+ person marketing organization',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+        },
+        {
+          requirement: 'MBA preferred',
+          source: 'job_description',
+          importance: 'nice_to_have',
+          classification: 'missing',
+        },
+      ],
+    });
+
+    expect(risks).toEqual(['Build and lead a 40+ person marketing organization']);
+  });
+
+  it('caps final-review optimism when material must-have job-fit risks remain after gap analysis fallback', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Promising first pass.',
+        top_signals_seen: [
+          {
+            signal: 'Built a high-growth marketing function across multiple channels',
+            why_it_matters: 'Shows leadership and breadth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'strong_interview_candidate',
+        summary: 'Compelling senior marketing leader with visible growth wins.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      materialJobFitRisks: [
+        'Build and lead a 40+ person marketing organization',
+        'Experience managing $20M+ marketing budgets with P&L accountability',
+      ],
+    });
+
+    expect(stabilized.hiring_manager_verdict.rating).toBe('needs_improvement');
+    expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
+    expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('40+ person marketing organization'))).toBe(true);
   });
 
   it('softens preferred-qualification missing-signal language so it is not treated like a screen-out risk', () => {

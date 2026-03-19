@@ -17,6 +17,7 @@ import type {
 import {
   buildFinalReviewPrompts,
   extractHardRequirementRisksFromGapAnalysis,
+  extractMaterialJobFitRisksFromGapAnalysis,
   finalReviewResultSchema,
   getEffectiveHardRequirementRisks,
   stabilizeFinalReviewResult,
@@ -216,8 +217,9 @@ async function runRealSessionQa() {
     const repaired = repairJSON<unknown>(reviewResponse.text);
     const parsedReview = finalReviewResultSchema.parse(repaired);
     const rawHardRisks = extractHardRequirementRisksFromGapAnalysis(pipelineState.gap_analysis);
+    const materialJobFitRisks = extractMaterialJobFitRisksFromGapAnalysis(pipelineState.gap_analysis);
     const effectiveHardRisks = getEffectiveHardRequirementRisks(parsedReview, rawHardRisks);
-    const finalReview = stabilizeFinalReviewResult(parsedReview, { hardRequirementRisks: rawHardRisks });
+    const finalReview = stabilizeFinalReviewResult(parsedReview, { hardRequirementRisks: rawHardRisks, materialJobFitRisks });
 
     const artifact = {
       label,

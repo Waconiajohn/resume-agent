@@ -437,7 +437,13 @@ function isPreferredOnlyRequirement(value: string): boolean {
   const normalized = value.toLowerCase();
   const hasPreferredSignal = /\b(preferred|preference|preferred qualification|nice[- ]to[- ]have|bonus|plus)\b/.test(normalized);
   const hasRequiredSignal = /\b(required|must have|must-have|minimum|mandatory|screen(?:-| )out|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(normalized);
-  return hasPreferredSignal && !hasRequiredSignal;
+  if (!hasPreferredSignal || hasRequiredSignal) return false;
+
+  const beforePreferred = normalized.split(/\bpreferred\b|\bpreference\b|\bpreferred qualification\b|\bnice[- ]to[- ]have\b|\bbonus\b|\bplus\b/i)[0] ?? normalized;
+  const hasMixedHardClauseBeforePreferred = /[;:,]|\bor\b|\band\b/.test(beforePreferred)
+    && /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|foreign equivalent|\d+\+?\s+years?)\b/.test(beforePreferred);
+
+  return !hasMixedHardClauseBeforePreferred;
 }
 
 export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown): string[] {
@@ -461,11 +467,15 @@ export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown)
     .filter((item) => item.classification === 'strong')
     .map((item) => item.requirement);
 
+  const nonHardRequirementSeeds = parsedRequirements
+    .filter((item) => item.source === 'benchmark' || isPreferredOnlyRequirement(item.requirement))
+    .map((item) => item.requirement);
+
   const requirementRisks = parsedRequirements
       .filter((item) => item.source === 'job_description')
       .filter((item) => isHardRequirementRequirement(item.requirement))
       .filter((item) => item.classification !== 'strong')
-      .map((item) => item.requirement);
+      .map((item) => canonicalizeHardRequirementRisk(item.requirement));
 
   const criticalGapRisks = Array.isArray(criticalGaps)
     ? criticalGaps
@@ -473,13 +483,89 @@ export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown)
       .map((item) => item.trim())
       .filter((item) => item.length > 0)
       .filter((item) => isHardRequirementRequirement(item))
+      .map((item) => canonicalizeHardRequirementRisk(item))
       .filter((item) => !isHardRequirementAlreadySatisfied(item, strongJobRequirements))
+      .filter((item) => !isRequirementExplainedByNonHardRequirement(item, nonHardRequirementSeeds))
     : [];
 
   return Array.from(new Set([
     ...requirementRisks,
     ...criticalGapRisks,
   ]));
+}
+
+function isMaterialMustHaveGapRequirement(value: string): boolean {
+  const normalized = value.toLowerCase();
+  if (isPreferredOnlyRequirement(normalized)) return false;
+  return /\d/.test(normalized)
+    || /\b(board|executive presence|p&l|profit and loss|budget|revenue|team|teams|people|organization|portfolio|multi-brand|global|multi-region|dtc|e-?commerce)\b/.test(normalized);
+}
+
+export function extractMaterialJobFitRisksFromGapAnalysis(gapAnalysis: unknown): string[] {
+  if (!gapAnalysis || typeof gapAnalysis !== 'object') return [];
+  const requirements = (gapAnalysis as { requirements?: unknown }).requirements;
+
+  const parsedRequirements = Array.isArray(requirements)
+    ? requirements
+      .filter((item): item is { requirement?: unknown; classification?: unknown; source?: unknown; importance?: unknown } => !!item && typeof item === 'object')
+      .map((item) => ({
+        requirement: typeof item.requirement === 'string' ? item.requirement.trim() : '',
+        classification: typeof item.classification === 'string' ? item.classification : '',
+        source: item.source === 'benchmark' ? 'benchmark' : 'job_description',
+        importance: item.importance === 'must_have' ? 'must_have' : item.importance === 'important' ? 'important' : 'nice_to_have',
+      }))
+      .filter((item) => item.requirement.length > 0)
+    : [];
+
+  return Array.from(new Set(
+    parsedRequirements
+      .filter((item) => item.source === 'job_description')
+      .filter((item) => item.importance === 'must_have')
+      .filter((item) => item.classification !== 'strong')
+      .filter((item) => !isHardRequirementRequirement(item.requirement))
+      .filter((item) => item.classification === 'missing' || isMaterialMustHaveGapRequirement(item.requirement))
+      .map((item) => item.requirement),
+  ));
+}
+
+function canonicalizeHardRequirementRisk(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  const segments = trimmed
+    .split(/(?=[;:])|(?:\s+-\s+)|(?:\s+\/\s+)/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  const primary = segments.find((segment) => !isPreferredOnlyRequirement(segment));
+  return primary ?? trimmed;
+}
+
+function isRequirementExplainedByNonHardRequirement(
+  risk: string,
+  nonHardRequirements: string[],
+): boolean {
+  const normalizedRisk = normalizeReviewText(risk);
+  const riskTokens = extractRequirementTokens(normalizedRisk);
+
+  return nonHardRequirements.some((requirement) => {
+    const normalizedRequirement = normalizeReviewText(requirement);
+    if (normalizedRequirement === normalizedRisk) return true;
+    if (normalizedRequirement.includes(normalizedRisk) || normalizedRisk.includes(normalizedRequirement)) return true;
+
+    const requirementTokens = extractRequirementTokens(normalizedRequirement);
+    if (riskTokens.length === 0 || requirementTokens.length === 0) return false;
+    return riskTokens.every((token) => requirementTokens.includes(token));
+  });
+}
+
+function extractRequirementTokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3);
 }
 
 function isPositiveRecruiterSignalCandidate(result: FinalReviewResult): boolean {
@@ -521,7 +607,7 @@ function createRecruiterSignalFromSummary(summary: string) {
 
 export function stabilizeFinalReviewResult(
   result: FinalReviewResult,
-  options?: { hardRequirementRisks?: string[] },
+  options?: { hardRequirementRisks?: string[]; materialJobFitRisks?: string[] },
 ): FinalReviewResult {
   const normalized: FinalReviewResult = {
     ...result,
@@ -541,10 +627,7 @@ export function stabilizeFinalReviewResult(
     },
     improvement_summary: [...result.improvement_summary],
   };
-  const hardRequirementRisks = getEffectiveHardRequirementRisks(
-    normalized,
-    options?.hardRequirementRisks ?? [],
-  );
+  const materialJobFitRisks = Array.from(new Set((options?.materialJobFitRisks ?? []).filter(Boolean)));
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
   if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
@@ -597,6 +680,11 @@ export function stabilizeFinalReviewResult(
     ...item,
     why_it_matters: softenPreferredQualificationRiskLanguage(item.signal, item.why_it_matters),
   }));
+
+  const hardRequirementRisks = getEffectiveHardRequirementRisks(
+    normalized,
+    options?.hardRequirementRisks ?? [],
+  );
 
   if (hardRequirementRisks.length > 0) {
     const existingMissingSignals = new Set(
@@ -663,6 +751,49 @@ export function stabilizeFinalReviewResult(
     normalized.fit_assessment.clarity_and_credibility = capFitAssessment(
       normalized.fit_assessment.clarity_and_credibility,
       'moderate',
+    );
+  }
+
+  if (hardRequirementRisks.length === 0 && materialJobFitRisks.length > 0) {
+    const existingMissingSignals = new Set(
+      normalized.six_second_scan.important_signals_missing.map((item) => normalizeReviewText(item.signal)),
+    );
+    for (const requirement of materialJobFitRisks.slice(0, 3)) {
+      if (existingMissingSignals.has(normalizeReviewText(requirement))) continue;
+      normalized.six_second_scan.important_signals_missing.push({
+        signal: requirement,
+        why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+      });
+    }
+
+    if (!normalized.concerns.some((concern) => concern.id === 'material_job_fit_risk')) {
+      normalized.concerns.unshift({
+        id: 'material_job_fit_risk',
+        severity: materialJobFitRisks.length > 1 ? 'critical' : 'moderate',
+        type: 'missing_evidence',
+        observation: `Must-have role-fit evidence is still thin: ${materialJobFitRisks[0]}`,
+        why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+        target_section: 'Summary or most relevant experience bullets',
+        related_requirement: materialJobFitRisks[0],
+        fix_strategy: 'Prioritize direct proof for this requirement before treating the draft as final.',
+        requires_candidate_input: true,
+        clarifying_question: 'What is the strongest real example from your background that proves this must-have requirement?',
+      });
+    }
+
+    if (normalized.hiring_manager_verdict.rating === 'strong_interview_candidate') {
+      normalized.hiring_manager_verdict.rating = materialJobFitRisks.length > 1
+        ? 'needs_improvement'
+        : 'possible_interview';
+    }
+
+    normalized.fit_assessment.job_description_fit = capFitAssessment(
+      normalized.fit_assessment.job_description_fit,
+      materialJobFitRisks.length > 1 ? 'weak' : 'moderate',
+    );
+    normalized.fit_assessment.clarity_and_credibility = capFitAssessment(
+      normalized.fit_assessment.clarity_and_credibility,
+      materialJobFitRisks.length > 1 ? 'weak' : 'moderate',
     );
   }
 

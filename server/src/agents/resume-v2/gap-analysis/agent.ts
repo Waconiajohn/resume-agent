@@ -473,6 +473,7 @@ function buildEvidenceCorpus(input: GapAnalysisInput): EvidenceEntry[] {
     { text: input.candidate.leadership_scope, origin: 'leadership scope' },
     { text: input.candidate.operational_scale, origin: 'operational scale' },
     ...input.candidate.career_themes.map((theme) => ({ text: theme, origin: 'career theme' })),
+    ...input.candidate.industry_depth.map((item) => ({ text: item, origin: 'industry depth' })),
     ...input.candidate.hidden_accomplishments.map((item) => ({ text: item, origin: 'hidden accomplishment' })),
     ...input.candidate.technologies.map((item) => ({ text: item, origin: 'technology' })),
     ...input.candidate.certifications.map((item) => ({ text: item, origin: 'certification' })),
@@ -540,10 +541,18 @@ function evaluateRequirement(
   }
 
   if (/\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|foreign equivalent)\b/.test(requirementText.toLowerCase())) {
-    const directMatch = combinedCredentialText.length > 0;
+    const directMatch = matchesDegreeRequirement(requirementText, input.candidate.education);
     return {
       classification: directMatch ? 'strong' : 'missing',
       evidence: directMatch ? input.candidate.education.map((item) => `${item.degree} — ${item.institution}`) : [],
+    };
+  }
+
+  const directSkillEvidence = findDirectSkillEvidence(requirementText, input);
+  if (directSkillEvidence.length > 0) {
+    return {
+      classification: 'strong',
+      evidence: directSkillEvidence.slice(0, 2),
     };
   }
 
@@ -751,6 +760,85 @@ function matchesCredentialRequirement(requirement: string, certifications: strin
     return normalizedCertification.includes(normalizedRequirement)
       || normalizedRequirement.includes(normalizedCertification);
   });
+}
+
+function matchesDegreeRequirement(
+  requirement: string,
+  education: Array<{ degree: string; institution: string; year?: string }>,
+): boolean {
+  if (education.length === 0) return false;
+
+  const normalizedRequirement = canonicalizeCredentialText(requirement);
+  const requiresBachelors = /\b(bachelor|bs|ba|beng|bsc)\b/.test(normalizedRequirement);
+  const requiresMasters = /\b(master|ms|ma|mba)\b/.test(normalizedRequirement);
+  const requiresDoctorate = /\b(phd|doctorate|doctor)\b/.test(normalizedRequirement);
+  const requiresEngineering = /\bengineering|engineer\b/.test(normalizedRequirement);
+  const requiresBusiness = /\bbusiness|operations management|management\b/.test(normalizedRequirement);
+  const requiresMarketing = /\bmarketing\b/.test(normalizedRequirement);
+
+  return education.some((item) => {
+    const degreeText = canonicalizeCredentialText(`${item.degree} ${item.institution}`);
+    if (!degreeText) return false;
+
+    const levelMatch = requiresDoctorate
+      ? /\b(phd|doctorate|doctor)\b/.test(degreeText)
+      : requiresMasters
+        ? /\b(master|ms|ma|mba)\b/.test(degreeText)
+        : requiresBachelors
+          ? /\b(bachelor|bs|ba|beng|bsc)\b/.test(degreeText)
+          : true;
+
+    if (!levelMatch) return false;
+    if (requiresEngineering && !/\bengineering|engineer\b/.test(degreeText)) return false;
+    if (requiresBusiness && !/\bbusiness|operations management|management|mba\b/.test(degreeText)) return false;
+    if (requiresMarketing && !/\bmarketing\b/.test(degreeText)) return false;
+
+    return true;
+  });
+}
+
+function findDirectSkillEvidence(
+  requirement: string,
+  input: GapAnalysisInput,
+): string[] {
+  const normalizedRequirement = requirement.toLowerCase();
+  const exactMatches = [
+    ...input.candidate.technologies,
+    ...input.candidate.certifications,
+    ...input.candidate.industry_depth,
+  ].filter((item) => {
+    const normalizedItem = item.toLowerCase();
+    if (!normalizedItem) return false;
+    if (normalizedRequirement.includes(normalizedItem)) return true;
+    if (normalizedItem === 'gcp' && /google cloud|gcp/.test(normalizedRequirement)) return true;
+    if (normalizedItem === 'aws' && /\baws\b/.test(normalizedRequirement)) return true;
+    if (normalizedItem === 'azure' && /\bazure\b/.test(normalizedRequirement)) return true;
+    return false;
+  });
+
+  const multiCloudMatches = ['aws', 'azure', 'gcp']
+    .filter((cloud) => normalizedRequirement.includes(cloud) || (cloud === 'gcp' && normalizedRequirement.includes('google cloud')))
+    .filter((cloud) => input.candidate.technologies.some((item) => {
+      const normalizedItem = item.toLowerCase();
+      return normalizedItem === cloud || (cloud === 'gcp' && normalizedItem === 'google cloud');
+    }));
+
+  if (multiCloudMatches.length >= 2) {
+    return Array.from(new Set(multiCloudMatches.map((cloud) => cloud.toUpperCase())));
+  }
+
+  if (/regulated industr|soc 2|hipaa|pci-dss|pci dss/.test(normalizedRequirement)) {
+    const regulatedEvidence = [
+      ...input.candidate.industry_depth,
+      ...input.candidate.hidden_accomplishments,
+      ...input.candidate.experience.flatMap((experience) => experience.bullets),
+    ].filter((item) => /financial|finance|healthcare|hipaa|pci|soc 2|regulated/i.test(item));
+    if (regulatedEvidence.length > 0) {
+      return regulatedEvidence.slice(0, 2);
+    }
+  }
+
+  return Array.from(new Set(exactMatches)).slice(0, 2);
 }
 
 function isHardRequirement(requirement: string, sourceEvidence?: string): boolean {

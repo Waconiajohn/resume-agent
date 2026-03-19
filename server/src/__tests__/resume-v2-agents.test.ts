@@ -63,6 +63,7 @@ import { runResumeWriter }         from '../agents/resume-v2/resume-writer/agent
 import { runTruthVerification }    from '../agents/resume-v2/truth-verification/agent.js';
 import { runATSOptimization }      from '../agents/resume-v2/ats-optimization/agent.js';
 import { runExecutiveTone }        from '../agents/resume-v2/executive-tone/agent.js';
+import { runAssembly }             from '../agents/resume-v2/assembly/agent.js';
 
 import type {
   JobIntelligenceOutput,
@@ -83,6 +84,7 @@ import type {
   ATSOptimizationInput,
   ExecutiveToneOutput,
   ExecutiveToneInput,
+  AssemblyInput,
   CandidateIntelligenceOutput as CandidateOutput,
   JobIntelligenceOutput as JobOutput,
 } from '../agents/resume-v2/types.js';
@@ -784,6 +786,93 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.critical_gaps).toEqual([]);
       expect(result.requirements[0]?.classification).toBe('strong');
     });
+
+    it('deterministic fallback does not treat any unrelated degree as satisfying a specific engineering degree requirement', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const engineeringDegreeInput: GapAnalysisInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          education: [{ degree: 'BS Computer Science', institution: 'MIT', year: '2008' }],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'Bachelor’s degree in Chemical Engineering or related engineering field',
+              importance: 'must_have',
+              evidence_from_jd: 'Required qualification: Bachelor’s degree in Chemical Engineering, Mechanical Engineering, or related engineering field',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+      };
+
+      const result = await runGapAnalysis(engineeringDegreeInput);
+      const degreeRequirement = result.requirements.find((item) => item.requirement.includes('Chemical Engineering'));
+
+      expect(degreeRequirement?.classification).toBe('missing');
+      expect(result.critical_gaps).toContain('Bachelor’s degree in Chemical Engineering or related engineering field');
+    });
+
+    it('deterministic fallback treats direct multi-cloud technology evidence as a strong match', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const cloudSkillInput: GapAnalysisInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          technologies: ['AWS', 'GCP', 'Kubernetes', 'Terraform'],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'Deep expertise in AWS and one additional cloud (Azure or GCP)',
+              importance: 'must_have',
+              evidence_from_jd: 'Required qualification',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+      };
+
+      const result = await runGapAnalysis(cloudSkillInput);
+      const requirement = result.requirements.find((item) => item.requirement.includes('additional cloud'));
+
+      expect(requirement?.classification).toBe('strong');
+      expect(requirement?.evidence).toEqual(expect.arrayContaining(['AWS', 'GCP']));
+    });
+
+    it('deterministic fallback uses industry depth to satisfy regulated-industry requirements when the candidate already has that background', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const regulatedInput: GapAnalysisInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          industry_depth: ['Financial Services', 'Healthcare'],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'Experience architecting for regulated industries',
+              importance: 'must_have',
+              evidence_from_jd: 'Required qualification: financial services or healthcare preferred',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+      };
+
+      const result = await runGapAnalysis(regulatedInput);
+      const requirement = result.requirements.find((item) => item.requirement.includes('regulated industries'));
+
+      expect(requirement?.classification).toBe('strong');
+      expect(requirement?.evidence).toEqual(expect.arrayContaining(['Financial Services']));
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -883,6 +972,7 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       await runNarrativeStrategy(input);
 
       const llmCall = mockLlmChat.mock.calls[0][0];
+      expect(llmCall.response_format).toEqual({ type: 'json_object' });
       expect(llmCall.system).toContain('The first character of your response must be {');
       expect(llmCall.system).toContain('exactly 3 themes');
       expect(llmCall.system).toContain('3 concise paragraphs');
@@ -1285,6 +1375,57 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledWith(
         expect.objectContaining({ model: 'model-light' }),
       );
+    });
+  });
+
+  describe('Assembly', () => {
+    it('handles missing requirement-link arrays in draft metadata without crashing', () => {
+      const assemblyInput: AssemblyInput = {
+        draft: {
+          ...RESUME_DRAFT_OUTPUT,
+          professional_experience: RESUME_DRAFT_OUTPUT.professional_experience.map(exp => ({
+            ...exp,
+            bullets: exp.bullets.map((bullet, index) =>
+              index === 0
+                ? ({ ...bullet, addresses_requirements: undefined as unknown as string[] })
+                : bullet
+            ),
+          })),
+          selected_accomplishments: RESUME_DRAFT_OUTPUT.selected_accomplishments.map((acc, index) =>
+            index === 0
+              ? ({ ...acc, addresses_requirements: undefined as unknown as string[] })
+              : acc
+          ),
+        },
+        truth_verification: {
+          claims: [],
+          flagged_items: [],
+          truth_score: 92,
+        },
+        ats_optimization: {
+          match_score: 84,
+          keywords_found: ['cloud architecture'],
+          keywords_missing: [],
+          keyword_suggestions: [],
+          formatting_issues: [],
+        },
+        executive_tone: {
+          findings: [],
+          tone_score: 88,
+          banned_phrases_found: [],
+        },
+        gap_analysis: GAP_ANALYSIS_OUTPUT,
+        pre_scores: {
+          ats_match: 71,
+          keywords_found: ['cloud architecture'],
+          keywords_missing: [],
+        },
+      };
+
+      const result = runAssembly(assemblyInput);
+
+      expect(result.positioning_assessment?.requirement_map).toBeDefined();
+      expect(result.positioning_assessment?.requirement_map.length).toBeGreaterThan(0);
     });
   });
 
