@@ -53,6 +53,10 @@ RULES:
 - Be specific: "Led cross-functional team" is fine. "Responsible for leading teams" is not.
 - Executives use: "drove," "orchestrated," "championed," "spearheaded," "influenced," "architected"
 - Executives DON'T use: "helped," "assisted," "supported," "worked on," "was responsible for"
+- Only flag exact text that appears verbatim in the resume draft. The "text" field must be copied exactly from the draft.
+- Never comment on phrases that are absent. Do not write explanations like "X is not present" or "Y could be considered".
+- Do not flag strong executive verbs such as "led," "directed," "delivered," "implemented," "managed," "oversaw," or "drove" as junior language.
+- If a line is acceptable but not perfect, leave it alone. Only return clear, high-confidence issues.
 - Focus on the most visible tone issues first: headline, summary, selected accomplishments, and the first bullets under each role.
 - Return only the highest-value tone issues. Maximum 5 findings.
 
@@ -64,7 +68,15 @@ export async function runExecutiveTone(
 ): Promise<ExecutiveToneOutput> {
   const resumeText = formatDraftForTone(input);
 
-  const userMessage = `Audit this resume for executive tone:\n\n${resumeText}\n\nReturn JSON only. Return at most 5 findings, keep each suggestion concise, and focus on the most visible issues first.`;
+  const userMessage = `Audit this resume for executive tone:
+
+${resumeText}
+
+Return JSON only.
+- Quote only exact problematic text that appears verbatim in the draft.
+- If a phrase is not present, do not mention it.
+- Do not flag already-strong executive verbs like led, directed, delivered, implemented, managed, oversaw, or drove.
+- Return at most 5 findings, keep each suggestion concise, and focus on the most visible issues first.`;
 
   try {
     const response = await llm.chat({
@@ -185,6 +197,16 @@ function buildDeterministicExecutiveToneFallback(input: ExecutiveToneInput): Exe
         issue: 'junior_language',
         suggestion: rewriteDeterministically(text),
       });
+      return;
+    }
+
+    if (GENERIC_FILLER_PATTERNS.some((pattern) => pattern.test(text))) {
+      findings.push({
+        text,
+        section,
+        issue: 'generic_filler',
+        suggestion: rewriteDeterministically(text),
+      });
     }
   };
 
@@ -196,7 +218,7 @@ function buildDeterministicExecutiveToneFallback(input: ExecutiveToneInput): Exe
   });
 
   const deduped = dedupeToneFindings(findings).slice(0, 5);
-  const toneScore = Math.max(40, 100 - (deduped.length * 3));
+  const toneScore = Math.max(40, 96 - (deduped.length * 4));
 
   return {
     findings: deduped,
@@ -219,6 +241,15 @@ function rewriteDeterministically(text: string, trigger?: string): string {
     rewritten = rewritten.replace(new RegExp(escaped, 'ig'), 'Led');
   }
 
+  rewritten = rewritten
+    .replace(/\bproven track record\b/gi, 'Delivered results')
+    .replace(/\bdemonstrating expertise in\b/gi, '')
+    .replace(/\bsignificant\b/gi, '')
+    .replace(/\bresults[- ]driven\b/gi, 'Operational')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+,/g, ',')
+    .trim();
+
   return rewritten;
 }
 
@@ -233,3 +264,10 @@ function dedupeToneFindings(findings: ExecutiveToneOutput['findings']): Executiv
   }
   return result;
 }
+
+const GENERIC_FILLER_PATTERNS = [
+  /\bproven track record\b/i,
+  /\bdemonstrating expertise in\b/i,
+  /\bsignificant cost savings\b/i,
+  /\bresults[- ]driven\b/i,
+];

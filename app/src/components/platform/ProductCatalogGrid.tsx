@@ -16,6 +16,12 @@ interface ToolGroup {
   productIds: string[];
 }
 
+type GroupTone = {
+  shell: string;
+  headerChip: string;
+  countChip: string;
+};
+
 const TOOL_GROUPS: ToolGroup[] = [
   {
     label: 'Your Foundation',
@@ -50,6 +56,36 @@ const CAREER_PROFILE_POWERED_IDS = new Set([
   'executive-documents',
 ]);
 
+function getGroupTone(label: string): GroupTone {
+  switch (label) {
+    case 'Your Foundation':
+      return {
+        shell: 'border-[#98b3ff]/18 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
+        headerChip: 'border-[#98b3ff]/18 bg-[#98b3ff]/[0.08] text-[#d6e0ff]',
+        countChip: 'border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] text-[#c9d7ff]/78',
+      };
+    case 'LinkedIn & Brand':
+      return {
+        shell: 'border-[#d7b8f0]/18 bg-[radial-gradient(circle_at_top_left,rgba(215,184,240,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
+        headerChip: 'border-[#d7b8f0]/18 bg-[#d7b8f0]/[0.08] text-[#f0dcff]',
+        countChip: 'border-[#d7b8f0]/16 bg-[#d7b8f0]/[0.06] text-[#f0dcff]/78',
+      };
+    case 'Job Search & Networking':
+      return {
+        shell: 'border-[#f0d99f]/18 bg-[radial-gradient(circle_at_top_left,rgba(240,217,159,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
+        headerChip: 'border-[#f0d99f]/18 bg-[#f0d99f]/[0.08] text-[#ffe8b8]',
+        countChip: 'border-[#f0d99f]/16 bg-[#f0d99f]/[0.06] text-[#ffe8b8]/78',
+      };
+    case 'Interview & Offers':
+    default:
+      return {
+        shell: 'border-[#b5dec2]/18 bg-[radial-gradient(circle_at_top_left,rgba(181,222,194,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
+        headerChip: 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.08] text-[#d8f0df]',
+        countChip: 'border-[#b5dec2]/16 bg-[#b5dec2]/[0.06] text-[#d8f0df]/78',
+      };
+  }
+}
+
 /* ─── Props ─── */
 
 interface ProductCatalogGridProps {
@@ -69,7 +105,7 @@ function ProductCard({ product, onNavigate }: { product: ProductDefinition; onNa
     <GlassCard
       hover={isNavigable}
       className={cn(
-        'p-4 flex flex-col gap-2',
+        'flex flex-col gap-2 rounded-2xl border border-white/[0.06] bg-black/10 p-4',
         isNavigable ? 'cursor-pointer' : 'opacity-60 cursor-default',
       )}
       onClick={isNavigable ? () => onNavigate(product.route) : undefined}
@@ -182,6 +218,7 @@ function FeaturedToolCard({
 /* ─── Theme Group Card ─── */
 
 function ThemeGroupCard({ group, onNavigate }: { group: ToolGroup; onNavigate: (route: string) => void }) {
+  const tone = getGroupTone(group.label);
   const products = group.productIds
     .map(id => {
       const product = PRODUCT_CATALOG.find(p => p.id === id);
@@ -198,11 +235,15 @@ function ThemeGroupCard({ group, onNavigate }: { group: ToolGroup; onNavigate: (
 
   return (
     <div className="flex flex-col">
-      <GlassCard className="p-4 flex-1">
-        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.06]">
-          <span className="text-lg" aria-hidden="true">{group.icon}</span>
-          <h3 className="text-sm font-semibold text-white/80">{group.label}</h3>
-          <span className="ml-auto text-[10px] text-white/30">{products.length}</span>
+      <GlassCard className={cn('p-4 flex-1', tone.shell)}>
+        <div className="mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-3">
+          <span className={cn('rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em]', tone.headerChip)}>
+            {group.icon} {group.label}
+          </span>
+          <h3 className="sr-only">{group.label}</h3>
+          <span className={cn('ml-auto rounded-full border px-2.5 py-1 text-[10px]', tone.countChip)}>
+            {products.length} tools
+          </span>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
@@ -239,8 +280,8 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <GlassCard className="p-5">
+      <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+        <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.18),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5">
           <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
             Start Here
           </div>
@@ -261,7 +302,7 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
           </div>
         </GlassCard>
 
-        <GlassCard className="p-5">
+        <GlassCard className="border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-5">
           <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
             Most Used
           </div>
@@ -276,7 +317,7 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
                 key={product.id}
                 type="button"
                 onClick={() => onNavigate(product.route)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-black/10 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="text-xl" aria-hidden="true">{product.icon}</span>
@@ -297,7 +338,7 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
         </GlassCard>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-10">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-white/86">Full Tool Catalog</h2>
@@ -314,7 +355,7 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-10 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
         <div className="mb-3">
           <h2 className="text-base font-semibold text-white/86">Live Sessions</h2>
           <p className="mt-1 text-sm text-white/46">

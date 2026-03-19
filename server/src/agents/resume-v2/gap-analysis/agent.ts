@@ -140,11 +140,17 @@ RULES:
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
+const HIGH_VOLUME_REQUIREMENT_THRESHOLD = 35;
+const HIGH_VOLUME_BENCHMARK_LIMIT = 12;
+
 export async function runGapAnalysis(
   input: GapAnalysisInput,
   signal?: AbortSignal,
 ): Promise<GapAnalysisOutput> {
-  const userMessage = buildUserMessage(input);
+  const fullRequirementSeeds = buildCanonicalRequirements(input);
+  const promptRequirementSeeds = buildPromptRequirements(input, fullRequirementSeeds);
+  const shouldBackfillFromDeterministic = promptRequirementSeeds.length < fullRequirementSeeds.length;
+  const userMessage = buildUserMessage(input, promptRequirementSeeds, fullRequirementSeeds.length);
 
   try {
     const response = await llm.chat({
@@ -157,7 +163,13 @@ export async function runGapAnalysis(
     });
 
     const parsed = repairJSON<GapAnalysisOutput>(response.text);
-    if (parsed) return normalizeGapAnalysis(parsed);
+    if (parsed) {
+      return normalizeGapAnalysis(
+        shouldBackfillFromDeterministic
+          ? mergeWithDeterministicBackfill(parsed, input, fullRequirementSeeds)
+          : parsed,
+      );
+    }
 
     logger.warn(
       { rawSnippet: response.text.substring(0, 500) },
@@ -183,7 +195,13 @@ export async function runGapAnalysis(
     });
 
     const retryParsed = repairJSON<GapAnalysisOutput>(retry.text);
-    if (retryParsed) return normalizeGapAnalysis(retryParsed);
+    if (retryParsed) {
+      return normalizeGapAnalysis(
+        shouldBackfillFromDeterministic
+          ? mergeWithDeterministicBackfill(retryParsed, input, fullRequirementSeeds)
+          : retryParsed,
+      );
+    }
 
     logger.error(
       { rawSnippet: retry.text.substring(0, 500) },
@@ -200,31 +218,34 @@ export async function runGapAnalysis(
   return buildDeterministicGapAnalysis(input);
 }
 
-function buildUserMessage(input: GapAnalysisInput): string {
+function buildUserMessage(
+  input: GapAnalysisInput,
+  promptRequirementSeeds: CanonicalRequirementSeed[],
+  totalRequirementCount: number,
+): string {
+  const targetRoles = input.career_profile?.targeting.target_roles ?? [];
+  const targetIndustries = input.career_profile?.targeting.target_industries ?? [];
+  const coreStrengths = input.career_profile?.positioning.core_strengths ?? [];
+  const proofThemes = input.career_profile?.positioning.proof_themes ?? [];
+  const differentiators = input.career_profile?.positioning.differentiators ?? [];
+  const adjacentPositioning = input.career_profile?.positioning.adjacent_positioning ?? [];
+  const constraints = input.career_profile?.preferences.constraints ?? [];
+  const achievements = input.benchmark.expected_achievements ?? [];
+  const technicalSkills = input.benchmark.expected_technical_skills ?? [];
+  const certifications = input.benchmark.expected_certifications ?? [];
+  const industryKnowledge = input.benchmark.expected_industry_knowledge ?? [];
+  const candidateCareerThemes = input.candidate.career_themes ?? [];
+  const candidateQuantifiedOutcomes = input.candidate.quantified_outcomes ?? [];
+  const candidateExperience = input.candidate.experience ?? [];
+  const hiddenAccomplishments = input.candidate.hidden_accomplishments ?? [];
+  const technologies = input.candidate.technologies ?? [];
+  const candidateCertifications = input.candidate.certifications ?? [];
   const canonicalRequirements: string[] = [
-    ...input.job_intelligence.core_competencies.map(
-      c => `- [source=job_description][category=core_competency][importance=${c.importance}] ${c.competency} :: ${c.evidence_from_jd}`,
-    ),
-    ...input.job_intelligence.strategic_responsibilities.map(
-      responsibility => `- [source=job_description][category=strategic_responsibility][importance=important] ${responsibility} :: Strategic responsibility explicitly present in the JD`,
-    ),
-    `- [source=benchmark][category=benchmark_leadership][importance=important] ${input.benchmark.expected_leadership_scope} :: Leadership scope expected of the benchmark candidate`,
-    ...input.benchmark.expected_achievements.map(
-      a => `- [source=benchmark][category=benchmark_achievement][importance=important] ${a.area}: ${a.description} :: Typical metrics: ${a.typical_metrics}`,
-    ),
-    ...input.benchmark.expected_technical_skills.map(
-      skill => `- [source=benchmark][category=benchmark_skill][importance=important] ${skill} :: Benchmark technical skill`,
-    ),
-    ...input.benchmark.expected_certifications.map(
-      cert => `- [source=benchmark][category=benchmark_certification][importance=nice_to_have] ${cert} :: Benchmark certification expectation`,
-    ),
-    ...input.benchmark.expected_industry_knowledge.map(
-      knowledge => `- [source=benchmark][category=benchmark_industry][importance=important] ${knowledge} :: Benchmark industry knowledge`,
-    ),
-    ...input.benchmark.differentiators.map(
-      differentiator => `- [source=benchmark][category=benchmark_differentiator][importance=nice_to_have] ${differentiator} :: What makes the benchmark candidate stand out`,
+    ...promptRequirementSeeds.map(
+      requirement => `- [source=${requirement.source}][category=${requirement.category}][importance=${requirement.importance}] ${requirement.requirement} :: ${requirement.source_evidence}`,
     ),
   ];
+  const highVolumeMode = promptRequirementSeeds.length < totalRequirementCount;
 
   const parts: string[] = [
     '## Canonical Requirement Catalog',
@@ -236,13 +257,13 @@ function buildUserMessage(input: GapAnalysisInput): string {
     parts.push(
       '## Career Profile',
       `Profile summary: ${input.career_profile.profile_summary}`,
-      `Target roles: ${input.career_profile.targeting.target_roles.join(', ') || 'Not yet defined'}`,
-      `Target industries: ${input.career_profile.targeting.target_industries.join(', ') || 'Not yet defined'}`,
-      `Core strengths: ${input.career_profile.positioning.core_strengths.join(', ') || 'Not yet defined'}`,
-      `Proof themes: ${input.career_profile.positioning.proof_themes.join(', ') || 'Not yet defined'}`,
-      `Differentiators: ${input.career_profile.positioning.differentiators.join(', ') || 'Not yet defined'}`,
-      `Adjacent positioning: ${input.career_profile.positioning.adjacent_positioning.join(', ') || 'Not yet defined'}`,
-      `Constraints: ${input.career_profile.preferences.constraints.join(', ') || 'None recorded'}`,
+      `Target roles: ${targetRoles.join(', ') || 'Not yet defined'}`,
+      `Target industries: ${targetIndustries.join(', ') || 'Not yet defined'}`,
+      `Core strengths: ${coreStrengths.join(', ') || 'Not yet defined'}`,
+      `Proof themes: ${proofThemes.join(', ') || 'Not yet defined'}`,
+      `Differentiators: ${differentiators.join(', ') || 'Not yet defined'}`,
+      `Adjacent positioning: ${adjacentPositioning.join(', ') || 'Not yet defined'}`,
+      `Constraints: ${constraints.join(', ') || 'None recorded'}`,
       '',
     );
   }
@@ -252,22 +273,22 @@ function buildUserMessage(input: GapAnalysisInput): string {
     `Profile: ${input.benchmark.ideal_profile_summary}`,
     `Leadership scope expected: ${input.benchmark.expected_leadership_scope}`,
     'Expected achievements:',
-    ...input.benchmark.expected_achievements.map(
+    ...achievements.map(
       a => `- ${a.area}: ${a.description} (typical metrics: ${a.typical_metrics})`
     ),
     '',
     '## Actual Candidate',
-    `Career themes: ${input.candidate.career_themes.join(', ')}`,
+    `Career themes: ${candidateCareerThemes.join(', ')}`,
     `Leadership scope: ${input.candidate.leadership_scope}`,
     `Operational scale: ${input.candidate.operational_scale}`,
     '',
     'Quantified outcomes:',
-    ...input.candidate.quantified_outcomes.map(
+    ...candidateQuantifiedOutcomes.map(
       o => `- [${o.metric_type}] ${o.outcome}: ${o.value}`
     ),
     '',
     'Experience:',
-    ...input.candidate.experience.map(e => {
+    ...candidateExperience.map(e => {
       const scope = e.inferred_scope
         ? ` (scope: team=${e.inferred_scope.team_size ?? '?'}, budget=${e.inferred_scope.budget ?? '?'}, geo=${e.inferred_scope.geography ?? '?'})`
         : '';
@@ -275,10 +296,10 @@ function buildUserMessage(input: GapAnalysisInput): string {
     }),
     '',
     'Hidden accomplishments detected:',
-    ...input.candidate.hidden_accomplishments.slice(0, 5).map(h => `- ${h}`),
+    ...hiddenAccomplishments.slice(0, 5).map(h => `- ${h}`),
     '',
-    `Technologies: ${input.candidate.technologies.join(', ')}`,
-    `Certifications: ${input.candidate.certifications.join(', ')}`,
+    `Technologies: ${technologies.join(', ')}`,
+    `Certifications: ${candidateCertifications.join(', ')}`,
   );
 
   if (input.user_context) {
@@ -293,13 +314,165 @@ function buildUserMessage(input: GapAnalysisInput): string {
     '',
     'Compare this candidate against EVERY requirement in the canonical requirement catalog. Classify each as strong/partial/missing. For partial and missing, propose creative positioning strategies.',
     'Keep the output compact. Use exactly 1 targeted interview question per strategy and keep ai_reasoning brief.',
-    canonicalRequirements.length > 35
-      ? 'High-volume mode: focus detailed strategies on job-description requirements and only coach benchmark nice-to-have items when the adjacent evidence is genuinely strong.'
+    highVolumeMode
+      ? `High-volume mode: this focused catalog contains the ${promptRequirementSeeds.length} highest-value requirements out of ${totalRequirementCount} total. Prioritize job-description coverage and the benchmark requirements with the strongest adjacent evidence.`
       : 'Focus coaching detail on the requirements with the strongest adjacent evidence.',
     'Return JSON only. Do not include markdown fences or any explanation outside the JSON object.',
   );
 
   return parts.join('\n');
+}
+
+function buildPromptRequirements(
+  input: GapAnalysisInput,
+  fullRequirementSeeds: CanonicalRequirementSeed[],
+): CanonicalRequirementSeed[] {
+  if (fullRequirementSeeds.length <= HIGH_VOLUME_REQUIREMENT_THRESHOLD) {
+    return fullRequirementSeeds;
+  }
+
+  const corpus = buildEvidenceCorpus(input);
+  const jobDescriptionSeeds = fullRequirementSeeds.filter((seed) => seed.source === 'job_description');
+  const benchmarkSeeds = fullRequirementSeeds.filter((seed) => seed.source === 'benchmark');
+  const benchmarkLeadership = benchmarkSeeds.find((seed) => seed.category === 'benchmark_leadership');
+  const remainingBenchmarkSeeds = benchmarkSeeds.filter((seed) => seed !== benchmarkLeadership);
+
+  const rankedBenchmarkSeeds = remainingBenchmarkSeeds
+    .map((seed) => ({
+      seed,
+      relevanceScore: rankEvidence(`${seed.requirement} ${seed.source_evidence}`, corpus)[0]?.score ?? 0,
+      categoryPriority: benchmarkCategoryPriority(seed.category),
+      importancePriority: seed.importance === 'important' ? 1 : 0,
+    }))
+    .sort((left, right) => (
+      right.relevanceScore - left.relevanceScore
+      || right.importancePriority - left.importancePriority
+      || right.categoryPriority - left.categoryPriority
+      || left.seed.requirement.length - right.seed.requirement.length
+    ));
+
+  const benchmarkLimit = Math.max(
+    8,
+    Math.min(
+      HIGH_VOLUME_BENCHMARK_LIMIT,
+      HIGH_VOLUME_REQUIREMENT_THRESHOLD - jobDescriptionSeeds.length - (benchmarkLeadership ? 1 : 0),
+    ),
+  );
+
+  const selectedBenchmarkSeeds = rankedBenchmarkSeeds
+    .filter((entry, index) => entry.relevanceScore > 0 || index < benchmarkLimit)
+    .slice(0, benchmarkLimit)
+    .map((entry) => entry.seed);
+
+  return [
+    ...jobDescriptionSeeds,
+    ...(benchmarkLeadership ? [benchmarkLeadership] : []),
+    ...selectedBenchmarkSeeds,
+  ];
+}
+
+function benchmarkCategoryPriority(category: RequirementCategory): number {
+  switch (category) {
+    case 'benchmark_leadership':
+      return 5;
+    case 'benchmark_achievement':
+      return 4;
+    case 'benchmark_skill':
+      return 3;
+    case 'benchmark_industry':
+      return 2;
+    case 'benchmark_certification':
+      return 1;
+    case 'benchmark_differentiator':
+      return 0;
+    default:
+      return 0;
+  }
+}
+
+function mergeWithDeterministicBackfill(
+  output: GapAnalysisOutput,
+  input: GapAnalysisInput,
+  fullRequirementSeeds: CanonicalRequirementSeed[],
+): GapAnalysisOutput {
+  const deterministic = buildDeterministicGapAnalysis(input);
+  const modelRequirementsByKey = new Map(
+    output.requirements.map((requirement) => {
+      const normalizedRequirement = normalizeRequirement(requirement);
+      return [requirementKey(normalizedRequirement), normalizedRequirement] as const;
+    }),
+  );
+  const deterministicRequirementsByKey = new Map(
+    deterministic.requirements.map((requirement) => [requirementKey(requirement), requirement] as const),
+  );
+  const modelPendingStrategiesByKey = new Map(
+    (output.pending_strategies ?? []).map((item) => {
+      const seed = findRequirementSeed(item.requirement, fullRequirementSeeds);
+      const key = requirementKey({
+        requirement: item.requirement,
+        source: seed?.source ?? 'job_description',
+      });
+      return [key, item] as const;
+    }),
+  );
+
+  const mergedRequirements = fullRequirementSeeds.map((seed) => {
+    const key = requirementKey(seed);
+    const modeled = modelRequirementsByKey.get(key);
+    if (modeled) return modeled;
+
+    const deterministicRequirement = deterministicRequirementsByKey.get(key);
+    if (!deterministicRequirement) {
+      return normalizeRequirement({
+        requirement: seed.requirement,
+        source: seed.source,
+        category: seed.category,
+        score_domain: seed.source === 'job_description' ? 'ats' : 'benchmark',
+        importance: seed.importance,
+        classification: 'missing',
+        evidence: [],
+        source_evidence: seed.source_evidence,
+      });
+    }
+
+    return shouldSuppressBackfilledStrategy(deterministicRequirement)
+      ? { ...deterministicRequirement, strategy: undefined }
+      : deterministicRequirement;
+  });
+
+  const mergedPendingStrategies = mergedRequirements
+    .filter((requirement) => requirement.strategy && requirement.classification !== 'strong')
+    .filter((requirement) => !shouldSuppressBackfilledStrategy(requirement))
+    .map((requirement) => (
+      modelPendingStrategiesByKey.get(requirementKey(requirement))
+      ?? { requirement: requirement.requirement, strategy: requirement.strategy! }
+    ));
+
+  return {
+    ...output,
+    requirements: mergedRequirements,
+    pending_strategies: mergedPendingStrategies,
+  };
+}
+
+function findRequirementSeed(
+  requirement: string,
+  fullRequirementSeeds: CanonicalRequirementSeed[],
+): CanonicalRequirementSeed | undefined {
+  const normalizedRequirement = normalizeForSet(requirement);
+  return fullRequirementSeeds.find((seed) => normalizeForSet(seed.requirement) === normalizedRequirement);
+}
+
+function shouldSuppressBackfilledStrategy(requirement: RequirementGap): boolean {
+  return requirement.source === 'benchmark'
+    && requirement.importance === 'nice_to_have'
+    && requirement.classification === 'missing';
+}
+
+function requirementKey(
+  requirement: Pick<CanonicalRequirementSeed, 'requirement' | 'source'> | Pick<RequirementGap, 'requirement' | 'source'>,
+): string {
+  return `${requirement.source}:${normalizeForSet(requirement.requirement)}`;
 }
 
 function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
@@ -408,15 +581,23 @@ type EvidenceEntry = {
 };
 
 function buildCanonicalRequirements(input: GapAnalysisInput): CanonicalRequirementSeed[] {
+  const coreCompetencies = input.job_intelligence.core_competencies ?? [];
+  const strategicResponsibilities = input.job_intelligence.strategic_responsibilities ?? [];
+  const expectedAchievements = input.benchmark.expected_achievements ?? [];
+  const expectedTechnicalSkills = input.benchmark.expected_technical_skills ?? [];
+  const expectedCertifications = input.benchmark.expected_certifications ?? [];
+  const expectedIndustryKnowledge = input.benchmark.expected_industry_knowledge ?? [];
+  const differentiators = input.benchmark.differentiators ?? [];
+
   return [
-    ...input.job_intelligence.core_competencies.map((competency) => ({
+    ...coreCompetencies.map((competency) => ({
       requirement: competency.competency,
       source: 'job_description' as const,
       category: 'core_competency' as const,
       importance: competency.importance,
       source_evidence: competency.evidence_from_jd,
     })),
-    ...input.job_intelligence.strategic_responsibilities.map((responsibility) => ({
+    ...strategicResponsibilities.map((responsibility) => ({
       requirement: responsibility,
       source: 'job_description' as const,
       category: 'strategic_responsibility' as const,
@@ -430,35 +611,35 @@ function buildCanonicalRequirements(input: GapAnalysisInput): CanonicalRequireme
       importance: 'important' as const,
       source_evidence: 'Leadership scope expected of the benchmark candidate',
     },
-    ...input.benchmark.expected_achievements.map((achievement) => ({
+    ...expectedAchievements.map((achievement) => ({
       requirement: `${achievement.area}: ${achievement.description}`,
       source: 'benchmark' as const,
       category: 'benchmark_achievement' as const,
       importance: 'important' as const,
       source_evidence: `Typical metrics: ${achievement.typical_metrics}`,
     })),
-    ...input.benchmark.expected_technical_skills.map((skill) => ({
+    ...expectedTechnicalSkills.map((skill) => ({
       requirement: skill,
       source: 'benchmark' as const,
       category: 'benchmark_skill' as const,
       importance: 'important' as const,
       source_evidence: 'Benchmark technical skill',
     })),
-    ...input.benchmark.expected_certifications.map((certification) => ({
+    ...expectedCertifications.map((certification) => ({
       requirement: certification,
       source: 'benchmark' as const,
       category: 'benchmark_certification' as const,
       importance: 'nice_to_have' as const,
       source_evidence: 'Benchmark certification expectation',
     })),
-    ...input.benchmark.expected_industry_knowledge.map((knowledge) => ({
+    ...expectedIndustryKnowledge.map((knowledge) => ({
       requirement: knowledge,
       source: 'benchmark' as const,
       category: 'benchmark_industry' as const,
       importance: 'important' as const,
       source_evidence: 'Benchmark industry knowledge',
     })),
-    ...input.benchmark.differentiators.map((differentiator) => ({
+    ...differentiators.map((differentiator) => ({
       requirement: differentiator,
       source: 'benchmark' as const,
       category: 'benchmark_differentiator' as const,
@@ -472,20 +653,20 @@ function buildEvidenceCorpus(input: GapAnalysisInput): EvidenceEntry[] {
   const entries: EvidenceEntry[] = [
     { text: input.candidate.leadership_scope, origin: 'leadership scope' },
     { text: input.candidate.operational_scale, origin: 'operational scale' },
-    ...input.candidate.career_themes.map((theme) => ({ text: theme, origin: 'career theme' })),
-    ...input.candidate.industry_depth.map((item) => ({ text: item, origin: 'industry depth' })),
-    ...input.candidate.hidden_accomplishments.map((item) => ({ text: item, origin: 'hidden accomplishment' })),
-    ...input.candidate.technologies.map((item) => ({ text: item, origin: 'technology' })),
-    ...input.candidate.certifications.map((item) => ({ text: item, origin: 'certification' })),
-    ...input.candidate.education.map((item) => ({
+    ...(input.candidate.career_themes ?? []).map((theme) => ({ text: theme, origin: 'career theme' })),
+    ...(input.candidate.industry_depth ?? []).map((item) => ({ text: item, origin: 'industry depth' })),
+    ...(input.candidate.hidden_accomplishments ?? []).map((item) => ({ text: item, origin: 'hidden accomplishment' })),
+    ...(input.candidate.technologies ?? []).map((item) => ({ text: item, origin: 'technology' })),
+    ...(input.candidate.certifications ?? []).map((item) => ({ text: item, origin: 'certification' })),
+    ...(input.candidate.education ?? []).map((item) => ({
       text: `${item.degree} ${item.institution}${item.year ? ` ${item.year}` : ''}`.trim(),
       origin: 'education',
     })),
-    ...input.candidate.quantified_outcomes.map((item) => ({
+    ...(input.candidate.quantified_outcomes ?? []).map((item) => ({
       text: `${item.outcome}: ${item.value}`,
       origin: 'quantified outcome',
     })),
-    ...input.candidate.experience.flatMap((experience) => ([
+    ...(input.candidate.experience ?? []).flatMap((experience) => ([
       { text: `${experience.title} at ${experience.company}`, origin: 'experience header' },
       ...experience.bullets.map((bullet) => ({ text: bullet, origin: `${experience.company} bullet` })),
     ])),

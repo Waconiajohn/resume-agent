@@ -105,48 +105,68 @@ function HomeGuideCard({
   ];
 
   return (
-    <GlassCard className="p-5">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl">
-          <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+    <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
+      <div className="grid gap-0 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="p-6 sm:p-7">
+          <div className="text-[11px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
             {primaryAction.eyebrow}
           </div>
-          <h1 className="mt-2 text-xl font-semibold text-white/90">{primaryAction.title}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/50">
+          <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight text-white/92 sm:text-[2rem]">
+            {primaryAction.title}
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58 sm:text-[15px]">
             {primaryAction.description}
           </p>
           {coachRecommendationTitle && (
-            <p className="mt-3 text-xs leading-relaxed text-white/42">
+            <p className="mt-4 text-xs leading-relaxed text-white/45">
               Coach recommendation: {coachRecommendationTitle}
             </p>
           )}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={primaryAction.onClick}
+              className="rounded-xl border border-[#98b3ff]/28 bg-[#98b3ff]/15 px-4 py-2.5 text-sm font-medium text-[#d8e2ff] transition-colors hover:bg-[#98b3ff]/22"
+            >
+              {primaryAction.label}
+            </button>
+            <button
+              type="button"
+              onClick={secondaryAction.onClick}
+              className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white/92"
+            >
+              {secondaryAction.label}
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={primaryAction.onClick}
-            className="rounded-lg border border-[#98b3ff]/25 bg-[#98b3ff]/12 px-3 py-2 text-xs font-medium text-[#c9d7ff] transition-colors hover:bg-[#98b3ff]/18"
-          >
-            {primaryAction.label}
-          </button>
-          <button
-            type="button"
-            onClick={secondaryAction.onClick}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-medium text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white/90"
-          >
-            {secondaryAction.label}
-          </button>
+        <div className="border-t border-white/[0.06] bg-black/10 p-6 sm:p-7 xl:border-l xl:border-t-0">
+          <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
+            Why this matters
+          </div>
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-white/38">Signals</div>
+              <div className="mt-2 text-sm leading-6 text-white/72">{signalSummary.join(' · ')}</div>
+            </div>
+            <div className="rounded-2xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.07] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Working rule</div>
+              <div className="mt-2 text-sm leading-6 text-white/78">
+                Build the shared story first, tailor it to a live job second, then use the rest of Workspace to move that application forward.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+      <div className="grid gap-3 border-t border-white/[0.06] bg-black/10 p-5 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
         <StepCard
           icon={Target}
           title="Career Profile backbone"
-          description={`Signals right now: ${signalSummary.join(' · ')}`}
+          description="Sharpen the shared story all of the other tools read."
           actionLabel="Review Career Profile"
           onClick={onRefineWhyMe}
+          className="border-[#98b3ff]/18 bg-[#98b3ff]/[0.08]"
         />
         <StepCard
           icon={FileText}
@@ -156,6 +176,7 @@ function HomeGuideCard({
             : 'Create a tailored resume for a target job and keep the strongest additions for future use.'}
           actionLabel={hasResumeSessions ? 'Open saved work' : 'Start a tailored resume'}
           onClick={() => onNavigateRoom?.('resume')}
+          className="border-white/[0.08] bg-white/[0.04]"
         />
         <StepCard
           icon={Search}
@@ -163,6 +184,7 @@ function HomeGuideCard({
           description="Track active roles, interview stages, and what should happen next in your search."
           actionLabel="Open job tracker"
           onClick={() => onNavigateRoom?.('jobs')}
+          className="border-[#b5dec2]/18 bg-[#b5dec2]/[0.06]"
         />
       </div>
     </GlassCard>
@@ -175,17 +197,19 @@ function StepCard({
   description,
   actionLabel,
   onClick,
+  className,
 }: {
   icon: typeof Target;
   title: string;
   description: string;
   actionLabel: string;
   onClick?: () => void;
+  className?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className={`rounded-2xl border p-4 ${className ?? 'border-white/[0.08] bg-white/[0.03]'}`}>
       <div className="flex items-center gap-2">
-        <div className="rounded-lg bg-white/[0.05] p-2">
+        <div className="rounded-xl bg-black/20 p-2.5">
           <Icon size={16} className="text-[#98b3ff]" />
         </div>
         <div className="text-sm font-semibold text-white/85">{title}</div>
@@ -276,7 +300,7 @@ export function DashboardHome({
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-4">
-          <GlassCard className="p-5">
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-4">
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
               Secondary lane
             </div>
@@ -284,12 +308,12 @@ export function DashboardHome({
             <p className="mt-2 text-sm leading-relaxed text-white/50">
               Workspace Home should tell you the single best next move, then give you one supporting prompt that helps you execute it.
             </p>
-          </GlassCard>
+          </div>
           {supportSurface}
         </div>
 
         <div className="space-y-4">
-          <GlassCard className="p-5">
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-4">
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
               Active applications
             </div>
@@ -297,7 +321,7 @@ export function DashboardHome({
             <p className="mt-2 text-sm leading-relaxed text-white/50">
               Reopen live roles, see what stage they are in, and jump straight into the next resume, interview, or negotiation action without scanning a crowded dashboard.
             </p>
-          </GlassCard>
+          </div>
           <ZoneYourPipeline
             onNavigateRoom={onNavigateRoom}
             mockCards={mockPipelineCards}

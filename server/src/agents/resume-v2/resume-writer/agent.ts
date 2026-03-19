@@ -136,43 +136,64 @@ export async function runResumeWriter(
 ): Promise<ResumeDraftOutput> {
   const userMessage = buildUserMessage(input);
 
-  // Attempt 1
-  const response = await llm.chat({
-    model: MODEL_PRIMARY,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userMessage }],
-    response_format: { type: 'json_object' },
-    max_tokens: 8192,
-    signal,
-  });
+  let parsed: ResumeDraftOutput | null = null;
 
-  let parsed = repairJSON<ResumeDraftOutput>(response.text);
-
-  if (!parsed) {
-    // Attempt 2: retry with explicit JSON-only instruction
-    logger.warn(
-      { rawSnippet: response.text.substring(0, 500) },
-      'Resume Writer: first attempt unparseable, retrying with stricter prompt',
-    );
-
-    const retry = await llm.chat({
+  try {
+    const response = await llm.chat({
       model: MODEL_PRIMARY,
-      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
-      messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
       response_format: { type: 'json_object' },
       max_tokens: 8192,
       signal,
     });
 
-    parsed = repairJSON<ResumeDraftOutput>(retry.text);
+    parsed = repairJSON<ResumeDraftOutput>(response.text);
 
     if (!parsed) {
-      logger.error(
-        { rawSnippet: retry.text.substring(0, 500) },
-        'Resume Writer: both attempts returned unparseable response',
+      logger.warn(
+        { rawSnippet: response.text.substring(0, 500) },
+        'Resume Writer: first attempt unparseable, retrying with stricter prompt',
       );
-      throw new Error('Resume Writer agent returned unparseable response after 2 attempts');
     }
+  } catch (error) {
+    if (shouldRethrowForAbort(error, signal)) throw error;
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      'Resume Writer: first attempt failed, retrying with stricter prompt',
+    );
+  }
+
+  if (!parsed) {
+    try {
+      const retry = await llm.chat({
+        model: MODEL_PRIMARY,
+        system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+        messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
+        response_format: { type: 'json_object' },
+        max_tokens: 8192,
+        signal,
+      });
+
+      parsed = repairJSON<ResumeDraftOutput>(retry.text);
+
+      if (!parsed) {
+        logger.error(
+          { rawSnippet: retry.text.substring(0, 500) },
+          'Resume Writer: retry returned unparseable response, using deterministic fallback',
+        );
+      }
+    } catch (error) {
+      if (shouldRethrowForAbort(error, signal)) throw error;
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Resume Writer: retry failed, using deterministic fallback',
+      );
+    }
+  }
+
+  if (!parsed) {
+    parsed = buildDeterministicResumeDraft(input);
   }
 
   // Guardrail: ensure contact info is from candidate, not a placeholder
@@ -405,4 +426,120 @@ function buildUserMessage(input: ResumeWriterInput): string {
   );
 
   return parts.join('\n');
+}
+
+function buildDeterministicResumeDraft(input: ResumeWriterInput): ResumeDraftOutput {
+  const topRequirements = input.gap_analysis.requirements
+    .filter((requirement) => requirement.source === 'job_description')
+    .slice(0, 8)
+    .map((requirement) => requirement.requirement);
+  const competencyThemes = input.narrative.section_guidance?.competency_themes ?? [];
+  const coreCompetencies = dedupeStrings([
+    ...competencyThemes,
+    ...topRequirements,
+    ...(input.candidate.technologies ?? []).slice(0, 6),
+  ]).slice(0, 12);
+
+  const earlierCareer = (input.candidate.experience ?? []).slice(4).map((experience) => ({
+    company: experience.company,
+    title: experience.title,
+    dates: `${experience.start_date}–${experience.end_date}`,
+  }));
+
+  return {
+    header: {
+      name: input.candidate.contact.name,
+      phone: input.candidate.contact.phone,
+      email: input.candidate.contact.email,
+      linkedin: input.candidate.contact.linkedin,
+      branded_title: input.narrative.branded_title,
+    },
+    executive_summary: {
+      content: buildExecutiveSummary(input),
+      is_new: true,
+    },
+    core_competencies: coreCompetencies,
+    selected_accomplishments: buildSelectedAccomplishments(input),
+    professional_experience: buildProfessionalExperience(input),
+    ...(earlierCareer.length > 0 ? { earlier_career: earlierCareer } : {}),
+    education: input.candidate.education ?? [],
+    certifications: input.candidate.certifications ?? [],
+  };
+}
+
+function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && /aborted/i.test(error.message);
+}
+
+function buildExecutiveSummary(input: ResumeWriterInput): string {
+  return [
+    input.narrative.why_me_concise,
+    input.candidate.leadership_scope,
+    input.candidate.operational_scale,
+  ].filter(Boolean).join(' ').trim();
+}
+
+function buildSelectedAccomplishments(input: ResumeWriterInput): ResumeDraftOutput['selected_accomplishments'] {
+  const quantified = (input.candidate.quantified_outcomes ?? []).slice(0, 3).map((item) => ({
+    content: `${item.outcome}: ${item.value}`,
+    is_new: false,
+    addresses_requirements: matchRequirementLinks(item.outcome, input.gap_analysis.requirements),
+  }));
+
+  const hidden = (input.candidate.hidden_accomplishments ?? [])
+    .slice(0, Math.max(0, 5 - quantified.length))
+    .map((item) => ({
+      content: item,
+      is_new: false,
+      addresses_requirements: matchRequirementLinks(item, input.gap_analysis.requirements),
+    }));
+
+  return [...quantified, ...hidden];
+}
+
+function buildProfessionalExperience(input: ResumeWriterInput): ResumeDraftOutput['professional_experience'] {
+  return (input.candidate.experience ?? []).slice(0, 4).map((experience) => {
+    const scopeParts = [
+      experience.inferred_scope?.team_size ? `Team: ${experience.inferred_scope.team_size}` : '',
+      experience.inferred_scope?.budget ? `Budget: ${experience.inferred_scope.budget}` : '',
+      experience.inferred_scope?.geography ? `Geography: ${experience.inferred_scope.geography}` : '',
+      experience.inferred_scope?.revenue_impact ? `Revenue: ${experience.inferred_scope.revenue_impact}` : '',
+    ].filter(Boolean);
+
+    return {
+      company: experience.company,
+      title: experience.title,
+      start_date: experience.start_date,
+      end_date: experience.end_date,
+      scope_statement: scopeParts.join(' | ') || (experience.bullets[0] ?? `${experience.title} role`),
+      scope_statement_is_new: false,
+      bullets: experience.bullets.slice(0, 5).map((bullet) => ({
+        text: bullet,
+        is_new: false,
+        addresses_requirements: matchRequirementLinks(bullet, input.gap_analysis.requirements),
+      })),
+    };
+  });
+}
+
+function matchRequirementLinks(text: string, requirements: ResumeWriterInput['gap_analysis']['requirements']): string[] {
+  const normalizedText = text.toLowerCase();
+  const matches = requirements
+    .filter((requirement) => {
+      const keywords = requirement.requirement
+        .toLowerCase()
+        .split(/[^a-z0-9+.#/-]+/)
+        .filter((keyword) => keyword.length >= 4);
+      return keywords.some((keyword) => normalizedText.includes(keyword));
+    })
+    .slice(0, 3)
+    .map((requirement) => requirement.requirement);
+
+  return dedupeStrings(matches);
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
 }

@@ -430,7 +430,19 @@ function normalizeReviewText(value: string): string {
 
 function isHardRequirementRequirement(value: string): boolean {
   if (isPreferredOnlyRequirement(value)) return false;
-  return /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|required|foreign equivalent|years of experience|year experience|minimum of \d+ years|\d+\+?\s+years?)\b/i.test(value);
+  const normalized = value.toLowerCase();
+  const hasRequiredSignal = /\b(required|must have|must-have|minimum|mandatory|screen(?:-| )out|foreign equivalent|years of experience|year experience|minimum of \d+ years)\b/.test(normalized);
+  const hasBaselineDegreeSignal = /\b(bachelor'?s|undergraduate|degree in|degree from|foreign equivalent)\b/.test(normalized);
+  const hasExperienceThreshold = /\b(years of experience|year experience|minimum of \d+ years|\d+\+?\s+years?)\b/.test(normalized);
+  const hasLicenseSignal = /\b(license|licensed|licensure)\b/.test(normalized);
+  const hasCertificationSignal = /\b(certification|certified)\b/.test(normalized);
+  const hasAdvancedDegreeSignal = /\b(mba|master'?s|phd|doctorate)\b/.test(normalized);
+
+  if (hasCertificationSignal || hasAdvancedDegreeSignal) {
+    return hasRequiredSignal;
+  }
+
+  return hasBaselineDegreeSignal || hasExperienceThreshold || hasLicenseSignal || hasRequiredSignal;
 }
 
 function isPreferredOnlyRequirement(value: string): boolean {
@@ -488,10 +500,49 @@ export function extractHardRequirementRisksFromGapAnalysis(gapAnalysis: unknown)
       .filter((item) => !isRequirementExplainedByNonHardRequirement(item, nonHardRequirementSeeds))
     : [];
 
-  return Array.from(new Set([
+  return dedupeNearEquivalentHardRequirementRisks([
     ...requirementRisks,
     ...criticalGapRisks,
-  ]));
+  ]);
+}
+
+function dedupeNearEquivalentHardRequirementRisks(risks: string[]): string[] {
+  const deduped: string[] = [];
+
+  for (const risk of risks) {
+    if (!risk) continue;
+    if (deduped.some((existing) => areEquivalentHardRequirementRisks(existing, risk))) {
+      continue;
+    }
+    deduped.push(risk);
+  }
+
+  return deduped;
+}
+
+function areEquivalentHardRequirementRisks(left: string, right: string): boolean {
+  const normalizedLeft = normalizeReviewText(left);
+  const normalizedRight = normalizeReviewText(right);
+  if (!normalizedLeft || !normalizedRight) return false;
+  if (normalizedLeft === normalizedRight) return true;
+  if (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft)) return true;
+
+  const leftIsDegree = /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|foreign equivalent)\b/.test(normalizedLeft);
+  const rightIsDegree = /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|foreign equivalent)\b/.test(normalizedRight);
+  if (!leftIsDegree || !rightIsDegree) return false;
+
+  const stopTokens = new Set(['bachelor', 'bachelors', 'master', 'masters', 'mba', 'phd', 'doctorate', 'degree', 'higher', 'field', 'fields', 'foreign', 'equivalent', 'other', 'related', 'or', 'and']);
+  const leftTokens = extractRequirementTokens(normalizedLeft).filter((token) => !stopTokens.has(token));
+  const rightTokens = extractRequirementTokens(normalizedRight).filter((token) => !stopTokens.has(token));
+
+  if (leftTokens.length === 0 || rightTokens.length === 0) {
+    return true;
+  }
+
+  const leftSet = new Set(leftTokens);
+  const rightSet = new Set(rightTokens);
+  const sharedCount = [...leftSet].filter((token) => rightSet.has(token)).length;
+  return sharedCount >= Math.min(leftSet.size, rightSet.size);
 }
 
 function isMaterialMustHaveGapRequirement(value: string): boolean {

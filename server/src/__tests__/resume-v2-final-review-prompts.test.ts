@@ -206,14 +206,14 @@ describe('resume-v2 final review prompts', () => {
       improvement_summary: [],
     }, { hardRequirementRisks: hardRisks });
 
-    expect(stabilized.hiring_manager_verdict.rating).toBe('needs_improvement');
+    expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
     expect(stabilized.concerns[0]?.severity).toBe('critical');
     expect(stabilized.concerns[0]?.related_requirement).toContain("Bachelor's degree");
-    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('PE certification'))).toBe(true);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes("Bachelor's degree"))).toBe(true);
     expect(stabilized.hiring_manager_verdict.summary).toMatch(/screening risk|hard requirement/i);
-    expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
+    expect(stabilized.fit_assessment.job_description_fit).toBe('moderate');
     expect(stabilized.fit_assessment.benchmark_alignment).toBe('moderate');
-    expect(stabilized.fit_assessment.clarity_and_credibility).toBe('weak');
+    expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
   });
 
   it('ignores preferred-only qualifications when extracting hard requirement risks', () => {
@@ -256,6 +256,52 @@ describe('resume-v2 final review prompts', () => {
     expect(hardRisks).toEqual([
       "Bachelor's degree in engineering",
     ]);
+  });
+
+  it('does not treat standalone certifications or advanced degrees as hard risks without required language', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: 'APICS CSCP or CPIM certification',
+          classification: 'missing',
+          source: 'job_description',
+        },
+        {
+          requirement: 'MBA',
+          classification: 'missing',
+          source: 'job_description',
+        },
+        {
+          requirement: "Bachelor's degree in engineering or operations management",
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+    });
+
+    expect(hardRisks).toEqual([
+      "Bachelor's degree in engineering or operations management",
+    ]);
+  });
+
+  it('dedupes near-equivalent degree risks so the same screen-out is not counted twice', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: "Bachelor's degree or higher in Chemical Engineering, Civil Engineering, Mechanical Engineering, Petroleum Engineering, other related engineering field, or foreign equivalent",
+          classification: 'missing',
+          source: 'job_description',
+        },
+        {
+          requirement: "Bachelor's degree or higher in a related engineering field",
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+    });
+
+    expect(hardRisks).toHaveLength(1);
+    expect(hardRisks[0]).toContain("Bachelor's degree");
   });
 
   it('includes explicit hard-risk critical gaps even when the requirement list is incomplete', () => {

@@ -461,31 +461,35 @@ export function V2StreamingDisplay({
                 </div>
               )}
 
-              <ResumeAiWorklogCard
-                currentResume={displayResume}
-                jobIntelligence={data.jobIntelligence ?? null}
-                benchmarkCandidate={data.benchmarkCandidate ?? null}
-                gapAnalysis={data.gapAnalysis ?? null}
-                nextQueueItem={rewriteQueue?.nextItem ?? null}
-                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
-                hasFinalReview={Boolean(hiringManagerResult)}
-                isFinalReviewStale={isFinalReviewStale}
-                unresolvedCriticalCount={unresolvedCriticalConcerns.length}
-                postReviewPolish={postReviewPolish}
-              />
+              <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                <ResumeAiWorklogCard
+                  currentResume={displayResume}
+                  jobIntelligence={data.jobIntelligence ?? null}
+                  benchmarkCandidate={data.benchmarkCandidate ?? null}
+                  gapAnalysis={data.gapAnalysis ?? null}
+                  nextQueueItem={rewriteQueue?.nextItem ?? null}
+                  queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
+                  hasFinalReview={Boolean(hiringManagerResult)}
+                  isFinalReviewStale={isFinalReviewStale}
+                  unresolvedCriticalCount={unresolvedCriticalConcerns.length}
+                  postReviewPolish={postReviewPolish}
+                />
 
-              <GuidedWorkflowCard
-                hasFinalReview={Boolean(hiringManagerResult)}
-                isFinalReviewStale={isFinalReviewStale}
-                unresolvedCriticalCount={unresolvedCriticalConcerns.length}
-                coverageAddressed={jobBreakdown.addressed}
-                coverageTotal={jobBreakdown.total}
-                queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
-                nextQueueItemLabel={rewriteQueue?.nextItem?.title}
-                postReviewPolish={postReviewPolish}
-              />
+                <div className="space-y-4">
+                  <GuidedWorkflowCard
+                    hasFinalReview={Boolean(hiringManagerResult)}
+                    isFinalReviewStale={isFinalReviewStale}
+                    unresolvedCriticalCount={unresolvedCriticalConcerns.length}
+                    coverageAddressed={jobBreakdown.addressed}
+                    coverageTotal={jobBreakdown.total}
+                    queueSummary={rewriteQueue?.summary ?? { needsAttention: 0, partiallyAddressed: 0, resolved: 0, hardGapCount: 0 }}
+                    nextQueueItemLabel={rewriteQueue?.nextItem?.title}
+                    postReviewPolish={postReviewPolish}
+                  />
 
-              {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
+                  {pendingEdit && <ReviewInboxCard pendingEdit={pendingEdit} />}
+                </div>
+              </div>
 
               {/* Verification spinner */}
               {!isComplete && (data.stage === 'verification' || data.stage === 'assembly') && (

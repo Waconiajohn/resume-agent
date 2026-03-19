@@ -49,11 +49,12 @@ function applyToneFixes(
   draft: ResumeDraftOutput,
   findings: AssemblyInput['executive_tone']['findings'],
 ): ResumeDraftOutput {
-  if (findings.length === 0) return draft;
+  const safeFindings = Array.isArray(findings) ? findings : [];
+  if (safeFindings.length === 0) return draft;
 
   // Build a replacement map: old text → new text
   const replacements = new Map<string, string>();
-  for (const f of findings) {
+  for (const f of safeFindings) {
     if (f.suggestion && f.text) {
       replacements.set(f.text, f.suggestion);
     }
@@ -100,9 +101,12 @@ function applyToneFixes(
  */
 function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
   const wins: AssemblyOutput['quick_wins'] = [];
+  const flaggedItems = Array.isArray(input.truth_verification.flagged_items) ? input.truth_verification.flagged_items : [];
+  const missingKeywords = Array.isArray(input.ats_optimization.keywords_missing) ? input.ats_optimization.keywords_missing : [];
+  const bannedPhrasesFound = Array.isArray(input.executive_tone.banned_phrases_found) ? input.executive_tone.banned_phrases_found : [];
 
   // Flagged truth items are highest priority
-  for (const item of input.truth_verification.flagged_items.slice(0, 2)) {
+  for (const item of flaggedItems.slice(0, 2)) {
     wins.push({
       description: `Fix: ${item.issue} — ${item.recommendation}`,
       impact: 'high',
@@ -110,18 +114,18 @@ function computeQuickWins(input: AssemblyInput): AssemblyOutput['quick_wins'] {
   }
 
   // Missing must-have keywords
-  const missingKeywords = input.ats_optimization.keywords_missing.slice(0, 3);
-  if (missingKeywords.length > 0) {
+  const missingKeywordPreview = missingKeywords.slice(0, 3);
+  if (missingKeywordPreview.length > 0) {
     wins.push({
-      description: `Add missing keywords: ${missingKeywords.join(', ')}`,
+      description: `Add missing keywords: ${missingKeywordPreview.join(', ')}`,
       impact: 'medium',
     });
   }
 
   // Banned phrases found
-  if (input.executive_tone.banned_phrases_found.length > 0) {
+  if (bannedPhrasesFound.length > 0) {
     wins.push({
-      description: `Remove banned phrases: ${input.executive_tone.banned_phrases_found.slice(0, 3).join(', ')}`,
+      description: `Remove banned phrases: ${bannedPhrasesFound.slice(0, 3).join(', ')}`,
       impact: 'low',
     });
   }

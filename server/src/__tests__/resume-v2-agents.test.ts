@@ -651,6 +651,58 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       );
     });
 
+    it('uses a focused catalog for high-volume inputs and backfills omitted requirements deterministically', async () => {
+      const highVolumeInput: GapAnalysisInput = {
+        ...input,
+        benchmark: {
+          ...BENCHMARK_OUTPUT,
+          expected_achievements: Array.from({ length: 12 }, (_, index) => ({
+            area: `Achievement ${index + 1}`,
+            description: `Drive result ${index + 1}`,
+            typical_metrics: `${(index + 1) * 10}% improvement`,
+          })),
+          expected_technical_skills: Array.from({ length: 14 }, (_, index) => `Skill ${index + 1}`),
+          expected_industry_knowledge: Array.from({ length: 6 }, (_, index) => `Industry Domain ${index + 1}`),
+          expected_certifications: Array.from({ length: 4 }, (_, index) => `Certification ${index + 1}`),
+          differentiators: Array.from({ length: 6 }, (_, index) => `Differentiator ${index + 1}`),
+        },
+      };
+
+      const partialHighVolumeOutput: GapAnalysisOutput = {
+        requirements: [
+          {
+            requirement: 'Cloud Architecture',
+            source: 'job_description',
+            category: 'core_competency',
+            score_domain: 'ats',
+            importance: 'must_have',
+            classification: 'strong',
+            evidence: ['Built cloud platform on AWS'],
+            source_evidence: 'Build and scale cloud platform',
+          },
+        ],
+        coverage_score: 100,
+        score_breakdown: {
+          job_description: { total: 1, strong: 1, partial: 0, missing: 0, addressed: 1, coverage_score: 100 },
+          benchmark: { total: 0, strong: 0, partial: 0, missing: 0, addressed: 0, coverage_score: 0 },
+        },
+        strength_summary: 'Strong cloud background.',
+        critical_gaps: [],
+        pending_strategies: [],
+      };
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(partialHighVolumeOutput);
+
+      const result = await runGapAnalysis(highVolumeInput);
+
+      const userMessage: string = mockLlmChat.mock.calls[0][0].messages[0].content;
+      expect(userMessage).toContain('focused catalog contains');
+      expect(result.requirements.length).toBeGreaterThan(partialHighVolumeOutput.requirements.length);
+      expect(result.requirements.some((item) => item.requirement === 'Differentiator 6')).toBe(true);
+      expect(result.pending_strategies.some((item) => item.requirement === 'Differentiator 6')).toBe(false);
+    });
+
     it('promotes missing hard requirements into critical gaps and removes them from coaching strategies', async () => {
       const hardGapOutput: GapAnalysisOutput = {
         requirements: [
@@ -1074,15 +1126,28 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(2);
     });
 
-    it('throws when both attempts fail', async () => {
+    it('retries when the first provider call fails before repairJSON', async () => {
       mockLlmChat
-        .mockResolvedValueOnce({ text: 'bad1' })
-        .mockResolvedValueOnce({ text: 'bad2' });
-      mockRepairJSON.mockReturnValue(null);
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(RESUME_DRAFT_OUTPUT);
 
-      await expect(runResumeWriter(input)).rejects.toThrow(
-        'Resume Writer agent returned unparseable response after 2 attempts',
-      );
+      const result = await runResumeWriter(input);
+
+      expect(result).toEqual(RESUME_DRAFT_OUTPUT);
+      expect(mockLlmChat).toHaveBeenCalledTimes(2);
+    });
+
+    it('falls back deterministically when both attempts fail', async () => {
+      mockLlmChat
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+
+      const result = await runResumeWriter(input);
+
+      expect(result.header.name).toBe('Jane Smith');
+      expect(result.professional_experience.length).toBeGreaterThan(0);
+      expect(result.selected_accomplishments.length).toBeGreaterThan(0);
     });
 
     it('forwards AbortSignal to llm.chat', async () => {
@@ -1427,6 +1492,40 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.positioning_assessment?.requirement_map).toBeDefined();
       expect(result.positioning_assessment?.requirement_map.length).toBeGreaterThan(0);
     });
+
+    it('handles missing verification arrays without crashing', () => {
+      const assemblyInput: AssemblyInput = {
+        draft: RESUME_DRAFT_OUTPUT,
+        truth_verification: {
+          claims: [],
+          flagged_items: undefined as unknown as AssemblyInput['truth_verification']['flagged_items'],
+          truth_score: 90,
+        },
+        ats_optimization: {
+          match_score: 84,
+          keywords_found: ['cloud architecture'],
+          keywords_missing: undefined as unknown as string[],
+          keyword_suggestions: [],
+          formatting_issues: [],
+        },
+        executive_tone: {
+          findings: undefined as unknown as AssemblyInput['executive_tone']['findings'],
+          tone_score: 88,
+          banned_phrases_found: undefined as unknown as string[],
+        },
+        gap_analysis: GAP_ANALYSIS_OUTPUT,
+        pre_scores: {
+          ats_match: 71,
+          keywords_found: ['cloud architecture'],
+          keywords_missing: [],
+        },
+      };
+
+      const result = runAssembly(assemblyInput);
+
+      expect(result.quick_wins.length).toBeGreaterThan(0);
+      expect(result.final_resume).toBeDefined();
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1494,6 +1593,25 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(mockLlmChat).toHaveBeenCalledTimes(1);
     });
 
+    it('deterministic fallback catches generic filler and lowers the tone score more conservatively', async () => {
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const fallbackInput: ExecutiveToneInput = {
+        draft: {
+          ...RESUME_DRAFT_OUTPUT,
+          executive_summary: {
+            ...RESUME_DRAFT_OUTPUT.executive_summary,
+            content: 'Results-driven executive with a proven track record of demonstrating expertise in significant cost savings.',
+          },
+        },
+      };
+
+      const result = await runExecutiveTone(fallbackInput);
+
+      expect(result.findings.some((finding) => finding.issue === 'generic_filler')).toBe(true);
+      expect(result.tone_score).toBeLessThan(96);
+    });
+
     it('forwards AbortSignal to llm.chat', async () => {
       const controller = new AbortController();
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
@@ -1528,8 +1646,14 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(llmCall.system).toContain('The first character of your response must be {');
       expect(llmCall.system).toContain('Maximum 5 findings');
       expect(llmCall.system).toContain('Focus on the most visible tone issues first');
+      expect(llmCall.system).toContain('Only flag exact text that appears verbatim in the resume draft');
+      expect(llmCall.system).toContain('Never comment on phrases that are absent');
+      expect(llmCall.system).toContain('Do not flag strong executive verbs such as "led," "directed," "delivered," "implemented," "managed," "oversaw," or "drove" as junior language');
       expect(llmCall.response_format).toEqual({ type: 'json_object' });
       expect(llmCall.messages[0].content).toContain('Return JSON only.');
+      expect(llmCall.messages[0].content).toContain('Quote only exact problematic text that appears verbatim in the draft.');
+      expect(llmCall.messages[0].content).toContain('If a phrase is not present, do not mention it.');
+      expect(llmCall.messages[0].content).toContain('Do not flag already-strong executive verbs like led, directed, delivered, implemented, managed, oversaw, or drove.');
       expect(llmCall.messages[0].content).toContain('Return at most 5 findings');
     });
 

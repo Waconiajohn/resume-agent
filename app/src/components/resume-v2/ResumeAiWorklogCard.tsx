@@ -24,7 +24,7 @@ function WorklogRow({ step }: { step: WorklogStep }) {
       : 'border-white/[0.08] bg-white/[0.02] text-white/42';
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+    <div className="flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-black/10 px-3.5 py-3">
       <div className={`mt-0.5 rounded-full border p-1 ${tone}`}>
         {step.status === 'done' ? (
           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -113,13 +113,19 @@ export function ResumeAiWorklogCard({
   ];
 
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-4">
-      <div>
-        <p className="text-sm font-medium text-white/84">What AI Is Doing For You</p>
-        <p className="mt-1 text-sm leading-6 text-white/54">
-          This is the invisible work happening behind the scenes so you can see what the system is doing for your money and why the next action matters.
-        </p>
+    <div className="space-y-3 rounded-2xl border border-[#98b3ff]/18 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.16),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] px-5 py-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">AI worklog</p>
+          <p className="mt-2 text-base font-semibold text-white/86">What AI Is Doing For You</p>
+        </div>
+        <div className="rounded-full border border-white/[0.08] bg-black/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/42">
+          Behind the scenes
+        </div>
       </div>
+      <p className="text-sm leading-6 text-white/54">
+          This is the invisible work happening behind the scenes so you can see what the system is doing for your money and why the next action matters.
+      </p>
 
       <div className="space-y-2.5">
         {steps.map((step) => <WorklogRow key={step.label} step={step} />)}

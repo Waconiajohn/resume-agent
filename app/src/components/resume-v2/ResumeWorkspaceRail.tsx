@@ -127,16 +127,16 @@ export function GuidedWorkflowCard({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
+      <div className="rounded-2xl border border-[#afc4ff]/18 bg-[radial-gradient(circle_at_top_left,rgba(175,196,255,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-4 py-3.5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Current Phase</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Current Phase</p>
             <p className="mt-1 text-sm font-medium text-white/82">{phaseLabel}</p>
           </div>
           <div className="flex flex-wrap gap-2 text-[11px]">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-white/60">
-              Queue: {queueNeedsAttention} attention / {queuePartials} partial
-            </span>
+              <span className="rounded-full border border-white/[0.08] bg-black/10 px-2.5 py-1 text-white/60">
+                Queue: {queueNeedsAttention} attention / {queuePartials} partial
+              </span>
             {hardGapCount > 0 && (
               <span className="rounded-full border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[#f0d99f]/85">
                 Hard risks: {hardGapCount}
