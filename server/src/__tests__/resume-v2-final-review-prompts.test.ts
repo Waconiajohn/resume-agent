@@ -1232,7 +1232,7 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.improvement_summary).toEqual([
       'Add direct proof of Demonstrated success in talent development and building high-performing teams.',
-      'Add specific examples or a brief description of any experience related to post-acquisition integration, even if it was not a primary responsibility, to address this gap.',
+      'If true, add specific examples or a brief description of any experience related to post-acquisition integration, even if it was not a primary responsibility, to address this gap.',
     ]);
   });
 

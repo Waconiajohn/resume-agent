@@ -1279,7 +1279,7 @@ function createImprovementSummaryItemFromConcern(
   concern: FinalReviewResult['concerns'][number],
 ): string | null {
   const requirement = cleanImprovementSummaryText(concern.related_requirement ?? '');
-  const fixStrategy = cleanConcernFixStrategy(concern.fix_strategy ?? '');
+  const fixStrategy = cleanConcernFixStrategy(concern.fix_strategy ?? '', concern.requires_candidate_input);
 
   if (concern.id === 'material_job_fit_risk' && requirement) {
     return `Add direct proof of ${requirement}.`;
@@ -1302,13 +1302,21 @@ function createImprovementSummaryItemFromConcern(
   return null;
 }
 
-function cleanConcernFixStrategy(value: string): string {
-  const cleaned = cleanImprovementSummaryText(
+function cleanConcernFixStrategy(value: string, requiresCandidateInput: boolean): string {
+  let cleaned = cleanImprovementSummaryText(
     value
       .replace(/Only add sample language.*$/i, '')
       .replace(/Prioritize direct proof for this requirement before treating the draft as final\.?/i, '')
       .trim(),
   );
+
+  if (
+    requiresCandidateInput
+    && /^(add|consider adding|highlight)\b/i.test(cleaned)
+    && !/^if (?:true|applicable|relevant)\b/i.test(cleaned)
+  ) {
+    cleaned = `If true, ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)}`;
+  }
 
   return cleaned;
 }
