@@ -958,6 +958,48 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
   });
 
+  it('drops material framework risks when the drafted resume already shows one of the named standards', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Achieved AS9100D quality certification across aerospace manufacturing operations',
+            why_it_matters: 'Shows direct quality-framework depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Operations leader with strong manufacturing quality experience.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      materialJobFitRisks: ['Strong background in quality management systems (ISO 9001, AS9100, or IATF 16949)'],
+      resumeText: 'Led quality operations and achieved AS9100D certification across three aerospace manufacturing facilities.',
+    });
+
+    expect(stabilized.concerns.some((concern) => concern.id === 'material_job_fit_risk')).toBe(false);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => /AS9100|ISO 9001|IATF 16949/i.test(item.signal))).toBe(false);
+  });
+
   it('softens preferred-qualification missing-signal language so it is not treated like a screen-out risk', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
@@ -2049,6 +2091,179 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.hiring_manager_verdict.summary).toContain('The clearest remaining proof gap is Experience architecting for regulated industries.');
     expect(stabilized.hiring_manager_verdict.summary).not.toContain('final interview-ready draft');
+  });
+
+  it('softens compelling summary language when possible interview still has a live proof gap', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '15 years in consumer products/CPG marketing leadership',
+            why_it_matters: 'Shows meaningful category depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Experience as VP Marketing or CMO at a company with $200M+ revenue',
+            why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'The candidate’s extensive experience in consumer products/CPG and revenue acceleration make them a compelling candidate for the CMO role.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'material_job_fit_risk',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Must-have role-fit evidence is still thin: Experience as VP Marketing or CMO at a company with $200M+ revenue',
+          why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+          target_section: 'Summary',
+          related_requirement: 'Experience as VP Marketing or CMO at a company with $200M+ revenue',
+          fix_strategy: 'If true, add one concrete example showing Experience as VP Marketing or CMO at a company with $200M+ revenue.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.hiring_manager_verdict.summary).toContain('credible candidate for the CMO role');
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('compelling candidate');
+    expect(stabilized.hiring_manager_verdict.summary).toContain('The clearest remaining proof gap is Experience as VP Marketing or CMO at a company with $200M+ revenue.');
+  });
+
+  it('softens strong contender language when possible interview still has a live proof gap', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12+ years in cloud infrastructure and architecture',
+            why_it_matters: 'Shows real cloud seniority.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Experience architecting for regulated industries (financial services or healthcare)',
+            why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'The candidate presents a compelling blend of technical depth and leadership experience, making them a strong contender for the Senior Cloud Architect role.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'material_job_fit_risk',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Must-have role-fit evidence is still thin: Experience architecting for regulated industries (financial services or healthcare)',
+          why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+          target_section: 'Summary',
+          related_requirement: 'Experience architecting for regulated industries (financial services or healthcare)',
+          fix_strategy: 'If true, add one concrete example showing Experience architecting for regulated industries (financial services or healthcare).',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.hiring_manager_verdict.summary).toContain('solid blend of technical depth and leadership experience');
+    expect(stabilized.hiring_manager_verdict.summary).toContain('credible contender for the Senior Cloud Architect role');
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('strong contender');
+    expect(stabilized.hiring_manager_verdict.summary).toContain('The clearest remaining proof gap is Experience architecting for regulated industries (financial services or healthcare).');
+  });
+
+  it('does not append a second clearest-proof-gap sentence when one already exists', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12+ years in cloud infrastructure and architecture',
+            why_it_matters: 'Shows real cloud seniority.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Direct mention of experience with service mesh architecture (Istio/Linkerd) and data platform architecture (Kafka, Spark, or similar)',
+            why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'The candidate presents a strong background in cloud infrastructure and architecture. The clearest remaining proof gap is Experience architecting for regulated industries (financial services or healthcare).',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'material_job_fit_risk',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Must-have role-fit evidence is still thin: Experience architecting for regulated industries (financial services or healthcare)',
+          why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+          target_section: 'Summary',
+          related_requirement: 'Experience architecting for regulated industries (financial services or healthcare)',
+          fix_strategy: 'If true, add one concrete example showing Experience architecting for regulated industries (financial services or healthcare).',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    const gapSentenceCount = (stabilized.hiring_manager_verdict.summary.match(/The clearest remaining proof gap is /g) ?? []).length;
+    expect(gapSentenceCount).toBe(1);
+    expect(stabilized.hiring_manager_verdict.summary).toContain('The clearest remaining proof gap is Experience architecting for regulated industries (financial services or healthcare).');
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('service mesh architecture');
   });
 
   it('rewrites probe-further summary lines to only mention kept concern topics', () => {

@@ -1515,7 +1515,41 @@ function isMaterialRequirementContradictedByEvidence(
     return true;
   }
 
+  if (isNamedFrameworkRequirementContradictedByEvidence(risk, signalCorpus)) {
+    return true;
+  }
+
   return isDollarThresholdContradictedByEvidence(risk, signalCorpus);
+}
+
+function isNamedFrameworkRequirementContradictedByEvidence(
+  risk: string,
+  signalCorpus: string,
+): boolean {
+  const frameworkPatterns = extractFrameworkEvidencePatterns(risk);
+  if (frameworkPatterns.length === 0) return false;
+  return frameworkPatterns.some((pattern) => pattern.test(signalCorpus));
+}
+
+function extractFrameworkEvidencePatterns(value: string): RegExp[] {
+  const normalized = normalizeReviewText(value);
+  const patterns: RegExp[] = [];
+
+  if (/\bsoc\s*2\b/.test(normalized)) patterns.push(/\bsoc\s*2\b/i);
+  if (/\bhipaa\b/.test(normalized)) patterns.push(/\bhipaa\b/i);
+  if (/\bpci(?:\s|-)?dss\b/.test(normalized)) patterns.push(/\bpci(?:\s|-)?dss\b/i);
+  if (/\biso\s*9001\b/.test(normalized)) patterns.push(/\biso\s*9001\b/i);
+  if (/\bas\s*9100\b|\bas9100\b/.test(normalized)) patterns.push(/\bas\s*9100[a-z]?\b|\bas9100[a-z]?\b/i);
+  if (/\biatf\s*16949\b/.test(normalized)) patterns.push(/\biatf\s*16949\b/i);
+  if (/\bnist\b/.test(normalized)) patterns.push(/\bnist\b/i);
+  if (/\bfedramp\b/.test(normalized)) patterns.push(/\bfedramp\b/i);
+  if (/\bgdpr\b/.test(normalized)) patterns.push(/\bgdpr\b/i);
+  if (/\bhitrust\b/.test(normalized)) patterns.push(/\bhitrust\b/i);
+  if (/\bcmmc\b/.test(normalized)) patterns.push(/\bcmmc\b/i);
+  if (/\bsox\b/.test(normalized)) patterns.push(/\bsox\b/i);
+  if (/\bglba\b/.test(normalized)) patterns.push(/\bglba\b/i);
+
+  return patterns;
 }
 
 function isCredentialRequirementContradictedByEvidence(
@@ -1678,6 +1712,30 @@ function softenContradictedSummaryClaims(result: FinalReviewResult): string {
 
   if (
     hasRealFitConcern
+    && result.hiring_manager_verdict.rating === 'possible_interview'
+    && /\b(compelling (?:candidate|fit|profile|blend|combination)|strong contender)\b/i.test(summary)
+  ) {
+    summary = summary
+      .replace(/\bmake (?:them|the candidate) a compelling candidate\b/i, 'make them a credible candidate')
+      .replace(/\bmake (?:them|the candidate) a compelling fit\b/i, 'make them a credible fit')
+      .replace(/\ba compelling candidate for the ([^.]+?) role\b/i, 'a credible candidate for the $1 role')
+      .replace(/\ba compelling fit for the ([^.]+?) role\b/i, 'a credible fit for the $1 role')
+      .replace(/\ba compelling candidate for this role\b/i, 'a credible candidate for this role')
+      .replace(/\ba compelling fit for this role\b/i, 'a credible fit for this role')
+      .replace(/\bcompelling candidate\b/i, 'credible candidate')
+      .replace(/\bcompelling fit\b/i, 'credible fit')
+      .replace(/\bcompelling profile\b/i, 'credible profile')
+      .replace(/\bcompelling blend\b/i, 'solid blend')
+      .replace(/\bcompelling combination\b/i, 'solid combination')
+      .replace(/\bstrong contender\b/i, 'credible contender')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+,/g, ',')
+      .replace(/\s+\./g, '.')
+      .trim();
+  }
+
+  if (
+    hasRealFitConcern
     && /\bstrong fit\b/i.test(summary)
   ) {
     summary = summary
@@ -1708,6 +1766,7 @@ function softenContradictedSummaryClaims(result: FinalReviewResult): string {
   const overclaimedMissingSignal = findOverclaimedMissingSignal(summary, result);
   if (
     overclaimedMissingSignal
+    && !/The clearest remaining proof gap is /i.test(summary)
     && !new RegExp(`clearest remaining proof gap is ${escapeRegExp(overclaimedMissingSignal)}`, 'i').test(summary)
   ) {
     summary = summary.replace(
