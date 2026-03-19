@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { supabaseAdmin } from '../src/lib/supabase.js';
 import { loadCareerProfileContext } from '../src/lib/career-profile-context.js';
@@ -34,6 +35,9 @@ type SessionRow = {
     };
   } | null;
 };
+
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = resolve(SCRIPT_DIR, '..');
 
 const DEFAULT_BATCH_LIMIT = 5;
 const EXCLUDED_DEFAULT_QA_KEYWORDS = [
@@ -225,7 +229,7 @@ async function runRealSessionQa() {
     throw new Error('No matching real QA sessions were found.');
   }
 
-  const outDir = resolve(process.cwd(), '..', 'test-results', 'real-session-quality');
+  const outDir = resolve(REPO_ROOT, 'test-results', 'real-session-quality');
   mkdirSync(outDir, { recursive: true });
 
   const summary: Array<Record<string, unknown>> = [];
