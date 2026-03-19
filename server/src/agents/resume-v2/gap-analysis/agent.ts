@@ -675,8 +675,11 @@ function extractFailedGeneration(error: unknown): string | null {
 
 function normalizeFailedGenerationForRepair(value: string): string {
   return value
+    .replace(/:\s*@/g, ': ')
     .replace(/"([A-Za-z_][A-Za-z0-9_]*)=\s*\[/g, '"$1": [')
     .replace(/"([A-Za-z_][A-Za-z0-9_]*)=\s*\{/g, '"$1": {')
+    .replace(/"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\[/g, '"$1": [')
+    .replace(/"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\{/g, '"$1": {')
     .replace(/"\s*,\s*\n/g, '",\n');
 }
 
