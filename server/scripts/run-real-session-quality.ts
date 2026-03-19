@@ -37,7 +37,7 @@ type SessionRow = {
 };
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(SCRIPT_DIR, '..');
+const REPO_ROOT = resolve(SCRIPT_DIR, '..', '..');
 
 const DEFAULT_BATCH_LIMIT = 5;
 const EXCLUDED_DEFAULT_QA_KEYWORDS = [

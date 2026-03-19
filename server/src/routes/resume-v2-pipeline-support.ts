@@ -690,7 +690,6 @@ function buildResumeEvidenceCorpus(result: FinalReviewResult, resumeText?: strin
     resumeText ?? '',
     ...result.six_second_scan.top_signals_seen.map((item) => item.signal),
     ...result.top_wins.map((item) => item.win),
-    result.hiring_manager_verdict.summary,
   ].join(' \n ');
 }
 
@@ -724,11 +723,21 @@ function extractSuggestedEditClaims(edit: string): string[] {
   const claims: string[] = [];
   const capturePatterns = [
     /\bexperience with ([^.;]+)/gi,
+    /\bexperience in ([^.;]+)/gi,
     /\bexpertise in ([^.;]+)/gi,
     /\bbackground in ([^.;]+)/gi,
     /\btraining in ([^.;]+)/gi,
     /\bcertification(?:s)? in ([^.;]+)/gi,
     /\bincluding ([^.;]+)/gi,
+    /\bpartnered with ([^.;]+)/gi,
+    /\b(?:supported|led|managed|oversaw) the integration of ([^.;]+)/gi,
+  ];
+  const literalClaimPatterns = [
+    /\bprivate equity sponsors?\b/gi,
+    /\bpe-backed\b/gi,
+    /\bpost-acquisition(?: operational)? integration\b/gi,
+    /\bintegration of acquired businesses?\b/gi,
+    /\bacquired businesses?\b/gi,
   ];
 
   for (const pattern of capturePatterns) {
@@ -736,6 +745,14 @@ function extractSuggestedEditClaims(edit: string): string[] {
       const rawClaim = match[1]?.trim();
       if (!rawClaim) continue;
       claims.push(rawClaim);
+    }
+  }
+
+  for (const pattern of literalClaimPatterns) {
+    for (const match of edit.matchAll(pattern)) {
+      const claim = match[0]?.trim();
+      if (!claim) continue;
+      claims.push(claim);
     }
   }
 

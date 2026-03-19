@@ -1381,6 +1381,112 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.requires_candidate_input).toBe(false);
   });
 
+  it('does not treat hiring-manager summary language as resume evidence for speculative edits', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Drove consumer brand repositioning and digital growth at scale',
+            why_it_matters: 'Shows real growth leadership.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong marketing leader, but experience in PE-backed environments with a focus on growth and value creation is still thin.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Lack of clear evidence of experience in PE-backed environments with a focus on growth and value creation.',
+          why_it_hurts: 'May raise questions about operating fit.',
+          fix_strategy: 'Clarify any adjacent PE-backed proof and tighten the wording.',
+          suggested_resume_edit: "Added a bullet point under Vice President of Marketing: 'Partnered with private equity sponsors to drive growth and value creation initiatives.'",
+          requires_candidate_input: false,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      resumeText: 'Consumer products marketing executive who repositioned brands, led digital growth, and improved team performance.',
+    });
+
+    expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
+    expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
+    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+  });
+
+  it('removes speculative suggested edits that introduce unsupported acquisition or integration claims', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Generated $14.2M in cost savings through lean manufacturing and automation initiatives',
+            why_it_matters: 'Shows operations impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong operator, but PE-backed and post-acquisition integration evidence is still thin.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Lack of explicit mention of PE-backed manufacturing environments or post-acquisition integration.',
+          why_it_hurts: 'These are meaningful context gaps for the role.',
+          fix_strategy: 'Add specific examples if they are real.',
+          suggested_resume_edit: "Example: 'Supported the integration of acquired businesses, driving operational synergies and cost savings through lean practices and strategic planning.'",
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      resumeText: 'Operations executive with multi-site manufacturing leadership, lean transformations, and automation wins.',
+    });
+
+    expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
+    expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
+    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+  });
+
   it('removes suggested resume edits that introduce unsupported metrics', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
