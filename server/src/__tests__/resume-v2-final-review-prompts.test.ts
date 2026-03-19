@@ -540,6 +540,67 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.job_description_fit).toBe('strong');
   });
 
+  it('removes contradicted years-threshold concerns when stronger evidence already proves the requirement', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '18 years of progressive operations/manufacturing leadership',
+            why_it_matters: 'Clears the seniority threshold.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Direct mention of 15+ years of progressive operations/manufacturing leadership',
+            why_it_matters: 'This is a hard requirement for the job, and its absence may raise concerns',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'The candidate has a strong background in operations leadership. However, the candidate\'s experience is slightly shorter than the required 15+ years, which may be a concern.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'The candidate\'s experience is slightly shorter than the required 15+ years',
+          why_it_hurts: 'This may raise concerns about the candidate\'s ability to meet the job\'s requirements',
+          target_section: 'Professional Experience',
+          related_requirement: '15+ years of progressive operations/manufacturing leadership',
+          fix_strategy: 'Add earlier career detail if needed.',
+          requires_candidate_input: true,
+          clarifying_question: 'Can you provide earlier experience?',
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [
+        'Add a statement to address the 15+ year experience requirement',
+      ],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing).toHaveLength(0);
+    expect(stabilized.concerns).toHaveLength(0);
+    expect(stabilized.improvement_summary).toHaveLength(0);
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('slightly shorter than the required 15+ years');
+  });
+
   it('uses the drafted resume text to clear years-threshold hard risks the reviewer failed to echo', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
@@ -937,6 +998,168 @@ describe('resume-v2 final review prompts', () => {
 
     expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toContain('competitive disadvantage');
     expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).not.toContain('screen-out risk');
+  });
+
+  it('softens hiring-manager summaries that overstate communication strength while the same proof is flagged as missing', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Good first impression.',
+        top_signals_seen: [
+          {
+            signal: '12 years in cloud infrastructure/architecture roles',
+            why_it_matters: 'Shows role-relevant seniority.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Excellent communication skills for presenting to executive stakeholders',
+            why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'The candidate demonstrates strong technical expertise in cloud infrastructure and architecture, as well as excellent communication skills and a proven track record of leading cross-functional teams.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('excellent communication skills');
+    expect(stabilized.hiring_manager_verdict.summary).toContain('validated more explicitly');
+  });
+
+  it('softens hiring-manager summaries that call the candidate a strong fit while must-have role-fit proof is still missing', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Relevant cloud background.',
+        top_signals_seen: [
+          {
+            signal: '12 years of experience in cloud infrastructure and architecture',
+            why_it_matters: 'Clears the years threshold for the role.',
+            visible_in_top_third: true,
+          },
+          {
+            signal: 'Reduced hosting costs by 35% through cloud migration',
+            why_it_matters: 'Shows cloud cost optimization impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Experience architecting for regulated industries (financial services or healthcare)',
+            why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'needs_improvement',
+        summary: 'The candidate makes them a strong fit for the Senior Cloud Architect role, with strong cloud cost optimization and architecture leadership experience.',
+      },
+      fit_assessment: {
+        job_description_fit: 'weak',
+        benchmark_alignment: 'moderate',
+        business_impact: 'moderate',
+        clarity_and_credibility: 'weak',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'material_job_fit_risk',
+          severity: 'critical',
+          type: 'missing_evidence',
+          observation: 'Must-have role-fit evidence is still thin: Experience architecting for regulated industries (financial services or healthcare)',
+          why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+          target_section: 'Summary or most relevant experience bullets',
+          related_requirement: 'Experience architecting for regulated industries (financial services or healthcare)',
+          fix_strategy: 'Prioritize direct proof for this requirement before treating the draft as final.',
+          requires_candidate_input: true,
+          clarifying_question: 'What is the strongest real example from your background that proves this must-have requirement?',
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('strong fit for the Senior Cloud Architect role');
+    expect(stabilized.hiring_manager_verdict.summary).toContain('key fit evidence is still incomplete');
+  });
+
+  it('adds a caveat when the summary claims a must-have signal that the same review still flags as thin', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '$14.2M in cumulative cost savings',
+            why_it_matters: 'Shows large-scale operational impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Talent development and building high-performing teams',
+            why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'The candidate’s experience in lean manufacturing, quality systems, and talent development aligns well with the job requirements.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'material_job_fit_risk',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Must-have role-fit evidence is still thin: Talent development and building high-performing teams',
+          why_it_hurts: 'Even without being a formal credential screen-out, this can weaken the interview case when the requirement is central to the role.',
+          target_section: 'Summary or most relevant experience bullets',
+          related_requirement: 'Talent development and building high-performing teams',
+          fix_strategy: 'Prioritize direct proof for this requirement before treating the draft as final.',
+          requires_candidate_input: true,
+          clarifying_question: 'What is the strongest real example from your background that proves this must-have requirement?',
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.hiring_manager_verdict.summary).toContain('Direct proof of Talent development and building high-performing teams is still thinner than it needs to be for this role');
   });
 
   it('fills missing concern explanation fields when the final-review model omits them', () => {

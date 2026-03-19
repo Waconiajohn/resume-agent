@@ -694,6 +694,14 @@ function buildResumeEvidenceCorpus(result: FinalReviewResult, resumeText?: strin
   ].join(' \n ');
 }
 
+function buildContradictionEvidenceCorpus(result: FinalReviewResult, resumeText?: string): string {
+  return [
+    resumeText ?? '',
+    ...result.six_second_scan.top_signals_seen.map((item) => item.signal),
+    ...result.top_wins.map((item) => item.win),
+  ].join(' \n ');
+}
+
 function isConditionalSuggestedEdit(edit: string): boolean {
   return /\b(if (?:true|accurate|applicable|relevant|you have|you did)|only if|if supported|if evidenced|if documented)\b/i.test(edit);
 }
@@ -926,11 +934,22 @@ export function stabilizeFinalReviewResult(
     normalized.six_second_scan.reason = normalized.hiring_manager_verdict.summary;
   }
 
+  const contradictionEvidenceCorpus = buildContradictionEvidenceCorpus(normalized, options?.resumeText);
+  normalized.six_second_scan.important_signals_missing = normalized.six_second_scan.important_signals_missing.filter((item) => !isYearsThresholdContradictedByEvidence(item.signal, contradictionEvidenceCorpus));
+  normalized.concerns = normalized.concerns.filter((concern) => !isYearsThresholdContradictedByEvidence(
+    `${concern.related_requirement ?? ''} ${concern.observation}`,
+    contradictionEvidenceCorpus,
+  ));
+  normalized.improvement_summary = normalized.improvement_summary.filter((item) => !isYearsThresholdContradictedByEvidence(item, contradictionEvidenceCorpus));
+  normalized.hiring_manager_verdict.summary = removeContradictedYearsConcernLanguage(
+    normalized.hiring_manager_verdict.summary,
+    contradictionEvidenceCorpus,
+  );
+
   normalized.six_second_scan.important_signals_missing = normalized.six_second_scan.important_signals_missing.map((item) => ({
     ...item,
     why_it_matters: softenPreferredQualificationRiskLanguage(item.signal, item.why_it_matters),
   }));
-
   const hardRequirementRisks = getEffectiveHardRequirementRisks(
     normalized,
     options?.hardRequirementRisks ?? [],
@@ -1086,6 +1105,8 @@ export function stabilizeFinalReviewResult(
     }
   }
 
+  normalized.hiring_manager_verdict.summary = softenContradictedSummaryClaims(normalized);
+
   return normalized;
 }
 
@@ -1189,6 +1210,27 @@ function isYearsThresholdContradictedByEvidence(
 
   if (evidencedYears.length === 0) return false;
   return Math.max(...evidencedYears) >= requiredYears;
+}
+
+function removeContradictedYearsConcernLanguage(
+  summary: string,
+  contradictionEvidenceCorpus: string,
+): string {
+  if (!isYearsThresholdContradictedByEvidence(summary, contradictionEvidenceCorpus)) {
+    return summary;
+  }
+
+  const sentences = summary
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+  const filtered = sentences.filter((sentence) => !(
+    isYearsThresholdContradictedByEvidence(sentence, contradictionEvidenceCorpus)
+    && /\b(short(?:er|fall)|falls?\s+short|not clearly|not explicit|lack of clear|may be a concern|required \d+\+?\s+years|minimum of \d+\+?\s+years)\b/i.test(sentence)
+  ));
+
+  return filtered.length > 0 ? filtered.join(' ') : summary;
 }
 
 function isMaterialRequirementContradictedByEvidence(
@@ -1319,12 +1361,110 @@ function extractYearsThreshold(text: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function softenPreferredQualificationRiskLanguage(signal: string, whyItMatters: string): string {
   if (!/preferred qualification|preferred|nice to have|bonus|plus/i.test(`${signal} ${whyItMatters}`)) {
     return whyItMatters;
   }
 
   return whyItMatters.replace(/screen(?:-| )out risk/gi, 'competitive disadvantage');
+}
+
+function softenContradictedSummaryClaims(result: FinalReviewResult): string {
+  let summary = result.hiring_manager_verdict.summary;
+  const contradictionCorpus = [
+    ...result.six_second_scan.important_signals_missing.map((item) => `${item.signal} ${item.why_it_matters}`),
+    ...result.concerns.map((concern) => `${concern.related_requirement ?? ''} ${concern.observation}`),
+  ].join(' \n ');
+
+  const hasCommunicationGap = /\b(communication|executive stakeholders?|executive presence|board(?:-level)?|presenting to executive stakeholders?)\b/i.test(contradictionCorpus);
+  if (hasCommunicationGap) {
+    const softenedCommunication = summary
+      .replace(/\bexcellent communication skills(?:\s+and\s+)?/i, '')
+      .replace(/\bstrong communication skills(?:\s+and\s+)?/i, '')
+      .replace(/\bexcellent executive presence(?:\s+and\s+)?/i, '')
+      .replace(/\bboard-level communication skills(?:\s+and\s+)?/i, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+,/g, ',')
+      .replace(/\s+\./g, '.')
+      .trim();
+
+    if (softenedCommunication !== summary) {
+      summary = /communication|executive presence/i.test(softenedCommunication)
+        ? softenedCommunication
+        : `${softenedCommunication} Communication and executive-facing influence should be validated more explicitly during the interview process.`;
+    }
+  }
+
+  const hasRealFitConcern = result.hiring_manager_verdict.rating === 'needs_improvement'
+    || result.concerns.some((concern) => concern.severity === 'critical')
+    || result.six_second_scan.important_signals_missing.some((item) => /must-have|all requirements|role fit|does not yet prove/i.test(item.why_it_matters));
+
+  if (
+    hasRealFitConcern
+    && /\bstrong fit\b/i.test(summary)
+  ) {
+    summary = summary
+      .replace(/\bmake (?:them|the candidate) a strong fit\b/i, 'make them a credible candidate, but key fit evidence is still incomplete')
+      .replace(/\bstrong fit for the ([^.]+?) role\b/i, 'credible background for the $1 role, but key fit evidence is still incomplete')
+      .replace(/\ba strong fit for this role\b/i, 'a credible candidate, but key fit evidence is still incomplete')
+      .replace(/\bstrong fit\b/i, 'credible but still incomplete fit')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+,/g, ',')
+      .replace(/\s+\./g, '.')
+      .trim();
+  }
+
+  if (
+    hasRealFitConcern
+    && !/validated more explicitly|key fit evidence is still incomplete|should be treated as a final interview-ready draft/i.test(summary)
+  ) {
+    summary = `${summary} Key role-fit evidence should be validated more explicitly before this is treated as a final interview-ready draft.`;
+  }
+
+  const overclaimedMissingSignal = findOverclaimedMissingSignal(summary, result);
+  if (
+    overclaimedMissingSignal
+    && !new RegExp(`direct proof of ${escapeRegExp(overclaimedMissingSignal)}`, 'i').test(summary)
+  ) {
+    summary = `${summary} Direct proof of ${overclaimedMissingSignal} is still thinner than it needs to be for this role.`;
+  }
+
+  return summary;
+}
+
+function findOverclaimedMissingSignal(summary: string, result: FinalReviewResult): string | null {
+  const summaryTokens = new Set(extractSalientRequirementTokens(summary));
+  if (summaryTokens.size === 0) return null;
+  const lowSignalOverlapTokens = new Set([
+    'with', 'without', 'direct', 'clear', 'explicit', 'specific', 'mention', 'mentions',
+    'strong', 'background', 'additional', 'cloud', 'systems', 'technology', 'technologies',
+    'experience', 'evident', 'evidence', 'proof', 'managed', 'management', 'quality', 'one',
+  ]);
+
+  const candidateSignals = [
+    ...result.six_second_scan.important_signals_missing
+      .filter((item) => /must-have|role fit|does not yet prove|not yet prove|key requirement/i.test(item.why_it_matters))
+      .map((item) => item.signal),
+    ...result.concerns
+      .filter((concern) => concern.type === 'missing_evidence' && concern.severity !== 'minor')
+      .map((concern) => concern.related_requirement ?? concern.observation),
+  ];
+
+  for (const signal of candidateSignals) {
+    const tokens = extractSalientRequirementTokens(signal).filter((token) => !lowSignalOverlapTokens.has(token));
+    if (tokens.length < 2) continue;
+
+    const matchedTokenCount = tokens.filter((token) => summaryTokens.has(token)).length;
+    if (matchedTokenCount >= 2) {
+      return signal;
+    }
+  }
+
+  return null;
 }
 
 export function buildFinalReviewPrompts({
