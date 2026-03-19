@@ -1002,6 +1002,31 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(userMessage).toContain('$3M+ payroll budget accountability');
     });
 
+    it('normalizes non-array gap-analysis evidence before building the user message', async () => {
+      const inputWithStringEvidence = {
+        ...input,
+        gap_analysis: {
+          ...input.gap_analysis,
+          requirements: input.gap_analysis.requirements.map((requirement, index) => (
+            index === 0
+              ? {
+                  ...requirement,
+                  evidence: 'Delivered $175M combined output oversight; Led 420-employee operation',
+                }
+              : requirement
+          )),
+        },
+      } as unknown as NarrativeStrategyInput;
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(NARRATIVE_OUTPUT);
+
+      await runNarrativeStrategy(inputWithStringEvidence);
+
+      const userMessage: string = mockLlmChat.mock.calls[0][0].messages[0].content;
+      expect(userMessage).toContain('Delivered $175M combined output oversight');
+      expect(userMessage).toContain('Led 420-employee operation');
+    });
+
     it('includes benchmark differentiators in user message when provided', async () => {
       const inputWithDiffs: NarrativeStrategyInput = {
         ...input,
@@ -1148,6 +1173,38 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.header.name).toBe('Jane Smith');
       expect(result.professional_experience.length).toBeGreaterThan(0);
       expect(result.selected_accomplishments.length).toBeGreaterThan(0);
+    });
+
+    it('deterministic fallback surfaces satisfied years thresholds explicitly in the summary', async () => {
+      mockLlmChat
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'))
+        .mockRejectedValueOnce(new Error('groq API error 400: json_validate_failed'));
+
+      const yearsThresholdInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          career_span_years: 18,
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: '15+ years of progressive operations/manufacturing leadership',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Led multi-site manufacturing operations'],
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(yearsThresholdInput);
+
+      expect(result.executive_summary.content).toContain('18 years of progressive operations/manufacturing leadership');
     });
 
     it('forwards AbortSignal to llm.chat', async () => {

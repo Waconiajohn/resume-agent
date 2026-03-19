@@ -304,6 +304,43 @@ describe('resume-v2 final review prompts', () => {
     expect(hardRisks[0]).toContain("Bachelor's degree");
   });
 
+  it('dedupes generic relevant-field degree risks against the more specific engineering degree version', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: "Bachelor's degree or higher in Chemical Engineering, Civil Engineering, Mechanical Engineering, Petroleum Engineering, or related field",
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+      critical_gaps: [
+        "Bachelor's degree in a relevant field",
+      ],
+    });
+
+    expect(hardRisks).toHaveLength(1);
+    expect(hardRisks[0]).toContain("Bachelor's degree");
+  });
+
+  it('dedupes equivalent years-threshold risks with slightly different phrasing', () => {
+    const hardRisks = extractHardRequirementRisksFromGapAnalysis({
+      requirements: [
+        {
+          requirement: '10+ years in cloud infrastructure/architecture roles',
+          classification: 'missing',
+          source: 'job_description',
+        },
+      ],
+      critical_gaps: [
+        '10+ years of experience in cloud infrastructure/architecture roles',
+      ],
+    });
+
+    expect(hardRisks).toEqual([
+      '10+ years in cloud infrastructure/architecture roles',
+    ]);
+  });
+
   it('includes explicit hard-risk critical gaps even when the requirement list is incomplete', () => {
     const hardRisks = extractHardRequirementRisksFromGapAnalysis({
       requirements: [],
@@ -566,6 +603,50 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
     expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('40+ person marketing organization'))).toBe(true);
+  });
+
+  it('drops material must-have risks when stronger recruiter evidence already proves the financial threshold', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Multi-site operations management experience with $175M P&L oversight',
+            why_it_matters: 'Shows large-scale financial ownership.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong manufacturing operator with visible multi-site scale and financial oversight.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      materialJobFitRisks: [
+        'Experience with P&L responsibility for $100M+ operations',
+      ],
+    });
+
+    expect(stabilized.concerns.some((concern) => concern.id === 'material_job_fit_risk')).toBe(false);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('$100M+ operations'))).toBe(false);
+    expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
   });
 
   it('softens preferred-qualification missing-signal language so it is not treated like a screen-out risk', () => {

@@ -127,6 +127,7 @@ CRITICAL RULES:
 6. No graduation dates for candidates 45+ (career span > 20 years)
 7. Every bullet starts with a strong action verb — NEVER "responsible for"
 8. Quantify across money, time, volume, scope wherever possible
+9. If the job has an explicit years-of-experience threshold and the candidate clearly meets it, state that years count explicitly in the executive summary.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
 
@@ -474,7 +475,9 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
 }
 
 function buildExecutiveSummary(input: ResumeWriterInput): string {
+  const yearsThresholdLine = buildSatisfiedYearsThresholdLine(input);
   return [
+    yearsThresholdLine,
     input.narrative.why_me_concise,
     input.candidate.leadership_scope,
     input.candidate.operational_scale,
@@ -542,4 +545,32 @@ function matchRequirementLinks(text: string, requirements: ResumeWriterInput['ga
 
 function dedupeStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function buildSatisfiedYearsThresholdLine(input: ResumeWriterInput): string {
+  const satisfiedRequirement = input.gap_analysis.requirements.find((requirement) => {
+    const requiredYears = extractYearsThreshold(requirement.requirement);
+    return requiredYears !== null
+      && input.candidate.career_span_years >= requiredYears
+      && requirement.source === 'job_description';
+  });
+
+  if (!satisfiedRequirement) return '';
+
+  const descriptor = satisfiedRequirement.requirement
+    .replace(/\b(?:minimum of\s*)?\d+\+?\s+years?\s+of\s+/i, '')
+    .replace(/\b(?:minimum of\s*)?\d+\+?\s+years?\b/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!descriptor) {
+    return `${input.candidate.career_span_years} years of relevant leadership experience.`;
+  }
+
+  return `${input.candidate.career_span_years} years of ${descriptor}.`;
+}
+
+function extractYearsThreshold(text: string): number | null {
+  const match = text.match(/\b(?:minimum of\s*)?(\d+)\+?\s+years?\b/i);
+  return match ? Number(match[1]) : null;
 }

@@ -527,11 +527,30 @@ function areEquivalentHardRequirementRisks(left: string, right: string): boolean
   if (normalizedLeft === normalizedRight) return true;
   if (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft)) return true;
 
+  const leftYears = extractYearsThreshold(left);
+  const rightYears = extractYearsThreshold(right);
+  if (leftYears !== null && rightYears !== null && leftYears === rightYears) {
+    const stopTokens = new Set(['years', 'year', 'experience', 'experiences', 'role', 'roles', 'minimum', 'minimums', 'progressive', 'required', 'must', 'have', 'plus', 'over', 'more', 'than']);
+    const leftTokens = extractRequirementTokens(normalizedLeft).filter((token) => !stopTokens.has(token));
+    const rightTokens = extractRequirementTokens(normalizedRight).filter((token) => !stopTokens.has(token));
+
+    if (leftTokens.length === 0 || rightTokens.length === 0) {
+      return true;
+    }
+
+    const leftSet = new Set(leftTokens);
+    const rightSet = new Set(rightTokens);
+    const sharedCount = [...leftSet].filter((token) => rightSet.has(token)).length;
+    if (sharedCount >= Math.min(leftSet.size, rightSet.size)) {
+      return true;
+    }
+  }
+
   const leftIsDegree = /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|foreign equivalent)\b/.test(normalizedLeft);
   const rightIsDegree = /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|foreign equivalent)\b/.test(normalizedRight);
   if (!leftIsDegree || !rightIsDegree) return false;
 
-  const stopTokens = new Set(['bachelor', 'bachelors', 'master', 'masters', 'mba', 'phd', 'doctorate', 'degree', 'higher', 'field', 'fields', 'foreign', 'equivalent', 'other', 'related', 'or', 'and']);
+  const stopTokens = new Set(['bachelor', 'bachelors', 'master', 'masters', 'mba', 'phd', 'doctorate', 'degree', 'higher', 'field', 'fields', 'foreign', 'equivalent', 'other', 'related', 'relevant', 'or', 'and']);
   const leftTokens = extractRequirementTokens(normalizedLeft).filter((token) => !stopTokens.has(token));
   const rightTokens = extractRequirementTokens(normalizedRight).filter((token) => !stopTokens.has(token));
 
@@ -678,7 +697,6 @@ export function stabilizeFinalReviewResult(
     },
     improvement_summary: [...result.improvement_summary],
   };
-  const materialJobFitRisks = Array.from(new Set((options?.materialJobFitRisks ?? []).filter(Boolean)));
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
   if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
@@ -735,6 +753,10 @@ export function stabilizeFinalReviewResult(
   const hardRequirementRisks = getEffectiveHardRequirementRisks(
     normalized,
     options?.hardRequirementRisks ?? [],
+  );
+  const materialJobFitRisks = getEffectiveMaterialJobFitRisks(
+    normalized,
+    options?.materialJobFitRisks ?? [],
   );
 
   if (hardRequirementRisks.length > 0) {
@@ -861,6 +883,16 @@ export function getEffectiveHardRequirementRisks(
   );
 }
 
+function getEffectiveMaterialJobFitRisks(
+  result: FinalReviewResult,
+  materialJobFitRisks: string[],
+): string[] {
+  return filterContradictedMaterialJobFitRisks(
+    Array.from(new Set(materialJobFitRisks.filter(Boolean))),
+    result,
+  );
+}
+
 function capFitAssessment(
   current: 'strong' | 'moderate' | 'weak',
   cap: 'strong' | 'moderate' | 'weak',
@@ -880,6 +912,19 @@ function filterContradictedHardRequirementRisks(
   ].join(' \n ');
 
   return risks.filter((risk) => !isYearsThresholdContradictedByEvidence(risk, signalCorpus));
+}
+
+function filterContradictedMaterialJobFitRisks(
+  risks: string[],
+  result: FinalReviewResult,
+): string[] {
+  const signalCorpus = [
+    ...result.six_second_scan.top_signals_seen.map((item) => item.signal),
+    ...result.top_wins.map((item) => item.win),
+    result.hiring_manager_verdict.summary,
+  ].join(' \n ');
+
+  return risks.filter((risk) => !isMaterialRequirementContradictedByEvidence(risk, signalCorpus));
 }
 
 function isHardRequirementAlreadySatisfied(
@@ -917,6 +962,54 @@ function isYearsThresholdContradictedByEvidence(
 
   if (evidencedYears.length === 0) return false;
   return Math.max(...evidencedYears) >= requiredYears;
+}
+
+function isMaterialRequirementContradictedByEvidence(
+  risk: string,
+  signalCorpus: string,
+): boolean {
+  if (isYearsThresholdContradictedByEvidence(risk, signalCorpus)) {
+    return true;
+  }
+
+  return isDollarThresholdContradictedByEvidence(risk, signalCorpus);
+}
+
+function isDollarThresholdContradictedByEvidence(
+  risk: string,
+  signalCorpus: string,
+): boolean {
+  const requiredDollars = extractDollarThreshold(risk);
+  if (requiredDollars === null) return false;
+
+  const normalizedRisk = normalizeReviewText(risk);
+  const normalizedCorpus = normalizeReviewText(signalCorpus);
+  const riskHasFinancialScope = /\bp&l|profit and loss|budget|revenue|operations?\b/.test(normalizedRisk);
+  const corpusHasFinancialScope = /\bp&l|profit and loss|budget|revenue|operations?\b/.test(normalizedCorpus);
+  if (!riskHasFinancialScope || !corpusHasFinancialScope) return false;
+
+  const evidencedDollars = Array.from(signalCorpus.matchAll(/\$(\d+(?:\.\d+)?)\s*(k|m|mm|million|b|bn|billion)?/gi))
+    .map((match) => normalizeDollarMagnitude(Number(match[1]), match[2] ?? ''))
+    .filter((value): value is number => value !== null);
+
+  if (evidencedDollars.length === 0) return false;
+  return Math.max(...evidencedDollars) >= requiredDollars;
+}
+
+function extractDollarThreshold(value: string): number | null {
+  const match = value.match(/\$(\d+(?:\.\d+)?)\s*(k|m|mm|million|b|bn|billion)?/i);
+  if (!match) return null;
+  return normalizeDollarMagnitude(Number(match[1]), match[2] ?? '');
+}
+
+function normalizeDollarMagnitude(amount: number, rawUnit: string): number | null {
+  if (!Number.isFinite(amount)) return null;
+  const unit = rawUnit.trim().toLowerCase();
+  if (!unit) return amount;
+  if (unit === 'k' || unit === 'thousand') return amount * 1_000;
+  if (unit === 'm' || unit === 'mm' || unit === 'million') return amount * 1_000_000;
+  if (unit === 'b' || unit === 'bn' || unit === 'billion') return amount * 1_000_000_000;
+  return amount;
 }
 
 function extractYearsThreshold(text: string): number | null {

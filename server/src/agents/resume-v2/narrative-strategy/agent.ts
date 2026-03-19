@@ -505,7 +505,10 @@ function buildUserMessage(input: NarrativeStrategyInput): string {
     'Strong matches:',
     ...input.gap_analysis.requirements
       .filter(r => r.classification === 'strong')
-      .map(r => `- ${r.requirement}: ${r.evidence.join('; ')}`),
+      .map((r) => {
+        const evidence = toStringArray(r.evidence, []);
+        return `- ${r.requirement}: ${evidence.join('; ') || 'No explicit evidence captured'}`;
+      }),
     '',
     'Partial matches (with strategies):',
     ...input.gap_analysis.requirements
