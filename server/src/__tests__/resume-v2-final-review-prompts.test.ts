@@ -538,6 +538,49 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.job_description_fit).toBe('strong');
   });
 
+  it('uses the drafted resume text to clear years-threshold hard risks the reviewer failed to echo', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Reduced hosting costs by 35% through cloud migration',
+            why_it_matters: 'Shows strong cloud impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong cloud architect with meaningful platform scale and cloud cost optimization.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      hardRequirementRisks: ['10+ years in cloud infrastructure/architecture roles'],
+      resumeText: 'Senior Cloud Architect\n12 years in cloud infrastructure/architecture roles driving enterprise modernization.',
+    });
+
+    expect(stabilized.concerns.some((concern) => concern.id === 'hard_requirement_risk')).toBe(false);
+    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('10+ years'))).toBe(false);
+    expect(stabilized.hiring_manager_verdict.rating).toBe('possible_interview');
+  });
+
   it('extracts material must-have job-fit risks from partial threshold gaps without treating them as hard credentials', () => {
     const risks = extractMaterialJobFitRisksFromGapAnalysis({
       requirements: [

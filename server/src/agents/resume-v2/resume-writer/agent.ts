@@ -197,6 +197,8 @@ export async function runResumeWriter(
     parsed = buildDeterministicResumeDraft(input);
   }
 
+  parsed = ensureSatisfiedYearsThresholdVisible(parsed, input);
+
   // Guardrail: ensure contact info is from candidate, not a placeholder
   if (!parsed.header?.name || parsed.header.name.toLowerCase().includes('john doe')) {
     parsed.header = {
@@ -567,7 +569,72 @@ function buildSatisfiedYearsThresholdLine(input: ResumeWriterInput): string {
     return `${input.candidate.career_span_years} years of relevant leadership experience.`;
   }
 
+  if (/^(in|within|across)\b/i.test(descriptor)) {
+    return `${input.candidate.career_span_years} years ${descriptor}.`;
+  }
+
   return `${input.candidate.career_span_years} years of ${descriptor}.`;
+}
+
+function ensureSatisfiedYearsThresholdVisible(
+  draft: ResumeDraftOutput,
+  input: ResumeWriterInput,
+): ResumeDraftOutput {
+  const yearsThresholdLine = buildSatisfiedYearsThresholdLine(input);
+  if (!yearsThresholdLine) return draft;
+
+  const currentSummary = draft.executive_summary?.content?.trim() ?? '';
+  if (!currentSummary) {
+    return {
+      ...draft,
+      executive_summary: {
+        content: yearsThresholdLine,
+        is_new: true,
+      },
+    };
+  }
+
+  if (summaryAlreadyShowsYearsThreshold(currentSummary, input)) {
+    return draft;
+  }
+
+  return {
+    ...draft,
+    executive_summary: {
+      ...draft.executive_summary,
+      content: `${yearsThresholdLine} ${currentSummary}`.trim(),
+      is_new: true,
+    },
+  };
+}
+
+function summaryAlreadyShowsYearsThreshold(
+  summary: string,
+  input: ResumeWriterInput,
+): boolean {
+  const normalizedSummary = summary.toLowerCase();
+  const years = input.candidate.career_span_years;
+  if (normalizedSummary.includes(`${years} years`)) {
+    return true;
+  }
+  const mentionedYears = Array.from(summary.matchAll(/\b(?:minimum of\s*)?(\d+)\+?\s+years?\b/gi))
+    .map((match) => Number(match[1]))
+    .filter((value) => Number.isFinite(value));
+
+  if (mentionedYears.some((value) => value >= years)) {
+    return true;
+  }
+
+  const satisfiedRequirement = input.gap_analysis.requirements.find((requirement) => {
+    const requiredYears = extractYearsThreshold(requirement.requirement);
+    return requiredYears !== null
+      && input.candidate.career_span_years >= requiredYears
+      && requirement.source === 'job_description';
+  });
+
+  if (!satisfiedRequirement) return false;
+  const requiredYears = extractYearsThreshold(satisfiedRequirement.requirement);
+  return requiredYears !== null && mentionedYears.some((value) => value >= requiredYears);
 }
 
 function extractYearsThreshold(text: string): number | null {

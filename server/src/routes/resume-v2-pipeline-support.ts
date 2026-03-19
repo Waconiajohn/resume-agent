@@ -681,7 +681,7 @@ function createRecruiterSignalFromSummary(summary: string) {
 
 export function stabilizeFinalReviewResult(
   result: FinalReviewResult,
-  options?: { hardRequirementRisks?: string[]; materialJobFitRisks?: string[] },
+  options?: { hardRequirementRisks?: string[]; materialJobFitRisks?: string[]; resumeText?: string },
 ): FinalReviewResult {
   const normalized: FinalReviewResult = {
     ...result,
@@ -757,10 +757,12 @@ export function stabilizeFinalReviewResult(
   const hardRequirementRisks = getEffectiveHardRequirementRisks(
     normalized,
     options?.hardRequirementRisks ?? [],
+    options?.resumeText,
   );
   const materialJobFitRisks = getEffectiveMaterialJobFitRisks(
     normalized,
     options?.materialJobFitRisks ?? [],
+    options?.resumeText,
   );
 
   if (hardRequirementRisks.length > 0) {
@@ -913,20 +915,24 @@ export function stabilizeFinalReviewResult(
 export function getEffectiveHardRequirementRisks(
   result: FinalReviewResult,
   hardRequirementRisks: string[],
+  resumeText?: string,
 ): string[] {
   return filterContradictedHardRequirementRisks(
     Array.from(new Set(hardRequirementRisks.filter(Boolean))),
     result,
+    resumeText,
   );
 }
 
 function getEffectiveMaterialJobFitRisks(
   result: FinalReviewResult,
   materialJobFitRisks: string[],
+  resumeText?: string,
 ): string[] {
   return filterContradictedMaterialJobFitRisks(
     Array.from(new Set(materialJobFitRisks.filter(Boolean))),
     result,
+    resumeText,
   );
 }
 
@@ -941,11 +947,13 @@ function capFitAssessment(
 function filterContradictedHardRequirementRisks(
   risks: string[],
   result: FinalReviewResult,
+  resumeText?: string,
 ): string[] {
   const signalCorpus = [
     ...result.six_second_scan.top_signals_seen.map((item) => item.signal),
     ...result.top_wins.map((item) => item.win),
     result.hiring_manager_verdict.summary,
+    resumeText ?? '',
   ].join(' \n ');
 
   return risks.filter((risk) => !isYearsThresholdContradictedByEvidence(risk, signalCorpus));
@@ -954,11 +962,13 @@ function filterContradictedHardRequirementRisks(
 function filterContradictedMaterialJobFitRisks(
   risks: string[],
   result: FinalReviewResult,
+  resumeText?: string,
 ): string[] {
   const signalCorpus = [
     ...result.six_second_scan.top_signals_seen.map((item) => item.signal),
     ...result.top_wins.map((item) => item.win),
     result.hiring_manager_verdict.summary,
+    resumeText ?? '',
   ].join(' \n ');
 
   return risks.filter((risk) => !isMaterialRequirementContradictedByEvidence(risk, signalCorpus));

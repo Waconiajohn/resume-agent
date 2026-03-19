@@ -1132,7 +1132,11 @@ resumeV2Pipeline.post('/:sessionId/hiring-manager-review', authMiddleware, rateL
       return c.json({ error: 'Review failed — unparseable response' }, 500);
     }
 
-    const stabilizedResult = stabilizeFinalReviewResult(validated.data, { hardRequirementRisks, materialJobFitRisks });
+    const stabilizedResult = stabilizeFinalReviewResult(validated.data, {
+      hardRequirementRisks,
+      materialJobFitRisks,
+      resumeText: resume_text,
+    });
 
     logger.info({
       session_id: sessionId,

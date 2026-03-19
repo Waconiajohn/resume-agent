@@ -1207,6 +1207,83 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.executive_summary.content).toContain('18 years of progressive operations/manufacturing leadership');
     });
 
+    it('patches parseable model output so satisfied years thresholds stay explicit in the summary', async () => {
+      const parsedDraftWithoutYears: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        executive_summary: {
+          content: 'Operational excellence leader driving manufacturing scale and transformation.',
+          is_new: true,
+        },
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(parsedDraftWithoutYears);
+
+      const yearsThresholdInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          career_span_years: 12,
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: '10+ years in cloud infrastructure/architecture roles',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Led enterprise cloud platform strategy'],
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(yearsThresholdInput);
+
+      expect(result.executive_summary.content).toContain('12 years in cloud infrastructure/architecture roles');
+      expect(result.executive_summary.content).toContain('Operational excellence leader driving manufacturing scale and transformation.');
+    });
+
+    it('does not treat descriptor-only wording as sufficient when the years number is still missing', async () => {
+      const parsedDraftWithoutYearsNumber: ResumeDraftOutput = {
+        ...RESUME_DRAFT_OUTPUT,
+        executive_summary: {
+          content: 'Operational excellence leader with progressive operations/manufacturing leadership across complex multi-site environments.',
+          is_new: true,
+        },
+      };
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(parsedDraftWithoutYearsNumber);
+
+      const yearsThresholdInput: ResumeWriterInput = {
+        ...input,
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          career_span_years: 18,
+        },
+        gap_analysis: {
+          ...GAP_ANALYSIS_OUTPUT,
+          requirements: [
+            {
+              requirement: '15+ years of progressive operations/manufacturing leadership',
+              source: 'job_description',
+              category: 'core_competency',
+              score_domain: 'ats',
+              importance: 'must_have',
+              classification: 'strong',
+              evidence: ['Led multi-site manufacturing operations'],
+            },
+          ],
+        },
+      };
+
+      const result = await runResumeWriter(yearsThresholdInput);
+
+      expect(result.executive_summary.content).toContain('18 years of progressive operations/manufacturing leadership');
+    });
+
     it('forwards AbortSignal to llm.chat', async () => {
       const controller = new AbortController();
       mockLlmChat.mockResolvedValueOnce({ text: '{}' });
