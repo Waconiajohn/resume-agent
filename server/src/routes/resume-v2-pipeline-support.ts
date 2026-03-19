@@ -769,6 +769,20 @@ function evidenceCorpusContainsClaim(corpus: string, claim: string): boolean {
   return fragments.every((fragment) => normalizedCorpus.includes(fragment));
 }
 
+function extractNumericClaims(text: string): string[] {
+  return Array.from(text.matchAll(/\b\d+(?:\.\d+)?%|\$\d+(?:\.\d+)?\s*(?:k|m|mm|million|b|bn|billion)?|\b\d+(?:\.\d+)?\+?\b/gi))
+    .map((match) => match[0]?.trim() ?? '')
+    .filter((value) => value.length > 0);
+}
+
+function evidenceCorpusContainsNumericClaims(corpus: string, text: string): boolean {
+  const numericClaims = extractNumericClaims(text);
+  if (numericClaims.length === 0) return true;
+
+  const normalizedCorpus = normalizeReviewText(corpus);
+  return numericClaims.every((claim) => normalizedCorpus.includes(normalizeReviewText(claim)));
+}
+
 function introducesUnsupportedRequirementTerms(
   concern: FinalReviewResult['concerns'][number],
   sampleText: string,
@@ -804,10 +818,14 @@ function isSpeculativeSuggestedEdit(
 
   const claims = extractSuggestedEditClaims(sampleText);
   if (claims.length === 0) {
-    return introducesUnsupportedRequirementTerms(concern, sampleText, evidenceCorpus) ? true : conditionalOnly ? false : false;
+    return !evidenceCorpusContainsNumericClaims(evidenceCorpus, sampleText)
+      || introducesUnsupportedRequirementTerms(concern, sampleText, evidenceCorpus)
+      ? true
+      : conditionalOnly ? false : false;
   }
 
   return claims.some((claim) => !evidenceCorpusContainsClaim(evidenceCorpus, claim))
+    || !evidenceCorpusContainsNumericClaims(evidenceCorpus, sampleText)
     || introducesUnsupportedRequirementTerms(concern, sampleText, evidenceCorpus);
 }
 

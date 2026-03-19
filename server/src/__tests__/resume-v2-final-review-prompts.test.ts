@@ -1083,4 +1083,57 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.suggested_resume_edit).toContain('Azure and GCP migration');
     expect(stabilized.concerns[0]?.requires_candidate_input).toBe(false);
   });
+
+  it('removes suggested resume edits that introduce unsupported metrics', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Drove 340% increase in digital-attributed revenue over 3 years',
+            why_it_matters: 'Shows real growth impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong consumer marketing leader, but digital transformation metrics should be sharper.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_metric',
+          observation: 'Lack of specific metrics related to digital transformation and marketing automation.',
+          why_it_hurts: 'May raise questions about ability to lead digital transformation.',
+          fix_strategy: 'Add specific metrics tied to digital transformation work.',
+          suggested_resume_edit: "Example: 'Led digital transformation efforts, resulting in a 25% increase in marketing efficiency and a 30% increase in e-commerce sales'",
+          requires_candidate_input: false,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      resumeText: 'Marketing executive who drove a 340% increase in digital-attributed revenue over 3 years and improved brand awareness by 23%.',
+    });
+
+    expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
+    expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('Only add sample language');
+  });
 });
