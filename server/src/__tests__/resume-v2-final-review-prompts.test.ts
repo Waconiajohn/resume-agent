@@ -30,6 +30,7 @@ describe('resume-v2 final review prompts', () => {
     expect(prompts.systemPrompt).toContain('Hard requirements that are not clearly evidenced should be elevated as real screening risks.');
     expect(prompts.systemPrompt).toContain('Every positive claim must point to specific resume evidence');
     expect(prompts.systemPrompt).toContain('Avoid vague statements like "clear executive summary"');
+    expect(prompts.systemPrompt).toContain('If proof is missing, omit suggested_resume_edit and ask a clarifying question instead of inventing new experience, training, or certifications.');
     expect(prompts.userPrompt).toContain('POTENTIAL HARD REQUIREMENTS / SCREEN-OUT RISKS');
     expect(prompts.userPrompt).toContain('Bachelor’s degree in Industrial Engineering or related field required');
   });
@@ -975,5 +976,111 @@ describe('resume-v2 final review prompts', () => {
     expect(parsed.concerns[0]?.fix_strategy).toBe('Strengthen the supporting proof before export.');
     expect(parsed.concerns[0]?.severity).toBe('moderate');
     expect(parsed.concerns[0]?.type).toBe('missing_evidence');
+  });
+
+  it('removes speculative suggested resume edits that introduce unsupported experience or certifications', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Led enterprise cloud transformation and cost optimization',
+            why_it_matters: 'Shows cloud strategy depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Strong cloud leader, but some platform specificity is still thin.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'moderate',
+          type: 'missing_evidence',
+          observation: 'Lack of direct experience with Azure or GCP.',
+          why_it_hurts: 'This weakens fit for a multi-cloud architecture role.',
+          fix_strategy: 'Clarify any adjacent multi-cloud proof and tighten the wording.',
+          suggested_resume_edit: "Add a bullet point to the Professional Experience section highlighting experience with Azure or GCP, such as 'Designed and implemented a hybrid cloud architecture using AWS and Azure, resulting in a 25% reduction in cloud costs.'",
+          requires_candidate_input: false,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      resumeText: 'Enterprise architect with AWS modernization, cost optimization, and platform governance experience.',
+    });
+
+    expect(stabilized.concerns[0]?.suggested_resume_edit).toBeUndefined();
+    expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
+    expect(stabilized.concerns[0]?.clarifying_question).toContain('truthful example');
+    expect(stabilized.concerns[0]?.fix_strategy).toContain('Only add sample language');
+  });
+
+  it('keeps grounded suggested resume edits when the supporting proof is already in the resume', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: 'Led Azure and GCP migration programs across enterprise platforms',
+            why_it_matters: 'Shows direct multi-cloud experience.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'strong_interview_candidate',
+        summary: 'Strong cloud leader with direct Azure and GCP migration evidence.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'weak_positioning',
+          observation: 'Azure and GCP work could be surfaced more clearly near the top.',
+          why_it_hurts: 'The recruiter may miss direct multi-cloud evidence on a quick skim.',
+          fix_strategy: 'Move the clearest multi-cloud line into the summary.',
+          suggested_resume_edit: 'Led Azure and GCP migration programs across enterprise platforms, improving cloud resilience and governance.',
+          requires_candidate_input: false,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      resumeText: 'Enterprise architect who led Azure and GCP migration programs across enterprise platforms and improved governance.',
+    });
+
+    expect(stabilized.concerns[0]?.suggested_resume_edit).toContain('Azure and GCP migration');
+    expect(stabilized.concerns[0]?.requires_candidate_input).toBe(false);
   });
 });

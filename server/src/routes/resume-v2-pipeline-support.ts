@@ -685,6 +685,157 @@ function createRecruiterSignalFromSummary(summary: string) {
   };
 }
 
+function buildResumeEvidenceCorpus(result: FinalReviewResult, resumeText?: string): string {
+  return [
+    resumeText ?? '',
+    ...result.six_second_scan.top_signals_seen.map((item) => item.signal),
+    ...result.top_wins.map((item) => item.win),
+    result.hiring_manager_verdict.summary,
+  ].join(' \n ');
+}
+
+function isConditionalSuggestedEdit(edit: string): boolean {
+  return /\b(if (?:true|accurate|applicable|relevant|you have|you did)|only if|if supported|if evidenced|if documented)\b/i.test(edit);
+}
+
+function extractSampleRewriteText(edit: string): string {
+  const suchAsMatch = edit.match(/\bsuch as ['"]([^'"]+)['"]/i);
+  if (suchAsMatch?.[1]) {
+    return suchAsMatch[1].trim();
+  }
+
+  const quotedMatch = edit.match(/['"]([^'"]+)['"]/);
+  if (quotedMatch?.[1]) {
+    return quotedMatch[1].trim();
+  }
+
+  return edit;
+}
+
+function extractSuggestedEditClaims(edit: string): string[] {
+  const claims: string[] = [];
+  const capturePatterns = [
+    /\bexperience with ([^.;]+)/gi,
+    /\bexpertise in ([^.;]+)/gi,
+    /\bbackground in ([^.;]+)/gi,
+    /\btraining in ([^.;]+)/gi,
+    /\bcertification(?:s)? in ([^.;]+)/gi,
+    /\bincluding ([^.;]+)/gi,
+  ];
+
+  for (const pattern of capturePatterns) {
+    for (const match of edit.matchAll(pattern)) {
+      const rawClaim = match[1]?.trim();
+      if (!rawClaim) continue;
+      claims.push(rawClaim);
+    }
+  }
+
+  return claims;
+}
+
+function normalizeClaimFragments(value: string): string[] {
+  return value
+    .split(/\band\b|,|\/|&/i)
+    .map((fragment) => fragment.trim())
+    .map((fragment) => fragment.replace(/\b(?:through|via|using|with|from)\b.*$/i, '').trim())
+    .filter((fragment) => fragment.length >= 2);
+}
+
+const genericRequirementTokens = new Set([
+  'deep', 'expertise', 'experience', 'additional', 'cloud', 'platform', 'platforms', 'resume', 'candidate',
+  'professional', 'section', 'architecture', 'architecting', 'architect', 'using', 'designed', 'implemented',
+  'hybrid', 'multi', 'strategy', 'role', 'roles', 'specific', 'examples', 'accomplishments', 'demonstrate',
+  'highlighting', 'highlight', 'bullet', 'point', 'professional', 'requirement',
+]);
+
+function extractSalientRequirementTokens(text: string): string[] {
+  const rawTokens = text.match(/[A-Za-z0-9.+#-]+/g) ?? [];
+  const normalizedTokens = rawTokens
+    .map((token) => normalizeReviewText(token))
+    .filter((token) => token.length >= 2)
+    .filter((token) => !genericRequirementTokens.has(token));
+
+  return Array.from(new Set(normalizedTokens));
+}
+
+function evidenceCorpusContainsClaim(corpus: string, claim: string): boolean {
+  const normalizedCorpus = normalizeReviewText(corpus);
+  const fragments = normalizeClaimFragments(claim)
+    .map((fragment) => normalizeReviewText(fragment))
+    .filter((fragment) => fragment.length > 1);
+
+  if (fragments.length === 0) return true;
+  return fragments.every((fragment) => normalizedCorpus.includes(fragment));
+}
+
+function introducesUnsupportedRequirementTerms(
+  concern: FinalReviewResult['concerns'][number],
+  sampleText: string,
+  evidenceCorpus: string,
+): boolean {
+  const requirementTerms = extractSalientRequirementTokens(`${concern.related_requirement ?? ''} ${concern.observation}`);
+  if (requirementTerms.length === 0) return false;
+
+  const normalizedSample = normalizeReviewText(sampleText);
+  const normalizedCorpus = normalizeReviewText(evidenceCorpus);
+  const referencedTerms = requirementTerms.filter((term) => normalizedSample.includes(term));
+
+  if (referencedTerms.length === 0) return false;
+  return referencedTerms.some((term) => !normalizedCorpus.includes(term));
+}
+
+function isSpeculativeSuggestedEdit(
+  concern: FinalReviewResult['concerns'][number],
+  suggestedEdit: string,
+  evidenceCorpus: string,
+): boolean {
+  if (!suggestedEdit.trim()) {
+    return false;
+  }
+
+  const sampleText = extractSampleRewriteText(suggestedEdit);
+  const conditionalOnly = isConditionalSuggestedEdit(suggestedEdit) && sampleText === suggestedEdit;
+
+  const introducesTrainingOrCredentialClaim = /\b(training(?: programs?)?|certification(?: programs?)?|certificate|certified|coursework|courses?)\b/i.test(sampleText);
+  if (introducesTrainingOrCredentialClaim && !evidenceCorpusContainsClaim(evidenceCorpus, sampleText)) {
+    return true;
+  }
+
+  const claims = extractSuggestedEditClaims(sampleText);
+  if (claims.length === 0) {
+    return introducesUnsupportedRequirementTerms(concern, sampleText, evidenceCorpus) ? true : conditionalOnly ? false : false;
+  }
+
+  return claims.some((claim) => !evidenceCorpusContainsClaim(evidenceCorpus, claim))
+    || introducesUnsupportedRequirementTerms(concern, sampleText, evidenceCorpus);
+}
+
+function sanitizeConcernSuggestedEdit(
+  concern: FinalReviewResult['concerns'][number],
+  evidenceCorpus: string,
+): FinalReviewResult['concerns'][number] {
+  const suggestedEdit = concern.suggested_resume_edit?.trim();
+  if (!suggestedEdit) {
+    return concern;
+  }
+
+  if (!isSpeculativeSuggestedEdit(concern, suggestedEdit, evidenceCorpus)) {
+    return concern;
+  }
+
+  return {
+    ...concern,
+    suggested_resume_edit: undefined,
+    requires_candidate_input: true,
+    clarifying_question: concern.clarifying_question
+      ?? 'What truthful example, credential, or concrete proof can we point to for this requirement without inventing new experience?',
+    fix_strategy: /only add/i.test(concern.fix_strategy)
+      ? concern.fix_strategy
+      : `${concern.fix_strategy.replace(/\s*$/, '').replace(/[.?!]$/, '')}. Only add sample language that is already directly supported by the resume or by a truthful candidate clarification.`,
+  };
+}
+
 export function stabilizeFinalReviewResult(
   result: FinalReviewResult,
   options?: { hardRequirementRisks?: string[]; materialJobFitRisks?: string[]; resumeText?: string },
@@ -707,6 +858,8 @@ export function stabilizeFinalReviewResult(
     },
     improvement_summary: [...result.improvement_summary],
   };
+  const evidenceCorpus = buildResumeEvidenceCorpus(normalized, options?.resumeText);
+  normalized.concerns = normalized.concerns.map((concern) => sanitizeConcernSuggestedEdit(concern, evidenceCorpus));
   const criticalConcernCount = normalized.concerns.filter((concern) => concern.severity === 'critical').length;
 
   if (normalized.six_second_scan.top_signals_seen.length === 0 && normalized.top_wins.length > 0) {
@@ -1300,6 +1453,7 @@ RULES:
 - If the resume shows credible, role-relevant strengths, populate top_signals_seen instead of leaving it empty.
 - Reserve "skip" for genuinely weak top-third impressions or true screen-out risk. If the recruiter would keep reading, use "continue_reading".
 - Every concern must have a concrete fix strategy.
+- Only include suggested_resume_edit when the wording is directly supported by the resume evidence already shown. If proof is missing, omit suggested_resume_edit and ask a clarifying question instead of inventing new experience, training, or certifications.
 - Ask no more than 3 clarifying questions total.
 - Only ask a clarifying question when the answer could materially improve a truthful resume bullet.
 - Limit the output to the highest-value findings.

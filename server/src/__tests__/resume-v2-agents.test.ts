@@ -926,6 +926,22 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       expect(result.requirements[0]?.requirement).toBe('Cloud Architecture');
     });
 
+    it('falls back cleanly when the modeled output omits requirements entirely', async () => {
+      const missingRequirementsOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        requirements: undefined,
+      } as unknown as GapAnalysisOutput;
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(missingRequirementsOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.requirements.length).toBeGreaterThan(0);
+      expect(result.requirements.some((requirement) => requirement.requirement === 'Cloud Architecture')).toBe(true);
+      expect(result.score_breakdown?.job_description.total).toBeGreaterThan(0);
+    });
+
     it('ignores malformed critical_gaps payloads instead of crashing', async () => {
       const malformedCriticalGapsOutput = {
         ...GAP_ANALYSIS_OUTPUT,

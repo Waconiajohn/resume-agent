@@ -403,8 +403,12 @@ function mergeWithDeterministicBackfill(
   fullRequirementSeeds: CanonicalRequirementSeed[],
 ): GapAnalysisOutput {
   const deterministic = buildDeterministicGapAnalysis(input);
+  const modeledRequirements = Array.isArray(output.requirements) ? output.requirements : [];
+  if (modeledRequirements.length === 0) {
+    return deterministic;
+  }
   const modelRequirementsByKey = new Map(
-    output.requirements.map((requirement) => {
+    modeledRequirements.map((requirement) => {
       const normalizedRequirement = normalizeRequirement(requirement);
       return [requirementKey(normalizedRequirement), normalizedRequirement] as const;
     }),
@@ -478,11 +482,15 @@ function reconcileModeledHardRequirements(
   input: GapAnalysisInput,
 ): GapAnalysisOutput {
   const deterministic = buildDeterministicGapAnalysis(input);
+  const modeledRequirements = Array.isArray(output.requirements) ? output.requirements : [];
+  if (modeledRequirements.length === 0) {
+    return deterministic;
+  }
   const deterministicRequirementsByKey = new Map(
     deterministic.requirements.map((requirement) => [requirementKey(requirement), requirement] as const),
   );
 
-  const requirements = output.requirements.map((requirement) => {
+  const requirements = modeledRequirements.map((requirement) => {
     const normalizedRequirement = normalizeRequirement(requirement);
     const deterministicRequirement = deterministicRequirementsByKey.get(requirementKey(normalizedRequirement));
     if (!deterministicRequirement) {
