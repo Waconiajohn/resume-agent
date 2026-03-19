@@ -1539,4 +1539,59 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.requires_candidate_input).toBe(true);
     expect(stabilized.concerns[0]?.fix_strategy).toContain('Only add sample language');
   });
+
+  it('dedupes near-equivalent concerns and keeps the stronger aggregated material-fit concern', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '12 years in cloud architecture and platform engineering',
+            why_it_matters: 'Shows core cloud depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible cloud architect, but regulated-industry evidence is still thin.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'clarity_issue',
+          observation: 'Compliance experience in regulated industries is not explicitly stated.',
+          why_it_hurts: 'This may create uncertainty about regulated-industry fit.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Experience architecting for regulated industries',
+          fix_strategy: 'Add specific compliance examples if they are real.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    }, {
+      materialJobFitRisks: ['Experience architecting for regulated industries'],
+      resumeText: 'Cloud architect with AWS platform modernization and platform engineering leadership.',
+    });
+
+    expect(stabilized.concerns).toHaveLength(1);
+    expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
+    expect(stabilized.concerns[0]?.related_requirement).toContain('regulated industries');
+  });
 });

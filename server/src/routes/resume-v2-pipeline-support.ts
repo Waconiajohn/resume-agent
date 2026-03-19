@@ -693,6 +693,58 @@ function buildResumeEvidenceCorpus(result: FinalReviewResult, resumeText?: strin
   ].join(' \n ');
 }
 
+function concernRequirementKey(concern: FinalReviewResult['concerns'][number]): string {
+  return normalizeReviewText(concern.related_requirement ?? concern.observation ?? '');
+}
+
+function areNearEquivalentConcernRequirements(
+  left: FinalReviewResult['concerns'][number],
+  right: FinalReviewResult['concerns'][number],
+): boolean {
+  const leftKey = concernRequirementKey(left);
+  const rightKey = concernRequirementKey(right);
+
+  if (!leftKey || !rightKey) return false;
+  if (leftKey === rightKey) return true;
+  if (leftKey.includes(rightKey) || rightKey.includes(leftKey)) return true;
+
+  const leftTokens = extractSalientRequirementTokens(leftKey);
+  const rightTokens = extractSalientRequirementTokens(rightKey);
+  if (leftTokens.length === 0 || rightTokens.length === 0) return false;
+
+  const rightTokenSet = new Set(rightTokens);
+  const shared = leftTokens.filter((token) => rightTokenSet.has(token));
+  return shared.length / Math.min(leftTokens.length, rightTokens.length) >= 0.7;
+}
+
+function concernPriority(concern: FinalReviewResult['concerns'][number]): number {
+  const id = concern.id ?? '';
+  if (id === 'hard_requirement_risk') return 0;
+  if (id === 'material_job_fit_risk') return 1;
+  return 2 + severityRank(concern.severity);
+}
+
+function dedupeNearEquivalentConcerns(
+  concerns: FinalReviewResult['concerns'],
+): FinalReviewResult['concerns'] {
+  const deduped: FinalReviewResult['concerns'] = [];
+
+  for (const concern of concerns) {
+    const existingIndex = deduped.findIndex((candidate) => areNearEquivalentConcernRequirements(candidate, concern));
+    if (existingIndex === -1) {
+      deduped.push(concern);
+      continue;
+    }
+
+    const existing = deduped[existingIndex]!;
+    if (concernPriority(concern) < concernPriority(existing)) {
+      deduped[existingIndex] = concern;
+    }
+  }
+
+  return deduped;
+}
+
 function buildContradictionEvidenceCorpus(result: FinalReviewResult, resumeText?: string): string {
   return [
     resumeText ?? '',
@@ -1122,6 +1174,7 @@ export function stabilizeFinalReviewResult(
     }
   }
 
+  normalized.concerns = dedupeNearEquivalentConcerns(normalized.concerns);
   normalized.hiring_manager_verdict.summary = softenContradictedSummaryClaims(normalized);
   normalized.improvement_summary = buildImprovementSummaryFromConcerns(normalized);
 
