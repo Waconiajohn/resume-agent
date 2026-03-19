@@ -31,6 +31,9 @@ const JSON_OUTPUT_GUARDRAILS = `CRITICAL JSON RULES:
 - Use double-quoted JSON keys and string values.
 - Do not wrap the JSON in markdown fences.
 - Do not add commentary, analysis, bullets, or notes outside the JSON object.
+- Never serialize arrays as strings or as key/value text. "critical_gaps" and "pending_strategies" must always be JSON arrays.
+- Never include comments, annotations, or fragments like #, //, "(implied)", or "critical_gaps=[...]" inside the JSON.
+- Omit "strategy" entirely when it does not apply. Never output "strategy": {}.
 - If a field is uncertain, use an empty string, empty array, or omit the optional field instead of prose.`;
 
 const SYSTEM_PROMPT = `You are a $3,000/engagement executive resume strategist. Your specialty: finding creative, TRUTHFUL ways to close gaps between what a candidate has and what a job requires.
@@ -124,19 +127,22 @@ RULES:
 - Every requirement from the job gets classified (strong/partial/missing).
 - Include benchmark-only requirements too, even when the candidate will never fully close all of them. Those should surface as benchmark alignment opportunities, not ATS blockers.
 - For STRONG matches: provide the evidence. No strategy needed.
-- For PARTIAL matches: provide evidence AND a creative strategy to strengthen the positioning.
-- For MISSING matches: provide a creative strategy if ANY adjacent experience exists. If truly missing, put it in critical_gaps.
+- For PARTIAL matches: provide evidence AND a creative strategy only when you can name concrete nearby proof from the candidate.
+- For MISSING matches: provide a creative strategy only if concrete adjacent experience exists. If truly missing, put it in critical_gaps.
+- If you cannot name concrete adjacent proof, omit strategy entirely instead of using placeholder coaching language.
 - For benchmark items marked nice_to_have: only include a strategy when you find strong adjacent evidence. If the item is simply absent, leave strategy blank and do not add it to pending_strategies.
 - HARD REQUIREMENT RULE: If the requirement is a degree, certification, license, years-of-experience threshold, or other explicit screen-out credential and the candidate does not clearly have it, classify it as missing and include it in critical_gaps. Do NOT use adjacent experience as if it fully solves the missing credential.
 - If you offer adjacent framing for a hard requirement, the language must stay soft and truthful. It may explain related experience, but it cannot imply the candidate possesses the missing credential.
 - Do not invent availability, travel, relocation, field-presence, on-call, or similar logistics requirements unless they are explicitly stated in the job description requirement itself.
 - QUICK WIN RULE: Prefer strategies where the candidate already has nearby evidence that is simply under-explained on the resume. Those are the best items to strengthen first.
 - pending_strategies: include the strategies that are worth coaching on before writing. Always include job_description strategies. For benchmark nice_to_have items, only include them when the strategy is genuinely useful.
+- pending_strategies must contain only { requirement, strategy } objects with fully populated strategy fields. If there are none, return [].
 - evidence: keep evidence arrays compact — use at most 2 short strings per requirement.
 - source_evidence: keep it short and specific, ideally under 12 words.
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
+- critical_gaps must contain only unresolved requirement strings, not explanations, evidence snippets, or serialized JSON.
 - Be honest about critical_gaps — don't stretch beyond what's defensible.
 
 ${JSON_OUTPUT_GUARDRAILS}`;
@@ -188,7 +194,7 @@ export async function runGapAnalysis(
   try {
     const retry = await llm.chat({
       model: MODEL_PRIMARY,
-      system: 'You are a JSON extraction machine. Return ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.',
+      system: `You are a strict JSON formatter.\n${JSON_OUTPUT_GUARDRAILS}\nReturn ONLY valid JSON — no markdown fences, no commentary, no text before or after the JSON object. Start with { and end with }.`,
       messages: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${userMessage}` }],
       response_format: { type: 'json_object' },
       max_tokens: 8192,
@@ -546,8 +552,13 @@ function requirementKey(
 }
 
 function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
-  const requirements = output.requirements.map(normalizeRequirement);
+  const requirements = Array.isArray(output.requirements)
+    ? output.requirements.map(normalizeRequirement)
+    : [];
   const rawPendingStrategies = Array.isArray(output.pending_strategies) ? output.pending_strategies : [];
+  const rawCriticalGaps = Array.isArray(output.critical_gaps)
+    ? output.critical_gaps.filter((gap): gap is string => typeof gap === 'string')
+    : [];
   const strongRequirements = requirements
     .filter((requirement) => requirement.classification === 'strong')
     .map((requirement) => requirement.requirement);
@@ -564,7 +575,7 @@ function normalizeGapAnalysis(output: GapAnalysisOutput): GapAnalysisOutput {
   const total = jobBreakdown.total + benchmarkBreakdown.total;
   const addressed = jobBreakdown.addressed + benchmarkBreakdown.addressed;
   const criticalGaps = dedupeStrings([
-    ...(output.critical_gaps ?? [])
+    ...rawCriticalGaps
       .filter((gap) => !isRequirementAlreadySatisfiedByStrongMatch(gap, strongRequirements))
       .filter((gap) => !isLogisticsOnlyRequirement(gap)),
     ...hardGapRequirements,

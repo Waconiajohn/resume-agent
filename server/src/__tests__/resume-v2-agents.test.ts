@@ -738,6 +738,8 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
 
       const llmCall = mockLlmChat.mock.calls[0][0];
       expect(llmCall.system).toContain('The first character of your response must be {');
+      expect(llmCall.system).toContain('"critical_gaps" and "pending_strategies" must always be JSON arrays');
+      expect(llmCall.system).toContain('Never output "strategy": {}');
       expect(llmCall.system).toContain('Generate EXACTLY 1 targeted question');
       expect(llmCall.system).toContain('For benchmark items marked nice_to_have: only include a strategy when you find strong adjacent evidence');
       expect(llmCall.response_format).toEqual({ type: 'json_object' });
@@ -921,6 +923,21 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       const result = await runGapAnalysis(input);
 
       expect(result.pending_strategies).toEqual([]);
+      expect(result.requirements[0]?.requirement).toBe('Cloud Architecture');
+    });
+
+    it('ignores malformed critical_gaps payloads instead of crashing', async () => {
+      const malformedCriticalGapsOutput = {
+        ...GAP_ANALYSIS_OUTPUT,
+        critical_gaps: 'critical_gaps=["Ability to travel up to 30%"]',
+      } as unknown as GapAnalysisOutput;
+
+      mockLlmChat.mockResolvedValueOnce({ text: '{}' });
+      mockRepairJSON.mockReturnValueOnce(malformedCriticalGapsOutput);
+
+      const result = await runGapAnalysis(input);
+
+      expect(result.critical_gaps).toEqual([]);
       expect(result.requirements[0]?.requirement).toBe('Cloud Architecture');
     });
 
