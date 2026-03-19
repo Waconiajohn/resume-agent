@@ -1650,6 +1650,8 @@ function softenContradictedSummaryClaims(result: FinalReviewResult): string {
     ...result.concerns.map((concern) => `${concern.related_requirement ?? ''} ${concern.observation}`),
   ].join(' \n ');
 
+  summary = alignInterviewFollowUpSummary(summary, result);
+
   const hasCommunicationGap = /\b(communication|executive stakeholders?|executive presence|board(?:-level)?|presenting to executive stakeholders?)\b/i.test(contradictionCorpus);
   if (hasCommunicationGap) {
     const softenedCommunication = summary
@@ -1716,6 +1718,57 @@ function softenContradictedSummaryClaims(result: FinalReviewResult): string {
   }
 
   return summary;
+}
+
+function alignInterviewFollowUpSummary(summary: string, result: FinalReviewResult): string {
+  const probeSentencePattern = /\b(?:However|But)[^.]*?(?:probe further|beneficial to discuss|delve deeper|explore)[^.]*\./i;
+  if (!probeSentencePattern.test(summary)) {
+    return summary;
+  }
+
+  const followUpTopics = Array.from(new Set(
+    result.concerns
+      .map((concern) => extractConcernFollowUpTopic(concern))
+      .filter(Boolean),
+  ));
+
+  const rewritten = followUpTopics.length === 0
+    ? ''
+    : followUpTopics.length === 1
+      ? `However, interview follow-up should focus on ${followUpTopics[0]}.`
+      : `However, interview follow-up should focus on ${followUpTopics[0]} and ${followUpTopics[1]}.`;
+
+  return cleanImprovementSummaryText(
+    summary
+      .replace(probeSentencePattern, rewritten ? ` ${rewritten}` : ' ')
+      .replace(/\s{2,}/g, ' '),
+  );
+}
+
+function extractConcernFollowUpTopic(concern: FinalReviewResult['concerns'][number]): string | null {
+  const observation = cleanImprovementSummaryText(concern.observation ?? '');
+  const strippedObservation = observation
+    .replace(/^Must-have role-fit evidence is still thin:\s*/i, '')
+    .replace(/^The candidate'?s\s+/i, '')
+    .replace(/^Lack of explicit mention of\s+/i, '')
+    .replace(/^Lack of direct experience with\s+/i, '')
+    .replace(/^Limited direct mention of\s+/i, '')
+    .replace(/^Limited evidence of\s+/i, '')
+    .replace(/^While the candidate mentions experience with\s+/i, 'experience with ')
+    .replace(/\s+is not explicitly stated\.?$/i, '')
+    .replace(/\s+is not explicitly mentioned\.?$/i, '')
+    .replace(/\s+is not clearly highlighted\.?$/i, '')
+    .replace(/\s+is not clearly evident\.?$/i, '')
+    .replace(/\s+is not fully highlighted\.?$/i, '')
+    .replace(/\s+may raise concerns\.?$/i, '')
+    .trim();
+
+  if (strippedObservation) {
+    return strippedObservation;
+  }
+
+  const requirement = cleanImprovementSummaryText(concern.related_requirement ?? '');
+  return requirement || null;
 }
 
 function findOverclaimedMissingSignal(summary: string, result: FinalReviewResult): string | null {

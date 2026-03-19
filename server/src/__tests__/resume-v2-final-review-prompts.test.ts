@@ -2051,6 +2051,57 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.hiring_manager_verdict.summary).not.toContain('final interview-ready draft');
   });
 
+  it('rewrites probe-further summary lines to only mention kept concern topics', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '$14.2M in cumulative cost savings',
+            why_it_matters: 'Shows strong operations impact.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'strong_interview_candidate',
+        summary: 'The candidate is a strong fit for the role. However, the hiring manager may want to probe further into the candidate\'s experience with post-acquisition integration and Industry 4.0 initiatives.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [
+        {
+          id: 'concern_1',
+          severity: 'minor',
+          type: 'missing_evidence',
+          observation: 'The candidate\'s experience in post-acquisition operational integration is not explicitly stated.',
+          why_it_hurts: 'This area may still need follow-up.',
+          target_section: 'Professional Experience',
+          related_requirement: 'Lead post-acquisition operational integration for 2-3 planned acquisitions',
+          fix_strategy: 'If true, add one concrete example showing Lead post-acquisition operational integration for 2-3 planned acquisitions.',
+          requires_candidate_input: true,
+        },
+      ],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.hiring_manager_verdict.summary).toContain('However, interview follow-up should focus on experience in post-acquisition operational integration.');
+    expect(stabilized.hiring_manager_verdict.summary).not.toContain('Industry 4.0 initiatives');
+  });
+
   it('removes certification guidance from non-credential experience concerns', () => {
     const stabilized = stabilizeFinalReviewResult({
       six_second_scan: {
