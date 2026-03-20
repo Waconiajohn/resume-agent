@@ -239,6 +239,22 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Build one clear compensation strategy before you respond/i })).toBeVisible();
   });
 
+  test('Interview Prep generates a prep report from the prep section and returns to the lab', async ({ page }) => {
+    await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Upcoming Interviews/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /Generate Interview Prep/i }).first().click();
+
+    await expect(page.getByText(/Generating your interview prep report/i)).toBeVisible();
+    await expect(page.getByText(/Lead with executive operating cadence and cross-functional alignment\./i)).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole('button', { name: /Back to Interview Prep/i }).first().click();
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Generate Interview Prep/i }).first()).toBeVisible();
+  });
+
   test('Interview Prep mock interview starts, completes, and returns to the lab', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
