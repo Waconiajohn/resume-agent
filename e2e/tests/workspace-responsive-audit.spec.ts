@@ -21,6 +21,18 @@ const AUDIT_PAGES = [
     readyText: 'One home for stage-aware job workspaces and your master resume',
   },
   {
+    slug: 'linkedin-studio',
+    path: '/workspace?room=linkedin',
+    readyRole: 'heading',
+    readyText: 'LinkedIn Studio',
+  },
+  {
+    slug: 'job-command-center',
+    path: '/workspace?room=jobs',
+    readyRole: 'heading',
+    readyText: 'Job Command Center',
+  },
+  {
     slug: 'interview-lab',
     path: '/workspace?room=interview',
     readyRole: 'heading',
