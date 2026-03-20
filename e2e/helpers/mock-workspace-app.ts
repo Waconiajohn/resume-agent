@@ -419,6 +419,34 @@ interface WatchlistState {
   companies: MockWatchlistCompany[];
 }
 
+interface MockInterviewDebrief {
+  id: string;
+  user_id: string;
+  job_application_id?: string;
+  company_name: string;
+  role_title: string;
+  interview_date: string;
+  interview_type?: 'phone' | 'video' | 'onsite';
+  overall_impression?: 'positive' | 'neutral' | 'negative';
+  what_went_well?: string;
+  what_went_poorly?: string;
+  questions_asked?: string[];
+  interviewer_notes?: Array<{
+    name: string;
+    title?: string;
+    topics_discussed?: string[];
+    rapport_notes?: string;
+  }>;
+  company_signals?: string;
+  follow_up_actions?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface InterviewDebriefState {
+  debriefs: MockInterviewDebrief[];
+}
+
 const MOCK_LINKEDIN_EDITOR_DRAFTS = {
   headline: {
     content: 'VP Operations | Executive operator who builds operating cadence and cross-functional alignment',
@@ -887,6 +915,7 @@ async function fulfillApiRoute(
   linkedinContentState?: Map<string, LinkedInContentStage>,
   linkedinEditorState?: Map<string, LinkedInEditorStage>,
   watchlistState?: WatchlistState,
+  interviewDebriefState?: InterviewDebriefState,
 ) {
   const requestUrl = new URL(route.request().url());
   const path = requestUrl.pathname;
@@ -1358,6 +1387,85 @@ async function fulfillApiRoute(
     return;
   }
 
+  if (path === '/api/interview-debriefs' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ debriefs: interviewDebriefState?.debriefs ?? [] }));
+    return;
+  }
+
+  if (path === '/api/interview-debriefs' && method === 'POST') {
+    const payload = readRouteJson(route);
+    const now = new Date().toISOString();
+    const created: MockInterviewDebrief = {
+      id: `debrief-${Math.random().toString(36).slice(2, 10)}`,
+      user_id: AUTH_SESSION.user.id,
+      job_application_id:
+        typeof payload.job_application_id === 'string' ? payload.job_application_id : undefined,
+      company_name: typeof payload.company_name === 'string' ? payload.company_name : 'Unknown Company',
+      role_title: typeof payload.role_title === 'string' ? payload.role_title : 'Unknown Role',
+      interview_date:
+        typeof payload.interview_date === 'string' ? payload.interview_date : new Date().toISOString().slice(0, 10),
+      interview_type:
+        payload.interview_type === 'phone' || payload.interview_type === 'video' || payload.interview_type === 'onsite'
+          ? payload.interview_type
+          : 'video',
+      overall_impression:
+        payload.overall_impression === 'positive' || payload.overall_impression === 'neutral' || payload.overall_impression === 'negative'
+          ? payload.overall_impression
+          : 'neutral',
+      what_went_well: typeof payload.what_went_well === 'string' ? payload.what_went_well : '',
+      what_went_poorly: typeof payload.what_went_poorly === 'string' ? payload.what_went_poorly : '',
+      questions_asked: Array.isArray(payload.questions_asked)
+        ? payload.questions_asked.filter((item): item is string => typeof item === 'string')
+        : [],
+      interviewer_notes: Array.isArray(payload.interviewer_notes)
+        ? payload.interviewer_notes
+            .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+            .map((item) => ({
+              name: typeof item.name === 'string' ? item.name : '',
+              title: typeof item.title === 'string' ? item.title : undefined,
+              topics_discussed: Array.isArray(item.topics_discussed)
+                ? item.topics_discussed.filter((topic): topic is string => typeof topic === 'string')
+                : undefined,
+              rapport_notes: typeof item.rapport_notes === 'string' ? item.rapport_notes : undefined,
+            }))
+        : [],
+      company_signals: typeof payload.company_signals === 'string' ? payload.company_signals : '',
+      follow_up_actions: typeof payload.follow_up_actions === 'string' ? payload.follow_up_actions : '',
+      created_at: now,
+      updated_at: now,
+    };
+    interviewDebriefState?.debriefs.unshift(created);
+    await route.fulfill(buildJsonResponse(created));
+    return;
+  }
+
+  const debriefItemMatch = path.match(/^\/api\/interview-debriefs\/([^/]+)$/);
+  if (debriefItemMatch && method === 'PATCH') {
+    const [, debriefId] = debriefItemMatch;
+    const payload = readRouteJson(route);
+    const existing = interviewDebriefState?.debriefs.find((debrief) => debrief.id === debriefId);
+    if (!existing) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+      return;
+    }
+    Object.assign(existing, payload, { updated_at: new Date().toISOString() });
+    await route.fulfill(buildJsonResponse(existing));
+    return;
+  }
+
+  if (debriefItemMatch && method === 'DELETE') {
+    const [, debriefId] = debriefItemMatch;
+    if (interviewDebriefState) {
+      interviewDebriefState.debriefs = interviewDebriefState.debriefs.filter((debrief) => debrief.id !== debriefId);
+    }
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
   if (path === '/api/watchlist' && method === 'GET') {
     await route.fulfill(buildJsonResponse({ companies: watchlistState?.companies ?? [] }));
     return;
@@ -1533,6 +1641,7 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
   const linkedinContentState = new Map<string, LinkedInContentStage>();
   const linkedinEditorState = new Map<string, LinkedInEditorStage>();
   const watchlistState: WatchlistState = { companies: [] };
+  const interviewDebriefState: InterviewDebriefState = { debriefs: [] };
 
   await page.addInitScript(({ session }) => {
     const serialized = JSON.stringify(session);
@@ -1838,6 +1947,12 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
   await page.route('**/mock-supabase/**', fulfillSupabaseRoute);
 
   await page.route('**/api/**', (route) =>
-    fulfillApiRoute(route, linkedinContentState, linkedinEditorState, watchlistState),
+    fulfillApiRoute(
+      route,
+      linkedinContentState,
+      linkedinEditorState,
+      watchlistState,
+      interviewDebriefState,
+    ),
   );
 }

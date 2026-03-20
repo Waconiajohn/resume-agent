@@ -239,6 +239,38 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Build one clear compensation strategy before you respond/i })).toBeVisible();
   });
 
+  test('Interview Prep follow-up section adds interview history and saves a debrief', async ({ page }) => {
+    await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: /^Next Steps /i }).click();
+
+    await expect(page.getByRole('heading', { name: /Interview History/i })).toBeVisible();
+    await page.getByRole('button', { name: /Add Interview/i }).click();
+    await page.getByPlaceholder('Company').fill('BrightPath Schools');
+    await page.getByPlaceholder('Role').fill('School Principal');
+    await page.getByPlaceholder(/Notes \(optional\)/i).fill('Panel focused on leadership philosophy and staff development.');
+    await page.getByRole('button', { name: /^Save$/i }).click();
+
+    await expect(page.getByText('BrightPath Schools', { exact: true })).toBeVisible();
+    await expect(page.getByText(/School Principal/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Add Debrief/i }).click();
+    await expect(page.getByRole('heading', { name: /Post-Interview Debrief/i })).toBeVisible();
+
+    await page.getByPlaceholder('Company name').fill('BrightPath Schools');
+    await page.getByPlaceholder(/VP of Supply Chain/i).fill('School Principal');
+    await page.getByRole('button', { name: 'Positive', exact: true }).click();
+    await page.getByRole('button', { name: /Save Debrief/i }).click();
+
+    await expect(page.getByText(/Debrief saved\./i)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: /Back to Interview Prep/i }).click();
+
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: /^Next Steps /i }).click();
+    await expect(page.getByRole('button', { name: /Add Debrief/i })).toContainText('1');
+  });
+
   test('Job Search Daily Ops tracker analyzes applications and returns a report', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
