@@ -299,6 +299,34 @@ const MOCK_ONBOARDING_QUESTIONS = [
   },
 ] as const;
 
+const MOCK_ONBOARDING_PROFILE = {
+  career_level: 'vp',
+  industry: 'SaaS',
+  years_experience: 18,
+  financial_segment: 'comfortable',
+  emotional_state: 'growth',
+  transition_type: 'voluntary',
+  goals: ['Step into broader COO-style operating scope'],
+  constraints: ['No relocation'],
+  strengths_self_reported: ['Operating cadence', 'Cross-functional leadership'],
+  urgency_score: 62,
+  recommended_starting_point: 'resume',
+  coaching_tone: 'direct',
+} as const;
+
+const MOCK_ONBOARDING_SUMMARY = {
+  key_insights: [
+    'The candidate is targeting broader executive operating scope.',
+    'Executive alignment and operating rhythm should stay central to the story.',
+  ],
+  financial_signals: ['The transition timeline is steady, not crisis-driven.'],
+  emotional_signals: ['Confidence is high enough for direct guidance.'],
+  recommended_actions: [
+    'Refresh the Career Profile and reuse it in Resume Builder and LinkedIn.',
+    'Lead with executive operating cadence in top-of-funnel materials.',
+  ],
+} as const;
+
 const MOCK_LINKEDIN_REPORT = `# LinkedIn Optimization Report
 
 ## Headline
@@ -1356,10 +1384,12 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
     };
   }, { session: AUTH_SESSION });
 
-  await page.addInitScript(({ onboardingStreamBody }) => {
+  await page.addInitScript(({ onboardingInitialStreamBody, onboardingCompletionStreamBody }) => {
     const originalFetch = window.fetch;
-    // @ts-expect-error test override
-    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+    const encoder = new TextEncoder();
+    const onboardingControllers = new Map<string, ReadableStreamDefaultController<Uint8Array>>();
+
+    function extractRequestParts(input: RequestInfo | URL, init?: RequestInit) {
       const url =
         typeof input === 'string'
           ? input
@@ -1367,13 +1397,56 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
             ? input.url
             : String(input);
 
+      const method =
+        init?.method
+        ?? (input instanceof Request ? input.method : 'GET');
+
+      const body =
+        typeof init?.body === 'string'
+          ? init.body
+          : input instanceof Request
+            ? null
+            : null;
+
+      return { url, method, body };
+    }
+
+    // @ts-expect-error test override
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      const { url, method, body } = extractRequestParts(input, init);
+
+      if (url.endsWith('/api/onboarding/respond') && method === 'POST') {
+        let sessionId = 'mock-created-session';
+        try {
+          const payload = body ? JSON.parse(body) as { session_id?: string } : {};
+          if (typeof payload.session_id === 'string' && payload.session_id.length > 0) {
+            sessionId = payload.session_id;
+          }
+        } catch {
+          // Ignore malformed test payloads and fall back to the default session id.
+        }
+
+        const controller = onboardingControllers.get(sessionId);
+        if (controller) {
+          controller.enqueue(encoder.encode(onboardingCompletionStreamBody));
+          controller.close();
+          onboardingControllers.delete(sessionId);
+        }
+
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+
       if (/\/api\/onboarding\/[^/]+\/stream$/.test(url)) {
-        const encoder = new TextEncoder();
+        const sessionId = url.match(/\/api\/onboarding\/([^/]+)\/stream$/)?.[1] ?? 'mock-created-session';
         const stream = new ReadableStream<Uint8Array>({
           start(controller) {
-            controller.enqueue(encoder.encode(onboardingStreamBody));
+            onboardingControllers.set(sessionId, controller);
+            controller.enqueue(encoder.encode(onboardingInitialStreamBody));
             // Keep the stream open after questions_ready so the UI stays in
-            // awaiting_responses instead of reconnecting or erroring.
+            // awaiting_responses until the test submits the answers.
           },
         });
 
@@ -1386,7 +1459,7 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
       return originalFetch.apply(window, [input, init] as Parameters<typeof fetch>);
     };
   }, {
-    onboardingStreamBody: buildSSEBody([
+    onboardingInitialStreamBody: buildSSEBody([
       {
         event: 'stage_start',
         data: { stage: 'question_generation', message: 'Generating your next best questions...' },
@@ -1394,6 +1467,23 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
       {
         event: 'questions_ready',
         data: { questions: MOCK_ONBOARDING_QUESTIONS },
+      },
+    ]),
+    onboardingCompletionStreamBody: buildSSEBody([
+      {
+        event: 'stage_start',
+        data: { stage: 'evaluation', message: 'Turning your answers into a stronger shared profile...' },
+      },
+      {
+        event: 'assessment_complete',
+        data: {
+          profile: MOCK_ONBOARDING_PROFILE,
+          summary: MOCK_ONBOARDING_SUMMARY,
+        },
+      },
+      {
+        event: 'pipeline_complete',
+        data: {},
       },
     ]),
   });

@@ -37,6 +37,23 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText(/2\/2/)).toBeVisible();
   });
 
+  test('Career Profile can submit the intake and return to the saved profile view', async ({ page }) => {
+    await page.goto('/workspace?room=career-profile', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible();
+    await page.getByRole('button', { name: /Refine with AI/i }).click();
+
+    await page.getByPlaceholder(/Answer in your own words/i).fill('Executive operations leadership across product, support, and delivery teams.');
+    await page.getByRole('button', { name: /Confirm and continue/i }).click();
+
+    await page.getByPlaceholder(/Answer in your own words/i).fill('Improve execution quality by aligning leaders around one operating cadence.');
+    await page.getByRole('button', { name: /Confirm and build Career Profile/i }).click();
+
+    await expect(page.getByRole('button', { name: /Reset Assessment State/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: /One question, one confirmation, one stronger profile update/i })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /What the platform currently knows about you/i })).toBeVisible();
+  });
+
   test('LinkedIn quick optimize completes and tab switching stays usable', async ({ page }) => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
