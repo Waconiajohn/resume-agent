@@ -17,12 +17,10 @@ setup('authenticate', async ({ page }) => {
     await page.getByRole('button', { name: /Sign In/i }).click();
   }
 
-  // Wait for authenticated workspace shell. The app now lands in Workspace,
-  // not the legacy "Start New Session" screen.
+  // Wait for the authenticated workspace shell. The app now lands in Workspace.
   await Promise.race([
     page.getByRole('button', { name: /Open Resume Builder/i }).waitFor({ timeout: 20_000 }),
     page.getByRole('button', { name: /Open Career Profile/i }).waitFor({ timeout: 20_000 }),
-    page.getByRole('button', { name: /Start New Session/i }).waitFor({ timeout: 20_000 }),
   ]);
 
   // Save auth state

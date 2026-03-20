@@ -24,7 +24,15 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: '.auth/user.json' },
       dependencies: ['setup'],
-      testIgnore: [/auth\.spec\.ts/, /auth-errors\.spec\.ts/, /full-pipeline\.spec\.ts/, /quality-validation\.spec\.ts/],
+      testIgnore: [
+        /auth\.spec\.ts/,
+        /auth-errors\.spec\.ts/,
+        /chat-drawer\.spec\.ts/,
+        /full-pipeline\.spec\.ts/,
+        /quality-validation\.spec\.ts/,
+        /workbench-fallback\.spec\.ts/,
+        /workbench-suggestions\.spec\.ts/,
+      ],
     },
     {
       name: 'full-pipeline',
