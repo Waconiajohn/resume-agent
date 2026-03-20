@@ -1,24 +1,30 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { fillCredentials, goToAuthGate, mockAuthSuccess } from '../helpers/mock-auth-gate';
 
-test.describe('Auth smoke tests', () => {
-  test('valid login shows landing screen', async ({ page }) => {
-    await page.goto('/app');
-    await page.getByPlaceholder('Email').fill('jjschrup@yahoo.com');
-    await page.getByPlaceholder('Password').fill('Scout123');
+test.describe('Auth gate smoke', () => {
+  test('successful sign in lands in Workspace Home', async ({ page }) => {
+    await mockAuthSuccess(page);
+    await goToAuthGate(page);
+
+    await fillCredentials(page, 'test@example.com', 'password123');
     await page.getByRole('button', { name: /Sign In/i }).click();
 
-    await expect(
-      page.getByRole('button', { name: /Start New Session/i }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
+    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: /Open Resume Builder/i })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('invalid login shows error', async ({ page }) => {
-    await page.goto('/app');
-    await page.getByPlaceholder('Email').fill('jjschrup@yahoo.com');
-    await page.getByPlaceholder('Password').fill('WrongPassword999');
+  test('successful sign out returns to the sales page', async ({ page }) => {
+    await mockAuthSuccess(page);
+    await goToAuthGate(page);
+
+    await fillCredentials(page, 'test@example.com', 'password123');
     await page.getByRole('button', { name: /Sign In/i }).click();
 
-    // Error message appears (Supabase returns "Invalid login credentials")
-    await expect(page.locator('.text-red-400')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: /^Sign out$/i }).click();
+
+    await expect(page).toHaveURL(/\/sales$/, { timeout: 10_000 });
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10_000 });
   });
 });

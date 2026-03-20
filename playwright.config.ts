@@ -21,6 +21,11 @@ export default defineConfig({
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     {
+      name: 'auth-gate',
+      testMatch: [/auth\.spec\.ts/, /auth-errors\.spec\.ts/],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: '.auth/user.json' },
       dependencies: ['setup'],

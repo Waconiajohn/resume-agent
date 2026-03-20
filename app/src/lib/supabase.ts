@@ -13,7 +13,13 @@ if (!supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-if (import.meta.env.VITE_E2E_MOCK_AUTH === 'true') {
+const e2eMockAuthDisabled = typeof window !== 'undefined'
+  && (
+    window.localStorage.getItem('e2e_disable_mock_auth') === 'true'
+    || window.sessionStorage.getItem('e2e_disable_mock_auth') === 'true'
+  );
+
+if (import.meta.env.VITE_E2E_MOCK_AUTH === 'true' && !e2eMockAuthDisabled) {
   const mockUserId = (import.meta.env.VITE_E2E_MOCK_USER_ID as string | undefined)
     ?? '5b756a7a-3e35-4465-bcf4-69d92f160f21';
   const mockEmail = (import.meta.env.VITE_E2E_MOCK_EMAIL as string | undefined)
