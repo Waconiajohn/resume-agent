@@ -62,6 +62,43 @@ export interface ContentCalendarInput {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 40;
 
+function normalizeSavedReport(value: unknown): SavedCalendarReport | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const id = safeString(raw.id);
+  const createdAt = safeString(raw.created_at);
+  if (!id || !createdAt) return null;
+  return {
+    id,
+    target_role: safeString(raw.target_role),
+    target_industry: safeString(raw.target_industry),
+    quality_score: safeNumber(raw.quality_score),
+    coherence_score: safeNumber(raw.coherence_score),
+    post_count: safeNumber(raw.post_count),
+    created_at: createdAt,
+  };
+}
+
+function normalizeSavedReports(payload: unknown): SavedCalendarReport[] {
+  if (!Array.isArray(payload)) return [];
+  return payload
+    .map((report) => normalizeSavedReport(report))
+    .filter((report): report is SavedCalendarReport => report !== null);
+}
+
+function normalizeSavedReportFull(value: unknown): SavedCalendarReportFull | null {
+  const base = normalizeSavedReport(value);
+  if (!base || !value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  return {
+    ...base,
+    report_markdown: safeString(raw.report_markdown),
+    themes: Array.isArray(raw.themes) ? raw.themes : [],
+    content_mix: raw.content_mix && typeof raw.content_mix === 'object' ? raw.content_mix as Record<string, unknown> : {},
+    posts: Array.isArray(raw.posts) ? raw.posts : [],
+  };
+}
+
 export function useContentCalendar() {
   const [state, setState] = useState<ContentCalendarState>({
     status: 'idle',
@@ -124,9 +161,13 @@ export function useContentCalendar() {
         return;
       }
 
-      const data = (await res.json()) as { reports: SavedCalendarReport[] };
+      const data = (await res.json()) as { reports?: unknown };
       if (mountedRef.current) {
-        setState((prev) => ({ ...prev, savedReports: data.reports, reportsLoading: false }));
+        setState((prev) => ({
+          ...prev,
+          savedReports: normalizeSavedReports(data.reports),
+          reportsLoading: false,
+        }));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -149,8 +190,8 @@ export function useContentCalendar() {
 
       if (!res.ok) return null;
 
-      const data = (await res.json()) as { report: SavedCalendarReportFull };
-      return data.report;
+      const data = (await res.json()) as { report?: unknown };
+      return normalizeSavedReportFull(data.report);
     } catch {
       return null;
     }

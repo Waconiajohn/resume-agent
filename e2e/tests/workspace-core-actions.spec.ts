@@ -50,7 +50,8 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Profile Score/i })).toBeVisible();
 
     await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-    await expect(page.getByText(/Content Calendar/i).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Generate Calendar/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Something went wrong/i })).toHaveCount(0);
   });
 
   test('Job Search runs Job Finder and keeps Radar and Daily Ops navigable', async ({ page }) => {

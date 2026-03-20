@@ -245,6 +245,27 @@ describe('useContentCalendar — fetchReports populates savedReports', () => {
     await waitFor(() => expect(result.current.reportsLoading).toBe(false));
     expect(result.current.savedReports).toEqual([]);
   });
+
+  it('drops malformed report payloads instead of storing invalid entries', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          reports: [
+            makeReport('r1'),
+            { id: 'broken-report' },
+            { created_at: '2025-02-01T09:00:00Z' },
+          ],
+        }),
+        { status: 200 },
+      ),
+    ));
+
+    const { result } = renderHook(() => useContentCalendar());
+
+    await waitFor(() => expect(result.current.reportsLoading).toBe(false));
+    expect(result.current.savedReports).toHaveLength(1);
+    expect(result.current.savedReports[0].id).toBe('r1');
+  });
 });
 
 // ─── fetchReports manual call ─────────────────────────────────────────────────
@@ -332,6 +353,23 @@ describe('useContentCalendar — fetchReportById', () => {
     let report: SavedCalendarReportFull | null = undefined as unknown as null;
     await act(async () => {
       report = await result.current.fetchReportById('nonexistent');
+    });
+
+    expect(report).toBeNull();
+  });
+
+  it('returns null when the report payload is malformed', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reports: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ report: { id: 'broken-report' } }), { status: 200 })),
+    );
+
+    const { result } = renderHook(() => useContentCalendar());
+    await waitFor(() => expect(result.current.reportsLoading).toBe(false));
+
+    let report: SavedCalendarReportFull | null = undefined as unknown as null;
+    await act(async () => {
+      report = await result.current.fetchReportById('broken-report');
     });
 
     expect(report).toBeNull();
