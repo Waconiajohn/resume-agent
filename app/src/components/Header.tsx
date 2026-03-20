@@ -96,20 +96,6 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               Resume Builder
             </button>
           )}
-          <button
-            onClick={() => onNavigate?.('pricing')}
-            className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-          >
-            Pricing
-          </button>
-          {email && (
-            <button
-              onClick={() => onNavigate?.('billing')}
-              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-            >
-              Billing
-            </button>
-          )}
         </nav>
 
         {/* Desktop user controls — hidden below lg */}
@@ -150,6 +136,14 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                 {displayName || email}
               </button>
             )}
+            <button
+              onClick={() => onNavigate?.('billing')}
+              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+              title="Billing & plan"
+              aria-label="Billing"
+            >
+              Billing
+            </button>
             <GlassButton variant="ghost" size="sm" onClick={onSignOut} className="h-8" aria-label="Sign out" title="Sign out">
               <LogOut className="h-4 w-4" aria-hidden="true" />
             </GlassButton>
@@ -220,34 +214,29 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                   Resume Builder
                 </button>
               )}
-              <button
-                onClick={() => handleNavClick('pricing')}
-                className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-              >
-                Pricing
-              </button>
-              {email && (
-                <button
-                  onClick={() => handleNavClick('billing')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-                >
-                  Billing
-                </button>
-              )}
             </nav>
 
             {/* User section at bottom */}
             {email && (
-              <div className="px-4 py-4 border-t border-white/[0.06] flex items-center justify-between gap-3">
-                <span className="text-xs text-white/55 truncate">{email}</span>
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors shrink-0"
-                  aria-label="Sign out"
-                >
-                  <LogOut className="h-4 w-4" aria-hidden="true" />
-                  Sign out
-                </button>
+              <div className="border-t border-white/[0.06] px-4 py-4">
+                <div className="truncate text-xs text-white/55">{email}</div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    onClick={() => handleNavClick('billing')}
+                    className="rounded-lg px-3 py-2 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+                    aria-label="Billing"
+                  >
+                    Billing
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors shrink-0"
+                    aria-label="Sign out"
+                  >
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
+                    Sign out
+                  </button>
+                </div>
               </div>
             )}
           </div>

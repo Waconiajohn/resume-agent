@@ -478,14 +478,23 @@ test.describe('Smoke: header navigation', () => {
     await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
   });
 
-  test('Pricing nav link changes route to /pricing', async ({ page }) => {
+  test('signed-in header no longer exposes Pricing', async ({ page }) => {
     await mockAllNetworkRequests(page);
     await page.goto('/app');
     await waitForAuthenticatedShell(page);
 
-    await page.getByRole('button', { name: /^Pricing$/i }).click();
-    await expect(page).toHaveURL(/\/pricing/, { timeout: 5_000 });
-    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /^Pricing$/i })).toHaveCount(0);
+  });
+
+  test('Billing stays in account controls, not the primary nav', async ({ page }) => {
+    await mockAllNetworkRequests(page);
+    await page.goto('/app');
+    await waitForAuthenticatedShell(page);
+
+    await expect(page.getByRole('navigation').getByRole('button', { name: /^Billing$/i })).toHaveCount(0);
+    await page.getByRole('banner').getByRole('button', { name: /^Billing$/i }).click();
+    await expect(page).toHaveURL(/\/billing/, { timeout: 5_000 });
+    await expect(page.locator('body')).toBeVisible({ timeout: 8_000 });
   });
 
   test('browser back from Resume Builder returns to Workspace Home', async ({ page }) => {
