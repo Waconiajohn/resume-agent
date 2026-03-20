@@ -17,6 +17,49 @@
 
 import { test, expect, type Page, type Route } from '@playwright/test';
 
+interface SmokeNetworkOptions {
+  billingResponse?: {
+    subscription: {
+      id: string;
+      plan_id: string;
+      status: string;
+      current_period_start: string;
+      current_period_end: string;
+      stripe_subscription_id: string | null;
+      stripe_customer_id: string | null;
+      updated_at: string;
+    } | null;
+    plan: {
+      id: string;
+      name: string;
+      monthly_price_cents: number;
+      included_sessions: number;
+      max_sessions_per_month: number | null;
+    };
+    usage: {
+      sessions_this_period: number;
+      cost_usd_this_period: number;
+    };
+  };
+  billingCheckoutUrl?: string;
+  billingPortalUrl?: string;
+}
+
+const DEFAULT_BILLING_RESPONSE: NonNullable<SmokeNetworkOptions['billingResponse']> = {
+  subscription: null,
+  plan: {
+    id: 'free',
+    name: 'Free',
+    monthly_price_cents: 0,
+    included_sessions: 3,
+    max_sessions_per_month: 3,
+  },
+  usage: {
+    sessions_this_period: 0,
+    cost_usd_this_period: 0,
+  },
+};
+
 // ---------------------------------------------------------------------------
 // API + Supabase mock helpers
 // ---------------------------------------------------------------------------
@@ -30,7 +73,11 @@ import { test, expect, type Page, type Route } from '@playwright/test';
  * (matching the pattern in intercept-api.ts) so the coach screen never
  * tries to reconnect in an infinite loop.
  */
-async function mockAllNetworkRequests(page: Page): Promise<void> {
+async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions = {}): Promise<void> {
+  const billingResponse = options.billingResponse ?? DEFAULT_BILLING_RESPONSE;
+  const billingCheckoutUrl = options.billingCheckoutUrl ?? '/workspace?room=resume';
+  const billingPortalUrl = options.billingPortalUrl ?? '/workspace?room=career-profile';
+
   // Override fetch for SSE requests before navigation
   await page.addInitScript(() => {
     const originalFetch = window.fetch;
@@ -295,20 +342,25 @@ async function mockAllNetworkRequests(page: Page): Promise<void> {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          subscription: null,
-          plan: {
-            id: 'free',
-            name: 'Free',
-            monthly_price_cents: 0,
-            included_sessions: 3,
-            max_sessions_per_month: 3,
-          },
-          usage: {
-            sessions_this_period: 0,
-            cost_usd_this_period: 0,
-          },
-        }),
+        body: JSON.stringify(billingResponse),
+      });
+      return;
+    }
+
+    if (path === '/api/billing/checkout' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ url: billingCheckoutUrl }),
+      });
+      return;
+    }
+
+    if (path === '/api/billing/portal' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ url: billingPortalUrl }),
       });
       return;
     }
@@ -555,6 +607,60 @@ test.describe('Smoke: header navigation', () => {
     await page.getByRole('button', { name: /^Billing$/i }).click();
     await expect(page).toHaveURL(/\/billing/, { timeout: 5_000 });
     await expect(page.getByText('Usage this month')).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('billing upgrade button starts checkout from the free plan', async ({ page }) => {
+    await mockAllNetworkRequests(page, {
+      billingCheckoutUrl: '/workspace?room=resume',
+    });
+    await page.goto('/billing');
+    await waitForAuthenticatedShell(page);
+
+    await expect(page.getByRole('button', { name: /^Upgrade$/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('button', { name: /^Upgrade$/i }).click();
+
+    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
+    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('billing manage button opens the portal flow for an active paid plan', async ({ page }) => {
+    await mockAllNetworkRequests(page, {
+      billingResponse: {
+        subscription: {
+          id: 'sub-starter',
+          plan_id: 'starter',
+          status: 'active',
+          current_period_start: '2026-03-01T00:00:00.000Z',
+          current_period_end: '2026-04-01T00:00:00.000Z',
+          stripe_subscription_id: 'stripe-sub-123',
+          stripe_customer_id: 'stripe-customer-123',
+          updated_at: '2026-03-20T00:00:00.000Z',
+        },
+        plan: {
+          id: 'starter',
+          name: 'Starter',
+          monthly_price_cents: 1999,
+          included_sessions: 15,
+          max_sessions_per_month: 50,
+        },
+        usage: {
+          sessions_this_period: 4,
+          cost_usd_this_period: 1.24,
+        },
+      },
+      billingPortalUrl: '/workspace?room=career-profile',
+    });
+    await page.goto('/billing');
+    await waitForAuthenticatedShell(page);
+
+    await expect(page.getByRole('button', { name: /^Manage$/i })).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /^Upgrade$/i })).toHaveCount(0);
+    await page.getByRole('button', { name: /^Manage$/i }).click();
+
+    await expect(page).toHaveURL(/\/workspace\?room=career-profile/, { timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible({
+      timeout: 8_000,
+    });
   });
 
   test('browser back from Resume Builder returns to Workspace Home', async ({ page }) => {
