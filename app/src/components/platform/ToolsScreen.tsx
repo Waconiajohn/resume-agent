@@ -5,11 +5,9 @@ import { PRODUCT_CATALOG } from '@/types/platform';
 const EXPOSED_TOOL_SLUGS = new Set([
   'onboarding',
   'resume',
-  'cover-letter',
   'linkedin',
   'jobs',
   'interview',
-  'salary-negotiation',
 ]);
 
 interface ToolsScreenProps {

@@ -58,9 +58,9 @@ const ROOM_GROUPS: RoomGroup[] = [
   {
     label: 'Active Search',
     rooms: [
-      { id: 'linkedin', label: 'LinkedIn Studio', icon: Linkedin, description: 'Profile and content updates', gated: true },
-      { id: 'jobs', label: 'Job Command Center', icon: Search, description: 'Matches, pipeline & momentum', gated: true },
-      { id: 'interview', label: 'Interview Lab', icon: Mic, description: 'Prep, mock, debrief & follow-up', gated: true },
+      { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, description: 'Profile and content updates', gated: true },
+      { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: true },
+      { id: 'interview', label: 'Interview Prep', icon: Mic, description: 'Prep, debrief, and follow-up', gated: true },
     ],
   },
 ];

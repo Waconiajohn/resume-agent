@@ -16,13 +16,23 @@ describe('ToolsScreen', () => {
   it('renders an exposed tool landing page when the slug is allowed', () => {
     render(<ToolsScreen slug="linkedin" onNavigate={vi.fn()} />);
 
-    expect(screen.getByText('LinkedIn Studio')).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /back to tools/i })).toBeInTheDocument();
   });
 
   it('hides non-core tool landing pages', () => {
     render(<ToolsScreen slug="executive-bio" onNavigate={vi.fn()} />);
 
+    expect(screen.getByText('Product not found.')).toBeInTheDocument();
+  });
+
+  it('hides cover letter and negotiation as separate tool landing pages', () => {
+    render(<ToolsScreen slug="cover-letter" onNavigate={vi.fn()} />);
+    expect(screen.getByText('Product not found.')).toBeInTheDocument();
+
+    cleanup();
+
+    render(<ToolsScreen slug="salary-negotiation" onNavigate={vi.fn()} />);
     expect(screen.getByText('Product not found.')).toBeInTheDocument();
   });
 });

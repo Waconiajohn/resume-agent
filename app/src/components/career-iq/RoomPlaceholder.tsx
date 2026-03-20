@@ -5,21 +5,21 @@ const ROOM_INFO: Record<string, { title: string; description: string }> = {
   dashboard: { title: 'Workspace Home', description: '' },
   resume: { title: 'Resume Builder', description: 'AI-powered resume tailored to every job you apply for.' },
   'career-profile': { title: 'Career Profile', description: 'Define the story, strengths, and direction that power every tool in your workspace.' },
-  linkedin: { title: 'LinkedIn Studio', description: 'Profile optimization, content creation, and posting calendar.' },
-  jobs: { title: 'Job Command Center', description: 'Search, match, pipeline, and daily momentum tracking.' },
+  linkedin: { title: 'LinkedIn', description: 'Profile optimization, content creation, and posting calendar.' },
+  jobs: { title: 'Job Search', description: 'Search, match, pipeline, and daily momentum tracking.' },
   networking: { title: 'Smart Referrals', description: 'Import connections, find jobs at their companies, referral bonuses, and AI outreach.' },
-  interview: { title: 'Interview Lab', description: 'Prep, practice, debrief, and follow-up all in one place.' },
-  'salary-negotiation': { title: 'Salary & Negotiation', description: 'Market benchmarks, negotiation scripts, and total-comp strategy.' },
+  interview: { title: 'Interview Prep', description: 'Prep, practice, debrief, and follow-up all in one place.' },
+  'salary-negotiation': { title: 'Negotiation Prep', description: 'Offer-stage benchmarks, negotiation scripts, and total-comp strategy.' },
   'executive-bio': { title: 'Executive Documents', description: 'Professional bios and consulting-grade case studies.' },
   financial: { title: 'Financial Wellness', description: 'Retirement readiness assessment and fiduciary planner matching.' },
   learning: { title: 'Learning Center', description: 'Browse our 150-tip library, attend live webinars, and access on-demand resources.' },
   // Legacy IDs — fallback descriptions for any stale references
-  'content-calendar': { title: 'LinkedIn Studio', description: 'Content Calendar has moved to LinkedIn Studio.' },
+  'content-calendar': { title: 'LinkedIn', description: 'Content Calendar has moved into LinkedIn.' },
   'case-study': { title: 'Executive Documents', description: 'Case Studies have moved to Executive Documents.' },
-  'thank-you-note': { title: 'Interview Lab', description: 'Thank You Notes have moved to Interview Lab.' },
+  'thank-you-note': { title: 'Interview Prep', description: 'Thank You Notes have moved into Interview Prep.' },
   'network-intelligence': { title: 'Smart Referrals', description: 'Network Intelligence has moved to Smart Referrals.' },
   'personal-brand': { title: 'Career Profile', description: 'Personal brand work now lives inside Career Profile.' },
-  'ninety-day-plan': { title: 'Interview Lab', description: '30-60-90 Day Plan has moved into Interview Lab.' },
+  'ninety-day-plan': { title: 'Interview Prep', description: '30-60-90 Day Plan has moved into Interview Prep.' },
 };
 
 const FALLBACK = { title: 'Coming Soon', description: 'This room is being built by the agent team.' };

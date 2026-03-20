@@ -946,7 +946,7 @@ export function DebriefForm({
               onClick={onCancel}
               className="text-[13px]"
             >
-              Back to Interview Lab
+              Back to Interview Prep
             </GlassButton>
           </>
         )}

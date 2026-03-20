@@ -337,7 +337,7 @@ function SummaryView({
       <div className="flex gap-3">
         <GlassButton variant="ghost" onClick={onBack} className="flex-1">
           <ArrowLeft size={14} className="mr-1.5" />
-          Back to Interview Lab
+          Back to Interview Prep
         </GlassButton>
         <GlassButton variant="primary" onClick={onTryAgain} className="flex-1">
           Try Again
@@ -433,7 +433,7 @@ export function MockInterviewView({
             className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
           >
             <ArrowLeft size={14} />
-            Back to Interview Lab
+            Back to Interview Prep
           </button>
           <span className="text-white/20">/</span>
           <span className="text-[13px] text-white/50">
@@ -462,7 +462,7 @@ export function MockInterviewView({
           className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors w-fit"
         >
           <ArrowLeft size={14} />
-          Back to Interview Lab
+          Back to Interview Prep
         </button>
 
         <GlassCard className="p-6">

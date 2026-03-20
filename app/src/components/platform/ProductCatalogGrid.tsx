@@ -11,7 +11,7 @@ const START_HERE_IDS = ['onboarding-assessment', 'resume-strategist', 'job-comma
 const CONTINUE_WITH_IDS = ['linkedin-studio', 'interview-lab'];
 const SECONDARY_TOOLS = [
   { id: 'cover-letter', belongsIn: 'Resume Builder' },
-  { id: 'salary-negotiation', belongsIn: 'Job Workspace when you reach offer stage' },
+  { id: 'salary-negotiation', belongsIn: 'Interview Prep when you reach offer stage' },
 ];
 const CAREER_PROFILE_POWERED_IDS = new Set([
   'resume-strategist',

@@ -211,7 +211,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
 
       {!loading && groups.length === 0 && (
         <p className="text-[12px] text-white/25 py-4 text-center">
-          No active applications found. Add applications in the Job Command Center to get started.
+          No active applications found. Add applications in Job Search to get started.
         </p>
       )}
 

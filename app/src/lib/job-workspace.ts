@@ -78,13 +78,13 @@ export function stageAwareActions(stage?: string | null): {
   switch (stage) {
     case 'interviewing':
       return {
-        unlocked: ['Interview Lab', 'Thank You Note', '30-60-90 Day Plan'],
-        nextActionLabel: 'Open Interview Lab',
+        unlocked: ['Interview Prep', 'Thank You Note', '30-60-90 Day Plan'],
+        nextActionLabel: 'Open Interview Prep',
       };
     case 'offer':
       return {
-        unlocked: ['Salary Negotiation', 'Interview Lab'],
-        nextActionLabel: 'Open Salary Negotiation',
+        unlocked: ['Negotiation Prep', 'Interview Prep'],
+        nextActionLabel: 'Open Negotiation Prep',
       };
     case 'closed_won':
       return {

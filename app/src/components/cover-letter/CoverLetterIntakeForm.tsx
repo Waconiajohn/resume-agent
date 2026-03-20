@@ -100,7 +100,7 @@ export function CoverLetterIntakeForm({
           Back to Tools
         </button>
 
-        <h1 className="mb-2 text-2xl font-semibold text-white/90">Cover Letter Writer</h1>
+        <h1 className="mb-2 text-2xl font-semibold text-white/90">Cover Letter</h1>
         <p className="mb-8 text-sm text-white/50">
           Paste your resume, the job description, and the company name. We'll generate a targeted cover letter that tells the WHY ME story — not a resume rehash.
         </p>

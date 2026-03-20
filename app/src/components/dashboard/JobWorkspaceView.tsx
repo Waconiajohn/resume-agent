@@ -162,7 +162,7 @@ export function JobWorkspaceView({
                   Cover Letter
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/48">
-                  {coverLetterAsset ? 'Preview the saved letter or reopen the parent session.' : 'Generate or save a cover letter only when the application actually needs one.'}
+                  {coverLetterAsset ? 'Preview the saved letter or reopen the parent session.' : 'Cover letters live with resume workspaces. Open Resume Builder when this application actually needs one.'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {coverLetterAsset ? (
@@ -170,7 +170,12 @@ export function JobWorkspaceView({
                       <Mail size={12} className="mr-1.5" />
                       View Letter
                     </GlassButton>
-                  ) : null}
+                  ) : (
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/workspace?room=resume')}>
+                      <FileText size={12} className="mr-1.5" />
+                      Open Resume Builder
+                    </GlassButton>
+                  )}
                 </div>
               </div>
 
@@ -190,7 +195,7 @@ export function JobWorkspaceView({
                   {(interviewPrepAsset || activeStage === 'interviewing' || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(interviewPrepRoute)}>
                       <Mic size={12} className="mr-1.5" />
-                      {interviewPrepAsset ? 'Review Saved Prep' : 'Open Interview Lab'}
+                      {interviewPrepAsset ? 'Review Saved Prep' : 'Open Interview Prep'}
                     </GlassButton>
                   ) : null}
                 </div>
@@ -203,7 +208,7 @@ export function JobWorkspaceView({
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/48">
                   {thankYouAsset
-                    ? 'Saved follow-up for this job. Reopen the exact note inside Interview Lab.'
+                    ? 'Saved follow-up for this job. Reopen the exact note inside Interview Prep.'
                     : activeStage === 'interviewing' || activeStage === 'offer'
                     ? 'Available when you need post-interview follow-up.'
                     : 'Follow-up unlocks only after the job reaches interview stages.'}
@@ -243,20 +248,20 @@ export function JobWorkspaceView({
               <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
                   <Sparkles size={14} className="text-[#98b3ff]" />
-                  Salary Negotiation
+                  Negotiation Prep
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/48">
                   {salaryNegotiationAsset
                     ? 'Saved offer-stage strategy for this job workspace.'
                     : activeStage === 'offer'
-                    ? 'Unlocked now that the process is at offer stage.'
+                    ? 'Offer-stage prep is unlocked now that there is a live offer.'
                     : 'Negotiation prep stays out of the way until there is a live offer.'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(salaryNegotiationAsset || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(salaryNegotiationRoute)}>
                       <Sparkles size={12} className="mr-1.5" />
-                      {salaryNegotiationAsset ? 'Review Saved Strategy' : 'Open Strategy'}
+                      {salaryNegotiationAsset ? 'Review Saved Strategy' : 'Open Negotiation Prep'}
                     </GlassButton>
                   ) : null}
                 </div>
@@ -278,13 +283,13 @@ export function JobWorkspaceView({
               {activeStage === 'interviewing' ? (
                 <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(interviewPrepRoute)}>
                   <Mic size={12} className="mr-1.5" />
-                  {interviewPrepAsset ? 'Review Saved Prep' : 'Open Interview Lab'}
+                  {interviewPrepAsset ? 'Review Saved Prep' : 'Open Interview Prep'}
                 </GlassButton>
               ) : null}
               {activeStage === 'offer' ? (
                 <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(salaryNegotiationRoute)}>
                   <Sparkles size={12} className="mr-1.5" />
-                  {salaryNegotiationAsset ? 'Review Saved Strategy' : 'Open Salary Negotiation'}
+                  {salaryNegotiationAsset ? 'Review Saved Strategy' : 'Open Negotiation Prep'}
                 </GlassButton>
               ) : null}
             </div>

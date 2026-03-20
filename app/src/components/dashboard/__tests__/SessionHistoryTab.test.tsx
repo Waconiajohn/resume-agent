@@ -250,8 +250,8 @@ describe('SessionHistoryTab', () => {
       />,
     );
 
-    expect(screen.getByText(/Available now: Interview Lab/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Open Interview Lab/i })).toBeInTheDocument();
+    expect(screen.getByText(/Available now: Interview Prep/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Interview Prep/i })).toBeInTheDocument();
     expect(screen.getByText(/30-60-90 Day Plan/i)).toBeInTheDocument();
   });
 
@@ -283,7 +283,7 @@ describe('SessionHistoryTab', () => {
 
     expect(screen.getByText('Stage control')).toBeInTheDocument();
     expect(screen.getByText(/Run interview prep and tighten the 30-60-90 story\./i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Open Interview Lab/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Open Interview Prep/i }).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Offer' }));
 

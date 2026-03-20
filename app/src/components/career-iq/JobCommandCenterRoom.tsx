@@ -259,11 +259,11 @@ function SmartMatches({
               <div className="flex flex-col gap-1.5 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => onNavigate('cover-letter')}
+                  onClick={() => onNavigate('/workspace?room=resume')}
                   className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
                 >
                   <FileText size={11} />
-                  Cover Letter
+                  Resume + Letter
                 </button>
               </div>
             </div>
@@ -831,7 +831,7 @@ export function JobCommandCenterRoom({
         <CareerProfileSummaryCard
           summary={careerProfileSummary}
           title="Career Profile is steering your search targets"
-          description="Job Command Center should not just show roles. It should show roles that match the story and strengths you want the market to recognize."
+          description="Job Search should not just show roles. It should show roles that match the story and strengths you want the market to recognize."
           usagePoints={[
             'Role matching uses your target titles, industries, and level.',
             'Search logic favors jobs that fit the story you are trying to tell the market.',
@@ -845,7 +845,7 @@ export function JobCommandCenterRoom({
 
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white/90">Job Command Center</h1>
+        <h1 className="text-lg font-semibold text-white/90">Job Search</h1>
         <p className="text-[13px] text-white/40">
           AI-surfaced roles matching your Career Profile, smart search tools, and pipeline management.
         </p>

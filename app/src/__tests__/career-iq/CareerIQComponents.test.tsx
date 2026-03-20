@@ -229,9 +229,9 @@ describe('Sidebar', () => {
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Career Profile')).toBeInTheDocument();
     expect(screen.getByText('Resume Builder')).toBeInTheDocument();
-    expect(screen.getByText('LinkedIn Studio')).toBeInTheDocument();
-    expect(screen.getByText('Job Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Interview Lab')).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
+    expect(screen.getByText('Job Search')).toBeInTheDocument();
+    expect(screen.getByText('Interview Prep')).toBeInTheDocument();
   });
 
   it('disables gated rooms when dashboardState is new-user', () => {
@@ -262,7 +262,7 @@ describe('Sidebar', () => {
     );
     const resumeButton = screen.getByText('Resume Builder').closest('button');
     expect(resumeButton).not.toBeDisabled();
-    const linkedinButton = screen.getByText('LinkedIn Studio').closest('button');
+    const linkedinButton = screen.getByText('LinkedIn').closest('button');
     expect(linkedinButton).not.toBeDisabled();
   });
 

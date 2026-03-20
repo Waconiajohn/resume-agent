@@ -104,8 +104,8 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
   {
     id: 'cover-letter',
     slug: 'cover-letter',
-    name: 'Cover Letter Writer',
-    shortDescription: 'Targeted cover letters that complement your resume strategy',
+    name: 'Cover Letter',
+    shortDescription: 'Targeted cover letters generated from your resume strategy',
     longDescription:
       'Generates a tailored cover letter that reinforces your resume positioning. Leverages your existing strategy, evidence, and career narrative so you never start from scratch.',
     icon: '\u2709\uFE0F',
@@ -134,14 +134,14 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'AI quality review catches generic phrasing, unsupported claims, and tonal mismatches before you send.',
       },
     ],
-    ctaLabel: 'Write Cover Letter',
+    ctaLabel: 'Open Resume Builder',
   },
 
   // ─── LINKEDIN & BRAND ───
   {
     id: 'linkedin-studio',
     slug: 'linkedin',
-    name: 'LinkedIn Studio',
+    name: 'LinkedIn',
     shortDescription: 'Profile optimization, content creation, and posting calendar',
     longDescription:
       'Your complete LinkedIn command center. Optimize your headline, summary, and experience sections for recruiter visibility. Generate thought-leadership posts from your real expertise. Plan a 30-day content calendar aligned to your positioning strategy.',
@@ -171,7 +171,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Weaves recruiter search terms naturally throughout your profile and content to maximize visibility without keyword stuffing.',
       },
     ],
-    ctaLabel: 'Open LinkedIn Studio',
+    ctaLabel: 'Open LinkedIn',
   },
   {
     id: 'executive-documents',
@@ -213,7 +213,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
   {
     id: 'job-command-center',
     slug: 'jobs',
-    name: 'Job Command Center',
+    name: 'Job Search',
     shortDescription: 'Search, match, pipeline, and daily momentum tracking',
     longDescription:
       'Central hub for your active job search. Track applications through every pipeline stage, surface AI-matched job opportunities, monitor your search velocity, and get coaching nudges to keep momentum.',
@@ -243,7 +243,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Automatically links resume sessions, cover letters, and interview prep to each application.',
       },
     ],
-    ctaLabel: 'Open Command Center',
+    ctaLabel: 'Open Job Search',
   },
   {
     id: 'smart-referrals',
@@ -321,7 +321,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
   {
     id: 'interview-lab',
     slug: 'interview',
-    name: 'Interview Lab',
+    name: 'Interview Prep',
     shortDescription: 'Prep, practice, debrief, and follow-up all in one place',
     longDescription:
       'Your complete interview command center. Prepare with JD-driven question banks, practice in realistic mock interviews with AI feedback, debrief immediately after real interviews, and generate personalized thank-you notes — all in one place.',
@@ -351,13 +351,13 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Personalized follow-up notes for every interviewer that reinforce your key differentiators.',
       },
     ],
-    ctaLabel: 'Open Interview Lab',
+    ctaLabel: 'Open Interview Prep',
   },
   {
     id: 'salary-negotiation',
     slug: 'salary-negotiation',
-    name: 'Salary & Negotiation',
-    shortDescription: 'Market benchmarks, negotiation scripts, and total-comp strategy',
+    name: 'Negotiation Prep',
+    shortDescription: 'Offer-stage benchmarks, scripts, and total-comp strategy',
     longDescription:
       'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts, leverage points, and compensation tradeoff guidance so you walk in fully prepared.',
     icon: '\u{1F4B0}',
@@ -386,7 +386,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
           'Beyond base: equity, bonus, PTO, signing bonus, and benefits valued in a single comparable number.',
       },
     ],
-    ctaLabel: 'Build Negotiation Strategy',
+    ctaLabel: 'Open Interview Prep',
   },
   {
     id: 'financial-wellness',

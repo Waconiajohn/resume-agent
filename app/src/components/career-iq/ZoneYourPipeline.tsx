@@ -362,7 +362,7 @@ export function ZoneYourPipeline({ onNavigateRoom, mockCards, onInterviewPrepCli
               onClick={() => onNavigateRoom?.('jobs')}
               className="text-[#98b3ff]/60 hover:text-[#98b3ff] underline underline-offset-2 transition-colors"
             >
-              Job Command Center
+              Job Search
             </button>
             {' '}to find matching roles.
           </p>

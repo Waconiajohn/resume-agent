@@ -95,9 +95,9 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByText('Avg Quality')).toBeInTheDocument();
   });
 
-  it('renders LinkedIn Studio header', () => {
+  it('renders LinkedIn header', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    expect(screen.getByText('LinkedIn Studio')).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
   });
 
   it('renders post composer tab by default', () => {

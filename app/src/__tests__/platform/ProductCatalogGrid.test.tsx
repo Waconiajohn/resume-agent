@@ -20,7 +20,7 @@ describe('ProductCatalogGrid', () => {
 
     expect(screen.getByText('Career Profile')).toBeInTheDocument();
     expect(screen.getByText('Resume Builder')).toBeInTheDocument();
-    expect(screen.getByText('Job Command Center')).toBeInTheDocument();
+    expect(screen.getByText('Job Search')).toBeInTheDocument();
   });
 
   it('renders the narrowed continue-with tools', () => {
@@ -36,18 +36,18 @@ describe('ProductCatalogGrid', () => {
   it('does not expose secondary tools as primary clickable entry points', () => {
     render(<ProductCatalogGrid onNavigate={vi.fn()} />);
 
-    expect(screen.queryByRole('button', { name: 'Open Cover Letter Writer' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Open Salary & Negotiation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Cover Letter' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Negotiation Prep' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open Smart Referrals' })).not.toBeInTheDocument();
   });
 
   it('shows secondary tools as workflow hints instead', () => {
     render(<ProductCatalogGrid onNavigate={vi.fn()} />);
 
-    expect(screen.getByText('Cover Letter Writer')).toBeInTheDocument();
+    expect(screen.getByText('Cover Letter')).toBeInTheDocument();
     expect(screen.getByText('Open this from Resume Builder.')).toBeInTheDocument();
-    expect(screen.getByText('Salary & Negotiation')).toBeInTheDocument();
-    expect(screen.getByText(/Job Workspace when you reach offer stage/i)).toBeInTheDocument();
+    expect(screen.getByText('Negotiation Prep')).toBeInTheDocument();
+    expect(screen.getByText(/Interview Prep when you reach offer stage/i)).toBeInTheDocument();
   });
 
   it('calls onNavigate when a start-here card is clicked', () => {
@@ -62,7 +62,7 @@ describe('ProductCatalogGrid', () => {
     const onNavigate = vi.fn();
     render(<ProductCatalogGrid onNavigate={onNavigate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open LinkedIn Studio' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open LinkedIn' }));
     expect(onNavigate).toHaveBeenCalledWith('/workspace?room=linkedin');
   });
 

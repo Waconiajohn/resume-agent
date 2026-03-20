@@ -104,6 +104,9 @@ export function ResumeWorkshopRoom({
             <GlassButton variant="ghost" onClick={() => onNavigate?.('/workspace?room=career-profile')}>
               Review Career Profile
             </GlassButton>
+            <GlassButton variant="ghost" onClick={() => onNavigate?.('/cover-letter')}>
+              Write Cover Letter
+            </GlassButton>
             <GlassButton variant="primary" onClick={onNewSession}>
               <Plus size={16} className="mr-1.5" />
               New Tailored Resume

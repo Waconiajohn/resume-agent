@@ -602,10 +602,10 @@ test.describe('Smoke: Career IQ rooms', () => {
     });
   });
 
-  test('LinkedIn Studio room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'LinkedIn Studio');
+  test('LinkedIn room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'LinkedIn');
     await assertNoCrash(sharedPage);
-    // LinkedIn Studio uses tab buttons rather than a top-level heading.
+    // LinkedIn uses tab buttons rather than a top-level heading.
     // Verify the sidebar is still visible (no full-page crash), and that
     // the main scroll container has rendered something.
     await expect(
@@ -615,16 +615,16 @@ test.describe('Smoke: Career IQ rooms', () => {
     await expect(sharedPage.locator('main > *').first()).toBeVisible({ timeout: 8_000 });
   });
 
-  test('Job Command Center room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Job Command Center');
+  test('Job Search room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Job Search');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,
     });
   });
 
-  test('Interview Lab room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Interview Lab');
+  test('Interview Prep room renders', async () => {
+    await navigateToCareerIQRoom(sharedPage, 'Interview Prep');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,
@@ -639,8 +639,8 @@ test.describe('Smoke: Career IQ rooms', () => {
     });
   });
 
-  test('Salary & Negotiation room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Salary & Negotiation');
+  test('Negotiation Prep room renders', async () => {
+    await sharedPage.goto('/workspace?room=salary-negotiation');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
       timeout: 8_000,

@@ -1511,7 +1511,7 @@ export function LinkedInStudioRoom({ signals, careerProfileSummary, onOpenCareer
         <CareerProfileSummaryCard
           summary={careerProfileSummary}
           title="Career Profile is setting your LinkedIn angle"
-          description="LinkedIn Studio uses the same story, strengths, and differentiators that power Resume Builder so your public brand does not drift."
+          description="LinkedIn uses the same story, strengths, and differentiators that power Resume Builder so your public brand does not drift."
           usagePoints={[
             'Your positioning story shapes headline, About, and profile language.',
             'Differentiators and proof themes guide post ideas and content angles.',
@@ -1524,7 +1524,7 @@ export function LinkedInStudioRoom({ signals, careerProfileSummary, onOpenCareer
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">LinkedIn Studio</h1>
+          <h1 className="text-lg font-semibold text-white/90">LinkedIn</h1>
           <p className="text-[13px] text-white/40">
             Write posts, optimize your profile, plan your content strategy, and track your LinkedIn presence.
           </p>

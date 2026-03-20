@@ -785,7 +785,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
           className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
         >
           <ArrowLeft size={14} />
-          Back to Interview Lab
+          Back to Interview Prep
         </button>
       </div>
 
@@ -1182,7 +1182,7 @@ export function InterviewLabRoom({
     return (
       <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">Interview Lab</h1>
+          <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
           <p className="text-[13px] text-white/40">Generating your interview prep report...</p>
         </div>
 
@@ -1194,7 +1194,7 @@ export function InterviewLabRoom({
             </div>
             <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
-              Back to Interview Lab
+              Back to Interview Prep
             </GlassButton>
           </GlassCard>
         ) : loadingInputs ? (
@@ -1212,7 +1212,7 @@ export function InterviewLabRoom({
             </div>
             <GlassButton variant="ghost" onClick={handleBack} size="sm">
               <ArrowLeft size={14} className="mr-1.5" />
-              Back to Interview Lab
+              Back to Interview Prep
             </GlassButton>
           </GlassCard>
         ) : (
@@ -1255,7 +1255,7 @@ export function InterviewLabRoom({
         <CareerProfileSummaryCard
           summary={careerProfileSummary}
           title="Career Profile is framing your interview story"
-          description="Interview Lab should turn the same positioning story into interview answers, proof points, and debrief follow-up instead of making you start over."
+          description="Interview Prep should turn the same positioning story into interview answers, proof points, and debrief follow-up instead of making you start over."
           usagePoints={[
             'The prep report leans on the same story and proof themes used in Resume Builder.',
             'Mock interview coaching uses your saved positioning instead of starting cold.',
@@ -1267,7 +1267,7 @@ export function InterviewLabRoom({
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">Interview Lab</h1>
+          <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
           <p className="text-[13px] text-white/40">
             Organize interview work into prep, practice, documents, and follow-up instead of hunting through one crowded screen.
           </p>

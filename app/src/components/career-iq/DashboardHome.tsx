@@ -68,7 +68,7 @@ function HomeGuideCard({
     ? {
         eyebrow: 'Start here',
         title: 'Finish your Career Profile first',
-        description: 'This is the shared story every agent reads. The stronger it is, the sharper Resume Builder, Job Search, LinkedIn, and Interview Lab become.',
+        description: 'This is the shared story every agent reads. The stronger it is, the sharper Resume Builder, Job Search, LinkedIn, and Interview Prep become.',
         label: 'Open Career Profile',
         onClick: onRefineWhyMe,
       }
@@ -83,18 +83,18 @@ function HomeGuideCard({
       : {
           eyebrow: 'Daily workspace',
           title: 'Reopen active work and move one application forward',
-          description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Resume Builder and Job Command Center should now be the main places you work from day to day.`,
+          description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Resume Builder and Job Search should now be the main places you work from day to day.`,
           label: 'Open Resume Builder',
           onClick: () => onNavigateRoom?.('resume'),
         };
 
   const secondaryAction = dashboardState === 'new-user'
     ? {
-        label: 'Open Job Command Center',
+        label: 'Open Job Search',
         onClick: () => onNavigateRoom?.('jobs'),
       }
     : {
-        label: 'Open Job Command Center',
+        label: 'Open Job Search',
         onClick: () => onNavigateRoom?.('jobs'),
       };
 
@@ -180,7 +180,7 @@ function HomeGuideCard({
         />
         <StepCard
           icon={Search}
-          title="Job Command Center"
+          title="Job Search"
           description="Track active roles, interview stages, and what should happen next in your search."
           actionLabel="Open job tracker"
           onClick={() => onNavigateRoom?.('jobs')}

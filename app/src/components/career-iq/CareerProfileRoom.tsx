@@ -115,7 +115,7 @@ export function CareerProfileRoom({
               </div>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-white/55">
-              This assessment sharpens your role direction, strengths, proof themes, and constraints so Resume Builder, LinkedIn, Job Search, and Interview Lab stop starting from scratch.
+              This assessment sharpens your role direction, strengths, proof themes, and constraints so Resume Builder, LinkedIn, Job Search, and Interview Prep stop starting from scratch.
             </p>
           </div>
 
@@ -379,7 +379,7 @@ export function CareerProfileRoom({
                 <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Still needs clarity</div>
                 <div className="mt-3 space-y-2">
                   {(summary.focusAreas.length > 0 ? summary.focusAreas : [
-                    'Once this intake is complete, the platform will use it to drive Resume Builder, LinkedIn, Interview Lab, and Job Search.',
+                    'Once this intake is complete, the platform will use it to drive Resume Builder, LinkedIn, Interview Prep, and Job Search.',
                   ]).slice(0, 3).map((item) => (
                     <div key={item} className="rounded-xl border border-white/[0.06] bg-black/15 px-3 py-2 text-sm leading-6 text-white/60">
                       {item}
@@ -566,7 +566,7 @@ function PreviewBlock({ label, value }: { label: string; value: string }) {
 function buildInterpretationPoints(question: AssessmentQuestion, response: string): string[] {
   if (response.trim().length === 0) {
     return [
-      `This answer will sharpen your ${formatCategory(question.category)} story before Resume Builder, LinkedIn, and Interview Lab reuse it.`,
+      `This answer will sharpen your ${formatCategory(question.category)} story before Resume Builder, LinkedIn, and Interview Prep reuse it.`,
       'Add concrete proof, scope, constraints, or language you would naturally use in a live conversation.',
     ];
   }
