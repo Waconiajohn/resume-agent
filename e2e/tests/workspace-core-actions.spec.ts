@@ -72,6 +72,28 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText(/Saved to Library/i)).toBeVisible();
   });
 
+  test('LinkedIn Profile Editor advances through section review and completes', async ({ page }) => {
+    await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Profile Editor', exact: true }).click();
+    await page.getByRole('button', { name: /Edit Profile/i }).click();
+
+    await expect(page.getByRole('heading', { name: 'Headline', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Executive operator who builds operating cadence/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /^Approve$/i }).click();
+
+    await expect(page.getByRole('heading', { name: /About Section/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Executive operator known for turning complexity into operating rhythm/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /^Approve$/i }).click();
+
+    await expect(page.getByRole('heading', { name: /Profile Optimization Complete/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Headline', { exact: true })).toBeVisible();
+    await expect(page.getByText('About Section', { exact: true })).toBeVisible();
+  });
+
   test('Job Search runs Job Finder and keeps Radar and Daily Ops navigable', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 

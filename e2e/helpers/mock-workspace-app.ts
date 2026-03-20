@@ -372,6 +372,28 @@ Alignment is not a slide. It is a system leaders maintain together.`,
 } as const;
 
 type LinkedInContentStage = 'topics' | 'draft' | 'complete';
+type LinkedInEditorStage = 'headline' | 'about' | 'complete';
+
+const MOCK_LINKEDIN_EDITOR_DRAFTS = {
+  headline: {
+    content: 'VP Operations | Executive operator who builds operating cadence and cross-functional alignment',
+    quality_scores: {
+      keyword_coverage: 88,
+      readability: 82,
+      positioning_alignment: 90,
+    },
+  },
+  about: {
+    content: `Executive operator known for turning complexity into operating rhythm across product, support, and delivery teams.
+
+I help leadership teams create the weekly decision-making cadence, ownership clarity, and cross-functional alignment that keep growth from turning into noise.`,
+    quality_scores: {
+      keyword_coverage: 86,
+      readability: 80,
+      positioning_alignment: 91,
+    },
+  },
+} as const;
 
 const MOCK_JOB_FINDER_SEARCHES = [
   { platform: 'LinkedIn', query: '"VP Operations" OR "COO" AND ("operating cadence" OR "cross-functional")' },
@@ -768,7 +790,11 @@ function readRouteJson(route: Route): Record<string, unknown> {
   }
 }
 
-async function fulfillApiRoute(route: Route, linkedinContentState?: Map<string, LinkedInContentStage>) {
+async function fulfillApiRoute(
+  route: Route,
+  linkedinContentState?: Map<string, LinkedInContentStage>,
+  linkedinEditorState?: Map<string, LinkedInEditorStage>,
+) {
   const requestUrl = new URL(route.request().url());
   const path = requestUrl.pathname;
   const method = route.request().method();
@@ -957,6 +983,121 @@ async function fulfillApiRoute(route: Route, linkedinContentState?: Map<string, 
     return;
   }
 
+  if (/^\/api\/linkedin-editor\/[^/]+\/stream$/.test(path) && method === 'GET') {
+    const sessionId = path.split('/')[3] ?? 'mock-linkedin-editor-session';
+    const phase = linkedinEditorState?.get(sessionId) ?? 'headline';
+
+    if (phase === 'about') {
+      await route.fulfill(buildSSEStreamResponse([
+        {
+          event: 'section_approved',
+          data: {
+            section: 'headline',
+            content: MOCK_LINKEDIN_EDITOR_DRAFTS.headline.content,
+          },
+        },
+        {
+          event: 'stage_start',
+          data: { stage: 'about', message: 'Writing your About section...' },
+        },
+        {
+          event: 'section_draft_ready',
+          data: {
+            section: 'about',
+            content: MOCK_LINKEDIN_EDITOR_DRAFTS.about.content,
+            quality_scores: MOCK_LINKEDIN_EDITOR_DRAFTS.about.quality_scores,
+          },
+        },
+        {
+          event: 'pipeline_gate',
+          data: { gate: 'section_review' },
+        },
+      ]));
+      return;
+    }
+
+    if (phase === 'complete') {
+      await route.fulfill(buildSSEStreamResponse([
+        {
+          event: 'section_approved',
+          data: {
+            section: 'about',
+            content: MOCK_LINKEDIN_EDITOR_DRAFTS.about.content,
+          },
+        },
+        {
+          event: 'editor_complete',
+          data: {
+            sections: {
+              headline: MOCK_LINKEDIN_EDITOR_DRAFTS.headline.content,
+              about: MOCK_LINKEDIN_EDITOR_DRAFTS.about.content,
+            },
+          },
+        },
+        {
+          event: 'pipeline_complete',
+          data: {},
+        },
+      ]));
+      return;
+    }
+
+    await route.fulfill(buildSSEStreamResponse([
+      {
+        event: 'stage_start',
+        data: { stage: 'headline', message: 'Writing your headline...' },
+      },
+      {
+        event: 'section_draft_ready',
+        data: {
+          section: 'headline',
+          content: MOCK_LINKEDIN_EDITOR_DRAFTS.headline.content,
+          quality_scores: MOCK_LINKEDIN_EDITOR_DRAFTS.headline.quality_scores,
+        },
+      },
+      {
+        event: 'pipeline_gate',
+        data: { gate: 'section_review' },
+      },
+    ]));
+    return;
+  }
+
+  if (path === '/api/linkedin-editor/start' && method === 'POST') {
+    const payload = readRouteJson(route);
+    const sessionId =
+      typeof payload.session_id === 'string' && payload.session_id.length > 0
+        ? payload.session_id
+        : 'mock-linkedin-editor-session';
+    linkedinEditorState?.set(sessionId, 'headline');
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (path === '/api/linkedin-editor/respond' && method === 'POST') {
+    const payload = readRouteJson(route);
+    const sessionId =
+      typeof payload.session_id === 'string' && payload.session_id.length > 0
+        ? payload.session_id
+        : 'mock-linkedin-editor-session';
+    const currentPhase = linkedinEditorState?.get(sessionId) ?? 'headline';
+    const response =
+      payload.response && typeof payload.response === 'object'
+        ? (payload.response as Record<string, unknown>)
+        : {};
+
+    if (response.approved === true) {
+      if (currentPhase === 'headline') {
+        linkedinEditorState?.set(sessionId, 'about');
+      } else {
+        linkedinEditorState?.set(sessionId, 'complete');
+      }
+    }
+
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
   if (/^\/api\/job-finder\/[^/]+\/stream$/.test(path) && method === 'GET') {
     await route.fulfill(buildSSEStreamResponse([
       {
@@ -1110,6 +1251,7 @@ async function fulfillApiRoute(route: Route, linkedinContentState?: Map<string, 
 
 export async function mockWorkspaceApp(page: Page): Promise<void> {
   const linkedinContentState = new Map<string, LinkedInContentStage>();
+  const linkedinEditorState = new Map<string, LinkedInEditorStage>();
 
   await page.addInitScript(({ session }) => {
     const serialized = JSON.stringify(session);
@@ -1212,5 +1354,5 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
   await page.route('**/supabase.co/**', fulfillSupabaseRoute);
   await page.route('**/mock-supabase/**', fulfillSupabaseRoute);
 
-  await page.route('**/api/**', (route) => fulfillApiRoute(route, linkedinContentState));
+  await page.route('**/api/**', (route) => fulfillApiRoute(route, linkedinContentState, linkedinEditorState));
 }
