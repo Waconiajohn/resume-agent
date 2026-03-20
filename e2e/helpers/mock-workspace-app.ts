@@ -518,6 +518,15 @@ Lead with executive operating cadence and cross-functional alignment.
 - Stay specific on executive stakeholder influence.
 `;
 
+const MOCK_JOB_TRACKER_REPORT = `Application Tracker Summary
+
+- Northstar SaaS — strong fit, follow up with the hiring lead this week.
+- ScaleCo — good adjacent fit, but tighten the operations-to-program bridge in your outreach.
+
+Recommended follow-ups:
+1. Send a tailored follow-up note to Northstar SaaS.
+2. Keep ScaleCo warm with one concise value-forward update.`;
+
 const MOCK_RESUME_V2_RESULT = {
   version: 'v2',
   status: 'complete',
@@ -1301,6 +1310,50 @@ async function fulfillApiRoute(
   }
 
   if (path === '/api/interview-prep/respond' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (/^\/api\/job-tracker\/[^/]+\/stream$/.test(path) && method === 'GET') {
+    await route.fulfill(buildSSEStreamResponse([
+      {
+        event: 'stage_start',
+        data: { stage: 'analysis', message: 'Reviewing your applications and scoring follow-up opportunities...' },
+      },
+      {
+        event: 'application_analyzed',
+        data: { company: 'Northstar SaaS', role: 'VP Operations', fit_score: 91 },
+      },
+      {
+        event: 'application_analyzed',
+        data: { company: 'ScaleCo', role: 'Chief of Staff, Operations', fit_score: 84 },
+      },
+      {
+        event: 'follow_up_generated',
+        data: { company: 'Northstar SaaS', role: 'VP Operations', follow_up_type: 'follow_up_email' },
+      },
+      {
+        event: 'analytics_updated',
+        data: { total: 2, average_fit: 88 },
+      },
+      {
+        event: 'tracker_complete',
+        data: {
+          report: MOCK_JOB_TRACKER_REPORT,
+          quality_score: 87,
+          application_count: 2,
+          follow_up_count: 1,
+        },
+      },
+      {
+        event: 'pipeline_complete',
+        data: {},
+      },
+    ]));
+    return;
+  }
+
+  if (path === '/api/job-tracker/start' && method === 'POST') {
     await route.fulfill(buildJsonResponse({ ok: true }));
     return;
   }

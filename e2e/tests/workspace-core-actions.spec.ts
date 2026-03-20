@@ -239,6 +239,33 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Build one clear compensation strategy before you respond/i })).toBeVisible();
   });
 
+  test('Job Search Daily Ops tracker analyzes applications and returns a report', async ({ page }) => {
+    await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+
+    await expect(page.getByRole('heading', { name: 'Application Tracker', exact: true })).toBeVisible();
+    await page
+      .getByPlaceholder(/Paste your resume text here/i)
+      .fill('Executive operator with experience aligning product, support, and operations leaders around one operating cadence.');
+    await page.getByLabel(/Application 1 company/i).fill('Northstar SaaS');
+    await page.getByLabel(/Application 1 role/i).fill('VP Operations');
+    await page
+      .getByLabel(/Application 1 job description/i)
+      .fill('Lead executive alignment, operating cadence, and cross-functional execution across product, support, and delivery leaders.');
+
+    await page.getByRole('button', { name: /Analyze 1 Application/i }).click();
+
+    await expect(page.getByRole('heading', { name: 'Tracker Report', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Northstar SaaS — strong fit/i)).toBeVisible();
+    await expect(page.getByText(/2 apps · 1 follow-ups/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /New Analysis/i }).click();
+    await expect(page.getByRole('heading', { name: 'Application Tracker', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Tracker Report', exact: true })).toHaveCount(0);
+  });
+
   test('Interview Prep generates a prep report from the prep section and returns to the lab', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
