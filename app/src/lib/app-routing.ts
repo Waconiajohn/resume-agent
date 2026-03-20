@@ -38,6 +38,40 @@ export function getLegacyWorkspaceRedirect(search: string): string {
   return room ? `/workspace?room=${room}` : '/workspace';
 }
 
+export function getNormalizedWorkspaceRedirect(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const room = params.get('room');
+
+  if (!room) return null;
+
+  switch (room) {
+    case 'salary-negotiation':
+      params.set('room', 'interview');
+      if (!params.get('focus')) params.set('focus', 'negotiation');
+      return `/workspace?${params.toString()}`;
+    case 'personal-brand':
+      params.set('room', 'career-profile');
+      return `/workspace?${params.toString()}`;
+    case 'thank-you-note':
+      params.set('room', 'interview');
+      if (!params.get('focus')) params.set('focus', 'thank-you');
+      return `/workspace?${params.toString()}`;
+    case 'ninety-day-plan':
+      params.set('room', 'interview');
+      if (!params.get('focus')) params.set('focus', 'plan');
+      return `/workspace?${params.toString()}`;
+    case 'content-calendar':
+    case 'case-study':
+      params.set('room', 'linkedin');
+      return `/workspace?${params.toString()}`;
+    case 'network-intelligence':
+      params.set('room', 'jobs');
+      return `/workspace?${params.toString()}`;
+    default:
+      return null;
+  }
+}
+
 export function getLegacyToolRedirect(slug?: string): string {
   switch (slug) {
     case 'onboarding':

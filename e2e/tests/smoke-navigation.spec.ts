@@ -414,6 +414,26 @@ test.describe('Smoke: major page routes', () => {
     expect(errors).toHaveLength(0);
   });
 
+  test('/resume-builder redirects into Resume Builder', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await mockAllNetworkRequests(page);
+    await page.goto('/resume-builder');
+    await waitForAuthenticatedShell(page);
+    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 8_000 });
+    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
+    expect(errors).toHaveLength(0);
+  });
+
+  test('legacy salary-negotiation room redirects into Interview Prep', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await mockAllNetworkRequests(page);
+    await page.goto('/workspace?room=salary-negotiation');
+    await waitForAuthenticatedShell(page);
+    await expect(page).toHaveURL(/room=interview/, { timeout: 8_000 });
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible({ timeout: 8_000 });
+    expect(errors).toHaveLength(0);
+  });
+
   test('/career-iq redirects into Workspace Home', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await mockAllNetworkRequests(page);

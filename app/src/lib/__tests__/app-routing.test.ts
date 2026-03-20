@@ -3,6 +3,7 @@ import {
   getAppView,
   getLegacyToolRedirect,
   getLegacyWorkspaceRedirect,
+  getNormalizedWorkspaceRedirect,
   getToolSlugFromPath,
   getWorkspaceRoomFromSearch,
   resolveNavigationTarget,
@@ -27,6 +28,9 @@ describe('app-routing', () => {
   it('normalizes legacy redirects and navigation targets', () => {
     expect(getLegacyWorkspaceRedirect('?room=career-profile')).toBe('/workspace?room=career-profile');
     expect(getLegacyWorkspaceRedirect('')).toBe('/workspace');
+    expect(getNormalizedWorkspaceRedirect('?room=salary-negotiation')).toBe('/workspace?room=interview&focus=negotiation');
+    expect(getNormalizedWorkspaceRedirect('?room=personal-brand&job=123')).toBe('/workspace?room=career-profile&job=123');
+    expect(getNormalizedWorkspaceRedirect('?room=resume')).toBeNull();
     expect(getLegacyToolRedirect('linkedin')).toBe('/workspace?room=linkedin');
     expect(getLegacyToolRedirect('cover-letter')).toBe('/workspace?room=resume&focus=cover-letter');
     expect(resolveNavigationTarget('workspace')).toBe('/workspace');

@@ -24,6 +24,7 @@ import { trackProductEvent } from '@/lib/product-telemetry';
 import {
   getAppView,
   getLegacyToolRedirect,
+  getNormalizedWorkspaceRedirect,
   getLegacyWorkspaceRedirect,
   getWorkspaceRoomFromSearch,
   resolveNavigationTarget,
@@ -102,6 +103,7 @@ export default function App() {
 
   const currentView = getAppView(location.pathname);
   const workspaceRoom = getWorkspaceRoomFromSearch(location.search);
+  const normalizedWorkspaceRedirect = getNormalizedWorkspaceRedirect(location.search);
   const hasLiveWorkspaceState = Boolean(
     currentSession
     && (
@@ -564,31 +566,35 @@ export default function App() {
               />
               <Route
                 path="/workspace"
-                element={(
-                  <CareerIQScreen
-                    userName={displayName}
-                    accessToken={accessToken}
-                    onNavigate={navigateTo}
-                    sessions={sessions}
-                    resumes={resumes}
-                    sessionsLoading={sessionLoading}
-                    resumesLoading={resumesLoading}
-                    onNewSession={handleNewSession}
-                    onResumeSession={handleResumeSession}
-                    initialRoom={workspaceRoom}
-                    onLoadSessions={listSessions}
-                    onLoadResumes={listResumes}
-                    onDeleteSession={handleDeleteSession}
-                    onGetSessionResume={getSessionResume}
-                    onGetSessionCoverLetter={getSessionCoverLetter}
-                    onGetDefaultResume={getDefaultResume}
-                    onGetResumeById={getResumeById}
-                    onUpdateMasterResume={updateMasterResume}
-                    onGetResumeHistory={getResumeHistory}
-                    onSetDefaultResume={handleSetDefaultBaseResume}
-                    onDeleteResume={handleDeleteBaseResume}
-                  />
-                )}
+                element={
+                  normalizedWorkspaceRedirect ? (
+                    <Navigate to={normalizedWorkspaceRedirect} replace />
+                  ) : (
+                    <CareerIQScreen
+                      userName={displayName}
+                      accessToken={accessToken}
+                      onNavigate={navigateTo}
+                      sessions={sessions}
+                      resumes={resumes}
+                      sessionsLoading={sessionLoading}
+                      resumesLoading={resumesLoading}
+                      onNewSession={handleNewSession}
+                      onResumeSession={handleResumeSession}
+                      initialRoom={workspaceRoom}
+                      onLoadSessions={listSessions}
+                      onLoadResumes={listResumes}
+                      onDeleteSession={handleDeleteSession}
+                      onGetSessionResume={getSessionResume}
+                      onGetSessionCoverLetter={getSessionCoverLetter}
+                      onGetDefaultResume={getDefaultResume}
+                      onGetResumeById={getResumeById}
+                      onUpdateMasterResume={updateMasterResume}
+                      onGetResumeHistory={getResumeHistory}
+                      onSetDefaultResume={handleSetDefaultBaseResume}
+                      onDeleteResume={handleDeleteBaseResume}
+                    />
+                  )
+                }
               />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<Navigate to="/workspace" replace />} />
