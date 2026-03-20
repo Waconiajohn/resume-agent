@@ -62,6 +62,7 @@ export default defineConfig({
         /workspace-responsive-audit\.spec\.ts/,
         /workspace-guided-flows\.spec\.ts/,
         /workspace-core-actions\.spec\.ts/,
+        /chat-drawer\.spec\.ts/,
       ],
       use: {
         ...devices['Desktop Chrome'],

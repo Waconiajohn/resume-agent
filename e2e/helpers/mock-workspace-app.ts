@@ -1325,6 +1325,36 @@ async function fulfillApiRoute(
     return;
   }
 
+  if (path === '/api/coach/conversation' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      messages: [],
+      mode: 'guided',
+      turn_count: 0,
+    }));
+    return;
+  }
+
+  if (path === '/api/coach/message' && method === 'POST') {
+    const body = route.request().postDataJSON() as { message?: string } | null;
+    const prompt = typeof body?.message === 'string' ? body.message.trim() : '';
+    const response = prompt.length > 0
+      ? `You’re on the right track. Next, keep the focus on ${prompt.toLowerCase()} and tighten one concrete proof point.`
+      : 'You’re on the right track. Tighten one concrete proof point next.';
+
+    await route.fulfill(buildJsonResponse({
+      response,
+      turn_count: 1,
+      usage: { input_tokens: 42, output_tokens: 24 },
+      events: [],
+    }));
+    return;
+  }
+
+  if (path === '/api/coach/mode' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
   if (path.startsWith('/api/momentum') && method === 'GET') {
     await route.fulfill(buildJsonResponse({ summary: null, nudges: [] }));
     return;
