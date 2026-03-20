@@ -17,39 +17,9 @@ import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import type { PipelineCard } from './ZoneYourPipeline';
-
-const VALID_ROOMS = new Set<string>([
-  'dashboard',
-  'career-profile',
-  'resume',
-  'linkedin',
-  'jobs',
-  'networking',
-  'interview',
-  'salary-negotiation',
-  'executive-bio',
-  'financial',
-  'learning',
-]);
-
-const LEGACY_REDIRECTS: Record<string, CareerIQRoom> = {
-  'content-calendar': 'linkedin',
-  'thank-you-note': 'interview',
-  'case-study': 'linkedin',
-  'network-intelligence': 'jobs',
-  'personal-brand': 'career-profile',
-  'ninety-day-plan': 'interview',
-};
+import { toExposedWorkspaceRoom } from './workspaceRoomAccess';
 
 const COMING_SOON_ROOMS = new Set<string>();
-
-function toValidRoom(value: string | undefined): CareerIQRoom {
-  if (!value) return 'dashboard';
-  const redirect = LEGACY_REDIRECTS[value];
-  if (redirect) return redirect;
-  if (VALID_ROOMS.has(value)) return value as CareerIQRoom;
-  return 'dashboard';
-}
 
 const MOCK_PIPELINE_CARDS: PipelineCard[] = [
   { id: 'mp-1', company: 'Google', role: 'Sr. Program Manager', stage: 'Interviewing', daysSinceMovement: 1, hasNewActivity: true, interviewRound: 2, scheduledDate: new Date(Date.now() + 3 * 86400000).toISOString() },
@@ -132,7 +102,7 @@ export function CareerIQScreen({
   onDeleteResume,
 }: CareerIQScreenProps) {
   const location = useLocation();
-  const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toValidRoom(initialRoom));
+  const [activeRoom, setActiveRoom] = useState<CareerIQRoom>(toExposedWorkspaceRoom(initialRoom));
   const {
     profile,
     story,
@@ -175,7 +145,7 @@ export function CareerIQScreen({
 
   useEffect(() => {
     if (initialRoom) {
-      setActiveRoom(toValidRoom(initialRoom));
+      setActiveRoom(toExposedWorkspaceRoom(initialRoom));
     }
   }, [initialRoom]);
 
@@ -484,7 +454,7 @@ export function CareerIQScreen({
           <Suspense fallback={null}>
             <CoachDrawer
               userName={userName}
-              onNavigate={(room) => handleRoomNavigate(toValidRoom(room))}
+              onNavigate={(room) => handleRoomNavigate(toExposedWorkspaceRoom(room))}
               isOpen={coachDrawerOpen}
               onOpen={() => setCoachDrawerOpen(true)}
               onClose={() => setCoachDrawerOpen(false)}
@@ -530,7 +500,7 @@ export function CareerIQScreen({
         <Suspense fallback={null}>
           <CoachDrawer
             userName={userName}
-            onNavigate={(room) => handleRoomNavigate(toValidRoom(room))}
+            onNavigate={(room) => handleRoomNavigate(toExposedWorkspaceRoom(room))}
             isOpen={coachDrawerOpen}
             onOpen={() => setCoachDrawerOpen(true)}
             onClose={() => setCoachDrawerOpen(false)}
@@ -563,7 +533,7 @@ export function CareerIQScreen({
       <Suspense fallback={null}>
         <CoachDrawer
           userName={userName}
-          onNavigate={(room) => handleRoomNavigate(toValidRoom(room))}
+          onNavigate={(room) => handleRoomNavigate(toExposedWorkspaceRoom(room))}
           isOpen={coachDrawerOpen}
           onOpen={() => setCoachDrawerOpen(true)}
           onClose={() => setCoachDrawerOpen(false)}

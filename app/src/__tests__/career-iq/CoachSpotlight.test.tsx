@@ -86,6 +86,25 @@ describe('CoachSpotlight', () => {
     expect(onOpenCoach).toHaveBeenCalledTimes(1);
   });
 
+  it('routes hidden room recommendations back to the coach instead of opening weak products', () => {
+    const onNavigateRoom = vi.fn();
+    const onOpenCoach = vi.fn();
+
+    render(
+      <CoachSpotlight
+        userName="Jane Smith"
+        recommendation={{ ...MOCK_RECOMMENDATION, room: 'executive-bio' }}
+        loading={false}
+        onNavigateRoom={onNavigateRoom}
+        onOpenCoach={onOpenCoach}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Talk to coach'));
+    expect(onNavigateRoom).not.toHaveBeenCalled();
+    expect(onOpenCoach).toHaveBeenCalledTimes(1);
+  });
+
   it('"Why?" button toggles rationale visibility', () => {
     render(
       <CoachSpotlight userName="Jane Smith" recommendation={MOCK_RECOMMENDATION} loading={false} />,

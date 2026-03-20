@@ -11,20 +11,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import type { CareerIQRoom } from './Sidebar';
-
-const VALID_ROOMS: readonly CareerIQRoom[] = [
-  'dashboard', 'career-profile', 'resume', 'linkedin', 'jobs', 'networking',
-  'interview', 'salary-negotiation', 'executive-bio',
-  'financial', 'learning',
-  // Legacy IDs still accepted for redirect
-  'personal-brand', 'ninety-day-plan',
-  'content-calendar', 'case-study', 'thank-you-note', 'network-intelligence',
-];
-
-function toValidRoom(value: string | null): CareerIQRoom | null {
-  if (!value) return null;
-  return (VALID_ROOMS as readonly string[]).includes(value) ? (value as CareerIQRoom) : null;
-}
+import { isExposedWorkspaceRoom } from './workspaceRoomAccess';
 
 interface CoachSpotlightProps {
   userName: string;
@@ -61,9 +48,8 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
   if (!recommendation) return null;
 
   const handleCTA = () => {
-    const validRoom = toValidRoom(recommendation.room);
-    if (validRoom) {
-      onNavigateRoom?.(validRoom);
+    if (isExposedWorkspaceRoom(recommendation.room)) {
+      onNavigateRoom?.(recommendation.room);
     } else {
       onOpenCoach?.();
     }
@@ -99,9 +85,9 @@ export function CoachSpotlight({ userName, recommendation, loading, onNavigateRo
               type="button"
               onClick={handleCTA}
               className="flex items-center gap-1.5 text-[12px] font-medium text-indigo-300 hover:text-indigo-200 transition-colors"
-              aria-label={recommendation.room ? `Go to ${recommendation.room.replace(/-/g, ' ')}` : 'Open AI Coach'}
+              aria-label={isExposedWorkspaceRoom(recommendation.room) ? `Go to ${recommendation.room.replace(/-/g, ' ')}` : 'Open AI Coach'}
             >
-              {recommendation.room ? 'Go there' : 'Talk to coach'}
+              {isExposedWorkspaceRoom(recommendation.room) ? 'Go there' : 'Talk to coach'}
               <ArrowRight size={13} />
             </button>
             <button
