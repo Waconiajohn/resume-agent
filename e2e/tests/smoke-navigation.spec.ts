@@ -587,6 +587,25 @@ test.describe('Smoke: header navigation', () => {
     await expect(page.getByPlaceholder('Last')).toHaveCount(0);
   });
 
+  test('signed-in header name editor saves cleanly', async ({ page }) => {
+    await mockAllNetworkRequests(page);
+    await page.goto('/app');
+    await waitForAuthenticatedShell(page);
+
+    await page.getByTitle('Click to edit your name').click();
+    await expect(page.getByPlaceholder('First')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByPlaceholder('Last')).toBeVisible({ timeout: 5_000 });
+
+    await page.getByPlaceholder('First').fill('Jordan');
+    await page.getByPlaceholder('Last').fill('Schrup');
+    await page.getByRole('button', { name: /^Save$/i }).click();
+
+    await expect(page.getByPlaceholder('First')).toHaveCount(0);
+    await expect(page.getByPlaceholder('Last')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Workspace$/i })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /^Billing$/i })).toBeVisible({ timeout: 5_000 });
+  });
+
   test('mobile menu routes into Resume Builder and Billing without crash', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockAllNetworkRequests(page);
@@ -607,6 +626,21 @@ test.describe('Smoke: header navigation', () => {
     await page.getByRole('button', { name: /^Billing$/i }).click();
     await expect(page).toHaveURL(/\/billing/, { timeout: 5_000 });
     await expect(page.getByText('Usage this month')).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('mobile menu sign out returns to the sales page', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockAllNetworkRequests(page);
+    await page.goto('/app');
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
+    await expect(page.getByRole('button', { name: /Open menu/i })).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole('button', { name: /Open menu/i }).click();
+    await expect(page.getByRole('dialog', { name: /Navigation menu/i })).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: /^Sign out$/i }).click();
+    await expect(page).toHaveURL(/\/sales$/, { timeout: 8_000 });
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 8_000 });
   });
 
   test('sign out returns to the sales page', async ({ page }) => {

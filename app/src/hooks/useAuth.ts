@@ -84,6 +84,9 @@ export function useAuth() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    if (!mountedRef.current) return;
+    setSession(null);
+    setUser(null);
   };
 
   const displayName = user?.user_metadata?.full_name
