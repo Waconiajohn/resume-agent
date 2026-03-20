@@ -708,6 +708,63 @@ test.describe('Smoke: header navigation', () => {
     });
   });
 
+  test('billing retry recovers from a temporary subscription load failure', async ({ page }) => {
+    let requestCount = 0;
+    await mockAllNetworkRequests(page);
+    await page.route('**/api/billing/subscription', async (route) => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Temporarily unavailable' }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(DEFAULT_BILLING_RESPONSE),
+      });
+    });
+
+    await page.goto('/billing');
+    await waitForAuthenticatedShell(page);
+
+    await expect(page.getByText('Temporarily unavailable')).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('button', { name: /^Retry$/i }).click();
+
+    await expect(page.getByText('Usage this month')).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText('Temporarily unavailable')).toHaveCount(0);
+    await expect.poll(() => requestCount >= 2).toBe(true);
+  });
+
+  test('billing refresh reloads the current subscription view', async ({ page }) => {
+    let requestCount = 0;
+    await mockAllNetworkRequests(page);
+    await page.route('**/api/billing/subscription', async (route) => {
+      requestCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(DEFAULT_BILLING_RESPONSE),
+      });
+    });
+
+    await page.goto('/billing');
+    await waitForAuthenticatedShell(page);
+
+    await expect(page.getByText('Usage this month')).toBeVisible({ timeout: 8_000 });
+    const initialRequestCount = requestCount;
+    expect(initialRequestCount).toBeGreaterThanOrEqual(1);
+
+    await page.getByRole('button', { name: /^Refresh$/i }).click();
+
+    await expect(page.getByText('Usage this month')).toBeVisible({ timeout: 8_000 });
+    await expect.poll(() => requestCount > initialRequestCount).toBe(true);
+  });
+
   test('browser back from Resume Builder returns to Workspace Home', async ({ page }) => {
     await mockAllNetworkRequests(page);
     await page.goto('/app');
