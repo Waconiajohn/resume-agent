@@ -2,51 +2,21 @@ import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { PRODUCT_CATALOG } from '@/types/platform';
 import type { ProductDefinition } from '@/types/platform';
-import { WeeklyScheduleStrip } from '@/components/career-iq/WeeklyScheduleStrip';
 
 function isRealName(name: string): boolean {
   return name.length > 0 && !name.includes('@') && name !== 'there';
 }
 
-/* ─── Theme Groups ─── */
-
-interface ToolGroup {
-  label: string;
-  icon: string;
-  productIds: string[];
-}
-
-type GroupTone = {
-  shell: string;
-  headerChip: string;
-  countChip: string;
-};
-
-const TOOL_GROUPS: ToolGroup[] = [
-  {
-    label: 'Your Foundation',
-    icon: '🏗️',
-    productIds: ['onboarding-assessment', 'resume-strategist', 'cover-letter'],
-  },
-  {
-    label: 'LinkedIn & Brand',
-    icon: '🔗',
-    productIds: ['linkedin-studio', 'executive-documents'],
-  },
-  {
-    label: 'Job Search & Networking',
-    icon: '🎯',
-    productIds: ['job-command-center', 'smart-referrals', 'job-applier'],
-  },
-  {
-    label: 'Interview & Offers',
-    icon: '🎤',
-    productIds: ['interview-lab', 'salary-negotiation', 'financial-wellness'],
-  },
-];
-
 const START_HERE_IDS = ['onboarding-assessment', 'resume-strategist', 'job-command-center'];
-const MOST_USED_IDS = ['linkedin-studio', 'interview-lab', 'salary-negotiation'];
+const CONTINUE_WITH_IDS = ['linkedin-studio', 'interview-lab'];
+const SECONDARY_TOOLS = [
+  { id: 'cover-letter', belongsIn: 'Resume Builder' },
+  { id: 'salary-negotiation', belongsIn: 'Job Workspace when you reach offer stage' },
+  { id: 'executive-documents', belongsIn: 'LinkedIn Studio and brand work' },
+  { id: 'smart-referrals', belongsIn: 'Job Command Center' },
+  { id: 'financial-wellness', belongsIn: 'later-stage planning, not day-one setup' },
+  { id: 'job-applier', belongsIn: 'after you already have a tailored resume' },
+];
 const CAREER_PROFILE_POWERED_IDS = new Set([
   'resume-strategist',
   'linkedin-studio',
@@ -55,36 +25,6 @@ const CAREER_PROFILE_POWERED_IDS = new Set([
   'salary-negotiation',
   'executive-documents',
 ]);
-
-function getGroupTone(label: string): GroupTone {
-  switch (label) {
-    case 'Your Foundation':
-      return {
-        shell: 'border-[#98b3ff]/18 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
-        headerChip: 'border-[#98b3ff]/18 bg-[#98b3ff]/[0.08] text-[#d6e0ff]',
-        countChip: 'border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] text-[#c9d7ff]/78',
-      };
-    case 'LinkedIn & Brand':
-      return {
-        shell: 'border-[#d7b8f0]/18 bg-[radial-gradient(circle_at_top_left,rgba(215,184,240,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
-        headerChip: 'border-[#d7b8f0]/18 bg-[#d7b8f0]/[0.08] text-[#f0dcff]',
-        countChip: 'border-[#d7b8f0]/16 bg-[#d7b8f0]/[0.06] text-[#f0dcff]/78',
-      };
-    case 'Job Search & Networking':
-      return {
-        shell: 'border-[#f0d99f]/18 bg-[radial-gradient(circle_at_top_left,rgba(240,217,159,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
-        headerChip: 'border-[#f0d99f]/18 bg-[#f0d99f]/[0.08] text-[#ffe8b8]',
-        countChip: 'border-[#f0d99f]/16 bg-[#f0d99f]/[0.06] text-[#ffe8b8]/78',
-      };
-    case 'Interview & Offers':
-    default:
-      return {
-        shell: 'border-[#b5dec2]/18 bg-[radial-gradient(circle_at_top_left,rgba(181,222,194,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))]',
-        headerChip: 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.08] text-[#d8f0df]',
-        countChip: 'border-[#b5dec2]/16 bg-[#b5dec2]/[0.06] text-[#d8f0df]/78',
-      };
-  }
-}
 
 /* ─── Props ─── */
 
@@ -215,54 +155,19 @@ function FeaturedToolCard({
   );
 }
 
-/* ─── Theme Group Card ─── */
-
-function ThemeGroupCard({ group, onNavigate }: { group: ToolGroup; onNavigate: (route: string) => void }) {
-  const tone = getGroupTone(group.label);
-  const products = group.productIds
-    .map(id => {
-      const product = PRODUCT_CATALOG.find(p => p.id === id);
-      if (!product && import.meta.env.DEV) {
-        console.warn(`[TOOL_GROUPS] Product ID "${id}" in group "${group.label}" not found in PRODUCT_CATALOG`);
-      }
-      return product;
-    })
-    .filter((p): p is ProductDefinition => p !== undefined)
-    .sort((a, b) => {
-      const statusOrder = { active: 0, beta: 1, coming_soon: 2 };
-      return (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3);
-    });
-
-  return (
-    <div className="flex flex-col">
-      <GlassCard className={cn('p-4 flex-1', tone.shell)}>
-        <div className="mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-3">
-          <span className={cn('rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em]', tone.headerChip)}>
-            {group.icon} {group.label}
-          </span>
-          <h3 className="sr-only">{group.label}</h3>
-          <span className={cn('ml-auto rounded-full border px-2.5 py-1 text-[10px]', tone.countChip)}>
-            {products.length} tools
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3">
-          {products.map(product => (
-            <ProductCard key={product.id} product={product} onNavigate={onNavigate} />
-          ))}
-        </div>
-      </GlassCard>
-    </div>
-  );
-}
-
 /* ─── Main Component ─── */
 
 export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: ProductCatalogGridProps) {
   const firstName = userName?.split(' ')[0] || '';
   const coachLabel = isRealName(firstName) ? `AI ${firstName}` : 'AI Coach';
   const startHereProducts = getProductsByIds(START_HERE_IDS);
-  const mostUsedProducts = getProductsByIds(MOST_USED_IDS);
+  const continueWithProducts = getProductsByIds(CONTINUE_WITH_IDS);
+  const secondaryTools = SECONDARY_TOOLS
+    .map((item) => ({
+      product: PRODUCT_CATALOG.find((product) => product.id === item.id),
+      belongsIn: item.belongsIn,
+    }))
+    .filter((item): item is { product: ProductDefinition; belongsIn: string } => Boolean(item.product));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -280,14 +185,14 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+      <div className="grid gap-6">
         <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.18),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5">
           <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
             Start Here
           </div>
           <h2 className="mt-2 text-lg font-semibold text-white/88">Use the platform in this order</h2>
           <p className="mt-2 text-sm leading-relaxed text-white/54">
-            Build the shared story first, tailor it to a live opportunity second, then manage the job search around that work. This keeps the tools feeling connected instead of random.
+            We are simplifying the surface on purpose. Start with the shared story, tailor it to a real opportunity, then manage the search around that work.
           </p>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -304,68 +209,41 @@ export function ProductCatalogGrid({ onNavigate, onOpenCoach, userName }: Produc
 
         <GlassCard className="border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-5">
           <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
-            Most Used
+            Continue Your Search
           </div>
-          <h2 className="mt-2 text-lg font-semibold text-white/88">The tools people come back to most</h2>
+          <h2 className="mt-2 text-lg font-semibold text-white/88">Only the next two workspaces stay front and center</h2>
           <p className="mt-2 text-sm leading-relaxed text-white/54">
-            Once Career Profile is in place, these are the highest-value follow-on tools for visibility, preparation, and offer confidence.
+            Once your profile and resume are in place, the day-to-day work narrows to visibility and interview preparation. Everything else should appear inside the workflow where it belongs.
           </p>
 
-          <div className="mt-5 space-y-3">
-            {mostUsedProducts.map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => onNavigate(product.route)}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-black/10 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="text-xl" aria-hidden="true">{product.icon}</span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white/86">{product.name}</div>
-                    <div className="mt-1 text-xs leading-relaxed text-white/50">{product.shortDescription}</div>
-                    {CAREER_PROFILE_POWERED_IDS.has(product.id) && (
-                      <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#c9d7ff]">
-                        Uses Career Profile
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <span className="text-xs text-[#98b3ff]">{product.ctaLabel}</span>
-              </button>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {continueWithProducts.map((product) => (
+              <ProductCard key={product.id} product={product} onNavigate={onNavigate} />
             ))}
           </div>
-        </GlassCard>
-      </div>
 
-      <div className="mt-10">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-white/86">Full Tool Catalog</h2>
-            <p className="mt-1 text-sm text-white/46">
-              Browse the whole platform by area once you know what you need.
+          <div className="mt-6 rounded-2xl border border-white/[0.06] bg-black/10 p-4">
+            <div className="text-sm font-semibold text-white/82">Later-stage and secondary tools are still available, just not as separate starting points.</div>
+            <p className="mt-2 text-sm leading-relaxed text-white/48">
+              We are moving these behind the workflow where they make sense so the app stops feeling like a wall of random agents.
             </p>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {secondaryTools.map(({ product, belongsIn }) => (
+                <div
+                  key={product.id}
+                  className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2"
+                >
+                  <div className="text-sm font-medium text-white/82">{product.name}</div>
+                  <div className="mt-1 text-xs text-white/46">Open this from {belongsIn}.</div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {TOOL_GROUPS.map(group => (
-            <ThemeGroupCard key={group.label} group={group} onNavigate={onNavigate} />
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-10 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-        <div className="mb-3">
-          <h2 className="text-base font-semibold text-white/86">Live Sessions</h2>
-          <p className="mt-1 text-sm text-white/46">
-            Ongoing programming sits below the core tools so it does not crowd the main product choices.
-          </p>
-        </div>
-        <WeeklyScheduleStrip />
+        </GlassCard>
       </div>
     </div>
   );
 }
 
-export { TOOL_GROUPS };
+export { CONTINUE_WITH_IDS };
