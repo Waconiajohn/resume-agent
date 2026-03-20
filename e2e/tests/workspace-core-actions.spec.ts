@@ -54,6 +54,24 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Something went wrong/i })).toHaveCount(0);
   });
 
+  test('LinkedIn Post Composer writes and approves a post', async ({ page }) => {
+    await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /Write a Post/i }).click();
+
+    await expect(page.getByRole('heading', { name: /Choose a Topic/i })).toBeVisible();
+    await page.getByRole('button', { name: /The operating cadence most leadership teams skip/i }).click();
+
+    await expect(page.getByRole('heading', { name: /Post Draft/i })).toBeVisible();
+    await expect(page.getByText(/The meetings were happening, but the business still was not moving/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Approve Post/i }).click();
+
+    await expect(page.getByRole('heading', { name: /Your Post is Ready/i })).toBeVisible();
+    await expect(page.getByText(/Saved to Library/i)).toBeVisible();
+  });
+
   test('Job Search runs Job Finder and keeps Radar and Daily Ops navigable', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
@@ -86,6 +104,26 @@ test.describe('workspace core room actions', () => {
 
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
     await expect(page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i })).toBeVisible();
+  });
+
+  test('Job Search pipeline add-application dialog opens and submits cleanly', async ({ page }) => {
+    await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Add Application/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /Add Application/i }).click();
+    await expect(page.getByRole('dialog', { name: /Add opportunity/i })).toBeVisible();
+
+    await page.getByPlaceholder('e.g. VP Operations').fill('Director of Program Management');
+    await page.getByPlaceholder('e.g. Acme Corp').fill('SignalWorks');
+    await page.getByPlaceholder('https://...').fill('https://example.com/jobs/pm-director');
+    await page.getByPlaceholder('Any notes about this role...').fill('Referral lead from former VP Product.');
+
+    await page.getByRole('button', { name: /Add to Pipeline/i }).click();
+
+    await expect(page.getByRole('dialog', { name: /Add opportunity/i })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /Application Pipeline/i })).toBeVisible();
   });
 
   test('Interview Prep section switching keeps practice, documents, and follow-up actions reachable', async ({ page }) => {

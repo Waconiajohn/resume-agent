@@ -333,6 +333,46 @@ const MOCK_LINKEDIN_EXPERIENCE_ENTRIES = [
   },
 ] as const;
 
+const MOCK_LINKEDIN_CONTENT_TOPICS = [
+  {
+    id: 'topic-ops-cadence',
+    topic: 'The operating cadence most leadership teams skip',
+    hook: 'The meetings were happening, but the business still was not moving.',
+    rationale: 'This shows operating discipline without sounding generic.',
+    expertise_area: 'Executive Operations',
+    evidence_refs: ['Operating cadence reset'],
+  },
+  {
+    id: 'topic-cross-functional',
+    topic: 'What strong cross-functional leadership actually looks like',
+    hook: 'Alignment is not a slide. It is a working system.',
+    rationale: 'This reinforces executive alignment and systems thinking.',
+    expertise_area: 'Cross-functional Leadership',
+    evidence_refs: ['Leadership alignment framework'],
+  },
+] as const;
+
+const MOCK_LINKEDIN_CONTENT_DRAFT = {
+  post: `The meetings were happening, but the business still was not moving.
+
+That was the signal we did not need more status updates. We needed a real operating cadence.
+
+Once product, operations, and support were working from the same weekly decisions and owners, execution got faster and the noise dropped.
+
+Alignment is not a slide. It is a system leaders maintain together.`,
+  hashtags: ['OperationsLeadership', 'ExecOps', 'Leadership'],
+  quality_scores: {
+    authenticity: 89,
+    engagement_potential: 81,
+    keyword_density: 74,
+  },
+  hook_score: 78,
+  hook_type: 'pattern_interrupt',
+  hook_assessment: 'The opening creates curiosity without overpromising.',
+} as const;
+
+type LinkedInContentStage = 'topics' | 'draft' | 'complete';
+
 const MOCK_JOB_FINDER_SEARCHES = [
   { platform: 'LinkedIn', query: '"VP Operations" OR "COO" AND ("operating cadence" OR "cross-functional")' },
   { platform: 'Indeed', query: '"VP Operations" "executive stakeholder leadership"' },
@@ -716,7 +756,19 @@ function buildSSEStreamResponse(events: SSEEvent[]) {
   };
 }
 
-async function fulfillApiRoute(route: Route) {
+function readRouteJson(route: Route): Record<string, unknown> {
+  const raw = route.request().postData();
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function fulfillApiRoute(route: Route, linkedinContentState?: Map<string, LinkedInContentStage>) {
   const requestUrl = new URL(route.request().url());
   const path = requestUrl.pathname;
   const method = route.request().method();
@@ -814,6 +866,93 @@ async function fulfillApiRoute(route: Route) {
   }
 
   if (path === '/api/linkedin-optimizer/start' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (/^\/api\/linkedin-content\/[^/]+\/stream$/.test(path) && method === 'GET') {
+    const sessionId = path.split('/')[3] ?? 'mock-linkedin-content-session';
+    const phase = linkedinContentState?.get(sessionId) ?? 'topics';
+
+    if (phase === 'draft') {
+      await route.fulfill(buildSSEStreamResponse([
+        {
+          event: 'stage_start',
+          data: { stage: 'drafting', message: 'Writing a draft from your selected topic...' },
+        },
+        {
+          event: 'post_draft_ready',
+          data: MOCK_LINKEDIN_CONTENT_DRAFT,
+        },
+        {
+          event: 'pipeline_gate',
+          data: { gate: 'post_review' },
+        },
+      ]));
+      return;
+    }
+
+    if (phase === 'complete') {
+      await route.fulfill(buildSSEStreamResponse([
+        {
+          event: 'content_complete',
+          data: MOCK_LINKEDIN_CONTENT_DRAFT,
+        },
+        {
+          event: 'pipeline_complete',
+          data: {},
+        },
+      ]));
+      return;
+    }
+
+    await route.fulfill(buildSSEStreamResponse([
+      {
+        event: 'stage_start',
+        data: { stage: 'topic_generation', message: 'Finding post angles from your positioning...' },
+      },
+      {
+        event: 'topics_ready',
+        data: { topics: MOCK_LINKEDIN_CONTENT_TOPICS },
+      },
+      {
+        event: 'pipeline_gate',
+        data: { gate: 'topic_selection' },
+      },
+    ]));
+    return;
+  }
+
+  if (path === '/api/linkedin-content/start' && method === 'POST') {
+    const payload = readRouteJson(route);
+    const sessionId =
+      typeof payload.session_id === 'string' && payload.session_id.length > 0
+        ? payload.session_id
+        : 'mock-linkedin-content-session';
+    linkedinContentState?.set(sessionId, 'topics');
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (path === '/api/linkedin-content/respond' && method === 'POST') {
+    const payload = readRouteJson(route);
+    const sessionId =
+      typeof payload.session_id === 'string' && payload.session_id.length > 0
+        ? payload.session_id
+        : 'mock-linkedin-content-session';
+    const response =
+      payload.response && typeof payload.response === 'object'
+        ? (payload.response as Record<string, unknown>)
+        : {};
+
+    if (typeof response.topic_id === 'string' && response.topic_id.length > 0) {
+      linkedinContentState?.set(sessionId, 'draft');
+    } else if (response.approved === true) {
+      linkedinContentState?.set(sessionId, 'complete');
+    } else {
+      linkedinContentState?.set(sessionId, 'draft');
+    }
+
     await route.fulfill(buildJsonResponse({ ok: true }));
     return;
   }
@@ -970,6 +1109,8 @@ async function fulfillApiRoute(route: Route) {
 }
 
 export async function mockWorkspaceApp(page: Page): Promise<void> {
+  const linkedinContentState = new Map<string, LinkedInContentStage>();
+
   await page.addInitScript(({ session }) => {
     const serialized = JSON.stringify(session);
     const originalGetItem = Storage.prototype.getItem;
@@ -1071,5 +1212,5 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
   await page.route('**/supabase.co/**', fulfillSupabaseRoute);
   await page.route('**/mock-supabase/**', fulfillSupabaseRoute);
 
-  await page.route('**/api/**', fulfillApiRoute);
+  await page.route('**/api/**', (route) => fulfillApiRoute(route, linkedinContentState));
 }
