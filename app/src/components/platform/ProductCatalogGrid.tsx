@@ -12,10 +12,6 @@ const CONTINUE_WITH_IDS = ['linkedin-studio', 'interview-lab'];
 const SECONDARY_TOOLS = [
   { id: 'cover-letter', belongsIn: 'Resume Builder' },
   { id: 'salary-negotiation', belongsIn: 'Job Workspace when you reach offer stage' },
-  { id: 'executive-documents', belongsIn: 'LinkedIn Studio and brand work' },
-  { id: 'smart-referrals', belongsIn: 'Job Command Center' },
-  { id: 'financial-wellness', belongsIn: 'later-stage planning, not day-one setup' },
-  { id: 'job-applier', belongsIn: 'after you already have a tailored resume' },
 ];
 const CAREER_PROFILE_POWERED_IDS = new Set([
   'resume-strategist',

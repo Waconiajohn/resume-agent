@@ -73,11 +73,10 @@ export const FF_REDIS_RATE_LIMIT = envBool('FF_REDIS_RATE_LIMIT', false);
 /**
  * FF_COVER_LETTER — Enable the Cover Letter product routes.
  *
- * When false (default), /api/cover-letter/* returns 404.
- * Frontend UI available at /cover-letter (Sprint 18).
- * Set FF_COVER_LETTER=true in server/.env to activate.
+ * Enabled by default because Cover Letter is a core workflow product.
+ * Set FF_COVER_LETTER=false in server/.env to deactivate.
  */
-export const FF_COVER_LETTER = envBool('FF_COVER_LETTER', false);
+export const FF_COVER_LETTER = envBool('FF_COVER_LETTER', true);
 
 /**
  * FF_NETWORK_INTELLIGENCE — Enable the Network Intelligence routes.
@@ -130,10 +129,10 @@ export const FF_JOB_TRACKER = envBool('FF_JOB_TRACKER', false);
 /**
  * FF_SALARY_NEGOTIATION — Enable the Salary Negotiation Agent (#15) routes.
  *
- * When false (default), /api/salary-negotiation/* returns 404.
- * Set FF_SALARY_NEGOTIATION=true in server/.env to activate.
+ * Enabled by default because Salary Negotiation is part of the core job-workspace flow.
+ * Set FF_SALARY_NEGOTIATION=false in server/.env to deactivate.
  */
-export const FF_SALARY_NEGOTIATION = envBool('FF_SALARY_NEGOTIATION', false);
+export const FF_SALARY_NEGOTIATION = envBool('FF_SALARY_NEGOTIATION', true);
 
 /**
  * FF_EXECUTIVE_BIO — Enable the Executive Bio Agent (#16) routes.

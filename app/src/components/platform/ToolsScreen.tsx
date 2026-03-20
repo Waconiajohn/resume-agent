@@ -2,6 +2,16 @@ import { ProductCatalogGrid } from './ProductCatalogGrid';
 import { ProductLandingPage } from './ProductLandingPage';
 import { PRODUCT_CATALOG } from '@/types/platform';
 
+const EXPOSED_TOOL_SLUGS = new Set([
+  'onboarding',
+  'resume',
+  'cover-letter',
+  'linkedin',
+  'jobs',
+  'interview',
+  'salary-negotiation',
+]);
+
 interface ToolsScreenProps {
   slug?: string;
   onNavigate: (route: string) => void;
@@ -11,7 +21,9 @@ interface ToolsScreenProps {
 
 export function ToolsScreen({ slug, onNavigate, onOpenCoach, userName }: ToolsScreenProps) {
   if (slug) {
-    const product = PRODUCT_CATALOG.find((p) => p.slug === slug);
+    const product = EXPOSED_TOOL_SLUGS.has(slug)
+      ? PRODUCT_CATALOG.find((p) => p.slug === slug)
+      : undefined;
 
     if (!product) {
       return (

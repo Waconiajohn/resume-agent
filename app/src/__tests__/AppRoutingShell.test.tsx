@@ -193,4 +193,14 @@ describe('App routing shell', () => {
 
     expect(await screen.findByText('Tools slug: linkedin')).toBeInTheDocument();
   });
+
+  it('routes the cover letter screen through the main app shell', async () => {
+    render(
+      <MemoryRouter initialEntries={['/cover-letter']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Cover Letter')).toBeInTheDocument();
+  });
 });
