@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { buildSSEBody, type SSEEvent } from '../fixtures/mock-sse';
 
 const AUTH_SESSION = {
   access_token: 'mock-e2e-access-token',
@@ -261,6 +262,116 @@ const MOCK_RESUMES = [
     updated_at: '2026-03-01T12:00:00.000Z',
   },
 ];
+
+const MOCK_MASTER_RESUME_RAW_TEXT = 'Executive operator with operations leadership experience across product, support, delivery, and executive stakeholder teams.';
+
+const MOCK_JOB_APPLICATION_ROWS = [
+  {
+    id: 'job-techcorp',
+    company: 'TechCorp',
+    title: 'VP Operations',
+    pipeline_stage: 'interviewing',
+    status: 'active',
+    jd_text: 'Lead executive alignment and drive operating cadence.',
+  },
+  {
+    id: 'job-offerco',
+    company: 'OfferCo',
+    title: 'Chief Operating Officer',
+    pipeline_stage: 'offer',
+    status: 'active',
+    jd_text: 'Own operating rhythm, executive communication, and first-year execution priorities.',
+  },
+] as const;
+
+const MOCK_ONBOARDING_QUESTIONS = [
+  {
+    id: 'career-context-1',
+    question: 'What kind of leadership scope are you targeting next?',
+    category: 'career_context',
+    purpose: 'This helps the platform align your target role, level, and operating scope before it writes anything else.',
+  },
+  {
+    id: 'goals-1',
+    question: 'What business outcome do you most want your next role to improve?',
+    category: 'goals_and_aspirations',
+    purpose: 'This gives Resume Builder, LinkedIn, Job Search, and Interview Prep one business outcome to reinforce consistently.',
+  },
+] as const;
+
+const MOCK_LINKEDIN_REPORT = `# LinkedIn Optimization Report
+
+## Headline
+### Current
+VP Operations
+
+### Optimized
+VP Operations | Executive operator who builds operating cadence and cross-functional alignment
+
+## About Section
+### Current
+Operations leader with executive experience.
+
+### Optimized
+Executive operator known for building operating rhythm, aligning leaders, and turning complexity into execution across fast-moving organizations.
+`;
+
+const MOCK_LINKEDIN_EXPERIENCE_ENTRIES = [
+  {
+    role_id: 'exp-1',
+    company: 'TechCorp',
+    title: 'VP Operations',
+    duration: '2021-Present',
+    original: 'Led operations.',
+    optimized: 'Aligned product, operations, and support leaders around a weekly operating cadence that improved execution quality.',
+    quality_scores: {
+      impact: 84,
+      metrics: 70,
+      context: 88,
+      keywords: 82,
+    },
+  },
+] as const;
+
+const MOCK_JOB_FINDER_SEARCHES = [
+  { platform: 'LinkedIn', query: '"VP Operations" OR "COO" AND ("operating cadence" OR "cross-functional")' },
+  { platform: 'Indeed', query: '"VP Operations" "executive stakeholder leadership"' },
+] as const;
+
+const MOCK_JOB_FINDER_MATCHES = [
+  {
+    id: 'match-1',
+    title: 'VP Operations',
+    company: 'Northstar SaaS',
+    location: 'Remote',
+    fit_score: 91,
+    why_match: 'Strong overlap on executive cadence, cross-functional alignment, and operating discipline.',
+    salary_range: '$250k-$290k',
+    posted_date: '2d ago',
+    work_type: 'remote',
+  },
+  {
+    id: 'match-2',
+    title: 'Chief of Staff, Operations',
+    company: 'ScaleCo',
+    location: 'Chicago, IL',
+    fit_score: 84,
+    why_match: 'This role still maps well to executive operating rhythm and leadership alignment strengths.',
+    salary_range: '$210k-$240k',
+    posted_date: '5d ago',
+    work_type: 'hybrid',
+  },
+] as const;
+
+const MOCK_INTERVIEW_PREP_REPORT = `# Interview Prep
+
+## Top Story
+Lead with executive operating cadence and cross-functional alignment.
+
+## Pressure Points
+- Show one clear business impact example.
+- Stay specific on executive stakeholder influence.
+`;
 
 const MOCK_RESUME_V2_RESULT = {
   version: 'v2',
@@ -597,6 +708,14 @@ function buildJsonResponse(body: unknown) {
   };
 }
 
+function buildSSEStreamResponse(events: SSEEvent[]) {
+  return {
+    status: 200,
+    contentType: 'text/event-stream',
+    body: buildSSEBody(events),
+  };
+}
+
 async function fulfillApiRoute(route: Route) {
   const requestUrl = new URL(route.request().url());
   const path = requestUrl.pathname;
@@ -633,7 +752,7 @@ async function fulfillApiRoute(route: Route) {
     await route.fulfill(buildJsonResponse({
       resume: {
         id: 'resume-default',
-        raw_text: 'Executive operator with operations leadership experience.',
+        raw_text: MOCK_MASTER_RESUME_RAW_TEXT,
         version: 4,
         is_default: true,
       },
@@ -655,6 +774,117 @@ async function fulfillApiRoute(route: Route) {
         { context_type: 'client_profile', source_product: 'onboarding', updated_at: new Date().toISOString() },
       ],
     }));
+    return;
+  }
+
+  if (path === '/api/onboarding/start' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (path === '/api/onboarding/respond' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (/^\/api\/linkedin-optimizer\/[^/]+\/stream$/.test(path) && method === 'GET') {
+    await route.fulfill(buildSSEStreamResponse([
+      {
+        event: 'stage_start',
+        data: { stage: 'analysis', message: 'Analyzing your resume and LinkedIn positioning...' },
+      },
+      {
+        event: 'section_progress',
+        data: { section: 'headline', status: 'writing' },
+      },
+      {
+        event: 'report_complete',
+        data: {
+          report: MOCK_LINKEDIN_REPORT,
+          quality_score: 87,
+          experience_entries: MOCK_LINKEDIN_EXPERIENCE_ENTRIES,
+        },
+      },
+      {
+        event: 'pipeline_complete',
+        data: {},
+      },
+    ]));
+    return;
+  }
+
+  if (path === '/api/linkedin-optimizer/start' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (/^\/api\/job-finder\/[^/]+\/stream$/.test(path) && method === 'GET') {
+    await route.fulfill(buildSSEStreamResponse([
+      {
+        event: 'stage_start',
+        data: { stage: 'search', message: 'Building search strings from your Career Profile...' },
+      },
+      {
+        event: 'search_progress',
+        data: {
+          message: 'Generated Boolean searches for LinkedIn and Indeed.',
+          searches: MOCK_JOB_FINDER_SEARCHES,
+        },
+      },
+      {
+        event: 'results_ready',
+        data: { matches: MOCK_JOB_FINDER_MATCHES },
+      },
+      {
+        event: 'job_finder_complete',
+        data: { session_id: 'mock-job-finder-session' },
+      },
+    ]));
+    return;
+  }
+
+  if (path === '/api/job-finder/start' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (path === '/api/job-finder/respond' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (/^\/api\/interview-prep\/[^/]+\/stream$/.test(path) && method === 'GET') {
+    await route.fulfill(buildSSEStreamResponse([
+      {
+        event: 'stage_start',
+        data: { stage: 'research', message: 'Pulling your resume, job details, and likely interview pressure points...' },
+      },
+      {
+        event: 'section_progress',
+        data: { section: 'top_story', status: 'writing' },
+      },
+      {
+        event: 'report_complete',
+        data: {
+          report: MOCK_INTERVIEW_PREP_REPORT,
+          quality_score: 89,
+        },
+      },
+      {
+        event: 'pipeline_complete',
+        data: {},
+      },
+    ]));
+    return;
+  }
+
+  if (path === '/api/interview-prep/start' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
+  if (path === '/api/interview-prep/respond' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ ok: true }));
     return;
   }
 
@@ -752,7 +982,49 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
     };
   }, { session: AUTH_SESSION });
 
-  await page.route('**/supabase.co/**', async (route) => {
+  await page.addInitScript(({ onboardingStreamBody }) => {
+    const originalFetch = window.fetch;
+    // @ts-expect-error test override
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof Request
+            ? input.url
+            : String(input);
+
+      if (/\/api\/onboarding\/[^/]+\/stream$/.test(url)) {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode(onboardingStreamBody));
+            // Keep the stream open after questions_ready so the UI stays in
+            // awaiting_responses instead of reconnecting or erroring.
+          },
+        });
+
+        return Promise.resolve(new Response(stream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }));
+      }
+
+      return originalFetch.apply(window, [input, init] as Parameters<typeof fetch>);
+    };
+  }, {
+    onboardingStreamBody: buildSSEBody([
+      {
+        event: 'stage_start',
+        data: { stage: 'question_generation', message: 'Generating your next best questions...' },
+      },
+      {
+        event: 'questions_ready',
+        data: { questions: MOCK_ONBOARDING_QUESTIONS },
+      },
+    ]),
+  });
+
+  const fulfillSupabaseRoute = async (route: Route) => {
     const url = route.request().url();
     const method = route.request().method();
 
@@ -772,14 +1044,14 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
     }
 
     if (method === 'GET' && url.includes('/rest/v1/job_applications')) {
-      await route.fulfill(buildJsonResponse([
-        { id: 'job-techcorp', company: 'TechCorp', title: 'VP Operations', jd_text: 'Lead executive alignment.' },
-      ]));
+      const acceptHeader = route.request().headers().accept ?? '';
+      const expectsObject = acceptHeader.includes('application/vnd.pgrst.object+json');
+      await route.fulfill(buildJsonResponse(expectsObject ? MOCK_JOB_APPLICATION_ROWS[0] : MOCK_JOB_APPLICATION_ROWS));
       return;
     }
 
     if (method === 'GET' && url.includes('/rest/v1/master_resumes')) {
-      await route.fulfill(buildJsonResponse([{ raw_text: 'Executive operator with operations leadership experience.' }]));
+      await route.fulfill(buildJsonResponse({ raw_text: MOCK_MASTER_RESUME_RAW_TEXT }));
       return;
     }
 
@@ -794,7 +1066,10 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
     }
 
     await route.continue();
-  });
+  };
+
+  await page.route('**/supabase.co/**', fulfillSupabaseRoute);
+  await page.route('**/mock-supabase/**', fulfillSupabaseRoute);
 
   await page.route('**/api/**', fulfillApiRoute);
 }

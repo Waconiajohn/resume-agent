@@ -63,7 +63,11 @@ export default defineConfig({
     },
     {
       name: 'mock-desktop',
-      testMatch: [/workspace-responsive-audit\.spec\.ts/, /workspace-guided-flows\.spec\.ts/],
+      testMatch: [
+        /workspace-responsive-audit\.spec\.ts/,
+        /workspace-guided-flows\.spec\.ts/,
+        /workspace-core-actions\.spec\.ts/,
+      ],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 960 },
