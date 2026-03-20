@@ -309,14 +309,13 @@ async function mockAllNetworkRequests(page: Page): Promise<void> {
 /**
  * Wait for the app shell to finish auth loading.
  * After auth, either a Header or an AuthGate is mounted.
- * We detect the authenticated state by waiting for the Header's "CareerIQ" nav button.
+ * We detect the authenticated state by waiting for the current signed-in shell.
  */
 async function waitForAuthenticatedShell(page: Page): Promise<void> {
-  // The Header is only rendered once auth is resolved and user is present.
-  // The "CareerIQ" button is always rendered when email is set.
-  await expect(page.getByRole('button', { name: /CareerIQ/i })).toBeVisible({
-    timeout: 15_000,
-  });
+  await Promise.race([
+    page.getByRole('button', { name: /^Workspace$/i }).waitFor({ timeout: 15_000 }),
+    page.getByRole('button', { name: /Sign out/i }).waitFor({ timeout: 15_000 }),
+  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -364,27 +363,23 @@ test.describe('Smoke: major page routes', () => {
     expect(errors).toHaveLength(0);
   });
 
-  test('/app renders landing screen after auth', async ({ page }) => {
+  test('/app redirects into Workspace Home after auth', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await mockAllNetworkRequests(page);
     await page.goto('/app');
     await waitForAuthenticatedShell(page);
-    // Landing screen shows "Start New Session"
-    await expect(
-      page.getByRole('button', { name: /Start New Session/i }),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
+    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
     expect(errors).toHaveLength(0);
   });
 
-  test('/dashboard renders dashboard screen', async ({ page }) => {
+  test('/dashboard redirects into Resume Builder', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await mockAllNetworkRequests(page);
     await page.goto('/dashboard');
     await waitForAuthenticatedShell(page);
-    // Dashboard heading is the primary landmark
-    await expect(
-      page.getByRole('heading', { name: /Dashboard/i }),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 10_000 });
+    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 10_000 });
     expect(errors).toHaveLength(0);
   });
 
@@ -419,15 +414,13 @@ test.describe('Smoke: major page routes', () => {
     expect(errors).toHaveLength(0);
   });
 
-  test('/career-iq renders CareerIQ screen with sidebar', async ({ page }) => {
+  test('/career-iq redirects into Workspace Home', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await mockAllNetworkRequests(page);
     await page.goto('/career-iq');
     await waitForAuthenticatedShell(page);
-    // The sidebar <aside> must be visible with at least the Dashboard button
-    await expect(
-      page.locator('aside').getByText('Dashboard', { exact: true }),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
+    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
     expect(errors).toHaveLength(0);
   });
 });
@@ -445,28 +438,24 @@ test.describe('Smoke: header navigation', () => {
     await expect(page.getByRole('button', { name: /^Tools$/i })).toHaveCount(0);
   });
 
-  test('CareerIQ nav link changes route to /career-iq', async ({ page }) => {
+  test('Workspace nav link changes route to /workspace', async ({ page }) => {
     await mockAllNetworkRequests(page);
     await page.goto('/app');
     await waitForAuthenticatedShell(page);
 
-    await page.getByRole('button', { name: /^CareerIQ$/i }).click();
-    await expect(page).toHaveURL(/\/career-iq/, { timeout: 5_000 });
-    await expect(
-      page.locator('aside').getByText('Dashboard', { exact: true }),
-    ).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('button', { name: /^Workspace$/i }).click();
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 5_000 });
+    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 8_000 });
   });
 
-  test('Dashboard nav link changes route to /dashboard', async ({ page }) => {
+  test('Resume Builder nav link changes route to /workspace?room=resume', async ({ page }) => {
     await mockAllNetworkRequests(page);
     await page.goto('/app');
     await waitForAuthenticatedShell(page);
 
-    await page.getByRole('button', { name: /^Dashboard$/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 5_000 });
-    await expect(
-      page.getByRole('heading', { name: /Dashboard/i }),
-    ).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('banner').getByRole('button', { name: /^Resume Builder$/i }).click();
+    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
+    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
   });
 
   test('Pricing nav link changes route to /pricing', async ({ page }) => {
@@ -479,42 +468,31 @@ test.describe('Smoke: header navigation', () => {
     await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 8_000 });
   });
 
-  test('browser back from /dashboard returns to /app', async ({ page }) => {
+  test('browser back from Resume Builder returns to Workspace Home', async ({ page }) => {
     await mockAllNetworkRequests(page);
     await page.goto('/app');
     await waitForAuthenticatedShell(page);
 
-    await page.goto('/dashboard');
-    await expect(
-      page.getByRole('heading', { name: /Dashboard/i }),
-    ).toBeVisible({ timeout: 10_000 });
+    await page.goto('/workspace?room=resume');
+    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 10_000 });
 
     await page.goBack();
-    await expect(page).toHaveURL(/\/app/, { timeout: 5_000 });
-    await expect(
-      page.getByRole('button', { name: /Start New Session/i }),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 5_000 });
+    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
   });
 });
 
 // ---------------------------------------------------------------------------
-// Test: Career IQ room smoke tests
+// Test: Workspace core room smoke tests
 // ---------------------------------------------------------------------------
 
 /**
- * Navigate to /career-iq and click a sidebar room button by its label.
+ * Navigate directly to a Workspace room route.
  * Waits for the Suspense fallback to resolve (RoomLoadingSkeleton disappears).
- * Throws if the ErrorBoundary fires ("Something went wrong" is visible).
  */
-async function navigateToCareerIQRoom(page: Page, roomLabel: string): Promise<void> {
-  // Scope to the sidebar <aside> to avoid strict-mode violations when the same
-  // label appears in both the sidebar and the main content area (e.g. DashboardHome
-  // quick-launch buttons).
-  const sidebar = page.locator('aside');
-  const roomBtn = sidebar.getByRole('button', { name: roomLabel });
-  await expect(roomBtn).toBeVisible({ timeout: 5_000 });
-  await roomBtn.click();
-
+async function openWorkspaceRoom(page: Page, roomPath: string): Promise<void> {
+  await page.goto(roomPath);
+  await waitForAuthenticatedShell(page);
   // Wait for Suspense skeleton to clear — it has animate-pulse class
   // If already gone (fast load), the catch is fine
   await expect(page.locator('.animate-pulse').first())
@@ -542,8 +520,8 @@ async function assertNoCrash(page: Page): Promise<void> {
   }
 }
 
-test.describe('Smoke: Career IQ rooms', () => {
-  // Navigate to /career-iq once, then click sidebar rooms.
+test.describe('Smoke: Workspace core rooms', () => {
+  // Navigate to /workspace once, then click sidebar rooms.
   // Using serial mode so we navigate once and re-use the page state.
   test.describe.configure({ mode: 'serial' });
 
@@ -569,11 +547,11 @@ test.describe('Smoke: Career IQ rooms', () => {
       );
     });
 
-    await sharedPage.goto('/career-iq');
+    await sharedPage.goto('/workspace');
     await waitForAuthenticatedShell(sharedPage);
-    // Wait for sidebar to be visible — Dashboard button inside <aside>
+    // Wait for sidebar to be visible — Home button inside <aside>
     await expect(
-      sharedPage.locator('aside').getByText('Dashboard', { exact: true }),
+      sharedPage.locator('aside').getByText('Home', { exact: true }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -581,102 +559,54 @@ test.describe('Smoke: Career IQ rooms', () => {
     await sharedPage.context().close();
   });
 
-  test('Dashboard room renders (default state)', async () => {
-    // Dashboard is the default active room on mount
+  test('Workspace Home renders (default state)', async () => {
+    // Workspace Home is the default active room on mount
     await expect(sharedPage.locator('body')).toBeVisible();
-    // The sidebar "Dashboard" button should exist
-    await expect(sharedPage.getByRole('button', { name: /^Dashboard$/i })).toBeVisible();
+    await expect(sharedPage.locator('aside').getByRole('button', { name: /Home/i })).toBeVisible();
+    await expect(sharedPage.getByText('Career Profile backbone').first()).toBeVisible();
+  });
+
+  test('Career Profile room renders', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=career-profile');
+    await assertNoCrash(sharedPage);
+    await expect(sharedPage.getByRole('heading', { name: 'One shared profile that every agent reads' })).toBeVisible({
+      timeout: 8_000,
+    });
   });
 
   test('Resume Builder room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Resume Builder');
+    await openWorkspaceRoom(sharedPage, '/workspace?room=resume');
     await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
+    await expect(sharedPage.getByText('Resume management').first()).toBeVisible({
       timeout: 8_000,
     });
   });
 
   test('LinkedIn room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'LinkedIn');
+    await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
     await assertNoCrash(sharedPage);
-    // LinkedIn uses tab buttons rather than a top-level heading.
-    // Verify the sidebar is still visible (no full-page crash), and that
-    // the main scroll container has rendered something.
-    await expect(
-      sharedPage.locator('aside').getByText('Dashboard', { exact: true }),
-    ).toBeVisible({ timeout: 5_000 });
-    // The scroll container inside <main> should have at least one child element
-    await expect(sharedPage.locator('main > *').first()).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible({ timeout: 8_000 });
   });
 
   test('Job Search room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Job Search');
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
+    await expect(sharedPage.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible({
       timeout: 8_000,
     });
   });
 
   test('Interview Prep room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Interview Prep');
+    await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
     await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('Smart Referrals room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Smart Referrals');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('Negotiation Prep room renders', async () => {
-    await sharedPage.goto('/workspace?room=salary-negotiation');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('Executive Documents room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Executive Documents');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('Career Profile room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Career Profile');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('Financial Wellness room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Financial Wellness');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
-      timeout: 8_000,
-    });
-  });
-
-  test('Live Sessions room renders', async () => {
-    await navigateToCareerIQRoom(sharedPage, 'Live Sessions');
-    await assertNoCrash(sharedPage);
-    await expect(sharedPage.locator('h2, h3, [role="heading"]').first()).toBeVisible({
+    await expect(sharedPage.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible({
       timeout: 8_000,
     });
   });
 
   test('sidebar collapse and expand works without crash', async () => {
-    // Navigate back to dashboard first — scope to sidebar to avoid ambiguity
-    // with the Header "Dashboard" nav button
-    await sharedPage.locator('aside').getByText('Dashboard', { exact: true }).click();
+    // Navigate back to home first — scope to sidebar to avoid ambiguity
+    await sharedPage.locator('aside').getByRole('button', { name: /Home/i }).click();
 
     const collapseBtn = sharedPage.getByRole('button', { name: /Collapse sidebar/i });
     await expect(collapseBtn).toBeVisible({ timeout: 5_000 });

@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const appHost = process.env.E2E_APP_HOST ?? '127.0.0.1';
-const appPort = Number(process.env.E2E_APP_PORT ?? '5173');
-const apiPort = Number(process.env.E2E_API_PORT ?? '3001');
+const appPort = Number(process.env.E2E_APP_PORT ?? '4175');
+const apiPort = Number(process.env.E2E_API_PORT ?? '3101');
 const baseURL = `http://${appHost}:${appPort}`;
 const e2eMockUserId = process.env.E2E_MOCK_AUTH_USER_ID ?? '5b756a7a-3e35-4465-bcf4-69d92f160f21';
 const e2eMockAuthToken = process.env.E2E_MOCK_AUTH_TOKEN ?? 'mock-e2e-access-token';
