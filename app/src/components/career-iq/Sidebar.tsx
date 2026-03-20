@@ -184,7 +184,7 @@ interface CoachBannerProps {
 
 function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phase, recommendation }: CoachBannerProps) {
   const displayName = firstName ? `AI ${firstName}` : 'AI Coach';
-  const displayPhase = phase || 'Getting Started';
+  const displayPhase = phase || 'Career Profile';
 
   if (collapsed) {
     return (

@@ -26,7 +26,12 @@ describe('ToolsScreen', () => {
     expect(screen.getByText('Product not found.')).toBeInTheDocument();
   });
 
-  it('hides cover letter and negotiation as separate tool landing pages', () => {
+  it('hides redundant tool landing pages', () => {
+    render(<ToolsScreen slug="onboarding" onNavigate={vi.fn()} />);
+    expect(screen.getByText('Product not found.')).toBeInTheDocument();
+
+    cleanup();
+
     render(<ToolsScreen slug="cover-letter" onNavigate={vi.fn()} />);
     expect(screen.getByText('Product not found.')).toBeInTheDocument();
 

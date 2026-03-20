@@ -57,13 +57,13 @@ export interface PhaseDefinition {
 export const JOURNEY_PHASES: PhaseDefinition[] = [
   {
     phase: 'onboarding',
-    name: 'Getting Started',
+    name: 'Career Profile',
     description: 'Establish the client profile — who they are, where they are in their career, and what they want next.',
     prerequisites: [],
     completion_signals: ['client_profile'],
     typical_products: ['onboarding'],
     estimated_cost_usd: 0.01,
-    sequencing_note: 'Onboarding sets the foundation. Every downstream agent adapts its tone, pacing, and recommendations based on the client profile.',
+    sequencing_note: 'Career Profile sets the foundation. Every downstream agent adapts its tone, pacing, and recommendations based on the client profile.',
   },
   {
     phase: 'positioning',

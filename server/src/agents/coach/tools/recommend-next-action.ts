@@ -70,10 +70,10 @@ export function getRecommendation(snapshot: ClientSnapshot): RecommendationResul
     };
   }
 
-  // 2. No client profile — onboarding is mandatory
+  // 2. No client profile — Career Profile is mandatory
   if (!snapshot.client_profile) {
     return {
-      action: 'Complete the onboarding assessment to establish your coaching profile.',
+      action: 'Complete your Career Profile so the platform can personalize the rest of your work.',
       product: 'onboarding',
       room: PRODUCT_ROOM_MAP['onboarding'],
       rationale:
@@ -81,7 +81,7 @@ export function getRecommendation(snapshot: ClientSnapshot): RecommendationResul
       estimated_cost_usd: JOURNEY_PHASES.find((p) => p.phase === 'onboarding')?.estimated_cost_usd ?? 0.01,
       urgency: 'immediate',
       sequencing_note:
-        'Onboarding is the keystone. It takes less than 5 minutes and unlocks personalized coaching across the entire platform.',
+        'Career Profile is the keystone. It takes less than 5 minutes and unlocks personalized coaching across the entire platform.',
     };
   }
 

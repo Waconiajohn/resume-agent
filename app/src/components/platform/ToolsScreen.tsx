@@ -3,7 +3,6 @@ import { ProductLandingPage } from './ProductLandingPage';
 import { PRODUCT_CATALOG } from '@/types/platform';
 
 const EXPOSED_TOOL_SLUGS = new Set([
-  'onboarding',
   'resume',
   'linkedin',
   'jobs',

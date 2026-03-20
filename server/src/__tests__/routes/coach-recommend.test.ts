@@ -90,7 +90,7 @@ describe('getRecommendation', () => {
 
   // ── Priority 2: No client_profile ─────────────────────────────────────────
 
-  it('returns onboarding recommendation when client_profile is missing', () => {
+  it('returns Career Profile recommendation when client_profile is missing', () => {
     const snapshot = makeSnapshot({
       client_profile: undefined,
     });
@@ -100,7 +100,7 @@ describe('getRecommendation', () => {
     expect(result.product).toBe('onboarding');
     expect(result.room).toBe('career-profile');
     expect(result.urgency).toBe('immediate');
-    expect(result.action).toContain('onboarding assessment');
+    expect(result.action).toContain('Career Profile');
   });
 
   it('returns onboarding even when stalled items exist but profile is missing', () => {

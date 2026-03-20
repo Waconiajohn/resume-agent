@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { Sidebar } from '@/components/career-iq/Sidebar';
 import type { CareerIQRoom } from '@/components/career-iq/Sidebar';
 import type { DashboardState } from '@/components/career-iq/useWhyMeStory';
@@ -39,7 +39,7 @@ describe('CoachBanner (via Sidebar)', () => {
         coachData={{ firstName: 'Sarah', phase: 'Interview Prep' }}
       />,
     );
-    expect(screen.getByText('Interview Prep')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /open ai sarah/i })).getByText('Interview Prep')).toBeInTheDocument();
   });
 
   it('renders recommendation text when coachData.recommendation is provided', () => {
@@ -120,8 +120,8 @@ describe('CoachBanner (via Sidebar)', () => {
     expect(screen.getByText('AI Coach')).toBeInTheDocument();
   });
 
-  it('falls back to "Getting Started" phase when phase is not provided', () => {
+  it('falls back to "Career Profile" phase when phase is not provided', () => {
     render(<Sidebar {...BASE_PROPS} />);
-    expect(screen.getByText('Getting Started')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /open ai coach/i })).getByText('Career Profile')).toBeInTheDocument();
   });
 });

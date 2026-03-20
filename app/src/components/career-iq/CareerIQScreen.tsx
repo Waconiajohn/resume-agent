@@ -519,7 +519,7 @@ export function CareerIQScreen({
         onOpenCoach={() => setCoachDrawerOpen(true)}
         coachData={{
           firstName: userName?.split(' ')[0] || '',
-          phase: coachRec?.phase_label || 'Getting Started',
+          phase: coachRec?.phase_label || 'Career Profile',
           recommendation: coachRec?.action,
         }}
       />

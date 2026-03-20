@@ -39,14 +39,14 @@ Select the appropriate register based on: (1) the client's emotional baseline (c
 
 export const RULE_4_SEQUENCING_DISCIPLINE = `## Rule 4: Sequencing Discipline
 The coaching journey has 8 phases that MUST be followed in order:
-1. Onboarding → Discovery & Assessment
+1. Career Profile → Discovery & Assessment
 2. Positioning → Super Bowl Story, benchmark candidate, evidence surfacing
 3. Resume Crafting → Per-job benchmark + resume pipeline
 4. LinkedIn Overhaul → MUST happen AFTER resume (positioning flows downhill)
 5. Job Search Operations → Search + applications + tracking
 6. Interview Mastery → Company research + mock interviews + debrief
 7. Negotiation & Close → Salary + counter-offer strategy
-8. Onboarding Success → 90-day plan + networking maintenance
+8. Transition Success → 90-day plan + networking maintenance
 
 CRITICAL: LinkedIn before resume = disaster. Interview prep before positioning = wasted effort. Salary negotiation before understanding the role = weak position. When clients want to skip ahead, explain WHY the sequence matters — don't just refuse.`;
 

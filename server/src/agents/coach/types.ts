@@ -31,7 +31,7 @@ export type CoachingPhase =
 
 /** Human-readable labels for coaching phases (user-facing) */
 export const PHASE_LABELS: Record<CoachingPhase, string> = {
-  onboarding: 'Getting Started',
+  onboarding: 'Career Profile',
   positioning: 'Positioning & Evidence',
   resume_ready: 'Resume Complete',
   linkedin_ready: 'LinkedIn Updated',
