@@ -609,6 +609,17 @@ test.describe('Smoke: header navigation', () => {
     await expect(page.getByText('Usage this month')).toBeVisible({ timeout: 8_000 });
   });
 
+  test('sign out returns to the sales page', async ({ page }) => {
+    await mockAllNetworkRequests(page);
+    await page.goto('/app');
+    await waitForAuthenticatedShell(page);
+
+    await page.getByRole('button', { name: /^Sign out$/i }).click();
+
+    await expect(page).toHaveURL(/\/sales$/, { timeout: 8_000 });
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 8_000 });
+  });
+
   test('billing upgrade button starts checkout from the free plan', async ({ page }) => {
     await mockAllNetworkRequests(page, {
       billingCheckoutUrl: '/workspace?room=resume',
