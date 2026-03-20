@@ -33,6 +33,7 @@ import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
 import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
+import { SalaryNegotiationRoom } from '@/components/career-iq/SalaryNegotiationRoom';
 import {
   InterviewLabDocumentsPanel,
   type InterviewLabDocumentsView,
@@ -865,7 +866,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 
 type ViewMode = 'lab' | 'generating' | 'report' | 'debrief' | 'mock_interview';
 type LabSection = 'prep' | 'practice' | 'documents' | 'follow_up';
-type FollowUpView = 'overview' | 'thank_you';
+type FollowUpView = 'overview' | 'thank_you' | 'negotiation';
 
 const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string }> = {
   prep: {
@@ -881,8 +882,8 @@ const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string 
     description: 'Create the 30-60-90 plan and other interview leave-behinds when they will help you stand out.',
   },
   follow_up: {
-    label: 'Follow-Up',
-    description: 'Track outcomes, log debriefs, and send thoughtful follow-up material.',
+    label: 'Next Steps',
+    description: 'Handle thank-you notes, offer-stage negotiation prep, and post-interview follow-through in one place.',
   },
 };
 
@@ -974,6 +975,12 @@ export function InterviewLabRoom({
     if (initialFocus === 'thank-you') {
       setActiveSection('follow_up');
       setFollowUpView('thank_you');
+      setDocumentsView('overview');
+      return;
+    }
+    if (initialFocus === 'negotiation') {
+      setActiveSection('follow_up');
+      setFollowUpView('negotiation');
       setDocumentsView('overview');
       return;
     }
@@ -1269,7 +1276,7 @@ export function InterviewLabRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
           <p className="text-[13px] text-white/40">
-            Organize interview work into prep, practice, documents, and follow-up instead of hunting through one crowded screen.
+            Organize interview work into prep, practice, documents, and next steps instead of hunting through one crowded screen.
           </p>
           <ContextLoadedBadge
             contextTypes={['career_profile', 'positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
@@ -1409,23 +1416,69 @@ export function InterviewLabRoom({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl">
                 <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  Follow-Up
+                  Next Steps
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-white/88">Close the loop without breaking the narrative</h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/54">
-                  Your debriefs, thank-you note, and next-step follow-up should all reinforce the same positioning story you used during prep and practice.
+                  Your debriefs, thank-you note, and any offer-stage negotiation prep should all reinforce the same positioning story you used during prep and practice.
                 </p>
               </div>
-              <GlassButton
-                variant="ghost"
-                onClick={() => setFollowUpView((current) => (current === 'thank_you' ? 'overview' : 'thank_you'))}
-                className="text-[13px]"
-              >
-                <Mail size={14} className="mr-1.5" />
-                {followUpView === 'thank_you' ? 'Hide Thank You Note' : 'Open Thank You Note'}
-              </GlassButton>
+              <div className="flex flex-wrap gap-2">
+                <GlassButton
+                  variant="ghost"
+                  onClick={() => setFollowUpView((current) => (current === 'thank_you' ? 'overview' : 'thank_you'))}
+                  className="text-[13px]"
+                >
+                  <Mail size={14} className="mr-1.5" />
+                  {followUpView === 'thank_you' ? 'Hide Thank You Note' : 'Open Thank You Note'}
+                </GlassButton>
+                <GlassButton
+                  variant="ghost"
+                  onClick={() => setFollowUpView((current) => (current === 'negotiation' ? 'overview' : 'negotiation'))}
+                  className="text-[13px]"
+                >
+                  <Star size={14} className="mr-1.5" />
+                  {followUpView === 'negotiation' ? 'Hide Negotiation Prep' : 'Open Negotiation Prep'}
+                </GlassButton>
+              </div>
             </div>
           </GlassCard>
+
+          {followUpView === 'overview' && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <GlassCard className="p-5">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  Thank You Note
+                </div>
+                <h3 className="mt-2 text-base font-semibold text-white/86">Follow up while the interview is still fresh</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/52">
+                  Capture what happened, tighten the story you want them to remember, and turn that into a focused follow-up note.
+                </p>
+                <div className="mt-4">
+                  <GlassButton variant="ghost" onClick={() => setFollowUpView('thank_you')} className="text-[13px]">
+                    <Mail size={14} className="mr-1.5" />
+                    Open Thank You Note
+                  </GlassButton>
+                </div>
+              </GlassCard>
+
+              <GlassCard className="p-5">
+                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                  Negotiation Prep
+                </div>
+                <h3 className="mt-2 text-base font-semibold text-white/86">Prepare the offer-stage conversation inside the same workflow</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/52">
+                  Keep the offer strategy tied to the same narrative, scope, and leverage story you used during interview prep instead of opening a separate product.
+                </p>
+                <div className="mt-4">
+                  <GlassButton variant="ghost" onClick={() => setFollowUpView('negotiation')} className="text-[13px]">
+                    <Star size={14} className="mr-1.5" />
+                    Open Negotiation Prep
+                  </GlassButton>
+                </div>
+              </GlassCard>
+            </div>
+          )}
 
           {followUpView === 'thank_you' && (
             <ThankYouNoteRoom
@@ -1433,6 +1486,15 @@ export function InterviewLabRoom({
               initialRole={activeRole}
               initialJobApplicationId={activeJobApplicationId}
               initialSessionId={initialFocus === 'thank-you' ? initialAssetSessionId : undefined}
+            />
+          )}
+
+          {followUpView === 'negotiation' && (
+            <SalaryNegotiationRoom
+              prefillCompany={activeCompany}
+              prefillRole={activeRole}
+              prefillJobApplicationId={activeJobApplicationId}
+              initialSessionId={initialFocus === 'negotiation' ? initialAssetSessionId : undefined}
             />
           )}
 

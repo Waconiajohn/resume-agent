@@ -12,7 +12,6 @@ import { PricingPage } from '@/components/PricingPage';
 import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { ToolsScreen } from '@/components/platform/ToolsScreen';
-import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
@@ -619,19 +618,14 @@ export default function App() {
               />
               <Route
                 path="/cover-letter"
-                element={(
-                  <CoverLetterScreen
-                    accessToken={accessToken}
-                    onNavigate={navigateTo}
-                    onGetDefaultResume={getDefaultResume}
-                  />
-                )}
+                element={<Navigate to="/workspace?room=resume&focus=cover-letter" replace />}
               />
               <Route
                 path="/workspace"
                 element={(
                   <CareerIQScreen
                     userName={displayName}
+                    accessToken={accessToken}
                     onNavigate={navigateTo}
                     sessions={sessions}
                     resumes={resumes}

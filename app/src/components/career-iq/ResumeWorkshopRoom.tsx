@@ -5,22 +5,28 @@ import { GlassButton } from '@/components/GlassButton';
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
+import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import type { CareerProfileSummary } from './career-profile-summary';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 
-const TABS = [
+const TABS: Array<{ id: 'sessions' | 'cover_letter' | 'master_resume'; label: string }> = [
   { id: 'sessions', label: 'Job Workspaces' },
+  { id: 'cover_letter', label: 'Cover Letter' },
   { id: 'master_resume', label: 'Master Resume' },
-];
+] ;
+
+type ResumeWorkspaceTab = typeof TABS[number]['id'];
 
 interface ResumeWorkshopRoomProps {
   careerProfileSummary?: CareerProfileSummary;
   sessions: CoachSession[];
   resumes: MasterResumeListItem[];
   loading: boolean;
+  accessToken?: string | null;
+  initialFocus?: string;
   resumesLoading?: boolean;
   onNewSession: () => void;
   onResumeSession: (sessionId: string) => void;
@@ -43,6 +49,8 @@ export function ResumeWorkshopRoom({
   sessions,
   resumes,
   loading,
+  accessToken = null,
+  initialFocus,
   resumesLoading = false,
   onNewSession,
   onResumeSession,
@@ -59,7 +67,7 @@ export function ResumeWorkshopRoom({
   onSetDefaultResume = async () => false,
   onDeleteResume = async () => false,
 }: ResumeWorkshopRoomProps) {
-  const [activeTab, setActiveTab] = useState('sessions');
+  const [activeTab, setActiveTab] = useState<ResumeWorkspaceTab>(initialFocus === 'cover-letter' ? 'cover_letter' : 'sessions');
   const applicationPipeline = useApplicationPipeline();
   const { applications: jobApplications, moveToStage, fetchApplications } = applicationPipeline;
   const defaultResume = useMemo(() => resumes.find((item) => item.is_default), [resumes]);
@@ -71,6 +79,21 @@ export function ResumeWorkshopRoom({
   useEffect(() => {
     void fetchApplications();
   }, [fetchApplications]);
+
+  useEffect(() => {
+    if (initialFocus === 'cover-letter') {
+      setActiveTab('cover_letter');
+      return;
+    }
+    if (!initialFocus) {
+      setActiveTab('sessions');
+    }
+  }, [initialFocus]);
+
+  const openCoverLetter = () => {
+    setActiveTab('cover_letter');
+    onNavigate?.('/workspace?room=resume&focus=cover-letter');
+  };
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
@@ -104,7 +127,7 @@ export function ResumeWorkshopRoom({
             <GlassButton variant="ghost" onClick={() => onNavigate?.('/workspace?room=career-profile')}>
               Review Career Profile
             </GlassButton>
-            <GlassButton variant="ghost" onClick={() => onNavigate?.('/cover-letter')}>
+            <GlassButton variant="ghost" onClick={openCoverLetter}>
               Write Cover Letter
             </GlassButton>
             <GlassButton variant="primary" onClick={onNewSession}>
@@ -144,7 +167,7 @@ export function ResumeWorkshopRoom({
               Tailored resumes stay job-specific. Your master resume stays clean and reusable.
             </p>
           </div>
-          <DashboardTabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
+          <DashboardTabs tabs={TABS} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as ResumeWorkspaceTab)} />
         </div>
 
         <div className="mt-5">
@@ -161,6 +184,31 @@ export function ResumeWorkshopRoom({
               onGetSessionResume={onGetSessionResume}
               onGetSessionCoverLetter={onGetSessionCoverLetter}
             />
+          )}
+
+          {activeTab === 'cover_letter' && (
+            <div className="space-y-5">
+              <GlassCard className="p-5">
+                <div className="max-w-3xl">
+                  <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                    Cover Letter
+                  </div>
+                  <h2 className="mt-2 text-lg font-semibold text-white/88">Write the letter inside the same job-specific workflow</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-white/54">
+                    Keep the resume and cover letter in one place. Pull from your default resume, target the current role, and avoid treating the letter like a separate product.
+                  </p>
+                </div>
+              </GlassCard>
+
+              <CoverLetterScreen
+                accessToken={accessToken}
+                onNavigate={onNavigate ?? (() => undefined)}
+                onGetDefaultResume={onGetDefaultResume}
+                embedded
+                backTarget="/workspace?room=resume"
+                backLabel="Back to Job Workspaces"
+              />
+            </div>
           )}
 
           {activeTab === 'master_resume' && (

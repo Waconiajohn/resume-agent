@@ -18,6 +18,8 @@ interface CoverLetterIntakeFormProps {
   error?: string | null;
   defaultResumeText?: string;
   resumeLoading?: boolean;
+  backLabel?: string;
+  embedded?: boolean;
 }
 
 export type CoverLetterTone = 'formal' | 'conversational' | 'bold';
@@ -57,6 +59,8 @@ export function CoverLetterIntakeForm({
   error = null,
   defaultResumeText,
   resumeLoading = false,
+  backLabel = 'Back to Tools',
+  embedded = false,
 }: CoverLetterIntakeFormProps) {
   const [resumeText, setResumeText] = useState(defaultResumeText ?? '');
   const [jobDescription, setJobDescription] = useState('');
@@ -89,7 +93,7 @@ export function CoverLetterIntakeForm({
   };
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] overflow-y-auto">
+    <div className={embedded ? '' : 'h-[calc(100vh-3.5rem)] overflow-y-auto'}>
       <div className="mx-auto max-w-2xl px-4 py-8">
         <button
           type="button"
@@ -97,7 +101,7 @@ export function CoverLetterIntakeForm({
           className="mb-6 flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors duration-150"
         >
           <span aria-hidden="true">&#8592;</span>
-          Back to Tools
+          {backLabel}
         </button>
 
         <h1 className="mb-2 text-2xl font-semibold text-white/90">Cover Letter</h1>

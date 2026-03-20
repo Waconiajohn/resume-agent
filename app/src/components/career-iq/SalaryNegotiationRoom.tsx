@@ -509,7 +509,7 @@ function ReportView({
           </div>
           <div>
             <h2 className="text-xl font-semibold text-white/90">Negotiation Playbook</h2>
-            <p className="text-[13px] text-white/40">Your personalized salary negotiation strategy</p>
+            <p className="text-[13px] text-white/40">Your personalized negotiation prep strategy</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -896,7 +896,7 @@ export function SalaryNegotiationRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Salary Negotiation</h1>
+          <h1 className="text-xl font-semibold text-white/90">Negotiation Prep</h1>
           <p className="text-[13px] text-white/40">Building your personalized negotiation strategy...</p>
         </div>
 
@@ -957,7 +957,7 @@ export function SalaryNegotiationRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold text-white/90">Salary Negotiation</h1>
+          <h1 className="text-xl font-semibold text-white/90">Negotiation Prep</h1>
         </div>
         <GlassCard className="p-6 border-[#f0b8b8]/20">
           <div className="flex items-start gap-3 mb-4">
@@ -983,7 +983,7 @@ export function SalaryNegotiationRoom({
         <CareerProfileSummaryCard
           summary={careerProfileSummary}
           title="Career Profile is anchoring your negotiation posture"
-          description="Salary Negotiation should reflect the same level, scope, and market story the rest of the platform is building for you."
+          description="Negotiation Prep should reflect the same level, scope, and market story the rest of the platform is building for you."
           usagePoints={[
             'Role level and differentiators help frame what makes your ask credible.',
             'The platform uses your positioning story to decide where you have leverage.',

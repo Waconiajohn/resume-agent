@@ -366,6 +366,6 @@ describe('SessionHistoryTab', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /review saved strategy/i })[0]);
 
-    expect(onNavigate).toHaveBeenCalledWith('/workspace?room=salary-negotiation&job=job-app-1&company=Acme+Corp&role=VP+Engineering&session=nego-1');
+    expect(onNavigate).toHaveBeenCalledWith('/workspace?room=interview&job=job-app-1&company=Acme+Corp&role=VP+Engineering&focus=negotiation&session=nego-1');
   });
 });

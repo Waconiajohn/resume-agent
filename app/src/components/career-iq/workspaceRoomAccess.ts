@@ -7,7 +7,6 @@ const EXPOSED_WORKSPACE_ROOMS: readonly CareerIQRoom[] = [
   'linkedin',
   'jobs',
   'interview',
-  'salary-negotiation',
 ];
 
 const LEGACY_REDIRECTS: Partial<Record<CareerIQRoom | string, CareerIQRoom>> = {
@@ -17,6 +16,7 @@ const LEGACY_REDIRECTS: Partial<Record<CareerIQRoom | string, CareerIQRoom>> = {
   'network-intelligence': 'jobs',
   'personal-brand': 'career-profile',
   'ninety-day-plan': 'interview',
+  'salary-negotiation': 'interview',
 };
 
 export function toExposedWorkspaceRoom(value: string | null | undefined): CareerIQRoom {

@@ -110,7 +110,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Generates a tailored cover letter that reinforces your resume positioning. Leverages your existing strategy, evidence, and career narrative so you never start from scratch.',
     icon: '\u2709\uFE0F',
     status: 'active',
-    route: '/cover-letter',
+    route: '/workspace?room=resume&focus=cover-letter',
     category: 'writing',
     features: [
       {
@@ -362,7 +362,7 @@ export const PRODUCT_CATALOG: ProductDefinition[] = [
       'Builds a data-backed negotiation strategy from your offer, market data, and positioning. Generates word-for-word scripts, leverage points, and compensation tradeoff guidance so you walk in fully prepared.',
     icon: '\u{1F4B0}',
     status: 'active',
-    route: '/workspace?room=salary-negotiation',
+    route: '/workspace?room=interview&focus=negotiation',
     category: 'planning',
     features: [
       {

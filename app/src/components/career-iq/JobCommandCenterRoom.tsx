@@ -934,7 +934,16 @@ export function JobCommandCenterRoom({
             onSelect={() => {}}
             onAddApplication={handleAddApplication}
             onPrepInterview={onNavigateRoom ? () => onNavigateRoom('interview') : undefined}
-            onNegotiateSalary={onNavigateRoom ? () => onNavigateRoom('salary-negotiation') : undefined}
+            onNegotiateSalary={(application) => {
+              const params = new URLSearchParams({
+                room: 'interview',
+                focus: 'negotiation',
+                job: application.id,
+                company: application.company_name,
+                role: application.role_title,
+              });
+              onNavigate(`/workspace?${params.toString()}`);
+            }}
           />
 
           <PipelineSummary onNavigateDashboard={onNavigateRoom} />

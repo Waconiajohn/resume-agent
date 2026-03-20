@@ -4,7 +4,7 @@ import { isExposedWorkspaceRoom, toExposedWorkspaceRoom } from '@/components/car
 describe('workspaceRoomAccess', () => {
   it('keeps core workspace rooms routable', () => {
     expect(toExposedWorkspaceRoom('resume')).toBe('resume');
-    expect(toExposedWorkspaceRoom('salary-negotiation')).toBe('salary-negotiation');
+    expect(toExposedWorkspaceRoom('salary-negotiation')).toBe('interview');
   });
 
   it('redirects legacy aliases into exposed rooms', () => {

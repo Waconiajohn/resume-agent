@@ -28,6 +28,9 @@ interface CoverLetterScreenProps {
   accessToken: string | null;
   onNavigate: (route: string) => void;
   onGetDefaultResume?: () => Promise<MasterResume | null>;
+  embedded?: boolean;
+  backTarget?: string;
+  backLabel?: string;
 }
 
 type Phase = 'intake' | 'running' | 'complete' | 'error';
@@ -263,7 +266,14 @@ function LetterOutput({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume }: CoverLetterScreenProps) {
+export function CoverLetterScreen({
+  accessToken,
+  onNavigate,
+  onGetDefaultResume,
+  embedded = false,
+  backTarget = '/tools',
+  backLabel,
+}: CoverLetterScreenProps) {
   const [phase, setPhase] = useState<Phase>('intake');
   const [intakeLoading, setIntakeLoading] = useState(false);
   const [intakeError, setIntakeError] = useState<string | null>(null);
@@ -386,31 +396,36 @@ export function CoverLetterScreen({ accessToken, onNavigate, onGetDefaultResume 
     } catch { /* ignore */ }
   }, [letterDraft]);
 
+  const resolvedBackLabel = backLabel ?? (embedded ? 'Back to Resume Builder' : 'Back to Tools');
+  const outerClassName = embedded ? '' : 'h-[calc(100vh-3.5rem)] overflow-y-auto';
+
   // ─── Intake Phase ────────────────────────────────────────────────
   if (effectivePhase === 'intake') {
     return (
       <CoverLetterIntakeForm
         onSubmit={handleSubmit}
-        onBack={() => onNavigate('/tools')}
+        onBack={() => onNavigate(backTarget)}
         loading={intakeLoading}
         error={intakeError}
         defaultResumeText={defaultResumeText}
         resumeLoading={resumeLoading}
+        backLabel={resolvedBackLabel}
+        embedded={embedded}
       />
     );
   }
 
   // ─── Running / Complete / Error Phases ───────────────────────────
   return (
-    <div className="h-[calc(100vh-3.5rem)] overflow-y-auto">
+    <div className={outerClassName}>
       <div className="mx-auto max-w-3xl px-4 py-8">
         <button
           type="button"
-          onClick={() => onNavigate('/tools')}
+          onClick={() => onNavigate(backTarget)}
           className="mb-6 flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors duration-150"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Tools
+          {resolvedBackLabel}
         </button>
 
         {/* Activity Feed (running) */}

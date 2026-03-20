@@ -43,7 +43,7 @@ export function resolveNavigationTarget(viewName: string): string {
   if (viewName === '/tools' || viewName === 'tools') return '/tools';
   if (viewName.startsWith('/workspace')) return viewName;
   if (viewName === '/dashboard' || viewName === 'dashboard') return '/workspace?room=resume';
-  if (viewName === 'cover-letter' || viewName === '/cover-letter') return '/cover-letter';
+  if (viewName === 'cover-letter' || viewName === '/cover-letter') return '/workspace?room=resume&focus=cover-letter';
   if (viewName === 'workspace' || viewName === 'career-iq' || viewName === '/career-iq' || viewName === '/workspace') return '/workspace';
 
   const pathByView: Record<string, string> = {

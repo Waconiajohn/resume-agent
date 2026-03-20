@@ -43,7 +43,6 @@ const ResumeWorkshopRoom = lazy(() => import('./ResumeWorkshopRoom').then((modul
 const LinkedInStudioRoom = lazy(() => import('./LinkedInStudioRoom').then((module) => ({ default: module.LinkedInStudioRoom })));
 const JobCommandCenterRoom = lazy(() => import('./JobCommandCenterRoom').then((module) => ({ default: module.JobCommandCenterRoom })));
 const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) => ({ default: module.InterviewLabRoom })));
-const SalaryNegotiationRoom = lazy(() => import('./SalaryNegotiationRoom').then((module) => ({ default: module.SalaryNegotiationRoom })));
 const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
 const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then((module) => ({ default: module.ExecutiveDocumentsRoom })));
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then((module) => ({ default: module.RoomPlaceholder })));
@@ -58,6 +57,7 @@ interface CoverLetterSession {
 
 interface CareerIQScreenProps {
   userName: string;
+  accessToken?: string | null;
   onNavigate: (route: string) => void;
   sessions?: CoachSession[];
   resumes?: MasterResumeListItem[];
@@ -81,6 +81,7 @@ interface CareerIQScreenProps {
 
 export function CareerIQScreen({
   userName,
+  accessToken = null,
   onNavigate,
   sessions = [],
   resumes = [],
@@ -125,7 +126,6 @@ export function CareerIQScreen({
   const { nudges, dismissNudge, checkStalls } = useMomentum();
   const { recommendation: coachRec, loading: coachLoading, refresh: refreshCoachRec } = useCoachRecommendation();
   const [coachDrawerOpen, setCoachDrawerOpen] = useState(false);
-  const [salaryNegoPrefill, setSalaryNegoPrefill] = useState<{ company: string; role: string } | null>(null);
   const workspaceLaunchContext = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const jobApplicationId = params.get('job');
@@ -135,6 +135,7 @@ export function CareerIQScreen({
     const sessionId = params.get('session');
 
     return {
+      room: params.get('room')?.trim() || undefined,
       jobApplicationId: jobApplicationId?.trim() || undefined,
       company: company?.trim() || undefined,
       role: role?.trim() || undefined,
@@ -142,6 +143,10 @@ export function CareerIQScreen({
       sessionId: sessionId?.trim() || undefined,
     };
   }, [location.search]);
+  const normalizedWorkspaceFocus = useMemo(() => {
+    if (workspaceLaunchContext.focus) return workspaceLaunchContext.focus;
+    return workspaceLaunchContext.room === 'salary-negotiation' ? 'negotiation' : undefined;
+  }, [workspaceLaunchContext.focus, workspaceLaunchContext.room]);
 
   useEffect(() => {
     if (initialRoom) {
@@ -262,9 +267,14 @@ export function CareerIQScreen({
   }, [coverLetterSessions, sessions]);
 
   const handleRoomNavigate = (room: CareerIQRoom) => {
-    setActiveRoom(room);
+    const resolvedRoom = toExposedWorkspaceRoom(room);
+    setActiveRoom(resolvedRoom);
     refreshCoachRec();
-    onNavigate(room === 'dashboard' ? '/workspace' : `/workspace?room=${room}`);
+    if (room === 'salary-negotiation') {
+      onNavigate('/workspace?room=interview&focus=negotiation');
+      return;
+    }
+    onNavigate(resolvedRoom === 'dashboard' ? '/workspace' : `/workspace?room=${resolvedRoom}`);
   };
 
   const handleInterviewPrepClick = (card: PipelineCard) => {
@@ -276,8 +286,15 @@ export function CareerIQScreen({
   };
 
   const handleNegotiationPrepClick = (card: PipelineCard) => {
-    setSalaryNegoPrefill({ company: card.company, role: card.role });
-    handleRoomNavigate('salary-negotiation');
+    const params = new URLSearchParams({
+      room: 'interview',
+      focus: 'negotiation',
+      company: card.company,
+      role: card.role,
+      job: card.id,
+    });
+    refreshCoachRec();
+    onNavigate(`/workspace?${params.toString()}`);
   };
 
   const openCareerProfile = () => handleRoomNavigate('career-profile');
@@ -335,6 +352,8 @@ export function CareerIQScreen({
           sessions={sessions}
           resumes={resumes}
           loading={sessionsLoading}
+          accessToken={accessToken}
+          initialFocus={normalizedWorkspaceFocus}
           resumesLoading={resumesLoading}
           onNewSession={onNewSession ?? (() => onNavigate('/resume-builder/session'))}
           onResumeSession={onResumeSession ?? (() => undefined)}
@@ -399,7 +418,7 @@ export function CareerIQScreen({
           initialCompany={workspaceLaunchContext.company}
           initialRole={workspaceLaunchContext.role}
           initialJobApplicationId={workspaceLaunchContext.jobApplicationId}
-          initialFocus={workspaceLaunchContext.focus}
+          initialFocus={normalizedWorkspaceFocus}
           initialAssetSessionId={workspaceLaunchContext.sessionId}
         />
       );
@@ -407,20 +426,6 @@ export function CareerIQScreen({
 
     if (activeRoom === 'networking') {
       return <SmartReferralsRoom />;
-    }
-
-    if (activeRoom === 'salary-negotiation') {
-      return (
-        <SalaryNegotiationRoom
-          prefillCompany={salaryNegoPrefill?.company ?? workspaceLaunchContext.company}
-          prefillRole={salaryNegoPrefill?.role ?? workspaceLaunchContext.role}
-          prefillJobApplicationId={workspaceLaunchContext.jobApplicationId}
-          initialSessionId={workspaceLaunchContext.sessionId}
-          onPrefillConsumed={() => setSalaryNegoPrefill(null)}
-          careerProfileSummary={summary}
-          onOpenCareerProfile={openCareerProfile}
-        />
-      );
     }
 
     if (activeRoom === 'executive-bio') {

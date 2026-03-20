@@ -155,11 +155,12 @@ export function buildWorkspaceRoomRoute(
     jobApplicationId?: string | null;
   },
   options?: {
-    focus?: 'prep' | 'plan' | 'thank-you';
+    focus?: 'prep' | 'plan' | 'thank-you' | 'negotiation';
     sessionId?: string | null;
   },
 ): string {
-  const params = new URLSearchParams({ room });
+  const resolvedRoom = room === 'salary-negotiation' ? 'interview' : room;
+  const params = new URLSearchParams({ room: resolvedRoom });
   if (context.jobApplicationId) {
     params.set('job', context.jobApplicationId);
   }
@@ -169,8 +170,9 @@ export function buildWorkspaceRoomRoute(
   if (context.role) {
     params.set('role', context.role);
   }
-  if (options?.focus) {
-    params.set('focus', options.focus);
+  const resolvedFocus = options?.focus ?? (room === 'salary-negotiation' ? 'negotiation' : undefined);
+  if (resolvedFocus) {
+    params.set('focus', resolvedFocus);
   }
   if (options?.sessionId) {
     params.set('session', options.sessionId);
