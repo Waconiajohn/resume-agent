@@ -74,6 +74,20 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText('No scored matches yet. Run a Radar search to surface opportunities.')).toBeVisible();
   });
 
+  test('Job Search smart match action routes into Resume Builder', async ({ page }) => {
+    await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Radar', exact: true }).click();
+    await page.getByRole('button', { name: /Run Job Finder/i }).click();
+
+    await expect(page.getByText('Northstar SaaS')).toBeVisible();
+    await page.getByRole('button', { name: /Resume \+ Letter/i }).first().click();
+
+    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i })).toBeVisible();
+  });
+
   test('Interview Prep section switching keeps practice, documents, and follow-up actions reachable', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
@@ -90,5 +104,11 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText(/Close the loop without breaking the narrative/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Thank You Note/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Negotiation Prep/i }).first()).toBeVisible();
+
+    await page.getByRole('button', { name: /Open Thank You Note/i }).first().click();
+    await expect(page.getByRole('heading', { name: /Thank You Note Writer/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /Open Negotiation Prep/i }).first().click();
+    await expect(page.getByRole('heading', { name: /Build one clear compensation strategy before you respond/i })).toBeVisible();
   });
 });
