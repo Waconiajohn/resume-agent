@@ -388,16 +388,13 @@ test.describe('Smoke: major page routes', () => {
     expect(errors).toHaveLength(0);
   });
 
-  test('/tools renders product catalog grid', async ({ page }) => {
+  test('/tools redirects into Workspace Home', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await mockAllNetworkRequests(page);
     await page.goto('/tools');
     await waitForAuthenticatedShell(page);
-    // ToolsScreen renders a ProductCatalogGrid — look for a heading or grid
-    // The grid always renders at least one product card
-    await expect(page.locator('body')).toBeVisible({ timeout: 5_000 });
-    // Any heading inside the tools page confirms it mounted
-    await expect(page.locator('h1, h2, h3').first()).toBeVisible({ timeout: 8_000 });
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 8_000 });
+    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 8_000 });
     expect(errors).toHaveLength(0);
   });
 
@@ -412,14 +409,13 @@ test.describe('Smoke: major page routes', () => {
     expect(errors).toHaveLength(0);
   });
 
-  test('/cover-letter renders cover letter screen', async ({ page }) => {
+  test('/cover-letter redirects into Resume Builder', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await mockAllNetworkRequests(page);
     await page.goto('/cover-letter');
     await waitForAuthenticatedShell(page);
-    await expect(page.locator('body')).toBeVisible({ timeout: 5_000 });
-    // CoverLetterScreen renders a heading or form
-    await expect(page.locator('h1, h2, h3, [role="heading"]').first()).toBeVisible({ timeout: 8_000 });
+    await expect(page).toHaveURL(/\/workspace\?room=resume&focus=cover-letter/, { timeout: 8_000 });
+    await expect(page.getByRole('heading', { name: 'Cover Letter' }).first()).toBeVisible({ timeout: 8_000 });
     expect(errors).toHaveLength(0);
   });
 
@@ -441,14 +437,12 @@ test.describe('Smoke: major page routes', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Smoke: header navigation', () => {
-  test('Tools nav link changes route to /tools', async ({ page }) => {
+  test('header no longer exposes a Tools nav link', async ({ page }) => {
     await mockAllNetworkRequests(page);
     await page.goto('/app');
     await waitForAuthenticatedShell(page);
 
-    await page.getByRole('button', { name: /^Tools$/i }).click();
-    await expect(page).toHaveURL(/\/tools/, { timeout: 5_000 });
-    await expect(page.locator('h1, h2, h3').first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /^Tools$/i })).toHaveCount(0);
   });
 
   test('CareerIQ nav link changes route to /career-iq', async ({ page }) => {

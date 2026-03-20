@@ -41,8 +41,8 @@ const AUDIT_PAGES = [
   {
     slug: 'tools',
     path: '/tools',
-    readyRole: 'heading',
-    readyText: 'AI Career Tools',
+    readyRole: 'text',
+    readyText: 'Career Profile backbone',
   },
 ] as const;
 
@@ -66,7 +66,7 @@ test.describe('workspace responsive audit', () => {
   for (const auditPage of AUDIT_PAGES) {
     test(`audit/${auditPage.slug}: renders without horizontal overflow`, async ({ page }, testInfo) => {
       await page.goto(auditPage.path, { waitUntil: 'domcontentloaded' });
-      const readyLocator = auditPage.slug === 'workspace-home' && testInfo.project.name === 'mock-mobile'
+      const readyLocator = (auditPage.slug === 'workspace-home' || auditPage.slug === 'tools') && testInfo.project.name === 'mock-mobile'
         ? page.getByText('Career Profile powers the rest of Workspace').first()
         : auditPage.readyRole === 'heading'
           ? page.getByRole('heading', { name: auditPage.readyText }).first()

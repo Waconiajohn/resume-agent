@@ -38,9 +38,30 @@ export function getLegacyWorkspaceRedirect(search: string): string {
   return room ? `/workspace?room=${room}` : '/workspace';
 }
 
+export function getLegacyToolRedirect(slug?: string): string {
+  switch (slug) {
+    case 'onboarding':
+      return '/workspace?room=career-profile';
+    case 'resume':
+      return '/workspace?room=resume';
+    case 'cover-letter':
+      return '/workspace?room=resume&focus=cover-letter';
+    case 'linkedin':
+      return '/workspace?room=linkedin';
+    case 'jobs':
+      return '/workspace?room=jobs';
+    case 'interview':
+      return '/workspace?room=interview';
+    case 'salary-negotiation':
+      return '/workspace?room=interview&focus=negotiation';
+    default:
+      return '/workspace';
+  }
+}
+
 export function resolveNavigationTarget(viewName: string): string {
-  if (viewName.startsWith('/tools/')) return viewName;
-  if (viewName === '/tools' || viewName === 'tools') return '/tools';
+  if (viewName.startsWith('/tools/')) return getLegacyToolRedirect(viewName.split('/tools/')[1] || undefined);
+  if (viewName === '/tools' || viewName === 'tools') return '/workspace';
   if (viewName.startsWith('/workspace')) return viewName;
   if (viewName === '/dashboard' || viewName === 'dashboard') return '/workspace?room=resume';
   if (viewName === 'cover-letter' || viewName === '/cover-letter') return '/workspace?room=resume&focus=cover-letter';

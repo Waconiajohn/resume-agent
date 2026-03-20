@@ -11,7 +11,6 @@ import { SalesPage } from '@/components/SalesPage';
 import { PricingPage } from '@/components/PricingPage';
 import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
-import { ToolsScreen } from '@/components/platform/ToolsScreen';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
@@ -24,14 +23,12 @@ import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import {
   getAppView,
+  getLegacyToolRedirect,
   getLegacyWorkspaceRedirect,
-  getToolSlugFromPath,
   getWorkspaceRoomFromSearch,
   resolveNavigationTarget,
 } from '@/lib/app-routing';
 import type { MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
-
-const CoachDrawer = lazy(() => import('@/components/career-iq/CoachDrawer').then((m) => ({ default: m.CoachDrawer })));
 
 export default function App() {
   const location = useLocation();
@@ -99,14 +96,12 @@ export default function App() {
 
   const isRespondingRef = useRef(false);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
-  const [toolsCoachOpen, setToolsCoachOpen] = useState(false);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
   const [v2SessionId, setV2SessionId] = useState<string | null>(null);
 
   const currentView = getAppView(location.pathname);
   const workspaceRoom = getWorkspaceRoomFromSearch(location.search);
-  const toolSlug = getToolSlugFromPath(location.pathname);
   const hasLiveWorkspaceState = Boolean(
     currentSession
     && (
@@ -557,64 +552,11 @@ export default function App() {
               />
               <Route
                 path="/tools"
-                element={(
-                  <>
-                    <ToolsScreen
-                      userName={displayName}
-                      onOpenCoach={() => setToolsCoachOpen(true)}
-                      onNavigate={(route) => {
-                        if (route === '/onboarding') {
-                          navigate('/workspace?room=career-profile');
-                          return;
-                        }
-                        navigateTo(route);
-                      }}
-                    />
-                    <Suspense fallback={null}>
-                      <CoachDrawer
-                        userName={displayName}
-                        isOpen={toolsCoachOpen}
-                        onOpen={() => setToolsCoachOpen(true)}
-                        onClose={() => setToolsCoachOpen(false)}
-                        onNavigate={(room) => {
-                          setToolsCoachOpen(false);
-                          navigate(`/workspace?room=${room}`);
-                        }}
-                      />
-                    </Suspense>
-                  </>
-                )}
+                element={<Navigate to="/workspace" replace />}
               />
               <Route
                 path="/tools/:slug"
-                element={(
-                  <>
-                    <ToolsScreen
-                      slug={toolSlug}
-                      userName={displayName}
-                      onOpenCoach={() => setToolsCoachOpen(true)}
-                      onNavigate={(route) => {
-                        if (route === '/onboarding') {
-                          navigate('/workspace?room=career-profile');
-                          return;
-                        }
-                        navigateTo(route);
-                      }}
-                    />
-                    <Suspense fallback={null}>
-                      <CoachDrawer
-                        userName={displayName}
-                        isOpen={toolsCoachOpen}
-                        onOpen={() => setToolsCoachOpen(true)}
-                        onClose={() => setToolsCoachOpen(false)}
-                        onNavigate={(room) => {
-                          setToolsCoachOpen(false);
-                          navigate(`/workspace?room=${room}`);
-                        }}
-                      />
-                    </Suspense>
-                  </>
-                )}
+                element={<Navigate to={getLegacyToolRedirect(location.pathname.split('/tools/')[1] || undefined)} replace />}
               />
               <Route
                 path="/cover-letter"

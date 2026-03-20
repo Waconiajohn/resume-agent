@@ -96,14 +96,6 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
               Resume Builder
             </button>
           )}
-          {email && (
-            <button
-              onClick={() => onNavigate?.('tools')}
-              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-            >
-              Tools
-            </button>
-          )}
           <button
             onClick={() => onNavigate?.('pricing')}
             className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
@@ -226,14 +218,6 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                   className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
                 >
                   Resume Builder
-                </button>
-              )}
-              {email && (
-                <button
-                  onClick={() => handleNavClick('tools')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-                >
-                  Tools
                 </button>
               )}
               <button

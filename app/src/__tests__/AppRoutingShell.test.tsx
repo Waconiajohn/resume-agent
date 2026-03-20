@@ -191,7 +191,7 @@ describe('App routing shell', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Tools slug: linkedin')).toBeInTheDocument();
+    expect(await screen.findByText('Workspace room: linkedin')).toBeInTheDocument();
   });
 
   it('redirects the old cover letter route into Resume Builder', async () => {

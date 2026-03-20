@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getAppView,
+  getLegacyToolRedirect,
   getLegacyWorkspaceRedirect,
   getToolSlugFromPath,
   getWorkspaceRoomFromSearch,
@@ -26,9 +27,12 @@ describe('app-routing', () => {
   it('normalizes legacy redirects and navigation targets', () => {
     expect(getLegacyWorkspaceRedirect('?room=career-profile')).toBe('/workspace?room=career-profile');
     expect(getLegacyWorkspaceRedirect('')).toBe('/workspace');
+    expect(getLegacyToolRedirect('linkedin')).toBe('/workspace?room=linkedin');
+    expect(getLegacyToolRedirect('cover-letter')).toBe('/workspace?room=resume&focus=cover-letter');
     expect(resolveNavigationTarget('workspace')).toBe('/workspace');
+    expect(resolveNavigationTarget('tools')).toBe('/workspace');
     expect(resolveNavigationTarget('/dashboard')).toBe('/workspace?room=resume');
-    expect(resolveNavigationTarget('/tools/linkedin')).toBe('/tools/linkedin');
+    expect(resolveNavigationTarget('/tools/linkedin')).toBe('/workspace?room=linkedin');
     expect(resolveNavigationTarget('resume-v2')).toBe('/resume-builder/session');
   });
 });

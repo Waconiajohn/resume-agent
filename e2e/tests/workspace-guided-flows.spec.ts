@@ -82,7 +82,8 @@ test.describe('workspace guided flows', () => {
 
     await page.goto('/workspace/job/job-offerco', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: /Review Saved Strategy/i }).first().click();
-    await expect(page).toHaveURL(/room=salary-negotiation/);
+    await expect(page).toHaveURL(/room=interview/);
+    await expect(page).toHaveURL(/focus=negotiation/);
     await expect(page).toHaveURL(/session=mock-nego-session/);
     await expect(page.getByText(/scope, market position, and first-year risk offset/i)).toBeVisible();
   });
