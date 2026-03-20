@@ -402,6 +402,23 @@ Alignment is not a slide. It is a system leaders maintain together.`,
 type LinkedInContentStage = 'topics' | 'draft' | 'complete';
 type LinkedInEditorStage = 'headline' | 'about' | 'complete';
 
+interface MockWatchlistCompany {
+  id: string;
+  name: string;
+  industry: string | null;
+  website: string | null;
+  careers_url: string | null;
+  priority: number;
+  source: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface WatchlistState {
+  companies: MockWatchlistCompany[];
+}
+
 const MOCK_LINKEDIN_EDITOR_DRAFTS = {
   headline: {
     content: 'VP Operations | Executive operator who builds operating cadence and cross-functional alignment',
@@ -860,6 +877,7 @@ async function fulfillApiRoute(
   route: Route,
   linkedinContentState?: Map<string, LinkedInContentStage>,
   linkedinEditorState?: Map<string, LinkedInEditorStage>,
+  watchlistState?: WatchlistState,
 ) {
   const requestUrl = new URL(route.request().url());
   const path = requestUrl.pathname;
@@ -1287,6 +1305,66 @@ async function fulfillApiRoute(
     return;
   }
 
+  if (path === '/api/watchlist' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ companies: watchlistState?.companies ?? [] }));
+    return;
+  }
+
+  if (path === '/api/watchlist' && method === 'POST') {
+    const payload = readRouteJson(route);
+    const now = new Date().toISOString();
+    const created: MockWatchlistCompany = {
+      id: `watch-${Math.random().toString(36).slice(2, 10)}`,
+      name: typeof payload.name === 'string' ? payload.name : 'New Company',
+      industry: typeof payload.industry === 'string' ? payload.industry : null,
+      website: typeof payload.website === 'string' ? payload.website : null,
+      careers_url: typeof payload.careers_url === 'string' ? payload.careers_url : null,
+      priority: typeof payload.priority === 'number' ? payload.priority : 3,
+      source: typeof payload.source === 'string' ? payload.source : 'manual',
+      notes: typeof payload.notes === 'string' ? payload.notes : null,
+      created_at: now,
+      updated_at: now,
+    };
+    watchlistState?.companies.unshift(created);
+    await route.fulfill(buildJsonResponse(created));
+    return;
+  }
+
+  const watchlistItemMatch = path.match(/^\/api\/watchlist\/([^/]+)$/);
+  if (watchlistItemMatch && method === 'PATCH') {
+    const [, companyId] = watchlistItemMatch;
+    const payload = readRouteJson(route);
+    const existing = watchlistState?.companies.find((company) => company.id === companyId);
+    if (!existing) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Not found' }),
+      });
+      return;
+    }
+    Object.assign(existing, {
+      industry: typeof payload.industry === 'string' ? payload.industry : existing.industry,
+      website: typeof payload.website === 'string' ? payload.website : existing.website,
+      careers_url:
+        typeof payload.careers_url === 'string' ? payload.careers_url : existing.careers_url,
+      priority: typeof payload.priority === 'number' ? payload.priority : existing.priority,
+      notes: typeof payload.notes === 'string' ? payload.notes : existing.notes,
+      updated_at: new Date().toISOString(),
+    });
+    await route.fulfill(buildJsonResponse(existing));
+    return;
+  }
+
+  if (watchlistItemMatch && method === 'DELETE') {
+    const [, companyId] = watchlistItemMatch;
+    if (watchlistState) {
+      watchlistState.companies = watchlistState.companies.filter((company) => company.id !== companyId);
+    }
+    await route.fulfill(buildJsonResponse({ ok: true }));
+    return;
+  }
+
   const sessionReportMatch = path.match(/^\/api\/([^/]+)\/reports\/session\/([^/]+)$/);
   if (sessionReportMatch && method === 'GET') {
     const [, productSlug, sessionId] = sessionReportMatch;
@@ -1401,6 +1479,7 @@ async function fulfillApiRoute(
 export async function mockWorkspaceApp(page: Page): Promise<void> {
   const linkedinContentState = new Map<string, LinkedInContentStage>();
   const linkedinEditorState = new Map<string, LinkedInEditorStage>();
+  const watchlistState: WatchlistState = { companies: [] };
 
   await page.addInitScript(({ session }) => {
     const serialized = JSON.stringify(session);
@@ -1518,6 +1597,146 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
     ]),
   });
 
+  await page.addInitScript(({ initialStreamBody, completionStreamBody }) => {
+    const originalFetch = window.fetch;
+    const encoder = new TextEncoder();
+    const mockInterviewControllers = new Map<string, ReadableStreamDefaultController<Uint8Array>>();
+
+    function extractRequestParts(input: RequestInfo | URL, init?: RequestInit) {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof Request
+            ? input.url
+            : String(input);
+
+      const method =
+        init?.method
+        ?? (input instanceof Request ? input.method : 'GET');
+
+      const body =
+        typeof init?.body === 'string'
+          ? init.body
+          : input instanceof Request
+            ? null
+            : null;
+
+      return { url, method, body };
+    }
+
+    // @ts-expect-error test override
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      const { url, method, body } = extractRequestParts(input, init);
+
+      if (url.endsWith('/api/mock-interview/start') && method === 'POST') {
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+
+      if (/\/api\/mock-interview\/[^/]+\/stream$/.test(url)) {
+        const sessionId =
+          url.match(/\/api\/mock-interview\/([^/]+)\/stream$/)?.[1] ?? 'mock-interview-session';
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            mockInterviewControllers.set(sessionId, controller);
+            controller.enqueue(encoder.encode(initialStreamBody));
+            // Keep the stream open until the answer is submitted.
+          },
+        });
+
+        return Promise.resolve(new Response(stream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }));
+      }
+
+      if (url.endsWith('/api/mock-interview/respond') && method === 'POST') {
+        let sessionId = 'mock-interview-session';
+        try {
+          const payload = body ? JSON.parse(body) as { session_id?: string } : {};
+          if (typeof payload.session_id === 'string' && payload.session_id.length > 0) {
+            sessionId = payload.session_id;
+          }
+        } catch {
+          // Ignore malformed payloads and use the default id.
+        }
+
+        const controller = mockInterviewControllers.get(sessionId);
+        if (controller) {
+          controller.enqueue(encoder.encode(completionStreamBody));
+          controller.close();
+          mockInterviewControllers.delete(sessionId);
+        }
+
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+
+      return originalFetch.apply(window, [input, init] as Parameters<typeof fetch>);
+    };
+  }, {
+    initialStreamBody: buildSSEBody([
+      {
+        event: 'stage_start',
+        data: { stage: 'setup', message: 'Reviewing your resume and preparing the first question...' },
+      },
+      {
+        event: 'question_presented',
+        data: {
+          question: {
+            index: 0,
+            type: 'behavioral',
+            question: 'Tell me about a time you had to align multiple leaders around one operating cadence.',
+            context: 'Use a concrete example with scope, ownership, and business impact.',
+          },
+        },
+      },
+    ]),
+    completionStreamBody: buildSSEBody([
+      {
+        event: 'answer_evaluated',
+        data: {
+          evaluation: {
+            question_index: 0,
+            question_type: 'behavioral',
+            question: 'Tell me about a time you had to align multiple leaders around one operating cadence.',
+            answer: 'I aligned product, support, and operations leaders around one weekly operating rhythm.',
+            scores: {
+              star_completeness: 86,
+              relevance: 88,
+              impact: 82,
+              specificity: 84,
+            },
+            overall_score: 85,
+            strengths: ['Shows executive alignment and ownership clearly.'],
+            improvements: ['Add one metric or scope signal to strengthen business impact.'],
+            model_answer_hint: 'Name the team scope and the business result to make the answer stronger.',
+          },
+        },
+      },
+      {
+        event: 'simulation_complete',
+        data: {
+          summary: {
+            overall_score: 85,
+            total_questions: 1,
+            strengths: ['Clear ownership and cross-functional leadership.'],
+            areas_for_improvement: ['Add a measurable outcome or scale detail.'],
+            recommendation: 'Strong foundation. Add one metric and keep this as a core interview story.',
+          },
+        },
+      },
+      {
+        event: 'pipeline_complete',
+        data: {},
+      },
+    ]),
+  });
+
   const fulfillSupabaseRoute = async (route: Route) => {
     const url = route.request().url();
     const method = route.request().method();
@@ -1565,5 +1784,7 @@ export async function mockWorkspaceApp(page: Page): Promise<void> {
   await page.route('**/supabase.co/**', fulfillSupabaseRoute);
   await page.route('**/mock-supabase/**', fulfillSupabaseRoute);
 
-  await page.route('**/api/**', (route) => fulfillApiRoute(route, linkedinContentState, linkedinEditorState));
+  await page.route('**/api/**', (route) =>
+    fulfillApiRoute(route, linkedinContentState, linkedinEditorState, watchlistState),
+  );
 }

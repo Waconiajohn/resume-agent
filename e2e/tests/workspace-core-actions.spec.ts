@@ -193,6 +193,28 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('button', { name: /VP Operations Northstar SaaS/i })).toBeVisible();
   });
 
+  test('Job Search watchlist manager opens, adds a company, and closes cleanly', async ({ page }) => {
+    await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.locator('button[title="Manage watchlist"]:visible').first().click();
+
+    await expect(page.getByRole('dialog', { name: /Manage watchlist/i })).toBeVisible();
+    await page.getByPlaceholder('e.g. Acme Corp').fill('Atlas Systems');
+    await page.getByPlaceholder('e.g. SaaS').fill('Enterprise Software');
+    await page.getByPlaceholder(/^https:\/\/\.\.\.$/).fill('https://atlas.example.com');
+    await page.getByPlaceholder(/^https:\/\/\.\.\.\/careers$/).fill('https://atlas.example.com/careers');
+    await page.getByRole('button', { name: /Add Company/i }).click();
+
+    await expect(
+      page.getByRole('dialog', { name: /Manage watchlist/i }).getByText('Atlas Systems', { exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+
+    await expect(page.getByRole('dialog', { name: /Manage watchlist/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Atlas Systems', exact: true })).toBeVisible();
+  });
+
   test('Interview Prep section switching keeps practice, documents, and follow-up actions reachable', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
@@ -215,5 +237,28 @@ test.describe('workspace core room actions', () => {
 
     await page.getByRole('button', { name: /Open Negotiation Prep/i }).first().click();
     await expect(page.getByRole('heading', { name: /Build one clear compensation strategy before you respond/i })).toBeVisible();
+  });
+
+  test('Interview Prep mock interview starts, completes, and returns to the lab', async ({ page }) => {
+    await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: /^Practice /i }).click();
+    await page.getByRole('button', { name: /Start Mock Interview/i }).click();
+
+    await expect(page.getByRole('heading', { name: 'Mock Interview', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Tell me about a time you had to align multiple leaders around one operating cadence\./i)).toBeVisible();
+
+    await page
+      .getByPlaceholder(/Type your answer here/i)
+      .fill('I aligned product, support, and operations leaders around one weekly cadence and clarified ownership for each decision.');
+    await page.getByRole('button', { name: /Submit Answer/i }).click();
+
+    await expect(page.getByText(/Overall Score/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Strong foundation\. Add one metric and keep this as a core interview story\./i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Back to Interview Prep/i }).first().click();
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Start Mock Interview/i })).toBeVisible();
   });
 });
