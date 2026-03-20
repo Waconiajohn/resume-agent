@@ -27,11 +27,6 @@ export default defineConfig({
       testIgnore: [/auth\.spec\.ts/, /auth-errors\.spec\.ts/, /full-pipeline\.spec\.ts/, /quality-validation\.spec\.ts/],
     },
     {
-      name: 'auth-smoke',
-      testMatch: [/auth\.spec\.ts/, /auth-errors\.spec\.ts/],
-      use: devices['Desktop Chrome'],
-    },
-    {
       name: 'full-pipeline',
       testMatch: /full-pipeline\.spec\.ts/,
       timeout: 15 * 60 * 1000, // 15 min (was 60 min for Z.AI; Groq completes in ~2-3 min)

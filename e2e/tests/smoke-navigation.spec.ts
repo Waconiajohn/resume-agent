@@ -15,7 +15,7 @@
  *   smoke/career-iq/<room>: room component mounts without crash
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Route } from '@playwright/test';
 
 // ---------------------------------------------------------------------------
 // API + Supabase mock helpers
@@ -65,7 +65,7 @@ async function mockAllNetworkRequests(page: Page): Promise<void> {
   });
 
   // Mock all Supabase REST API calls (auth + DB)
-  await page.route('**/supabase.co/**', async (route) => {
+  const fulfillSupabaseRoute = async (route: Route) => {
     const method = route.request().method();
     const url = route.request().url();
 
@@ -128,7 +128,10 @@ async function mockAllNetworkRequests(page: Page): Promise<void> {
 
     // Let Supabase realtime websocket through (not interceptable via route())
     await route.continue();
-  });
+  };
+
+  await page.route('**/supabase.co/**', fulfillSupabaseRoute);
+  await page.route('**/mock-supabase/**', fulfillSupabaseRoute);
 
   // Mock all backend API endpoints
   await page.route('**/api/**', async (route) => {
@@ -285,6 +288,28 @@ async function mockAllNetworkRequests(page: Page): Promise<void> {
     // LinkedIn optimizer / content calendar / editor
     if (path.startsWith('/api/linkedin') || path.startsWith('/api/content-calendar')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reports: [], posts: [], ok: true }) });
+      return;
+    }
+
+    if (path === '/api/billing/subscription' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          subscription: null,
+          plan: {
+            id: 'free',
+            name: 'Free',
+            monthly_price_cents: 0,
+            included_sessions: 3,
+            max_sessions_per_month: 3,
+          },
+          usage: {
+            sessions_this_period: 0,
+            cost_usd_this_period: 0,
+          },
+        }),
+      });
       return;
     }
 
@@ -602,6 +627,24 @@ test.describe('Smoke: Workspace core rooms', () => {
     });
   });
 
+  test('Workspace Home entry buttons open Career Profile and Job Search', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /Open Career Profile/i }).click();
+    await expect(sharedPage).toHaveURL(/room=career-profile/, { timeout: 8_000 });
+    await expect(sharedPage.getByRole('heading', { name: 'One shared profile that every agent reads' })).toBeVisible({
+      timeout: 8_000,
+    });
+
+    await openWorkspaceRoom(sharedPage, '/workspace');
+    await sharedPage.getByRole('button', { name: /Open job tracker/i }).click();
+    await expect(sharedPage).toHaveURL(/room=jobs/, { timeout: 8_000 });
+    await expect(sharedPage.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible({
+      timeout: 8_000,
+    });
+  });
+
   test('Resume Builder room renders', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=resume');
     await assertNoCrash(sharedPage);
@@ -616,6 +659,17 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible({ timeout: 8_000 });
   });
 
+  test('LinkedIn room tab switching works without crash', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: 'Analytics', exact: true }).click();
+    await expect(sharedPage.getByRole('heading', { name: /Platform Metrics/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: 'Calendar', exact: true }).click();
+    await expect(sharedPage.getByText(/Content Calendar/i).first()).toBeVisible({ timeout: 8_000 });
+  });
+
   test('Job Search room renders', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
@@ -624,12 +678,37 @@ test.describe('Smoke: Workspace core rooms', () => {
     });
   });
 
+  test('Job Search section switching works without crash', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: 'Radar', exact: true }).click();
+    await expect(sharedPage.getByRole('heading', { name: /Radar Search/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await expect(sharedPage.getByRole('heading', { name: 'Daily Ops', exact: true })).toBeVisible({ timeout: 8_000 });
+  });
+
   test('Interview Prep room renders', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
     await assertNoCrash(sharedPage);
     await expect(sharedPage.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible({
       timeout: 8_000,
     });
+  });
+
+  test('Interview Prep section switching works without crash', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /^Practice /i }).click();
+    await expect(sharedPage.getByRole('button', { name: /Start Mock Interview/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /^Documents /i }).click();
+    await expect(sharedPage.getByRole('button', { name: /Open 30-60-90 Day Plan/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await expect(sharedPage.getByText(/Close the loop without breaking the narrative/i)).toBeVisible({ timeout: 8_000 });
   });
 
   test('sidebar collapse and expand works without crash', async () => {

@@ -31,6 +31,71 @@ interface BillingDashboardProps {
   accessToken: string | null;
 }
 
+const DEFAULT_PLAN: SubscriptionData['plan'] = {
+  id: 'free',
+  name: 'Free',
+  monthly_price_cents: 0,
+  included_sessions: 3,
+  max_sessions_per_month: 3,
+};
+
+const DEFAULT_USAGE: SubscriptionData['usage'] = {
+  sessions_this_period: 0,
+  cost_usd_this_period: 0,
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function readNullableString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeSubscriptionData(value: unknown): SubscriptionData | null {
+  if (!isRecord(value)) return null;
+
+  const rawPlan = isRecord(value.plan) ? value.plan : {};
+  const rawUsage = isRecord(value.usage) ? value.usage : {};
+  const rawSubscription = isRecord(value.subscription) ? value.subscription : null;
+
+  return {
+    subscription: rawSubscription
+      ? {
+          id: readString(rawSubscription.id, ''),
+          plan_id: readString(rawSubscription.plan_id, DEFAULT_PLAN.id),
+          status: readString(rawSubscription.status, 'active'),
+          current_period_start: readString(rawSubscription.current_period_start, ''),
+          current_period_end: readString(rawSubscription.current_period_end, ''),
+          stripe_subscription_id: readNullableString(rawSubscription.stripe_subscription_id),
+          stripe_customer_id: readNullableString(rawSubscription.stripe_customer_id),
+          updated_at: readString(rawSubscription.updated_at, ''),
+        }
+      : null,
+    plan: {
+      id: readString(rawPlan.id, DEFAULT_PLAN.id),
+      name: readString(rawPlan.name, DEFAULT_PLAN.name),
+      monthly_price_cents: readNumber(rawPlan.monthly_price_cents, DEFAULT_PLAN.monthly_price_cents),
+      included_sessions: readNumber(rawPlan.included_sessions, DEFAULT_PLAN.included_sessions),
+      max_sessions_per_month: rawPlan.max_sessions_per_month === null
+        ? null
+        : readNumber(rawPlan.max_sessions_per_month, DEFAULT_PLAN.max_sessions_per_month ?? 0),
+    },
+    usage: {
+      sessions_this_period: readNumber(rawUsage.sessions_this_period, DEFAULT_USAGE.sessions_this_period),
+      cost_usd_this_period: readNumber(rawUsage.cost_usd_this_period, DEFAULT_USAGE.cost_usd_this_period),
+    },
+  };
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -94,8 +159,15 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         return;
       }
 
-      const result = await response.json() as SubscriptionData;
-      setData(result);
+      const result = await response.json() as unknown;
+      const normalized = normalizeSubscriptionData(result);
+
+      if (!normalized) {
+        setError('Failed to load billing information');
+        return;
+      }
+
+      setData(normalized);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Network error';
       setError(message);
