@@ -88,6 +88,26 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByText(/scope, market position, and first-year risk offset/i)).toBeVisible();
   });
 
+  test('job workspace fallback actions route back into Resume Builder when later-stage assets do not exist yet', async ({ page }) => {
+    await page.goto('/workspace/job/job-betaco', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('h1', { hasText: 'BetaCo' })).toBeVisible();
+    await expect(page.getByText(/Cover letters live with resume workspaces/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Open Resume Builder/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Open Interview Prep/i })).toHaveCount(0);
+
+    await page.getByRole('button', { name: /Open Resume Builder/i }).click();
+    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i })).toBeVisible();
+
+    await page.goto('/workspace/job/job-betaco', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /Reopen Tailored Work/i }).click();
+
+    await expect(page).toHaveURL(/\/resume-builder\/session$/, { timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /What to Fix Next/i })).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /^Run Final Review$/i }).first()).toBeVisible({ timeout: 8_000 });
+  });
+
   test('redirects legacy personal-brand room links into Career Profile', async ({ page }) => {
     await page.goto('/workspace?room=personal-brand', { waitUntil: 'domcontentloaded' });
 
