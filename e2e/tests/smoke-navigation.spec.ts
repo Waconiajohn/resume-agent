@@ -393,14 +393,13 @@ test.describe('Smoke: major page routes', () => {
     expect(errors).toHaveLength(0);
   });
 
-  test('/pricing renders pricing page', async ({ page }) => {
+  test('/pricing redirects into billing for signed-in users', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await mockAllNetworkRequests(page);
     await page.goto('/pricing');
     await waitForAuthenticatedShell(page);
-    // PricingPage always renders some content even without billing data
-    await expect(page.locator('body')).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('h1, h2, h3').first()).toBeVisible({ timeout: 8_000 });
+    await expect(page).toHaveURL(/\/billing/, { timeout: 8_000 });
+    await expect(page.locator('body')).toBeVisible({ timeout: 8_000 });
     expect(errors).toHaveLength(0);
   });
 

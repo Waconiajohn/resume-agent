@@ -8,7 +8,6 @@ import { AuthGate } from '@/components/AuthGate';
 import { CoachScreen } from '@/components/CoachScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SalesPage } from '@/components/SalesPage';
-import { PricingPage } from '@/components/PricingPage';
 import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
@@ -450,7 +449,7 @@ export default function App() {
             {checkoutStatus === 'cancelled' && (
               <div className="mx-auto max-w-6xl px-4 pt-3">
                 <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#f0d99f]/30 bg-[#f0d99f]/10 px-4 py-3 text-sm text-[#f0d99f]">
-                  <span>Checkout cancelled. You can try again anytime from the pricing page.</span>
+                  <span>Checkout cancelled. You can try again anytime from billing.</span>
                   <button type="button" onClick={() => setCheckoutStatus(null)} className="ml-4 text-xs text-[#f0d99f] hover:text-white/90">Dismiss</button>
                 </div>
               </div>
@@ -538,15 +537,7 @@ export default function App() {
                   />
                 )}
               />
-              <Route
-                path="/pricing"
-                element={(
-                  <PricingPage
-                    accessToken={accessToken}
-                    onUpgradeSuccess={() => setCheckoutStatus('success')}
-                  />
-                )}
-              />
+              <Route path="/pricing" element={<Navigate to="/billing" replace />} />
               <Route path="/billing" element={<BillingDashboard accessToken={accessToken} />} />
               <Route
                 path="/affiliate"
