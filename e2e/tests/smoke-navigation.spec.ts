@@ -521,6 +521,20 @@ test.describe('Smoke: header navigation', () => {
     await expect(page.locator('body')).toBeVisible({ timeout: 8_000 });
   });
 
+  test('signed-in header name editor opens and cancels cleanly', async ({ page }) => {
+    await mockAllNetworkRequests(page);
+    await page.goto('/app');
+    await waitForAuthenticatedShell(page);
+
+    await page.getByTitle('Click to edit your name').click();
+    await expect(page.getByPlaceholder('First')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByPlaceholder('Last')).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: /^Cancel$/i }).click();
+    await expect(page.getByPlaceholder('First')).toHaveCount(0);
+    await expect(page.getByPlaceholder('Last')).toHaveCount(0);
+  });
+
   test('mobile menu routes into Resume Builder and Billing without crash', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockAllNetworkRequests(page);
