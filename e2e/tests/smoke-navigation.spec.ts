@@ -521,6 +521,28 @@ test.describe('Smoke: header navigation', () => {
     await expect(page.locator('body')).toBeVisible({ timeout: 8_000 });
   });
 
+  test('mobile menu routes into Resume Builder and Billing without crash', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockAllNetworkRequests(page);
+    await page.goto('/app');
+    await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
+    await expect(page.getByRole('button', { name: /Open menu/i })).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole('button', { name: /Open menu/i }).click();
+    await expect(page.getByRole('dialog', { name: /Navigation menu/i })).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: /^Resume Builder$/i }).click();
+    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
+    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
+
+    await page.getByRole('button', { name: /Open menu/i }).click();
+    await expect(page.getByRole('dialog', { name: /Navigation menu/i })).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: /^Billing$/i }).click();
+    await expect(page).toHaveURL(/\/billing/, { timeout: 5_000 });
+    await expect(page.getByText('Usage this month')).toBeVisible({ timeout: 8_000 });
+  });
+
   test('browser back from Resume Builder returns to Workspace Home', async ({ page }) => {
     await mockAllNetworkRequests(page);
     await page.goto('/app');
