@@ -425,6 +425,44 @@ const MOCK_JOB_FINDER_MATCHES = [
   },
 ] as const;
 
+const MOCK_RADAR_JOBS = [
+  {
+    external_id: 'radar-1',
+    title: 'VP Operations',
+    company: 'Northstar SaaS',
+    location: 'Remote',
+    salary_min: 250000,
+    salary_max: 290000,
+    description: 'Own operating cadence and executive alignment across product, support, and delivery.',
+    posted_date: '2026-03-18T09:00:00.000Z',
+    apply_url: 'https://example.com/jobs/northstar-vp-ops',
+    source: 'linkedin',
+    remote_type: 'remote',
+    employment_type: 'full-time',
+    required_skills: ['Operating cadence', 'Cross-functional leadership'],
+  },
+  {
+    external_id: 'radar-2',
+    title: 'Chief of Staff, Operations',
+    company: 'ScaleCo',
+    location: 'Chicago, IL',
+    salary_min: 210000,
+    salary_max: 240000,
+    description: 'Drive leadership rhythm, special projects, and operating reviews.',
+    posted_date: '2026-03-16T09:00:00.000Z',
+    apply_url: 'https://example.com/jobs/scaleco-chief-of-staff',
+    source: 'indeed',
+    remote_type: 'hybrid',
+    employment_type: 'full-time',
+    required_skills: ['Executive communication', 'Program management'],
+  },
+] as const;
+
+const MOCK_RADAR_SCORE_RESULTS = [
+  { external_id: 'radar-1', match_score: 92 },
+  { external_id: 'radar-2', match_score: 84 },
+] as const;
+
 const MOCK_INTERVIEW_PREP_REPORT = `# Interview Prep
 
 ## Top Story
@@ -814,6 +852,39 @@ async function fulfillApiRoute(
     return;
   }
 
+  if (path === '/api/applications/due-actions' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      actions: [
+        {
+          id: 'job-techcorp',
+          role_title: 'VP Operations',
+          company_name: 'TechCorp',
+          next_action: 'Follow up on the panel interview thank-you note.',
+          next_action_due: '2026-03-21T15:00:00.000Z',
+          stage: 'interviewing',
+        },
+      ],
+    }));
+    return;
+  }
+
+  if (path === '/api/applications' && method === 'POST') {
+    const payload = readRouteJson(route);
+    await route.fulfill(buildJsonResponse({
+      id: `app-${Date.now()}`,
+      role_title: typeof payload.role_title === 'string' ? payload.role_title : 'New role',
+      company_name: typeof payload.company_name === 'string' ? payload.company_name : 'New company',
+      stage: typeof payload.stage === 'string' ? payload.stage : 'saved',
+      source: typeof payload.source === 'string' ? payload.source : 'manual',
+      url: typeof payload.url === 'string' ? payload.url : undefined,
+      notes: typeof payload.notes === 'string' ? payload.notes : undefined,
+      stage_history: Array.isArray(payload.stage_history) ? payload.stage_history : [],
+      created_at: typeof payload.created_at === 'string' ? payload.created_at : new Date().toISOString(),
+      updated_at: typeof payload.updated_at === 'string' ? payload.updated_at : new Date().toISOString(),
+    }));
+    return;
+  }
+
   if (/^\/api\/applications\/[^/]+\/stage$/.test(path) && method === 'PATCH') {
     const applicationId = path.split('/')[3] ?? '';
     const matched = MOCK_APPLICATIONS.find((application) => application.id === applicationId) ?? MOCK_APPLICATIONS[0];
@@ -1120,6 +1191,26 @@ async function fulfillApiRoute(
         data: { session_id: 'mock-job-finder-session' },
       },
     ]));
+    return;
+  }
+
+  if (path === '/api/job-search/scans/latest' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ scan: null, results: [] }));
+    return;
+  }
+
+  if (path === '/api/job-search' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({
+      scan_id: 'mock-radar-scan',
+      jobs: MOCK_RADAR_JOBS,
+      sources_queried: ['LinkedIn', 'Indeed'],
+      execution_time_ms: 420,
+    }));
+    return;
+  }
+
+  if (path === '/api/job-search/score' && method === 'POST') {
+    await route.fulfill(buildJsonResponse({ jobs: MOCK_RADAR_SCORE_RESULTS }));
     return;
   }
 

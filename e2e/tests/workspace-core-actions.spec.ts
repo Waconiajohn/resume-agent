@@ -148,6 +148,34 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Application Pipeline/i })).toBeVisible();
   });
 
+  test('Job Search radar scoring feeds Daily Ops and promote sends a role into the pipeline', async ({ page }) => {
+    await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Radar', exact: true }).click();
+
+    await page.getByPlaceholder('Job title, keywords...').fill('VP Operations');
+    await page.getByPlaceholder('Location or Remote').fill('Remote');
+    await page.getByRole('button', { name: /^Search$/i }).click();
+
+    await expect(page.getByText('Northstar SaaS')).toBeVisible();
+    await expect(page.getByText('ScaleCo')).toBeVisible();
+
+    await page.getByRole('button', { name: /Score Matches/i }).click();
+    await expect(page.getByText('92%')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await expect(page.locator('span:visible', { hasText: 'Northstar SaaS' }).first()).toBeVisible();
+    await expect(page.locator('button:visible', { hasText: 'Promote' })).toHaveCount(2);
+
+    await page.locator('button:visible', { hasText: 'Promote' }).first().click();
+    await expect(page.locator('button:visible', { hasText: 'Promote' })).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Pipeline', exact: true }).click();
+    await expect(page.locator('div:visible', { hasText: 'Northstar SaaS' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /VP Operations Northstar SaaS/i })).toBeVisible();
+  });
+
   test('Interview Prep section switching keeps practice, documents, and follow-up actions reachable', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
