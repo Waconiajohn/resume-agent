@@ -215,6 +215,38 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('button', { name: 'Atlas Systems', exact: true })).toBeVisible();
   });
 
+  test('Job Search watchlist manager updates priority and removes a company cleanly', async ({ page }) => {
+    await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.locator('button[title="Manage watchlist"]:visible').first().click();
+    await expect(page.getByRole('dialog', { name: /Manage watchlist/i })).toBeVisible();
+
+    await page.getByPlaceholder('e.g. Acme Corp').fill('Northfield Systems');
+    await page.getByRole('button', { name: /Add Company/i }).click();
+    await expect(
+      page.getByRole('dialog', { name: /Manage watchlist/i }).getByText('Northfield Systems', { exact: true }),
+    ).toBeVisible();
+
+    const watchlistRow = page
+      .getByRole('dialog', { name: /Manage watchlist/i })
+      .locator('div[class*="rounded-xl"]')
+      .filter({ hasText: 'Northfield Systems' })
+      .first();
+
+    await watchlistRow.locator('button').nth(0).click();
+    await watchlistRow.locator('input[type="number"]').fill('5');
+    await watchlistRow.locator('button').nth(0).click();
+
+    await expect(watchlistRow.getByText('P5', { exact: true })).toBeVisible();
+
+    await watchlistRow.locator('button').last().click();
+
+    await expect(
+      page.getByRole('dialog', { name: /Manage watchlist/i }).getByText('Northfield Systems', { exact: true }),
+    ).toHaveCount(0);
+  });
+
   test('Interview Prep section switching keeps practice, documents, and follow-up actions reachable', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
@@ -269,6 +301,25 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
     await page.getByRole('button', { name: /^Next Steps /i }).click();
     await expect(page.getByRole('button', { name: /Add Debrief/i })).toContainText('1');
+  });
+
+  test('Interview Prep history outcome buttons update the saved interview state', async ({ page }) => {
+    await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: /^Next Steps /i }).click();
+    await page.getByRole('button', { name: /Add Interview/i }).click();
+
+    await page.getByPlaceholder('Company').fill('Summit Health');
+    await page.getByPlaceholder('Role').fill('Operations Director');
+    await page.getByRole('button', { name: /^Save$/i }).click();
+
+    await expect(page.getByText('Summit Health', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Advanced', exact: true })).toHaveClass(/font-medium/);
+
+    await page.getByRole('button', { name: 'Not Selected', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Not Selected', exact: true })).toHaveClass(/font-medium/);
   });
 
   test('Job Search Daily Ops tracker analyzes applications and returns a report', async ({ page }) => {
