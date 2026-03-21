@@ -184,3 +184,181 @@ describe('useSession — respondToGate auto-retry on 429', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('useSession — resume payload normalization', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('drops malformed resume list items when loading resumes', async () => {
+    const mockFetch = vi.fn<typeof fetch>();
+    mockFetch.mockResolvedValueOnce(
+      makeResponse(200, {
+        resumes: [
+          {
+            id: 'resume-1',
+            summary: 'Good resume',
+            version: '3',
+            is_default: true,
+            created_at: '2026-03-01T00:00:00Z',
+            updated_at: '2026-03-02T00:00:00Z',
+          },
+          { id: 'broken-resume' },
+        ],
+      }),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { result } = renderHook(() => useSession('test-access-token'));
+
+    await act(async () => {
+      await result.current.listResumes();
+    });
+
+    expect(result.current.resumes).toEqual([
+      {
+        id: 'resume-1',
+        summary: 'Good resume',
+        version: 3,
+        is_default: true,
+        source_session_id: null,
+        company_name: null,
+        job_title: null,
+        created_at: '2026-03-01T00:00:00Z',
+        updated_at: '2026-03-02T00:00:00Z',
+      },
+    ]);
+  });
+
+  it('returns null when the default resume payload is malformed', async () => {
+    const mockFetch = vi.fn<typeof fetch>();
+    mockFetch.mockResolvedValueOnce(
+      makeResponse(200, {
+        resume: { id: 'broken-resume' },
+      }),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { result } = renderHook(() => useSession('test-access-token'));
+
+    let resume = null;
+    await act(async () => {
+      resume = await result.current.getDefaultResume();
+    });
+
+    expect(resume).toBeNull();
+  });
+
+  it('sanitizes the loaded default resume instead of trusting malformed nested fields', async () => {
+    const mockFetch = vi.fn<typeof fetch>();
+    mockFetch.mockResolvedValueOnce(
+      makeResponse(200, {
+        resume: {
+          id: 'resume-1',
+          user_id: 'user-1',
+          summary: 'Leadership operator',
+          raw_text: 'Resume text',
+          version: '4',
+          is_default: 1,
+          source_session_id: null,
+          experience: [
+            {
+              company: 'Acme Corp',
+              title: 'VP Operations',
+              start_date: '2020',
+              end_date: 'Present',
+              location: 'Chicago',
+              bullets: [{ text: 'Built the operating cadence', source: 'crafted' }, { text: '', source: 'crafted' }],
+            },
+          ],
+          skills: {
+            Leadership: ['Coaching', '', 42],
+          },
+          education: [
+            { institution: 'Northwestern', degree: 'MBA', field: 'Strategy', year: '2010' },
+          ],
+          certifications: [
+            { name: 'PMP', issuer: 'PMI', year: '2014' },
+            { issuer: 'Broken' },
+          ],
+          contact_info: {
+            name: 'Jane Doe',
+            email: 'jane@example.com',
+          },
+          evidence_items: [
+            {
+              text: 'Improved forecast accuracy',
+              source: 'crafted',
+              source_session_id: 'session-1',
+              created_at: '2026-03-02T00:00:00Z',
+            },
+            {
+              text: 'Broken evidence',
+              source: 'unknown',
+              source_session_id: 'session-2',
+              created_at: '2026-03-02T00:00:00Z',
+            },
+          ],
+          created_at: '2026-03-01T00:00:00Z',
+          updated_at: '2026-03-02T00:00:00Z',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { result } = renderHook(() => useSession('test-access-token'));
+
+    let resume = null;
+    await act(async () => {
+      resume = await result.current.getDefaultResume();
+    });
+
+    expect(resume).toEqual({
+      id: 'resume-1',
+      user_id: 'user-1',
+      summary: 'Leadership operator',
+      raw_text: 'Resume text',
+      version: 4,
+      is_default: true,
+      source_session_id: null,
+      experience: [
+        {
+          company: 'Acme Corp',
+          title: 'VP Operations',
+          start_date: '2020',
+          end_date: 'Present',
+          location: 'Chicago',
+          bullets: [{ text: 'Built the operating cadence', source: 'crafted' }],
+        },
+      ],
+      skills: {
+        Leadership: ['Coaching'],
+      },
+      education: [
+        { institution: 'Northwestern', degree: 'MBA', field: 'Strategy', year: '2010' },
+      ],
+      certifications: [
+        { name: 'PMP', issuer: 'PMI', year: '2014' },
+      ],
+      contact_info: {
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        phone: undefined,
+        linkedin: undefined,
+        location: undefined,
+      },
+      evidence_items: [
+        {
+          text: 'Improved forecast accuracy',
+          source: 'crafted',
+          category: undefined,
+          source_session_id: 'session-1',
+          created_at: '2026-03-02T00:00:00Z',
+        },
+      ],
+      created_at: '2026-03-01T00:00:00Z',
+      updated_at: '2026-03-02T00:00:00Z',
+    });
+  });
+});

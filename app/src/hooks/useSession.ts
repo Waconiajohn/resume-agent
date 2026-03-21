@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { CoachSession } from '@/types/session';
-import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
+import type { FinalResume, MasterResume, MasterResumeEvidenceItem, MasterResumeListItem } from '@/types/resume';
 import { resumeToText } from '@/lib/export';
 import { retryDelayMsFromHeaders } from '@/lib/http-retry';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 import { API_BASE } from '../lib/api';
 
 type WorkflowMode = 'fast_draft' | 'balanced' | 'deep_dive';
@@ -61,6 +62,165 @@ function loadPipelineStartCache(sessionId: string): PipelineStartCacheEntry | nu
   } catch {
     return null;
   }
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function normalizeMasterResumeListItem(value: unknown): MasterResumeListItem | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const id = safeString(raw.id).trim();
+  const createdAt = safeString(raw.created_at).trim();
+  const updatedAt = safeString(raw.updated_at).trim();
+  if (!id || !createdAt || !updatedAt) return null;
+
+  return {
+    id,
+    summary: safeString(raw.summary),
+    version: safeNumber(raw.version),
+    is_default: Boolean(raw.is_default),
+    source_session_id: raw.source_session_id == null ? null : safeString(raw.source_session_id),
+    company_name: raw.company_name == null ? null : safeString(raw.company_name),
+    job_title: raw.job_title == null ? null : safeString(raw.job_title),
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
+function normalizeMasterResumeList(value: unknown): MasterResumeListItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizeMasterResumeListItem(item))
+    .filter((item): item is MasterResumeListItem => item !== null);
+}
+
+function normalizeMasterResume(value: unknown): MasterResume | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+
+  const id = safeString(raw.id).trim();
+  const userId = safeString(raw.user_id).trim();
+  const rawText = safeString(raw.raw_text);
+  const createdAt = safeString(raw.created_at).trim();
+  const updatedAt = safeString(raw.updated_at).trim();
+  if (!id || !userId || !createdAt || !updatedAt) return null;
+
+  const contactInfo =
+    raw.contact_info && typeof raw.contact_info === 'object' && !Array.isArray(raw.contact_info)
+      ? {
+          name: safeString((raw.contact_info as Record<string, unknown>).name),
+          email: safeString((raw.contact_info as Record<string, unknown>).email) || undefined,
+          phone: safeString((raw.contact_info as Record<string, unknown>).phone) || undefined,
+          linkedin: safeString((raw.contact_info as Record<string, unknown>).linkedin) || undefined,
+          location: safeString((raw.contact_info as Record<string, unknown>).location) || undefined,
+        }
+      : undefined;
+
+  const experience = Array.isArray(raw.experience)
+    ? raw.experience.flatMap((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+        const entry = item as Record<string, unknown>;
+        return [{
+          company: safeString(entry.company),
+          title: safeString(entry.title),
+          start_date: safeString(entry.start_date),
+          end_date: safeString(entry.end_date),
+          location: safeString(entry.location),
+          bullets: Array.isArray(entry.bullets)
+            ? entry.bullets.flatMap((bullet) => {
+                if (!bullet || typeof bullet !== 'object' || Array.isArray(bullet)) return [];
+                const rawBullet = bullet as Record<string, unknown>;
+                const text = safeString(rawBullet.text).trim();
+                if (!text) return [];
+                return [{ text, source: safeString(rawBullet.source) }];
+              })
+            : [],
+        }];
+      })
+    : [];
+
+  const skills =
+    raw.skills && typeof raw.skills === 'object' && !Array.isArray(raw.skills)
+      ? Object.fromEntries(
+          Object.entries(raw.skills as Record<string, unknown>).map(([category, items]) => [category, normalizeStringArray(items)]),
+        )
+      : {};
+
+  const education = Array.isArray(raw.education)
+    ? raw.education.flatMap((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+        const entry = item as Record<string, unknown>;
+        return [{
+          institution: safeString(entry.institution),
+          degree: safeString(entry.degree),
+          field: safeString(entry.field),
+          year: safeString(entry.year),
+        }];
+      })
+    : [];
+
+  const certifications = Array.isArray(raw.certifications)
+    ? raw.certifications.flatMap((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+        const entry = item as Record<string, unknown>;
+        const name = safeString(entry.name).trim();
+        if (!name) return [];
+        return [{
+          name,
+          issuer: safeString(entry.issuer),
+          year: safeString(entry.year),
+        }];
+      })
+    : [];
+
+  const evidenceItems = Array.isArray(raw.evidence_items)
+    ? raw.evidence_items.flatMap((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+        const entry = item as Record<string, unknown>;
+        const text = safeString(entry.text).trim();
+        const sourceSessionId = safeString(entry.source_session_id).trim();
+        const createdAtValue = safeString(entry.created_at).trim();
+        const source = safeString(entry.source);
+        const normalizedSource: MasterResumeEvidenceItem['source'] | null =
+          source === 'crafted' || source === 'upgraded' || source === 'interview'
+            ? source
+            : null;
+        if (!text || !sourceSessionId || !createdAtValue || !normalizedSource) {
+          return [];
+        }
+        return [{
+          text,
+          source: normalizedSource,
+          category: safeString(entry.category) || undefined,
+          source_session_id: sourceSessionId,
+          created_at: createdAtValue,
+        }];
+      })
+    : [];
+
+  return {
+    id,
+    user_id: userId,
+    summary: safeString(raw.summary),
+    experience,
+    skills,
+    education,
+    certifications,
+    contact_info: contactInfo,
+    raw_text: rawText,
+    version: safeNumber(raw.version),
+    is_default: raw.is_default == null ? undefined : Boolean(raw.is_default),
+    source_session_id: raw.source_session_id == null ? null : safeString(raw.source_session_id),
+    evidence_items: evidenceItems,
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
 }
 
 export function useSession(accessToken: string | null) {
@@ -179,7 +339,7 @@ export function useSession(accessToken: string | null) {
         return;
       }
       const data = await res.json();
-      setResumes((data.resumes ?? []) as MasterResumeListItem[]);
+      setResumes(normalizeMasterResumeList(data.resumes));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error loading resumes');
     } finally {
@@ -198,7 +358,7 @@ export function useSession(accessToken: string | null) {
         return null;
       }
       const data = await res.json();
-      return (data.resume as MasterResume | null) ?? null;
+      return normalizeMasterResume(data.resume);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error loading default resume');
       return null;
@@ -218,7 +378,7 @@ export function useSession(accessToken: string | null) {
         return null;
       }
       const data = await res.json();
-      return (data.resume as MasterResume | null) ?? null;
+      return normalizeMasterResume(data.resume);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error loading resume');
       return null;
