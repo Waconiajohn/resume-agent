@@ -22,6 +22,9 @@ export function CareerProfileSummaryCard({
   onContinue,
   continueLabel,
 }: CareerProfileSummaryCardProps) {
+  const visibleHighlights = summary.highlightPoints.slice(0, 2);
+  const visibleUsagePoints = usagePoints.slice(0, 2);
+
   return (
     <GlassCard className="p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -51,10 +54,10 @@ export function CareerProfileSummaryCard({
           {summary.highlightPoints.length > 0 && (
             <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
               <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">
-                Current Signals
+                Strongest signals
               </div>
               <div className="mt-3 space-y-2">
-                {summary.highlightPoints.map((point) => (
+                {visibleHighlights.map((point) => (
                   <div key={point} className="flex items-start gap-2 text-sm text-white/68">
                     <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#b5dec2]" />
                     <span>{point}</span>
@@ -64,13 +67,13 @@ export function CareerProfileSummaryCard({
             </div>
           )}
 
-          {usagePoints.length > 0 && (
+          {visibleUsagePoints.length > 0 && (
             <div className="mt-4 rounded-xl border border-[#98b3ff]/14 bg-[#98b3ff]/[0.05] p-4">
               <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/72">
-                This tool is using
+                Using now
               </div>
               <div className="mt-3 space-y-2">
-                {usagePoints.map((point) => (
+                {visibleUsagePoints.map((point) => (
                   <div key={point} className="flex items-start gap-2 text-sm text-white/72">
                     <Target size={14} className="mt-0.5 shrink-0 text-[#98b3ff]" />
                     <span>{point}</span>
