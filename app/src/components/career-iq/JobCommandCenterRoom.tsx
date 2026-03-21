@@ -119,18 +119,18 @@ function SmartMatches({
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star size={18} className="text-[#f0d99f]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Review Results</h3>
+          <h3 className="text-[15px] font-semibold text-white/85">Review Matches</h3>
           <span className="ml-auto text-[11px] text-white/30">Action required</span>
         </div>
         <p className="text-[12px] text-white/40 mb-4">
-          The Job Finder has completed its search. Approve the results to save them to your pipeline.
+          The Job Finder has finished. Save these matches if they are worth working from Today and Pipeline.
         </p>
         <div className="flex gap-2">
           <GlassButton
             onClick={() => onRespondGate({ approved: true })}
             className="flex-1"
           >
-            <CheckCircle2 size={14} className="text-[#b5dec2]" /> Approve Results
+            <CheckCircle2 size={14} className="text-[#b5dec2]" /> Save Matches
           </GlassButton>
           <GlassButton
             onClick={() => onRespondGate({ approved: false })}

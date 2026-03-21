@@ -821,7 +821,7 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
         <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Check</h3>
         <span className="ml-auto text-[11px] text-[#b5dec2]/70 flex items-center gap-1">
           <Check size={11} />
-          Ready to compare
+          Comparison ready
         </span>
       </div>
 
@@ -1655,10 +1655,10 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] text-white/60 leading-relaxed mb-2">
                       {optimizer.qualityScore >= 80
-                        ? 'Strong profile. Well-positioned for recruiter discovery with clear value proposition.'
+                        ? 'Strong starting point. Your positioning is clear enough to build from with only lighter refinements.'
                         : optimizer.qualityScore >= 60
-                        ? 'Good foundation. A few strategic improvements will significantly boost visibility.'
-                        : 'Significant opportunity. The Quick Optimize can meaningfully improve your discoverability.'}
+                        ? 'Solid foundation. A few targeted edits should make the profile sharper and easier to trust.'
+                        : 'This profile still needs stronger proof and tighter language before it will feel compelling.'}
                     </p>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={cn(
@@ -1667,7 +1667,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
                           ? 'text-[#b5dec2] bg-[#b5dec2]/10 border-[#b5dec2]/20'
                           : 'text-[#f0d99f] bg-[#f0d99f]/10 border-[#f0d99f]/20',
                       )}>
-                        {optimizer.qualityScore >= 80 ? 'Recruiter-Ready' : 'Needs Optimization'}
+                        {optimizer.qualityScore >= 80 ? 'Strong starting point' : 'Needs more proof'}
                       </span>
                       <span className="text-[10px] text-white/25">
                         Top profiles score 85+
