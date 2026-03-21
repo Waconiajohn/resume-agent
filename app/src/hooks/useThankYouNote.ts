@@ -46,6 +46,15 @@ export interface ThankYouNoteInput {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 
+function normalizeReviewNotes(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => item != null && typeof item === 'object' && !Array.isArray(item));
+}
+
+function normalizeGateName(value: unknown): 'note_review' | null {
+  return value === 'note_review' ? 'note_review' : null;
+}
+
 export function useThankYouNote() {
   const [state, setState] = useState<ThankYouNoteHookState>({
     status: 'idle',
@@ -132,15 +141,15 @@ export function useThankYouNote() {
           setState((prev) => ({
             ...prev,
             noteReviewData: {
-              notes: Array.isArray(data.notes) ? data.notes : [],
-              quality_score: typeof data.quality_score === 'number' ? data.quality_score : 0,
+              notes: normalizeReviewNotes(data.notes),
+              quality_score: safeNumber(data.quality_score),
             },
           }));
           break;
         }
 
         case 'pipeline_gate': {
-          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          const gateName = normalizeGateName(data.gate);
           if (gateName === 'note_review') {
             setState((prev) => ({ ...prev, status: 'note_review', pendingGate: gateName }));
           }
@@ -151,8 +160,9 @@ export function useThankYouNote() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: safeString(data.report),
-            qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
+            report: safeString(data.report) || prev.report,
+            qualityScore:
+              data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
           }));
           abortRef.current?.abort();
           break;

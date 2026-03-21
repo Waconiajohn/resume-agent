@@ -30,6 +30,13 @@ vi.mock('@/lib/sse-parser', () => ({
   parseSSEStream: vi.fn(),
 }));
 
+vi.mock('@/lib/create-product-session', () => ({
+  createProductSession: vi.fn().mockResolvedValue({
+    accessToken: 'test-token',
+    session: { id: 'test-uuid' },
+  }),
+}));
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function makeEvent(type: string, data: Record<string, unknown>) {
@@ -108,7 +115,8 @@ describe('useThankYouNote', () => {
       await result.current.startPipeline(sampleInput);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
       'http://localhost:3001/api/thank-you-note/start',
       expect.objectContaining({
         method: 'POST',
@@ -149,10 +157,8 @@ describe('useThankYouNote', () => {
   });
 
   it('startPipeline sets error when not authenticated', async () => {
-    const { supabase } = await import('@/lib/supabase');
-    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      data: { session: null },
-    });
+    const { createProductSession } = await import('@/lib/create-product-session');
+    (createProductSession as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Not authenticated'));
 
     const { result } = renderHook(() => useThankYouNote());
 
@@ -233,5 +239,75 @@ describe('useThankYouNote', () => {
 
     const parsed = JSON.parse(event.data);
     expect(parsed.error).toBe('LLM provider timeout after 3 retries');
+  });
+
+  it('normalizes note_review_ready payloads and numeric-string quality scores', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield makeEvent('note_review_ready', {
+          notes: [
+            { interviewer_name: 'Bob Jones', note: 'Thanks for the time' },
+            'bad-note',
+            null,
+          ],
+          quality_score: '87',
+        });
+      },
+    });
+
+    const { result } = renderHook(() => useThankYouNote());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.noteReviewData).toEqual({
+      notes: [{ interviewer_name: 'Bob Jones', note: 'Thanks for the time' }],
+      quality_score: 87,
+    });
+  });
+
+  it('preserves a good prior report when collection_complete arrives with an empty final report', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield makeEvent('collection_complete', {
+          report: '# Thank You Note Collection',
+          quality_score: 90,
+        });
+        yield makeEvent('collection_complete', {
+          report: '',
+          quality_score: 'bad-score',
+        });
+      },
+    });
+
+    const { result } = renderHook(() => useThankYouNote());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.report).toBe('# Thank You Note Collection');
+    expect(result.current.qualityScore).toBe(90);
   });
 });
