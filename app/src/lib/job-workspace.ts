@@ -78,13 +78,13 @@ export function stageAwareActions(stage?: string | null): {
   switch (stage) {
     case 'interviewing':
       return {
-        unlocked: ['Interview Prep', 'Thank You Note', '30-60-90 Day Plan'],
+        unlocked: ['Interview Prep', 'Follow-up documents'],
         nextActionLabel: 'Open Interview Prep',
       };
     case 'offer':
       return {
-        unlocked: ['Negotiation Prep', 'Interview Prep'],
-        nextActionLabel: 'Open Negotiation Prep',
+        unlocked: ['Interview Prep', 'Negotiation Prep'],
+        nextActionLabel: 'Open Interview Prep',
       };
     case 'closed_won':
       return {
@@ -98,7 +98,7 @@ export function stageAwareActions(stage?: string | null): {
       };
     case 'screening':
       return {
-        unlocked: ['Resume', 'Cover Letter'],
+        unlocked: ['Resume Builder'],
         nextActionLabel: 'Keep this workspace lean until an interview is scheduled',
       };
     case 'researching':
@@ -106,7 +106,7 @@ export function stageAwareActions(stage?: string | null): {
     case 'saved':
     default:
       return {
-        unlocked: ['Resume', 'Cover Letter'],
+        unlocked: ['Resume Builder'],
         nextActionLabel: 'Interview assets unlock when the job reaches interviewing',
       };
   }

@@ -92,13 +92,9 @@ test.describe('workspace guided flows', () => {
     await page.goto('/workspace/job/job-betaco', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('h1', { hasText: 'BetaCo' })).toBeVisible();
-    await expect(page.getByText(/Cover letters live with resume workspaces/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Resume Builder/i })).toBeVisible();
+    await expect(page.getByText(/Available now: Resume Builder/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Open Session/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Interview Prep/i })).toHaveCount(0);
-
-    await page.getByRole('button', { name: /Open Resume Builder/i }).click();
-    await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
-    await expect(page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i })).toBeVisible();
 
     await page.goto('/workspace/job/job-betaco', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: /Reopen Tailored Work/i }).click();
@@ -118,8 +114,8 @@ test.describe('workspace guided flows', () => {
 
     await expect(page.getByText(/^Interviewing$/).first()).toBeVisible({ timeout: 8_000 });
     await expect(page.getByRole('button', { name: /Open Interview Prep/i }).first()).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByRole('button', { name: /Open Note/i }).first()).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByRole('button', { name: /Open Plan/i }).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /Open Thank You Note/i }).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /Open 30-60-90 Day Plan/i }).first()).toBeVisible({ timeout: 8_000 });
 
     await page.getByRole('button', { name: /^Offer$/i }).click();
 

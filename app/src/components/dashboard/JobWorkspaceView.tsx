@@ -131,14 +131,16 @@ export function JobWorkspaceView({
         <div className="space-y-4">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Assets</div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
                   <FileText size={14} className="text-[#98b3ff]" />
-                  Tailored Resume
+                  Resume Builder
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/48">
-                  {resumeAsset ? 'Open the active session or preview the saved resume text.' : 'No tailored resume is saved to this workspace yet.'}
+                  {resumeAsset || coverLetterAsset
+                    ? 'Your tailored resume and cover letter live together here. Reopen the active session or review the saved draft assets.'
+                    : 'Use Resume Builder for the tailored resume first. Add a cover letter there only when this job actually needs one.'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {resumeAsset ? (
@@ -152,30 +154,18 @@ export function JobWorkspaceView({
                         View
                       </GlassButton>
                     </>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
-                  <Mail size={14} className="text-[#98b3ff]" />
-                  Cover Letter
-                </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
-                  {coverLetterAsset ? 'Preview the saved letter or reopen the parent session.' : 'Cover letters live with resume workspaces. Open Resume Builder when this application actually needs one.'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {coverLetterAsset ? (
-                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onViewCoverLetter(coverLetterAsset.id)}>
-                      <Mail size={12} className="mr-1.5" />
-                      View Letter
-                    </GlassButton>
                   ) : (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.('/workspace?room=resume')}>
                       <FileText size={12} className="mr-1.5" />
                       Open Resume Builder
                     </GlassButton>
                   )}
+                  {coverLetterAsset ? (
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onViewCoverLetter(coverLetterAsset.id)}>
+                      <Mail size={12} className="mr-1.5" />
+                      View Letter
+                    </GlassButton>
+                  ) : null}
                 </div>
               </div>
 
@@ -185,11 +175,13 @@ export function JobWorkspaceView({
                   Interview Prep
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/48">
-                  {interviewPrepAsset
-                    ? 'Saved to this job workspace. Reopen the exact prep report or continue the lab.'
-                    : activeStage === 'interviewing' || activeStage === 'offer'
-                    ? 'Ready to generate now that the job is in interviews.'
-                    : 'Interview prep stays hidden until the application reaches interviewing.'}
+                  {(interviewPrepAsset || thankYouAsset || ninetyDayPlanAsset || salaryNegotiationAsset)
+                    ? 'Prep reports, thank-you notes, 30-60-90 plans, and negotiation strategy stay together here so this job’s follow-up work lives in one place.'
+                    : activeStage === 'interviewing'
+                    ? 'This job is ready for interview prep, follow-up notes, and 30-60-90 planning.'
+                    : activeStage === 'offer'
+                    ? 'This job is ready for interview prep and negotiation strategy in the same flow.'
+                    : 'Interview prep stays out of the way until the application reaches interviews.'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(interviewPrepAsset || activeStage === 'interviewing' || activeStage === 'offer') ? (
@@ -198,70 +190,22 @@ export function JobWorkspaceView({
                       {interviewPrepAsset ? 'Review Saved Prep' : 'Open Interview Prep'}
                     </GlassButton>
                   ) : null}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
-                  <Mail size={14} className="text-[#98b3ff]" />
-                  Thank You Note
-                </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
-                  {thankYouAsset
-                    ? 'Saved follow-up for this job. Reopen the exact note inside Interview Prep.'
-                    : activeStage === 'interviewing' || activeStage === 'offer'
-                    ? 'Available when you need post-interview follow-up.'
-                    : 'Follow-up unlocks only after the job reaches interview stages.'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
                   {(thankYouAsset || activeStage === 'interviewing' || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(thankYouRoute)}>
                       <Mail size={12} className="mr-1.5" />
-                      {thankYouAsset ? 'Review Saved Note' : 'Open Note'}
+                      {thankYouAsset ? 'Review Saved Note' : 'Open Thank You Note'}
                     </GlassButton>
                   ) : null}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
-                  <FileText size={14} className="text-[#98b3ff]" />
-                  30-60-90 Plan
-                </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
-                  {ninetyDayPlanAsset
-                    ? 'Saved to this workspace for later interview rounds.'
-                    : activeStage === 'interviewing' || activeStage === 'offer'
-                    ? 'Ready when you need a leave-behind for later rounds.'
-                    : 'Keep this closed until the job is deep enough to justify interview leave-behinds.'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
                   {(ninetyDayPlanAsset || activeStage === 'interviewing' || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(ninetyDayPlanRoute)}>
                       <FileText size={12} className="mr-1.5" />
-                      {ninetyDayPlanAsset ? 'Review Saved Plan' : 'Open Plan'}
+                      {ninetyDayPlanAsset ? 'Review Saved 30-60-90 Plan' : 'Open 30-60-90 Day Plan'}
                     </GlassButton>
                   ) : null}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/[0.08] bg-black/10 p-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white/82">
-                  <Sparkles size={14} className="text-[#98b3ff]" />
-                  Negotiation Prep
-                </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/48">
-                  {salaryNegotiationAsset
-                    ? 'Saved offer-stage strategy for this job workspace.'
-                    : activeStage === 'offer'
-                    ? 'Offer-stage prep is unlocked now that there is a live offer.'
-                    : 'Negotiation prep stays out of the way until there is a live offer.'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
                   {(salaryNegotiationAsset || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(salaryNegotiationRoute)}>
                       <Sparkles size={12} className="mr-1.5" />
-                      {salaryNegotiationAsset ? 'Review Saved Strategy' : 'Open Negotiation Prep'}
+                      {salaryNegotiationAsset ? 'Review Saved Negotiation Prep' : 'Open Negotiation Prep'}
                     </GlassButton>
                   ) : null}
                 </div>

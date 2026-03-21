@@ -252,7 +252,7 @@ describe('SessionHistoryTab', () => {
 
     expect(screen.getByText(/Available now: Interview Prep/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Open Interview Prep/i })).toBeInTheDocument();
-    expect(screen.getByText(/30-60-90 Day Plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/Follow-up documents/i)).toBeInTheDocument();
   });
 
   it('opens a job workspace panel with stage controls and stage-aware actions', () => {
@@ -360,11 +360,11 @@ describe('SessionHistoryTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /view workspace/i }));
 
     expect(screen.getAllByText('Interview Prep').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Thank You Note').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('30-60-90 Plan').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Salary Negotiation').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /Review Saved Note/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Review Saved 30-60-90 Plan/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Review Saved Negotiation Prep/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /review saved strategy/i })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /Review Saved Negotiation Prep/i }));
 
     expect(onNavigate).toHaveBeenCalledWith('/workspace?room=interview&job=job-app-1&company=Acme+Corp&role=VP+Engineering&focus=negotiation&session=nego-1');
   });
