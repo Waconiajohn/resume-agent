@@ -1527,6 +1527,37 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('button', { name: 'Signal Peak', exact: true })).toBeVisible({ timeout: 8_000 });
   });
 
+  test('Job Search watchlist manager updates priority and removes a company in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.locator('button[title="Manage watchlist"]:visible').first().click();
+    await expect(sharedPage.getByRole('dialog', { name: /Manage watchlist/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByPlaceholder('e.g. Acme Corp').fill('Northfield Systems');
+    await sharedPage.getByRole('button', { name: /Add Company/i }).click();
+    await expect(
+      sharedPage.getByRole('dialog', { name: /Manage watchlist/i }).getByText('Northfield Systems', { exact: true }),
+    ).toBeVisible({ timeout: 8_000 });
+
+    const watchlistRow = sharedPage
+      .getByRole('dialog', { name: /Manage watchlist/i })
+      .locator('div[class*="rounded-xl"]')
+      .filter({ hasText: 'Northfield Systems' })
+      .first();
+
+    await watchlistRow.locator('button').nth(0).click();
+    await watchlistRow.locator('input[type="number"]').fill('5');
+    await watchlistRow.locator('button').nth(0).click();
+
+    await expect(watchlistRow.getByText('P5', { exact: true })).toBeVisible({ timeout: 8_000 });
+
+    await watchlistRow.locator('button').last().click();
+    await expect(
+      sharedPage.getByRole('dialog', { name: /Manage watchlist/i }).getByText('Northfield Systems', { exact: true }),
+    ).toHaveCount(0);
+  });
+
   test('Job Search tracker analyzes one application in the signed-in shell', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
