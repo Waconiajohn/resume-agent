@@ -81,6 +81,44 @@ I help leadership teams create the weekly decision-making cadence, ownership cla
   },
 } as const;
 
+const SIGNED_IN_LINKEDIN_CONTENT_TOPICS = [
+  {
+    id: 'topic-ops-cadence',
+    topic: 'The operating cadence most leadership teams skip',
+    hook: 'The meetings were happening, but the business still was not moving.',
+    rationale: 'This shows operating discipline without sounding generic.',
+    expertise_area: 'Executive Operations',
+    evidence_refs: ['Operating cadence reset'],
+  },
+  {
+    id: 'topic-cross-functional',
+    topic: 'What strong cross-functional leadership actually looks like',
+    hook: 'Alignment is not a slide. It is a working system.',
+    rationale: 'This reinforces executive alignment and systems thinking.',
+    expertise_area: 'Cross-functional Leadership',
+    evidence_refs: ['Leadership alignment framework'],
+  },
+] as const;
+
+const SIGNED_IN_LINKEDIN_CONTENT_DRAFT = {
+  post: `The meetings were happening, but the business still was not moving.
+
+That was the signal we did not need more status updates. We needed a real operating cadence.
+
+Once product, operations, and support were working from the same weekly decisions and owners, execution got faster and the noise dropped.
+
+Alignment is not a slide. It is a system leaders maintain together.`,
+  hashtags: ['OperationsLeadership', 'ExecOps', 'Leadership'],
+  quality_scores: {
+    authenticity: 89,
+    engagement_potential: 81,
+    keyword_density: 74,
+  },
+  hook_score: 78,
+  hook_type: 'pattern_interrupt',
+  hook_assessment: 'The opening creates curiosity without overpromising.',
+} as const;
+
 // ---------------------------------------------------------------------------
 // API + Supabase mock helpers
 // ---------------------------------------------------------------------------
@@ -232,6 +270,7 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     updated_at: string;
   }> = [];
   const linkedinEditorState = new Map<string, 'headline' | 'about' | 'complete'>();
+  const linkedinContentState = new Map<string, 'topics' | 'draft' | 'complete'>();
   // Override fetch for generic SSE requests before navigation
   await page.addInitScript(() => {
     const originalFetch = window.fetch;
@@ -943,6 +982,63 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       return;
     }
 
+    if (/^\/api\/linkedin-content\/[^/]+\/stream$/.test(path) && method === 'GET') {
+      const sessionId = path.split('/')[3] ?? 'signed-in-linkedin-content-session';
+      const phase = linkedinContentState.get(sessionId) ?? 'topics';
+
+      if (phase === 'draft') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/event-stream',
+          body: [
+            'event: stage_start',
+            'data: {"stage":"drafting","message":"Writing a draft from your selected topic..."}',
+            '',
+            'event: post_draft_ready',
+            `data: ${JSON.stringify(SIGNED_IN_LINKEDIN_CONTENT_DRAFT)}`,
+            '',
+            'event: pipeline_gate',
+            'data: {"gate":"post_review"}',
+            '',
+          ].join('\n'),
+        });
+        return;
+      }
+
+      if (phase === 'complete') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/event-stream',
+          body: [
+            'event: content_complete',
+            `data: ${JSON.stringify(SIGNED_IN_LINKEDIN_CONTENT_DRAFT)}`,
+            '',
+            'event: pipeline_complete',
+            'data: {}',
+            '',
+          ].join('\n'),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: [
+          'event: stage_start',
+          'data: {"stage":"topic_generation","message":"Finding post angles from your positioning..."}',
+          '',
+          'event: topics_ready',
+          `data: ${JSON.stringify({ topics: SIGNED_IN_LINKEDIN_CONTENT_TOPICS })}`,
+          '',
+          'event: pipeline_gate',
+          'data: {"gate":"topic_selection"}',
+          '',
+        ].join('\n'),
+      });
+      return;
+    }
+
     if (path === '/api/linkedin-editor/start' && method === 'POST') {
       const body = route.request().postDataJSON() as Record<string, unknown> | null;
       const sessionId =
@@ -950,6 +1046,21 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
           ? body.session_id
           : 'signed-in-linkedin-editor-session';
       linkedinEditorState.set(sessionId, 'headline');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (path === '/api/linkedin-content/start' && method === 'POST') {
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const sessionId =
+        typeof body?.session_id === 'string' && body.session_id.length > 0
+          ? body.session_id
+          : 'signed-in-linkedin-content-session';
+      linkedinContentState.set(sessionId, 'topics');
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -972,6 +1083,33 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
 
       if (response.approved === true) {
         linkedinEditorState.set(sessionId, currentPhase === 'headline' ? 'about' : 'complete');
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (path === '/api/linkedin-content/respond' && method === 'POST') {
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const sessionId =
+        typeof body?.session_id === 'string' && body.session_id.length > 0
+          ? body.session_id
+          : 'signed-in-linkedin-content-session';
+      const response =
+        body?.response && typeof body.response === 'object'
+          ? body.response as Record<string, unknown>
+          : {};
+
+      if (typeof response.topic_id === 'string' && response.topic_id.length > 0) {
+        linkedinContentState.set(sessionId, 'draft');
+      } else if (response.approved === true) {
+        linkedinContentState.set(sessionId, 'complete');
+      } else {
+        linkedinContentState.set(sessionId, 'draft');
       }
 
       await route.fulfill({
@@ -1612,6 +1750,26 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('heading', { name: /Profile Optimization Complete/i })).toBeVisible({ timeout: 10_000 });
     await expect(sharedPage.getByText('Headline', { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(sharedPage.getByText('About Section', { exact: true })).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('LinkedIn Post Composer writes and approves a post in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /Write a Post/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: /Choose a Topic/i })).toBeVisible({ timeout: 10_000 });
+    await sharedPage.getByRole('button', { name: /The operating cadence most leadership teams skip/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: /Post Draft/i })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByText(/The meetings were happening, but the business still was not moving/i)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await sharedPage.getByRole('button', { name: /Approve Post/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: /Your Post is Ready/i })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByText(/Saved to Library/i)).toBeVisible({ timeout: 10_000 });
   });
 
   test('Job Search room renders', async () => {
