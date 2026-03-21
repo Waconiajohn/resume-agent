@@ -110,6 +110,7 @@ export function useJobTracker() {
         case 'application_analyzed': {
           const company = safeString(data.company);
           const role = safeString(data.role);
+          if (!company || !role) break;
           const fitScore = safeNumber(data.fit_score);
           addActivity(`Analyzed ${company} — ${role} (fit: ${fitScore}/100)`, 'analysis');
           break;
@@ -118,6 +119,7 @@ export function useJobTracker() {
         case 'follow_up_generated': {
           const company = safeString(data.company);
           const role = safeString(data.role);
+          if (!company || !role) break;
           const type = safeString(data.follow_up_type).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
           addActivity(`Generated ${type} for ${company} — ${role}`, 'writing');
           break;
@@ -131,14 +133,24 @@ export function useJobTracker() {
         }
 
         case 'tracker_complete':
-          setState((prev) => ({
-            ...prev,
-            status: 'complete',
-            report: safeString(data.report),
-            qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
-            applicationCount: typeof data.application_count === 'number' ? data.application_count : prev.applicationCount,
-            followUpCount: typeof data.follow_up_count === 'number' ? data.follow_up_count : prev.followUpCount,
-          }));
+          setState((prev) => {
+            const report = safeString(data.report);
+            return {
+              ...prev,
+              status: 'complete',
+              report: report || prev.report,
+              qualityScore:
+                data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
+              applicationCount:
+                data.application_count == null
+                  ? prev.applicationCount
+                  : safeNumber(data.application_count, prev.applicationCount ?? 0),
+              followUpCount:
+                data.follow_up_count == null
+                  ? prev.followUpCount
+                  : safeNumber(data.follow_up_count, prev.followUpCount ?? 0),
+            };
+          });
           abortRef.current?.abort();
           break;
 

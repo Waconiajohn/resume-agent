@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useJobTracker } from '@/hooks/useJobTracker';
 
 // ─── Mocks ──────────────────────────────────────────────────────────
@@ -225,5 +225,81 @@ describe('useJobTracker', () => {
     const parsed = JSON.parse(event.data);
     expect(parsed.stage).toBe('analyze_application');
     expect(parsed.message).toContain('3 application(s)');
+  });
+
+  it('sanitizes streamed tracker_complete payloads before storing them', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockImplementation(async function* () {
+      yield {
+        event: 'application_analyzed',
+        data: JSON.stringify({ company: 'Acme Corp', role: 'VP Operations', fit_score: '88' }),
+      };
+      yield {
+        event: 'application_analyzed',
+        data: JSON.stringify({ company: '', role: '', fit_score: 'bad' }),
+      };
+      yield {
+        event: 'tracker_complete',
+        data: JSON.stringify({
+          report: '# Tracker Report',
+          quality_score: '82',
+          application_count: '3',
+          follow_up_count: '2',
+        }),
+      };
+    });
+
+    const { result } = renderHook(() => useJobTracker());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('complete'));
+    expect(result.current.report).toBe('# Tracker Report');
+    expect(result.current.qualityScore).toBe(82);
+    expect(result.current.applicationCount).toBe(3);
+    expect(result.current.followUpCount).toBe(2);
+    expect(result.current.activityMessages).toHaveLength(1);
+    expect(result.current.activityMessages[0]?.message).toContain('Acme Corp');
+  });
+
+  it('does not populate a blank tracker report while still normalizing numeric summary fields', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockImplementation(async function* () {
+      yield {
+        event: 'tracker_complete',
+        data: JSON.stringify({
+          report: '',
+          quality_score: '90',
+          application_count: '4',
+          follow_up_count: '3',
+        }),
+      };
+    });
+
+    const { result } = renderHook(() => useJobTracker());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('complete'));
+    expect(result.current.report).toBeNull();
+    expect(result.current.qualityScore).toBe(90);
+    expect(result.current.applicationCount).toBe(4);
+    expect(result.current.followUpCount).toBe(3);
   });
 });
