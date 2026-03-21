@@ -121,6 +121,40 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       status: 'active',
     },
   ];
+  const jobFinderMatches = [
+    {
+      id: 'finder-1',
+      title: 'VP Operations',
+      company: 'Northstar SaaS',
+      location: 'Remote',
+      fit_score: 94,
+      why_match: 'Strong overlap with operating cadence, cross-functional execution, and leadership scope.',
+      salary_range: '$220k-$260k',
+      posted_date: '2d ago',
+      work_type: 'remote',
+    },
+    {
+      id: 'finder-2',
+      title: 'Chief of Staff, Operations',
+      company: 'ScaleCo',
+      location: 'Chicago',
+      fit_score: 89,
+      why_match: 'Matches your execution-system leadership and executive stakeholder alignment experience.',
+      salary_range: '$190k-$230k',
+      posted_date: '4d ago',
+      work_type: 'hybrid',
+    },
+  ];
+  const jobFinderSearches = [
+    {
+      platform: 'LinkedIn',
+      query: '("VP Operations" OR "Operations Executive") AND ("operating cadence" OR "cross-functional execution")',
+    },
+    {
+      platform: 'Indeed',
+      query: '("operations leader" OR "chief of staff operations") AND ("forecast accuracy" OR "delivery cadence")',
+    },
+  ];
 
   // Override fetch for SSE requests before navigation
   await page.addInitScript(() => {
@@ -513,6 +547,43 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       const index = interviewDebriefs.findIndex((debrief) => debrief.id === debriefId);
       if (index >= 0) interviewDebriefs.splice(index, 1);
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+      return;
+    }
+
+    if (path === '/api/job-finder/start' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (/^\/api\/job-finder\/[^/]+\/stream$/.test(path) && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: [
+          'event: stage_start',
+          'data: {"stage":"search","message":"Building search strings from your Career Profile..."}',
+          '',
+          'event: search_progress',
+          `data: ${JSON.stringify({
+            message: 'Generated Boolean searches for LinkedIn and Indeed.',
+            searches: jobFinderSearches,
+          })}`,
+          '',
+          'event: results_ready',
+          `data: ${JSON.stringify({ matches: jobFinderMatches })}`,
+          '',
+          'event: job_finder_complete',
+          'data: {"session_id":"signed-in-job-finder-session"}',
+          '',
+          'event: pipeline_complete',
+          'data: {}',
+          '',
+        ].join('\n'),
+      });
       return;
     }
 
@@ -1228,6 +1299,22 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: 'Daily Ops', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: 'Daily Ops', exact: true })).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Job Search runs Job Finder in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: 'Radar', exact: true }).click();
+    await expect(sharedPage.getByRole('heading', { name: /Radar Search/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /Run Job Finder/i }).click();
+
+    await expect(sharedPage.getByText('Northstar SaaS', { exact: true })).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText('ScaleCo', { exact: true })).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByRole('heading', { name: /Boolean Search Builder/i })).toBeVisible({
+      timeout: 8_000,
+    });
   });
 
   test('Job Search watchlist manager adds a company cleanly in the signed-in shell', async () => {
