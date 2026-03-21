@@ -1304,20 +1304,6 @@ export function InterviewLabRoom({
 
       {activeSection === 'prep' && (
         <>
-          <GlassCard className="p-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  Prep
-                </div>
-                <h2 className="mt-2 text-lg font-semibold text-white/88">Start with research and likely interview pressure points</h2>
-                <p className="mt-2 text-sm leading-relaxed text-white/54">
-                  Generate prep from an active role, then use it to focus your questions, stories, and likely pressure points before you start practicing.
-                </p>
-              </div>
-            </div>
-          </GlassCard>
-
           <UpcomingInterviews
             interviews={
               pipelineInterviews && pipelineInterviews.length > 0
@@ -1340,15 +1326,9 @@ export function InterviewLabRoom({
 
       {activeSection === 'practice' && (
         <GlassCard className="p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                Practice
-              </div>
-              <h2 className="mt-2 text-lg font-semibold text-white/88">Pressure-test the story before the live interview</h2>
-              <p className="mt-2 text-sm leading-relaxed text-white/54">
-                Run the mock interview when you want to hear your positioning out loud, tighten weak answers, and expose where your proof still feels thin.
-              </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-3xl text-sm leading-relaxed text-white/54">
+              Run the mock interview when you want to hear your positioning out loud, tighten weak answers, and expose where your proof still feels thin.
             </div>
             <GlassButton
               variant="primary"
@@ -1388,15 +1368,9 @@ export function InterviewLabRoom({
       {activeSection === 'follow_up' && (
         <div className="space-y-4">
           <GlassCard className="p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  Follow-up
-                </div>
-                <h2 className="mt-2 text-lg font-semibold text-white/88">Close the loop without breaking the narrative</h2>
-                <p className="mt-2 text-sm leading-relaxed text-white/54">
-                  Your debriefs, thank-you note, and any offer-stage negotiation prep should all reinforce the same positioning story you used during prep and practice.
-                </p>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl text-sm leading-relaxed text-white/54">
+                Keep debriefs, thank-you notes, and offer-stage negotiation prep tied to the same story you used during prep and practice.
               </div>
               <div className="flex flex-wrap gap-2">
                 <GlassButton
@@ -1420,39 +1394,39 @@ export function InterviewLabRoom({
           </GlassCard>
 
           {followUpView === 'overview' && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <GlassCard className="p-5">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  Thank You Note
+            <GlassCard className="p-5">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                  <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                    Thank You Note
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-white/52">
+                    Turn the debrief into a focused follow-up note while the conversation is still fresh.
+                  </p>
+                  <div className="mt-4">
+                    <GlassButton variant="ghost" onClick={() => setFollowUpView('thank_you')} className="text-[13px]">
+                      <Mail size={14} className="mr-1.5" />
+                      Open Thank You Note
+                    </GlassButton>
+                  </div>
                 </div>
-                <h3 className="mt-2 text-base font-semibold text-white/86">Follow up while the interview is still fresh</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/52">
-                  Capture what happened, tighten the story you want them to remember, and turn that into a focused follow-up note.
-                </p>
-                <div className="mt-4">
-                  <GlassButton variant="ghost" onClick={() => setFollowUpView('thank_you')} className="text-[13px]">
-                    <Mail size={14} className="mr-1.5" />
-                    Open Thank You Note
-                  </GlassButton>
-                </div>
-              </GlassCard>
 
-              <GlassCard className="p-5">
-                <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  Negotiation Prep
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                  <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                    Negotiation Prep
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-white/52">
+                    Prepare the offer conversation inside the same workflow instead of opening a separate product.
+                  </p>
+                  <div className="mt-4">
+                    <GlassButton variant="ghost" onClick={() => setFollowUpView('negotiation')} className="text-[13px]">
+                      <Star size={14} className="mr-1.5" />
+                      Open Negotiation Prep
+                    </GlassButton>
+                  </div>
                 </div>
-                <h3 className="mt-2 text-base font-semibold text-white/86">Prepare the offer-stage conversation inside the same workflow</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/52">
-                  Keep the offer strategy tied to the same narrative, scope, and leverage story you used during interview prep instead of opening a separate product.
-                </p>
-                <div className="mt-4">
-                  <GlassButton variant="ghost" onClick={() => setFollowUpView('negotiation')} className="text-[13px]">
-                    <Star size={14} className="mr-1.5" />
-                    Open Negotiation Prep
-                  </GlassButton>
-                </div>
-              </GlassCard>
-            </div>
+              </div>
+            </GlassCard>
           )}
 
           {followUpView === 'thank_you' && (

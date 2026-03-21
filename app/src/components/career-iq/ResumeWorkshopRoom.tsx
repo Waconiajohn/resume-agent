@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, LibraryBig, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
@@ -102,6 +102,14 @@ export function ResumeWorkshopRoom({
             <p className="mt-2 text-sm leading-relaxed text-white/50">
               Stay in job workspaces by default. Open your master resume or cover letter only when you need them, then return to the same working area.
             </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 font-medium text-white/68">
+                {tailoredCount} job workspaces
+              </span>
+              <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 font-medium text-white/68">
+                {defaultResume ? `Master resume v${defaultResume.version}` : 'No master resume yet'}
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -118,48 +126,26 @@ export function ResumeWorkshopRoom({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          <SummaryCard
-            icon={FileText}
-            title="Job workspaces"
-            value={`${tailoredCount}`}
-            description="Saved by company, job title, date, and current application stage."
-          />
-          <SummaryCard
-            icon={LibraryBig}
-            title="Master resume"
-            value={defaultResume ? `v${defaultResume.version}` : 'Not set'}
-            description={defaultResume ? 'Your default resume is ready for promotion-ready updates.' : 'Create or save a default resume to build a stronger base over time.'}
-          />
-        </div>
       </GlassCard>
 
       <GlassCard className="p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-white/85">Your work</h2>
-            <p className="mt-1 text-xs text-white/45">
-              Keep the main focus on job workspaces. The other views are there when you need them.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/62">
-              Job Workspaces
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/62">
+            Job Workspaces
+          </span>
+          {activeTab === 'cover_letter' && (
+            <span className="rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/10 px-3 py-1 text-xs font-medium text-[#d8e2ff]">
+              Cover Letter
             </span>
-            {activeTab === 'cover_letter' && (
-              <span className="rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/10 px-3 py-1 text-xs font-medium text-[#d8e2ff]">
-                Cover Letter
-              </span>
-            )}
-            {activeTab === 'master_resume' && (
-              <span className="rounded-full border border-[#b5dec2]/20 bg-[#b5dec2]/10 px-3 py-1 text-xs font-medium text-[#d6f0df]">
-                Master Resume
-              </span>
-            )}
-          </div>
+          )}
+          {activeTab === 'master_resume' && (
+            <span className="rounded-full border border-[#b5dec2]/20 bg-[#b5dec2]/10 px-3 py-1 text-xs font-medium text-[#d6f0df]">
+              Master Resume
+            </span>
+          )}
         </div>
 
-        <div className="mt-5">
+        <div>
           {activeTab === 'sessions' && (
             <SessionHistoryTab
               sessions={sessions}
@@ -244,31 +230,6 @@ export function ResumeWorkshopRoom({
           )}
         </div>
       </GlassCard>
-    </div>
-  );
-}
-
-function SummaryCard({
-  icon: Icon,
-  title,
-  value,
-  description,
-}: {
-  icon: typeof FileText;
-  title: string;
-  value: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-      <div className="flex items-center gap-2">
-        <div className="rounded-lg bg-white/[0.05] p-2">
-          <Icon size={16} className="text-[#98b3ff]" />
-        </div>
-        <div className="text-xs font-medium uppercase tracking-wider text-white/45">{title}</div>
-      </div>
-      <div className="mt-3 text-lg font-semibold text-white/85">{value}</div>
-      <div className="mt-1 text-xs leading-relaxed text-white/45">{description}</div>
     </div>
   );
 }

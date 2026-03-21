@@ -2389,7 +2389,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('button', { name: /Open 30-60-90 Day Plan/i })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: 'Follow-up', exact: true }).click();
-    await expect(sharedPage.getByText(/Close the loop without breaking the narrative/i)).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText(/Keep debriefs, thank-you notes, and offer-stage negotiation prep tied to the same story/i)).toBeVisible({ timeout: 8_000 });
   });
 
   test('Interview Prep generates a prep report in the signed-in shell', async () => {
@@ -2465,7 +2465,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await assertNoCrash(sharedPage);
 
     await sharedPage.getByRole('button', { name: 'Follow-up', exact: true }).click();
-    await expect(sharedPage.getByText(/Close the loop without breaking the narrative/i)).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText(/Keep debriefs, thank-you notes, and offer-stage negotiation prep tied to the same story/i)).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: /Open Thank You Note/i }).first().click();
     await expect(sharedPage.getByRole('heading', { name: /Thank You Note Writer/i })).toBeVisible({ timeout: 8_000 });
