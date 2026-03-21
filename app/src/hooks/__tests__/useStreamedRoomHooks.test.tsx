@@ -4,13 +4,17 @@ import { renderHook, act, cleanup, waitFor } from '@testing-library/react';
 
 type StreamEvent = { event: string; data: string };
 
-const { mockGetSession, mockParseSSEStream, setStreamEvents } = vi.hoisted(() => {
+const { mockGetSession, mockParseSSEStream, mockCreateProductSession, setStreamEvents } = vi.hoisted(() => {
   let streamEvents: StreamEvent[] = [];
 
   return {
     mockGetSession: vi.fn().mockResolvedValue({
       data: { session: { access_token: 'test-token' } },
       error: null,
+    }),
+    mockCreateProductSession: vi.fn().mockResolvedValue({
+      accessToken: 'test-token',
+      session: { id: 'session-123' },
     }),
     setStreamEvents: (events: StreamEvent[]) => {
       streamEvents = events;
@@ -35,12 +39,17 @@ vi.mock('@/lib/api', () => ({
   API_BASE: 'http://localhost:3001/api',
 }));
 
+vi.mock('@/lib/create-product-session', () => ({
+  createProductSession: mockCreateProductSession,
+}));
+
 vi.mock('@/lib/sse-parser', () => ({
   parseSSEStream: mockParseSSEStream,
 }));
 
 import { useLinkedInEditor } from '../useLinkedInEditor';
 import { useJobFinder } from '../useJobFinder';
+import { useInterviewPrep } from '../useInterviewPrep';
 
 function makeStreamResponse(): Response {
   return new Response(new ReadableStream<Uint8Array>({ start(controller) { controller.close(); } }), {
@@ -54,6 +63,10 @@ beforeEach(() => {
   mockGetSession.mockResolvedValue({
     data: { session: { access_token: 'test-token' } },
     error: null,
+  });
+  mockCreateProductSession.mockResolvedValue({
+    accessToken: 'test-token',
+    session: { id: 'session-123' },
   });
   vi.stubGlobal('crypto', {
     randomUUID: vi.fn(() => 'session-123'),
@@ -197,5 +210,59 @@ describe('useJobFinder', () => {
       },
     ]);
     expect(result.current.activityMessages.some((item) => /Found 1 matching roles/i.test(item.message))).toBe(true);
+  });
+});
+
+describe('useInterviewPrep', () => {
+  it('sanitizes malformed streamed prep payloads before storing them', async () => {
+    setStreamEvents([
+      {
+        event: 'pipeline_gate',
+        data: JSON.stringify({ gate: 'star_stories_review' }),
+      },
+      {
+        event: 'star_stories_review_ready',
+        data: JSON.stringify({
+          report: 'Star story notes',
+          quality_score: '87',
+        }),
+      },
+      {
+        event: 'section_progress',
+        data: JSON.stringify({
+          section: '',
+          status: 'writing',
+        }),
+      },
+      {
+        event: 'report_complete',
+        data: JSON.stringify({
+          report: '',
+          quality_score: '91',
+        }),
+      },
+    ]);
+
+    const { result } = renderHook(() => useInterviewPrep());
+
+    let started = false;
+    await act(async () => {
+      started = await result.current.startPipeline({
+        resumeText: 'A'.repeat(120),
+        jobDescription: 'B'.repeat(120),
+        companyName: 'Acme',
+      });
+    });
+
+    expect(started).toBe(true);
+
+    await waitFor(() => expect(result.current.status).toBe('complete'));
+    expect(result.current.starStoriesReviewData).toEqual({
+      report: 'Star story notes',
+      quality_score: 87,
+    });
+    expect(result.current.report).toBeNull();
+    expect(result.current.qualityScore).toBe(91);
+    expect(result.current.activityMessages).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { createProductSession } from '@/lib/create-product-session';
-import { safeString } from '@/lib/safe-cast';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -27,6 +27,11 @@ interface InterviewPrepState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 30;
+const STAR_STORIES_GATE = 'star_stories_review' as const;
+
+function asInterviewPrepGate(value: unknown): typeof STAR_STORIES_GATE | null {
+  return value === STAR_STORIES_GATE ? STAR_STORIES_GATE : null;
+}
 
 export function useInterviewPrep() {
   const [state, setState] = useState<InterviewPrepState>({
@@ -99,6 +104,7 @@ export function useInterviewPrep() {
         case 'section_progress': {
           const section = safeString(data.section);
           const progressStatus = safeString(data.status);
+          if (!section) break;
           if (progressStatus === 'writing') {
             addActivity(`Writing section: ${section}`, 'writing');
           } else if (progressStatus === 'reviewing') {
@@ -110,31 +116,36 @@ export function useInterviewPrep() {
         }
 
         case 'star_stories_review_ready': {
+          const report = safeString(data.report);
           setState((prev) => ({
             ...prev,
             starStoriesReviewData: {
-              report: safeString(data.report),
-              quality_score: typeof data.quality_score === 'number' ? data.quality_score : 0,
+              report,
+              quality_score: safeNumber(data.quality_score),
             },
           }));
           break;
         }
 
         case 'pipeline_gate': {
-          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
-          if (gateName === 'star_stories_review') {
+          const gateName = asInterviewPrepGate(data.gate);
+          if (gateName) {
             setState((prev) => ({ ...prev, status: 'star_stories_review', pendingGate: gateName }));
           }
           break;
         }
 
         case 'report_complete':
-          setState((prev) => ({
-            ...prev,
-            status: 'complete',
-            report: safeString(data.report),
-            qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
-          }));
+          setState((prev) => {
+            const report = safeString(data.report);
+            return {
+              ...prev,
+              status: 'complete',
+              report: report || prev.report,
+              qualityScore:
+                data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
+            };
+          });
           abortRef.current?.abort();
           break;
 
