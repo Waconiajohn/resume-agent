@@ -115,7 +115,7 @@ export function CareerProfileRoom({
               </div>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-white/55">
-              This assessment sharpens your role direction, strengths, proof themes, and constraints so Resume Builder, LinkedIn, Job Search, and Interview Prep stop starting from scratch.
+              This is your shared why-me story. Be accurate here because Resume Builder, LinkedIn, Job Search, and Interview Prep all use this profile as source context, and you can review or strengthen it anytime.
             </p>
           </div>
 
@@ -140,6 +140,23 @@ export function CareerProfileRoom({
           <SummaryMetric label="Readiness" value={`${summary.readinessPercent}%`} detail={summary.readinessLabel} />
           <SummaryMetric label="Core Story" value={summary.primaryStory} detail={summary.strengthSnapshot} />
           <SummaryMetric label="Next Step" value={summary.nextRecommendedAction} detail={summary.statusLine} />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <ConversationHint
+            label="Why it matters"
+            value="Used everywhere"
+            detail="Every core module peeks at this profile before it starts writing or advising."
+          />
+          <ConversationHint
+            label="How to answer"
+            value="Be precise"
+            detail="Use truthful scope, proof, constraints, and the language you would actually use to describe your value."
+          />
+          <ConversationHint
+            label="Good news"
+            value="Easy to refine"
+            detail="You can come back, update answers, and make the shared story stronger whenever you need."
+          />
         </div>
       </GlassCard>
 
@@ -185,7 +202,7 @@ export function CareerProfileRoom({
                   One question, one confirmation, one stronger profile update
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/58">
-                  The goal here is not to race through a form. It is to let the AI ask the next best question, reflect back what it heard, and let you confirm or refine it before the platform uses it everywhere else.
+                  The goal here is not to race through a form. Treat each answer like shared source-of-truth: the AI asks the next best question, reflects back what it heard, and lets you confirm or refine it before the platform uses it everywhere else.
                 </p>
               </div>
               <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-white/45">
@@ -201,7 +218,7 @@ export function CareerProfileRoom({
                 </div>
                 <p className="mt-3 text-base leading-relaxed text-white/88">{currentQuestion.question}</p>
                 <p className="mt-3 text-sm leading-relaxed text-white/58">
-                  {currentQuestion.purpose || `This answer helps the platform understand your ${formatCategory(currentQuestion.category)} so every tool stops guessing.`}
+                  {currentQuestion.purpose || `This answer sharpens your ${formatCategory(currentQuestion.category)} story so every tool can work from the same truthful context instead of guessing.`}
                 </p>
               </div>
 
@@ -409,6 +426,9 @@ export function CareerProfileRoom({
               <Brain size={16} className="text-[#98b3ff]" />
               <h2 className="text-sm font-semibold text-white/85">What the platform currently knows about you</h2>
             </div>
+            <p className="mt-2 text-sm leading-relaxed text-white/54">
+              This is the shared profile the rest of the workspace reads before it writes, scores, or coaches. Review it whenever your target role, proof, or story gets stronger.
+            </p>
             <div className="mt-4 grid gap-3 lg:grid-cols-4">
               {profile.completeness.sections.map((section) => (
                 <div key={section.id} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -460,7 +480,7 @@ export function CareerProfileRoom({
             </GlassCard>
 
             <GlassCard className="p-6">
-              <h3 className="text-sm font-semibold text-white/86">Narrative that agents can reuse</h3>
+              <h3 className="text-sm font-semibold text-white/86">Why-me story agents can reuse</h3>
               <div className="mt-4 space-y-3">
                 <NarrativeBlock label="What people come to you for" value={profile.narrative.colleagues_came_for_what} />
                 <NarrativeBlock label="What you want to be known for" value={profile.narrative.known_for_what} />
