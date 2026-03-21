@@ -39,6 +39,22 @@ export interface SalaryNegotiationInput {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 
+function normalizeConfidence(value: unknown): 'low' | 'medium' | 'high' | undefined {
+  return value === 'low' || value === 'medium' || value === 'high' ? value : undefined;
+}
+
+function normalizeStrategyReviewData(value: Record<string, unknown>): StrategyReviewData {
+  return {
+    opening_position: safeString(value.opening_position),
+    walk_away_point: safeString(value.walk_away_point),
+    batna: safeString(value.batna),
+    approach: safeString(value.approach),
+    market_p50: value.market_p50 == null ? undefined : safeNumber(value.market_p50),
+    market_p75: value.market_p75 == null ? undefined : safeNumber(value.market_p75),
+    data_confidence: normalizeConfidence(value.data_confidence),
+  };
+}
+
 export function useSalaryNegotiation() {
   const [state, setState] = useState<SalaryNegotiationState>({
     status: 'idle',
@@ -128,21 +144,13 @@ export function useSalaryNegotiation() {
         case 'strategy_review_ready': {
           setState((prev) => ({
             ...prev,
-            strategyReviewData: {
-              opening_position: safeString(data.opening_position),
-              walk_away_point: safeString(data.walk_away_point),
-              batna: safeString(data.batna),
-              approach: safeString(data.approach),
-              market_p50: typeof data.market_p50 === 'number' ? data.market_p50 : undefined,
-              market_p75: typeof data.market_p75 === 'number' ? data.market_p75 : undefined,
-              data_confidence: (data.data_confidence as 'low' | 'medium' | 'high' | undefined) ?? undefined,
-            },
+            strategyReviewData: normalizeStrategyReviewData(data),
           }));
           break;
         }
 
         case 'pipeline_gate': {
-          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          const gateName = data.gate === 'strategy_review' ? 'strategy_review' : undefined;
           if (gateName === 'strategy_review') {
             setState((prev) => ({ ...prev, status: 'strategy_review' }));
           }
@@ -153,8 +161,9 @@ export function useSalaryNegotiation() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: safeString(data.report),
-            qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
+            report: safeString(data.report) || prev.report,
+            qualityScore:
+              data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
           }));
           abortRef.current?.abort();
           break;

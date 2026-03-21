@@ -30,6 +30,13 @@ vi.mock('@/lib/sse-parser', () => ({
   parseSSEStream: vi.fn(),
 }));
 
+vi.mock('@/lib/create-product-session', () => ({
+  createProductSession: vi.fn().mockResolvedValue({
+    accessToken: 'test-token',
+    session: { id: 'test-uuid' },
+  }),
+}));
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function makeEvent(type: string, data: Record<string, unknown>) {
@@ -107,7 +114,8 @@ describe('useSalaryNegotiation', () => {
       await result.current.startPipeline(sampleInput);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
       'http://localhost:3001/api/salary-negotiation/start',
       expect.objectContaining({
         method: 'POST',
@@ -153,10 +161,8 @@ describe('useSalaryNegotiation', () => {
   });
 
   it('startPipeline sets error when not authenticated', async () => {
-    const { supabase } = await import('@/lib/supabase');
-    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      data: { session: null },
-    });
+    const { createProductSession } = await import('@/lib/create-product-session');
+    (createProductSession as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Not authenticated'));
 
     const { result } = renderHook(() => useSalaryNegotiation());
 
@@ -168,6 +174,82 @@ describe('useSalaryNegotiation', () => {
     expect(success).toBe(false);
     expect(result.current.status).toBe('error');
     expect(result.current.error).toContain('authenticated');
+  });
+
+  it('normalizes strategy review payloads and numeric-string market values', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield makeEvent('strategy_review_ready', {
+          opening_position: '$220,000 base',
+          walk_away_point: '$205,000 base',
+          batna: 'Stay in current role',
+          approach: 'Value anchored',
+          market_p50: '210000',
+          market_p75: '235000',
+          data_confidence: 'unknown',
+        });
+      },
+    });
+
+    const { result } = renderHook(() => useSalaryNegotiation());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.strategyReviewData).toEqual({
+      opening_position: '$220,000 base',
+      walk_away_point: '$205,000 base',
+      batna: 'Stay in current role',
+      approach: 'Value anchored',
+      market_p50: 210000,
+      market_p75: 235000,
+      data_confidence: undefined,
+    });
+  });
+
+  it('preserves a good prior report when negotiation_complete arrives with an empty final report', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield makeEvent('negotiation_complete', {
+          report: '# Negotiation Strategy',
+          quality_score: 89,
+        });
+        yield makeEvent('negotiation_complete', {
+          report: '',
+          quality_score: 'bad-score',
+        });
+      },
+    });
+
+    const { result } = renderHook(() => useSalaryNegotiation());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.report).toBe('# Negotiation Strategy');
+    expect(result.current.qualityScore).toBe(89);
   });
 
   it('handles negotiation_complete event (sets report, qualityScore, status=complete)', () => {

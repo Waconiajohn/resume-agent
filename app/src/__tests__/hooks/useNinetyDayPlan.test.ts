@@ -30,6 +30,13 @@ vi.mock('@/lib/sse-parser', () => ({
   parseSSEStream: vi.fn(),
 }));
 
+vi.mock('@/lib/create-product-session', () => ({
+  createProductSession: vi.fn().mockResolvedValue({
+    accessToken: 'test-token',
+    session: { id: 'test-uuid' },
+  }),
+}));
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function makeEvent(type: string, data: Record<string, unknown>) {
@@ -101,7 +108,8 @@ describe('useNinetyDayPlan', () => {
       await result.current.startPipeline(sampleInput);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
       'http://localhost:3001/api/ninety-day-plan/start',
       expect.objectContaining({
         method: 'POST',
@@ -141,10 +149,8 @@ describe('useNinetyDayPlan', () => {
   });
 
   it('startPipeline sets error when not authenticated', async () => {
-    const { supabase } = await import('@/lib/supabase');
-    (supabase.auth.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      data: { session: null },
-    });
+    const { createProductSession } = await import('@/lib/create-product-session');
+    (createProductSession as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Not authenticated'));
 
     const { result } = renderHook(() => useNinetyDayPlan());
 
@@ -156,6 +162,106 @@ describe('useNinetyDayPlan', () => {
     expect(success).toBe(false);
     expect(result.current.status).toBe('error');
     expect(result.current.error).toContain('authenticated');
+  });
+
+  it('normalizes stakeholder review payloads and drops malformed entries', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield makeEvent('stakeholder_review_ready', {
+          stakeholder_map: [
+            {
+              name_or_role: ' CTO ',
+              relationship_type: 'manager',
+              priority: 'high',
+              engagement_strategy: 'Weekly updates',
+            },
+            { priority: 'missing name' },
+          ],
+          quick_wins: [
+            { description: ' Stabilize roadmap ', impact: 'high', effort: 'medium' },
+            { impact: 'missing description' },
+          ],
+          role_context: {
+            target_role: 'SVP Engineering',
+            target_company: 'Acme Corp',
+            target_industry: 'Technology',
+          },
+        });
+      },
+    });
+
+    const { result } = renderHook(() => useNinetyDayPlan());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.stakeholderReviewData).toEqual({
+      stakeholder_map: [
+        {
+          name_or_role: 'CTO',
+          relationship_type: 'manager',
+          priority: 'high',
+          engagement_strategy: 'Weekly updates',
+        },
+      ],
+      quick_wins: [
+        {
+          description: 'Stabilize roadmap',
+          impact: 'high',
+          effort: 'medium',
+        },
+      ],
+      role_context: {
+        target_role: 'SVP Engineering',
+        target_company: 'Acme Corp',
+        target_industry: 'Technology',
+      },
+    });
+  });
+
+  it('preserves a good prior report when plan_complete arrives with an empty final report', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield makeEvent('plan_complete', {
+          report: '# 30-60-90 Strategic Plan',
+          quality_score: 92,
+        });
+        yield makeEvent('plan_complete', {
+          report: '',
+          quality_score: 'bad-score',
+        });
+      },
+    });
+
+    const { result } = renderHook(() => useNinetyDayPlan());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.report).toBe('# 30-60-90 Strategic Plan');
+    expect(result.current.qualityScore).toBe(92);
   });
 
   it('handles plan_complete event (sets report, qualityScore, status=complete)', () => {

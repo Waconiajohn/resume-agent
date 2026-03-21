@@ -39,6 +39,51 @@ export interface NinetyDayPlanInput {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 
+function normalizeStakeholderMap(value: unknown): StakeholderReviewData['stakeholder_map'] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const raw = item as Record<string, unknown>;
+    const nameOrRole = safeString(raw.name_or_role).trim();
+    if (!nameOrRole) return [];
+    return [{
+      name_or_role: nameOrRole,
+      relationship_type: safeString(raw.relationship_type).trim(),
+      priority: safeString(raw.priority).trim(),
+      engagement_strategy: safeString(raw.engagement_strategy).trim(),
+    }];
+  });
+}
+
+function normalizeQuickWins(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const raw = item as Record<string, unknown>;
+    const description = safeString(raw.description).trim();
+    if (!description) return [];
+    return [{
+      description,
+      impact: safeString(raw.impact).trim(),
+      effort: safeString(raw.effort).trim(),
+    }];
+  });
+}
+
+function normalizeRoleContext(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const targetRole = safeString(raw.target_role).trim();
+  const targetCompany = safeString(raw.target_company).trim();
+  const targetIndustry = safeString(raw.target_industry).trim();
+  if (!targetRole && !targetCompany && !targetIndustry) return null;
+  return {
+    target_role: targetRole,
+    target_company: targetCompany,
+    target_industry: targetIndustry,
+  };
+}
+
 export function useNinetyDayPlan() {
   const [state, setState] = useState<NinetyDayPlanState>({
     status: 'idle',
@@ -122,16 +167,16 @@ export function useNinetyDayPlan() {
           setState((prev) => ({
             ...prev,
             stakeholderReviewData: {
-              stakeholder_map: Array.isArray(data.stakeholder_map) ? data.stakeholder_map : [],
-              quick_wins: Array.isArray(data.quick_wins) ? data.quick_wins : [],
-              role_context: data.role_context ?? null,
+              stakeholder_map: normalizeStakeholderMap(data.stakeholder_map),
+              quick_wins: normalizeQuickWins(data.quick_wins),
+              role_context: normalizeRoleContext(data.role_context),
             },
           }));
           break;
         }
 
         case 'pipeline_gate': {
-          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          const gateName = data.gate === 'stakeholder_review' ? 'stakeholder_review' : undefined;
           if (gateName === 'stakeholder_review') {
             setState((prev) => ({ ...prev, status: 'stakeholder_review', pendingGate: gateName }));
           }
@@ -158,8 +203,9 @@ export function useNinetyDayPlan() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: safeString(data.report),
-            qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
+            report: safeString(data.report) || prev.report,
+            qualityScore:
+              data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
           }));
           abortRef.current?.abort();
           break;
