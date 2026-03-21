@@ -143,19 +143,21 @@ describe('JobCommandCenterRoom', () => {
   it('renders boolean search builder section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
-    expect(screen.getByText('Boolean Search Builder')).toBeInTheDocument();
+    expect(screen.getByText('Search tools')).toBeInTheDocument();
+    expect(screen.queryByText('Boolean Search Builder')).not.toBeInTheDocument();
   });
 
-  it('renders "Generate Searches" button when no searches exist', () => {
+  it('renders "Generate Searches" after opening search tools', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Open search tools/i }));
     expect(screen.getByText('Generate Searches')).toBeInTheDocument();
   });
 
-  it('shows collapsed search setup by default in Discover', () => {
+  it('shows collapsed search tools by default in Discover', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
-    expect(screen.getByText('Search setup')).toBeInTheDocument();
+    expect(screen.getByText('Search tools')).toBeInTheDocument();
     expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
   });
 

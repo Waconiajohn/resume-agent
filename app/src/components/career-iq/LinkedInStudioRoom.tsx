@@ -1514,7 +1514,18 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             Write posts, sharpen your profile, plan content, and keep your strongest ideas ready to reuse.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-end gap-2">
+          {optimizer.qualityScore !== null && (
+            <div className={cn(
+              'text-[12px] font-medium px-2.5 py-1 rounded-full',
+              optimizer.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
+              optimizer.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
+              'text-red-400 bg-red-400/10',
+            )}>
+              Profile Quality: {optimizer.qualityScore}%
+            </div>
+          )}
+          <div className="flex items-center gap-2">
           <GlassButton
             onClick={handleOptimize}
             disabled={isOptimizerRunning}
@@ -1532,6 +1543,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               </>
             )}
           </GlassButton>
+          </div>
         </div>
       </div>
 
@@ -1540,20 +1552,6 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 flex items-center gap-3">
           <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
           <p className="text-[13px] text-red-300/80">{inputError || optimizer.error}</p>
-        </div>
-      )}
-
-      {/* Quality score badge */}
-      {optimizer.qualityScore !== null && (
-        <div className="flex items-center gap-2">
-          <div className={cn(
-            'text-[12px] font-medium px-2.5 py-1 rounded-full',
-            optimizer.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
-            optimizer.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
-            'text-red-400 bg-red-400/10',
-          )}>
-            Profile Quality: {optimizer.qualityScore}%
-          </div>
         </div>
       )}
 
