@@ -76,7 +76,7 @@ function ActivityFeed({ messages, label }: { messages: Array<{ id: string; messa
   );
 }
 
-// ─── Post Composer ────────────────────────────────────────────────────────
+// ─── Write Tab ────────────────────────────────────────────────────────────
 
 function PostComposer({ signals }: { signals: WhyMeSignals }) {
   const content = useLinkedInContent();
@@ -89,7 +89,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
     setInputError(null);
     const ok = await content.startContentPipeline();
     if (!ok && !content.error) {
-      setInputError('Unable to start the Post Composer. Please try again.');
+      setInputError('Unable to start your LinkedIn post draft. Please try again.');
     }
   }, [content]);
 
@@ -380,7 +380,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
   return null;
 }
 
-// ─── Profile Editor ───────────────────────────────────────────────────────
+// ─── Profile Tab ──────────────────────────────────────────────────────────
 
 function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
   const editor = useLinkedInEditor();
@@ -392,7 +392,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
     setInputError(null);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) {
-      setInputError('Please sign in to use the Profile Editor.');
+      setInputError('Please sign in to edit your LinkedIn profile.');
       return;
     }
 
@@ -411,7 +411,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
 
     const ok = await editor.startEditor();
     if (!ok && !editor.error) {
-      setInputError('Unable to start the Profile Editor. Please try again.');
+      setInputError('Unable to start profile editing. Please try again.');
     }
   }, [editor]);
 
@@ -775,7 +775,7 @@ function SectionScoreCards({ qualityScore }: { qualityScore: number | null }) {
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-medium text-white/60 mb-0.5">Current Profile Score</p>
         <p className="text-[11px] text-white/30 leading-tight">
-          Use this as a baseline. Run the Profile Editor when you want rewritten sections you can actually paste into LinkedIn.
+          Use this as a baseline. Open Profile when you want rewritten sections you can actually paste into LinkedIn.
         </p>
       </div>
     </div>
@@ -1197,7 +1197,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
   return null;
 }
 
-// ─── Analytics Overview ───────────────────────────────────────────────────
+// ─── Results Tab Overview ────────────────────────────────────────────────
 
 function AnalyticsOverview() {
   const { posts: rawPosts } = useContentPosts();
@@ -1260,7 +1260,7 @@ function AnalyticsOverview() {
   );
 }
 
-// ─── Post Library ────────────────────────────────────────────────────────
+// ─── Library Tab ─────────────────────────────────────────────────────────
 
 function PostLibrary() {
   const { posts: rawPosts, loading, error, updatePostStatus, deletePost } = useContentPosts();

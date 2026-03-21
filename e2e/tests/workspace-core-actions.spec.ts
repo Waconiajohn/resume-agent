@@ -71,7 +71,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Something went wrong/i })).toHaveCount(0);
   });
 
-  test('LinkedIn Post Composer writes and approves a post', async ({ page }) => {
+  test('LinkedIn Write drafts and approves a post', async ({ page }) => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible();
@@ -89,7 +89,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText(/Saved to Library/i)).toBeVisible();
   });
 
-  test('LinkedIn Profile Editor advances through section review and completes', async ({ page }) => {
+  test('LinkedIn Profile rewrites sections and completes', async ({ page }) => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible();

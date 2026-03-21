@@ -2195,7 +2195,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('button', { name: /Re-optimize/i })).toBeVisible({ timeout: 8_000 });
   });
 
-  test('LinkedIn Profile Editor completes in the signed-in shell', async () => {
+  test('LinkedIn Profile completes in the signed-in shell', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
     await assertNoCrash(sharedPage);
 
@@ -2219,7 +2219,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByText('About Section', { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('LinkedIn Post Composer writes and approves a post in the signed-in shell', async () => {
+  test('LinkedIn Write drafts and approves a post in the signed-in shell', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
     await assertNoCrash(sharedPage);
 

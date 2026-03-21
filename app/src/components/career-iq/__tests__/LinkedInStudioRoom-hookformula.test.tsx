@@ -2,12 +2,12 @@
 /**
  * LinkedInStudioRoom — Hook Formula Analyzer tests.
  *
- * Story 62-5: Hook score coaching nudge in the Post Composer tab.
+ * Story 62-5: Hook score coaching nudge in the Write tab.
  * Tests cover hook score badge visibility, score-based color coding,
  * coaching nudge display when score < 60, hookAssessment text rendering,
  * and hookType availability in the hook state.
  *
- * The hook score UI lives inside the PostComposer sub-component which renders
+ * The hook score UI lives inside the Write sub-component which renders
  * when content.status === 'post_review'. We drive the mock into that state by
  * setting status to 'post_review' and providing a postDraft.
  */

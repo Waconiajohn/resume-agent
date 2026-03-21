@@ -90,7 +90,7 @@ describe('LinkedInStudioRoom', () => {
   it('renders analytics when Results tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
     fireEvent.click(screen.getByText('Results'));
-    // AnalyticsOverview renders content-based metrics from generated posts
+    // Results shows content-based metrics from generated posts
     expect(screen.getByText('Platform Metrics')).toBeInTheDocument();
     expect(screen.getByText('Total Posts')).toBeInTheDocument();
     expect(screen.getByText('Avg Post Score')).toBeInTheDocument();
@@ -101,13 +101,13 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByText('LinkedIn')).toBeInTheDocument();
   });
 
-  it('renders post composer tab by default', () => {
+  it('renders the Write tab by default', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    // Post Composer shows a start button when idle
+    // Write shows a start button when idle
     expect(screen.getByText(/Write a Post/i)).toBeInTheDocument();
   });
 
-  it('renders profile editor tab content when clicked', () => {
+  it('renders the Profile tab content when clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
     fireEvent.click(screen.getByText('Profile'));
     expect(screen.getByText(/Edit Profile/i)).toBeInTheDocument();
