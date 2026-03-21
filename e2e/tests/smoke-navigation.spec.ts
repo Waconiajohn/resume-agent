@@ -151,6 +151,110 @@ const SIGNED_IN_MOCK_INTERVIEW_SUMMARY = {
   recommendation: 'Strong foundation. Add one metric and keep this as a core interview story.',
 } as const;
 
+const SIGNED_IN_CAREER_PROFILE = {
+  version: 'career_profile_v2',
+  source: 'career_profile',
+  generated_at: new Date().toISOString(),
+  targeting: {
+    target_roles: ['VP Operations', 'COO'],
+    target_industries: ['SaaS', 'Enterprise Technology'],
+    seniority: 'executive',
+    transition_type: 'same_level',
+    preferred_company_environments: ['Growth stage', 'PE-backed'],
+  },
+  positioning: {
+    core_strengths: ['Operational strategy', 'Cross-functional leadership'],
+    proof_themes: ['Scaled teams through change', 'Improved execution quality'],
+    differentiators: ['Combines operator discipline with executive communication'],
+    adjacent_positioning: ['Can step from VP Operations into broader COO scope'],
+    positioning_statement: 'Operator who brings order, cadence, and executive-level clarity to scaling companies.',
+    narrative_summary: 'Known for aligning leaders and steadying execution in fast-moving environments.',
+    leadership_scope: 'Teams of 40+, executive stakeholder alignment',
+    scope_of_responsibility: 'Operations, systems, and cross-functional delivery',
+  },
+  narrative: {
+    colleagues_came_for_what: 'Turning complexity into execution plans that teams can follow.',
+    known_for_what: 'Bringing calm, structure, and momentum to scaling organizations.',
+    why_not_me: 'Bridges VP Operations depth into COO-level operating leadership.',
+    story_snippet: 'Executive operator who makes growth sustainable.',
+  },
+  preferences: {
+    must_haves: ['Executive scope', 'High-trust leadership'],
+    constraints: ['No relocation'],
+    compensation_direction: 'Executive cash + upside',
+  },
+  coaching: {
+    financial_segment: 'executive_transition',
+    emotional_state: 'focused',
+    coaching_tone: 'direct',
+    urgency_score: 62,
+    recommended_starting_point: 'resume',
+  },
+  evidence_positioning_statements: [
+    'Built operating cadence across product, support, and delivery leaders.',
+    'Trusted to stabilize execution while companies scale.',
+  ],
+  profile_signals: {
+    clarity: 'green',
+    alignment: 'green',
+    differentiation: 'yellow',
+  },
+  completeness: {
+    overall_score: 84,
+    dashboard_state: 'strong',
+    sections: [
+      { id: 'direction', label: 'Direction', status: 'ready', score: 90, summary: 'Target role and market direction are clear.' },
+      { id: 'positioning', label: 'Positioning', status: 'ready', score: 86, summary: 'The platform has enough positioning depth to guide downstream tools.' },
+      { id: 'narrative', label: 'Narrative', status: 'partial', score: 72, summary: 'The main identity thread is clear but could use deeper proof.' },
+      { id: 'constraints', label: 'Constraints', status: 'ready', score: 88, summary: 'Must-haves and constraints are captured.' },
+    ],
+  },
+  profile_summary: 'Executive operator targeting VP Operations / COO opportunities in SaaS and enterprise technology.',
+} as const;
+
+const SIGNED_IN_ONBOARDING_QUESTIONS = [
+  {
+    id: 'career-context-1',
+    question: 'What kind of leadership scope are you targeting next?',
+    category: 'career_context',
+    purpose: 'This helps the platform align your target role, level, and operating scope before it writes anything else.',
+  },
+  {
+    id: 'goals-1',
+    question: 'What business outcome do you most want your next role to improve?',
+    category: 'goals_and_aspirations',
+    purpose: 'This gives Resume Builder, LinkedIn, Job Search, and Interview Prep one business outcome to reinforce consistently.',
+  },
+] as const;
+
+const SIGNED_IN_ONBOARDING_PROFILE = {
+  career_level: 'vp',
+  industry: 'SaaS',
+  years_experience: 18,
+  financial_segment: 'comfortable',
+  emotional_state: 'growth',
+  transition_type: 'voluntary',
+  goals: ['Step into broader COO-style operating scope'],
+  constraints: ['No relocation'],
+  strengths_self_reported: ['Operating cadence', 'Cross-functional leadership'],
+  urgency_score: 62,
+  recommended_starting_point: 'resume',
+  coaching_tone: 'direct',
+} as const;
+
+const SIGNED_IN_ONBOARDING_SUMMARY = {
+  key_insights: [
+    'The candidate is targeting broader executive operating scope.',
+    'Executive alignment and operating rhythm should stay central to the story.',
+  ],
+  financial_signals: ['The transition timeline is steady, not crisis-driven.'],
+  emotional_signals: ['Confidence is high enough for direct guidance.'],
+  recommended_actions: [
+    'Refresh the Career Profile and reuse it in Resume Builder and LinkedIn.',
+    'Lead with executive operating cadence in top-of-funnel materials.',
+  ],
+} as const;
+
 // ---------------------------------------------------------------------------
 // API + Supabase mock helpers
 // ---------------------------------------------------------------------------
@@ -303,6 +407,7 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
   }> = [];
   const linkedinEditorState = new Map<string, 'headline' | 'about' | 'complete'>();
   const linkedinContentState = new Map<string, 'topics' | 'draft' | 'complete'>();
+  let careerProfile = SIGNED_IN_CAREER_PROFILE;
   // Override fetch for generic SSE requests before navigation
   await page.addInitScript(() => {
     const originalFetch = window.fetch;
@@ -432,6 +537,104 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     question: SIGNED_IN_MOCK_INTERVIEW_QUESTION,
     evaluation: SIGNED_IN_MOCK_INTERVIEW_EVALUATION,
     summary: SIGNED_IN_MOCK_INTERVIEW_SUMMARY,
+  });
+
+  await page.addInitScript(({ questions, profile, summary }) => {
+    const originalFetch = window.fetch;
+    const encoder = new TextEncoder();
+    const controllers = new Map<string, ReadableStreamDefaultController<Uint8Array>>();
+
+    function extractRequestParts(input: RequestInfo | URL, init?: RequestInit) {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof Request
+            ? input.url
+            : String(input);
+
+      const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+      const body =
+        typeof init?.body === 'string'
+          ? init.body
+          : input instanceof Request
+            ? null
+            : null;
+
+      return { url, method, body };
+    }
+
+    function buildSSEBody(events: Array<{ event: string; data: unknown }>) {
+      return events.map((item) => `event: ${item.event}\ndata: ${JSON.stringify(item.data)}\n\n`).join('');
+    }
+
+    // @ts-expect-error test override
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      const { url, method, body } = extractRequestParts(input, init);
+
+      if (/\/api\/onboarding\/[^/]+\/stream$/.test(url)) {
+        const sessionId = url.match(/\/api\/onboarding\/([^/]+)\/stream$/)?.[1] ?? 'signed-in-onboarding-session';
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controllers.set(sessionId, controller);
+            controller.enqueue(encoder.encode(buildSSEBody([
+              {
+                event: 'stage_start',
+                data: { stage: 'question_generation', message: 'Generating your next best questions...' },
+              },
+              {
+                event: 'questions_ready',
+                data: { questions },
+              },
+            ])));
+          },
+        });
+
+        return Promise.resolve(new Response(stream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }));
+      }
+
+      if (url.endsWith('/api/onboarding/respond') && method === 'POST') {
+        let sessionId = 'signed-in-onboarding-session';
+        try {
+          const payload = body ? JSON.parse(body) as { session_id?: string } : {};
+          if (typeof payload.session_id === 'string' && payload.session_id.length > 0) {
+            sessionId = payload.session_id;
+          }
+        } catch {
+          // Ignore malformed payloads in the test harness.
+        }
+
+        const controller = controllers.get(sessionId);
+        if (controller) {
+          controller.enqueue(encoder.encode(buildSSEBody([
+            {
+              event: 'stage_start',
+              data: { stage: 'evaluation', message: 'Turning your answers into a stronger shared profile...' },
+            },
+            {
+              event: 'assessment_complete',
+              data: { profile, summary },
+            },
+            { event: 'pipeline_complete', data: {} },
+          ])));
+          controller.close();
+          controllers.delete(sessionId);
+        }
+
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+
+      return originalFetch.apply(window, [input, init] as Parameters<typeof fetch>);
+    };
+  }, {
+    questions: SIGNED_IN_ONBOARDING_QUESTIONS,
+    profile: SIGNED_IN_ONBOARDING_PROFILE,
+    summary: SIGNED_IN_ONBOARDING_SUMMARY,
   });
 
   // Mock all Supabase REST API calls (auth + DB)
@@ -624,6 +827,31 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       return;
     }
 
+    if (path === '/api/platform-context/career-profile' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ career_profile: careerProfile }),
+      });
+      return;
+    }
+
+    if (path === '/api/platform-context/summary' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          types: [
+            { context_type: 'career_profile', source_product: 'career_profile', updated_at: new Date().toISOString() },
+            { context_type: 'positioning_strategy', source_product: 'resume_v2', updated_at: new Date().toISOString() },
+            { context_type: 'emotional_baseline', source_product: 'onboarding', updated_at: new Date().toISOString() },
+            { context_type: 'client_profile', source_product: 'onboarding', updated_at: new Date().toISOString() },
+          ],
+        }),
+      });
+      return;
+    }
+
     // ── Structured endpoints — each must return the exact shape the hook expects ──
     // Failure to do so causes undefined property access crashes in components.
 
@@ -689,6 +917,28 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     }
 
     if (path === '/api/interview-prep/start' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (path === '/api/onboarding/start' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (path === '/api/onboarding/respond' && method === 'POST') {
+      careerProfile = {
+        ...careerProfile,
+        profile_summary: 'Executive operator with confirmed operating cadence, executive alignment, and target outcome themes.',
+      };
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -1814,11 +2064,44 @@ test.describe('Smoke: Workspace core rooms', () => {
     });
   });
 
+  test('Career Profile refine flow completes in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=career-profile');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /Refine with AI/i }).click();
+
+    await expect(
+      sharedPage.getByRole('heading', { name: /One question, one confirmation, one stronger profile update/i }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      sharedPage.getByText(/What kind of leadership scope are you targeting next\?/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await sharedPage
+      .getByPlaceholder(/Answer in your own words/i)
+      .fill('Executive operations leadership across product, support, and delivery teams.');
+    await sharedPage.getByRole('button', { name: /Confirm and continue/i }).click();
+
+    await expect(
+      sharedPage.getByText(/What business outcome do you most want your next role to improve\?/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await sharedPage
+      .getByPlaceholder(/Answer in your own words/i)
+      .fill('Improve execution quality by aligning leaders around one operating cadence.');
+    await sharedPage.getByRole('button', { name: /Confirm and build Career Profile/i }).click();
+
+    await expect(sharedPage.getByRole('button', { name: /Reset Assessment State/i })).toBeVisible({ timeout: 10_000 });
+    await expect(
+      sharedPage.getByRole('heading', { name: /What the platform currently knows about you/i }),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
   test('Workspace Home entry buttons open Career Profile and Job Search', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: /Open Career Profile/i }).click();
+    await sharedPage.getByRole('button', { name: /Open Career Profile|Review Career Profile/i }).click();
     await expect(sharedPage).toHaveURL(/room=career-profile/, { timeout: 8_000 });
     await expect(sharedPage.getByRole('heading', { name: 'One shared profile that every agent reads' })).toBeVisible({
       timeout: 8_000,
