@@ -738,6 +738,7 @@ export function JobCommandCenterRoom({
   const [activeTab, setActiveTab] = useState<JCCTab>('pipeline');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showWatchlistManager, setShowWatchlistManager] = useState(false);
+  const [showSearchPreferences, setShowSearchPreferences] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
 
@@ -963,7 +964,36 @@ export function JobCommandCenterRoom({
             onGenerate={jobFinder.startSearch}
           />
 
-          <SearchPreferences />
+          {showSearchPreferences ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-white/82">Search setup</div>
+                  <div className="mt-1 text-xs leading-relaxed text-white/45">
+                    Adjust titles, locations, and work-style preferences only when you need to.
+                  </div>
+                </div>
+                <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(false)}>
+                  Hide setup
+                </GlassButton>
+              </div>
+              <SearchPreferences />
+            </div>
+          ) : (
+            <GlassCard className="p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-white/82">Search setup</div>
+                  <div className="mt-1 text-xs leading-relaxed text-white/45">
+                    Need to adjust titles, locations, or work-style preferences? Open setup only when you want to tune the search.
+                  </div>
+                </div>
+                <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(true)}>
+                  Open setup
+                </GlassButton>
+              </div>
+            </GlassCard>
+          )}
         </div>
       </div>
 

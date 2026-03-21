@@ -1554,7 +1554,9 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
       )}
 
       {/* Keyword multiplier coaching nudge */}
-      <KeywordMultiplierNudge />
+      {(activeTab === 'composer' || activeTab === 'calendar' || activeTab === 'library') && (
+        <KeywordMultiplierNudge />
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-white/[0.06] pb-0">
