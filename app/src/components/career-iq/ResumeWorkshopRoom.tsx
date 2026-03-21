@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { FileText, LibraryBig, Plus, Sparkles } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { DashboardTabs } from '@/components/dashboard/DashboardTabs';
 import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
@@ -10,13 +9,13 @@ import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 
-const TABS: Array<{ id: 'sessions' | 'cover_letter' | 'master_resume'; label: string }> = [
+const PRIMARY_TABS: Array<{ id: 'sessions' | 'master_resume'; label: string }> = [
   { id: 'sessions', label: 'Job Workspaces' },
-  { id: 'cover_letter', label: 'Cover Letter' },
   { id: 'master_resume', label: 'Master Resume' },
-] ;
+];
 
-type ResumeWorkspaceTab = typeof TABS[number]['id'];
+type ResumePrimaryTab = typeof PRIMARY_TABS[number]['id'];
+type ResumeWorkspaceTab = ResumePrimaryTab | 'cover_letter';
 
 interface ResumeWorkshopRoomProps {
   sessions: CoachSession[];
@@ -146,7 +145,29 @@ export function ResumeWorkshopRoom({
               Tailored resumes stay job-specific. Your master resume stays clean and reusable.
             </p>
           </div>
-          <DashboardTabs tabs={TABS} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as ResumeWorkspaceTab)} />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-1 rounded-xl border border-white/[0.1] bg-white/[0.04] p-1">
+              {PRIMARY_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={
+                    activeTab === tab.id
+                      ? 'rounded-lg bg-white/[0.08] px-4 py-2 text-sm font-medium text-white shadow-sm'
+                      : 'rounded-lg px-4 py-2 text-sm font-medium text-white/55 transition-all duration-200 hover:bg-white/[0.04] hover:text-white/80'
+                  }
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {activeTab === 'cover_letter' && (
+              <span className="rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/10 px-3 py-1 text-xs font-medium text-[#d8e2ff]">
+                Cover Letter
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mt-5">
@@ -168,14 +189,24 @@ export function ResumeWorkshopRoom({
           {activeTab === 'cover_letter' && (
             <div className="space-y-5">
               <GlassCard className="p-5">
-                <div className="max-w-3xl">
-                  <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                    Cover Letter
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="max-w-3xl">
+                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                      Cover Letter
+                    </div>
+                    <h2 className="mt-2 text-lg font-semibold text-white/88">Write the letter inside the same job-specific workflow</h2>
+                    <p className="mt-2 text-sm leading-relaxed text-white/54">
+                      Keep the resume and cover letter together. Start from your existing resume, target the current role, and avoid managing this like a separate product.
+                    </p>
                   </div>
-                  <h2 className="mt-2 text-lg font-semibold text-white/88">Write the letter inside the same job-specific workflow</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-white/54">
-                    Keep the resume and cover letter together. Start from your existing resume, target the current role, and avoid managing this like a separate product.
-                  </p>
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                      Secondary flow
+                    </div>
+                    <GlassButton variant="ghost" onClick={() => setActiveTab('sessions')}>
+                      Back to Job Workspaces
+                    </GlassButton>
+                  </div>
                 </div>
               </GlassCard>
 

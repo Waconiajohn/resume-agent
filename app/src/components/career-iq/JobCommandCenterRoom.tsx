@@ -735,7 +735,7 @@ export function JobCommandCenterRoom({
   const watchlist = useWatchlist();
   const dailyOps = useDailyOps(pipeline.applications, pipeline.dueActions, radar.jobs, pipeline.loading);
 
-  const [activeTab, setActiveTab] = useState<JCCTab>('pipeline');
+  const [activeTab, setActiveTab] = useState<JCCTab>('daily-ops');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showWatchlistManager, setShowWatchlistManager] = useState(false);
   const [showSearchPreferences, setShowSearchPreferences] = useState(false);
@@ -827,6 +827,9 @@ export function JobCommandCenterRoom({
         <p className="text-[13px] text-white/40">
           Discover roles, score fit, and keep your real next steps moving in one place.
         </p>
+        <p className="text-[11px] text-white/28">
+          Start in Today for the daily working view, then open Pipeline or Discover when you need them.
+        </p>
       </div>
 
       {/* Quick stats bar */}
@@ -863,9 +866,9 @@ export function JobCommandCenterRoom({
       <div className="flex items-center gap-1 border-b border-white/[0.07]">
         {(
           [
+            { id: 'daily-ops', label: 'Today', Icon: Clock },
             { id: 'pipeline', label: 'Pipeline', Icon: Briefcase },
             { id: 'radar', label: 'Discover', Icon: Search },
-            { id: 'daily-ops', label: 'Today', Icon: Clock },
           ] as const
         ).map(({ id, label, Icon }) => (
           <button

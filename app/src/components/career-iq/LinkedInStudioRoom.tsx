@@ -1456,6 +1456,7 @@ function parseReportSections(report: string): {
 export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   const optimizer = useLinkedInOptimizer();
   const [activeTab, setActiveTab] = useState<StudioTab>('composer');
+  const [showUtilityTabs, setShowUtilityTabs] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
 
   const handleWritePostFromCalendar = useCallback(() => {
@@ -1491,14 +1492,17 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
 
   const isOptimizerRunning = optimizer.status === 'connecting' || optimizer.status === 'running';
 
-  const tabs: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
+  const primaryTabs: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
     { id: 'composer', label: 'Write', icon: FileText },
     { id: 'editor', label: 'Profile', icon: PenLine },
-    { id: 'calendar', label: 'Content Plan', icon: Calendar },
     { id: 'analytics', label: 'Results', icon: BarChart3 },
+  ];
+  const utilityTabs: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
+    { id: 'calendar', label: 'Content Plan', icon: Calendar },
     { id: 'library', label: 'Saved Posts', icon: BookOpen },
     { id: 'tools', label: 'Extras', icon: Wrench },
   ];
+  const utilityTabActive = activeTab === 'calendar' || activeTab === 'library' || activeTab === 'tools';
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
@@ -1559,14 +1563,18 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-white/[0.06] pb-0">
-        {tabs.map((tab) => {
+      <div className="space-y-2 border-b border-white/[0.06] pb-2">
+        <div className="flex items-center gap-1">
+        {primaryTabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setShowUtilityTabs(false);
+              }}
               className={cn(
                 'flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors rounded-t-lg border-b-2 -mb-px',
                 activeTab === tab.id
@@ -1579,6 +1587,47 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             </button>
           );
         })}
+          <button
+            type="button"
+            onClick={() => setShowUtilityTabs((value) => !value)}
+            className={cn(
+              'ml-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+              utilityTabActive || showUtilityTabs
+                ? 'bg-white/[0.05] text-white/72'
+                : 'text-white/40 hover:bg-white/[0.03] hover:text-white/62',
+            )}
+          >
+            <Wrench size={13} className="flex-shrink-0" />
+            More
+          </button>
+        </div>
+
+        {(showUtilityTabs || utilityTabActive) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {utilityTabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setShowUtilityTabs(true);
+                  }}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                    activeTab === tab.id
+                      ? 'border-[#98b3ff]/22 bg-[#98b3ff]/[0.08] text-white/82'
+                      : 'border-white/[0.08] text-white/48 hover:text-white/68',
+                  )}
+                >
+                  <Icon size={12} className="flex-shrink-0" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Tab content */}

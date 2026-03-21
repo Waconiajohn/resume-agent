@@ -66,6 +66,7 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: 'Results', exact: true }).click();
     await expect(page.getByRole('heading', { name: /Profile Score/i })).toBeVisible();
 
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'Content Plan', exact: true }).click();
     await expect(page.getByRole('button', { name: /Generate Calendar/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Something went wrong/i })).toHaveCount(0);
@@ -149,6 +150,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Pipeline', exact: true }).click();
     await expect(page.getByRole('button', { name: /Add Application/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Add Application/i }).click();
@@ -197,6 +199,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Discover', exact: true }).click();
     await page.locator('button[title="Manage watchlist"]:visible').first().click();
 
     await expect(page.getByRole('dialog', { name: /Manage watchlist/i })).toBeVisible();
@@ -219,6 +222,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Discover', exact: true }).click();
     await page.locator('button[title="Manage watchlist"]:visible').first().click();
     await expect(page.getByRole('dialog', { name: /Manage watchlist/i })).toBeVisible();
 

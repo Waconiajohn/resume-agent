@@ -75,12 +75,13 @@ describe('LinkedInStudioRoom', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
     expect(screen.getByText('Write')).toBeInTheDocument();
     expect(screen.getByText('Profile')).toBeInTheDocument();
-    expect(screen.getByText('Content Plan')).toBeInTheDocument();
     expect(screen.getByText('Results')).toBeInTheDocument();
+    expect(screen.getByText('More')).toBeInTheDocument();
   });
 
   it('renders content calendar when Content Plan tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
+    fireEvent.click(screen.getByText('More'));
     fireEvent.click(screen.getByText('Content Plan'));
     // ContentCalendar in idle state renders "Generate Content Calendar"
     expect(screen.getByText('Generate Content Calendar')).toBeInTheDocument();
@@ -129,36 +130,44 @@ describe('JobCommandCenterRoom', () => {
 
   it('renders smart matches section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
     expect(screen.getByText('Smart Matches')).toBeInTheDocument();
   });
 
   it('renders "Run Job Finder" button when no matches exist', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
     expect(screen.getByText('Run Job Finder')).toBeInTheDocument();
   });
 
   it('renders boolean search builder section', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
     expect(screen.getByText('Boolean Search Builder')).toBeInTheDocument();
   });
 
   it('renders "Generate Searches" button when no searches exist', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
     expect(screen.getByText('Generate Searches')).toBeInTheDocument();
   });
 
-  it('renders search preferences section', () => {
+  it('shows collapsed search setup by default in Discover', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(screen.getByText('Search Preferences')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    expect(screen.getByText('Search setup')).toBeInTheDocument();
+    expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
   });
 
   it('renders application pipeline kanban board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
     expect(screen.getByText('Application Pipeline')).toBeInTheDocument();
   });
 
   it('renders kanban stage columns', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
     // Use getAllByText because stage names appear in multiple places (kanban + PipelineSummary)
     expect(screen.getAllByText('Saved').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Applied').length).toBeGreaterThan(0);

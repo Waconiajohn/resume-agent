@@ -91,7 +91,7 @@ async function openResumeBuilder(page: Page): Promise<void> {
   await waitForResumeBuilderReady(page);
 }
 
-async function clickResumeBuilderTab(page: Page, label: 'Job Workspaces' | 'Cover Letter' | 'Master Resume'): Promise<void> {
+async function clickResumeBuilderTab(page: Page, label: 'Job Workspaces' | 'Master Resume'): Promise<void> {
   await page.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }).click();
   await page.waitForTimeout(300);
 }
@@ -109,9 +109,9 @@ test.describe('Resume Builder Workspace', () => {
     await openResumeBuilder(page);
 
     await expect(page.getByRole('button', { name: /^Job Workspaces$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Cover Letter$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Master Resume$/i })).toBeVisible();
-    await expect(page.getByText(/Profile -> Tailor -> Promote/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Write Cover Letter$/i })).toBeVisible();
+    await expect(page.getByText(/Tailor -> Keep -> Reuse/i)).toBeVisible();
   });
 
   test('job workspaces tab shows filters and handles empty or populated state', async ({ page }) => {
@@ -150,16 +150,17 @@ test.describe('Resume Builder Workspace', () => {
     ).not.toBeVisible({ timeout: 5_000 });
   });
 
-  test('cover letter tab renders inside resume builder', async ({ page }) => {
+  test('cover letter renders as a secondary flow inside resume builder', async ({ page }) => {
     await openResumeBuilder(page);
-    await clickResumeBuilderTab(page, 'Cover Letter');
+    await page.getByRole('button', { name: /^Write Cover Letter$/i }).click();
 
     await expect(
       page.getByRole('heading', {
         name: /Write the letter inside the same job-specific workflow/i,
       }),
     ).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByText(/avoid treating the letter like a separate product/i)).toBeVisible();
+    await expect(page.getByText(/avoid managing this like a separate product/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible();
   });
 
   test('master resume tab renders current editor surface or empty state', async ({ page }) => {
