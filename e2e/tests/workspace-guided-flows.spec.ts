@@ -56,7 +56,7 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('button', { name: /Back to Leave-behinds/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Back to Leave-behinds/i }).click();
-    await expect(page.getByRole('heading', { name: /Build leave-behinds without leaving the lab/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Keep your follow-up docs tied to the same interview story/i })).toBeVisible();
   });
 
   test('opens the first-class job workspace and reopens exact saved later-stage assets', async ({ page }) => {

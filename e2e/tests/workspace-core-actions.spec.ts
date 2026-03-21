@@ -67,7 +67,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Profile Score/i })).toBeVisible();
 
     await page.getByRole('button', { name: 'Content Plan', exact: true }).click();
-    await expect(page.getByRole('button', { name: /Generate Calendar/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Build Plan/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Something went wrong/i })).toHaveCount(0);
   });
 
@@ -85,8 +85,8 @@ test.describe('workspace core room actions', () => {
 
     await page.getByRole('button', { name: /Approve Post/i }).click();
 
-    await expect(page.getByRole('heading', { name: /Your Post is Ready/i })).toBeVisible();
-    await expect(page.getByText(/Saved to Library/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Post Ready to Use/i })).toBeVisible();
+    await expect(page.getByText(/Saved in Library/i)).toBeVisible();
   });
 
   test('LinkedIn Profile Editor advances through section review and completes', async ({ page }) => {
@@ -106,7 +106,7 @@ test.describe('workspace core room actions', () => {
 
     await page.getByRole('button', { name: /^Approve$/i }).click();
 
-    await expect(page.getByRole('heading', { name: /Profile Optimization Complete/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: /Updated Profile Drafts/i })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Headline', { exact: true })).toBeVisible();
     await expect(page.getByText('About Section', { exact: true })).toBeVisible();
   });

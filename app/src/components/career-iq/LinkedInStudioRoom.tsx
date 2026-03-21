@@ -321,14 +321,14 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
         {content.postSaved && (
           <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-2.5 flex items-center gap-2">
             <Check size={13} className="text-[#b5dec2] flex-shrink-0" />
-            <span className="text-[12px] text-[#b5dec2]/80 font-medium">Saved to Library</span>
-            <span className="text-[11px] text-white/30 ml-1">— find it in the Post Library tab</span>
+            <span className="text-[12px] text-[#b5dec2]/80 font-medium">Saved in Library</span>
+            <span className="text-[11px] text-white/30 ml-1">— reopen it from Library when you want to reuse it</span>
           </div>
         )}
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Check size={16} className="text-[#b5dec2]" />
-            <h3 className="text-[15px] font-semibold text-white/85">Your Post is Ready</h3>
+            <h3 className="text-[15px] font-semibold text-white/85">Post Ready to Use</h3>
             <button
               type="button"
               onClick={handleCopy}
@@ -626,7 +626,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Check size={16} className="text-[#b5dec2]" />
-            <h3 className="text-[15px] font-semibold text-white/85">Profile Optimization Complete</h3>
+            <h3 className="text-[15px] font-semibold text-white/85">Updated Profile Drafts</h3>
           </div>
           <div className="space-y-3">
             {PROFILE_SECTION_ORDER.filter((s) => editor.sectionDrafts[s]).map((section) => (
@@ -773,9 +773,9 @@ function SectionScoreCards({ qualityScore }: { qualityScore: number | null }) {
     <div className={cn('rounded-xl border bg-white/[0.02] p-4 flex items-center gap-4', borderColor)}>
       <div className={cn('text-[32px] font-bold tabular-nums', scoreColor)}>{qualityScore}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-medium text-white/60 mb-0.5">Overall Profile Score</p>
+        <p className="text-[12px] font-medium text-white/60 mb-0.5">Current Profile Score</p>
         <p className="text-[11px] text-white/30 leading-tight">
-          Run the Profile Editor to generate optimized content for each section and improve this score.
+          Use this as a baseline. Run the Profile Editor when you want rewritten sections you can actually paste into LinkedIn.
         </p>
       </div>
     </div>
@@ -800,12 +800,12 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
       <GlassCard className="p-6">
         <div className="flex items-center gap-2 mb-5">
           <PenLine size={18} className="text-[#98b3ff]" />
-          <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Optimizer</h3>
+          <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Check</h3>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <Sparkles size={24} className="text-[#98b3ff]/40 mb-3" />
           <p className="text-[13px] text-white/40 leading-relaxed">
-            Run the optimizer to see profile recommendations
+            Run a fast profile check to see what to tighten first.
           </p>
         </div>
       </GlassCard>
@@ -818,10 +818,10 @@ function ProfileOptimizer({ report }: { signals: WhyMeSignals; report: string | 
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-5">
         <PenLine size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Optimizer</h3>
+        <h3 className="text-[15px] font-semibold text-white/85">Quick Profile Check</h3>
         <span className="ml-auto text-[11px] text-[#b5dec2]/70 flex items-center gap-1">
           <Check size={11} />
-          AI-optimized
+          Ready to compare
         </span>
       </div>
 
@@ -991,7 +991,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <div className="flex items-center gap-2 mb-4">
               <Clock size={16} className="text-[#98b3ff]" />
               <h3 className="text-[15px] font-semibold text-white/85">
-                {selectedReport.target_role || 'Content Calendar'}
+                {selectedReport.target_role || 'Content Plan'}
               </h3>
               <span className="ml-auto text-[11px] text-white/30">
                 {new Date(selectedReport.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -1025,7 +1025,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <div className="mt-4">
               <GlassButton onClick={onWritePost} className="flex items-center gap-2">
                 <PenLine size={14} />
-                Write a Post from This Calendar
+                Write from This Plan
               </GlassButton>
             </div>
           </GlassCard>
@@ -1035,14 +1035,14 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
           <GlassCard className="p-8 flex flex-col items-center gap-4 text-center">
             <Calendar size={32} className="text-white/20" />
             <div>
-              <p className="text-[15px] font-semibold text-white/80 mb-1">Generate Content Calendar</p>
+              <p className="text-[15px] font-semibold text-white/80 mb-1">Build Content Plan</p>
               <p className="text-[13px] text-white/40 max-w-[380px]">
-                Create a 30-day content plan with 4 posts per week, tailored to your positioning.
+                Build a 30-day LinkedIn plan around your positioning so you always know what to write next.
               </p>
             </div>
             <GlassButton onClick={handleGenerate} className="flex items-center gap-2">
               <Sparkles size={14} />
-              Generate Calendar
+              Build Plan
             </GlassButton>
           </GlassCard>
         )}
@@ -1053,7 +1053,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <details>
               <summary className="cursor-pointer flex items-center gap-2 text-[13px] font-medium text-white/55 hover:text-white/80 transition-colors list-none">
                 <Clock size={14} className="text-white/30 flex-shrink-0" />
-                Previous Calendars
+                Saved Plans
                 <span className="ml-auto text-[11px] text-white/25 font-normal">
                   {calendar.savedReports.length} saved
                 </span>
@@ -1070,7 +1070,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
                     <Calendar size={13} className="text-white/30 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-medium text-white/65 truncate">
-                        {saved.target_role || 'Content Calendar'}
+                        {saved.target_role || 'Content Plan'}
                       </p>
                       <p className="text-[11px] text-white/30 mt-0.5">
                         {new Date(saved.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -1116,8 +1116,8 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
         {/* View toggle */}
         <div className="flex items-center gap-1 border-b border-white/[0.06] pb-0">
           {([
-            { id: 'calendar' as CalendarView, label: 'Full Calendar', icon: FileText },
-            { id: 'series' as CalendarView, label: 'Series View', icon: BookOpen },
+            { id: 'calendar' as CalendarView, label: 'Plan', icon: FileText },
+            { id: 'series' as CalendarView, label: 'Series', icon: BookOpen },
           ] as const).map((view) => {
             const Icon = view.icon;
             return (
@@ -1148,7 +1148,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
           <GlassCard className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <Calendar size={18} className="text-[#98b3ff]" />
-              <h3 className="text-[15px] font-semibold text-white/85">Content Calendar</h3>
+              <h3 className="text-[15px] font-semibold text-white/85">Content Plan</h3>
               {calendar.postCount !== null && (
                 <span className="ml-auto text-[11px] text-white/30">{calendar.postCount} posts planned</span>
               )}
@@ -1161,11 +1161,11 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <div className="mt-4 flex items-center gap-3">
               <GlassButton onClick={onWritePost} className="flex items-center gap-2">
                 <PenLine size={14} />
-                Write Next Post
+                Write from Plan
               </GlassButton>
               <GlassButton onClick={calendar.reset} className="flex items-center gap-2">
                 <RotateCcw size={14} />
-                Generate New Calendar
+                Build New Plan
               </GlassButton>
             </div>
           </GlassCard>

@@ -83,8 +83,8 @@ describe('LinkedInStudioRoom', () => {
   it('renders content calendar when Content Plan tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
     fireEvent.click(screen.getByRole('button', { name: /^Content Plan$/i }));
-    // ContentCalendar in idle state renders "Generate Content Calendar"
-    expect(screen.getByText('Generate Content Calendar')).toBeInTheDocument();
+    // ContentCalendar in idle state renders "Build Content Plan"
+    expect(screen.getByText('Build Content Plan')).toBeInTheDocument();
   });
 
   it('renders analytics when Results tab is clicked', () => {

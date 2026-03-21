@@ -2182,7 +2182,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('heading', { name: /Platform Metrics/i })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: 'Content Plan', exact: true }).click();
-    await expect(sharedPage.getByText(/Content Calendar/i).first()).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText(/Build Content Plan/i).first()).toBeVisible({ timeout: 8_000 });
   });
 
   test('LinkedIn quick optimize completes in the signed-in shell', async () => {
@@ -2214,7 +2214,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: /^Approve$/i }).click();
 
-    await expect(sharedPage.getByRole('heading', { name: /Profile Optimization Complete/i })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByRole('heading', { name: /Updated Profile Drafts/i })).toBeVisible({ timeout: 10_000 });
     await expect(sharedPage.getByText('Headline', { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(sharedPage.getByText('About Section', { exact: true })).toBeVisible({ timeout: 10_000 });
   });
@@ -2235,8 +2235,8 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: /Approve Post/i }).click();
 
-    await expect(sharedPage.getByRole('heading', { name: /Your Post is Ready/i })).toBeVisible({ timeout: 10_000 });
-    await expect(sharedPage.getByText(/Saved to Library/i)).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByRole('heading', { name: /Post Ready to Use/i })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByText(/Saved in Library/i)).toBeVisible({ timeout: 10_000 });
   });
 
   test('Job Search room renders', async () => {

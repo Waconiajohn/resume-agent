@@ -32,9 +32,9 @@ export function InterviewLabDocumentsPanel({
         <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
           Leave-behinds
         </div>
-        <h2 className="mt-2 text-lg font-semibold text-white/88">Build leave-behinds without leaving the lab</h2>
+        <h2 className="mt-2 text-lg font-semibold text-white/88">Keep your follow-up docs tied to the same interview story</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-          Keep your prep story and supporting documents together. The 30-60-90 plan should feel like the next step, not a side project.
+          Keep your prep story, thank-you note, and 30-60-90 plan aligned. These should feel like the natural next step after the interview, not separate chores.
         </p>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -83,9 +83,9 @@ export function InterviewLabDocumentsPanel({
         <div className="mt-4 text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
           30-60-90 Day Plan
         </div>
-        <h2 className="mt-2 text-lg font-semibold text-white/88">Stay in the interview workflow while you build the leave-behind</h2>
+        <h2 className="mt-2 text-lg font-semibold text-white/88">Draft the 30-60-90 plan without losing the thread</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-          This document should make the interviewer feel your first 30, 60, and 90 days are already taking shape. Keep the positioning story consistent with your prep report and mock-interview answers.
+          This plan should make the first 30, 60, and 90 days feel concrete. Keep it consistent with the same positioning story you used in prep, practice, and follow-up.
         </p>
       </GlassCard>
       <NinetyDayPlanRoom
