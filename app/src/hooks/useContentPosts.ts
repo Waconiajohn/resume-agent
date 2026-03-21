@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 export type PostStatus = 'draft' | 'approved' | 'published';
 
@@ -23,6 +24,67 @@ interface ContentPostsState {
   posts: ContentPost[];
   loading: boolean;
   error: string | null;
+}
+
+const POST_STATUS_SET = new Set<PostStatus>(['draft', 'approved', 'published']);
+
+function normalizePostStatus(value: unknown): PostStatus {
+  return typeof value === 'string' && POST_STATUS_SET.has(value as PostStatus)
+    ? (value as PostStatus)
+    : 'draft';
+}
+
+function normalizeQualityScores(
+  value: unknown,
+): { authenticity?: number; engagement_potential?: number } | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  return {
+    authenticity: raw.authenticity == null ? undefined : safeNumber(raw.authenticity),
+    engagement_potential: raw.engagement_potential == null ? undefined : safeNumber(raw.engagement_potential),
+  };
+}
+
+function normalizeHashtags(value: unknown): string[] | null {
+  if (value == null) return null;
+  if (!Array.isArray(value)) return null;
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function normalizeContentPost(value: unknown): ContentPost | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+
+  const id = safeString(raw.id);
+  const userId = safeString(raw.user_id);
+  const createdAt = safeString(raw.created_at);
+  const updatedAt = safeString(raw.updated_at);
+  if (!id || !userId || !createdAt || !updatedAt) return null;
+
+  return {
+    id,
+    user_id: userId,
+    platform: safeString(raw.platform),
+    post_type: safeString(raw.post_type),
+    topic: safeString(raw.topic),
+    content: safeString(raw.content),
+    hashtags: normalizeHashtags(raw.hashtags),
+    status: normalizePostStatus(raw.status),
+    quality_scores: normalizeQualityScores(raw.quality_scores),
+    source_session_id: raw.source_session_id == null ? null : safeString(raw.source_session_id),
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
+function normalizeContentPosts(value: unknown): ContentPost[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((post) => normalizeContentPost(post))
+    .filter((post): post is ContentPost => post !== null);
 }
 
 async function getAuthHeader(): Promise<Record<string, string> | null> {
@@ -84,9 +146,9 @@ export function useContentPosts() {
         return;
       }
 
-      const data = (await res.json()) as { posts: ContentPost[] };
+      const data = (await res.json()) as { posts?: unknown };
       if (mountedRef.current) {
-        setState((prev) => ({ ...prev, posts: data.posts, loading: false }));
+        setState((prev) => ({ ...prev, posts: normalizeContentPosts(data.posts), loading: false }));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -110,11 +172,13 @@ export function useContentPosts() {
 
         if (!res.ok) return false;
 
-        const data = (await res.json()) as { post: ContentPost };
+        const data = (await res.json()) as { post?: unknown };
+        const normalizedPost = normalizeContentPost(data.post);
+        if (!normalizedPost) return false;
         if (mountedRef.current) {
           setState((prev) => ({
             ...prev,
-            posts: prev.posts.map((p) => (p.id === id ? data.post : p)),
+            posts: prev.posts.map((p) => (p.id === id ? normalizedPost : p)),
           }));
         }
         return true;

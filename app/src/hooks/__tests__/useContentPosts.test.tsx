@@ -165,6 +165,35 @@ describe('useContentPosts — fetchPosts', () => {
     await waitFor(() => expect(result.current.posts).toHaveLength(2));
   });
 
+  it('drops malformed fetched posts instead of storing invalid entries', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          posts: [
+            makePost(),
+            { id: 'broken-post' },
+            {
+              ...makePost({ id: 'post-2' }),
+              hashtags: ['#Valid', 42, '  '],
+              quality_scores: { authenticity: '91', engagement_potential: '80' },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const { result } = renderHook(() => useContentPosts());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.posts).toHaveLength(2);
+    expect(result.current.posts[1].hashtags).toEqual(['#Valid']);
+    expect(result.current.posts[1].quality_scores).toEqual({
+      authenticity: 91,
+      engagement_potential: 80,
+    });
+  });
+
   it('sets error on non-OK response', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response('Unauthorized', { status: 401 }),
@@ -279,6 +308,28 @@ describe('useContentPosts — updatePostStatus', () => {
     });
 
     expect(success).toBe(false);
+  });
+
+  it('returns false and preserves local state when PATCH returns a malformed post', async () => {
+    const initialPost = makePost({ status: 'draft' });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ posts: [initialPost] }), { status: 200 }),
+    );
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ post: { id: 'post-1' } }), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useContentPosts());
+    await waitFor(() => expect(result.current.posts).toHaveLength(1));
+
+    let success: boolean | undefined;
+    await act(async () => {
+      success = await result.current.updatePostStatus('post-1', 'approved');
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.posts[0].status).toBe('draft');
   });
 
   it('sends PATCH method with JSON body', async () => {
