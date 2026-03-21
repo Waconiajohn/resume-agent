@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { safeString } from '@/lib/safe-cast';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 export type LinkedInEditorStatus =
   | 'idle'
@@ -36,6 +36,32 @@ interface LinkedInEditorState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
+const PROFILE_SECTION_SET = new Set<ProfileSection>(['headline', 'about', 'experience', 'skills', 'education']);
+
+function asProfileSection(value: unknown): ProfileSection | null {
+  return typeof value === 'string' && PROFILE_SECTION_SET.has(value as ProfileSection)
+    ? (value as ProfileSection)
+    : null;
+}
+
+function asSectionQualityScores(value: unknown): SectionQualityScores | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  return {
+    keyword_coverage: safeNumber(candidate.keyword_coverage),
+    readability: safeNumber(candidate.readability),
+    positioning_alignment: safeNumber(candidate.positioning_alignment),
+  };
+}
+
+function asSectionDraftMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([key, sectionValue]) => key.trim().length > 0 && typeof sectionValue === 'string',
+    ),
+  );
+}
 
 export function useLinkedInEditor() {
   const [state, setState] = useState<LinkedInEditorState>({
@@ -105,31 +131,45 @@ export function useLinkedInEditor() {
           break;
 
         case 'section_draft_ready':
-          setState((prev) => ({
-            ...prev,
-            status: 'section_review',
-            currentSection: data.section as ProfileSection,
-            currentDraft: safeString(data.content),
-            sectionScores: {
-              ...prev.sectionScores,
-              [safeString(data.section)]: data.quality_scores as SectionQualityScores,
-            },
-          }));
+          setState((prev) => {
+            const section = asProfileSection(data.section);
+            const scores = asSectionQualityScores(data.quality_scores);
+            return {
+              ...prev,
+              status: 'section_review',
+              currentSection: section,
+              currentDraft: safeString(data.content),
+              sectionScores:
+                section && scores
+                  ? {
+                      ...prev.sectionScores,
+                      [section]: scores,
+                    }
+                  : prev.sectionScores,
+            };
+          });
           break;
 
         case 'section_revised':
-          setState((prev) => ({
-            ...prev,
-            currentDraft: safeString(data.content),
-            sectionScores: {
-              ...prev.sectionScores,
-              [safeString(data.section)]: data.quality_scores as SectionQualityScores,
-            },
-          }));
+          setState((prev) => {
+            const section = asProfileSection(data.section);
+            const scores = asSectionQualityScores(data.quality_scores);
+            return {
+              ...prev,
+              currentDraft: safeString(data.content),
+              sectionScores:
+                section && scores
+                  ? {
+                      ...prev.sectionScores,
+                      [section]: scores,
+                    }
+                  : prev.sectionScores,
+            };
+          });
           break;
 
         case 'section_approved': {
-          const approvedSection = safeString(data.section);
+          const approvedSection = asProfileSection(data.section);
           // Prefer content from the SSE event payload if available, fall back to currentDraft
           const approvedContent = typeof data.content === 'string' ? data.content : null;
           setState((prev) => ({
@@ -137,9 +177,11 @@ export function useLinkedInEditor() {
             status: 'running',
             sectionDrafts: {
               ...prev.sectionDrafts,
-              [approvedSection]: approvedContent ?? prev.currentDraft ?? '',
+              ...(approvedSection
+                ? { [approvedSection]: approvedContent ?? prev.currentDraft ?? '' }
+                : {}),
             },
-            sectionsCompleted: prev.sectionsCompleted.includes(approvedSection)
+            sectionsCompleted: !approvedSection || prev.sectionsCompleted.includes(approvedSection)
               ? prev.sectionsCompleted
               : [...prev.sectionsCompleted, approvedSection],
             currentSection: null,
@@ -156,7 +198,10 @@ export function useLinkedInEditor() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            sectionDrafts: (data.sections as Record<string, string>) ?? prev.sectionDrafts,
+            sectionDrafts: {
+              ...prev.sectionDrafts,
+              ...asSectionDraftMap(data.sections),
+            },
           }));
           abortRef.current?.abort();
           break;

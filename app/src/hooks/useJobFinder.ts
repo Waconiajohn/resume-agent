@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { safeString } from '@/lib/safe-cast';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -38,6 +38,46 @@ interface JobFinderState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
+
+function asBooleanSearches(value: unknown): BooleanSearch[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const candidate = item as Record<string, unknown>;
+    if (typeof candidate.platform !== 'string' || typeof candidate.query !== 'string') return [];
+    return [{ platform: candidate.platform, query: candidate.query }];
+  });
+}
+
+function asRankedMatches(value: unknown): RankedMatch[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const candidate = item as Record<string, unknown>;
+    if (
+      typeof candidate.id !== 'string' ||
+      typeof candidate.title !== 'string' ||
+      typeof candidate.company !== 'string' ||
+      typeof candidate.why_match !== 'string'
+    ) {
+      return [];
+    }
+
+    const workType = candidate.work_type;
+    return [{
+      id: candidate.id,
+      title: candidate.title,
+      company: candidate.company,
+      location: typeof candidate.location === 'string' ? candidate.location : undefined,
+      fit_score: safeNumber(candidate.fit_score),
+      why_match: candidate.why_match,
+      salary_range: typeof candidate.salary_range === 'string' ? candidate.salary_range : undefined,
+      posted_date: typeof candidate.posted_date === 'string' ? candidate.posted_date : undefined,
+      work_type: workType === 'remote' || workType === 'hybrid' || workType === 'onsite' ? workType : undefined,
+      url: typeof candidate.url === 'string' ? candidate.url : undefined,
+    }];
+  });
+}
 
 export function useJobFinder() {
   const [state, setState] = useState<JobFinderState>({
@@ -110,8 +150,8 @@ export function useJobFinder() {
           break;
 
         case 'search_progress': {
-          const searches = data.searches as BooleanSearch[] | undefined;
-          if (Array.isArray(searches)) {
+          const searches = asBooleanSearches(data.searches);
+          if (searches.length > 0) {
             setState((prev) => ({ ...prev, booleanSearches: searches }));
           }
           const message = typeof data.message === 'string' ? data.message : undefined;
@@ -122,12 +162,12 @@ export function useJobFinder() {
         }
 
         case 'results_ready': {
-          const matches = data.matches as RankedMatch[] | undefined;
-          if (Array.isArray(matches)) {
+          const matches = asRankedMatches(data.matches);
+          if (matches.length > 0) {
             setState((prev) => ({ ...prev, matches }));
           }
           addActivity(
-            `Found ${Array.isArray(matches) ? matches.length : 0} matching roles`,
+            `Found ${matches.length} matching roles`,
             'results',
           );
           break;
