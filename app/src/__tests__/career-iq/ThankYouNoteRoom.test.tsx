@@ -125,15 +125,15 @@ describe('ThankYouNoteRoom', () => {
     vi.mocked(useThankYouNote).mockReturnValue(completeState);
     render(<ThankYouNoteRoom />);
     // Quality badge is present
-    expect(screen.getByText('Draft Strength 91%')).toBeInTheDocument();
+    expect(screen.getByText('Note Strength 91%')).toBeInTheDocument();
     // Copy button is present
     expect(screen.getByText('Copy')).toBeInTheDocument();
   });
 
-  it('calls reset when Write more notes is clicked in complete state', () => {
+  it('calls reset when Draft another version is clicked in complete state', () => {
     vi.mocked(useThankYouNote).mockReturnValue(completeState);
     render(<ThankYouNoteRoom />);
-    fireEvent.click(screen.getByText('Draft more notes'));
+    fireEvent.click(screen.getByText('Draft another version'));
     expect(mockReset).toHaveBeenCalled();
   });
 });

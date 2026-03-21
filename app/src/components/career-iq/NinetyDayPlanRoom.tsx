@@ -289,12 +289,12 @@ function ReportView({
           className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
         >
           <ArrowLeft size={14} />
-          Start another plan
+          Draft another plan
         </button>
         <div className="flex-1" />
         {qualityScore !== null && (
           <div className={cn('text-[12px] font-semibold px-3 py-1 rounded-full border', scoreColor)}>
-            Plan Strength {qualityScore}%
+            Plan Score {qualityScore}%
           </div>
         )}
         <GlassButton variant="ghost" onClick={handleCopy} size="sm">

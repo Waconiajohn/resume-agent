@@ -126,13 +126,13 @@ describe('NinetyDayPlanRoom', () => {
     vi.mocked(useNinetyDayPlan).mockReturnValue(completeState);
     render(<NinetyDayPlanRoom />);
     expect(screen.getAllByText('30-60-90 Plan').length).toBeGreaterThan(0);
-    expect(screen.getByText('Plan Strength 90%')).toBeInTheDocument();
+    expect(screen.getByText('Plan Score 90%')).toBeInTheDocument();
   });
 
-  it('calls reset when Start another plan is clicked in complete state', () => {
+  it('calls reset when Draft another plan is clicked in complete state', () => {
     vi.mocked(useNinetyDayPlan).mockReturnValue(completeState);
     render(<NinetyDayPlanRoom />);
-    fireEvent.click(screen.getByText('Start another plan'));
+    fireEvent.click(screen.getByText('Draft another plan'));
     expect(mockReset).toHaveBeenCalled();
   });
 });

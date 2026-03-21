@@ -468,12 +468,12 @@ function ReportView({
           className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
         >
           <ArrowLeft size={14} />
-          Draft more notes
+          Draft another version
         </button>
         <div className="flex-1" />
         {qualityScore !== null && (
           <div className={cn('text-[12px] font-semibold px-3 py-1 rounded-full border', scoreColor)}>
-            Draft Strength {qualityScore}%
+            Note Strength {qualityScore}%
           </div>
         )}
         <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
@@ -500,7 +500,7 @@ function ReportView({
       {qualityScore !== null && (
         <GlassCard className="px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] text-white/40">Draft Strength</span>
+            <span className="text-[11px] text-white/40">Note Strength</span>
             <span className={cn(
               'text-[11px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',

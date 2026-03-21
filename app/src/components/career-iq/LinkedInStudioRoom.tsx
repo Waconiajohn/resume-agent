@@ -321,14 +321,14 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
         {content.postSaved && (
           <div className="rounded-xl border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-2.5 flex items-center gap-2">
             <Check size={13} className="text-[#b5dec2] flex-shrink-0" />
-            <span className="text-[12px] text-[#b5dec2]/80 font-medium">Saved in Library</span>
+            <span className="text-[12px] text-[#b5dec2]/80 font-medium">Saved to Library</span>
             <span className="text-[11px] text-white/30 ml-1">— reopen it from Library when you want to reuse it</span>
           </div>
         )}
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Check size={16} className="text-[#b5dec2]" />
-            <h3 className="text-[15px] font-semibold text-white/85">Post Ready to Use</h3>
+            <h3 className="text-[15px] font-semibold text-white/85">Post Draft Ready</h3>
             <button
               type="button"
               onClick={handleCopy}
@@ -626,7 +626,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
         <GlassCard className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Check size={16} className="text-[#b5dec2]" />
-            <h3 className="text-[15px] font-semibold text-white/85">Updated Profile Drafts</h3>
+            <h3 className="text-[15px] font-semibold text-white/85">Updated Profile Sections</h3>
           </div>
           <div className="space-y-3">
             {PROFILE_SECTION_ORDER.filter((s) => editor.sectionDrafts[s]).map((section) => (
