@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeNumber, safeString, safeStringArray } from '@/lib/safe-cast';
 
 export interface NetworkContact {
   id: string;
@@ -111,6 +112,90 @@ interface LatestScanResponse {
   results: LatestScanResultRow[];
 }
 
+function safeNullableString(value: unknown): string | null {
+  const normalized = safeString(value).trim();
+  return normalized ? normalized : null;
+}
+
+function safeNullableNumber(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function sanitizeStringList(value: unknown): string[] | null {
+  const items = safeStringArray(value).map((item) => item.trim()).filter(Boolean);
+  return items.length > 0 ? items : null;
+}
+
+function sanitizeNetworkContact(value: unknown): NetworkContact | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const id = safeString(candidate.id).trim();
+  const name = safeString(candidate.name).trim();
+  const company = safeString(candidate.company).trim();
+  if (!id || !name || !company) return null;
+
+  return {
+    id,
+    name,
+    title: safeNullableString(candidate.title),
+    company,
+  };
+}
+
+function sanitizeRadarJob(value: unknown): RadarJob | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const externalId = safeString(candidate.external_id).trim();
+  const title = safeString(candidate.title).trim();
+  const company = safeString(candidate.company).trim();
+  const source = safeString(candidate.source).trim();
+  if (!externalId || !title || !company || !source) return null;
+
+  const salaryMin = safeNullableNumber(candidate.salary_min);
+  const salaryMax = safeNullableNumber(candidate.salary_max);
+  const matchScore = safeNullableNumber(candidate.match_score);
+  const contacts = Array.isArray(candidate.network_contacts)
+    ? candidate.network_contacts
+        .map((contact) => sanitizeNetworkContact(contact))
+        .filter((contact): contact is NetworkContact => contact !== null)
+    : undefined;
+
+  return {
+    external_id: externalId,
+    title,
+    company,
+    location: safeNullableString(candidate.location),
+    salary_min: salaryMin,
+    salary_max: salaryMax,
+    description: safeNullableString(candidate.description),
+    posted_date: safeString(candidate.posted_date).trim(),
+    apply_url: safeNullableString(candidate.apply_url),
+    source,
+    remote_type: safeNullableString(candidate.remote_type),
+    employment_type: safeNullableString(candidate.employment_type),
+    required_skills: sanitizeStringList(candidate.required_skills),
+    match_score: matchScore,
+    network_contacts: contacts && contacts.length > 0 ? contacts : undefined,
+  };
+}
+
+function sanitizeRadarJobs(value: unknown): RadarJob[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((job) => sanitizeRadarJob(job))
+    .filter((job): job is RadarJob => job !== null);
+}
+
+function sanitizeSourcesQueried(value: unknown): string[] {
+  return safeStringArray(value).map((item) => item.trim()).filter(Boolean);
+}
+
 /**
  * Best-effort NI enrichment — fetches network contacts for a scan and merges them
  * into the job list. Returns the original jobs unchanged on any error.
@@ -126,8 +211,8 @@ async function enrichJobsWithContacts(
     });
     if (!res.ok) return jobs;
 
-    const data = (await res.json()) as EnrichedResponse;
-    if (!data.results || data.results.length === 0) return jobs;
+        const data = (await res.json()) as EnrichedResponse;
+        if (!data.results || data.results.length === 0) return jobs;
 
     const contactMap = new Map<string, NetworkContact[]>();
     for (const result of data.results) {
@@ -238,8 +323,8 @@ export function useRadarSearch() {
         }
 
         const data = (await res.json()) as SearchResponse;
-        const rawJobs = data.jobs ?? [];
-        const scanId = data.scan_id ?? null;
+        const rawJobs = sanitizeRadarJobs(data.jobs);
+        const scanId = safeString(data.scan_id).trim() || null;
 
         // Enrich with NI contacts (best-effort, non-blocking)
         const enrichedJobs =
@@ -253,8 +338,8 @@ export function useRadarSearch() {
             jobs: enrichedJobs,
             loading: false,
             lastScanId: scanId,
-            sources_queried: data.sources_queried ?? [],
-            executionTimeMs: data.execution_time_ms ?? null,
+            sources_queried: sanitizeSourcesQueried(data.sources_queried),
+            executionTimeMs: data.execution_time_ms == null ? null : safeNumber(data.execution_time_ms),
           }));
         }
       } catch (err) {
@@ -307,7 +392,12 @@ export function useRadarSearch() {
         setState((prev) => {
           const scoreMap = new Map<string, number | null>();
           for (const item of data.jobs ?? []) {
-            scoreMap.set(item.external_id, item.match_score);
+            const externalId = safeString(item.external_id).trim();
+            if (!externalId) continue;
+            scoreMap.set(
+              externalId,
+              safeNullableNumber(item.match_score),
+            );
           }
           return {
             ...prev,
@@ -372,7 +462,7 @@ export function useRadarSearch() {
         .filter((row) => row.job_listings !== null)
         .map((row) => {
           const listing = row.job_listings!;
-          return {
+          return sanitizeRadarJob({
             external_id: listing.external_id,
             title: listing.title,
             company: listing.company,
@@ -387,17 +477,18 @@ export function useRadarSearch() {
             employment_type: listing.employment_type,
             required_skills: listing.required_skills,
             match_score: row.match_score,
-          };
-        });
+          });
+        })
+        .filter((job): job is RadarJob => job !== null);
 
       if (mountedRef.current) {
         setState((prev) => ({
           ...prev,
           jobs,
           loading: false,
-          lastScanId: data.scan!.id,
-          sources_queried: data.scan!.sources_queried ?? [],
-          executionTimeMs: data.scan!.execution_time_ms ?? null,
+          lastScanId: safeString(data.scan!.id).trim() || null,
+          sources_queried: sanitizeSourcesQueried(data.scan!.sources_queried),
+          executionTimeMs: data.scan!.execution_time_ms == null ? null : safeNumber(data.scan!.execution_time_ms),
         }));
       }
     } catch (err) {

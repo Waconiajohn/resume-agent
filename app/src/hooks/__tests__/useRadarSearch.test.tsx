@@ -201,6 +201,67 @@ describe('useRadarSearch — search()', () => {
 
     expect(result.current.error).toBe('Not authenticated');
   });
+
+  it('sanitizes malformed search results before storing jobs', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scan_id: 42,
+        jobs: [
+          {
+            external_id: 'jsearch_good',
+            title: 'Director of Operations',
+            company: 'Acme Corp',
+            location: 123,
+            salary_min: '180000',
+            salary_max: 'bad',
+            description: null,
+            posted_date: '2026-03-21',
+            apply_url: '/apply',
+            source: 'linkedin',
+            remote_type: 'remote',
+            employment_type: 'full-time',
+            required_skills: ['Operations', 4, ''],
+            match_score: '91',
+            network_contacts: [
+              { id: 'c1', name: 'Pat Doe', title: 'VP Ops', company: 'Acme Corp' },
+              { id: '', name: 'Broken', company: 'Acme Corp' },
+            ],
+          },
+          {
+            external_id: '',
+            title: 'Broken Job',
+            company: 'Missing ID',
+            source: 'linkedin',
+          },
+        ],
+        sources_queried: ['linkedin', '', 4],
+        execution_time_ms: '450',
+      }),
+    }) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useRadarSearch());
+
+    await act(async () => {
+      await result.current.search('Operations', 'Remote');
+    });
+
+    expect(result.current.lastScanId).toBe('42');
+    expect(result.current.executionTimeMs).toBe(450);
+    expect(result.current.sources_queried).toEqual(['linkedin']);
+    expect(result.current.jobs).toHaveLength(1);
+    expect(result.current.jobs[0]).toMatchObject({
+      external_id: 'jsearch_good',
+      location: '123',
+      salary_min: 180000,
+      salary_max: null,
+      required_skills: ['Operations'],
+      match_score: 91,
+    });
+    expect(result.current.jobs[0].network_contacts).toEqual([
+      { id: 'c1', name: 'Pat Doe', title: 'VP Ops', company: 'Acme Corp' },
+    ]);
+  });
 });
 
 describe('useRadarSearch — scoreResults()', () => {
@@ -259,6 +320,43 @@ describe('useRadarSearch — scoreResults()', () => {
     // fetch should not have been called (no scan to score)
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(result.current.scoring).toBe(false);
+  });
+
+  it('ignores malformed score entries and normalizes numeric strings', async () => {
+    const jobs = [makeJob('j1'), makeJob('j2')];
+
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => makeSearchResponse(jobs),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ scan_id: 'scan-test-001', results: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          jobs: [
+            { external_id: 'jsearch_j1', match_score: '88' },
+            { external_id: '', match_score: 40 },
+            { external_id: 'jsearch_j2', match_score: null },
+          ],
+        }),
+      }) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useRadarSearch());
+
+    await act(async () => {
+      await result.current.search('VP Engineering', 'SF');
+    });
+
+    await act(async () => {
+      await result.current.scoreResults();
+    });
+
+    expect(result.current.jobs[0].match_score).toBe(88);
+    expect(result.current.jobs[1].match_score).toBeNull();
   });
 });
 
