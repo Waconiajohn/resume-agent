@@ -210,8 +210,7 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     created_at: string;
     updated_at: string;
   }> = [];
-
-  // Override fetch for SSE requests before navigation
+  // Override fetch for generic SSE requests before navigation
   await page.addInitScript(() => {
     const originalFetch = window.fetch;
     // @ts-expect-error Overriding fetch for test mocking
@@ -1550,6 +1549,29 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByText(/Northstar SaaS — strong fit/i)).toBeVisible({ timeout: 8_000 });
   });
 
+  test('Job Search add-application flow submits cleanly in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: 'Pipeline', exact: true }).click();
+    await expect(sharedPage.getByRole('heading', { name: /Application Pipeline/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /Add Application/i }).click();
+    await expect(sharedPage.getByRole('dialog', { name: /Add opportunity/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByPlaceholder('e.g. VP Operations').fill('Director of Program Management');
+    await sharedPage.getByPlaceholder('e.g. Acme Corp').fill('SignalWorks');
+    await sharedPage.getByPlaceholder('https://...').fill('https://example.com/jobs/pm-director');
+    await sharedPage.getByPlaceholder('Any notes about this role...').fill('Referral lead from former VP Product.');
+
+    await sharedPage.getByRole('button', { name: /Add to Pipeline/i }).click();
+
+    await expect(sharedPage.getByRole('dialog', { name: /Add opportunity/i })).toHaveCount(0);
+    await expect(sharedPage.getByRole('button', { name: /Director of Program Management SignalWorks/i })).toBeVisible({
+      timeout: 8_000,
+    });
+  });
+
   test('Interview Prep room renders', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
     await assertNoCrash(sharedPage);
@@ -1612,6 +1634,22 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
     await expect(sharedPage.getByRole('button', { name: /Add Debrief/i })).toContainText('1');
+  });
+
+  test('Interview Prep next-step documents open cleanly in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await expect(sharedPage.getByText(/Close the loop without breaking the narrative/i)).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /Open Thank You Note/i }).first().click();
+    await expect(sharedPage.getByRole('heading', { name: /Thank You Note Writer/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /Open Negotiation Prep/i }).first().click();
+    await expect(
+      sharedPage.getByRole('heading', { name: /Build one clear compensation strategy before you respond/i }),
+    ).toBeVisible({ timeout: 8_000 });
   });
 
   test('sidebar collapse and expand works without crash', async () => {
