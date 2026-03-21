@@ -167,6 +167,32 @@ describe('useMockInterview', () => {
     );
   });
 
+  it('SSE: question_presented ignores malformed question payloads', async () => {
+    const event = makeEvent('question_presented', { question: { index: 'bad' } });
+
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield { event: event.event, data: event.data };
+      },
+    });
+
+    const { result } = renderHook(() => useMockInterview());
+
+    await act(async () => {
+      await result.current.startSimulation(sampleInput);
+    });
+
+    expect(result.current.currentQuestion).toBeNull();
+    expect(result.current.status).toBe('running');
+  });
+
   it('SSE: answer_evaluated event appends to evaluations and resets status to running', async () => {
     const event = makeEvent('answer_evaluated', { evaluation: sampleEvaluation } as unknown as Record<string, unknown>);
 
@@ -194,6 +220,61 @@ describe('useMockInterview', () => {
     expect(result.current.evaluations[0].overall_score).toBe(86);
     expect(result.current.evaluations[0].scores.star_completeness).toBe(85);
     expect(result.current.evaluations[0].strengths).toHaveLength(2);
+  });
+
+  it('SSE: answer_evaluated sanitizes numeric strings and malformed arrays', async () => {
+    const event = makeEvent('answer_evaluated', {
+      evaluation: {
+        question_index: '2',
+        question_type: 'behavioral',
+        question: 'Tell me about a time you changed a process.',
+        answer: 'I rebuilt the reporting cadence.',
+        scores: {
+          star_completeness: '81',
+          relevance: 'bad',
+          impact: 79,
+          specificity: undefined,
+        },
+        overall_score: '88',
+        strengths: ['Clear ownership', 42, ''],
+        improvements: [null, 'Add metrics'],
+        model_answer_hint: 123,
+      },
+    } as unknown as Record<string, unknown>);
+
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield { event: event.event, data: event.data };
+      },
+    });
+
+    const { result } = renderHook(() => useMockInterview());
+
+    await act(async () => {
+      await result.current.startSimulation(sampleInput);
+    });
+
+    expect(result.current.evaluations).toHaveLength(1);
+    expect(result.current.evaluations[0]).toMatchObject({
+      question_index: 2,
+      overall_score: 88,
+      strengths: ['Clear ownership'],
+      improvements: ['Add metrics'],
+      model_answer_hint: '123',
+    });
+    expect(result.current.evaluations[0].scores).toEqual({
+      star_completeness: 81,
+      relevance: 0,
+      impact: 79,
+      specificity: 0,
+    });
   });
 
   it('SSE: simulation_complete sets summary and status to complete', async () => {
@@ -224,6 +305,54 @@ describe('useMockInterview', () => {
     expect(result.current.summary?.total_questions).toBe(6);
     expect(result.current.summary?.strengths).toHaveLength(2);
     expect(result.current.summary?.areas_for_improvement).toHaveLength(2);
+  });
+
+  it('SSE: simulation_complete sanitizes summary payloads and ignores malformed ones', async () => {
+    const validEvent = makeEvent('simulation_complete', {
+      summary: {
+        overall_score: '84',
+        total_questions: '5',
+        strengths: ['Executive presence', 9],
+        areas_for_improvement: ['More specificity', null],
+        recommendation: 'Keep sharpening your examples.',
+      },
+    } as unknown as Record<string, unknown>);
+
+    const invalidEvent = makeEvent('simulation_complete', {
+      summary: {
+        overall_score: 50,
+        total_questions: 2,
+      },
+    } as unknown as Record<string, unknown>);
+
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield { event: invalidEvent.event, data: invalidEvent.data };
+        yield { event: validEvent.event, data: validEvent.data };
+      },
+    });
+
+    const { result } = renderHook(() => useMockInterview());
+
+    await act(async () => {
+      await result.current.startSimulation(sampleInput);
+    });
+
+    expect(result.current.status).toBe('complete');
+    expect(result.current.summary).toEqual({
+      overall_score: 84,
+      total_questions: 5,
+      strengths: ['Executive presence'],
+      areas_for_improvement: ['More specificity'],
+      recommendation: 'Keep sharpening your examples.',
+    });
   });
 
   it('SSE: pipeline_error event sets error state and error message', async () => {

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { safeString } from '@/lib/safe-cast';
+import { safeNumber, safeString, safeStringArray } from '@/lib/safe-cast';
 
 export type MockInterviewStatus =
   | 'idle'
@@ -68,6 +68,72 @@ interface MockInterviewState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
+
+function sanitizeTextList(value: unknown): string[] {
+  return safeStringArray(value).map((item) => item.trim()).filter(Boolean);
+}
+
+function sanitizeQuestionType(value: unknown): InterviewQuestion['type'] {
+  return value === 'technical' || value === 'situational' ? value : 'behavioral';
+}
+
+function sanitizeQuestion(value: unknown): InterviewQuestion | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const question = safeString(candidate.question);
+  if (!question) return null;
+
+  return {
+    index: safeNumber(candidate.index),
+    type: sanitizeQuestionType(candidate.type),
+    question,
+    context: safeString(candidate.context) || undefined,
+  };
+}
+
+function sanitizeEvaluation(value: unknown): AnswerEvaluation | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const question = safeString(candidate.question);
+  const answer = safeString(candidate.answer);
+  if (!question || !answer) return null;
+
+  const scores = (candidate.scores && typeof candidate.scores === 'object'
+    ? candidate.scores
+    : {}) as Record<string, unknown>;
+
+  return {
+    question_index: safeNumber(candidate.question_index),
+    question_type: safeString(candidate.question_type),
+    question,
+    answer,
+    scores: {
+      star_completeness: safeNumber(scores.star_completeness),
+      relevance: safeNumber(scores.relevance),
+      impact: safeNumber(scores.impact),
+      specificity: safeNumber(scores.specificity),
+    },
+    overall_score: safeNumber(candidate.overall_score),
+    strengths: sanitizeTextList(candidate.strengths),
+    improvements: sanitizeTextList(candidate.improvements),
+    model_answer_hint: safeString(candidate.model_answer_hint) || undefined,
+  };
+}
+
+function sanitizeSummary(value: unknown): SimulationSummary | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const recommendation = safeString(candidate.recommendation);
+  if (!recommendation) return null;
+
+  return {
+    overall_score: safeNumber(candidate.overall_score),
+    total_questions: safeNumber(candidate.total_questions),
+    strengths: sanitizeTextList(candidate.strengths),
+    areas_for_improvement: sanitizeTextList(candidate.areas_for_improvement),
+    recommendation,
+  };
+}
 
 export function useMockInterview() {
   const [state, setState] = useState<MockInterviewState>({
@@ -140,56 +206,34 @@ export function useMockInterview() {
           break;
 
         case 'question_presented': {
-          const question = (data as { question: InterviewQuestion }).question;
+          const question = sanitizeQuestion(data.question);
+          if (!question) break;
           setState((prev) => ({
             ...prev,
             status: 'waiting_for_answer',
-            currentQuestion: {
-              index: question.index,
-              type: question.type,
-              question: question.question,
-              context: question.context,
-            },
+            currentQuestion: question,
           }));
           break;
         }
 
         case 'answer_evaluated': {
-          const evaluation = (data as { evaluation: AnswerEvaluation }).evaluation;
+          const evaluation = sanitizeEvaluation(data.evaluation);
+          if (!evaluation) break;
           setState((prev) => ({
             ...prev,
             status: 'running',
-            evaluations: [
-              ...prev.evaluations,
-              {
-                question_index: evaluation.question_index,
-                question_type: evaluation.question_type,
-                question: evaluation.question,
-                answer: evaluation.answer,
-                scores: evaluation.scores,
-                overall_score: evaluation.overall_score,
-                strengths: evaluation.strengths,
-                improvements: evaluation.improvements,
-                model_answer_hint: evaluation.model_answer_hint,
-              },
-            ],
+            evaluations: [...prev.evaluations, evaluation],
           }));
           break;
         }
 
         case 'simulation_complete': {
-          const summary = (data as { summary?: SimulationSummary }).summary;
+          const summary = sanitizeSummary(data.summary);
           if (!summary) break;
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            summary: {
-              overall_score: summary.overall_score,
-              total_questions: summary.total_questions,
-              strengths: summary.strengths,
-              areas_for_improvement: summary.areas_for_improvement,
-              recommendation: summary.recommendation,
-            },
+            summary,
           }));
           abortRef.current?.abort();
           break;
