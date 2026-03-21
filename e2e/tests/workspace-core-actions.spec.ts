@@ -263,7 +263,9 @@ test.describe('workspace core room actions', () => {
 
     await page.getByRole('button', { name: 'Follow-up', exact: true }).click();
 
-    await expect(page.getByText(/Close the loop without breaking the narrative/i)).toBeVisible();
+    await expect(
+      page.getByText(/Handle thank-you notes, offer-stage negotiation prep, and post-interview follow-through in one place/i),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Thank You Note/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Negotiation Prep/i }).first()).toBeVisible();
 

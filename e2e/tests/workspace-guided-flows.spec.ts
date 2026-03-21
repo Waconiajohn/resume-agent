@@ -42,21 +42,21 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('button', { name: /Download PDF/i })).toBeEnabled();
   });
 
-  test('organizes Interview Prep into sections and opens the 30-60-90 plan from Documents', async ({ page }) => {
+  test('organizes Interview Prep into sections and opens the 30-60-90 plan from Leave-behinds', async ({ page }) => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Interview Prep' }).first()).toBeVisible();
-    await page.getByRole('button', { name: 'Documents' }).click();
+    await page.getByRole('button', { name: 'Leave-behinds', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: '30-60-90 Day Plan' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Thank You Note' })).toBeVisible();
 
     await page.getByRole('button', { name: /Open 30-60-90 Day Plan/i }).click();
     await expect(page.getByRole('heading', { name: /30-60-90 Success Plan/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Back to Documents/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back to Leave-behinds/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /Back to Documents/i }).click();
-    await expect(page.getByRole('heading', { name: /Build documents without leaving the lab/i })).toBeVisible();
+    await page.getByRole('button', { name: /Back to Leave-behinds/i }).click();
+    await expect(page.getByRole('heading', { name: /Build leave-behinds without leaving the lab/i })).toBeVisible();
   });
 
   test('opens the first-class job workspace and reopens exact saved later-stage assets', async ({ page }) => {
