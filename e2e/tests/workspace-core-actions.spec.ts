@@ -60,7 +60,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible();
     await page.getByRole('button', { name: /Quick Optimize/i }).click();
 
-    await expect(page.getByText(/Profile Quality: 87%/i)).toBeVisible();
+    await expect(page.getByText(/Profile Score: 87%/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Re-optimize/i })).toBeVisible();
 
     await page.getByRole('button', { name: 'Results', exact: true }).click();

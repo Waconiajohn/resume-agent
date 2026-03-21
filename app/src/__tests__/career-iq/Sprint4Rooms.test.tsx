@@ -93,7 +93,7 @@ describe('LinkedInStudioRoom', () => {
     // AnalyticsOverview renders content-based metrics from generated posts
     expect(screen.getByText('Platform Metrics')).toBeInTheDocument();
     expect(screen.getByText('Total Posts')).toBeInTheDocument();
-    expect(screen.getByText('Avg Quality')).toBeInTheDocument();
+    expect(screen.getByText('Avg Post Score')).toBeInTheDocument();
   });
 
   it('renders LinkedIn header', () => {

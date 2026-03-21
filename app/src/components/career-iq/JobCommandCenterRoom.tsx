@@ -702,7 +702,7 @@ function TrackerGenerator() {
                     : 'bg-white/[0.06] text-white/40',
               )}
             >
-              Quality: {tracker.qualityScore}/100
+              Tracker Score: {tracker.qualityScore}/100
             </span>
           )}
           <span className="text-[11px] text-white/30">

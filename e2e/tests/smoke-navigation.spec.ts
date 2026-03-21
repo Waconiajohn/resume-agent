@@ -2191,7 +2191,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: /Quick Optimize/i }).click();
 
-    await expect(sharedPage.getByText(/Profile Quality: 87%/i)).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText(/Profile Score: 87%/i)).toBeVisible({ timeout: 8_000 });
     await expect(sharedPage.getByRole('button', { name: /Re-optimize/i })).toBeVisible({ timeout: 8_000 });
   });
 

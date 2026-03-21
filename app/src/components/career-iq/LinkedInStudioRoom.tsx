@@ -1010,7 +1010,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',
                   selectedReport.quality_score >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' : 'text-[#f0d99f] bg-[#f0d99f]/10',
                 )}>
-                  Quality {selectedReport.quality_score}
+                  Score {selectedReport.quality_score}
                 </span>
               )}
               {selectedReport.post_count > 0 && (
@@ -1223,7 +1223,7 @@ function AnalyticsOverview() {
   const metrics = [
     { label: 'Total Posts', value: String(posts.length), icon: FileText },
     { label: 'This Week', value: String(postsThisWeek), icon: Calendar },
-    { label: 'Avg Quality', value: avgQuality > 0 ? `${avgQuality}%` : '—', icon: TrendingUp },
+    { label: 'Avg Post Score', value: avgQuality > 0 ? `${avgQuality}%` : '—', icon: TrendingUp },
   ];
 
   return (
@@ -1538,7 +1538,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               optimizer.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
               'text-red-400 bg-red-400/10',
             )}>
-              Profile Quality: {optimizer.qualityScore}%
+              Profile Score: {optimizer.qualityScore}%
             </div>
           )}
           <div className="flex flex-wrap items-center justify-end gap-2">
