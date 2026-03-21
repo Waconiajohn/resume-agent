@@ -119,6 +119,38 @@ Alignment is not a slide. It is a system leaders maintain together.`,
   hook_assessment: 'The opening creates curiosity without overpromising.',
 } as const;
 
+const SIGNED_IN_MOCK_INTERVIEW_QUESTION = {
+  index: 0,
+  type: 'behavioral',
+  question: 'Tell me about a time you had to align multiple leaders around one operating cadence.',
+  context: 'Use a concrete example with scope, ownership, and business impact.',
+} as const;
+
+const SIGNED_IN_MOCK_INTERVIEW_EVALUATION = {
+  question_index: 0,
+  question_type: 'behavioral',
+  question: 'Tell me about a time you had to align multiple leaders around one operating cadence.',
+  answer: 'I aligned product, support, and operations leaders around one weekly operating rhythm.',
+  scores: {
+    star_completeness: 86,
+    relevance: 88,
+    impact: 82,
+    specificity: 84,
+  },
+  overall_score: 85,
+  strengths: ['Shows executive alignment and ownership clearly.'],
+  improvements: ['Add one metric or scope signal to strengthen business impact.'],
+  model_answer_hint: 'Name the team scope and the business result to make the answer stronger.',
+} as const;
+
+const SIGNED_IN_MOCK_INTERVIEW_SUMMARY = {
+  overall_score: 85,
+  total_questions: 1,
+  strengths: ['Clear ownership and cross-functional leadership.'],
+  areas_for_improvement: ['Add a measurable outcome or scale detail.'],
+  recommendation: 'Strong foundation. Add one metric and keep this as a core interview story.',
+} as const;
+
 // ---------------------------------------------------------------------------
 // API + Supabase mock helpers
 // ---------------------------------------------------------------------------
@@ -302,6 +334,104 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       }
       return originalFetch.apply(window, [input, init] as Parameters<typeof fetch>);
     };
+  });
+
+  await page.addInitScript(({ question, evaluation, summary }) => {
+    const originalFetch = window.fetch;
+    const encoder = new TextEncoder();
+    const controllers = new Map<string, ReadableStreamDefaultController<Uint8Array>>();
+
+    function extractRequestParts(input: RequestInfo | URL, init?: RequestInit) {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof Request
+            ? input.url
+            : String(input);
+
+      const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+      const body =
+        typeof init?.body === 'string'
+          ? init.body
+          : input instanceof Request
+            ? null
+            : null;
+
+      return { url, method, body };
+    }
+
+    function buildSSEBody(events: Array<{ event: string; data: unknown }>) {
+      return events.map((item) => `event: ${item.event}\ndata: ${JSON.stringify(item.data)}\n\n`).join('');
+    }
+
+    // @ts-expect-error test override
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      const { url, method, body } = extractRequestParts(input, init);
+
+      if (/\/api\/mock-interview\/[^/]+\/stream$/.test(url)) {
+        const sessionId = url.match(/\/api\/mock-interview\/([^/]+)\/stream$/)?.[1] ?? 'signed-in-mock-interview-session';
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controllers.set(sessionId, controller);
+            controller.enqueue(encoder.encode(buildSSEBody([
+              {
+                event: 'stage_start',
+                data: { stage: 'setup', message: 'Reviewing your resume and preparing the first question...' },
+              },
+              {
+                event: 'question_presented',
+                data: { question },
+              },
+            ])));
+          },
+        });
+
+        return Promise.resolve(new Response(stream, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }));
+      }
+
+      if (url.endsWith('/api/mock-interview/respond') && method === 'POST') {
+        let sessionId = 'signed-in-mock-interview-session';
+        try {
+          const payload = body ? JSON.parse(body) as { session_id?: string } : {};
+          if (typeof payload.session_id === 'string' && payload.session_id.length > 0) {
+            sessionId = payload.session_id;
+          }
+        } catch {
+          // Ignore malformed payloads in the test harness.
+        }
+
+        const controller = controllers.get(sessionId);
+        if (controller) {
+          controller.enqueue(encoder.encode(buildSSEBody([
+            {
+              event: 'answer_evaluated',
+              data: { evaluation },
+            },
+            {
+              event: 'simulation_complete',
+              data: { summary },
+            },
+            { event: 'pipeline_complete', data: {} },
+          ])));
+          controller.close();
+          controllers.delete(sessionId);
+        }
+
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+
+      return originalFetch.apply(window, [input, init] as Parameters<typeof fetch>);
+    };
+  }, {
+    question: SIGNED_IN_MOCK_INTERVIEW_QUESTION,
+    evaluation: SIGNED_IN_MOCK_INTERVIEW_EVALUATION,
+    summary: SIGNED_IN_MOCK_INTERVIEW_SUMMARY,
   });
 
   // Mock all Supabase REST API calls (auth + DB)
@@ -559,6 +689,15 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     }
 
     if (path === '/api/interview-prep/start' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (path === '/api/mock-interview/start' && method === 'POST') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -1986,6 +2125,32 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible({
       timeout: 8_000,
     });
+  });
+
+  test('Interview Prep mock interview starts, completes, and returns to the lab in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /^Practice /i }).click();
+    await sharedPage.getByRole('button', { name: /Start Mock Interview/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: 'Mock Interview', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(
+      sharedPage.getByText(/Tell me about a time you had to align multiple leaders around one operating cadence\./i),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await sharedPage
+      .getByPlaceholder(/Type your answer here/i)
+      .fill('I aligned product, support, and operations leaders around one weekly cadence and clarified ownership for each decision.');
+    await sharedPage.getByRole('button', { name: /Submit Answer/i }).click();
+
+    await expect(sharedPage.getByText(/Strong foundation\. Add one metric and keep this as a core interview story\./i)).toBeVisible({
+      timeout: 10_000,
+    });
+    await sharedPage.getByRole('button', { name: /Back to Interview Prep/i }).first().click();
+
+    await expect(sharedPage.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByRole('button', { name: /Start Mock Interview/i })).toBeVisible({ timeout: 10_000 });
   });
 
   test('Interview Prep follow-up saves a debrief in the signed-in shell', async () => {
