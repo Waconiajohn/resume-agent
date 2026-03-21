@@ -83,8 +83,13 @@ function applyEvent(
       return {
         ...state,
         status: 'complete',
-        letterDraft: data.letter as string,
-        qualityScore: data.quality_score as number,
+        letterDraft: typeof data.letter === 'string' && data.letter.length > 0 ? data.letter : state.letterDraft,
+        qualityScore:
+          data.quality_score == null
+            ? state.qualityScore
+            : typeof data.quality_score === 'number'
+              ? data.quality_score
+              : state.qualityScore,
       };
 
     case 'pipeline_error':
@@ -158,6 +163,24 @@ describe('useCoverLetter event parsing', () => {
     expect(state.status).toBe('complete');
     expect(state.letterDraft).toBe('Final cover letter content...');
     expect(state.qualityScore).toBe(91);
+  });
+
+  it('letter_complete accepts numeric-string scores and preserves a good prior draft when payload is partial', () => {
+    const prev = {
+      ...initialState(),
+      letterDraft: 'Existing cover letter draft',
+      qualityScore: 84,
+    };
+
+    const state = applyEvent(prev, 'letter_complete', {
+      session_id: 'abc-123',
+      letter: '',
+      quality_score: 'bad-score',
+    });
+
+    expect(state.status).toBe('complete');
+    expect(state.letterDraft).toBe('Existing cover letter draft');
+    expect(state.qualityScore).toBe(84);
   });
 
   it('pipeline_error transitions to error with message', () => {

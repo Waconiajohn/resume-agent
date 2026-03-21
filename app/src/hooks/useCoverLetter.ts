@@ -27,6 +27,13 @@ interface CoverLetterState {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 20;
 
+function normalizeLetterReviewData(value: Record<string, unknown>): LetterReviewData {
+  return {
+    letter_draft: safeString(value.letter_draft),
+    quality_score: value.quality_score == null ? undefined : safeNumber(value.quality_score),
+  };
+}
+
 export function useCoverLetter(accessToken: string | null) {
   const [state, setState] = useState<CoverLetterState>({
     status: 'idle',
@@ -105,16 +112,13 @@ export function useCoverLetter(accessToken: string | null) {
         case 'letter_review_ready': {
           setState((prev) => ({
             ...prev,
-            letterReviewData: {
-              letter_draft: safeString(data.letter_draft),
-              quality_score: typeof data.quality_score === 'number' ? data.quality_score : undefined,
-            },
+            letterReviewData: normalizeLetterReviewData(data),
           }));
           break;
         }
 
         case 'pipeline_gate': {
-          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          const gateName = data.gate === 'letter_review' ? 'letter_review' : undefined;
           if (gateName === 'letter_review') {
             setState((prev) => ({ ...prev, status: 'letter_review', pendingGate: gateName }));
           }
@@ -125,8 +129,8 @@ export function useCoverLetter(accessToken: string | null) {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            letterDraft: safeString(data.letter),
-            qualityScore: safeNumber(data.quality_score),
+            letterDraft: safeString(data.letter) || prev.letterDraft,
+            qualityScore: data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
           }));
           // Pipeline done — close connection
           abortRef.current?.abort();
