@@ -81,7 +81,7 @@ describe('ThankYouNoteRoom', () => {
 
   it('renders without crashing', () => {
     render(<ThankYouNoteRoom />);
-    expect(screen.getByText('Thank You Note Writer')).toBeInTheDocument();
+    expect(screen.getByText('Thank-You Notes')).toBeInTheDocument();
   });
 
   it('shows interview details section with company and role fields', () => {
@@ -111,7 +111,7 @@ describe('ThankYouNoteRoom', () => {
 
   it('does not call startPipeline when required fields are empty', () => {
     render(<ThankYouNoteRoom />);
-    fireEvent.click(screen.getByText('Generate Notes'));
+    fireEvent.click(screen.getByText('Draft Notes'));
     expect(mockStartPipeline).not.toHaveBeenCalled();
   });
 
@@ -125,7 +125,7 @@ describe('ThankYouNoteRoom', () => {
     vi.mocked(useThankYouNote).mockReturnValue(completeState);
     render(<ThankYouNoteRoom />);
     // Quality badge is present
-    expect(screen.getByText('Quality 91%')).toBeInTheDocument();
+    expect(screen.getByText('Draft Strength 91%')).toBeInTheDocument();
     // Copy button is present
     expect(screen.getByText('Copy')).toBeInTheDocument();
   });
@@ -133,7 +133,7 @@ describe('ThankYouNoteRoom', () => {
   it('calls reset when Write more notes is clicked in complete state', () => {
     vi.mocked(useThankYouNote).mockReturnValue(completeState);
     render(<ThankYouNoteRoom />);
-    fireEvent.click(screen.getByText('Write more notes'));
+    fireEvent.click(screen.getByText('Draft more notes'));
     expect(mockReset).toHaveBeenCalled();
   });
 });

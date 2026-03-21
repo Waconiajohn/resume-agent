@@ -270,7 +270,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('button', { name: /Open Negotiation Prep/i }).first()).toBeVisible();
 
     await page.getByRole('button', { name: /Open Thank You Note/i }).first().click();
-    await expect(page.getByRole('heading', { name: /Thank You Note Writer/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Thank-You Notes/i })).toBeVisible();
 
     await page.getByRole('button', { name: 'Negotiation Prep', exact: true }).click();
     await expect(page.getByRole('heading', { name: /Build one clear compensation strategy before you respond/i })).toBeVisible();

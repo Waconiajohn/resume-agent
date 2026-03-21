@@ -52,7 +52,7 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('heading', { name: 'Thank You Note' })).toBeVisible();
 
     await page.getByRole('button', { name: /Open 30-60-90 Day Plan/i }).click();
-    await expect(page.getByRole('heading', { name: /30-60-90 Success Plan/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /30-60-90 Plan/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Back to Leave-behinds/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Back to Leave-behinds/i }).click();

@@ -81,7 +81,7 @@ describe('NinetyDayPlanRoom', () => {
 
   it('renders without crashing', () => {
     render(<NinetyDayPlanRoom />);
-    expect(screen.getAllByText('30-60-90 Success Plan').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('30-60-90 Plan').length).toBeGreaterThan(0);
   });
 
   it('shows the three phase overview pills', () => {
@@ -105,7 +105,7 @@ describe('NinetyDayPlanRoom', () => {
 
   it('does not call startPipeline when required fields are empty', () => {
     render(<NinetyDayPlanRoom />);
-    fireEvent.click(screen.getByText('Generate Plan'));
+    fireEvent.click(screen.getByText('Draft Plan'));
     expect(mockStartPipeline).not.toHaveBeenCalled();
   });
 
@@ -122,17 +122,17 @@ describe('NinetyDayPlanRoom', () => {
     expect(screen.getByText('Mapping key stakeholders')).toBeInTheDocument();
   });
 
-  it('shows 30-60-90 Success Plan report in complete state', () => {
+  it('shows 30-60-90 Plan report in complete state', () => {
     vi.mocked(useNinetyDayPlan).mockReturnValue(completeState);
     render(<NinetyDayPlanRoom />);
-    expect(screen.getAllByText('30-60-90 Success Plan').length).toBeGreaterThan(0);
-    expect(screen.getByText('Quality 90%')).toBeInTheDocument();
+    expect(screen.getAllByText('30-60-90 Plan').length).toBeGreaterThan(0);
+    expect(screen.getByText('Plan Strength 90%')).toBeInTheDocument();
   });
 
-  it('calls reset when Build another plan is clicked in complete state', () => {
+  it('calls reset when Start another plan is clicked in complete state', () => {
     vi.mocked(useNinetyDayPlan).mockReturnValue(completeState);
     render(<NinetyDayPlanRoom />);
-    fireEvent.click(screen.getByText('Build another plan'));
+    fireEvent.click(screen.getByText('Start another plan'));
     expect(mockReset).toHaveBeenCalled();
   });
 });

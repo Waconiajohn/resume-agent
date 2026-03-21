@@ -289,12 +289,12 @@ function ReportView({
           className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
         >
           <ArrowLeft size={14} />
-          Build another plan
+          Start another plan
         </button>
         <div className="flex-1" />
         {qualityScore !== null && (
           <div className={cn('text-[12px] font-semibold px-3 py-1 rounded-full border', scoreColor)}>
-            Quality {qualityScore}%
+            Plan Strength {qualityScore}%
           </div>
         )}
         <GlassButton variant="ghost" onClick={handleCopy} size="sm">
@@ -315,7 +315,7 @@ function ReportView({
             <Map size={20} className="text-[#afc4ff]" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[18px] font-semibold text-white/90">30-60-90 Success Plan</h2>
+            <h2 className="text-[18px] font-semibold text-white/90">30-60-90 Plan</h2>
             <p className="text-[13px] text-white/50 mt-0.5">
               {targetRole}
               {targetCompany ? ` — ${targetCompany}` : ''}
@@ -617,22 +617,22 @@ export function NinetyDayPlanRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">30-60-90 Success Plan</h1>
+          <h1 className="text-xl font-semibold text-white/90">30-60-90 Plan</h1>
           <p className="text-[13px] text-white/40 mt-1">
-            Stakeholder map ready for review
+            Stakeholder map ready to review
           </p>
         </div>
         <GlassCard className="p-6">
           <div className="flex items-center gap-3 mb-4">
             <CheckCircle2 size={18} className="text-[#b5dec2]" />
-            <h3 className="text-[15px] font-semibold text-white/85">Research Complete</h3>
+            <h3 className="text-[15px] font-semibold text-white/85">Research Ready</h3>
           </div>
           <p className="text-[13px] text-white/55 mb-4 leading-relaxed">
-            The researcher mapped{' '}
+            We mapped{' '}
             <span className="text-white/80 font-medium">{stakeholderCount} stakeholder{stakeholderCount !== 1 ? 's' : ''}</span>{' '}
             and identified{' '}
             <span className="text-white/80 font-medium">{quickWinCount} quick win{quickWinCount !== 1 ? 's' : ''}</span>{' '}
-            for your first 30 days. Click below to begin writing your 30-60-90 day plan.
+            for your first 30 days. Review it, then draft the full 30-60-90 plan.
           </p>
           <div className="flex gap-3">
             <GlassButton
@@ -641,7 +641,7 @@ export function NinetyDayPlanRoom({
               className="text-[13px] px-5 py-2.5"
             >
               <Map size={14} className="mr-1.5" />
-              Write My 30-60-90 Plan
+              Draft My 30-60-90 Plan
             </GlassButton>
             <GlassButton variant="ghost" onClick={handleReset} size="sm">
               <ArrowLeft size={13} className="mr-1.5" />
@@ -658,7 +658,7 @@ export function NinetyDayPlanRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">30-60-90 Success Plan</h1>
+          <h1 className="text-xl font-semibold text-white/90">30-60-90 Plan</h1>
           <p className="text-[13px] text-white/40 mt-1">
             Building your stakeholder map and phased success plan
           </p>
@@ -709,10 +709,9 @@ export function NinetyDayPlanRoom({
           <Map size={20} className="text-[#afc4ff]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">30-60-90 Success Plan</h1>
+          <h1 className="text-xl font-semibold text-white/90">30-60-90 Plan</h1>
           <p className="text-[13px] text-white/40 leading-relaxed mt-1">
-            Generate a role-specific 30-60-90 success plan with stakeholder map, quick wins, and
-            phased milestones — built around your narrative, not a generic template.
+            Draft a role-specific 30-60-90 plan with stakeholder map, quick wins, and phased milestones built around your story, not a generic template.
           </p>
         </div>
       </div>
@@ -734,7 +733,7 @@ export function NinetyDayPlanRoom({
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white/70">
-              {initialSessionId ? 'Saved plan for this job' : 'Previous Result'}
+              {initialSessionId ? 'Saved plan for this job' : 'Earlier draft'}
             </h3>
             <button
               type="button"
@@ -938,7 +937,7 @@ export function NinetyDayPlanRoom({
           className="text-[14px] px-6 py-3 gap-2"
         >
           <Sparkles size={15} />
-          Generate Plan
+          Draft Plan
         </GlassButton>
       </div>
     </div>

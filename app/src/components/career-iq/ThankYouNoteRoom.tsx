@@ -468,12 +468,12 @@ function ReportView({
           className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white/70 transition-colors"
         >
           <ArrowLeft size={14} />
-          Write more notes
+          Draft more notes
         </button>
         <div className="flex-1" />
         {qualityScore !== null && (
           <div className={cn('text-[12px] font-semibold px-3 py-1 rounded-full border', scoreColor)}>
-            Quality {qualityScore}%
+            Draft Strength {qualityScore}%
           </div>
         )}
         <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
@@ -490,7 +490,7 @@ function ReportView({
             <CheckCircle2 size={18} className="text-[#b5dec2]" />
           </div>
           <div>
-            <h2 className="text-[16px] font-semibold text-white/90">Thank You Notes — {company}</h2>
+            <h2 className="text-[16px] font-semibold text-white/90">Thank-You Notes — {company}</h2>
             <p className="text-[12px] text-white/40 mt-0.5">{role}</p>
           </div>
         </div>
@@ -500,7 +500,7 @@ function ReportView({
       {qualityScore !== null && (
         <GlassCard className="px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] text-white/40">Note Quality</span>
+            <span className="text-[11px] text-white/40">Draft Strength</span>
             <span className={cn(
               'text-[11px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
@@ -734,8 +734,8 @@ export function ThankYouNoteRoom({
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div>
-          <h1 className="text-xl font-semibold text-white/90">Thank You Note Writer</h1>
-          <p className="text-[13px] text-white/40 mt-1">Drafting personalized notes for each interviewer</p>
+          <h1 className="text-xl font-semibold text-white/90">Thank-You Notes</h1>
+          <p className="text-[13px] text-white/40 mt-1">Drafting tailored follow-up notes for each interviewer</p>
         </div>
         <ActivityFeed
           activityMessages={activityMessages}
@@ -782,9 +782,9 @@ export function ThankYouNoteRoom({
           <Mail size={20} className="text-[#A396E2]" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-white/90">Thank You Note Writer</h1>
+          <h1 className="text-xl font-semibold text-white/90">Thank-You Notes</h1>
           <p className="text-[13px] text-white/40 leading-relaxed mt-1">
-            Generate personalized, high-impact thank you notes for every interviewer — referencing specific moments, reinforcing your value, and closing with forward momentum.
+            Draft notes for each interviewer that reference the conversation, reinforce your fit, and make the follow-up easier to send.
           </p>
         </div>
       </div>
@@ -806,7 +806,7 @@ export function ThankYouNoteRoom({
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white/70">
-              {initialSessionId ? 'Saved note for this job' : 'Previous Result'}
+              {initialSessionId ? 'Saved note for this job' : 'Earlier draft'}
             </h3>
             <button
               type="button"
@@ -814,7 +814,7 @@ export function ThankYouNoteRoom({
               className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
-              New Thank You Note
+              Start New Draft
             </button>
           </div>
           <div
@@ -979,7 +979,7 @@ export function ThankYouNoteRoom({
           className="text-[14px] px-6 py-3 gap-2"
         >
           <Sparkles size={15} />
-          Generate Notes
+          Draft Notes
         </GlassButton>
       </div>
     </div>

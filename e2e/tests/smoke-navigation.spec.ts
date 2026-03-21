@@ -2513,7 +2513,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByText(/Keep debriefs, thank-you notes, and negotiation prep tied to the same story/i)).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: /Open Thank You Note/i }).first().click();
-    await expect(sharedPage.getByRole('heading', { name: /Thank You Note Writer/i })).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByRole('heading', { name: /Thank-You Notes/i })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: 'Negotiation Prep', exact: true }).click();
     await expect(
