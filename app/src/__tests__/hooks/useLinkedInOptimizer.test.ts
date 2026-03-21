@@ -19,6 +19,20 @@ interface LinkedInOptimizerState {
   status: LinkedInOptimizerStatus;
   report: string | null;
   qualityScore: number | null;
+  experienceEntries: Array<{
+    role_id: string;
+    company: string;
+    title: string;
+    duration: string;
+    original: string;
+    optimized: string;
+    quality_scores: {
+      impact: number;
+      metrics: number;
+      context: number;
+      keywords: number;
+    };
+  }>;
   activityMessages: ActivityMessage[];
   error: string | null;
   currentStage: string | null;
@@ -29,10 +43,47 @@ function initialState(): LinkedInOptimizerState {
     status: 'running',
     report: null,
     qualityScore: null,
+    experienceEntries: [],
     activityMessages: [],
     error: null,
     currentStage: null,
   };
+}
+
+function safeString(value: unknown, fallback = ''): string {
+  if (typeof value === 'string') return value;
+  if (value == null) return fallback;
+  return String(value);
+}
+
+function safeNumber(value: unknown, fallback = 0): number {
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function sanitizeExperienceEntries(value: unknown): LinkedInOptimizerState['experienceEntries'] | null {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
+    .map((entry) => ({
+      role_id: safeString(entry.role_id),
+      company: safeString(entry.company),
+      title: safeString(entry.title),
+      duration: safeString(entry.duration),
+      original: safeString(entry.original),
+      optimized: safeString(entry.optimized),
+      quality_scores: {
+        impact: safeNumber((entry.quality_scores as Record<string, unknown> | null | undefined)?.impact),
+        metrics: safeNumber((entry.quality_scores as Record<string, unknown> | null | undefined)?.metrics),
+        context: safeNumber((entry.quality_scores as Record<string, unknown> | null | undefined)?.context),
+        keywords: safeNumber((entry.quality_scores as Record<string, unknown> | null | undefined)?.keywords),
+      },
+    }));
 }
 
 function applyEvent(
@@ -85,8 +136,9 @@ function applyEvent(
       return {
         ...state,
         status: 'complete',
-        report: data.report as string,
-        qualityScore: typeof data.quality_score === 'number' ? data.quality_score : state.qualityScore,
+        report: safeString(data.report) || state.report,
+        qualityScore: data.quality_score == null ? state.qualityScore : safeNumber(data.quality_score, state.qualityScore ?? 0),
+        experienceEntries: sanitizeExperienceEntries(data.experience_entries) ?? state.experienceEntries,
       };
 
     case 'pipeline_error':
@@ -175,6 +227,76 @@ describe('LinkedIn Optimizer SSE Event Parsing', () => {
     expect(state.status).toBe('complete');
     expect(state.report).toBe('# LinkedIn Optimization Report');
     expect(state.qualityScore).toBe(88);
+  });
+
+  it('report_complete accepts numeric strings and sanitizes experience entries', () => {
+    const state = applyEvent(initialState(), 'report_complete', {
+      report: '# Report',
+      quality_score: '91',
+      experience_entries: [
+        {
+          role_id: 42,
+          company: 'Acme',
+          title: 'VP Engineering',
+          duration: null,
+          original: 'Built team',
+          optimized: 'Scaled engineering org',
+          quality_scores: {
+            impact: '87',
+            metrics: 'bad',
+            context: 72,
+            keywords: undefined,
+          },
+        },
+        null,
+      ],
+    });
+
+    expect(state.qualityScore).toBe(91);
+    expect(state.experienceEntries).toHaveLength(1);
+    expect(state.experienceEntries[0]).toEqual({
+      role_id: '42',
+      company: 'Acme',
+      title: 'VP Engineering',
+      duration: '',
+      original: 'Built team',
+      optimized: 'Scaled engineering org',
+      quality_scores: {
+        impact: 87,
+        metrics: 0,
+        context: 72,
+        keywords: 0,
+      },
+    });
+  });
+
+  it('report_complete preserves prior report and entries when payload is malformed', () => {
+    const prev = {
+      ...initialState(),
+      report: '# Existing report',
+      qualityScore: 77,
+      experienceEntries: [
+        {
+          role_id: 'r1',
+          company: 'Acme',
+          title: 'Director',
+          duration: '2 yrs',
+          original: 'Original',
+          optimized: 'Optimized',
+          quality_scores: { impact: 80, metrics: 70, context: 60, keywords: 50 },
+        },
+      ],
+    };
+
+    const state = applyEvent(prev, 'report_complete', {
+      report: '',
+      quality_score: 'not-a-number',
+      experience_entries: { broken: true },
+    });
+
+    expect(state.report).toBe('# Existing report');
+    expect(state.qualityScore).toBe(77);
+    expect(state.experienceEntries).toEqual(prev.experienceEntries);
   });
 
   it('pipeline_error sets error status and message', () => {

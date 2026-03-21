@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { safeString } from '@/lib/safe-cast';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 import type { ActivityMessage } from '@/types/activity';
 
@@ -46,6 +46,34 @@ export interface LinkedInOptimizerInput {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 30;
+
+function sanitizeExperienceEntry(value: unknown): ExperienceEntry | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+
+  return {
+    role_id: safeString(candidate.role_id),
+    company: safeString(candidate.company),
+    title: safeString(candidate.title),
+    duration: safeString(candidate.duration),
+    original: safeString(candidate.original),
+    optimized: safeString(candidate.optimized),
+    quality_scores: {
+      impact: safeNumber((candidate.quality_scores as Record<string, unknown> | null | undefined)?.impact),
+      metrics: safeNumber((candidate.quality_scores as Record<string, unknown> | null | undefined)?.metrics),
+      context: safeNumber((candidate.quality_scores as Record<string, unknown> | null | undefined)?.context),
+      keywords: safeNumber((candidate.quality_scores as Record<string, unknown> | null | undefined)?.keywords),
+    },
+  };
+}
+
+function sanitizeExperienceEntries(value: unknown): ExperienceEntry[] | null {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .map((entry) => sanitizeExperienceEntry(entry))
+    .filter((entry): entry is ExperienceEntry => entry !== null);
+}
 
 export function useLinkedInOptimizer() {
   const [state, setState] = useState<LinkedInOptimizerState>({
@@ -131,11 +159,10 @@ export function useLinkedInOptimizer() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: safeString(data.report),
-            qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
-            experienceEntries: Array.isArray(data.experience_entries)
-              ? (data.experience_entries as ExperienceEntry[])
-              : prev.experienceEntries,
+            report: safeString(data.report) || prev.report,
+            qualityScore:
+              data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
+            experienceEntries: sanitizeExperienceEntries(data.experience_entries) ?? prev.experienceEntries,
           }));
           abortRef.current?.abort();
           break;
