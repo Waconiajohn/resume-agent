@@ -508,8 +508,8 @@ function ReportView({
             <TrendingUp size={18} className="text-[#afc4ff]" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-white/90">Negotiation Playbook</h2>
-            <p className="text-[13px] text-white/40">Your personalized negotiation prep strategy</p>
+            <h2 className="text-xl font-semibold text-white/90">Negotiation Strategy</h2>
+            <p className="text-[13px] text-white/40">Your working negotiation brief</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -521,7 +521,7 @@ function ReportView({
             </GlassButton>
             <GlassButton variant="ghost" onClick={onReset} size="sm">
               <RotateCcw size={14} className="mr-1.5" />
-              New Analysis
+              Start New Draft
             </GlassButton>
           </div>
         </div>
@@ -539,7 +539,7 @@ function ReportView({
           />
           {strategyReviewData?.data_confidence && (
             <p className="mt-3 text-[10px] text-white/25">
-              Data confidence: <span className="text-white/40 capitalize">{strategyReviewData.data_confidence}</span> — AI-estimated from role, industry, and geography
+              Market read: <span className="text-white/40 capitalize">{strategyReviewData.data_confidence}</span> confidence based on role, industry, and geography
             </p>
           )}
         </GlassCard>
@@ -548,7 +548,7 @@ function ReportView({
       {/* Tab switcher */}
       <div className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.03] border border-white/[0.06] w-fit">
         {([
-          ['playbook', 'Full Playbook'],
+          ['playbook', 'Strategy Brief'],
           ['leverage', 'Leverage Levers'],
           ['redlines', 'Red Lines'],
         ] as const).map(([tab, label]) => (
@@ -897,7 +897,7 @@ export function SalaryNegotiationRoom({
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold text-white/90">Negotiation Prep</h1>
-          <p className="text-[13px] text-white/40">Building your personalized negotiation strategy...</p>
+          <p className="text-[13px] text-white/40">Building your negotiation brief...</p>
         </div>
 
         {/* Stage indicators */}
@@ -935,7 +935,7 @@ export function SalaryNegotiationRoom({
               <h3 className="text-[14px] font-semibold text-white/80">
                 {currentStage ? STAGE_LABELS[currentStage] ?? currentStage : 'Starting analysis...'}
               </h3>
-              <p className="text-[12px] text-white/35">Analyzing market data and designing your strategy</p>
+              <p className="text-[12px] text-white/35">Reviewing market context and shaping your negotiation brief</p>
             </div>
           </div>
           <ActivityFeed messages={activityMessages} currentStage={currentStage} />
@@ -1019,7 +1019,7 @@ export function SalaryNegotiationRoom({
                 onClick={() => setShowPriorResult((current) => !current)}
                 className="text-[13px]"
               >
-                {showPriorResult ? 'Hide previous strategy' : 'Review previous strategy'}
+              {showPriorResult ? 'Hide earlier strategy' : 'Review earlier strategy'}
               </GlassButton>
             )}
             <GlassButton variant="ghost" onClick={() => onOpenCareerProfile?.()} className="text-[13px]">
@@ -1062,7 +1062,7 @@ export function SalaryNegotiationRoom({
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white/70">
-              {initialSessionId ? 'Saved strategy for this job' : 'Previous Result'}
+              {initialSessionId ? 'Saved strategy for this job' : 'Earlier draft'}
             </h3>
             <div className="flex items-center gap-2">
               <button
@@ -1078,7 +1078,7 @@ export function SalaryNegotiationRoom({
                 className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
-                New Analysis
+                Start New Draft
               </button>
             </div>
           </div>
@@ -1093,9 +1093,9 @@ export function SalaryNegotiationRoom({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/42">Resume context</div>
-            <h2 className="mt-2 text-base font-semibold text-white/86">Negotiation quality improves when the platform can see your full scope and proof</h2>
+            <h2 className="mt-2 text-base font-semibold text-white/86">This strategy gets stronger when the platform can see your full scope and proof</h2>
             <p className="mt-2 text-sm leading-relaxed text-white/50">
-              If your master resume is already saved, we will use it. If not, paste it here so the negotiation strategy can reflect your real level, impact, and credibility.
+              If your master resume is already saved, we will use it. If not, paste it here so the strategy reflects your real level, impact, and credibility.
             </p>
           </div>
           {resumeText.length > 50 && !resumeLoading && (
@@ -1261,7 +1261,7 @@ export function SalaryNegotiationRoom({
       {/* Submit */}
       <div className="flex items-center justify-between pt-2">
         <p className="text-[12px] text-white/30">
-          Analysis takes 1–3 minutes. You'll get market benchmarks, leverage points, and word-for-word scripts.
+          This takes 1–3 minutes. You will get market benchmarks, leverage points, and language you can actually use.
         </p>
         <GlassButton
           variant="primary"
@@ -1274,7 +1274,7 @@ export function SalaryNegotiationRoom({
           )}
         >
           <TrendingUp size={15} className="mr-2" />
-          Build Negotiation Strategy
+          Build Strategy
         </GlassButton>
       </div>
     </div>

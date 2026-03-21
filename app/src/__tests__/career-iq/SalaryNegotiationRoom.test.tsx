@@ -57,7 +57,7 @@ const runningState = {
 const completeState = {
   ...idleState,
   status: 'complete' as const,
-  report: '# Negotiation Playbook\n\nYour target range is $180K–$220K.',
+  report: '# Negotiation Strategy\n\nYour target range is $180K–$220K.',
   qualityScore: 88,
 };
 
@@ -104,23 +104,23 @@ describe('SalaryNegotiationRoom', () => {
 
   it('does not call startPipeline when required fields are empty', () => {
     render(<SalaryNegotiationRoom />);
-    fireEvent.click(screen.getByRole('button', { name: /Build Negotiation Strategy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Build Strategy/i }));
     expect(mockStartPipeline).not.toHaveBeenCalled();
   });
 
-  it('shows Negotiation Playbook heading in complete state', () => {
+  it('shows Negotiation Strategy heading in complete state', () => {
     vi.mocked(useSalaryNegotiation).mockReturnValue(completeState);
     render(<SalaryNegotiationRoom />);
     // h2 heading in the report view
-    expect(screen.getAllByText('Negotiation Playbook').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Negotiation Strategy').length).toBeGreaterThan(0);
   });
 
   it('shows confidence gauge and strategy in complete state', () => {
     vi.mocked(useSalaryNegotiation).mockReturnValue(completeState);
     render(<SalaryNegotiationRoom />);
-    // The report view renders a confidence gauge (SVG) and the playbook heading
-    expect(screen.getAllByText('Negotiation Playbook').length).toBeGreaterThan(0);
-    expect(screen.getByText('Your personalized salary negotiation strategy')).toBeInTheDocument();
+    // The report view renders a confidence gauge (SVG) and the strategy heading
+    expect(screen.getAllByText('Negotiation Strategy').length).toBeGreaterThan(0);
+    expect(screen.getByText('Your working negotiation brief')).toBeInTheDocument();
   });
 
   it('shows activity feed messages in running state', () => {
@@ -129,10 +129,10 @@ describe('SalaryNegotiationRoom', () => {
     expect(screen.getByText('Researching market rates for your role')).toBeInTheDocument();
   });
 
-  it('calls reset when New Analysis is clicked in complete state', () => {
+  it('calls reset when Start New Draft is clicked in complete state', () => {
     vi.mocked(useSalaryNegotiation).mockReturnValue(completeState);
     render(<SalaryNegotiationRoom />);
-    fireEvent.click(screen.getByText('New Analysis'));
+    fireEvent.click(screen.getByRole('button', { name: /Start New Draft/i }));
     expect(mockReset).toHaveBeenCalled();
   });
 });
