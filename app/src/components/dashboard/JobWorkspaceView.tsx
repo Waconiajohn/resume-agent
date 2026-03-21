@@ -163,7 +163,7 @@ export function JobWorkspaceView({
                   {coverLetterAsset ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onViewCoverLetter(coverLetterAsset.id)}>
                       <Mail size={12} className="mr-1.5" />
-                      View Letter
+                      View Cover Letter
                     </GlassButton>
                   ) : null}
                 </div>

@@ -798,7 +798,7 @@ export function ThankYouNoteRoom({
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 text-[12px] text-white/35">
             <Loader2 size={12} className="animate-spin" />
-            Loading previous result...
+            Loading saved draft...
           </div>
         </GlassCard>
       )}
@@ -806,7 +806,7 @@ export function ThankYouNoteRoom({
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white/70">
-              {initialSessionId ? 'Saved note for this job' : 'Earlier draft'}
+              {initialSessionId ? 'Saved thank-you notes for this job' : 'Earlier draft'}
             </h3>
             <button
               type="button"

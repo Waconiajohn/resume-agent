@@ -725,7 +725,7 @@ export function NinetyDayPlanRoom({
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 text-[12px] text-white/35">
             <Loader2 size={12} className="animate-spin" />
-            Loading previous result...
+            Loading saved draft...
           </div>
         </GlassCard>
       )}
@@ -733,7 +733,7 @@ export function NinetyDayPlanRoom({
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white/70">
-              {initialSessionId ? 'Saved plan for this job' : 'Earlier draft'}
+              {initialSessionId ? 'Saved 30-60-90 plan for this job' : 'Earlier draft'}
             </h3>
             <button
               type="button"
@@ -741,7 +741,7 @@ export function NinetyDayPlanRoom({
               className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/80 transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
-              New Plan
+              Start New Draft
             </button>
           </div>
           <div

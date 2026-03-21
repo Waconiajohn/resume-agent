@@ -1025,7 +1025,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <div className="mt-4">
               <GlassButton onClick={onWritePost} className="flex items-center gap-2">
                 <PenLine size={14} />
-                Write from This Plan
+                Write a Post from This Plan
               </GlassButton>
             </div>
           </GlassCard>
@@ -1053,7 +1053,7 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <details>
               <summary className="cursor-pointer flex items-center gap-2 text-[13px] font-medium text-white/55 hover:text-white/80 transition-colors list-none">
                 <Clock size={14} className="text-white/30 flex-shrink-0" />
-                Saved Plans
+                Saved Content Plans
                 <span className="ml-auto text-[11px] text-white/25 font-normal">
                   {calendar.savedReports.length} saved
                 </span>
@@ -1161,11 +1161,11 @@ function ContentCalendar({ onWritePost }: { onWritePost: () => void }) {
             <div className="mt-4 flex items-center gap-3">
               <GlassButton onClick={onWritePost} className="flex items-center gap-2">
                 <PenLine size={14} />
-                Write from Plan
+                Write a Post from This Plan
               </GlassButton>
               <GlassButton onClick={calendar.reset} className="flex items-center gap-2">
                 <RotateCcw size={14} />
-                Build New Plan
+                Build Another Plan
               </GlassButton>
             </div>
           </GlassCard>

@@ -137,11 +137,11 @@ test.describe('Resume Builder Workspace', () => {
 
     await viewResumeButton.click();
     await expect(
-      page.getByRole('heading', { name: /Session Resume/i }),
+      page.getByRole('heading', { name: /Saved Resume/i }),
     ).toBeVisible({ timeout: 10_000 });
     await page.getByRole('button', { name: /Close/i }).click();
     await expect(
-      page.getByRole('heading', { name: /Session Resume/i }),
+      page.getByRole('heading', { name: /Saved Resume/i }),
     ).not.toBeVisible({ timeout: 5_000 });
   });
 
