@@ -103,7 +103,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const circumference = 2 * Math.PI * radius;
   const filled = (score / 100) * circumference;
   const color = score >= 80 ? '#b5dec2' : score >= 60 ? '#f0d99f' : '#f0b8b8';
-  const label = score >= 80 ? 'Strong' : score >= 60 ? 'Good' : 'Developing';
+  const label = score >= 80 ? 'Strong' : score >= 60 ? 'Solid' : 'Developing';
 
   return (
     <div className="flex flex-col items-center gap-1">

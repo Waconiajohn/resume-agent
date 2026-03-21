@@ -204,7 +204,7 @@ function LetterOutput({
               'text-[11px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
             )}>
-              {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Good' : 'Needs Work'}
+              {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Solid' : 'Needs polish'}
             </span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-white/[0.06]">
