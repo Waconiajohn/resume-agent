@@ -362,7 +362,7 @@ test.describe('workspace core room actions', () => {
 
     await page.getByRole('button', { name: /Generate Interview Prep/i }).first().click();
 
-    await expect(page.getByText(/Generating your interview prep report/i)).toBeVisible();
+    await expect(page.getByText(/Building your interview brief/i)).toBeVisible();
     await expect(page.getByText(/Lead with executive operating cadence and cross-functional alignment\./i)).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole('button', { name: /Back to Interview Prep/i }).first().click();

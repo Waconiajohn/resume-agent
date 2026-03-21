@@ -812,7 +812,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
             </div>
             <div>
               <h3 className="text-[15px] font-semibold text-white/90">
-                Interview Prep — {company}
+                Interview Brief — {company}
               </h3>
               <p className="text-[12px] text-white/40">{role}</p>
             </div>
@@ -826,7 +826,7 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 
         {/* Tab switcher */}
         <div className="flex items-center gap-1 mt-4 p-1 rounded-lg bg-white/[0.03] border border-white/[0.06] w-fit">
-          {([['report', 'Full Report'], ['questions', 'Question Bank']] as const).map(([tab, label]) => (
+          {([['report', 'Interview Brief'], ['questions', 'Practice Questions']] as const).map(([tab, label]) => (
             <button
               key={tab}
               type="button"
@@ -1201,7 +1201,7 @@ export function InterviewLabRoom({
       <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
-          <p className="text-[13px] text-white/40">Generating your interview prep report...</p>
+          <p className="text-[13px] text-white/40">Building your interview brief...</p>
         </div>
 
         {inputError ? (

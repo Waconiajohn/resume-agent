@@ -1527,7 +1527,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">LinkedIn</h1>
           <p className="text-[13px] text-white/40">
-            Keep the main work focused on writing and profile quality. Content planning and saved ideas stay quieter in the background.
+            Keep the main work focused on writing and profile strength. Content planning and saved ideas stay quieter in the background.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -1685,7 +1685,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               <GlassCard className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Linkedin size={18} className="text-[#afc4ff]" />
-                  <h3 className="text-[15px] font-semibold text-white/85">Optimized Experience Entries</h3>
+                  <h3 className="text-[15px] font-semibold text-white/85">Rewritten Experience Entries</h3>
                   <span className="ml-auto text-[11px] text-white/30">
                     {optimizer.experienceEntries.length} role{optimizer.experienceEntries.length !== 1 ? 's' : ''}
                   </span>

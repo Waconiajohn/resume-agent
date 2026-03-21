@@ -159,7 +159,7 @@ function LetterOutput({
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-[#b5dec2]" />
-          <span className="text-sm font-medium text-white/85">Cover Letter Ready</span>
+          <span className="text-sm font-medium text-white/85">Cover Letter Draft</span>
           {companyName && (
             <span className="text-xs text-white/40">for {companyName}</span>
           )}
@@ -189,7 +189,7 @@ function LetterOutput({
                     : 'bg-[#f0b8b8]/10 text-[#f0b8b8] border-[#f0b8b8]/15',
               )}
             >
-              Quality {qualityScore}/100
+              Draft Score {qualityScore}/100
             </span>
           )}
         </div>
@@ -199,7 +199,7 @@ function LetterOutput({
       {qualityScore != null && (
         <GlassCard className="px-4 py-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] text-white/40">Letter Quality</span>
+            <span className="text-[11px] text-white/40">Draft Score</span>
             <span className={cn(
               'text-[11px] font-semibold',
               qualityScore >= 80 ? 'text-[#b5dec2]' : qualityScore >= 60 ? 'text-[#f0d99f]' : 'text-[#f0b8b8]',
