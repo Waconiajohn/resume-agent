@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 export interface WatchlistCompany {
   id: string;
@@ -13,6 +14,47 @@ export interface WatchlistCompany {
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+function safeOptionalString(value: unknown): string | null {
+  const normalized = safeString(value).trim();
+  return normalized ? normalized : null;
+}
+
+function sanitizePriority(value: unknown): number {
+  const normalized = Math.round(safeNumber(value, 3));
+  return Math.min(5, Math.max(1, normalized));
+}
+
+function sanitizeWatchlistCompany(value: unknown): WatchlistCompany | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const id = safeString(candidate.id).trim();
+  const name = safeString(candidate.name).trim();
+  const source = safeString(candidate.source).trim();
+  const createdAt = safeString(candidate.created_at).trim();
+  const updatedAt = safeString(candidate.updated_at).trim();
+  if (!id || !name || !source || !createdAt || !updatedAt) return null;
+
+  return {
+    id,
+    name,
+    industry: safeOptionalString(candidate.industry),
+    website: safeOptionalString(candidate.website),
+    careers_url: safeOptionalString(candidate.careers_url),
+    priority: sanitizePriority(candidate.priority),
+    source,
+    notes: safeOptionalString(candidate.notes),
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
+function sanitizeWatchlistCompanies(value: unknown): WatchlistCompany[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((company) => sanitizeWatchlistCompany(company))
+    .filter((company): company is WatchlistCompany => company !== null);
 }
 
 async function getAuthHeader(): Promise<Record<string, string> | null> {
@@ -69,7 +111,7 @@ export function useWatchlist() {
         if (mountedRef.current) { setCompanies([]); setLoading(false); }
         return;
       }
-      const data = json.companies ?? [];
+      const data = sanitizeWatchlistCompanies(json.companies);
       if (mountedRef.current) {
         setCompanies(data);
         setLoading(false);
@@ -126,7 +168,13 @@ export function useWatchlist() {
           return null;
         }
 
-        const created = (await res.json()) as WatchlistCompany;
+        const created = sanitizeWatchlistCompany(await res.json());
+        if (!created) {
+          if (mountedRef.current) {
+            setCompanies((prev) => prev.filter((c) => c.id !== tempId));
+          }
+          return null;
+        }
         if (mountedRef.current) {
           setCompanies((prev) =>
             prev.map((c) => (c.id === tempId ? created : c)),
@@ -157,7 +205,8 @@ export function useWatchlist() {
 
         if (!res.ok) return null;
 
-        const updated = (await res.json()) as WatchlistCompany;
+        const updated = sanitizeWatchlistCompany(await res.json());
+        if (!updated) return null;
         if (mountedRef.current) {
           setCompanies((prev) => prev.map((c) => (c.id === id ? updated : c)));
         }
