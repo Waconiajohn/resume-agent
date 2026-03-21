@@ -81,10 +81,10 @@ export function SessionCoverLetterModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <GlassCard role="dialog" aria-modal="true" aria-label="Session Cover Letter" className="flex max-h-[90vh] w-full max-w-2xl flex-col p-0 overflow-hidden">
+      <GlassCard role="dialog" aria-modal="true" aria-label="Saved Cover Letter" className="flex max-h-[90vh] w-full max-w-2xl flex-col p-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
-          <h2 className="text-sm font-semibold text-white/90">Session Cover Letter</h2>
+          <h2 className="text-sm font-semibold text-white/90">Saved Cover Letter</h2>
           <div className="flex items-center gap-2">
             {letter && (
               <>
@@ -131,7 +131,7 @@ export function SessionCoverLetterModal({
           )}
 
           {!loading && !error && !letter && (
-            <p className="py-8 text-center text-sm text-white/40">No cover letter found for this session.</p>
+            <p className="py-8 text-center text-sm text-white/40">No saved cover letter was found for this session.</p>
           )}
 
           {!loading && !error && letter && (

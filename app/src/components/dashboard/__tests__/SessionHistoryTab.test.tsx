@@ -181,7 +181,7 @@ describe('SessionHistoryTab', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /view letter/i }));
+    fireEvent.click(screen.getByRole('button', { name: /view cover letter/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('session-cover-letter-modal')).toBeInTheDocument();
@@ -360,11 +360,11 @@ describe('SessionHistoryTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /view workspace/i }));
 
     expect(screen.getAllByText('Interview Prep').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /Review Saved Note/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Review Saved 30-60-90 Plan/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Review Saved Negotiation Prep/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Saved Note/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Saved 30-60-90 Plan/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Open Saved Strategy/i }).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: /Review Saved Negotiation Prep/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Open Saved Strategy/i })[0]);
 
     expect(onNavigate).toHaveBeenCalledWith('/workspace?room=interview&job=job-app-1&company=Acme+Corp&role=VP+Engineering&focus=negotiation&session=nego-1');
   });

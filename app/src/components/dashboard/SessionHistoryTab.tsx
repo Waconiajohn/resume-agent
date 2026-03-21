@@ -328,7 +328,7 @@ export function SessionHistoryTab({
                       {coverLetterAsset && (
                         <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => setViewingCoverLetterSessionId(coverLetterAsset.id)}>
                           <FileText size={12} className="mr-1.5" />
-                          View Letter
+                          View Cover Letter
                         </GlassButton>
                       )}
                       {!coverLetterAsset && record.assets.length === 1 && (

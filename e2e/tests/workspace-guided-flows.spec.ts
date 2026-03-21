@@ -14,7 +14,7 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByText('VP Operations').first()).toBeVisible();
     await expect(page.getByText('Interviewing').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /View Resume/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /View Letter/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /View Cover Letter/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Interview Prep/i }).first()).toBeVisible();
 
     await page.getByRole('button', { name: /View Workspace/i }).first().click();
@@ -68,20 +68,20 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByText(/Exact assets reopen from here/i)).toBeVisible();
 
     await page.goto('/workspace/job/job-techcorp', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: /Review Saved Prep/i }).first().click();
+    await page.getByRole('button', { name: /Open Saved Prep/i }).first().click();
     await expect(page).toHaveURL(/room=interview/);
     await expect(page).toHaveURL(/focus=prep/);
     await expect(page).toHaveURL(/session=mock-interview-prep-session/);
     await expect(page.getByText('Lead with executive operating cadence and cross-functional alignment.')).toBeVisible();
 
     await page.goto('/workspace/job/job-techcorp', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: /Review Saved Note/i }).first().click();
+    await page.getByRole('button', { name: /Open Saved Note/i }).first().click();
     await expect(page).toHaveURL(/focus=thank-you/);
     await expect(page).toHaveURL(/session=mock-thank-you-session/);
     await expect(page.getByText(/thoughtful conversation about operating cadence/i)).toBeVisible();
 
     await page.goto('/workspace/job/job-offerco', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: /Review Saved Strategy/i }).first().click();
+    await page.getByRole('button', { name: /Open Saved Strategy/i }).first().click();
     await expect(page).toHaveURL(/room=interview/);
     await expect(page).toHaveURL(/focus=negotiation/);
     await expect(page).toHaveURL(/session=mock-nego-session/);

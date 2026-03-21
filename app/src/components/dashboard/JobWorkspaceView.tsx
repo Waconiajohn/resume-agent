@@ -151,7 +151,7 @@ export function JobWorkspaceView({
                       </GlassButton>
                       <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onViewResume(resumeAsset.id)}>
                         <FileText size={12} className="mr-1.5" />
-                        View
+                        View Resume
                       </GlassButton>
                     </>
                   ) : (
@@ -187,25 +187,25 @@ export function JobWorkspaceView({
                   {(interviewPrepAsset || activeStage === 'interviewing' || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(interviewPrepRoute)}>
                       <Mic size={12} className="mr-1.5" />
-                      {interviewPrepAsset ? 'Review Saved Prep' : 'Open Interview Prep'}
+                      {interviewPrepAsset ? 'Open Saved Prep' : 'Open Interview Prep'}
                     </GlassButton>
                   ) : null}
                   {(thankYouAsset || activeStage === 'interviewing' || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(thankYouRoute)}>
                       <Mail size={12} className="mr-1.5" />
-                      {thankYouAsset ? 'Review Saved Note' : 'Open Thank You Note'}
+                      {thankYouAsset ? 'Open Saved Note' : 'Open Thank-You Notes'}
                     </GlassButton>
                   ) : null}
                   {(ninetyDayPlanAsset || activeStage === 'interviewing' || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(ninetyDayPlanRoute)}>
                       <FileText size={12} className="mr-1.5" />
-                      {ninetyDayPlanAsset ? 'Review Saved 30-60-90 Plan' : 'Open 30-60-90 Day Plan'}
+                      {ninetyDayPlanAsset ? 'Open Saved 30-60-90 Plan' : 'Open 30-60-90 Plan'}
                     </GlassButton>
                   ) : null}
                   {(salaryNegotiationAsset || activeStage === 'offer') ? (
                     <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(salaryNegotiationRoute)}>
                       <Sparkles size={12} className="mr-1.5" />
-                      {salaryNegotiationAsset ? 'Review Saved Negotiation Prep' : 'Open Negotiation Prep'}
+                      {salaryNegotiationAsset ? 'Open Saved Strategy' : 'Open Negotiation Prep'}
                     </GlassButton>
                   ) : null}
                 </div>
@@ -227,13 +227,13 @@ export function JobWorkspaceView({
               {activeStage === 'interviewing' ? (
                 <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(interviewPrepRoute)}>
                   <Mic size={12} className="mr-1.5" />
-                  {interviewPrepAsset ? 'Review Saved Prep' : 'Open Interview Prep'}
+                  {interviewPrepAsset ? 'Open Saved Prep' : 'Open Interview Prep'}
                 </GlassButton>
               ) : null}
               {activeStage === 'offer' ? (
                 <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(salaryNegotiationRoute)}>
                   <Sparkles size={12} className="mr-1.5" />
-                  {salaryNegotiationAsset ? 'Review Saved Strategy' : 'Open Negotiation Prep'}
+                  {salaryNegotiationAsset ? 'Open Saved Strategy' : 'Open Negotiation Prep'}
                 </GlassButton>
               ) : null}
             </div>

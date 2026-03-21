@@ -66,7 +66,7 @@ describe('SessionCoverLetterModal', () => {
     });
     render(<SessionCoverLetterModal {...props} />);
     await waitFor(() => {
-      expect(screen.getByText(/no cover letter found/i)).toBeTruthy();
+      expect(screen.getByText(/no saved cover letter was found for this session/i)).toBeTruthy();
     });
   });
 
@@ -138,6 +138,6 @@ describe('SessionCoverLetterModal', () => {
   it('renders the modal title', () => {
     const props = makeProps();
     render(<SessionCoverLetterModal {...props} />);
-    expect(screen.getByText('Session Cover Letter')).toBeTruthy();
+    expect(screen.getByText('Saved Cover Letter')).toBeTruthy();
   });
 });
