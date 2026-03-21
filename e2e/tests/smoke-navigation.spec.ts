@@ -60,6 +60,27 @@ const DEFAULT_BILLING_RESPONSE: NonNullable<SmokeNetworkOptions['billingResponse
   },
 };
 
+const SIGNED_IN_LINKEDIN_EDITOR_DRAFTS = {
+  headline: {
+    content: 'VP Operations | Executive operator who builds operating cadence and cross-functional alignment',
+    quality_scores: {
+      keyword_coverage: 88,
+      readability: 82,
+      positioning_alignment: 90,
+    },
+  },
+  about: {
+    content: `Executive operator known for turning complexity into operating rhythm across product, support, and delivery teams.
+
+I help leadership teams create the weekly decision-making cadence, ownership clarity, and cross-functional alignment that keep growth from turning into noise.`,
+    quality_scores: {
+      keyword_coverage: 86,
+      readability: 80,
+      positioning_alignment: 91,
+    },
+  },
+} as const;
+
 // ---------------------------------------------------------------------------
 // API + Supabase mock helpers
 // ---------------------------------------------------------------------------
@@ -210,6 +231,7 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     created_at: string;
     updated_at: string;
   }> = [];
+  const linkedinEditorState = new Map<string, 'headline' | 'about' | 'complete'>();
   // Override fetch for generic SSE requests before navigation
   await page.addInitScript(() => {
     const originalFetch = window.fetch;
@@ -839,6 +861,127 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       return;
     }
 
+    if (/^\/api\/linkedin-editor\/[^/]+\/stream$/.test(path) && method === 'GET') {
+      const sessionId = path.split('/')[3] ?? 'signed-in-linkedin-editor-session';
+      const phase = linkedinEditorState.get(sessionId) ?? 'headline';
+
+      if (phase === 'about') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/event-stream',
+          body: [
+            'event: section_approved',
+            `data: ${JSON.stringify({
+              section: 'headline',
+              content: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.headline.content,
+            })}`,
+            '',
+            'event: stage_start',
+            'data: {"stage":"about","message":"Writing your About section..."}',
+            '',
+            'event: section_draft_ready',
+            `data: ${JSON.stringify({
+              section: 'about',
+              content: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.about.content,
+              quality_scores: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.about.quality_scores,
+            })}`,
+            '',
+            'event: pipeline_gate',
+            'data: {"gate":"section_review"}',
+            '',
+          ].join('\n'),
+        });
+        return;
+      }
+
+      if (phase === 'complete') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/event-stream',
+          body: [
+            'event: section_approved',
+            `data: ${JSON.stringify({
+              section: 'about',
+              content: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.about.content,
+            })}`,
+            '',
+            'event: editor_complete',
+            `data: ${JSON.stringify({
+              sections: {
+                headline: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.headline.content,
+                about: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.about.content,
+              },
+            })}`,
+            '',
+            'event: pipeline_complete',
+            'data: {}',
+            '',
+          ].join('\n'),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: [
+          'event: stage_start',
+          'data: {"stage":"headline","message":"Writing your headline..."}',
+          '',
+          'event: section_draft_ready',
+          `data: ${JSON.stringify({
+            section: 'headline',
+            content: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.headline.content,
+            quality_scores: SIGNED_IN_LINKEDIN_EDITOR_DRAFTS.headline.quality_scores,
+          })}`,
+          '',
+          'event: pipeline_gate',
+          'data: {"gate":"section_review"}',
+          '',
+        ].join('\n'),
+      });
+      return;
+    }
+
+    if (path === '/api/linkedin-editor/start' && method === 'POST') {
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const sessionId =
+        typeof body?.session_id === 'string' && body.session_id.length > 0
+          ? body.session_id
+          : 'signed-in-linkedin-editor-session';
+      linkedinEditorState.set(sessionId, 'headline');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (path === '/api/linkedin-editor/respond' && method === 'POST') {
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const sessionId =
+        typeof body?.session_id === 'string' && body.session_id.length > 0
+          ? body.session_id
+          : 'signed-in-linkedin-editor-session';
+      const currentPhase = linkedinEditorState.get(sessionId) ?? 'headline';
+      const response =
+        body?.response && typeof body.response === 'object'
+          ? body.response as Record<string, unknown>
+          : {};
+
+      if (response.approved === true) {
+        linkedinEditorState.set(sessionId, currentPhase === 'headline' ? 'about' : 'complete');
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
     if (/^\/api\/linkedin-optimizer\/[^/]+\/stream$/.test(path) && method === 'GET') {
       await route.fulfill({
         status: 200,
@@ -1445,6 +1588,30 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await expect(sharedPage.getByText(/Profile Quality: 87%/i)).toBeVisible({ timeout: 8_000 });
     await expect(sharedPage.getByRole('button', { name: /Re-optimize/i })).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('LinkedIn Profile Editor completes in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: 'Profile Editor', exact: true }).click();
+    await sharedPage.getByRole('button', { name: /Edit Profile/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: 'Headline', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByText(/Executive operator who builds operating cadence/i)).toBeVisible({ timeout: 10_000 });
+
+    await sharedPage.getByRole('button', { name: /^Approve$/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: /About Section/i })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByText(/Executive operator known for turning complexity into operating rhythm/i)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await sharedPage.getByRole('button', { name: /^Approve$/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: /Profile Optimization Complete/i })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByText('Headline', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(sharedPage.getByText('About Section', { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
   test('Job Search room renders', async () => {
