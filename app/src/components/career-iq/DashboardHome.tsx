@@ -65,13 +65,13 @@ function HomeGuideCard({
   onRefineWhyMe?: () => void;
 }) {
   const primaryAction = dashboardState === 'new-user'
-    ? {
-        eyebrow: 'Start here',
-        title: 'Finish your Career Profile first',
-        description: 'This is the shared story every agent reads. The stronger it is, the sharper Resume Builder, Job Search, LinkedIn, and Interview Prep become.',
-        label: 'Open Career Profile',
-        onClick: onRefineWhyMe,
-      }
+      ? {
+          eyebrow: 'Start here',
+          title: 'Finish your Career Profile first',
+          description: 'This is the shared why-me story every agent reads. Be accurate here because Resume Builder, Job Search, LinkedIn, and Interview Prep all use it, and you can strengthen it anytime.',
+          label: 'Open Career Profile',
+          onClick: onRefineWhyMe,
+        }
     : !hasResumeSessions
       ? {
           eyebrow: 'Next best move',
@@ -133,7 +133,7 @@ function HomeGuideCard({
         <StepCard
           icon={Target}
           title="Career Profile backbone"
-          description="Sharpen the shared story all of the other tools read."
+          description="Set the shared story every other tool reads, then revisit it whenever your positioning gets stronger."
           actionLabel="Review Career Profile"
           onClick={onRefineWhyMe}
           className="border-[#98b3ff]/18 bg-[#98b3ff]/[0.08]"
