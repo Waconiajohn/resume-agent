@@ -161,6 +161,22 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.queryByText('Search Preferences')).not.toBeInTheDocument();
   });
 
+  it('falls back to default search preferences when saved preferences are malformed', () => {
+    localStorageMock.getItem.mockImplementation((key: string) => (
+      key === 'careeriq_search_prefs'
+        ? JSON.stringify({ titles: 123, locations: null, salaryMin: [], remote: 'spaceship' })
+        : ''
+    ));
+
+    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Discover$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Open advanced search/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Open filters/i }));
+
+    expect(screen.getByDisplayValue('VP Operations, Director Supply Chain, COO')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Remote, Chicago, Minneapolis')).toBeInTheDocument();
+  });
+
   it('renders application pipeline kanban board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(screen.getByRole('button', { name: /^Pipeline$/i }));
@@ -241,11 +257,23 @@ describe('InterviewLabRoom', () => {
   it('allows updating outcome on existing entry', () => {
     // Pre-populate localStorage with a history entry
     localStorageMock.getItem.mockReturnValue(JSON.stringify([
-      { id: '1', company: 'TestCo', role: 'CTO', date: '2026-03-01', outcome: 'pending' },
+      { id: '1', company: 'TestCo', role: 'CTO', date: '2026-03-01', outcome: 'pending', notes: '' },
     ]));
     render(<InterviewLabRoom />);
     fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     expect(screen.getByText('TestCo')).toBeInTheDocument();
+  });
+
+  it('ignores malformed saved interview history entries', () => {
+    localStorageMock.getItem.mockReturnValue(JSON.stringify([
+      { id: 'broken', company: 42, role: null, date: '2026-03-01', outcome: 'pending' },
+    ]));
+
+    render(<InterviewLabRoom />);
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
+
+    expect(screen.getByText('Interview History')).toBeInTheDocument();
+    expect(screen.queryByText('broken')).not.toBeInTheDocument();
   });
 });
 

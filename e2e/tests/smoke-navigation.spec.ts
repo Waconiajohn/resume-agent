@@ -1588,6 +1588,14 @@ async function waitForAuthenticatedShell(page: Page): Promise<void> {
   ]);
 }
 
+async function assertResumeBuilderVisible(page: Page, timeout = 8_000): Promise<void> {
+  await expect(
+    page.getByRole('heading', {
+      name: /One home for tailored resumes and your long-term base resume/i,
+    }),
+  ).toBeVisible({ timeout });
+}
+
 // ---------------------------------------------------------------------------
 // Console error collector — fail on unexpected JS errors
 // ---------------------------------------------------------------------------
@@ -1649,7 +1657,7 @@ test.describe('Smoke: major page routes', () => {
     await page.goto('/dashboard');
     await waitForAuthenticatedShell(page);
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 10_000 });
-    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 10_000 });
+    await assertResumeBuilderVisible(page, 10_000);
     expect(errors).toHaveLength(0);
   });
 
@@ -1689,7 +1697,7 @@ test.describe('Smoke: major page routes', () => {
     await page.goto('/resume-builder');
     await waitForAuthenticatedShell(page);
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 8_000 });
-    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
+    await assertResumeBuilderVisible(page);
     expect(errors).toHaveLength(0);
   });
 
@@ -1744,7 +1752,7 @@ test.describe('Smoke: header navigation', () => {
 
     await page.getByRole('banner').getByRole('button', { name: /^Resume Builder$/i }).click();
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
-    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
+    await assertResumeBuilderVisible(page);
   });
 
   test('signed-in header no longer exposes Pricing', async ({ page }) => {
@@ -1811,7 +1819,7 @@ test.describe('Smoke: header navigation', () => {
 
     await page.getByRole('button', { name: /^Resume Builder$/i }).click();
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
-    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
+    await assertResumeBuilderVisible(page);
 
     await page.getByRole('button', { name: /Open menu/i }).click();
     await expect(page.getByRole('dialog', { name: /Navigation menu/i })).toBeVisible({ timeout: 5_000 });
@@ -1858,7 +1866,7 @@ test.describe('Smoke: header navigation', () => {
     await page.getByRole('button', { name: /^Upgrade$/i }).click();
 
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
-    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 8_000 });
+    await assertResumeBuilderVisible(page);
   });
 
   test('billing manage button opens the portal flow for an active paid plan', async ({ page }) => {
@@ -1964,7 +1972,7 @@ test.describe('Smoke: header navigation', () => {
     await waitForAuthenticatedShell(page);
 
     await page.goto('/workspace?room=resume');
-    await expect(page.getByText('Resume management').first()).toBeVisible({ timeout: 10_000 });
+    await assertResumeBuilderVisible(page, 10_000);
 
     await page.goBack();
     await expect(page).toHaveURL(/\/workspace$/, { timeout: 5_000 });
@@ -2118,9 +2126,46 @@ test.describe('Smoke: Workspace core rooms', () => {
   test('Resume Builder room renders', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=resume');
     await assertNoCrash(sharedPage);
-    await expect(sharedPage.getByText('Your work').first()).toBeVisible({
+    await assertResumeBuilderVisible(sharedPage);
+  });
+
+  test('Resume Builder cover letter flow opens cleanly in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=resume');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /^Write Cover Letter$/i }).click();
+
+    await expect(
+      sharedPage.getByRole('heading', {
+        name: /Write the letter inside the same job-specific workflow/i,
+      }),
+    ).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible({
       timeout: 8_000,
     });
+  });
+
+  test('Resume Builder master resume flow opens cleanly in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=resume');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /^Open Master Resume$/i }).click();
+
+    await expect(sharedPage.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible({
+      timeout: 8_000,
+    });
+    await expect
+      .poll(async () => {
+        const hasEmptyState = await sharedPage.getByText(/No master resume found/i).isVisible().catch(() => false);
+        const hasSummarySection = await sharedPage
+          .getByText(/^Summary$/i)
+          .isVisible()
+          .catch(() => false);
+        const hasEditButton = await sharedPage.getByRole('button', { name: /^Edit$/i }).isVisible().catch(() => false);
+        const hasUpdatedStamp = await sharedPage.getByText(/Updated .*ago/i).isVisible().catch(() => false);
+        return hasEmptyState || hasSummarySection || hasEditButton || hasUpdatedStamp;
+      }, { timeout: 8_000 })
+      .toBe(true);
   });
 
   test('LinkedIn room renders', async () => {

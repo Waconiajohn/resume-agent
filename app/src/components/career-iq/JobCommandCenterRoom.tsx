@@ -338,20 +338,41 @@ interface SearchPrefs {
   remote: 'any' | 'remote' | 'hybrid' | 'onsite';
 }
 
+const DEFAULT_SEARCH_PREFS: SearchPrefs = {
+  titles: 'VP Operations, Director Supply Chain, COO',
+  locations: 'Remote, Chicago, Minneapolis',
+  salaryMin: '170000',
+  remote: 'any',
+};
+
+function isSearchPrefs(value: unknown): value is SearchPrefs {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.titles === 'string' &&
+    typeof candidate.locations === 'string' &&
+    typeof candidate.salaryMin === 'string' &&
+    (candidate.remote === 'any' ||
+      candidate.remote === 'remote' ||
+      candidate.remote === 'hybrid' ||
+      candidate.remote === 'onsite')
+  );
+}
+
 function SearchPreferences() {
   const [prefs, setPrefs] = useState<SearchPrefs>(() => {
     try {
       const saved = localStorage.getItem('careeriq_search_prefs');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (isSearchPrefs(parsed)) {
+          return parsed;
+        }
+      }
     } catch {
       /* ignore */
     }
-    return {
-      titles: 'VP Operations, Director Supply Chain, COO',
-      locations: 'Remote, Chicago, Minneapolis',
-      salaryMin: '170000',
-      remote: 'any',
-    };
+    return DEFAULT_SEARCH_PREFS;
   });
 
   const handleChange = (field: keyof SearchPrefs, value: string) => {

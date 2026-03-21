@@ -77,10 +77,28 @@ export interface PipelineInterviewCard {
 
 const HISTORY_STORAGE_KEY = 'careeriq_interview_history';
 
+function isPastInterview(value: unknown): value is PastInterview {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.company === 'string' &&
+    typeof candidate.role === 'string' &&
+    typeof candidate.date === 'string' &&
+    (candidate.outcome === 'advanced' || candidate.outcome === 'rejected' || candidate.outcome === 'pending') &&
+    typeof candidate.notes === 'string'
+  );
+}
+
 function loadHistory(): PastInterview[] {
   try {
     const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(isPastInterview);
+      }
+    }
   } catch { /* ignore */ }
   return [];
 }
