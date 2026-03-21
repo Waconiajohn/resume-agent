@@ -89,6 +89,38 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     created_at: string;
     updated_at: string;
   }> = [];
+  const interviewDebriefs: Array<{
+    id: string;
+    user_id: string;
+    job_application_id?: string;
+    company_name: string;
+    role_title: string;
+    interview_date: string;
+    interview_type?: 'phone' | 'video' | 'onsite';
+    overall_impression?: 'positive' | 'neutral' | 'negative';
+    what_went_well?: string;
+    what_went_poorly?: string;
+    questions_asked?: string[];
+    interviewer_notes?: Array<Record<string, unknown>>;
+    company_signals?: string;
+    follow_up_actions?: string;
+    created_at: string;
+    updated_at: string;
+  }> = [];
+  const sharedResumeText =
+    'Executive operator with 18 years of experience aligning product, support, and operations leaders around one operating cadence. Led cross-functional teams, improved forecast accuracy, and built repeatable execution systems across SaaS organizations.';
+  const interviewingApplications = [
+    {
+      id: 'job-app-1',
+      user_id: 'smoke-test-user-id',
+      company: 'Northstar SaaS',
+      title: 'VP Operations',
+      jd_text:
+        'Lead executive alignment, operating cadence, and cross-functional execution across product, support, and delivery leaders.',
+      pipeline_stage: 'interviewing',
+      status: 'active',
+    },
+  ];
 
   // Override fetch for SSE requests before navigation
   await page.addInitScript(() => {
@@ -127,6 +159,8 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
   const fulfillSupabaseRoute = async (route: Route) => {
     const method = route.request().method();
     const url = route.request().url();
+    const acceptHeader = route.request().headers()['accept'] ?? '';
+    const expectsSingle = acceptHeader.includes('application/vnd.pgrst.object+json');
 
     // Auth endpoints
     if (url.includes('/auth/v1/user')) {
@@ -158,6 +192,30 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
     if (url.includes('/auth/v1/')) {
       // Catch-all for other auth endpoints (logout, refresh, etc.)
       await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+      return;
+    }
+
+    if (method === 'GET' && url.includes('/rest/v1/master_resumes')) {
+      const payload = { raw_text: sharedResumeText };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(expectsSingle ? payload : [payload]),
+      });
+      return;
+    }
+
+    if (method === 'GET' && url.includes('/rest/v1/job_applications')) {
+      const idMatch = url.match(/id=eq\.([^&]+)/);
+      const row = idMatch
+        ? interviewingApplications.find((item) => item.id === decodeURIComponent(idMatch[1]))
+        : null;
+      const payload = row ?? interviewingApplications;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(expectsSingle ? (row ?? interviewingApplications[0]) : payload),
+      });
       return;
     }
 
@@ -351,6 +409,113 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       return;
     }
 
+    if (path === '/api/interview-prep/start' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (/^\/api\/interview-prep\/[^/]+\/stream$/.test(path) && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: [
+          'event: stage_start',
+          'data: {"stage":"research","message":"Reviewing the role, your resume, and the strongest likely interview pressure points..."}',
+          '',
+          'event: transparency',
+          'data: {"stage":"research","message":"Mapping your operating-cadence wins against the company context."}',
+          '',
+          'event: stage_complete',
+          'data: {"stage":"research","message":"Company and role context loaded."}',
+          '',
+          'event: stage_start',
+          'data: {"stage":"writing","message":"Drafting your interview prep report and likely question bank..."}',
+          '',
+          'event: report_complete',
+          'data: {"report":"# Interview Prep Report\\n\\nLead with executive operating cadence and cross-functional alignment.\\n\\n## Likely pressure points\\n- Make your scope and business impact concrete.\\n- Tie your examples to forecast accuracy and execution rhythm.","quality_score":88}',
+          '',
+          'event: pipeline_complete',
+          'data: {}',
+          '',
+        ].join('\n'),
+      });
+      return;
+    }
+
+    if (path === '/api/interview-debriefs' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ debriefs: interviewDebriefs }),
+      });
+      return;
+    }
+
+    if (path === '/api/interview-debriefs' && method === 'POST') {
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const now = new Date().toISOString();
+      const created = {
+        id: `debrief-${Math.random().toString(36).slice(2, 10)}`,
+        user_id: 'smoke-test-user-id',
+        job_application_id: typeof body?.job_application_id === 'string' ? body.job_application_id : undefined,
+        company_name: typeof body?.company_name === 'string' ? body.company_name : 'Unknown Company',
+        role_title: typeof body?.role_title === 'string' ? body.role_title : 'Unknown Role',
+        interview_date: typeof body?.interview_date === 'string' ? body.interview_date : now,
+        interview_type:
+          body?.interview_type === 'phone' || body?.interview_type === 'video' || body?.interview_type === 'onsite'
+            ? body.interview_type
+            : 'video',
+        overall_impression:
+          body?.overall_impression === 'positive' || body?.overall_impression === 'neutral' || body?.overall_impression === 'negative'
+            ? body.overall_impression
+            : undefined,
+        what_went_well: typeof body?.what_went_well === 'string' ? body.what_went_well : undefined,
+        what_went_poorly: typeof body?.what_went_poorly === 'string' ? body.what_went_poorly : undefined,
+        questions_asked: Array.isArray(body?.questions_asked) ? body.questions_asked as string[] : [],
+        interviewer_notes: Array.isArray(body?.interviewer_notes) ? body.interviewer_notes as Array<Record<string, unknown>> : [],
+        company_signals: typeof body?.company_signals === 'string' ? body.company_signals : undefined,
+        follow_up_actions: typeof body?.follow_up_actions === 'string' ? body.follow_up_actions : undefined,
+        created_at: now,
+        updated_at: now,
+      };
+      interviewDebriefs.unshift(created);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(created),
+      });
+      return;
+    }
+
+    const interviewDebriefMatch = path.match(/^\/api\/interview-debriefs\/([^/]+)$/);
+    if (interviewDebriefMatch && method === 'PATCH') {
+      const [, debriefId] = interviewDebriefMatch;
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const existing = interviewDebriefs.find((debrief) => debrief.id === debriefId);
+      if (!existing) {
+        await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Not found' }) });
+        return;
+      }
+      if (typeof body?.overall_impression === 'string') {
+        existing.overall_impression = body.overall_impression as 'positive' | 'neutral' | 'negative';
+      }
+      existing.updated_at = new Date().toISOString();
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(existing) });
+      return;
+    }
+
+    if (interviewDebriefMatch && method === 'DELETE') {
+      const [, debriefId] = interviewDebriefMatch;
+      const index = interviewDebriefs.findIndex((debrief) => debrief.id === debriefId);
+      if (index >= 0) interviewDebriefs.splice(index, 1);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+      return;
+    }
+
     // Job finder / command center
     if (path.startsWith('/api/job-finder') || path.startsWith('/api/job-search')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobs: [], results: [] }) });
@@ -423,9 +588,40 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       return;
     }
 
-    // LinkedIn optimizer / content calendar / editor
-    if (path.startsWith('/api/linkedin') || path.startsWith('/api/content-calendar')) {
+    // LinkedIn generic reads plus calendar data
+    if (path === '/api/linkedin' || path.startsWith('/api/linkedin/') || path.startsWith('/api/content-calendar')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reports: [], posts: [], ok: true }) });
+      return;
+    }
+
+    if (path === '/api/linkedin-optimizer/start' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    if (/^\/api\/linkedin-optimizer\/[^/]+\/stream$/.test(path) && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: [
+          'event: stage_start',
+          'data: {"stage":"analysis","message":"Reading your resume and current positioning signals..."}',
+          '',
+          'event: stage_complete',
+          'data: {"stage":"analysis","message":"Positioning signals captured."}',
+          '',
+          'event: report_complete',
+          'data: {"report":"## Headline\\n### Current\\nOperations leader\\n### Optimized\\nExecutive operator who builds operating cadence across product, support, and delivery leaders.\\n\\n---\\n\\n## About Section\\n### Current\\nI lead operations teams.\\n### Optimized\\nExecutive operator known for turning cross-functional complexity into a reliable operating rhythm with clear ownership and measurable follow-through.","quality_score":87,"experience_entries":[]}',
+          '',
+          'event: pipeline_complete',
+          'data: {}',
+          '',
+        ].join('\n'),
+      });
       return;
     }
 
@@ -1005,6 +1201,16 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByText(/Content Calendar/i).first()).toBeVisible({ timeout: 8_000 });
   });
 
+  test('LinkedIn quick optimize completes in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /Quick Optimize/i }).click();
+
+    await expect(sharedPage.getByText(/Profile Quality: 87%/i)).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByRole('button', { name: /Re-optimize/i })).toBeVisible({ timeout: 8_000 });
+  });
+
   test('Job Search room renders', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
@@ -1084,6 +1290,48 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
     await expect(sharedPage.getByText(/Close the loop without breaking the narrative/i)).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Interview Prep generates a prep report in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
+    await assertNoCrash(sharedPage);
+
+    await expect(sharedPage.getByRole('button', { name: /Generate Interview Prep/i }).first()).toBeVisible({
+      timeout: 8_000,
+    });
+    await sharedPage.getByRole('button', { name: /Generate Interview Prep/i }).first().click();
+
+    await expect(sharedPage.getByRole('heading', { name: /Interview Prep Report/i })).toBeVisible({ timeout: 8_000 });
+    await expect(
+      sharedPage.getByText(/Lead with executive operating cadence and cross-functional alignment\./i),
+    ).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /Back to Interview Prep/i }).first().click();
+    await expect(sharedPage.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible({
+      timeout: 8_000,
+    });
+  });
+
+  test('Interview Prep follow-up saves a debrief in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await expect(sharedPage.getByRole('heading', { name: /Interview History/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /Add Debrief/i }).click();
+    await expect(sharedPage.getByRole('heading', { name: /Post-Interview Debrief/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByPlaceholder('Company name').fill('Northstar SaaS');
+    await sharedPage.getByPlaceholder(/VP of Supply Chain/i).fill('VP Operations');
+    await sharedPage.getByRole('button', { name: 'Positive', exact: true }).click();
+    await sharedPage.getByRole('button', { name: /Save Debrief/i }).click();
+
+    await expect(sharedPage.getByText(/Debrief saved\./i)).toBeVisible({ timeout: 8_000 });
+    await sharedPage.getByRole('button', { name: /Back to Interview Prep/i }).click();
+
+    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await expect(sharedPage.getByRole('button', { name: /Add Debrief/i })).toContainText('1');
   });
 
   test('sidebar collapse and expand works without crash', async () => {
