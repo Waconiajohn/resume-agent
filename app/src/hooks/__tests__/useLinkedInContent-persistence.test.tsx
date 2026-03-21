@@ -54,7 +54,7 @@ vi.mock('@/lib/safe-cast', () => ({
   safeString: (v: unknown, fallback = '') =>
     typeof v === 'string' ? v : fallback,
   safeNumber: (v: unknown, fallback = 0) =>
-    typeof v === 'number' ? v : fallback,
+    typeof v === 'number' ? v : typeof v === 'string' && !Number.isNaN(Number(v)) ? Number(v) : fallback,
 }));
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
@@ -187,6 +187,37 @@ describe('useLinkedInContent — content_complete SSE event', () => {
 
     await waitFor(() => expect(result.current.status).not.toBe('idle'));
     expect(result.current.postSaved).toBe(false);
+  });
+
+  it('filters malformed hashtags and quality scores on content_complete', async () => {
+    stubFetchForStream([
+      {
+        event: 'content_complete',
+        data: {
+          post: 'Final post',
+          hashtags: ['#Leadership', 42, null],
+          quality_scores: {
+            authenticity: '91',
+            engagement_potential: 'bad',
+            keyword_density: 77,
+          },
+        },
+      },
+    ]);
+
+    const { result } = renderHook(() => useLinkedInContent());
+
+    await act(async () => {
+      await result.current.startContentPipeline();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('complete'));
+    expect(result.current.postHashtags).toEqual(['#Leadership']);
+    expect(result.current.qualityScores).toEqual({
+      authenticity: 91,
+      engagement_potential: 0,
+      keyword_density: 77,
+    });
   });
 });
 
@@ -343,6 +374,70 @@ describe('useLinkedInContent — hook fields from post_draft_ready SSE event', (
     expect(result.current.hookScore).toBeNull();
     expect(result.current.hookType).toBeNull();
     expect(result.current.hookAssessment).toBeNull();
+  });
+
+  it('filters malformed topics and post-draft payload fields', async () => {
+    stubFetchForStream([
+      {
+        event: 'topics_ready',
+        data: {
+          topics: [
+            {
+              id: 'topic-1',
+              topic: 'Operating cadence',
+              hook: 'The meeting wasn’t the problem.',
+              rationale: 'Good executive angle',
+              expertise_area: 'Operations',
+              evidence_refs: ['Resume', 42],
+            },
+            {
+              id: 'bad-topic',
+              topic: null,
+            },
+          ],
+        },
+      },
+      {
+        event: 'post_draft_ready',
+        data: {
+          post: 'Draft post',
+          hashtags: ['#Ops', { bad: true }],
+          quality_scores: {
+            authenticity: '88',
+            engagement_potential: 79,
+            keyword_density: 'oops',
+          },
+          hook_score: '86',
+          hook_type: 'contrarian',
+          hook_assessment: 'Strong opening',
+        },
+      },
+    ]);
+
+    const { result } = renderHook(() => useLinkedInContent());
+
+    await act(async () => {
+      await result.current.startContentPipeline();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('post_review'));
+    expect(result.current.topics).toEqual([
+      {
+        id: 'topic-1',
+        topic: 'Operating cadence',
+        hook: 'The meeting wasn’t the problem.',
+        rationale: 'Good executive angle',
+        expertise_area: 'Operations',
+        evidence_refs: ['Resume'],
+      },
+    ]);
+    expect(result.current.postHashtags).toEqual(['#Ops']);
+    expect(result.current.qualityScores).toEqual({
+      authenticity: 88,
+      engagement_potential: 79,
+      keyword_density: 0,
+    });
+    expect(result.current.hookScore).toBe(86);
   });
 });
 

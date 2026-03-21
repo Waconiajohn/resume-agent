@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { safeString } from '@/lib/safe-cast';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 export type LinkedInContentStatus =
   | 'idle'
@@ -48,6 +48,56 @@ interface LinkedInContentState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
+const CONTENT_GATE_SET = new Set(['topic_selection', 'post_review'] as const);
+
+function asTopicSuggestions(value: unknown): TopicSuggestion[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const candidate = item as Record<string, unknown>;
+    if (
+      typeof candidate.id !== 'string' ||
+      typeof candidate.topic !== 'string' ||
+      typeof candidate.hook !== 'string' ||
+      typeof candidate.rationale !== 'string' ||
+      typeof candidate.expertise_area !== 'string'
+    ) {
+      return [];
+    }
+
+    return [{
+      id: candidate.id,
+      topic: candidate.topic,
+      hook: candidate.hook,
+      rationale: candidate.rationale,
+      expertise_area: candidate.expertise_area,
+      evidence_refs: Array.isArray(candidate.evidence_refs)
+        ? candidate.evidence_refs.filter((value): value is string => typeof value === 'string')
+        : [],
+    }];
+  });
+}
+
+function asHashtags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function asPostQualityScores(value: unknown): PostQualityScores | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  return {
+    authenticity: safeNumber(candidate.authenticity),
+    engagement_potential: safeNumber(candidate.engagement_potential),
+    keyword_density: safeNumber(candidate.keyword_density),
+  };
+}
+
+function asContentGate(value: unknown): 'topic_selection' | 'post_review' | null {
+  return typeof value === 'string' && CONTENT_GATE_SET.has(value as 'topic_selection' | 'post_review')
+    ? (value as 'topic_selection' | 'post_review')
+    : null;
+}
 
 export function useLinkedInContent() {
   const [state, setState] = useState<LinkedInContentState>({
@@ -123,7 +173,7 @@ export function useLinkedInContent() {
           setState((prev) => ({
             ...prev,
             status: 'topic_selection',
-            topics: (data.topics as TopicSuggestion[]) ?? [],
+            topics: asTopicSuggestions(data.topics),
           }));
           break;
 
@@ -132,9 +182,9 @@ export function useLinkedInContent() {
             ...prev,
             status: 'post_review',
             postDraft: safeString(data.post),
-            postHashtags: (data.hashtags as string[]) ?? [],
-            qualityScores: (data.quality_scores as PostQualityScores) ?? null,
-            hookScore: typeof data.hook_score === 'number' ? data.hook_score : null,
+            postHashtags: asHashtags(data.hashtags),
+            qualityScores: asPostQualityScores(data.quality_scores),
+            hookScore: data.hook_score == null ? null : safeNumber(data.hook_score),
             hookType: typeof data.hook_type === 'string' ? data.hook_type : null,
             hookAssessment: typeof data.hook_assessment === 'string' ? data.hook_assessment : null,
           }));
@@ -144,16 +194,16 @@ export function useLinkedInContent() {
           setState((prev) => ({
             ...prev,
             postDraft: safeString(data.post),
-            postHashtags: (data.hashtags as string[]) ?? prev.postHashtags,
-            qualityScores: (data.quality_scores as PostQualityScores) ?? prev.qualityScores,
-            hookScore: typeof data.hook_score === 'number' ? data.hook_score : prev.hookScore,
+            postHashtags: Array.isArray(data.hashtags) ? asHashtags(data.hashtags) : prev.postHashtags,
+            qualityScores: data.quality_scores == null ? prev.qualityScores : asPostQualityScores(data.quality_scores),
+            hookScore: data.hook_score == null ? prev.hookScore : safeNumber(data.hook_score),
             hookType: typeof data.hook_type === 'string' ? data.hook_type : prev.hookType,
             hookAssessment: typeof data.hook_assessment === 'string' ? data.hook_assessment : prev.hookAssessment,
           }));
           break;
 
         case 'pipeline_gate': {
-          const gateName = typeof data.gate === 'string' ? data.gate : undefined;
+          const gateName = asContentGate(data.gate);
           if (gateName === 'topic_selection') {
             setState((prev) => ({ ...prev, status: 'topic_selection' }));
           } else if (gateName === 'post_review') {
@@ -168,8 +218,8 @@ export function useLinkedInContent() {
             ...prev,
             status: 'complete',
             postDraft: updatedDraft ?? prev.postDraft,
-            postHashtags: (data.hashtags as string[]) ?? prev.postHashtags,
-            qualityScores: (data.quality_scores as PostQualityScores) ?? prev.qualityScores,
+            postHashtags: Array.isArray(data.hashtags) ? asHashtags(data.hashtags) : prev.postHashtags,
+            qualityScores: data.quality_scores == null ? prev.qualityScores : asPostQualityScores(data.quality_scores),
             postSaved: true,
           }));
           abortRef.current?.abort();
