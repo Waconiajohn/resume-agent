@@ -96,49 +96,36 @@ function HomeGuideCard({
 
   return (
     <GlassCard className="overflow-hidden border-[#98b3ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.2),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-0">
-      <div className="grid gap-0 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="p-6 sm:p-7">
-          <div className="text-[11px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
-            {primaryAction.eyebrow}
-          </div>
-          <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight text-white/92 sm:text-[2rem]">
-            {primaryAction.title}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58 sm:text-[15px]">
-            {primaryAction.description}
-          </p>
-          {coachRecommendationTitle && (
-            <p className="mt-4 text-xs leading-relaxed text-white/45">
-              Coach recommendation: {coachRecommendationTitle}
-            </p>
-          )}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={primaryAction.onClick}
-              className="rounded-xl border border-[#98b3ff]/28 bg-[#98b3ff]/15 px-4 py-2.5 text-sm font-medium text-[#d8e2ff] transition-colors hover:bg-[#98b3ff]/22"
-            >
-              {primaryAction.label}
-            </button>
-          </div>
+      <div className="p-6 sm:p-7">
+        <div className="text-[11px] font-medium uppercase tracking-widest text-[#c9d7ff]/78">
+          {primaryAction.eyebrow}
         </div>
-
-        <div className="border-t border-white/[0.06] bg-black/10 p-6 sm:p-7 xl:border-l xl:border-t-0">
-          <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
-            Why this matters
-          </div>
-          <div className="mt-4 grid gap-3">
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-white/38">Signals</div>
-              <div className="mt-2 text-sm leading-6 text-white/72">{signalSummary.join(' · ')}</div>
-            </div>
-            <div className="rounded-2xl border border-[#98b3ff]/18 bg-[#98b3ff]/[0.07] px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Working rule</div>
-              <div className="mt-2 text-sm leading-6 text-white/78">
-                Build the shared story first, tailor it to a live job second, then use the rest of Workspace to move that application forward.
-              </div>
-            </div>
-          </div>
+        <h1 className="mt-3 max-w-3xl text-2xl font-semibold leading-tight text-white/92 sm:text-[2rem]">
+          {primaryAction.title}
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58 sm:text-[15px]">
+          {primaryAction.description}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-white/52">
+          {signalSummary.map((item) => (
+            <span key={item} className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1">
+              {item}
+            </span>
+          ))}
+        </div>
+        {coachRecommendationTitle && (
+          <p className="mt-4 text-xs leading-relaxed text-white/45">
+            Coach says: {coachRecommendationTitle}
+          </p>
+        )}
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={primaryAction.onClick}
+            className="rounded-xl border border-[#98b3ff]/28 bg-[#98b3ff]/15 px-4 py-2.5 text-sm font-medium text-[#d8e2ff] transition-colors hover:bg-[#98b3ff]/22"
+          >
+            {primaryAction.label}
+          </button>
         </div>
       </div>
 
@@ -283,28 +270,10 @@ export function DashboardHome({
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-4">
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
-              Secondary lane
-            </div>
-            <h2 className="mt-2 text-base font-semibold text-white/86">One support surface, not five competing prompts</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/50">
-              Workspace Home should tell you the single best next move, then give you one supporting prompt that helps you execute it.
-            </p>
-          </div>
           {supportSurface}
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">
-              Active applications
-            </div>
-            <h2 className="mt-2 text-base font-semibold text-white/86">Your pipeline should be the only other thing competing for attention here</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/50">
-              Reopen live roles, see what stage they are in, and jump straight into the next resume, interview, or negotiation action without scanning a crowded dashboard.
-            </p>
-          </div>
           <ZoneYourPipeline
             onNavigateRoom={onNavigateRoom}
             mockCards={mockPipelineCards}
