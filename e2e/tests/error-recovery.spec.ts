@@ -300,7 +300,7 @@ test.describe('Current error recovery', () => {
       page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: /^Master Resume$/i }).click();
+    await page.getByRole('button', { name: /^Open Master Resume$/i }).click();
     await expect(page.getByText(/No master resume found\./i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Something went wrong')).not.toBeVisible();
   });

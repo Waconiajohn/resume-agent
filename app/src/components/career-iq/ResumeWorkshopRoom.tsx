@@ -9,13 +9,7 @@ import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 
-const PRIMARY_TABS: Array<{ id: 'sessions' | 'master_resume'; label: string }> = [
-  { id: 'sessions', label: 'Job Workspaces' },
-  { id: 'master_resume', label: 'Master Resume' },
-];
-
-type ResumePrimaryTab = typeof PRIMARY_TABS[number]['id'];
-type ResumeWorkspaceTab = ResumePrimaryTab | 'cover_letter';
+type ResumeWorkspaceTab = 'sessions' | 'master_resume' | 'cover_letter';
 
 interface ResumeWorkshopRoomProps {
   sessions: CoachSession[];
@@ -62,7 +56,9 @@ export function ResumeWorkshopRoom({
   onSetDefaultResume = async () => false,
   onDeleteResume = async () => false,
 }: ResumeWorkshopRoomProps) {
-  const [activeTab, setActiveTab] = useState<ResumeWorkspaceTab>(initialFocus === 'cover-letter' ? 'cover_letter' : 'sessions');
+  const [activeTab, setActiveTab] = useState<ResumeWorkspaceTab>(
+    initialFocus === 'cover-letter' ? 'cover_letter' : initialFocus === 'master-resume' ? 'master_resume' : 'sessions',
+  );
   const applicationPipeline = useApplicationPipeline();
   const { applications: jobApplications, moveToStage, fetchApplications } = applicationPipeline;
   const defaultResume = useMemo(() => resumes.find((item) => item.is_default), [resumes]);
@@ -78,6 +74,10 @@ export function ResumeWorkshopRoom({
   useEffect(() => {
     if (initialFocus === 'cover-letter') {
       setActiveTab('cover_letter');
+      return;
+    }
+    if (initialFocus === 'master-resume') {
+      setActiveTab('master_resume');
       return;
     }
     if (!initialFocus) {
@@ -105,6 +105,9 @@ export function ResumeWorkshopRoom({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <GlassButton variant="ghost" onClick={() => setActiveTab('master_resume')}>
+              Open Master Resume
+            </GlassButton>
             <GlassButton variant="ghost" onClick={openCoverLetter}>
               Write Cover Letter
             </GlassButton>
@@ -146,25 +149,17 @@ export function ResumeWorkshopRoom({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap gap-1 rounded-xl border border-white/[0.1] bg-white/[0.04] p-1">
-              {PRIMARY_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={
-                    activeTab === tab.id
-                      ? 'rounded-lg bg-white/[0.08] px-4 py-2 text-sm font-medium text-white shadow-sm'
-                      : 'rounded-lg px-4 py-2 text-sm font-medium text-white/55 transition-all duration-200 hover:bg-white/[0.04] hover:text-white/80'
-                  }
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/62">
+              Job Workspaces
+            </span>
             {activeTab === 'cover_letter' && (
               <span className="rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/10 px-3 py-1 text-xs font-medium text-[#d8e2ff]">
                 Cover Letter
+              </span>
+            )}
+            {activeTab === 'master_resume' && (
+              <span className="rounded-full border border-[#b5dec2]/20 bg-[#b5dec2]/10 px-3 py-1 text-xs font-medium text-[#d6f0df]">
+                Master Resume
               </span>
             )}
           </div>
@@ -222,18 +217,42 @@ export function ResumeWorkshopRoom({
           )}
 
           {activeTab === 'master_resume' && (
-            <MasterResumeTab
-              resumes={resumes}
-              loading={resumesLoading}
-              onLoadResumes={onLoadResumes}
-              onGetDefaultResume={onGetDefaultResume}
-              onGetResumeById={onGetResumeById}
-              onUpdateMasterResume={onUpdateMasterResume}
-              onSetDefaultResume={onSetDefaultResume}
-              onDeleteResume={onDeleteResume}
-              onGetResumeHistory={onGetResumeHistory}
-              sessions={sessions}
-            />
+            <div className="space-y-5">
+              <GlassCard className="p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="max-w-3xl">
+                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#b5dec2]/70">
+                      Master Resume
+                    </div>
+                    <h2 className="mt-2 text-lg font-semibold text-white/88">Keep your long-term resume clean, current, and reusable</h2>
+                    <p className="mt-2 text-sm leading-relaxed text-white/54">
+                      Use this as the durable base you promote strong edits into after job-specific work proves worth keeping.
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#b5dec2]/70">
+                      Secondary flow
+                    </div>
+                    <GlassButton variant="ghost" onClick={() => setActiveTab('sessions')}>
+                      Back to Job Workspaces
+                    </GlassButton>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <MasterResumeTab
+                resumes={resumes}
+                loading={resumesLoading}
+                onLoadResumes={onLoadResumes}
+                onGetDefaultResume={onGetDefaultResume}
+                onGetResumeById={onGetResumeById}
+                onUpdateMasterResume={onUpdateMasterResume}
+                onSetDefaultResume={onSetDefaultResume}
+                onDeleteResume={onDeleteResume}
+                onGetResumeHistory={onGetResumeHistory}
+                sessions={sessions}
+              />
+            </div>
           )}
         </div>
       </GlassCard>

@@ -276,8 +276,8 @@ async function openResumeBuilderWorkspace(page: Page): Promise<void> {
   await expect(
     page.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i }),
   ).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole('button', { name: /^Job Workspaces$/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Master Resume$/i })).toBeVisible();
+  await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Open Master Resume$/i })).toBeVisible();
 }
 
 async function waitForListSettled(page: Page): Promise<void> {
@@ -339,7 +339,7 @@ test.describe('Resume Builder persistence', () => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
 
-    await page.getByRole('button', { name: /^Master Resume$/i }).click();
+    await page.getByRole('button', { name: /^Open Master Resume$/i }).click();
     await waitForListSettled(page);
 
     await expect(page.getByText(/Experienced engineering leader with 15 years building distributed systems\./i)).toBeVisible({ timeout: 10_000 });
@@ -350,7 +350,7 @@ test.describe('Resume Builder persistence', () => {
     await mockAllWithData(page, { masterResume: null });
     await openResumeBuilderWorkspace(page);
 
-    await page.getByRole('button', { name: /^Master Resume$/i }).click();
+    await page.getByRole('button', { name: /^Open Master Resume$/i }).click();
     await waitForListSettled(page);
 
     await expect(page.getByText(/No master resume found\./i)).toBeVisible({ timeout: 10_000 });
