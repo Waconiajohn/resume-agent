@@ -1482,6 +1482,24 @@ test.describe('Smoke: Workspace core rooms', () => {
     });
   });
 
+  test('Job Search smart match action routes into Resume Builder in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: 'Radar', exact: true }).click();
+    await expect(sharedPage.getByRole('heading', { name: /Radar Search/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: /Run Job Finder/i }).click();
+
+    await expect(sharedPage.getByText('Northstar SaaS', { exact: true })).toBeVisible({ timeout: 8_000 });
+    await sharedPage.getByRole('button', { name: /Resume \+ Letter/i }).first().click();
+
+    await expect(sharedPage).toHaveURL(/\/workspace\?room=resume/, { timeout: 8_000 });
+    await expect(
+      sharedPage.getByRole('heading', { name: /One home for stage-aware job workspaces and your master resume/i }),
+    ).toBeVisible({ timeout: 8_000 });
+  });
+
   test('Job Search radar scoring feeds Daily Ops and promote sends a role into the pipeline in the signed-in shell', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
