@@ -38,8 +38,6 @@ import {
   InterviewLabDocumentsPanel,
   type InterviewLabDocumentsView,
 } from '@/components/career-iq/interview-lab/InterviewLabDocumentsPanel';
-import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
-import type { CareerProfileSummary } from './career-profile-summary';
 
 // --- Types ---
 
@@ -65,8 +63,6 @@ interface PastInterview {
 
 interface InterviewLabRoomProps {
   pipelineInterviews?: PipelineInterviewCard[];
-  careerProfileSummary?: CareerProfileSummary;
-  onOpenCareerProfile?: () => void;
   initialCompany?: string;
   initialRole?: string;
   initialJobApplicationId?: string;
@@ -897,8 +893,6 @@ interface MockInterviewConfig {
 
 export function InterviewLabRoom({
   pipelineInterviews,
-  careerProfileSummary,
-  onOpenCareerProfile,
   initialCompany,
   initialRole,
   initialJobApplicationId,
@@ -1258,20 +1252,6 @@ export function InterviewLabRoom({
   // Default lab view
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
-      {careerProfileSummary && (
-        <CareerProfileSummaryCard
-          summary={careerProfileSummary}
-          title="Career Profile is framing your interview story"
-          description="Interview Prep should turn the same positioning story into interview answers, proof points, and debrief follow-up instead of making you start over."
-          usagePoints={[
-            'The prep report leans on the same story and proof themes used in Resume Builder.',
-            'Mock interview coaching uses your saved positioning instead of starting cold.',
-            'Thank-you notes and 30-60-90 plans should reinforce the exact same narrative.',
-          ]}
-          onOpenProfile={onOpenCareerProfile}
-        />
-      )}
-
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
@@ -1336,10 +1316,6 @@ export function InterviewLabRoom({
                   Generate a prep report from an active role. The platform will pull your master resume, use your Career Profile story, and build predicted questions, company research, and talking points.
                 </p>
               </div>
-              <GlassButton variant="ghost" onClick={() => onOpenCareerProfile?.()} className="text-[13px]">
-                <Brain size={14} className="mr-1.5" />
-                Review Career Profile
-              </GlassButton>
             </div>
           </GlassCard>
 

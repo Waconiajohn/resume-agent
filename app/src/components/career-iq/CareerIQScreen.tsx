@@ -348,7 +348,6 @@ export function CareerIQScreen({
     if (activeRoom === 'resume') {
       return (
         <ResumeWorkshopRoom
-          careerProfileSummary={summary}
           sessions={sessions}
           resumes={resumes}
           loading={sessionsLoading}
@@ -392,8 +391,6 @@ export function CareerIQScreen({
         <LinkedInStudioRoom
           signals={signals}
           whyMeClarity={story.colleaguesCameForWhat}
-          careerProfileSummary={summary}
-          onOpenCareerProfile={openCareerProfile}
         />
       );
     }
@@ -403,8 +400,6 @@ export function CareerIQScreen({
         <JobCommandCenterRoom
           onNavigate={onNavigate}
           onNavigateRoom={handleRoomNavigate}
-          careerProfileSummary={summary}
-          onOpenCareerProfile={openCareerProfile}
         />
       );
     }
@@ -413,8 +408,6 @@ export function CareerIQScreen({
       return (
         <InterviewLabRoom
           pipelineInterviews={pipelineInterviews}
-          careerProfileSummary={summary}
-          onOpenCareerProfile={openCareerProfile}
           initialCompany={workspaceLaunchContext.company}
           initialRole={workspaceLaunchContext.role}
           initialJobApplicationId={workspaceLaunchContext.jobApplicationId}

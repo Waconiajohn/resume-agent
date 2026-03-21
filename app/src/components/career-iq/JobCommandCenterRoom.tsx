@@ -40,15 +40,11 @@ import { WatchlistManager } from '@/components/job-command-center/WatchlistManag
 import { DailyOpsSection } from '@/components/job-command-center/DailyOpsSection';
 
 import { PipelineSummary } from './PipelineSummary';
-import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
-import type { CareerProfileSummary } from './career-profile-summary';
 import type { CareerIQRoom } from './Sidebar';
 
 interface JobCommandCenterRoomProps {
   onNavigate: (route: string) => void;
   onNavigateRoom?: (room: CareerIQRoom) => void;
-  careerProfileSummary?: CareerProfileSummary;
-  onOpenCareerProfile?: () => void;
 }
 
 // --- SmartMatches ---
@@ -733,8 +729,6 @@ type JCCTab = 'pipeline' | 'radar' | 'daily-ops';
 export function JobCommandCenterRoom({
   onNavigate,
   onNavigateRoom,
-  careerProfileSummary,
-  onOpenCareerProfile,
 }: JobCommandCenterRoomProps) {
   const jobFinder = useJobFinder();
   const pipeline = useApplicationPipeline();
@@ -827,22 +821,6 @@ export function JobCommandCenterRoom({
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
-      {careerProfileSummary && (
-        <CareerProfileSummaryCard
-          summary={careerProfileSummary}
-          title="Career Profile is steering your search targets"
-          description="Job Search should not just show roles. It should show roles that match the story and strengths you want the market to recognize."
-          usagePoints={[
-            'Role matching uses your target titles, industries, and level.',
-            'Search logic favors jobs that fit the story you are trying to tell the market.',
-            'Pipeline recommendations should reflect where your profile is strongest, not just keyword overlap.',
-          ]}
-          onOpenProfile={onOpenCareerProfile}
-          onContinue={careerProfileSummary.nextRecommendedRoom === 'jobs' ? undefined : () => onNavigateRoom?.('resume')}
-          continueLabel={careerProfileSummary.nextRecommendedRoom === 'career-profile' ? 'Finish Career Profile' : 'Open Resume Builder'}
-        />
-      )}
-
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Job Search</h1>

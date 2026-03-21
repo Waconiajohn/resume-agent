@@ -7,8 +7,6 @@ import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
-import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
-import type { CareerProfileSummary } from './career-profile-summary';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 
@@ -21,7 +19,6 @@ const TABS: Array<{ id: 'sessions' | 'cover_letter' | 'master_resume'; label: st
 type ResumeWorkspaceTab = typeof TABS[number]['id'];
 
 interface ResumeWorkshopRoomProps {
-  careerProfileSummary?: CareerProfileSummary;
   sessions: CoachSession[];
   resumes: MasterResumeListItem[];
   loading: boolean;
@@ -45,7 +42,6 @@ interface ResumeWorkshopRoomProps {
 }
 
 export function ResumeWorkshopRoom({
-  careerProfileSummary,
   sessions,
   resumes,
   loading,
@@ -97,20 +93,6 @@ export function ResumeWorkshopRoom({
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
-      {careerProfileSummary && (
-        <CareerProfileSummaryCard
-          summary={careerProfileSummary}
-          title="Career Profile is shaping every tailored resume"
-          description="Resume Builder uses the profile story to decide what to emphasize, what evidence to ask for, and what is worth promoting into the master resume."
-          usagePoints={[
-            'Your core story determines what the rewrite queue prioritizes first.',
-            'Strengths and differentiators influence how AI reframes adjacent experience.',
-            'Only strong, reusable edits should be promoted back into the master resume.',
-          ]}
-          onOpenProfile={() => onNavigate?.('/workspace?room=career-profile')}
-        />
-      )}
-
       <GlassCard className="p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
