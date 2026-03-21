@@ -286,7 +286,7 @@ test.describe('Current error recovery', () => {
     await expect(
       page.getByRole('heading', { name: /Your home for tailored resumes/i }),
     ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('button', { name: /^Job Workspaces$/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Job Workspaces$/i })).toBeVisible();
     await expect(page.getByText(/No saved tailored work found for this filter\./i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Something went wrong')).not.toBeVisible();
   });

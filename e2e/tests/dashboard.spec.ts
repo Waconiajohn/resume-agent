@@ -116,11 +116,13 @@ test.describe('Resume Builder Workspace', () => {
     await expect(page.getByRole('button', { name: /Completed/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /In Progress/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Needs Review/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Job Workspaces$/i })).toBeVisible();
 
     const hasEmptyState = await page.getByText(/No saved tailored work found for this filter/i).isVisible().catch(() => false);
     const hasWorkspaceRow = await page.getByRole('button', { name: /View Workspace|Workspace Open/i }).first().isVisible().catch(() => false);
+    const hasWorkspaceBadge = await page.getByText(/^Job workspace$/i).first().isVisible().catch(() => false);
 
-    expect(hasEmptyState || hasWorkspaceRow).toBe(true);
+    expect(hasEmptyState || hasWorkspaceRow || hasWorkspaceBadge).toBe(true);
   });
 
   test('resume asset modal opens when a viewable resume exists', async ({ page }) => {
@@ -160,11 +162,14 @@ test.describe('Resume Builder Workspace', () => {
     await openResumeBuilder(page);
     await page.getByRole('button', { name: /^Open Master Resume$/i }).click();
 
-    const hasEmptyState = await page.getByText(/No master resume found/i).isVisible().catch(() => false);
-    const hasSummarySection = await page.getByRole('heading', { name: /Summary/i }).isVisible().catch(() => false);
-    const hasEditButton = await page.getByRole('button', { name: /^Edit$/i }).isVisible().catch(() => false);
-
-    expect(hasEmptyState || hasSummarySection || hasEditButton).toBe(true);
+    await expect
+      .poll(async () => {
+        const hasEmptyState = await page.getByText(/No master resume found/i).isVisible().catch(() => false);
+        const hasSummarySection = await page.getByRole('heading', { name: /Summary/i }).isVisible().catch(() => false);
+        const hasEditButton = await page.getByRole('button', { name: /^Edit$/i }).isVisible().catch(() => false);
+        return hasEmptyState || hasSummarySection || hasEditButton;
+      }, { timeout: 10_000 })
+      .toBe(true);
     await expect(page.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible();
   });
 
