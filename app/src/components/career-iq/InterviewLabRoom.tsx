@@ -1,6 +1,5 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
 import { EmptyStateIllustration } from '@/components/shared/EmptyStateIllustration';
 import {
   Mic,
@@ -1256,12 +1255,8 @@ export function InterviewLabRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
           <p className="text-[13px] text-white/40">
-            Organize interview work into prep, practice, leave-behinds, and follow-up instead of hunting through one crowded screen.
+            Keep your prep, practice, leave-behinds, and follow-up in one place so you can focus on the next interview instead of hunting through scattered tools.
           </p>
-          <ContextLoadedBadge
-            contextTypes={['career_profile', 'positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
-            className="mt-2"
-          />
         </div>
       </div>
 
@@ -1313,7 +1308,7 @@ export function InterviewLabRoom({
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-white/88">Start with research and likely interview pressure points</h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/54">
-                  Generate a prep report from an active role. The platform will pull your master resume, use your Career Profile story, and build predicted questions, company research, and talking points.
+                  Generate prep from an active role, then use it to focus your questions, stories, and likely pressure points before you start practicing.
                 </p>
               </div>
             </div>

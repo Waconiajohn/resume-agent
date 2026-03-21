@@ -101,14 +101,11 @@ export function ResumeWorkshopRoom({
             </div>
             <h1 className="mt-2 text-xl font-semibold text-white/90">One home for stage-aware job workspaces and your master resume</h1>
             <p className="mt-2 text-sm leading-relaxed text-white/50">
-              Each target role stays grouped by company, job title, and date. Early-stage work stays lean, and interview or offer assets only surface when the application actually reaches those stages.
+              Keep each tailored resume, cover letter, and your master resume in one place. The job-specific work stays separate; the strongest edits can move back into your long-term base.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <GlassButton variant="ghost" onClick={() => onNavigate?.('/workspace?room=career-profile')}>
-              Review Career Profile
-            </GlassButton>
             <GlassButton variant="ghost" onClick={openCoverLetter}>
               Write Cover Letter
             </GlassButton>
@@ -134,9 +131,9 @@ export function ResumeWorkshopRoom({
           />
           <SummaryCard
             icon={Sparkles}
-            title="How to use this"
-            value="Profile -> Tailor -> Promote"
-            description="Start with Career Profile, tailor for the target role, then keep only the edits worth preserving."
+            title="Flow"
+            value="Tailor -> Keep -> Reuse"
+            description="Build for the target role first, then keep only the edits worth carrying back into your long-term resume."
           />
         </div>
       </GlassCard>
@@ -177,7 +174,7 @@ export function ResumeWorkshopRoom({
                   </div>
                   <h2 className="mt-2 text-lg font-semibold text-white/88">Write the letter inside the same job-specific workflow</h2>
                   <p className="mt-2 text-sm leading-relaxed text-white/54">
-                    Keep the resume and cover letter in one place. Pull from your default resume, target the current role, and avoid treating the letter like a separate product.
+                    Keep the resume and cover letter together. Start from your existing resume, target the current role, and avoid managing this like a separate product.
                   </p>
                 </div>
               </GlassCard>
