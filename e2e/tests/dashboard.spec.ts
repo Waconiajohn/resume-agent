@@ -78,7 +78,7 @@ async function waitForResumeBuilderReady(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 15_000 });
   await expect(
     page.getByRole('heading', {
-      name: /One home for stage-aware job workspaces and your master resume/i,
+      name: /One home for tailored resumes and your long-term base resume/i,
     }),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible({
@@ -106,7 +106,7 @@ test.describe('Resume Builder Workspace', () => {
     await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /^Open Master Resume$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Write Cover Letter$/i })).toBeVisible();
-    await expect(page.getByText(/Tailor -> Keep -> Reuse/i)).toBeVisible();
+    await expect(page.getByText(/One home for tailored resumes and your long-term base resume/i)).toBeVisible();
   });
 
   test('job workspaces tab shows filters and handles empty or populated state', async ({ page }) => {

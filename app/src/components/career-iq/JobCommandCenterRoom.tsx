@@ -284,11 +284,10 @@ function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearc
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Search size={18} className="text-[#98b3ff]" />
-        <h3 className="text-[15px] font-semibold text-white/85">Boolean Search Builder</h3>
+        <h3 className="text-[15px] font-semibold text-white/85">Search Strings</h3>
       </div>
       <p className="text-[12px] text-white/35 mb-4">
-        AI-generated search strings optimized for each platform. Based on your Career Profile and
-        target roles.
+          AI-generated search strings for the platforms you use when the default discovery view is not enough.
       </p>
 
       {searches.length === 0 ? (
@@ -832,10 +831,7 @@ export function JobCommandCenterRoom({
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Job Search</h1>
         <p className="text-[13px] text-white/40">
-          Discover roles, score fit, and keep your real next steps moving in one place.
-        </p>
-        <p className="text-[11px] text-white/28">
-          Start in Today for the daily working view, then open Pipeline or Discover when you need them.
+          Keep the daily work in one place, then open Discover or Pipeline only when you need them.
         </p>
       </div>
 
@@ -973,13 +969,13 @@ export function JobCommandCenterRoom({
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
                 <div>
-                  <div className="text-sm font-semibold text-white/82">Search tools</div>
+                  <div className="text-sm font-semibold text-white/82">Advanced search</div>
                   <div className="mt-1 text-xs leading-relaxed text-white/45">
                     Use boolean strings and search setup only when you want more control over discovery.
                   </div>
                 </div>
                 <GlassButton variant="ghost" onClick={() => setShowSearchTools(false)}>
-                  Hide tools
+                  Hide advanced search
                 </GlassButton>
               </div>
 
@@ -992,13 +988,13 @@ export function JobCommandCenterRoom({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
                     <div>
-                      <div className="text-sm font-semibold text-white/82">Search setup</div>
+                      <div className="text-sm font-semibold text-white/82">Search filters</div>
                       <div className="mt-1 text-xs leading-relaxed text-white/45">
                         Adjust titles, locations, and work-style preferences only when you need to.
                       </div>
                     </div>
                     <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(false)}>
-                      Hide setup
+                      Hide filters
                     </GlassButton>
                   </div>
                   <SearchPreferences />
@@ -1007,13 +1003,13 @@ export function JobCommandCenterRoom({
                 <GlassCard className="p-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-white/82">Search setup</div>
+                      <div className="text-sm font-semibold text-white/82">Search filters</div>
                       <div className="mt-1 text-xs leading-relaxed text-white/45">
                         Need to adjust titles, locations, or work-style preferences? Open setup only when you want to tune the search.
                       </div>
                     </div>
                     <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(true)}>
-                      Open setup
+                      Open filters
                     </GlassButton>
                   </div>
                 </GlassCard>
@@ -1023,13 +1019,13 @@ export function JobCommandCenterRoom({
             <GlassCard className="p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-white/82">Search tools</div>
+                  <div className="text-sm font-semibold text-white/82">Advanced search</div>
                   <div className="mt-1 text-xs leading-relaxed text-white/45">
                     Need boolean strings or custom search setup? Open the extra tools only when you want to go deeper.
                   </div>
                 </div>
                 <GlassButton variant="ghost" onClick={() => setShowSearchTools(true)}>
-                  Open search tools
+                  Open advanced search
                 </GlassButton>
               </div>
             </GlassCard>

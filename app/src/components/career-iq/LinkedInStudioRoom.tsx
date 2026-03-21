@@ -44,7 +44,7 @@ interface LinkedInStudioRoomProps {
   whyMeClarity?: string;
 }
 
-type StudioTab = 'composer' | 'editor' | 'calendar' | 'analytics' | 'library' | 'tools';
+type StudioTab = 'composer' | 'editor' | 'calendar' | 'analytics' | 'library';
 
 const PROFILE_SECTION_LABELS: Record<ProfileSection, string> = {
   headline: 'Headline',
@@ -1385,6 +1385,25 @@ function PostLibrary() {
   );
 }
 
+function LibraryWorkspace() {
+  return (
+    <div className="space-y-4">
+      <GlassCard className="p-5">
+        <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+          Library
+        </div>
+        <h3 className="mt-2 text-base font-semibold text-white/86">Keep past posts and extra LinkedIn checks in one quiet place</h3>
+        <p className="mt-2 text-sm leading-relaxed text-white/52">
+          Reuse the strongest post ideas here, then open the extra analysis tools only when you want a deeper check.
+        </p>
+      </GlassCard>
+
+      <PostLibrary />
+      <ToolsPanel />
+    </div>
+  );
+}
+
 // ─── Keyword Multiplier Nudge ──────────────────────────────────────────────
 
 function KeywordMultiplierNudge() {
@@ -1499,10 +1518,9 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   ];
   const utilityTabs: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
     { id: 'calendar', label: 'Content Plan', icon: Calendar },
-    { id: 'library', label: 'Saved Posts', icon: BookOpen },
-    { id: 'tools', label: 'Extras', icon: Wrench },
+    { id: 'library', label: 'Library', icon: BookOpen },
   ];
-  const utilityTabActive = activeTab === 'calendar' || activeTab === 'library' || activeTab === 'tools';
+  const utilityTabActive = activeTab === 'calendar' || activeTab === 'library';
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
@@ -1511,7 +1529,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">LinkedIn</h1>
           <p className="text-[13px] text-white/40">
-            Write posts, sharpen your profile, plan content, and keep your strongest ideas ready to reuse.
+            Write posts, sharpen your profile, and keep the supporting content work tucked behind the main flow.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -1556,7 +1574,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
       )}
 
       {/* Keyword multiplier coaching nudge */}
-      {(activeTab === 'composer' || activeTab === 'calendar' || activeTab === 'library') && (
+      {(activeTab === 'composer' || activeTab === 'calendar') && (
         <KeywordMultiplierNudge />
       )}
 
@@ -1638,8 +1656,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
           </div>
         )}
         {activeTab === 'calendar' && <ContentCalendar onWritePost={handleWritePostFromCalendar} />}
-        {activeTab === 'library' && <PostLibrary />}
-        {activeTab === 'tools' && <ToolsPanel />}
+        {activeTab === 'library' && <LibraryWorkspace />}
         {activeTab === 'analytics' && (
           <div className="flex flex-col gap-6">
             {/* Profile score ring + section scores */}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, LibraryBig, Plus, Sparkles } from 'lucide-react';
+import { FileText, LibraryBig, Plus } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
@@ -98,9 +98,9 @@ export function ResumeWorkshopRoom({
             <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
               Resume Builder
             </div>
-            <h1 className="mt-2 text-xl font-semibold text-white/90">One home for stage-aware job workspaces and your master resume</h1>
+            <h1 className="mt-2 text-xl font-semibold text-white/90">One home for tailored resumes and your long-term base resume</h1>
             <p className="mt-2 text-sm leading-relaxed text-white/50">
-              Keep each tailored resume, cover letter, and your master resume in one place. The job-specific work stays separate; the strongest edits can move back into your long-term base.
+              Stay in job workspaces by default. Open your master resume or cover letter only when you need them, then return to the same working area.
             </p>
           </div>
 
@@ -118,7 +118,7 @@ export function ResumeWorkshopRoom({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
           <SummaryCard
             icon={FileText}
             title="Job workspaces"
@@ -131,21 +131,15 @@ export function ResumeWorkshopRoom({
             value={defaultResume ? `v${defaultResume.version}` : 'Not set'}
             description={defaultResume ? 'Your default resume is ready for promotion-ready updates.' : 'Create or save a default resume to build a stronger base over time.'}
           />
-          <SummaryCard
-            icon={Sparkles}
-            title="Flow"
-            value="Tailor -> Keep -> Reuse"
-            description="Build for the target role first, then keep only the edits worth carrying back into your long-term resume."
-          />
         </div>
       </GlassCard>
 
       <GlassCard className="p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-white/85">Resume management</h2>
+            <h2 className="text-sm font-semibold text-white/85">Your work</h2>
             <p className="mt-1 text-xs text-white/45">
-              Tailored resumes stay job-specific. Your master resume stays clean and reusable.
+              Keep the main focus on job workspaces. The other views are there when you need them.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -195,9 +189,6 @@ export function ResumeWorkshopRoom({
                     </p>
                   </div>
                   <div className="flex flex-col items-start gap-2">
-                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                      Secondary flow
-                    </div>
                     <GlassButton variant="ghost" onClick={() => setActiveTab('sessions')}>
                       Back to Job Workspaces
                     </GlassButton>
@@ -230,9 +221,6 @@ export function ResumeWorkshopRoom({
                     </p>
                   </div>
                   <div className="flex flex-col items-start gap-2">
-                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#b5dec2]/70">
-                      Secondary flow
-                    </div>
                     <GlassButton variant="ghost" onClick={() => setActiveTab('sessions')}>
                       Back to Job Workspaces
                     </GlassButton>

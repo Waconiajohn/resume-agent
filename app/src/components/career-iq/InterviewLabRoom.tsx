@@ -1255,7 +1255,7 @@ export function InterviewLabRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
           <p className="text-[13px] text-white/40">
-            Keep your prep, practice, leave-behinds, and follow-up in one place so you can focus on the next interview instead of hunting through scattered tools.
+            Keep prep, practice, leave-behinds, and follow-up in one working area instead of bouncing across separate tools.
           </p>
         </div>
       </div>
@@ -1276,7 +1276,7 @@ export function InterviewLabRoom({
         </GlassCard>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-4">
+      <div className="flex flex-wrap gap-2">
         {(Object.entries(LAB_SECTION_COPY) as Array<[LabSection, { label: string; description: string }]>).map(([sectionId, section]) => {
           const isActive = activeSection === sectionId;
           return (
@@ -1285,18 +1285,22 @@ export function InterviewLabRoom({
               type="button"
               onClick={() => setActiveSection(sectionId)}
               className={cn(
-                'rounded-2xl border px-4 py-4 text-left transition-colors',
+                'rounded-full border px-4 py-2 text-left transition-colors',
                 isActive
                   ? 'border-[#98b3ff]/22 bg-[#98b3ff]/[0.08]'
                   : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.05]',
               )}
             >
               <div className="text-sm font-semibold text-white/86">{section.label}</div>
-              <div className="mt-2 text-xs leading-relaxed text-white/50">{section.description}</div>
             </button>
           );
         })}
       </div>
+
+      <GlassCard className="p-4">
+        <div className="text-sm font-semibold text-white/84">{LAB_SECTION_COPY[activeSection].label}</div>
+        <div className="mt-1 text-sm leading-relaxed text-white/52">{LAB_SECTION_COPY[activeSection].description}</div>
+      </GlassCard>
 
       {activeSection === 'prep' && (
         <>
@@ -1401,7 +1405,7 @@ export function InterviewLabRoom({
                   className="text-[13px]"
                 >
                   <Mail size={14} className="mr-1.5" />
-                  {followUpView === 'thank_you' ? 'Hide Thank You Note' : 'Open Thank You Note'}
+                  {followUpView === 'thank_you' ? 'Hide Thank You Note' : 'Thank You Note'}
                 </GlassButton>
                 <GlassButton
                   variant="ghost"
@@ -1409,7 +1413,7 @@ export function InterviewLabRoom({
                   className="text-[13px]"
                 >
                   <Star size={14} className="mr-1.5" />
-                  {followUpView === 'negotiation' ? 'Hide Negotiation Prep' : 'Open Negotiation Prep'}
+                  {followUpView === 'negotiation' ? 'Hide Negotiation Prep' : 'Negotiation Prep'}
                 </GlassButton>
               </div>
             </div>

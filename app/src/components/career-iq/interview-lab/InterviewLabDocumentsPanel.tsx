@@ -32,9 +32,9 @@ export function InterviewLabDocumentsPanel({
         <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
           Leave-behinds
         </div>
-        <h2 className="mt-2 text-lg font-semibold text-white/88">Build documents without leaving the lab</h2>
+        <h2 className="mt-2 text-lg font-semibold text-white/88">Build leave-behinds without leaving the lab</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-          Keep your prep story, proof points, and interview strategy in the same room. The 30-60-90 day plan should feel like one more move in the interview workflow, not a completely separate product.
+          Keep your prep story and supporting documents together. The 30-60-90 plan should feel like one more interview move, not a separate product.
         </p>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -57,7 +57,7 @@ export function InterviewLabDocumentsPanel({
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Follow-up</div>
             <h3 className="mt-2 text-base font-semibold text-white/84">Thank You Note</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/52">
-              Follow-up lives in the next section because it happens after the conversation, but it should reinforce the exact same story.
+              Follow-up stays in the next section, but it should still reinforce the same story.
             </p>
             <GlassButton variant="ghost" onClick={onOpenThankYou} className="mt-4 text-[13px]">
               <Mail size={14} className="mr-1.5" />
