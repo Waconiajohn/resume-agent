@@ -55,9 +55,15 @@ vi.mock('@/lib/sse-parser', () => ({
 
 vi.mock('@/lib/safe-cast', () => ({
   safeString: (v: unknown, fallback = '') =>
-    typeof v === 'string' ? v : fallback,
-  safeNumber: (v: unknown, fallback = 0) =>
-    typeof v === 'number' ? v : fallback,
+    typeof v === 'string' ? v : v == null ? fallback : String(v),
+  safeNumber: (v: unknown, fallback = 0) => {
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    if (typeof v === 'string') {
+      const parsed = Number(v);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return fallback;
+  },
 }));
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
@@ -446,6 +452,135 @@ describe('useContentCalendar — savedReports refresh after calendar_complete SS
     // Wait for calendar_complete to trigger the refresh and populate savedReports
     await waitFor(() => expect(result.current.savedReports).toHaveLength(1), { timeout: 3000 });
     expect(result.current.savedReports[0].id).toBe('report-1');
+  });
+
+  it('preserves the previous report and sanitizes streamed posts on calendar_complete', async () => {
+    mockParseSSEStream.mockImplementationOnce(async function* () {
+      yield* yieldEvents([
+        {
+          event: 'calendar_complete',
+          data: {
+            report: '',
+            quality_score: '91',
+            post_count: '3',
+            posts: [
+              {
+                day: '1',
+                day_of_week: 'Monday',
+                content_type: 'thought_leadership',
+                hook: 'A better way to lead change',
+                body: 'Post body',
+                cta: 'Share your approach',
+                hashtags: ['#leadership', 42, '  '],
+                posting_time: '9:00 AM',
+                quality_score: '87',
+                word_count: '180',
+              },
+              {
+                day_of_week: 'Tuesday',
+              },
+            ],
+          },
+        },
+      ]);
+    });
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reports: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      .mockResolvedValueOnce(new Response(new ReadableStream(), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reports: [makeReport()] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentCalendar());
+    await waitFor(() => expect(result.current.reportsLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.startPipeline({
+        resumeText: 'Resume text',
+      });
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('complete'));
+    expect(result.current.report).toBeNull();
+    expect(result.current.qualityScore).toBe(91);
+    expect(result.current.postCount).toBe(3);
+    expect(result.current.posts).toEqual([
+      {
+        day: 1,
+        day_of_week: 'Monday',
+        content_type: 'thought_leadership',
+        hook: 'A better way to lead change',
+        body: 'Post body',
+        cta: 'Share your approach',
+        hashtags: ['#leadership'],
+        posting_time: '9:00 AM',
+        quality_score: 87,
+        word_count: 180,
+      },
+    ]);
+  });
+
+  it('keeps prior calendar state when the final streamed payload is malformed', async () => {
+    mockParseSSEStream.mockImplementationOnce(async function* () {
+      yield* yieldEvents([
+        {
+          event: 'calendar_complete',
+          data: {
+            report: '# Final Calendar',
+            quality_score: 88,
+            post_count: 12,
+            posts: [
+              {
+                day: 1,
+                day_of_week: 'Monday',
+                content_type: 'thought_leadership',
+                hook: 'Hook',
+                body: 'Body',
+                cta: 'CTA',
+                hashtags: ['#one'],
+                posting_time: '9:00 AM',
+                quality_score: 84,
+                word_count: 140,
+              },
+            ],
+          },
+        },
+        {
+          event: 'calendar_complete',
+          data: {
+            report: '',
+            quality_score: 'bad-score',
+            post_count: null,
+            posts: { invalid: true },
+          },
+        },
+      ]);
+    });
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reports: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      .mockResolvedValueOnce(new Response(new ReadableStream(), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reports: [makeReport()] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reports: [makeReport('report-2')] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentCalendar());
+    await waitFor(() => expect(result.current.reportsLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.startPipeline({
+        resumeText: 'Resume text',
+      });
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('complete'));
+    expect(result.current.report).toBe('# Final Calendar');
+    expect(result.current.qualityScore).toBe(88);
+    expect(result.current.postCount).toBe(12);
+    expect(result.current.posts).toHaveLength(1);
+    expect(result.current.posts[0].hook).toBe('Hook');
   });
 });
 

@@ -62,6 +62,41 @@ export interface ContentCalendarInput {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 40;
 
+function normalizeHashtags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function normalizeStructuredPost(value: unknown): StructuredPost | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const day = safeNumber(raw.day, Number.NaN);
+  if (Number.isNaN(day)) return null;
+
+  return {
+    day,
+    day_of_week: safeString(raw.day_of_week),
+    content_type: safeString(raw.content_type),
+    hook: safeString(raw.hook),
+    body: safeString(raw.body),
+    cta: safeString(raw.cta),
+    hashtags: normalizeHashtags(raw.hashtags),
+    posting_time: safeString(raw.posting_time),
+    quality_score: safeNumber(raw.quality_score),
+    word_count: safeNumber(raw.word_count),
+  };
+}
+
+function normalizeStructuredPosts(value: unknown): StructuredPost[] | null {
+  if (!Array.isArray(value)) return null;
+  return value
+    .map((post) => normalizeStructuredPost(post))
+    .filter((post): post is StructuredPost => post !== null);
+}
+
 function normalizeSavedReport(value: unknown): SavedCalendarReport | null {
   if (!value || typeof value !== 'object') return null;
   const raw = value as Record<string, unknown>;
@@ -253,10 +288,12 @@ export function useContentCalendar() {
           setState((prev) => ({
             ...prev,
             status: 'complete',
-            report: safeString(data.report),
-            posts: Array.isArray(data.posts) ? (data.posts as StructuredPost[]) : prev.posts,
-            qualityScore: typeof data.quality_score === 'number' ? data.quality_score : prev.qualityScore,
-            postCount: typeof data.post_count === 'number' ? data.post_count : prev.postCount,
+            report: safeString(data.report) || prev.report,
+            posts: normalizeStructuredPosts(data.posts) ?? prev.posts,
+            qualityScore:
+              data.quality_score == null ? prev.qualityScore : safeNumber(data.quality_score, prev.qualityScore ?? 0),
+            postCount:
+              data.post_count == null ? prev.postCount : safeNumber(data.post_count, prev.postCount ?? 0),
           }));
           abortRef.current?.abort();
           // Refresh the saved reports list so the new one shows in Previous Calendars
