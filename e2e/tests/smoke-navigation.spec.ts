@@ -77,6 +77,18 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
   const billingResponse = options.billingResponse ?? DEFAULT_BILLING_RESPONSE;
   const billingCheckoutUrl = options.billingCheckoutUrl ?? '/workspace?room=resume';
   const billingPortalUrl = options.billingPortalUrl ?? '/workspace?room=career-profile';
+  const watchlistCompanies: Array<{
+    id: string;
+    name: string;
+    industry: string | null;
+    website: string | null;
+    careers_url: string | null;
+    priority: number;
+    source: string;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+  }> = [];
 
   // Override fetch for SSE requests before navigation
   await page.addInitScript(() => {
@@ -302,8 +314,45 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       return;
     }
 
-    // Job finder / tracker / command center
-    if (path.startsWith('/api/job-finder') || path.startsWith('/api/job-tracker') || path.startsWith('/api/job-search')) {
+    if (/^\/api\/job-tracker\/[^/]+\/stream$/.test(path) && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: [
+          'event: stage_start',
+          'data: {"stage":"analysis","message":"Reviewing your applications and scoring follow-up opportunities..."}',
+          '',
+          'event: application_analyzed',
+          'data: {"company":"Northstar SaaS","role":"VP Operations","fit_score":91}',
+          '',
+          'event: follow_up_generated',
+          'data: {"company":"Northstar SaaS","role":"VP Operations","follow_up_type":"follow_up_email"}',
+          '',
+          'event: analytics_updated',
+          'data: {"total":1,"average_fit":91}',
+          '',
+          'event: tracker_complete',
+          'data: {"report":"Application Tracker Summary\\n\\n- Northstar SaaS — strong fit, follow up with the hiring lead this week.","quality_score":87,"application_count":1,"follow_up_count":1}',
+          '',
+          'event: pipeline_complete',
+          'data: {}',
+          '',
+        ].join('\n'),
+      });
+      return;
+    }
+
+    if (path === '/api/job-tracker/start' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    // Job finder / command center
+    if (path.startsWith('/api/job-finder') || path.startsWith('/api/job-search')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobs: [], results: [] }) });
       return;
     }
@@ -314,9 +363,51 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
       return;
     }
 
-    // Watchlist companies
-    if (path.startsWith('/api/watchlist')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ companies: [] }) });
+    if (path === '/api/watchlist' && method === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ companies: watchlistCompanies }) });
+      return;
+    }
+
+    if (path === '/api/watchlist' && method === 'POST') {
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const now = new Date().toISOString();
+      const created = {
+        id: `watch-${Math.random().toString(36).slice(2, 10)}`,
+        name: typeof body?.name === 'string' ? body.name : 'New Company',
+        industry: typeof body?.industry === 'string' ? body.industry : null,
+        website: typeof body?.website === 'string' ? body.website : null,
+        careers_url: typeof body?.careers_url === 'string' ? body.careers_url : null,
+        priority: typeof body?.priority === 'number' ? body.priority : 3,
+        source: typeof body?.source === 'string' ? body.source : 'manual',
+        notes: typeof body?.notes === 'string' ? body.notes : null,
+        created_at: now,
+        updated_at: now,
+      };
+      watchlistCompanies.unshift(created);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(created) });
+      return;
+    }
+
+    const watchlistItemMatch = path.match(/^\/api\/watchlist\/([^/]+)$/);
+    if (watchlistItemMatch && method === 'PATCH') {
+      const [, companyId] = watchlistItemMatch;
+      const body = route.request().postDataJSON() as Record<string, unknown> | null;
+      const existing = watchlistCompanies.find((company) => company.id === companyId);
+      if (!existing) {
+        await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Not found' }) });
+        return;
+      }
+      if (typeof body?.priority === 'number') existing.priority = body.priority;
+      existing.updated_at = new Date().toISOString();
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(existing) });
+      return;
+    }
+
+    if (watchlistItemMatch && method === 'DELETE') {
+      const [, companyId] = watchlistItemMatch;
+      const index = watchlistCompanies.findIndex((company) => company.id === companyId);
+      if (index >= 0) watchlistCompanies.splice(index, 1);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
       return;
     }
 
@@ -931,6 +1022,46 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: 'Daily Ops', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: 'Daily Ops', exact: true })).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Job Search watchlist manager adds a company cleanly in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.locator('button[title="Manage watchlist"]:visible').first().click();
+    await expect(sharedPage.getByRole('dialog', { name: /Manage watchlist/i })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByPlaceholder('e.g. Acme Corp').fill('Signal Peak');
+    await sharedPage.getByRole('button', { name: /Add Company/i }).click();
+
+    await expect(
+      sharedPage.getByRole('dialog', { name: /Manage watchlist/i }).getByText('Signal Peak', { exact: true }),
+    ).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(sharedPage.getByRole('button', { name: 'Signal Peak', exact: true })).toBeVisible({ timeout: 8_000 });
+  });
+
+  test('Job Search tracker analyzes one application in the signed-in shell', async () => {
+    await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
+    await assertNoCrash(sharedPage);
+
+    await sharedPage.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await expect(sharedPage.getByRole('heading', { name: 'Application Tracker', exact: true })).toBeVisible({ timeout: 8_000 });
+
+    await sharedPage
+      .getByPlaceholder(/Paste your resume text here/i)
+      .fill('Executive operator with experience aligning product, support, and operations leaders around one operating cadence.');
+    await sharedPage.getByLabel(/Application 1 company/i).fill('Northstar SaaS');
+    await sharedPage.getByLabel(/Application 1 role/i).fill('VP Operations');
+    await sharedPage
+      .getByLabel(/Application 1 job description/i)
+      .fill('Lead executive alignment, operating cadence, and cross-functional execution across product, support, and delivery leaders.');
+
+    await sharedPage.getByRole('button', { name: /Analyze 1 Application/i }).click();
+
+    await expect(sharedPage.getByRole('heading', { name: 'Tracker Report', exact: true })).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText(/Northstar SaaS — strong fit/i)).toBeVisible({ timeout: 8_000 });
   });
 
   test('Interview Prep room renders', async () => {
