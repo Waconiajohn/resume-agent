@@ -274,7 +274,7 @@ async function mockAllWithData(
 async function openResumeBuilderWorkspace(page: Page): Promise<void> {
   await page.goto('/workspace?room=resume');
   await expect(
-    page.getByRole('heading', { name: /One home for tailored resumes and your long-term base resume/i }),
+    page.getByRole('heading', { name: /Your home for tailored resumes/i }),
   ).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /^Open Master Resume$/i })).toBeVisible();

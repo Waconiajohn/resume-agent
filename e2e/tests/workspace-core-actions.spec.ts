@@ -13,7 +13,7 @@ test.describe('workspace core room actions', () => {
 
     await page.getByRole('button', { name: /Review Career Profile/i }).click();
     await expect(page).toHaveURL(/room=career-profile/);
-    await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Build the story every room works from/i })).toBeVisible();
 
     await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: /Open Job Search/i }).click();
@@ -24,7 +24,7 @@ test.describe('workspace core room actions', () => {
   test('Career Profile refine flow opens the next-best questions', async ({ page }) => {
     await page.goto('/workspace?room=career-profile', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Build the story every room works from/i })).toBeVisible();
     await page.getByRole('button', { name: /Refine with AI/i }).click();
 
     await expect(page.getByRole('heading', { name: /One question, one confirmation, one stronger profile update/i })).toBeVisible();
@@ -40,7 +40,7 @@ test.describe('workspace core room actions', () => {
   test('Career Profile can submit the intake and return to the saved profile view', async ({ page }) => {
     await page.goto('/workspace?room=career-profile', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Build the story every room works from/i })).toBeVisible();
     await page.getByRole('button', { name: /Refine with AI/i }).click();
 
     await page.getByPlaceholder(/Answer in your own words/i).fill('Executive operations leadership across product, support, and delivery teams.');
@@ -51,7 +51,7 @@ test.describe('workspace core room actions', () => {
 
     await expect(page.getByRole('button', { name: /Reset Assessment State/i })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('heading', { name: /One question, one confirmation, one stronger profile update/i })).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: /What the platform currently knows about you/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Your current Career Profile/i })).toBeVisible();
   });
 
   test('LinkedIn quick optimize completes and tab switching stays usable', async ({ page }) => {
@@ -142,7 +142,7 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: /Resume \+ Letter/i }).first().click();
 
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
-    await expect(page.getByRole('heading', { name: /One home for tailored resumes and your long-term base resume/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Your home for tailored resumes/i })).toBeVisible();
   });
 
   test('Job Search pipeline add-application dialog opens and submits cleanly', async ({ page }) => {

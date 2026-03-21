@@ -34,14 +34,14 @@ export function InterviewLabDocumentsPanel({
         </div>
         <h2 className="mt-2 text-lg font-semibold text-white/88">Build leave-behinds without leaving the lab</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
-          Keep your prep story and supporting documents together. The 30-60-90 plan should feel like one more interview move, not a separate product.
+          Keep your prep story and supporting documents together. The 30-60-90 plan should feel like the next step, not a side project.
         </p>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Leave-behind</div>
             <h3 className="mt-2 text-base font-semibold text-white/84">30-60-90 Day Plan</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/52">
-              Use this when you need to show how you would step into the role, sequence the first 30, 60, and 90 days, and create confidence before an offer decision is made.
+              Use this to show how you would step into the role and sequence your first 30, 60, and 90 days.
             </p>
             <GlassButton
               variant="ghost"
@@ -57,7 +57,7 @@ export function InterviewLabDocumentsPanel({
             <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Follow-up</div>
             <h3 className="mt-2 text-base font-semibold text-white/84">Thank You Note</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/52">
-              Follow-up stays in the next section, but it should still reinforce the same story.
+              Use this to turn the interview into a focused follow-up while the conversation is still fresh.
             </p>
             <GlassButton variant="ghost" onClick={onOpenThankYou} className="mt-4 text-[13px]">
               <Mail size={14} className="mr-1.5" />

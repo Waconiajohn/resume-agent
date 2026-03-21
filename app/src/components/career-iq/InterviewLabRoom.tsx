@@ -1273,7 +1273,7 @@ export function InterviewLabRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
           <p className="text-[13px] text-white/40">
-            Keep prep, practice, leave-behinds, and follow-up in one working area instead of bouncing across separate tools.
+            Keep prep, practice, leave-behinds, and follow-up in one place.
           </p>
         </div>
       </div>
@@ -1388,7 +1388,7 @@ export function InterviewLabRoom({
           <GlassCard className="p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl text-sm leading-relaxed text-white/54">
-                Keep debriefs, thank-you notes, and offer-stage negotiation prep tied to the same story you used during prep and practice.
+                Keep debriefs, thank-you notes, and negotiation prep tied to the same story you used in prep and practice.
               </div>
               <div className="flex flex-wrap gap-2">
                 <GlassButton
@@ -1434,7 +1434,7 @@ export function InterviewLabRoom({
                     Negotiation Prep
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-white/52">
-                    Prepare the offer conversation inside the same workflow instead of opening a separate product.
+                    Get ready for the offer conversation without leaving this workflow.
                   </p>
                   <div className="mt-4">
                     <GlassButton variant="ghost" onClick={() => setFollowUpView('negotiation')} className="text-[13px]">

@@ -12,13 +12,13 @@ const AUDIT_PAGES = [
     slug: 'career-profile',
     path: '/workspace?room=career-profile',
     readyRole: 'heading',
-    readyText: 'One shared profile that every agent reads',
+    readyText: 'Build the story every room works from',
   },
   {
     slug: 'resume-builder',
     path: '/workspace?room=resume',
     readyRole: 'heading',
-    readyText: 'One home for tailored resumes and your long-term base resume',
+    readyText: 'Your home for tailored resumes',
   },
   {
     slug: 'linkedin-studio',

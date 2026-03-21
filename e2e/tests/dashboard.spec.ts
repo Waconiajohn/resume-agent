@@ -78,7 +78,7 @@ async function waitForResumeBuilderReady(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 15_000 });
   await expect(
     page.getByRole('heading', {
-      name: /One home for tailored resumes and your long-term base resume/i,
+      name: /Your home for tailored resumes/i,
     }),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible({
@@ -106,7 +106,7 @@ test.describe('Resume Builder Workspace', () => {
     await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /^Open Master Resume$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Write Cover Letter$/i })).toBeVisible();
-    await expect(page.getByText(/One home for tailored resumes and your long-term base resume/i)).toBeVisible();
+    await expect(page.getByText(/Your home for tailored resumes/i)).toBeVisible();
   });
 
   test('job workspaces tab shows filters and handles empty or populated state', async ({ page }) => {
@@ -149,10 +149,10 @@ test.describe('Resume Builder Workspace', () => {
 
     await expect(
       page.getByRole('heading', {
-        name: /Write the letter inside the same job-specific workflow/i,
+        name: /Write the cover letter in the same workflow/i,
       }),
     ).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByText(/avoid managing this like a separate product/i)).toBeVisible();
+    await expect(page.getByText(/keep the letter tied to the same job workspace/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible();
   });
 
@@ -174,7 +174,7 @@ test.describe('Resume Builder Workspace', () => {
 
     await expect(
       page.getByRole('heading', {
-        name: /Write the letter inside the same job-specific workflow/i,
+        name: /Write the cover letter in the same workflow/i,
       }),
     ).toBeVisible({ timeout: 8_000 });
   });

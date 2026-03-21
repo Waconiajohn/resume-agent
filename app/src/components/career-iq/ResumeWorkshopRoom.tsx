@@ -98,9 +98,9 @@ export function ResumeWorkshopRoom({
             <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
               Resume Builder
             </div>
-            <h1 className="mt-2 text-xl font-semibold text-white/90">One home for tailored resumes and your long-term base resume</h1>
+            <h1 className="mt-2 text-xl font-semibold text-white/90">Your home for tailored resumes</h1>
             <p className="mt-2 text-sm leading-relaxed text-white/50">
-              Stay in job workspaces by default. Open your master resume or cover letter only when you need them, then return to the same working area.
+              Most work should happen in job workspaces. Open Master Resume or Cover Letter when you need them, then come right back.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
               <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 font-medium text-white/68">
@@ -169,9 +169,9 @@ export function ResumeWorkshopRoom({
                     <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                       Cover Letter
                     </div>
-                    <h2 className="mt-2 text-lg font-semibold text-white/88">Write the letter inside the same job-specific workflow</h2>
+                    <h2 className="mt-2 text-lg font-semibold text-white/88">Write the cover letter in the same workflow</h2>
                     <p className="mt-2 text-sm leading-relaxed text-white/54">
-                      Keep the resume and cover letter together. Start from your existing resume, target the current role, and avoid managing this like a separate product.
+                      Start from your resume, target the current role, and keep the letter tied to the same job workspace.
                     </p>
                   </div>
                   <div className="flex flex-col items-start gap-2">

@@ -1391,9 +1391,9 @@ function LibraryWorkspace() {
         <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
           Library
         </div>
-        <h3 className="mt-2 text-base font-semibold text-white/86">Keep past posts and extra LinkedIn checks in one quiet place</h3>
+        <h3 className="mt-2 text-base font-semibold text-white/86">Keep your best LinkedIn work in one place</h3>
         <p className="mt-2 text-sm leading-relaxed text-white/52">
-          Reuse the strongest post ideas here, then open the extra analysis tools only when you want a deeper check.
+          Reuse strong posts here, then open the extra checks only when you want them.
         </p>
       </GlassCard>
 

@@ -287,7 +287,7 @@ function BooleanSearchBuilder({ searches, onGenerate }: { searches: BooleanSearc
         <h3 className="text-[15px] font-semibold text-white/85">Search Strings</h3>
       </div>
       <p className="text-[12px] text-white/35 mb-4">
-          AI-generated search strings for the platforms you use when the default discovery view is not enough.
+        AI-generated search strings for the sites you use when the main discovery view is not enough.
       </p>
 
       {searches.length === 0 ? (
@@ -852,7 +852,7 @@ export function JobCommandCenterRoom({
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-white/90">Job Search</h1>
         <p className="text-[13px] text-white/40">
-          Keep the daily work in one place, then open Discover or Pipeline only when you need them.
+          Start in Today for active work. Use Discover when you want new options, and Pipeline when you want the full list.
         </p>
       </div>
 
@@ -861,9 +861,9 @@ export function JobCommandCenterRoom({
         <div className="rounded-xl border border-[#98b3ff]/14 bg-[#98b3ff]/[0.05] px-4 py-3">
           <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="text-sm font-semibold text-white/84">Today is the daily working view</div>
+              <div className="text-sm font-semibold text-white/84">Today is where daily work happens</div>
               <div className="mt-1 text-xs leading-relaxed text-white/48">
-                Use Today for follow-ups and active work. Open Discover to find roles and Pipeline to manage the longer list.
+                Handle follow-ups and active applications here. Use Discover to find roles and Pipeline to manage the broader list.
               </div>
             </div>
             {activeTab !== 'daily-ops' && (
@@ -981,7 +981,7 @@ export function JobCommandCenterRoom({
                 <div>
                   <div className="text-sm font-semibold text-white/82">Advanced search</div>
                   <div className="mt-1 text-xs leading-relaxed text-white/45">
-                    Use boolean strings and search setup only when you want more control over discovery.
+                    Open these when you want more control over search strings and filters.
                   </div>
                 </div>
                 <GlassButton variant="ghost" onClick={() => setShowSearchTools(false)}>
@@ -1000,7 +1000,7 @@ export function JobCommandCenterRoom({
                     <div>
                       <div className="text-sm font-semibold text-white/82">Search filters</div>
                       <div className="mt-1 text-xs leading-relaxed text-white/45">
-                        Adjust titles, locations, and work-style preferences only when you need to.
+                        Tune titles, locations, and work style here.
                       </div>
                     </div>
                     <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(false)}>
@@ -1015,7 +1015,7 @@ export function JobCommandCenterRoom({
                     <div>
                       <div className="text-sm font-semibold text-white/82">Search filters</div>
                       <div className="mt-1 text-xs leading-relaxed text-white/45">
-                        Need to adjust titles, locations, or work-style preferences? Open setup only when you want to tune the search.
+                        Open this when you want to tune titles, locations, or work style.
                       </div>
                     </div>
                     <GlassButton variant="ghost" onClick={() => setShowSearchPreferences(true)}>
@@ -1031,7 +1031,7 @@ export function JobCommandCenterRoom({
                 <div>
                   <div className="text-sm font-semibold text-white/82">Advanced search</div>
                   <div className="mt-1 text-xs leading-relaxed text-white/45">
-                    Need boolean strings or custom search setup? Open the extra tools only when you want to go deeper.
+                    Open this when you want boolean strings or deeper search controls.
                   </div>
                 </div>
                 <GlassButton variant="ghost" onClick={() => setShowSearchTools(true)}>

@@ -79,7 +79,7 @@ export function CareerProfileRoom({
   const liveReflection = useMemo(() => {
     if (!currentQuestion) return '';
     if (currentResponse.trim().length === 0) {
-      return currentQuestion.purpose || `This answer helps the AI sharpen your ${formatCategory(currentQuestion.category)} story before it writes anything else.`;
+      return currentQuestion.purpose || `This answer helps sharpen your ${formatCategory(currentQuestion.category)} story before the rest of the workspace uses it.`;
     }
 
     const preview = clipText(currentResponse, 120);
@@ -111,7 +111,7 @@ export function CareerProfileRoom({
                 <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
                   Career Profile Strategist
                 </div>
-                <h1 className="mt-1 text-lg font-semibold text-white/90">One shared profile that every agent reads</h1>
+                <h1 className="mt-1 text-lg font-semibold text-white/90">Build the story every room works from</h1>
               </div>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-white/55">
@@ -202,7 +202,7 @@ export function CareerProfileRoom({
                   One question, one confirmation, one stronger profile update
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/58">
-                  The goal here is not to race through a form. Treat each answer like shared source-of-truth: the AI asks the next best question, reflects back what it heard, and lets you confirm or refine it before the platform uses it everywhere else.
+                  The goal is not to race through a form. Answer carefully, watch the reflection update, and confirm the wording before the rest of the workspace reuses it.
                 </p>
               </div>
               <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-white/45">
@@ -218,7 +218,7 @@ export function CareerProfileRoom({
                 </div>
                 <p className="mt-3 text-base leading-relaxed text-white/88">{currentQuestion.question}</p>
                 <p className="mt-3 text-sm leading-relaxed text-white/58">
-                  {currentQuestion.purpose || `This answer sharpens your ${formatCategory(currentQuestion.category)} story so every tool can work from the same truthful context instead of guessing.`}
+                  {currentQuestion.purpose || `This answer sharpens your ${formatCategory(currentQuestion.category)} story so the rest of the workspace can work from clearer context instead of guessing.`}
                 </p>
               </div>
 
@@ -352,7 +352,7 @@ export function CareerProfileRoom({
               <h3 className="text-sm font-semibold text-white/86">Live profile preview</h3>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-white/54">
-              This is the story the platform is building while you answer. You should be able to see what the AI thinks it knows before it starts writing on your behalf.
+              This is the story taking shape as you answer. Review it now so anything off-target gets fixed before it shows up elsewhere.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -396,7 +396,7 @@ export function CareerProfileRoom({
                 <div className="text-[11px] font-medium uppercase tracking-widest text-white/40">Still needs clarity</div>
                 <div className="mt-3 space-y-2">
                   {(summary.focusAreas.length > 0 ? summary.focusAreas : [
-                    'Once this intake is complete, the platform will use it to drive Resume Builder, LinkedIn, Interview Prep, and Job Search.',
+                    'Finish the intake so Resume Builder, LinkedIn, Interview Prep, and Job Search all have the context they need.',
                   ]).slice(0, 3).map((item) => (
                     <div key={item} className="rounded-xl border border-white/[0.06] bg-black/15 px-3 py-2 text-sm leading-6 text-white/60">
                       {item}
@@ -424,10 +424,10 @@ export function CareerProfileRoom({
           <GlassCard className="p-6">
             <div className="flex items-center gap-2">
               <Brain size={16} className="text-[#98b3ff]" />
-              <h2 className="text-sm font-semibold text-white/85">What the platform currently knows about you</h2>
+              <h2 className="text-sm font-semibold text-white/85">Your current Career Profile</h2>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-white/54">
-              This is the shared profile the rest of the workspace reads before it writes, scores, or coaches. Review it whenever your target role, proof, or story gets stronger.
+              This is the profile the workspace uses before it writes, scores, or coaches. Review it whenever your target role, proof, or story gets stronger.
             </p>
             <div className="mt-4 grid gap-3 lg:grid-cols-4">
               {profile.completeness.sections.map((section) => (
@@ -594,7 +594,7 @@ function buildInterpretationPoints(question: AssessmentQuestion, response: strin
   return [
     `Carry forward this proof theme: "${clipText(response, 96)}"`,
     question.purpose || `Use this answer to reduce guesswork around your ${formatCategory(question.category)} profile.`,
-    'If the wording still feels off, revise it now. Once confirmed, the rest of the platform will treat it as part of your shared story.',
+    'If the wording still feels off, revise it now. Once confirmed, the rest of the workspace will treat it as part of your shared story.',
   ];
 }
 

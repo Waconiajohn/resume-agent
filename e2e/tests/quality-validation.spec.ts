@@ -76,7 +76,7 @@ async function captureOptionalCardTextByHeading(page: import('@playwright/test')
 
 async function openResumeBuilder(page: import('@playwright/test').Page) {
   await page.goto('/workspace?room=resume');
-  await expect(page.getByRole('heading', { name: /One home for tailored resumes and your long-term base resume/i })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: /Your home for tailored resumes/i })).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: /New Tailored Resume/i }).first().click();
   await expect(page.locator('#v2-resume')).toBeVisible({ timeout: 15_000 });
 }

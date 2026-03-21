@@ -9,7 +9,7 @@ test.describe('workspace guided flows', () => {
   test('reopens a saved resume job record and runs Final Review before export acknowledgement', async ({ page }) => {
     await page.goto('/workspace?room=resume', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /One home for tailored resumes and your long-term base resume/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Your home for tailored resumes/i })).toBeVisible();
     await expect(page.getByText('TechCorp').first()).toBeVisible();
     await expect(page.getByText('VP Operations').first()).toBeVisible();
     await expect(page.getByText('Interviewing').first()).toBeVisible();
@@ -126,7 +126,7 @@ test.describe('workspace guided flows', () => {
   test('redirects legacy personal-brand room links into Career Profile', async ({ page }) => {
     await page.goto('/workspace?room=personal-brand', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Build the story every room works from/i })).toBeVisible();
     await expect(page).toHaveURL(/room=personal-brand|room=career-profile/);
   });
 });

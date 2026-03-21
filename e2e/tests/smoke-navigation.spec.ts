@@ -1591,7 +1591,7 @@ async function waitForAuthenticatedShell(page: Page): Promise<void> {
 async function assertResumeBuilderVisible(page: Page, timeout = 8_000): Promise<void> {
   await expect(
     page.getByRole('heading', {
-      name: /One home for tailored resumes and your long-term base resume/i,
+      name: /Your home for tailored resumes/i,
     }),
   ).toBeVisible({ timeout });
 }
@@ -1904,7 +1904,7 @@ test.describe('Smoke: header navigation', () => {
     await page.getByRole('button', { name: /^Manage$/i }).click();
 
     await expect(page).toHaveURL(/\/workspace\?room=career-profile/, { timeout: 5_000 });
-    await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Build the story every room works from/i })).toBeVisible({
       timeout: 8_000,
     });
   });
@@ -2067,7 +2067,7 @@ test.describe('Smoke: Workspace core rooms', () => {
   test('Career Profile room renders', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=career-profile');
     await assertNoCrash(sharedPage);
-    await expect(sharedPage.getByRole('heading', { name: 'One shared profile that every agent reads' })).toBeVisible({
+    await expect(sharedPage.getByRole('heading', { name: 'Build the story every room works from' })).toBeVisible({
       timeout: 8_000,
     });
   });
@@ -2101,7 +2101,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await expect(sharedPage.getByRole('button', { name: /Reset Assessment State/i })).toBeVisible({ timeout: 10_000 });
     await expect(
-      sharedPage.getByRole('heading', { name: /What the platform currently knows about you/i }),
+      sharedPage.getByRole('heading', { name: /Your current Career Profile/i }),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -2111,7 +2111,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: /Open Career Profile|Review Career Profile/i }).click();
     await expect(sharedPage).toHaveURL(/room=career-profile/, { timeout: 8_000 });
-    await expect(sharedPage.getByRole('heading', { name: 'One shared profile that every agent reads' })).toBeVisible({
+    await expect(sharedPage.getByRole('heading', { name: 'Build the story every room works from' })).toBeVisible({
       timeout: 8_000,
     });
 
@@ -2137,7 +2137,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await expect(
       sharedPage.getByRole('heading', {
-        name: /Write the letter inside the same job-specific workflow/i,
+        name: /Write the cover letter in the same workflow/i,
       }),
     ).toBeVisible({ timeout: 8_000 });
     await expect(sharedPage.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible({
@@ -2288,7 +2288,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await expect(sharedPage).toHaveURL(/\/workspace\?room=resume/, { timeout: 8_000 });
     await expect(
-      sharedPage.getByRole('heading', { name: /One home for tailored resumes and your long-term base resume/i }),
+      sharedPage.getByRole('heading', { name: /Your home for tailored resumes/i }),
     ).toBeVisible({ timeout: 8_000 });
   });
 
@@ -2434,7 +2434,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByRole('button', { name: /Open 30-60-90 Day Plan/i })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: 'Follow-up', exact: true }).click();
-    await expect(sharedPage.getByText(/Keep debriefs, thank-you notes, and offer-stage negotiation prep tied to the same story/i)).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText(/Keep debriefs, thank-you notes, and negotiation prep tied to the same story/i)).toBeVisible({ timeout: 8_000 });
   });
 
   test('Interview Prep generates a prep report in the signed-in shell', async () => {
@@ -2510,7 +2510,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await assertNoCrash(sharedPage);
 
     await sharedPage.getByRole('button', { name: 'Follow-up', exact: true }).click();
-    await expect(sharedPage.getByText(/Keep debriefs, thank-you notes, and offer-stage negotiation prep tied to the same story/i)).toBeVisible({ timeout: 8_000 });
+    await expect(sharedPage.getByText(/Keep debriefs, thank-you notes, and negotiation prep tied to the same story/i)).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: /Open Thank You Note/i }).first().click();
     await expect(sharedPage.getByRole('heading', { name: /Thank You Note Writer/i })).toBeVisible({ timeout: 8_000 });
