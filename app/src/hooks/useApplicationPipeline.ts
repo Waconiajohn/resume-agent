@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeNumber, safeString } from '@/lib/safe-cast';
 
 export type PipelineStage =
   | 'saved'
@@ -46,6 +47,108 @@ interface ApplicationPipelineState {
   dueActions: DueAction[];
   loading: boolean;
   error: string | null;
+}
+
+const VALID_STAGES: PipelineStage[] = [
+  'saved',
+  'researching',
+  'applied',
+  'screening',
+  'interviewing',
+  'offer',
+  'closed_won',
+  'closed_lost',
+];
+
+function sanitizeStage(value: unknown): PipelineStage | null {
+  return VALID_STAGES.includes(value as PipelineStage) ? (value as PipelineStage) : null;
+}
+
+function safeOptionalString(value: unknown): string | undefined {
+  const normalized = safeString(value).trim();
+  return normalized ? normalized : undefined;
+}
+
+function sanitizeStageHistory(value: unknown): Array<{ stage: string; at: string }> {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
+    .map((entry) => ({
+      stage: safeString(entry.stage).trim(),
+      at: safeString(entry.at).trim(),
+    }))
+    .filter((entry) => entry.stage && entry.at);
+}
+
+function sanitizeApplication(value: unknown): Application | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const id = safeString(candidate.id).trim();
+  const roleTitle = safeString(candidate.role_title).trim();
+  const companyName = safeString(candidate.company_name).trim();
+  const stage = sanitizeStage(candidate.stage);
+  const source = safeString(candidate.source).trim();
+  const createdAt = safeString(candidate.created_at).trim();
+  const updatedAt = safeString(candidate.updated_at).trim();
+  if (!id || !roleTitle || !companyName || !stage || !source || !createdAt || !updatedAt) return null;
+
+  const score = candidate.score == null ? undefined : safeNumber(candidate.score);
+
+  return {
+    id,
+    role_title: roleTitle,
+    company_name: companyName,
+    company_id: safeOptionalString(candidate.company_id),
+    stage,
+    source,
+    url: safeOptionalString(candidate.url),
+    applied_date: safeOptionalString(candidate.applied_date),
+    last_touch_date: safeOptionalString(candidate.last_touch_date),
+    next_action: safeOptionalString(candidate.next_action),
+    next_action_due: safeOptionalString(candidate.next_action_due),
+    resume_version_id: safeOptionalString(candidate.resume_version_id),
+    notes: safeOptionalString(candidate.notes),
+    stage_history: sanitizeStageHistory(candidate.stage_history),
+    score,
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
+function sanitizeApplications(value: unknown): Application[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((application) => sanitizeApplication(application))
+    .filter((application): application is Application => application !== null);
+}
+
+function sanitizeDueAction(value: unknown): DueAction | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const id = safeString(candidate.id).trim();
+  const roleTitle = safeString(candidate.role_title).trim();
+  const companyName = safeString(candidate.company_name).trim();
+  const nextAction = safeString(candidate.next_action).trim();
+  const nextActionDue = safeString(candidate.next_action_due).trim();
+  const stage = sanitizeStage(candidate.stage);
+  if (!id || !roleTitle || !companyName || !nextAction || !nextActionDue || !stage) return null;
+
+  return {
+    id,
+    role_title: roleTitle,
+    company_name: companyName,
+    next_action: nextAction,
+    next_action_due: nextActionDue,
+    stage,
+  };
+}
+
+function sanitizeDueActions(value: unknown): DueAction[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((action) => sanitizeDueAction(action))
+    .filter((action): action is DueAction => action !== null);
 }
 
 async function getAuthHeader(): Promise<Record<string, string> | null> {
@@ -110,7 +213,7 @@ export function useApplicationPipeline() {
         if (mountedRef.current) setState((prev) => ({ ...prev, applications: [], loading: false }));
         return;
       }
-      const data = json.applications ?? [];
+      const data = sanitizeApplications(json.applications);
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, applications: data, loading: false }));
       }
@@ -137,7 +240,7 @@ export function useApplicationPipeline() {
 
       const json = await res.json() as { actions?: DueAction[]; feature_disabled?: boolean };
       if (json.feature_disabled) return;
-      const data = json.actions ?? [];
+      const data = sanitizeDueActions(json.actions);
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, dueActions: data }));
       }
@@ -160,7 +263,8 @@ export function useApplicationPipeline() {
 
         if (!res.ok) return null;
 
-        const created = (await res.json()) as Application;
+        const created = sanitizeApplication(await res.json());
+        if (!created) return null;
         if (mountedRef.current) {
           setState((prev) => ({
             ...prev,
@@ -189,7 +293,8 @@ export function useApplicationPipeline() {
 
         if (!res.ok) return null;
 
-        const updated = (await res.json()) as Application;
+        const updated = sanitizeApplication(await res.json());
+        if (!updated) return null;
         if (mountedRef.current) {
           setState((prev) => ({
             ...prev,

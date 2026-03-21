@@ -145,6 +145,57 @@ describe('useApplicationPipeline', () => {
     expect(result.current.error).toContain('authenticated');
   });
 
+  it('fetchApplications sanitizes malformed application payloads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            applications: [
+              {
+                id: 'app-1',
+                role_title: 'VP Operations',
+                company_name: 'Acme Corp',
+                stage: 'applied',
+                source: 'linkedin',
+                stage_history: [{ stage: 'saved', at: '2026-03-01T00:00:00Z' }, { stage: '', at: '' }],
+                score: '91',
+                created_at: '2026-03-01T00:00:00Z',
+                updated_at: '2026-03-02T00:00:00Z',
+              },
+              {
+                id: '',
+                role_title: 'Broken',
+                company_name: 'Missing Id',
+                stage: 'applied',
+                source: 'linkedin',
+                stage_history: [],
+                created_at: '2026-03-01T00:00:00Z',
+                updated_at: '2026-03-01T00:00:00Z',
+              },
+            ],
+          }),
+      }),
+    );
+
+    const { result } = renderHook(() => useApplicationPipeline());
+
+    await act(async () => {
+      await result.current.fetchApplications();
+    });
+
+    expect(result.current.applications).toHaveLength(1);
+    expect(result.current.applications[0]).toMatchObject({
+      id: 'app-1',
+      score: 91,
+      stage: 'applied',
+    });
+    expect(result.current.applications[0].stage_history).toEqual([
+      { stage: 'saved', at: '2026-03-01T00:00:00Z' },
+    ]);
+  });
+
   it('moveToStage applies optimistic update immediately', async () => {
     const app = makeApplication({ id: 'app-1', stage: 'saved' });
     vi.stubGlobal(
@@ -248,6 +299,26 @@ describe('useApplicationPipeline', () => {
     expect(result.current.applications[0].id).toBe('new-app');
   });
 
+  it('createApplication returns null when the API payload is malformed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 'broken-app', role_title: 'COO' }),
+      }),
+    );
+
+    const { result } = renderHook(() => useApplicationPipeline());
+
+    let returned: Application | null = makeApplication();
+    await act(async () => {
+      returned = await result.current.createApplication({ role_title: 'COO' });
+    });
+
+    expect(returned).toBeNull();
+    expect(result.current.applications).toEqual([]);
+  });
+
   it('createApplication returns null on API failure', async () => {
     vi.stubGlobal(
       'fetch',
@@ -326,6 +397,53 @@ describe('useApplicationPipeline', () => {
     });
 
     expect(result.current.applications[0].role_title).toBe('SVP Operations');
+  });
+
+  it('fetchDueActions sanitizes malformed action payloads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            actions: [
+              {
+                id: 'due-1',
+                role_title: 'VP Operations',
+                company_name: 'Acme Corp',
+                next_action: 'Send follow-up',
+                next_action_due: '2026-03-25',
+                stage: 'interviewing',
+              },
+              {
+                id: 'due-2',
+                role_title: '',
+                company_name: 'Broken Corp',
+                next_action: 'Call recruiter',
+                next_action_due: '2026-03-26',
+                stage: 'interviewing',
+              },
+            ],
+          }),
+      }),
+    );
+
+    const { result } = renderHook(() => useApplicationPipeline());
+
+    await act(async () => {
+      await result.current.fetchDueActions();
+    });
+
+    expect(result.current.dueActions).toEqual([
+      {
+        id: 'due-1',
+        role_title: 'VP Operations',
+        company_name: 'Acme Corp',
+        next_action: 'Send follow-up',
+        next_action_due: '2026-03-25',
+        stage: 'interviewing',
+      },
+    ]);
   });
 
   it('all PipelineStage values are valid', () => {
