@@ -21,7 +21,6 @@ import {
   Search,
   Eye,
   Zap,
-  Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback } from 'react';
@@ -1475,7 +1474,6 @@ function parseReportSections(report: string): {
 export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   const optimizer = useLinkedInOptimizer();
   const [activeTab, setActiveTab] = useState<StudioTab>('composer');
-  const [showUtilityTabs, setShowUtilityTabs] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
 
   const handleWritePostFromCalendar = useCallback(() => {
@@ -1516,7 +1514,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
     { id: 'editor', label: 'Profile', icon: PenLine },
     { id: 'analytics', label: 'Results', icon: BarChart3 },
   ];
-  const utilityTabs: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
+  const utilityActions: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
     { id: 'calendar', label: 'Content Plan', icon: Calendar },
     { id: 'library', label: 'Library', icon: BookOpen },
   ];
@@ -1529,7 +1527,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">LinkedIn</h1>
           <p className="text-[13px] text-white/40">
-            Write posts, sharpen your profile, and keep the supporting content work tucked behind the main flow.
+            Keep the main work focused on writing and profile quality. Content planning and saved ideas stay quieter in the background.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -1543,7 +1541,25 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               Profile Quality: {optimizer.qualityScore}%
             </div>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+          {utilityActions.map((action) => {
+            const Icon = action.icon;
+            const isActive = activeTab === action.id;
+            return (
+              <GlassButton
+                key={action.id}
+                variant="ghost"
+                onClick={() => setActiveTab(action.id)}
+                className={cn(
+                  'flex items-center gap-1.5',
+                  isActive ? 'border-[#98b3ff]/22 bg-[#98b3ff]/[0.08] text-white/82' : undefined,
+                )}
+              >
+                <Icon size={13} />
+                {action.label}
+              </GlassButton>
+            );
+          })}
           <GlassButton
             onClick={handleOptimize}
             disabled={isOptimizerRunning}
@@ -1589,7 +1605,6 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               type="button"
               onClick={() => {
                 setActiveTab(tab.id);
-                setShowUtilityTabs(false);
               }}
               className={cn(
                 'flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors rounded-t-lg border-b-2 -mb-px',
@@ -1603,45 +1618,13 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             </button>
           );
         })}
-          <button
-            type="button"
-            onClick={() => setShowUtilityTabs((value) => !value)}
-            className={cn(
-              'ml-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-              utilityTabActive || showUtilityTabs
-                ? 'bg-white/[0.05] text-white/72'
-                : 'text-white/40 hover:bg-white/[0.03] hover:text-white/62',
-            )}
-          >
-            <Wrench size={13} className="flex-shrink-0" />
-            More
-          </button>
         </div>
-
-        {(showUtilityTabs || utilityTabActive) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {utilityTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setShowUtilityTabs(true);
-                  }}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-                    activeTab === tab.id
-                      ? 'border-[#98b3ff]/22 bg-[#98b3ff]/[0.08] text-white/82'
-                      : 'border-white/[0.08] text-white/48 hover:text-white/68',
-                  )}
-                >
-                  <Icon size={12} className="flex-shrink-0" />
-                  {tab.label}
-                </button>
-              );
-            })}
+        {utilityTabActive && (
+          <div className="flex items-center gap-2 text-xs text-white/45">
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
+              Secondary workspace
+            </span>
+            <span>Use this when you want planning or saved-post support, then go back to the main LinkedIn flow.</span>
           </div>
         )}
       </div>

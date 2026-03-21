@@ -835,38 +835,24 @@ export function JobCommandCenterRoom({
         </p>
       </div>
 
-      {/* Quick stats bar */}
-      <div className="flex items-center gap-6 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3 text-[13px]">
-        <span className="text-white/40">
-          Active:{' '}
-          <span className="font-semibold text-white/75">{dailyOps.activeCount}</span>
-        </span>
-        <span className="text-white/20">|</span>
-        <span className="text-white/40">
-          Interviewing:{' '}
-          <span className="font-semibold text-[#98b3ff]">{dailyOps.interviewCount}</span>
-        </span>
-        <span className="text-white/20">|</span>
-        <span className="text-white/40">
-          Offers:{' '}
-          <span className="font-semibold text-[#b5dec2]">{dailyOps.offerCount}</span>
-        </span>
-        <span className="text-white/20">|</span>
-        <span className="text-white/40">
-          Due:{' '}
-          <span
-            className={cn(
-              'font-semibold',
-              dailyOps.dueActions.length > 0 ? 'text-[#f0d99f]' : 'text-white/75',
-            )}
-          >
-            {dailyOps.dueActions.length}
-          </span>
-        </span>
-      </div>
-
       {/* Tab bar */}
-      <div className="flex items-center gap-1 border-b border-white/[0.07]">
+      <div className="space-y-3 border-b border-white/[0.07] pb-3">
+        <div className="rounded-xl border border-[#98b3ff]/14 bg-[#98b3ff]/[0.05] px-4 py-3">
+          <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-white/84">Today is the daily working view</div>
+              <div className="mt-1 text-xs leading-relaxed text-white/48">
+                Use Today for follow-ups and active work. Open Discover to find roles and Pipeline to manage the longer list.
+              </div>
+            </div>
+            {activeTab !== 'daily-ops' && (
+              <GlassButton variant="ghost" onClick={() => setActiveTab('daily-ops')}>
+                Back to Today
+              </GlassButton>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
         {(
           [
             { id: 'daily-ops', label: 'Today', Icon: Clock },
@@ -882,13 +868,16 @@ export function JobCommandCenterRoom({
               'flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors border-b-2 -mb-px',
               activeTab === id
                 ? 'text-white/90 border-[#98b3ff]'
-                : 'text-white/35 border-transparent hover:text-white/60',
+                : id === 'daily-ops'
+                  ? 'text-white/55 border-transparent hover:text-white/70'
+                  : 'text-white/30 border-transparent hover:text-white/55',
             )}
           >
             <Icon size={14} />
             {label}
           </button>
         ))}
+        </div>
       </div>
 
       {/* Pipeline tab — display:none preserves state */}
@@ -1036,6 +1025,35 @@ export function JobCommandCenterRoom({
       {/* Daily Ops tab — display:none preserves state */}
       <div style={{ display: activeTab === 'daily-ops' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-6 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-3 text-[13px]">
+            <span className="text-white/40">
+              Active:{' '}
+              <span className="font-semibold text-white/75">{dailyOps.activeCount}</span>
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="text-white/40">
+              Interviewing:{' '}
+              <span className="font-semibold text-[#98b3ff]">{dailyOps.interviewCount}</span>
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="text-white/40">
+              Offers:{' '}
+              <span className="font-semibold text-[#b5dec2]">{dailyOps.offerCount}</span>
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="text-white/40">
+              Due:{' '}
+              <span
+                className={cn(
+                  'font-semibold',
+                  dailyOps.dueActions.length > 0 ? 'text-[#f0d99f]' : 'text-white/75',
+                )}
+              >
+                {dailyOps.dueActions.length}
+              </span>
+            </span>
+          </div>
+
           <DailyOpsSection
             data={dailyOps}
             onPromoteJob={handlePromoteRadarJob}

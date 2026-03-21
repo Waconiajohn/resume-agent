@@ -2136,7 +2136,6 @@ test.describe('Smoke: Workspace core rooms', () => {
     await sharedPage.getByRole('button', { name: 'Results', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: /Platform Metrics/i })).toBeVisible({ timeout: 8_000 });
 
-    await sharedPage.getByRole('button', { name: 'More', exact: true }).click();
     await sharedPage.getByRole('button', { name: 'Content Plan', exact: true }).click();
     await expect(sharedPage.getByText(/Content Calendar/i).first()).toBeVisible({ timeout: 8_000 });
   });

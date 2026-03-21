@@ -66,7 +66,6 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: 'Results', exact: true }).click();
     await expect(page.getByRole('heading', { name: /Profile Score/i })).toBeVisible();
 
-    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'Content Plan', exact: true }).click();
     await expect(page.getByRole('button', { name: /Generate Calendar/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Something went wrong/i })).toHaveCount(0);

@@ -76,13 +76,13 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByText('Write')).toBeInTheDocument();
     expect(screen.getByText('Profile')).toBeInTheDocument();
     expect(screen.getByText('Results')).toBeInTheDocument();
-    expect(screen.getByText('More')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Content Plan$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Library$/i })).toBeInTheDocument();
   });
 
   it('renders content calendar when Content Plan tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    fireEvent.click(screen.getByText('More'));
-    fireEvent.click(screen.getByText('Content Plan'));
+    fireEvent.click(screen.getByRole('button', { name: /^Content Plan$/i }));
     // ContentCalendar in idle state renders "Generate Content Calendar"
     expect(screen.getByText('Generate Content Calendar')).toBeInTheDocument();
   });
