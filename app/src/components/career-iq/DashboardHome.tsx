@@ -88,16 +88,6 @@ function HomeGuideCard({
           onClick: () => onNavigateRoom?.('resume'),
         };
 
-  const secondaryAction = dashboardState === 'new-user'
-    ? {
-        label: 'Open Job Search',
-        onClick: () => onNavigateRoom?.('jobs'),
-      }
-    : {
-        label: 'Open Job Search',
-        onClick: () => onNavigateRoom?.('jobs'),
-      };
-
   const signalSummary = [
     `Clarity: ${signals.clarity}`,
     `Alignment: ${signals.alignment}`,
@@ -129,13 +119,6 @@ function HomeGuideCard({
               className="rounded-xl border border-[#98b3ff]/28 bg-[#98b3ff]/15 px-4 py-2.5 text-sm font-medium text-[#d8e2ff] transition-colors hover:bg-[#98b3ff]/22"
             >
               {primaryAction.label}
-            </button>
-            <button
-              type="button"
-              onClick={secondaryAction.onClick}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/75 transition-colors hover:bg-white/[0.08] hover:text-white/92"
-            >
-              {secondaryAction.label}
             </button>
           </div>
         </div>
@@ -181,8 +164,8 @@ function HomeGuideCard({
         <StepCard
           icon={Search}
           title="Job Search"
-          description="Track active roles, interview stages, and what should happen next in your search."
-          actionLabel="Open job tracker"
+          description="Track active roles, discover new ones, and keep your next moves moving in one place."
+          actionLabel="Open Job Search"
           onClick={() => onNavigateRoom?.('jobs')}
           className="border-[#b5dec2]/18 bg-[#b5dec2]/[0.06]"
         />

@@ -2108,7 +2108,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     });
 
     await openWorkspaceRoom(sharedPage, '/workspace');
-    await sharedPage.getByRole('button', { name: /Open job tracker/i }).click();
+    await sharedPage.getByRole('button', { name: /Open Job Search/i }).click();
     await expect(sharedPage).toHaveURL(/room=jobs/, { timeout: 8_000 });
     await expect(sharedPage.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible({
       timeout: 8_000,
@@ -2206,10 +2206,10 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: 'Radar', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Discover', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: /Radar Search/i })).toBeVisible({ timeout: 8_000 });
 
-    await sharedPage.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Today', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: 'Daily Ops', exact: true })).toBeVisible({ timeout: 8_000 });
   });
 
@@ -2217,7 +2217,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: 'Radar', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Discover', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: /Radar Search/i })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: /Run Job Finder/i }).click();
@@ -2233,7 +2233,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: 'Radar', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Discover', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: /Radar Search/i })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: /Run Job Finder/i }).click();
@@ -2247,11 +2247,11 @@ test.describe('Smoke: Workspace core rooms', () => {
     ).toBeVisible({ timeout: 8_000 });
   });
 
-  test('Job Search radar scoring feeds Daily Ops and promote sends a role into the pipeline in the signed-in shell', async () => {
+  test('Job Search discover scoring feeds Today and promote sends a role into the pipeline in the signed-in shell', async () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: 'Radar', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Discover', exact: true }).click();
     await sharedPage.getByPlaceholder('Job title, keywords...').fill('VP Operations');
     await sharedPage.getByPlaceholder('Location or Remote').fill('Remote');
     await sharedPage.getByRole('button', { name: /^Search$/i }).click();
@@ -2262,7 +2262,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await sharedPage.getByRole('button', { name: /Score Matches/i }).click();
     await expect(sharedPage.getByText('92%')).toBeVisible({ timeout: 8_000 });
 
-    await sharedPage.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Today', exact: true }).click();
     await expect(sharedPage.locator('span:visible', { hasText: 'Northstar SaaS' }).first()).toBeVisible({ timeout: 8_000 });
     await expect(sharedPage.locator('button:visible', { hasText: 'Promote' })).toHaveCount(2);
 
@@ -2327,7 +2327,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=jobs');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Today', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: 'Application Tracker', exact: true })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage

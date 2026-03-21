@@ -890,8 +890,8 @@ export function JobCommandCenterRoom({
         {(
           [
             { id: 'pipeline', label: 'Pipeline', Icon: Briefcase },
-            { id: 'radar', label: 'Radar', Icon: Search },
-            { id: 'daily-ops', label: 'Daily Ops', Icon: Clock },
+            { id: 'radar', label: 'Discover', Icon: Search },
+            { id: 'daily-ops', label: 'Today', Icon: Clock },
           ] as const
         ).map(({ id, label, Icon }) => (
           <button

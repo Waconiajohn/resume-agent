@@ -16,7 +16,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /One shared profile that every agent reads/i })).toBeVisible();
 
     await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: /Open job tracker/i }).click();
+    await page.getByRole('button', { name: /Open Job Search/i }).click();
     await expect(page).toHaveURL(/room=jobs/);
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
   });
@@ -111,11 +111,11 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText('About Section', { exact: true })).toBeVisible();
   });
 
-  test('Job Search runs Job Finder and keeps Radar and Daily Ops navigable', async ({ page }) => {
+  test('Job Search runs Job Finder and keeps Discover and Today navigable', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Radar', exact: true }).click();
+    await page.getByRole('button', { name: 'Discover', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: /Radar Search/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Smart Matches/i })).toBeVisible();
@@ -126,7 +126,7 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText('ScaleCo')).toBeVisible();
     await expect(page.getByRole('heading', { name: /Boolean Search Builder/i })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Daily Ops', exact: true })).toBeVisible();
     await expect(page.getByText('No scored matches yet. Run a Radar search to surface opportunities.')).toBeVisible();
   });
@@ -135,7 +135,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Radar', exact: true }).click();
+    await page.getByRole('button', { name: 'Discover', exact: true }).click();
     await page.getByRole('button', { name: /Run Job Finder/i }).click();
 
     await expect(page.getByText('Northstar SaaS')).toBeVisible();
@@ -165,11 +165,11 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('heading', { name: /Application Pipeline/i })).toBeVisible();
   });
 
-  test('Job Search radar scoring feeds Daily Ops and promote sends a role into the pipeline', async ({ page }) => {
+  test('Job Search discover scoring feeds Today and promote sends a role into the pipeline', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Radar', exact: true }).click();
+    await page.getByRole('button', { name: 'Discover', exact: true }).click();
 
     await page.getByPlaceholder('Job title, keywords...').fill('VP Operations');
     await page.getByPlaceholder('Location or Remote').fill('Remote');
@@ -181,7 +181,7 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: /Score Matches/i }).click();
     await expect(page.getByText('92%')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
     await expect(page.locator('span:visible', { hasText: 'Northstar SaaS' }).first()).toBeVisible();
     await expect(page.locator('button:visible', { hasText: 'Promote' })).toHaveCount(2);
 
@@ -322,11 +322,11 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByRole('button', { name: 'Not Selected', exact: true })).toHaveClass(/font-medium/);
   });
 
-  test('Job Search Daily Ops tracker analyzes applications and returns a report', async ({ page }) => {
+  test('Job Search Today tracker analyzes applications and returns a report', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Job Search', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Daily Ops', exact: true }).click();
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: 'Application Tracker', exact: true })).toBeVisible();
     await page
