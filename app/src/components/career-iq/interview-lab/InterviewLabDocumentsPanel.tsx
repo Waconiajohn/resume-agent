@@ -30,7 +30,7 @@ export function InterviewLabDocumentsPanel({
     return (
       <GlassCard className="p-5">
         <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-          Interview leave-behinds
+          Leave-behinds
         </div>
         <h2 className="mt-2 text-lg font-semibold text-white/88">Build documents without leaving the lab</h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/54">
@@ -38,7 +38,7 @@ export function InterviewLabDocumentsPanel({
         </p>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Documents</div>
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Leave-behind</div>
             <h3 className="mt-2 text-base font-semibold text-white/84">30-60-90 Day Plan</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/52">
               Use this when you need to show how you would step into the role, sequence the first 30, 60, and 90 days, and create confidence before an offer decision is made.
@@ -54,7 +54,7 @@ export function InterviewLabDocumentsPanel({
           </div>
 
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Next document</div>
+            <div className="text-[11px] font-medium uppercase tracking-widest text-white/38">Follow-up</div>
             <h3 className="mt-2 text-base font-semibold text-white/84">Thank You Note</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/52">
               Follow-up lives in the next section because it happens after the conversation, but it should reinforce the exact same story.
@@ -78,7 +78,7 @@ export function InterviewLabDocumentsPanel({
           className="inline-flex items-center gap-1.5 text-[#98b3ff] text-[13px] font-medium"
         >
           <ArrowLeft size={14} />
-          Back to Documents
+          Back to Leave-behinds
         </button>
         <div className="mt-4 text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
           30-60-90 Day Plan

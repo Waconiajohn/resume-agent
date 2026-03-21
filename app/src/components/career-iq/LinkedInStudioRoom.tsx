@@ -1497,12 +1497,12 @@ export function LinkedInStudioRoom({ signals, careerProfileSummary, onOpenCareer
   const isOptimizerRunning = optimizer.status === 'connecting' || optimizer.status === 'running';
 
   const tabs: { id: StudioTab; label: string; icon: React.ComponentType<{ size: number; className?: string }> }[] = [
-    { id: 'composer', label: 'Post Composer', icon: FileText },
-    { id: 'editor', label: 'Profile Editor', icon: PenLine },
-    { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'library', label: 'Post Library', icon: BookOpen },
-    { id: 'tools', label: 'Tools', icon: Wrench },
+    { id: 'composer', label: 'Write', icon: FileText },
+    { id: 'editor', label: 'Profile', icon: PenLine },
+    { id: 'calendar', label: 'Content Plan', icon: Calendar },
+    { id: 'analytics', label: 'Results', icon: BarChart3 },
+    { id: 'library', label: 'Saved Posts', icon: BookOpen },
+    { id: 'tools', label: 'Extras', icon: Wrench },
   ];
 
   return (
@@ -1526,7 +1526,7 @@ export function LinkedInStudioRoom({ signals, careerProfileSummary, onOpenCareer
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">LinkedIn</h1>
           <p className="text-[13px] text-white/40">
-            Write posts, optimize your profile, plan your content strategy, and track your LinkedIn presence.
+            Write posts, improve your profile, plan content, and review what is working.
           </p>
           <ContextLoadedBadge
             contextTypes={['career_profile', 'positioning_strategy', 'emotional_baseline']}

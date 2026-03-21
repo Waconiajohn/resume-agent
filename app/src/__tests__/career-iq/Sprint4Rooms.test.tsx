@@ -73,22 +73,22 @@ describe('LinkedInStudioRoom', () => {
 
   it('renders tab navigation with all tabs', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    expect(screen.getByText('Post Composer')).toBeInTheDocument();
-    expect(screen.getByText('Profile Editor')).toBeInTheDocument();
-    expect(screen.getByText('Calendar')).toBeInTheDocument();
-    expect(screen.getByText('Analytics')).toBeInTheDocument();
+    expect(screen.getByText('Write')).toBeInTheDocument();
+    expect(screen.getByText('Profile')).toBeInTheDocument();
+    expect(screen.getByText('Content Plan')).toBeInTheDocument();
+    expect(screen.getByText('Results')).toBeInTheDocument();
   });
 
-  it('renders content calendar when Calendar tab is clicked', () => {
+  it('renders content calendar when Content Plan tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    fireEvent.click(screen.getByText('Calendar'));
+    fireEvent.click(screen.getByText('Content Plan'));
     // ContentCalendar in idle state renders "Generate Content Calendar"
     expect(screen.getByText('Generate Content Calendar')).toBeInTheDocument();
   });
 
-  it('renders analytics when Analytics tab is clicked', () => {
+  it('renders analytics when Results tab is clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    fireEvent.click(screen.getByText('Analytics'));
+    fireEvent.click(screen.getByText('Results'));
     // AnalyticsOverview renders content-based metrics from generated posts
     expect(screen.getByText('Platform Metrics')).toBeInTheDocument();
     expect(screen.getByText('Total Posts')).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe('LinkedInStudioRoom', () => {
 
   it('renders profile editor tab content when clicked', () => {
     render(<LinkedInStudioRoom signals={greenSignals} whyMeClarity="test" />);
-    fireEvent.click(screen.getByText('Profile Editor'));
+    fireEvent.click(screen.getByText('Profile'));
     expect(screen.getByText(/Edit Profile/i)).toBeInTheDocument();
   });
 });
@@ -194,19 +194,19 @@ describe('InterviewLabRoom', () => {
 
   it('renders interview history section', () => {
     render(<InterviewLabRoom />);
-    fireEvent.click(screen.getByRole('button', { name: /next steps/i }));
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     expect(screen.getByText('Interview History')).toBeInTheDocument();
   });
 
   it('surfaces the 30-60-90 plan as an interview document action', () => {
     render(<InterviewLabRoom />);
-    fireEvent.click(screen.getByRole('button', { name: /documents/i }));
+    fireEvent.click(screen.getByRole('button', { name: /leave-behinds/i }));
     expect(screen.getByRole('button', { name: /open 30-60-90 day plan/i })).toBeInTheDocument();
   });
 
   it('allows adding a new interview entry', () => {
     render(<InterviewLabRoom />);
-    fireEvent.click(screen.getByRole('button', { name: /next steps/i }));
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     fireEvent.click(screen.getByText('Add Interview'));
     fireEvent.change(screen.getByPlaceholderText('Company'), { target: { value: 'Test Corp' } });
     fireEvent.change(screen.getByPlaceholderText('Role'), { target: { value: 'CTO' } });
@@ -216,7 +216,7 @@ describe('InterviewLabRoom', () => {
 
   it('persists history to localStorage on add', () => {
     render(<InterviewLabRoom />);
-    fireEvent.click(screen.getByRole('button', { name: /next steps/i }));
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     fireEvent.click(screen.getByText('Add Interview'));
     fireEvent.change(screen.getByPlaceholderText('Company'), { target: { value: 'Persist Co' } });
     fireEvent.change(screen.getByPlaceholderText('Role'), { target: { value: 'VP' } });
@@ -233,7 +233,7 @@ describe('InterviewLabRoom', () => {
       { id: '1', company: 'TestCo', role: 'CTO', date: '2026-03-01', outcome: 'pending' },
     ]));
     render(<InterviewLabRoom />);
-    fireEvent.click(screen.getByRole('button', { name: /next steps/i }));
+    fireEvent.click(screen.getByRole('button', { name: /follow-up/i }));
     expect(screen.getByText('TestCo')).toBeInTheDocument();
   });
 });

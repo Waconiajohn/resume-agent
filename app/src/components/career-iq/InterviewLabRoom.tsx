@@ -878,11 +878,11 @@ const LAB_SECTION_COPY: Record<LabSection, { label: string; description: string 
     description: 'Run the mock interview and pressure-test how your answers sound out loud.',
   },
   documents: {
-    label: 'Documents',
+    label: 'Leave-behinds',
     description: 'Create the 30-60-90 plan and other interview leave-behinds when they will help you stand out.',
   },
   follow_up: {
-    label: 'Next Steps',
+    label: 'Follow-up',
     description: 'Handle thank-you notes, offer-stage negotiation prep, and post-interview follow-through in one place.',
   },
 };
@@ -1276,7 +1276,7 @@ export function InterviewLabRoom({
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
           <p className="text-[13px] text-white/40">
-            Organize interview work into prep, practice, documents, and next steps instead of hunting through one crowded screen.
+            Organize interview work into prep, practice, leave-behinds, and follow-up instead of hunting through one crowded screen.
           </p>
           <ContextLoadedBadge
             contextTypes={['career_profile', 'positioning_strategy', 'evidence_item', 'career_narrative', 'emotional_baseline']}
@@ -1416,7 +1416,7 @@ export function InterviewLabRoom({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl">
                 <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-                  Next Steps
+                  Follow-up
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-white/88">Close the loop without breaking the narrative</h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/54">

@@ -2133,10 +2133,10 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: 'Analytics', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Results', exact: true }).click();
     await expect(sharedPage.getByRole('heading', { name: /Platform Metrics/i })).toBeVisible({ timeout: 8_000 });
 
-    await sharedPage.getByRole('button', { name: 'Calendar', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Content Plan', exact: true }).click();
     await expect(sharedPage.getByText(/Content Calendar/i).first()).toBeVisible({ timeout: 8_000 });
   });
 
@@ -2154,7 +2154,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=linkedin');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: 'Profile Editor', exact: true }).click();
+    await sharedPage.getByRole('button', { name: 'Profile', exact: true }).click();
     await sharedPage.getByRole('button', { name: /Edit Profile/i }).click();
 
     await expect(sharedPage.getByRole('heading', { name: 'Headline', exact: true })).toBeVisible({ timeout: 10_000 });
@@ -2383,10 +2383,10 @@ test.describe('Smoke: Workspace core rooms', () => {
     await sharedPage.getByRole('button', { name: /^Practice /i }).click();
     await expect(sharedPage.getByRole('button', { name: /Start Mock Interview/i })).toBeVisible({ timeout: 8_000 });
 
-    await sharedPage.getByRole('button', { name: /^Documents /i }).click();
+    await sharedPage.getByRole('button', { name: /^Leave-behinds /i }).click();
     await expect(sharedPage.getByRole('button', { name: /Open 30-60-90 Day Plan/i })).toBeVisible({ timeout: 8_000 });
 
-    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await sharedPage.getByRole('button', { name: /^Follow-up /i }).click();
     await expect(sharedPage.getByText(/Close the loop without breaking the narrative/i)).toBeVisible({ timeout: 8_000 });
   });
 
@@ -2440,7 +2440,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await sharedPage.getByRole('button', { name: /^Follow-up /i }).click();
     await expect(sharedPage.getByRole('heading', { name: /Interview History/i })).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: /Add Debrief/i }).click();
@@ -2454,7 +2454,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await expect(sharedPage.getByText(/Debrief saved\./i)).toBeVisible({ timeout: 8_000 });
     await sharedPage.getByRole('button', { name: /Back to Interview Prep/i }).click();
 
-    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await sharedPage.getByRole('button', { name: /^Follow-up /i }).click();
     await expect(sharedPage.getByRole('button', { name: /Add Debrief/i })).toContainText('1');
   });
 
@@ -2462,7 +2462,7 @@ test.describe('Smoke: Workspace core rooms', () => {
     await openWorkspaceRoom(sharedPage, '/workspace?room=interview');
     await assertNoCrash(sharedPage);
 
-    await sharedPage.getByRole('button', { name: /^Next Steps /i }).click();
+    await sharedPage.getByRole('button', { name: /^Follow-up /i }).click();
     await expect(sharedPage.getByText(/Close the loop without breaking the narrative/i)).toBeVisible({ timeout: 8_000 });
 
     await sharedPage.getByRole('button', { name: /Open Thank You Note/i }).first().click();

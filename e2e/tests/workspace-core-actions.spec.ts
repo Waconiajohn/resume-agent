@@ -63,10 +63,10 @@ test.describe('workspace core room actions', () => {
     await expect(page.getByText(/Profile Quality: 87%/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Re-optimize/i })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Analytics', exact: true }).click();
+    await page.getByRole('button', { name: 'Results', exact: true }).click();
     await expect(page.getByRole('heading', { name: /Profile Score/i })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+    await page.getByRole('button', { name: 'Content Plan', exact: true }).click();
     await expect(page.getByRole('button', { name: /Generate Calendar/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Something went wrong/i })).toHaveCount(0);
   });
@@ -93,7 +93,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'LinkedIn', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Profile Editor', exact: true }).click();
+    await page.getByRole('button', { name: 'Profile', exact: true }).click();
     await page.getByRole('button', { name: /Edit Profile/i }).click();
 
     await expect(page.getByRole('heading', { name: 'Headline', exact: true })).toBeVisible({ timeout: 10_000 });
@@ -255,10 +255,10 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: /^Practice /i }).click();
     await expect(page.getByRole('button', { name: /Start Mock Interview/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /^Documents /i }).click();
+    await page.getByRole('button', { name: /^Leave-behinds /i }).click();
     await expect(page.getByRole('button', { name: /Open 30-60-90 Day Plan/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /^Next Steps /i }).click();
+    await page.getByRole('button', { name: /^Follow-up /i }).click();
 
     await expect(page.getByText(/Close the loop without breaking the narrative/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Open Thank You Note/i }).first()).toBeVisible();
@@ -275,7 +275,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
-    await page.getByRole('button', { name: /^Next Steps /i }).click();
+    await page.getByRole('button', { name: /^Follow-up /i }).click();
 
     await expect(page.getByRole('heading', { name: /Interview History/i })).toBeVisible();
     await page.getByRole('button', { name: /Add Interview/i }).click();
@@ -299,7 +299,7 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: /Back to Interview Prep/i }).click();
 
     await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
-    await page.getByRole('button', { name: /^Next Steps /i }).click();
+    await page.getByRole('button', { name: /^Follow-up /i }).click();
     await expect(page.getByRole('button', { name: /Add Debrief/i })).toContainText('1');
   });
 
@@ -307,7 +307,7 @@ test.describe('workspace core room actions', () => {
     await page.goto('/workspace?room=interview', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible();
-    await page.getByRole('button', { name: /^Next Steps /i }).click();
+    await page.getByRole('button', { name: /^Follow-up /i }).click();
     await page.getByRole('button', { name: /Add Interview/i }).click();
 
     await page.getByPlaceholder('Company').fill('Summit Health');
