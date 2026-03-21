@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { safeString } from '@/lib/safe-cast';
 
 export interface InterviewerNote {
   name: string;
@@ -32,6 +33,89 @@ interface DebriefState {
   debriefs: InterviewDebrief[];
   loading: boolean;
   error: string | null;
+}
+
+const INTERVIEW_TYPE_SET = new Set<NonNullable<InterviewDebrief['interview_type']>>(['phone', 'video', 'onsite']);
+const IMPRESSION_SET = new Set<NonNullable<InterviewDebrief['overall_impression']>>(['positive', 'neutral', 'negative']);
+
+function normalizeStringArray(value: unknown): string[] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function normalizeInterviewerNotes(value: unknown): InterviewerNote[] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const raw = item as Record<string, unknown>;
+    const name = safeString(raw.name).trim();
+    if (!name) return [];
+    const title = safeString(raw.title).trim();
+    const rapportNotes = safeString(raw.rapport_notes).trim();
+    return [{
+      name,
+      title: title || undefined,
+      topics_discussed: normalizeStringArray(raw.topics_discussed),
+      rapport_notes: rapportNotes || undefined,
+    }];
+  });
+}
+
+function normalizeInterviewDebrief(value: unknown): InterviewDebrief | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+
+  const id = safeString(raw.id).trim();
+  const userId = safeString(raw.user_id).trim();
+  const companyName = safeString(raw.company_name).trim();
+  const roleTitle = safeString(raw.role_title).trim();
+  const interviewDate = safeString(raw.interview_date).trim();
+  const createdAt = safeString(raw.created_at).trim();
+  const updatedAt = safeString(raw.updated_at).trim();
+  if (!id || !userId || !companyName || !roleTitle || !interviewDate || !createdAt || !updatedAt) return null;
+
+  const interviewType = safeString(raw.interview_type).trim();
+  const overallImpression = safeString(raw.overall_impression).trim();
+  const jobApplicationId = safeString(raw.job_application_id).trim();
+  const whatWentWell = safeString(raw.what_went_well).trim();
+  const whatWentPoorly = safeString(raw.what_went_poorly).trim();
+  const companySignals = safeString(raw.company_signals).trim();
+  const followUpActions = safeString(raw.follow_up_actions).trim();
+
+  return {
+    id,
+    user_id: userId,
+    job_application_id: jobApplicationId || undefined,
+    company_name: companyName,
+    role_title: roleTitle,
+    interview_date: interviewDate,
+    interview_type: INTERVIEW_TYPE_SET.has(interviewType as NonNullable<InterviewDebrief['interview_type']>)
+      ? (interviewType as NonNullable<InterviewDebrief['interview_type']>)
+      : undefined,
+    overall_impression: IMPRESSION_SET.has(overallImpression as NonNullable<InterviewDebrief['overall_impression']>)
+      ? (overallImpression as NonNullable<InterviewDebrief['overall_impression']>)
+      : undefined,
+    what_went_well: whatWentWell || undefined,
+    what_went_poorly: whatWentPoorly || undefined,
+    questions_asked: normalizeStringArray(raw.questions_asked),
+    interviewer_notes: normalizeInterviewerNotes(raw.interviewer_notes),
+    company_signals: companySignals || undefined,
+    follow_up_actions: followUpActions || undefined,
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
+function normalizeInterviewDebriefs(value: unknown): InterviewDebrief[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((debrief) => normalizeInterviewDebrief(debrief))
+    .filter((debrief): debrief is InterviewDebrief => debrief !== null);
 }
 
 async function getAuthHeader(): Promise<Record<string, string> | null> {
@@ -86,8 +170,8 @@ export function useInterviewDebriefs() {
         return;
       }
 
-      const json = (await res.json()) as { debriefs?: InterviewDebrief[] } | InterviewDebrief[];
-      const debriefs = Array.isArray(json) ? json : (json.debriefs ?? []);
+      const json = (await res.json()) as { debriefs?: unknown } | unknown[];
+      const debriefs = normalizeInterviewDebriefs(Array.isArray(json) ? json : (json.debriefs ?? []));
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, debriefs, loading: false }));
       }
@@ -119,7 +203,8 @@ export function useInterviewDebriefs() {
 
         if (!res.ok) return null;
 
-        const created = (await res.json()) as InterviewDebrief;
+        const created = normalizeInterviewDebrief(await res.json());
+        if (!created) return null;
         if (mountedRef.current) {
           setState((prev) => ({
             ...prev,
@@ -148,7 +233,8 @@ export function useInterviewDebriefs() {
 
         if (!res.ok) return;
 
-        const updated = (await res.json()) as InterviewDebrief;
+        const updated = normalizeInterviewDebrief(await res.json());
+        if (!updated) return;
         if (mountedRef.current) {
           setState((prev) => ({
             ...prev,
