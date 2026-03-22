@@ -113,12 +113,12 @@ export function ReferralOpportunitiesPanel() {
                 <h4 className="text-sm font-semibold text-white/90 truncate">{opp.job_title}</h4>
                 {opp.match_score != null && (
                   <span className={cn(
-                    'flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    'flex-shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
                     opp.match_score >= 80
-                      ? 'bg-emerald-500/15 text-emerald-400/80 border border-emerald-500/20'
+                      ? 'bg-emerald-500/15 text-emerald-400/80 border-emerald-500/20'
                       : opp.match_score >= 60
-                        ? 'bg-amber-500/15 text-amber-400/80 border border-amber-500/20'
-                        : 'bg-white/[0.06] text-white/50 border border-white/[0.1]',
+                        ? 'bg-amber-500/15 text-amber-400/80 border-amber-500/20'
+                        : 'bg-white/[0.06] text-white/50 border-white/[0.1]',
                   )}>
                     {opp.match_score}% match
                   </span>
@@ -148,14 +148,14 @@ export function ReferralOpportunitiesPanel() {
               {opp.connections.slice(0, 5).map((conn, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] border border-white/[0.08] px-2.5 py-1 text-[11px] text-white/60"
+                  className="inline-flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-medium text-white/60"
                 >
                   {conn.first_name} {conn.last_name}
                   {conn.position && <span className="text-white/30">· {conn.position}</span>}
                 </span>
               ))}
               {opp.connections.length > 5 && (
-                <span className="inline-flex items-center rounded-full bg-white/[0.03] px-2.5 py-1 text-[10px] text-white/35">
+                <span className="inline-flex items-center rounded-md bg-white/[0.03] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
                   +{opp.connections.length - 5} more
                 </span>
               )}

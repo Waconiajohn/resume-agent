@@ -140,7 +140,7 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
               <div className="flex items-center gap-2">
                 <h4 className="truncate text-sm font-medium text-white/90">{match.title}</h4>
                 {match.referralAvailable && (
-                  <span className="shrink-0 rounded-full bg-[#b5dec2]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#b5dec2]/80">
+                  <span className="shrink-0 rounded-md bg-[#b5dec2]/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#b5dec2]/80">
                     Referral
                   </span>
                 )}
@@ -156,9 +156,9 @@ export function JobMatchesList({ accessToken }: JobMatchesListProps) {
 
               {match.matchScore !== null && (
                 <div className="mt-2 flex items-center gap-2">
-                  <div className="h-1 flex-1 rounded-full bg-white/[0.08]">
+                  <div className="h-1 flex-1 bg-white/[0.08]">
                     <div
-                      className="h-full rounded-full bg-[#afc4ff]/60"
+                      className="h-full bg-[#afc4ff]/60"
                       style={{ width: `${Math.min(match.matchScore, 100)}%` }}
                     />
                   </div>

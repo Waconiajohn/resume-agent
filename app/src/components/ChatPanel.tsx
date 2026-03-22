@@ -181,7 +181,7 @@ export function ChatPanel({
           {PHASE_LABELS[currentPhase] ?? currentPhase}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <span className={`h-1.5 w-1.5 rounded-full ${statusDotColor}`} title={lastActivityText ? `Last update ${lastActivityText}` : undefined} />
+          <span className={`h-1.5 w-1.5 ${statusDotColor}`} title={lastActivityText ? `Last update ${lastActivityText}` : undefined} />
           <span className={`text-xs ${statusTextColor}`}>
             {statusLabel}
           </span>
@@ -223,7 +223,7 @@ export function ChatPanel({
               setUserScrolledUp(false);
             }}
             className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex items-center gap-1.5
-              rounded-full border border-white/[0.12] bg-black/60 backdrop-blur-lg px-3 py-1.5
+              rounded-md border border-white/[0.12] bg-black/60 backdrop-blur-lg px-3 py-1.5
               text-[11px] text-white/70 shadow-lg transition-all hover:bg-black/80 hover:text-white/90"
           >
             <ChevronDown className="h-3 w-3" />

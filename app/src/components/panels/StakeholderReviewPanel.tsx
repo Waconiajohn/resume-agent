@@ -113,7 +113,7 @@ export function StakeholderReviewPanel({ data, onPipelineRespond }: StakeholderR
               <ul className="space-y-1.5">
                 {quick_wins.slice(0, 3).map((win, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-[11px] text-white/65">
-                    <span className="mt-0.5 shrink-0 h-1.5 w-1.5 rounded-full bg-[#afc4ff]/50" />
+                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 bg-[#afc4ff]/50" />
                     <span>{win.description}</span>
                     <span className="shrink-0 text-white/35">{win.impact} impact</span>
                   </li>

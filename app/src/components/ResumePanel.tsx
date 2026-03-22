@@ -99,7 +99,7 @@ export function ResumePanel({ resume }: ResumePanelProps) {
         <span className="text-sm font-medium text-white/85">Resume Preview</span>
         <div className="flex items-center gap-2">
           {resume.ats_score > 0 && (
-            <span className="rounded-full border border-white/[0.14] bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-white/78">
+            <span className="rounded-md border border-white/[0.14] bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/78">
               ATS {resume.ats_score}%
             </span>
           )}

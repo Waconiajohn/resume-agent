@@ -71,7 +71,7 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
             </p>
           )}
         </div>
-        <span className="shrink-0 rounded-full bg-white/[0.08] px-2 py-0.5 text-xs font-medium text-white/60">
+        <span className="shrink-0 rounded-md bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">
           {company.connectionCount}
         </span>
       </div>

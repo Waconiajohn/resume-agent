@@ -41,7 +41,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, accent, dim }: StatCardProps) {
   return (
-    <div className="flex flex-col items-center rounded-2xl bg-white/[0.03] px-4 py-3 text-center">
+    <div className="flex flex-col items-center rounded-lg bg-white/[0.03] px-4 py-3 text-center">
       <span
         className={cn('text-2xl font-bold tabular-nums', accent ?? (dim ? 'text-white/40' : 'text-white/90'))}
       >
@@ -71,9 +71,9 @@ function ProgressBar({ scanned, total }: ProgressBarProps) {
           {scanned} / {total}
         </span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+      <div className="h-1.5 w-full overflow-hidden bg-white/[0.08]">
         <div
-          className="h-full rounded-full bg-[#afc4ff]/60 transition-all duration-500"
+          className="h-full bg-[#afc4ff]/60 transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -255,7 +255,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
 
   if (loadingData) {
     return (
-      <GlassCard className="rounded-2xl p-6">
+      <GlassCard className="rounded-xl p-6">
         <div className="space-y-4">
           <div className="h-5 w-40 motion-safe:animate-pulse rounded-lg bg-white/[0.06]" />
           <div className="h-3 w-72 motion-safe:animate-pulse rounded bg-white/[0.04]" />
@@ -270,7 +270,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
   return (
     <div className="space-y-4">
       {/* Header card */}
-      <GlassCard className="rounded-2xl p-6">
+      <GlassCard className="rounded-xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-white/90">Scan for Job Openings</h3>
@@ -335,7 +335,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
 
         {/* Error state */}
         {error && !running && (
-          <div className="mt-4 rounded-xl border border-[#f87171]/20 bg-[#f87171]/5 px-4 py-3">
+          <div className="mt-4 rounded-md border border-[#f87171]/20 bg-[#f87171]/5 px-4 py-3">
             <p className="text-sm text-[#f87171]/80">{error}</p>
           </div>
         )}
@@ -343,7 +343,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
 
       {/* Result summary card */}
       {result && !running && (
-        <GlassCard className="rounded-2xl p-6">
+      <GlassCard className="rounded-xl p-6">
           <h4 className="mb-4 text-sm font-semibold text-white/80">Scan Complete</h4>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -355,7 +355,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
               accent={result.matchingJobs > 0 ? 'text-[#afc4ff]/90' : undefined}
               dim={result.matchingJobs === 0}
             />
-            <div className="flex flex-col items-center rounded-2xl px-4 py-3 text-center bg-[#57CDA4]/10 border border-[#57CDA4]/20">
+            <div className="flex flex-col items-center rounded-md border border-[#57CDA4]/20 bg-[#57CDA4]/10 px-4 py-3 text-center">
               <span
                 className={cn(
                   'text-2xl font-bold tabular-nums',
@@ -411,7 +411,7 @@ export function ScrapeJobsPanel({ accessToken }: ScrapeJobsPanelProps) {
 
       {/* Target titles hint */}
       {titles.length === 0 && !running && (
-        <GlassCard className="rounded-2xl p-4">
+        <GlassCard className="rounded-xl p-4">
           <p className="text-center text-xs text-white/35">
             Add target titles in the Target Titles section to filter jobs by role.
             Without targets, all executive-level jobs found will be listed.

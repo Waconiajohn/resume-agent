@@ -95,13 +95,13 @@ export function BrandFindingsReviewPanel({ data, onPipelineRespond }: BrandFindi
         {(criticalCount > 0 || highCount > 0) && (
           <div className="flex gap-2">
             {criticalCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#f0a9a9]/10 px-2 py-0.5 text-[10px] font-semibold text-[#f0a9a9]">
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#f0a9a9]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#f0a9a9]">
                 <AlertCircle className="h-3 w-3" />
                 {criticalCount} Critical
               </span>
             )}
             {highCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#f0c9a9]/10 px-2 py-0.5 text-[10px] font-semibold text-[#f0c9a9]">
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#f0c9a9]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#f0c9a9]">
                 <AlertTriangle className="h-3 w-3" />
                 {highCount} High
               </span>
