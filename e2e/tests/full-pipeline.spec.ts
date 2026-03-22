@@ -212,10 +212,15 @@ test.describe('Full Pipeline E2E', () => {
           }
         }
 
-        // After continuing (or if pipeline already moved on), wait for resume section
-        await expect(
-          page.locator('[data-testid="requirements-checklist"]'),
-        ).toBeVisible({ timeout: 3 * 60_000 });
+        // After continuing (or if the pipeline already moved on), wait for the
+        // current "draft ready for final review" state instead of the older
+        // requirements-checklist-only transition.
+        await expect(page.getByText('What to Fix Next')).toBeVisible({
+          timeout: 3 * 60_000,
+        });
+        await expect(page.getByRole('button', { name: /^Run Final Review$/i }).first()).toBeVisible({
+          timeout: 3 * 60_000,
+        });
       } else {
         // eslint-disable-next-line no-console
         console.log('[test] No gap coaching cards — pipeline continuing to resume writing');
@@ -223,11 +228,21 @@ test.describe('Full Pipeline E2E', () => {
     });
 
     // Step 5: Wait for pipeline completion
-    // The completion status reads "Your resume is ready"
+    // The current completion state keeps the queue and worklog visible and
+    // surfaces Final Review plus the export gate.
     await test.step('Wait for pipeline completion', async () => {
-      await expect(
-        page.getByText(/Your resume is ready/i),
-      ).toBeVisible({ timeout: 5 * 60_000 }); // 5 min max for writing + assembly
+      await expect(page.getByText('What AI Is Doing For You')).toBeVisible({
+        timeout: 5 * 60_000,
+      });
+      await expect(page.getByText('What to Fix Next')).toBeVisible({
+        timeout: 5 * 60_000,
+      });
+      await expect(page.getByRole('button', { name: /^Run Final Review$/i }).first()).toBeVisible({
+        timeout: 5 * 60_000,
+      });
+      await expect(page.getByText(/Your draft is ready for Final Review/i)).toBeVisible({
+        timeout: 5 * 60_000,
+      });
 
       const pipelineDurationMs = Date.now() - pipelineStartMs;
       const pipelineMinutes = pipelineDurationMs / 60_000;
@@ -239,7 +254,7 @@ test.describe('Full Pipeline E2E', () => {
       expect(pipelineDurationMs).toBeLessThan(7 * 60_000); // 7 min max (includes gap coaching re-run)
     });
 
-    // Step 6: Verify ExportBar is visible and download PDF
+    // Step 6: Enable export and download the PDF
     await test.step('Download PDF resume', async () => {
       // Scroll to the bottom of the streaming display to bring ExportBar into view
       await page.evaluate(() => {
@@ -249,6 +264,13 @@ test.describe('Full Pipeline E2E', () => {
         }
       });
       await page.waitForTimeout(500);
+
+      const enableExportButton = page.getByRole('button', { name: /I understand, enable export/i });
+      await expect(enableExportButton).toBeVisible({ timeout: 30_000 });
+      await enableExportButton.click();
+
+      const downloadPdfButton = page.getByRole('button', { name: /Download PDF/i });
+      await expect(downloadPdfButton).toBeEnabled({ timeout: 10_000 });
 
       const downloadPromise = page.waitForEvent('download', {
         timeout: 30_000,
@@ -271,9 +293,7 @@ test.describe('Full Pipeline E2E', () => {
 
       if (!clicked) {
         // Fallback: try force click via Playwright
-        await page
-          .getByRole('button', { name: /Download PDF/i })
-          .click({ force: true });
+        await downloadPdfButton.click({ force: true });
       }
 
       const download = await downloadPromise;
