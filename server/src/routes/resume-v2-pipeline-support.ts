@@ -1068,9 +1068,18 @@ export function stabilizeFinalReviewResult(
     contradictionEvidenceCorpus,
   );
 
+  normalized.six_second_scan.top_signals_seen = normalized.six_second_scan.top_signals_seen.map((item) => ({
+    ...item,
+    why_it_matters: recruiterSignalNeedsSpecificity(item.why_it_matters)
+      ? buildRecruiterSignalWhyItMatters(item.signal)
+      : item.why_it_matters,
+  }));
+
   normalized.six_second_scan.important_signals_missing = normalized.six_second_scan.important_signals_missing.map((item) => ({
     ...item,
-    why_it_matters: softenPreferredQualificationRiskLanguage(item.signal, item.why_it_matters),
+    why_it_matters: preferredMissingSignalNeedsSpecificity(item.signal, item.why_it_matters)
+      ? buildPreferredMissingSignalWhyItMatters(item.signal)
+      : softenPreferredQualificationRiskLanguage(item.signal, item.why_it_matters),
   }));
   const hardRequirementRisks = getEffectiveHardRequirementRisks(
     normalized,
@@ -1675,6 +1684,61 @@ function softenPreferredQualificationRiskLanguage(signal: string, whyItMatters: 
   }
 
   return whyItMatters.replace(/screen(?:-| )out risk/gi, 'competitive disadvantage');
+}
+
+function isShoutyReviewExplanation(value: string): boolean {
+  const letters = value.replace(/[^A-Za-z]/g, '');
+  return letters.length >= 12 && value === value.toUpperCase();
+}
+
+function recruiterSignalNeedsSpecificity(whyItMatters: string): boolean {
+  const normalized = normalizeReviewText(whyItMatters);
+  return isShoutyReviewExplanation(whyItMatters)
+    || /^this (metric|signal|credential|experience) (indicates|demonstrates|shows)/.test(normalized)
+    || normalized === 'this was the clearest positive signal described in the deeper hiring-manager review.'
+    || /^shows /.test(normalized);
+}
+
+function buildRecruiterSignalWhyItMatters(signal: string): string {
+  const normalized = normalizeReviewText(signal);
+
+  if (/\$|\b(percent|%|reduced|increase|increased|grew|lift|improved|savings|revenue|roi|arr)\b/i.test(signal)) {
+    return 'This gives the recruiter a concrete business-impact proof point in the top third.';
+  }
+
+  if (/\b(certification|certified|license|licensed|licensure|aws solutions architect|pmp|cpa|mba)\b/i.test(normalized)) {
+    return 'This gives the recruiter an immediately visible credential match in the first skim.';
+  }
+
+  if (/\b(vp|vice president|cmo|coo|cto|cfo|director|head of)\b/i.test(normalized)) {
+    return 'This gives the recruiter an immediately visible role-level signal in the first skim.';
+  }
+
+  if (extractYearsThreshold(signal) !== null || /\b\d+\s+years?\b/.test(normalized)) {
+    return 'This clears an early experience screen and gives the recruiter visible seniority proof in the top third.';
+  }
+
+  return 'This gives the recruiter a concrete proof point early in the draft.';
+}
+
+function preferredMissingSignalNeedsSpecificity(signal: string, whyItMatters: string): boolean {
+  const normalized = normalizeReviewText(whyItMatters);
+  return /preferred qualifications? and could be valuable in the role/.test(normalized)
+    || (/preferred|nice to have|bonus|plus/.test(normalized) && /role/.test(normalized));
+}
+
+function buildPreferredMissingSignalWhyItMatters(signal: string): string {
+  const normalized = normalizeReviewText(signal);
+
+  if (/\b(pe-backed|private equity|post-acquisition|integration|acquisition)\b/i.test(normalized)) {
+    return 'This would strengthen the fit for this role, but it is still a preferred background signal and more of a competitive disadvantage than a must-have screen.';
+  }
+
+  if (/\b(board|executive|leadership|communication|presence)\b/i.test(normalized)) {
+    return 'This would strengthen the leadership story, but it is still a preferred signal and more of a competitive disadvantage than a must-have screen.';
+  }
+
+  return 'This would strengthen the fit, but it is still a preferred signal and more of a competitive disadvantage than a must-have screen.';
 }
 
 function buildMaterialJobFitWhyItMatters(requirement: string): string {

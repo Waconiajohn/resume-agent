@@ -2380,4 +2380,97 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Deep expertise in AWS and one additional cloud.');
     expect(stabilized.concerns[0]?.clarifying_question).toContain('Azure or GCP');
   });
+
+  it('rewrites templated recruiter-scan win explanations into signal-aware wording', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '$14.2M in cumulative cost savings over 4 years',
+            why_it_matters: "This metric indicates the candidate's ability to drive significant cost savings.",
+            visible_in_top_third: true,
+          },
+          {
+            signal: '18 years of progressive operations/manufacturing leadership',
+            why_it_matters: 'SHOWCASES EXTENSIVE EXPERIENCE IN MANUFACTURING OPERATIONS LEADERSHIP',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible operator with strong visible impact.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'strong',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.top_signals_seen[0]?.why_it_matters).toBe(
+      'This gives the recruiter a concrete business-impact proof point in the top third.',
+    );
+    expect(stabilized.six_second_scan.top_signals_seen[1]?.why_it_matters).toBe(
+      'This clears an early experience screen and gives the recruiter visible seniority proof in the top third.',
+    );
+  });
+
+  it('rewrites generic preferred missing-signal language into an honest non-screen-out explanation', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [
+          {
+            signal: '15 years of progressive marketing leadership in consumer products/CPG',
+            why_it_matters: 'Shows credible senior marketing depth.',
+            visible_in_top_third: true,
+          },
+        ],
+        important_signals_missing: [
+          {
+            signal: 'Direct experience with PE-backed environments or post-acquisition brand integration',
+            why_it_matters: 'These are preferred qualifications and could be valuable in the role.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible marketing leader with one notable preferred-background gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'strong',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'strong',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toBe(
+      'This would strengthen the fit for this role, but it is still a preferred background signal and more of a competitive disadvantage than a must-have screen.',
+    );
+  });
 });
