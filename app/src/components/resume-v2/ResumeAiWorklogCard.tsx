@@ -68,40 +68,47 @@ export function ResumeAiWorklogCard({
   const rewriteActive = queueSummary.needsAttention > 0 || queueSummary.partiallyAddressed > 0;
   const finalReviewActive = !rewriteActive && (!hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0);
   const polishActive = !rewriteActive && hasFinalReview && !isFinalReviewStale && unresolvedCriticalCount === 0 && postReviewPolish?.status === 'running';
+  const activeStepLabel = rewriteActive
+    ? 'Matching each requirement to the strongest proof already on your resume and teeing up the next fix.'
+    : finalReviewActive
+      ? 'Pressure-testing the draft so you can see what would still worry a recruiter or hiring manager.'
+      : polishActive
+        ? 'Refreshing tone and ATS language after the latest accepted edits.'
+        : 'Reviewing the finished draft and preparing it for export.';
 
   const steps: WorklogStep[] = [
     {
-      label: 'Read your resume',
+      label: 'Read your resume for usable proof',
       status: currentResume ? 'done' : 'active',
-      detail: 'We pull out the strongest facts, scope, accomplishments, and proof already on the page.',
+      detail: 'We pull out the strongest facts, scope, accomplishments, and evidence already on the page.',
     },
     {
-      label: 'Study the target role',
+      label: 'Pull direct requirements from the job description',
       status: jobIntelligence ? 'done' : currentResume ? 'active' : 'up_next',
-      detail: 'We read the job description so weak job postings do not lead to weak resume decisions.',
+      detail: 'We identify the must-have asks from the posting so the rewrite stays grounded in the actual role.',
     },
     {
-      label: 'Build the benchmark candidate',
+      label: 'Add benchmark expectations',
       status: benchmarkCandidate ? 'done' : jobIntelligence ? 'active' : 'up_next',
-      detail: 'We identify what stronger candidates usually show so the resume is not limited to the wording of the posting.',
+      detail: 'We add the executive-level signals strong candidates usually show, even when the posting is incomplete.',
     },
     {
-      label: 'Match your proof to the requirements',
+      label: 'Map each requirement to your current resume',
       status: gapAnalysis ? 'done' : benchmarkCandidate || jobIntelligence ? 'active' : 'up_next',
-      detail: 'We compare the resume against both the job and the benchmark to find what is already covered, partial, or missing.',
+      detail: 'We show where the current resume already covers a requirement, where the proof is only partial, and where nothing clear exists yet.',
     },
     {
-      label: 'Coach the next fix',
+      label: 'Prepare the next requirement to fix',
       status: rewriteActive ? 'active' : gapAnalysis ? 'done' : 'up_next',
       detail: nextQueueItem
-        ? `Right now we are working on "${nextQueueItem.title}" so the next edit is both truthful and useful.`
-        : 'We ask targeted questions and turn the answers into edits only after you review them.',
+        ? `Right now we are working on "${nextQueueItem.title}" so you can review the issue, the current proof, and the suggested draft in one place.`
+        : 'We ask targeted questions and prepare editable draft language only after the evidence is clear.',
     },
     {
-      label: 'Pressure-test and polish',
+      label: 'Run final review before export',
       status: polishActive || finalReviewActive ? 'active' : hasFinalReview && !isFinalReviewStale ? 'done' : 'up_next',
       detail: !hasFinalReview
-        ? 'When the main rewrite is ready, we run the recruiter scan, hiring manager review, tone refresh, and ATS check.'
+        ? 'Once the important gaps are covered, we run the recruiter scan, hiring manager review, tone refresh, and ATS check.'
         : isFinalReviewStale
           ? 'The resume changed after the last review, so we need to rerun the recruiter scan and hiring manager review.'
           : unresolvedCriticalCount > 0
@@ -116,15 +123,21 @@ export function ResumeAiWorklogCard({
     <div className="room-shell space-y-4 border border-[#98b3ff]/14 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="eyebrow-label text-[#c9d7ff]/72">AI worklog</p>
-          <p className="mt-2 text-base font-semibold text-white/86">What AI Is Doing For You</p>
+          <p className="eyebrow-label text-[#c9d7ff]/72">Live AI review</p>
+          <p className="mt-2 text-base font-semibold text-white/86">What AI is doing right now</p>
         </div>
-        <div className="rounded-md border border-white/[0.08] bg-black/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/42">
-          Behind the scenes
+        <div className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-[#c9d7ff]/78">
+          Updates as the review moves
         </div>
       </div>
+
+      <div className="support-callout border-[#afc4ff]/16 bg-[#afc4ff]/[0.06] px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Right now</p>
+        <p className="mt-2 text-sm leading-6 text-white/76">{activeStepLabel}</p>
+      </div>
+
       <p className="text-sm leading-6 text-white/54">
-        This shows the work happening behind the scenes so you can see why the next step matters.
+        You should not have to guess what the system is doing. This panel stays plain-English while AI reads the role, maps the requirements, and prepares the next edit.
       </p>
 
       <div className="space-y-3">

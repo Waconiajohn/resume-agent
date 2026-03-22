@@ -91,8 +91,8 @@ async function submitResumeV2(page: import('@playwright/test').Page, fixture: { 
 }
 
 async function waitForResumeV2Completion(page: import('@playwright/test').Page) {
-  await expect(page.getByText('What AI Is Doing For You')).toBeVisible({ timeout: PIPELINE_READY_TIMEOUT_MS });
-  await expect(page.getByText('What to Fix Next')).toBeVisible({ timeout: PIPELINE_READY_TIMEOUT_MS });
+  await expect(page.getByText('What AI is doing right now')).toBeVisible({ timeout: PIPELINE_READY_TIMEOUT_MS });
+  await expect(page.getByText('Requirements to Match')).toBeVisible({ timeout: PIPELINE_READY_TIMEOUT_MS });
   const runFinalReviewButton = page.getByRole('button', { name: /^Run Final Review$/i }).first();
   await runFinalReviewButton.waitFor({ state: 'attached', timeout: PIPELINE_READY_TIMEOUT_MS });
   await runFinalReviewButton.scrollIntoViewIfNeeded();
@@ -121,8 +121,8 @@ test.describe.serial('Resume V2 Quality Validation', () => {
       await waitForResumeV2Completion(page);
       const durationMs = Date.now() - startedAt;
 
-      const worklogText = await captureCardTextByHeading(page, 'What AI Is Doing For You');
-      const queueText = await captureCardTextByHeading(page, 'What to Fix Next');
+      const worklogText = await captureCardTextByHeading(page, 'What AI is doing right now');
+      const queueText = await captureCardTextByHeading(page, 'Requirements to Match');
 
       const runFinalReviewButton = page.getByRole('button', { name: /^Run Final Review$/i }).first();
       await runFinalReviewButton.scrollIntoViewIfNeeded();
@@ -162,8 +162,8 @@ test.describe.serial('Resume V2 Quality Validation', () => {
       });
 
       expect(durationMs, `${fixture.label}: pipeline should finish within 8 minutes`).toBeLessThan(PIPELINE_DURATION_TARGET_MS);
-      expect(worklogText).toContain('What AI Is Doing For You');
-      expect(queueText).toContain('What to Fix Next');
+      expect(worklogText).toContain('What AI is doing right now');
+      expect(queueText).toContain('Requirements to Match');
       expect(queueText.length, `${fixture.label}: queue capture should not be empty`).toBeGreaterThan(80);
       expect(finalReviewText, `${fixture.label}: final review should render`).not.toBeNull();
     });

@@ -156,6 +156,45 @@ function StagePendingDots() {
   );
 }
 
+function LiveStageSummary({ stage }: { stage: V2Stage }) {
+  const content = stage === 'analysis'
+    ? {
+        eyebrow: 'AI analysis in progress',
+        title: 'We are reading the role and your current resume',
+        detail: 'This should not feel like a black box. We are pulling direct requirements from the job description, adding benchmark signals the posting may have missed, and collecting the best proof already on your resume.',
+        checklist: [
+          'Read the strongest proof already on the resume',
+          'Pull direct requirements from the job description',
+          'Add benchmark expectations for a strong executive match',
+        ],
+      }
+    : {
+        eyebrow: 'AI strategy in progress',
+        title: 'We are building the requirement map',
+        detail: 'Next we line each requirement up against the current resume so you can see what is already covered, what is only partial, and what still needs a better draft.',
+        checklist: [
+          'Map each requirement to current resume evidence',
+          'Mark covered, partial, and missing requirements',
+          'Prepare the first issue to fix with editable AI help',
+        ],
+      };
+
+  return (
+    <div className="room-shell border border-[#afc4ff]/16 bg-[radial-gradient(circle_at_top_left,rgba(175,196,255,0.12),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-5">
+      <p className="eyebrow-label text-[#c9d7ff]/72">{content.eyebrow}</p>
+      <p className="mt-2 text-lg font-semibold text-white/88">{content.title}</p>
+      <p className="mt-3 max-w-3xl text-sm leading-6 text-white/60">{content.detail}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {content.checklist.map((item) => (
+          <div key={item} className="support-callout px-4 py-3 text-sm leading-6 text-white/72">
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AnimatedCard({ children, index = 0 }: { children: ReactNode; index?: number }) {
   return (
     <div
@@ -193,6 +232,8 @@ export function V2StreamingDisplay({
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const analysisSectionRef = useRef<HTMLElement>(null);
+  const strategySectionRef = useRef<HTMLElement>(null);
   const userScrolledRef = useRef(false);
 
   const [showScrollPill, setShowScrollPill] = useState(false);
@@ -209,14 +250,21 @@ export function V2StreamingDisplay({
     requirements: string[];
   } | null>(null);
 
-  // Auto-scroll to bottom as new content arrives (streaming mode only)
   const displayResume = editableResume ?? data.assembly?.final_resume ?? data.resumeDraft;
   const hasResume = displayResume !== null && displayResume !== undefined;
 
   useEffect(() => {
     if (userScrolledRef.current || hasResume) return;
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [data.stage, data.jobIntelligence, data.candidateIntelligence, data.benchmarkCandidate, data.gapAnalysis, data.narrativeStrategy, data.resumeDraft, data.assembly, hasResume]);
+    if (data.stage === 'analysis') {
+      analysisSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (data.stage === 'strategy') {
+      strategySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [data.stage, hasResume]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -694,21 +742,26 @@ export function V2StreamingDisplay({
 
         {/* ─── Stage 1: Analysis ──────────────────────────────── */}
         {(hasAnalysis || analysisRunning) && (
-          <section aria-label="Analysis">
-            <StageBanner label="Understanding the role and your background" icon={Briefcase} stage="analysis" currentStage={data.stage} isComplete={isComplete} />
+            <section aria-label="Analysis" ref={analysisSectionRef}>
+            <StageBanner label="AI is analyzing the role and your resume" icon={Briefcase} stage="analysis" currentStage={data.stage} isComplete={isComplete} />
             <div className="space-y-4">
-              {data.jobIntelligence && (
+              {analysisRunning && (
                 <AnimatedCard index={0}>
+                  <LiveStageSummary stage="analysis" />
+                </AnimatedCard>
+              )}
+              {data.jobIntelligence && (
+                <AnimatedCard index={1}>
                   <GlassCard className="p-5"><JobIntelligenceCard data={data.jobIntelligence} /></GlassCard>
                 </AnimatedCard>
               )}
               {data.candidateIntelligence && (
-                <AnimatedCard index={1}>
+                <AnimatedCard index={2}>
                   <GlassCard className="p-5"><CandidateIntelligenceCard data={data.candidateIntelligence} /></GlassCard>
                 </AnimatedCard>
               )}
               {data.benchmarkCandidate && (
-                <AnimatedCard index={2}>
+                <AnimatedCard index={3}>
                   <GlassCard className="p-5"><BenchmarkCandidateCard data={data.benchmarkCandidate} /></GlassCard>
                 </AnimatedCard>
               )}
@@ -721,11 +774,16 @@ export function V2StreamingDisplay({
         {(hasStrategy || strategyRunning) && (
           <>
             <PhaseDivider label="Strategy & Positioning" />
-            <section aria-label="Positioning strategy">
-              <StageBanner label="How we'll position you for this role" icon={Compass} stage="strategy" currentStage={data.stage} isComplete={isComplete} />
+            <section aria-label="Positioning strategy" ref={strategySectionRef}>
+              <StageBanner label="AI is building your requirement map" icon={Compass} stage="strategy" currentStage={data.stage} isComplete={isComplete} />
               <div className="space-y-4">
-                {data.gapAnalysis && (
+                {strategyRunning && (
                   <AnimatedCard index={0}>
+                    <LiveStageSummary stage="strategy" />
+                  </AnimatedCard>
+                )}
+                {data.gapAnalysis && (
+                  <AnimatedCard index={1}>
                     <GlassCard className="p-5">
                       <UnifiedGapAnalysisCard
                         key={gapCoachingCards?.length ?? 0}
@@ -743,12 +801,12 @@ export function V2StreamingDisplay({
                   </AnimatedCard>
                 )}
                 {preScores && data.gapAnalysis && !isComplete && (
-                  <AnimatedCard index={1}>
+                  <AnimatedCard index={2}>
                     <PreScoreReportCard preScores={preScores} />
                   </AnimatedCard>
                 )}
                 {data.narrativeStrategy && (
-                  <AnimatedCard index={2}>
+                  <AnimatedCard index={3}>
                     <GlassCard className="p-5"><NarrativeStrategyCard data={data.narrativeStrategy} /></GlassCard>
                   </AnimatedCard>
                 )}
@@ -792,11 +850,11 @@ export function V2StreamingDisplay({
 function getStageMessage(stage: V2Stage): string {
   switch (stage) {
     case 'intake': return 'Reading your background...';
-    case 'analysis': return 'Studying the target role and benchmark expectations...';
-    case 'strategy': return 'Mapping requirements and finding the strongest positioning...';
-    case 'writing': return 'Closing gaps and building the draft...';
+    case 'analysis': return 'Reading the role, the benchmark, and the strongest proof already on your resume...';
+    case 'strategy': return 'Building the requirement map and lining it up against the current resume...';
+    case 'writing': return 'Improving one requirement at a time and drafting edits you can review inline...';
     case 'verification': return 'Running final review and checking tone, evidence, and accuracy...';
-    case 'assembly': return 'Polishing the draft and preparing export-ready output...';
+    case 'assembly': return 'Preparing the latest approved draft for export...';
     case 'complete': return 'Your polished resume is ready';
     default: return 'Working on it...';
   }

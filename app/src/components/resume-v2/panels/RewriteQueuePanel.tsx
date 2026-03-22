@@ -62,10 +62,10 @@ const SOURCE_LABELS = {
 } as const;
 
 const CATEGORY_LABELS: Record<RewriteQueueItem['category'], string> = {
-  quick_win: 'Quick Win',
-  proof_upgrade: 'Needs Proof',
-  hard_gap: 'Hard Requirement',
-  benchmark_stretch: 'Benchmark Stretch',
+  quick_win: 'Easier to fix',
+  proof_upgrade: 'Needs stronger proof',
+  hard_gap: 'Possible screen-out risk',
+  benchmark_stretch: 'Benchmark signal',
   final_review_issue: 'Final Review',
 };
 
@@ -76,18 +76,18 @@ const BUCKETS: Array<{
 }> = [
   {
     id: 'needs_attention',
-    title: 'Fix First',
-    description: 'Start with the small group of highest-value fixes. We keep this list short so you always know what to do next.',
+    title: 'Start here',
+    description: 'These are the highest-value requirements to work through next. Finish them one at a time so the rewrite stays clear and truthful.',
   },
   {
     id: 'partially_addressed',
-    title: 'Can Be Stronger',
-    description: 'These items have some movement already, but they are not yet carrying enough proof.',
+    title: 'Still needs stronger proof',
+    description: 'These requirements are on the page already, but the proof is still not strong enough to trust.',
   },
   {
     id: 'resolved',
-    title: 'Done',
-    description: 'These items already have accepted evidence in the current draft.',
+    title: 'Already covered',
+    description: 'These requirements already have accepted evidence in the current draft.',
   },
 ];
 
@@ -128,7 +128,7 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
   return (
     <div className="support-callout px-3 py-2">
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">
-        {isNearbyEvidence ? 'Nearby proof we can strengthen' : 'Current proof'}
+        {isNearbyEvidence ? 'Closest proof we found on the resume' : 'Current proof on the resume'}
         {firstEvidence.section ? ` · ${firstEvidence.section}` : ''}
       </p>
       {isNearbyEvidence && (
@@ -164,7 +164,7 @@ function EvidenceList({
               {item.section && <p className="text-[11px] text-white/42">{item.section}</p>}
               {item.basis === 'nearby' && (
                 <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Nearby proof
+                  Closest proof
                 </span>
               )}
             </div>
@@ -303,29 +303,39 @@ export function RewriteQueuePanel({
             <Target className="h-4 w-4 text-[#afc4ff]" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-white/88">What to Fix Next</h2>
+            <h2 className="text-base font-semibold text-white/88">Requirements to Match</h2>
             <p className="mt-1 text-sm leading-6 text-white/54">
-              This is the live queue of the highest-value fixes left on the draft. Work one item at a time and only accept changes that are fully accurate.
+              We pulled requirements from the job description first and added benchmark signals second. For each one, we show what the role is asking for, what your resume proves today, and how AI can help you improve the match.
             </p>
           </div>
         </div>
 
+        <div className="support-callout px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">How to use this</p>
+          <p className="mt-2 text-sm leading-6 text-white/74">
+            Start with the first requirement below. Review the issue, compare it with the current resume proof, then use the AI helper to draft a stronger version you can edit and apply inline.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-white/56">
+            Job Description items are direct asks from the posting. Benchmark items are executive-level signals strong candidates usually show even when the posting is incomplete.
+          </p>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-3">
           <QueueStat
-            label="Fix First Now"
+            label="Start Here"
             value={visibleFixFirstCount}
             detail={queuedAfterFixFirst > 0 ? `${queuedAfterFixFirst} more queued after these` : undefined}
             tone="border-[#f0b8b8]/16 bg-[#f0b8b8]/[0.05]"
           />
-          <QueueStat label="Can Be Stronger" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
-          <QueueStat label="Done" value={queue.summary.resolved} tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]" />
+          <QueueStat label="Strengthen Next" value={queue.summary.partiallyAddressed} tone="border-[#afc4ff]/16 bg-[#afc4ff]/[0.05]" />
+          <QueueStat label="Already Covered" value={queue.summary.resolved} tone="border-[#b5dec2]/16 bg-[#b5dec2]/[0.05]" />
         </div>
 
         {nextItem && (
           <div className="room-shell border border-[#afc4ff]/16 bg-[#0f1622] px-4 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">Recommended Next Step</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">Start with this requirement</p>
                 <p className="mt-2 text-sm font-semibold text-white/86">{nextItem.title}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -340,17 +350,17 @@ export function RewriteQueuePanel({
 
             <div className="support-callout mt-3 space-y-3 px-3 py-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Why this matters</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Issue</p>
                 <p className="mt-1 text-sm leading-6 text-white/68">{nextItem.whyItMatters}</p>
               </div>
 
               <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What AI will do</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">How AI can help</p>
                 <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.aiPlan}</p>
               </div>
 
               <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What you should do now</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What to do now</p>
                 <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.userInstruction}</p>
               </div>
 
@@ -375,7 +385,7 @@ export function RewriteQueuePanel({
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
                 >
                   <MessagesSquare className="h-3.5 w-3.5" />
-                  {nextItem.recommendedNextStep.label}
+                  Open AI helper
                 </button>
                 <button
                   type="button"
@@ -477,7 +487,7 @@ export function RewriteQueuePanel({
                                 <div className="flex flex-wrap items-center gap-2">
                                   {isPrimary && item.bucket !== 'resolved' && (
                                     <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
-                                      Work this now
+                                      Start here
                                     </span>
                                   )}
                                   <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
@@ -522,7 +532,7 @@ export function RewriteQueuePanel({
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
                               >
                                 <MessagesSquare className="h-3.5 w-3.5" />
-                                {item.recommendedNextStep.label}
+                                Open AI helper
                               </button>
 
                               {hasViewableEvidence && item.requirement && (
@@ -540,12 +550,17 @@ export function RewriteQueuePanel({
                             {isExpanded && (
                               <div className="support-callout space-y-3 px-3 py-3">
                                 <div>
-                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What AI is doing</p>
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Issue</p>
+                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.whyItMatters}</p>
+                                </div>
+
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">How AI can help</p>
                                   <p className="mt-1 text-sm leading-6 text-white/68">{item.aiPlan}</p>
                                 </div>
 
                                 <div>
-                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What you should do</p>
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What to do now</p>
                                   <p className="mt-1 text-sm leading-6 text-white/68">{item.userInstruction}</p>
                                 </div>
 
@@ -562,14 +577,14 @@ export function RewriteQueuePanel({
                                 )}
 
                                 <EvidenceList
-                                  title="What the resume says today"
+                                  title="What your resume shows today"
                                   items={item.currentEvidence}
                                   emptyLabel="Nothing on the current resume proves this yet."
                                 />
 
                                 {item.sourceEvidence.length > 0 && (
                                   <EvidenceList
-                                    title="Why AI flagged this"
+                                    title={item.source === 'benchmark' ? 'What the benchmark is looking for' : 'What the job description is looking for'}
                                     items={item.sourceEvidence}
                                     emptyLabel="No source excerpt is available for this item."
                                   />

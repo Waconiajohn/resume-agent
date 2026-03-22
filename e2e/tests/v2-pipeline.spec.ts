@@ -429,8 +429,8 @@ async function submitPipeline(page: Page): Promise<void> {
 async function waitForPipelineCompletion(page: Page): Promise<void> {
   await expect(page.locator('#v2-resume')).not.toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Senior Cloud Architect at TechVision Solutions')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('What AI Is Doing For You')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('What to Fix Next')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('What AI is doing right now')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Requirements to Match')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /Run Final Review/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /Download DOCX/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /^New Resume$/i })).toBeVisible({ timeout: 15_000 });
@@ -496,8 +496,8 @@ test.describe('Resume Builder session flow', () => {
     await submitPipeline(page);
     await waitForPipelineCompletion(page);
 
-    await expect(page.getByRole('button', { name: /Answer 1 Question/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Open AI helper/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Show Details/i }).first()).toBeVisible();
-    await expect(page.getByText(/work the highest-priority queue item/i)).toBeVisible();
+    await expect(page.getByText(/work the next requirement/i)).toBeVisible();
   });
 });

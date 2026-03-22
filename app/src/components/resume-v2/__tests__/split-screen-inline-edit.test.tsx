@@ -768,7 +768,7 @@ describe('V2StreamingDisplay — split-screen activation', () => {
   it('renders the split layout with the rewrite queue when hasResume + jobIntelligence + gapAnalysis exist', () => {
     render(<V2StreamingDisplay {...makeDisplayProps()} />);
 
-    expect(screen.getByText('What to Fix Next')).toBeInTheDocument();
+    expect(screen.getByText('Requirements to Match')).toBeInTheDocument();
   });
 
   it('does NOT render split layout when isRerunning is true', () => {

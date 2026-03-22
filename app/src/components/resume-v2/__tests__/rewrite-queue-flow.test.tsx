@@ -299,9 +299,9 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: 'What to Fix Next' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Requirements to Match' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Review Edit' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open AI helper' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'More Options' }));
@@ -338,7 +338,7 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    expect(screen.getByText('Fix First Now')).toBeInTheDocument();
+    expect(screen.getByText('Start Here')).toBeInTheDocument();
     expect(screen.getByText('1 more queued after these')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show all queued issues (1)' })).toBeInTheDocument();
   });

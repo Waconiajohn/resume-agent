@@ -22,7 +22,6 @@ import { BenchmarkCandidateCard } from './cards/BenchmarkCandidateCard';
 import { NarrativeStrategyCard } from './cards/NarrativeStrategyCard';
 import { ScoresCard } from './cards/ScoresCard';
 import { KeywordScoreDashboard } from './cards/KeywordScoreDashboard';
-import { ProcessStepGuideCard } from '@/components/shared/ProcessStepGuideCard';
 import type {
   AssemblyResult,
   BenchmarkCandidate,
@@ -66,112 +65,75 @@ export function GuidedWorkflowCard({
   const queuePartials = queueSummary.partiallyAddressed;
   const hardGapCount = queueSummary.hardGapCount;
   const hasActiveQueueWork = queueNeedsAttention > 0 || queuePartials > 0;
-
-  const currentStep = hasActiveQueueWork
-    ? 'gap_analysis'
-    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0 || postReviewPolish?.status === 'running'
-      ? 'section_writing'
-      : 'quality_review';
-
-  const nextOverride = queueNeedsAttention > 0
-    ? `work the highest-priority queue item${nextQueueItemLabel ? `, starting with "${nextQueueItemLabel}".` : '.'}`
-    : queuePartials > 0
-      ? 'tighten the remaining partial items so the proof is strong enough before you trust the final score.'
-      : hardGapCount > 0
-        ? `review the ${hardGapCount} hard requirement risk${hardGapCount === 1 ? '' : 's'} so you know what may still block screening.`
-      : !hasFinalReview
-        ? 'run Final Review to pressure-test the draft before export.'
-        : isFinalReviewStale
-          ? 'rerun Final Review because the resume changed after the last review.'
-          : unresolvedCriticalCount > 0
-            ? 'resolve or consciously waive the remaining critical concerns, then export.'
-            : 'export the tailored resume or promote selected edits to the master resume.';
-
-  const userDoesOverride = queueNeedsAttention > 0
-    ? 'Use the rewrite queue on the left one item at a time. Generate options, send the best one to diff review, and only count it after you accept the edit.'
-    : queuePartials > 0
-      ? 'The draft has movement, but some items still need stronger proof. Work those before you rely on the final score.'
-      : hardGapCount > 0
-        ? 'Review the hard requirements honestly. If you have them, surface proof. If you do not, keep them visible as real risks instead of stretching the truth.'
-      : !hasFinalReview
-        ? 'The core rewrite is in place. Run Final Review next so the recruiter scan and hiring manager verdict can challenge what you built.'
-        : isFinalReviewStale
-          ? 'Your resume changed after Final Review. Rerun the recruiter scan and hiring manager verdict before you rely on the current review.'
-          : unresolvedCriticalCount > 0
-            ? 'Use the Final Review concerns to tighten evidence, answer clarifying questions, and approve the resulting edits.'
-            : 'Confirm the final wording, review any AI-added language, and export when satisfied.';
-
-  const phaseLabel = hasActiveQueueWork
-    ? 'Fix the Resume'
+  const resumeCoverageLabel = coverageTotal > 0
+    ? `${coverageAddressed} of ${coverageTotal} direct job requirements clearly addressed`
+    : 'The requirement map is still being built';
+  const nextActionLabel = hasActiveQueueWork
+    ? nextQueueItemLabel
+      ? `Work the next requirement: "${nextQueueItemLabel}".`
+      : 'Open the next requirement and improve the proof before moving on.'
     : hardGapCount > 0
-      ? 'Review Hard Requirements'
-    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
-      ? 'Pressure-Test the Draft'
-      : 'Polish and Export';
-
-  const summaryOverride = hasActiveQueueWork
-    ? 'We are working through the highest-value resume gaps one issue at a time so the rewrite stays truthful and easier to review.'
-    : hardGapCount > 0
-      ? 'We are separating normal proof-building from real hard requirements so you know what can be strengthened and what may still carry screen-out risk.'
-    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
-      ? 'We are pressure-testing the draft with a recruiter scan and a hiring manager review before you export it.'
-      : 'We are refreshing tone, ATS readiness, and export status so you know what is actually ready to use.';
-
-  const systemDoesOverride = hasActiveQueueWork
-    ? 'We compare the draft against the job description first, use the benchmark as a secondary check, ask targeted follow-up questions, and draft edits only after the evidence is clear.'
-    : hardGapCount > 0
-      ? 'We flag hard credentials, degrees, licenses, or other screen-out requirements separately so they are not disguised as normal coaching work.'
-    : !hasFinalReview || isFinalReviewStale || unresolvedCriticalCount > 0
-      ? 'We run the six-second recruiter skim, the hiring manager critique, and the final issue check to see what would still block an interview.'
-      : 'We refresh tone, ATS coverage, and final readiness after the last accepted changes so the export reflects the current draft.';
+      ? `Review the ${hardGapCount} hard requirement risk${hardGapCount === 1 ? '' : 's'} honestly before trusting the draft.`
+    : !hasFinalReview
+      ? 'Run Final Review once the important requirements are covered.'
+      : isFinalReviewStale
+        ? 'Run Final Review again because the resume changed after the last review.'
+        : unresolvedCriticalCount > 0
+          ? `Resolve the ${unresolvedCriticalCount} critical concern${unresolvedCriticalCount === 1 ? '' : 's'} before export.`
+          : 'Review the final wording and export when you are satisfied.';
+  const reviewLabel = !hasFinalReview
+    ? 'Not run yet'
+    : isFinalReviewStale
+      ? 'Needs rerun'
+      : unresolvedCriticalCount > 0
+        ? `${unresolvedCriticalCount} critical left`
+        : postReviewPolish?.status === 'running'
+          ? 'Refreshing tone + ATS'
+          : 'Ready for final check';
 
   return (
     <div className="space-y-3">
       <div className="shell-panel px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="eyebrow-label">Current Phase</p>
-            <p className="mt-2 text-base font-semibold text-white/88">{phaseLabel}</p>
+            <p className="eyebrow-label">Next step</p>
+            <p className="mt-2 text-base font-semibold text-white/88">What happens next</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-white/58">
+              Keep this simple: review the requirement map, fix the next issue on the left, then run Final Review before export.
+            </p>
           </div>
           <div className="room-meta-strip text-[11px]">
-              <div className="room-meta-item">
-                Queue
-                <strong>{queueNeedsAttention} attention / {queuePartials} partial</strong>
-              </div>
+            <div className="room-meta-item">
+              Resume coverage
+              <strong>{coverageTotal > 0 ? `${coverageAddressed}/${coverageTotal}` : 'Building map'}</strong>
+            </div>
+            <div className="room-meta-item">
+              Requirements left
+              <strong>{queueNeedsAttention + queuePartials}</strong>
+            </div>
             {hardGapCount > 0 && (
               <div className="room-meta-item">
-                Hard Risks
+                Screen-out risks
                 <strong>{hardGapCount}</strong>
               </div>
             )}
             <div className="room-meta-item">
-              Coverage
-              <strong>{coverageAddressed}/{coverageTotal}</strong>
+              Final review
+              <strong>{reviewLabel}</strong>
             </div>
-            <div className="room-meta-item">
-              Final Review
-              <strong>{isFinalReviewStale ? 'Out of date' : `${unresolvedCriticalCount} critical`}</strong>
-            </div>
-            {postReviewPolish?.status === 'running' && (
-              <div className="room-meta-item">
-                Refresh
-                <strong>Tone + ATS</strong>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      <ProcessStepGuideCard
-        step={currentStep}
-        tone={!hasFinalReview ? 'action' : unresolvedCriticalCount > 0 ? 'review' : 'export'}
-        compact
-        titleOverride={phaseLabel}
-        summaryOverride={summaryOverride}
-        systemDoesOverride={systemDoesOverride}
-        userDoesOverride={userDoesOverride}
-        nextOverride={nextOverride}
-      />
+      <div className="support-callout border-[#afc4ff]/16 bg-[#afc4ff]/[0.06] px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Current situation</p>
+        <p className="mt-2 text-sm leading-6 text-white/78">{resumeCoverageLabel}</p>
+      </div>
+
+      <div className="support-callout px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Do this next</p>
+        <p className="mt-2 text-sm leading-6 text-white/76">{nextActionLabel}</p>
+      </div>
     </div>
   );
 }

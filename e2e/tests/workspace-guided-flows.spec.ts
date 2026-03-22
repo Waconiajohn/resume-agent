@@ -100,7 +100,7 @@ test.describe('workspace guided flows', () => {
     await page.getByRole('button', { name: /Reopen Tailored Work/i }).click();
 
     await expect(page).toHaveURL(/\/resume-builder\/session$/, { timeout: 5_000 });
-    await expect(page.getByRole('heading', { name: /What to Fix Next/i })).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('heading', { name: /Requirements to Match/i })).toBeVisible({ timeout: 8_000 });
     await expect(page.getByRole('button', { name: /^Run Final Review$/i }).first()).toBeVisible({ timeout: 8_000 });
   });
 

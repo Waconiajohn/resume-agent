@@ -215,7 +215,7 @@ test.describe('Full Pipeline E2E', () => {
         // After continuing (or if the pipeline already moved on), wait for the
         // current "draft ready for final review" state instead of the older
         // requirements-checklist-only transition.
-        await expect(page.getByText('What to Fix Next')).toBeVisible({
+        await expect(page.getByText('Requirements to Match')).toBeVisible({
           timeout: 3 * 60_000,
         });
         await expect(page.getByRole('button', { name: /^Run Final Review$/i }).first()).toBeVisible({
@@ -231,10 +231,10 @@ test.describe('Full Pipeline E2E', () => {
     // The current completion state keeps the queue and worklog visible and
     // surfaces Final Review plus the export gate.
     await test.step('Wait for pipeline completion', async () => {
-      await expect(page.getByText('What AI Is Doing For You')).toBeVisible({
+      await expect(page.getByText('What AI is doing right now')).toBeVisible({
         timeout: 5 * 60_000,
       });
-      await expect(page.getByText('What to Fix Next')).toBeVisible({
+      await expect(page.getByText('Requirements to Match')).toBeVisible({
         timeout: 5 * 60_000,
       });
       await expect(page.getByRole('button', { name: /^Run Final Review$/i }).first()).toBeVisible({
