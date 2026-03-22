@@ -174,6 +174,44 @@ function makeOverflowGapAnalysis(): GapAnalysis {
   };
 }
 
+function makeCoveredGapAnalysis(): GapAnalysis {
+  return {
+    requirements: [
+      {
+        requirement: 'Executive stakeholder leadership',
+        importance: 'must_have',
+        classification: 'strong',
+        evidence: ['Directed cross-functional programs spanning product, operations, and customer support.'],
+        source: 'job_description',
+        source_evidence: 'Lead alignment across executive stakeholders and operating teams.',
+        score_domain: 'ats',
+      },
+    ],
+    coverage_score: 100,
+    score_breakdown: {
+      job_description: {
+        addressed: 1,
+        total: 1,
+        strong: 1,
+        partial: 0,
+        missing: 0,
+        coverage_score: 100,
+      },
+      benchmark: {
+        addressed: 0,
+        total: 0,
+        strong: 0,
+        partial: 0,
+        missing: 0,
+        coverage_score: 0,
+      },
+    },
+    strength_summary: 'This requirement is already covered.',
+    critical_gaps: [],
+    pending_strategies: [],
+  };
+}
+
 function makeGapChatSnapshot(): CoachingThreadSnapshot {
   return {
     items: {
@@ -307,21 +345,22 @@ describe('rewrite queue browser flow', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Requirements to Match' })).toBeInTheDocument();
-    expect(screen.getAllByText('1. Why this needs attention').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('2. Current proof on the resume').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('3. Better draft to start from').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('4. Work with AI on this requirement').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1. From the job description').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2. From your resume').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('3. What is still missing').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('4. Suggested rewrite for your resume').length).toBeGreaterThan(0);
     expect(
       screen.getAllByText(/Aligned executive, product, and operations stakeholders around weekly priorities to improve execution quality\./i).length,
     ).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Review Draft with AI' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Improve This Rewrite with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
+    expect(screen.getByLabelText('Edit suggested resume language')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Draft Stronger Version' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Try a Stronger Rewrite' }));
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',
-      expect.stringContaining('strongest truthful version'),
+      expect.stringContaining('Start from this rewrite'),
       expect.any(Object),
       'partial',
     );
@@ -365,7 +404,7 @@ describe('rewrite queue browser flow', () => {
       <RewriteQueuePanel
         jobIntelligence={makeJobIntelligence()}
         positioningAssessment={null}
-        gapAnalysis={makeGapAnalysis()}
+        gapAnalysis={makeCoveredGapAnalysis()}
         benchmarkCandidate={null}
         currentResume={makeResumeDraft()}
         gapCoachingCards={null}
@@ -394,10 +433,8 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show Current Proof in Resume' }));
-    expect(onRequirementClick).toHaveBeenCalledWith('Executive stakeholder leadership');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Jump to Current Proof' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show Done (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'See Current Proof on Resume' }));
     expect(onRequirementClick).toHaveBeenCalledWith('Executive stakeholder leadership');
   });
 });

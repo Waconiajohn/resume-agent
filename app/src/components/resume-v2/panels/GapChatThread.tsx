@@ -24,6 +24,11 @@ interface GapChatThreadProps {
   /** Whether the parent is currently running an inline edit */
   isEditing?: boolean;
   onSkip?: () => void;
+  sourceLabel?: string;
+  sourceExcerpt?: string | null;
+  initialQuestion?: string | null;
+  initialSuggestedLanguage?: string | null;
+  promptHint?: string | null;
 }
 
 function UserBubble({ content }: { content: string }) {
@@ -200,8 +205,14 @@ export function GapChatThread({
   context,
   isEditing,
   onSkip,
+  sourceLabel,
+  sourceExcerpt,
+  initialQuestion,
+  initialSuggestedLanguage,
+  promptHint,
 }: GapChatThreadProps) {
   const [inputValue, setInputValue] = useState('');
+  const [starterDraftValue, setStarterDraftValue] = useState(initialSuggestedLanguage ?? '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -214,6 +225,10 @@ export function GapChatThread({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    setStarterDraftValue(initialSuggestedLanguage ?? '');
+  }, [initialSuggestedLanguage]);
 
   // Track last sent message for retry on error
   const lastSentRef = useRef<string>('');
@@ -238,16 +253,29 @@ export function GapChatThread({
   }, [classification, context, isLoading, onSendMessage, requirement]);
 
   const requestGuidance = useCallback(() => {
-    sendQuickMessage('Ask me the single most useful question you need answered to make this resume line stronger and more believable.');
-  }, [sendQuickMessage]);
+    const focus = initialQuestion ?? promptHint ?? 'Ask for the one concrete detail that would make this proof direct and believable.';
+    sendQuickMessage(`Tell me the single most useful detail still missing for this requirement, and ask me one short question to get it. Focus on this: ${focus}`);
+  }, [initialQuestion, promptHint, sendQuickMessage]);
 
   const requestDraft = useCallback(() => {
-    sendQuickMessage('Draft the strongest truthful version you can from what we already know, and keep it natural and believable.');
-  }, [sendQuickMessage]);
+    const startingPoint = initialSuggestedLanguage
+      ? `Start from this rewrite and improve it if needed: "${initialSuggestedLanguage}"`
+      : 'Draft the strongest truthful resume rewrite you can from what we already know.';
+    sendQuickMessage(`${startingPoint} Keep it natural, believable, and specific to the requirement.`);
+  }, [initialSuggestedLanguage, sendQuickMessage]);
 
   const requestAlternative = useCallback(() => {
-    sendQuickMessage('Try one different truthful version that takes a different angle but stays easy to believe.');
-  }, [sendQuickMessage]);
+    const startingPoint = initialSuggestedLanguage
+      ? `Try a different truthful rewrite than this one: "${initialSuggestedLanguage}"`
+      : 'Try a different truthful rewrite that takes another angle.';
+    sendQuickMessage(`${startingPoint} Keep it easy to believe and ready for a resume.`);
+  }, [initialSuggestedLanguage, sendQuickMessage]);
+
+  const handleStarterApply = useCallback(() => {
+    const trimmed = starterDraftValue.trim();
+    if (!trimmed || isEditing) return;
+    onAcceptLanguage(requirement, trimmed, false);
+  }, [isEditing, onAcceptLanguage, requirement, starterDraftValue]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -266,6 +294,9 @@ export function GapChatThread({
   const userTurnCount = messages.filter(m => m.role === 'user').length;
   const atTurnLimit = userTurnCount >= MAX_TURNS;
   const isAccepted = resolvedLanguage !== null;
+  const introSourceLabel = sourceLabel ?? 'From the job description';
+  const introSourceExcerpt = sourceExcerpt ?? context.jobDescriptionExcerpt;
+  const introQuestion = initialQuestion ?? promptHint ?? 'Add one concrete detail so AI can turn this into direct proof for the role.';
 
   if (resolvedLanguage) {
     return (
@@ -298,6 +329,88 @@ export function GapChatThread({
       }}
       data-testid="gap-chat-thread"
     >
+      {messages.length === 0 && !resolvedLanguage && (
+        <div className="space-y-3 border-b border-white/[0.06] px-4 py-4">
+          <div
+            className="rounded-lg px-4 py-3"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.tertiary }}>
+              {introSourceLabel}
+            </p>
+            <p className="mt-2" style={{ fontSize: 16, lineHeight: 1.7, color: REPORT_COLORS.heading }}>
+              {introSourceExcerpt}
+            </p>
+          </div>
+
+          <div
+            className="rounded-lg px-4 py-3"
+            style={{
+              backgroundColor: 'rgba(175,196,255,0.05)',
+              border: '1px solid rgba(175,196,255,0.12)',
+            }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#afc4ff' }}>
+              What detail would make this stronger
+            </p>
+            <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
+              {introQuestion}
+            </p>
+          </div>
+
+          <div
+            className="rounded-lg px-4 py-3"
+            style={{
+              backgroundColor: 'rgba(181,222,194,0.05)',
+              border: '1px solid rgba(181,222,194,0.18)',
+            }}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#b5dec2' }}>
+              Suggested rewrite to improve
+            </p>
+            {initialSuggestedLanguage ? (
+              <>
+                <p className="mt-2" style={{ fontSize: 13, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
+                  Start here if this already sounds close. You can edit it before you apply it.
+                </p>
+                <textarea
+                  value={starterDraftValue}
+                  onChange={(event) => setStarterDraftValue(event.target.value)}
+                  rows={5}
+                  aria-label="Edit the suggested rewrite"
+                  className="mt-3 min-h-[150px] w-full resize-y rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-3 text-sm leading-relaxed text-white/90 outline-none transition-colors focus:border-white/[0.24]"
+                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleStarterApply}
+                    disabled={isEditing || !starterDraftValue.trim()}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: '#b5dec2',
+                      backgroundColor: 'rgba(181,222,194,0.08)',
+                      border: '1px solid rgba(181,222,194,0.20)',
+                    }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {isEditing ? 'Preparing Edit...' : 'Use This Rewrite'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
+                We still need one concrete detail from you before AI should write the final rewrite.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Messages — accessible chat log */}
       {messages.length > 0 && (
         <div
@@ -340,8 +453,8 @@ export function GapChatThread({
               backgroundColor: 'rgba(175,196,255,0.06)',
               border: '1px solid rgba(175,196,255,0.15)',
             }}
-          >
-            Ask AI What Detail Is Missing
+            >
+            Show Me What Detail Is Missing
           </button>
           <button
             type="button"
@@ -353,8 +466,8 @@ export function GapChatThread({
               backgroundColor: 'rgba(181,222,194,0.08)',
               border: '1px solid rgba(181,222,194,0.20)',
             }}
-          >
-            Draft Stronger Version
+            >
+            Try a Stronger Rewrite
           </button>
           {messages.length > 0 && (
             <button
@@ -368,7 +481,7 @@ export function GapChatThread({
                 border: '1px solid rgba(255,255,255,0.10)',
               }}
             >
-              Try Another Version
+              Try Another Rewrite
             </button>
           )}
           {onSkip && (
@@ -427,8 +540,8 @@ export function GapChatThread({
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             placeholder={messages.length === 0
-              ? 'Add one concrete detail here and AI will turn it into a stronger draft...'
-              : 'Add the next detail or ask AI for a stronger version...'
+              ? 'Add one concrete detail here, like a metric, scope, reporting cadence, stakeholder group, or business result, and AI will improve the rewrite.'
+              : 'Add the next detail or ask AI for another rewrite...'
             }
             rows={1}
             disabled={isLoading}

@@ -65,9 +65,9 @@ interface RewriteQueuePanelProps {
 }
 
 const SOURCE_LABELS = {
-  job_description: 'Job Description',
-  benchmark: 'Benchmark',
-  final_review: 'Final Review',
+  job_description: 'From the job description',
+  benchmark: 'From the benchmark',
+  final_review: 'From the final review',
 } as const;
 
 const CATEGORY_LABELS: Record<RewriteQueueItem['category'], string> = {
@@ -122,14 +122,74 @@ function QueueStat({
   );
 }
 
+function sourceSectionTitle(source: RewriteQueueItem['source']): string {
+  if (source === 'benchmark') return '1. From the benchmark';
+  if (source === 'final_review') return '1. From the final review';
+  return '1. From the job description';
+}
+
+function missingExplanation(item: RewriteQueueItem): string {
+  if (item.category === 'hard_gap') {
+    return 'This may be a real gap. We need to confirm whether you actually have it before the resume should claim it.';
+  }
+
+  const firstEvidence = item.currentEvidence[0];
+  if (!firstEvidence) {
+    return 'Your resume does not clearly show this yet, so we still need one truthful detail before we should rewrite it.';
+  }
+
+  if (firstEvidence.basis === 'nearby') {
+    return 'This line is related, but it does not directly prove the requirement yet.';
+  }
+
+  return 'Your resume gets close here, but the requirement is still not obvious enough for a recruiter or hiring manager.';
+}
+
+function nextDetailPrompt(item: RewriteQueueItem): string {
+  return item.starterQuestion ?? item.userInstruction;
+}
+
+function aiActionLabel(item: RewriteQueueItem): string {
+  return item.suggestedDraft ? 'Improve This Rewrite with AI' : 'Build Rewrite with AI';
+}
+
+function helperToggleLabel(isExpanded: boolean): string {
+  return isExpanded ? 'Hide AI Helper' : 'Improve This Rewrite with AI';
+}
+
+function contextToggleLabel(isExpanded: boolean): string {
+  return isExpanded ? 'Hide More Context' : 'See More Context';
+}
+
+function primaryActionLabel(item: RewriteQueueItem, hasViewableEvidence: boolean): string {
+  if (item.status === 'already_covered' && hasViewableEvidence) {
+    return 'See Current Proof on Resume';
+  }
+
+  return aiActionLabel(item);
+}
+
+function RequirementSourcePreview({ item }: { item: RewriteQueueItem }) {
+  const excerpt = item.sourceEvidence[0]?.text;
+
+  return (
+    <div className="support-callout px-4 py-3">
+      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">{sourceSectionTitle(item.source)}</p>
+      <p className="mt-2 text-base leading-7 text-white/82">
+        {excerpt || 'We do not have a source excerpt saved for this requirement, but it is still part of the current match analysis.'}
+      </p>
+    </div>
+  );
+}
+
 function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
   const firstEvidence = item.currentEvidence[0];
   if (!firstEvidence) {
     return (
-      <div className="support-callout px-3 py-2">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">2. Current proof on the resume</p>
-        <p className="mt-1 text-sm leading-6 text-white/52">
-          Nothing on the current resume proves this yet.
+      <div className="support-callout px-4 py-3">
+        <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">2. From your resume</p>
+        <p className="mt-2 text-base leading-7 text-white/62">
+          We do not have a direct line on the resume that proves this requirement yet.
         </p>
       </div>
     );
@@ -138,45 +198,37 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
   const isNearbyEvidence = firstEvidence.basis === 'nearby';
 
   return (
-    <div className="support-callout px-3 py-2">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">
-        2. Current proof on the resume
-      </p>
-      <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/34">
-        {isNearbyEvidence ? 'Closest proof we found on the resume' : 'Current proof on the resume'}
-        {firstEvidence.section ? ` · ${firstEvidence.section}` : ''}
+    <div className="support-callout px-4 py-3">
+      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">2. From your resume</p>
+      <p className="mt-2 text-[12px] uppercase tracking-[0.14em] text-white/38">
+        {firstEvidence.section ? `${firstEvidence.section}` : 'Resume evidence'}
       </p>
       {isNearbyEvidence && (
-        <p className="mt-1 text-xs leading-5 text-white/48">
-          We found related experience nearby, but it is not yet direct proof for this requirement.
+        <p className="mt-2 text-sm leading-6 text-white/56">
+          This line is related, but it does not directly prove the requirement yet.
         </p>
       )}
-      <p className="mt-1 text-sm leading-6 text-white/72">{firstEvidence.text}</p>
+      <p className="mt-2 text-base leading-7 text-white/80">{firstEvidence.text}</p>
     </div>
   );
 }
 
 function SuggestedDraftPreview({ item }: { item: RewriteQueueItem }) {
   return (
-    <div className="support-callout border border-[#afc4ff]/16 bg-[#afc4ff]/[0.04] px-3 py-3">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-[#afc4ff]/72">3. Better draft to start from</p>
+    <div className="support-callout border border-[#afc4ff]/16 bg-[#afc4ff]/[0.04] px-4 py-4">
+      <p className="text-[12px] uppercase tracking-[0.15em] text-[#afc4ff]/78">4. Suggested rewrite for your resume</p>
       {item.suggestedDraft ? (
         <>
-          <p className="mt-2 text-sm leading-6 text-white/78">{item.suggestedDraft}</p>
-          <p className="mt-2 text-xs leading-5 text-white/48">
-            Treat this as a starting point. You can edit it before you apply it to the resume.
+          <p className="mt-3 text-[17px] leading-8 text-white/86">{item.suggestedDraft}</p>
+          <p className="mt-3 text-sm leading-6 text-white/56">
+            This is the rewrite we recommend from what we already know. You can use it as-is or improve it before it goes onto the resume.
           </p>
         </>
       ) : (
         <>
-          <p className="mt-2 text-sm leading-6 text-white/64">
-            AI is ready to draft this, but it still needs one more concrete detail or one quick review of the current proof.
+          <p className="mt-3 text-base leading-7 text-white/70">
+            We are ready to draft this, but we still need one concrete detail before we should write it into the resume.
           </p>
-          {item.starterQuestion && (
-            <p className="mt-2 text-xs leading-5 text-white/52">
-              First question: {item.starterQuestion}
-            </p>
-          )}
         </>
       )}
     </div>
@@ -194,23 +246,23 @@ function EvidenceList({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">{title}</p>
+      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">{title}</p>
       {items.length === 0 ? (
-        <div className="support-callout px-3 py-2 text-sm leading-6 text-white/50">
+        <div className="support-callout px-4 py-3 text-base leading-7 text-white/56">
           {emptyLabel}
         </div>
       ) : (
         items.slice(0, 2).map((item, index) => (
-          <div key={`${item.text}-${index}`} className="support-callout px-3 py-2">
+          <div key={`${item.text}-${index}`} className="support-callout px-4 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              {item.section && <p className="text-[11px] text-white/42">{item.section}</p>}
+              {item.section && <p className="text-[12px] text-white/44">{item.section}</p>}
               {item.basis === 'nearby' && (
                 <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Closest proof
+                  Related, but not direct yet
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm leading-6 text-white/74">{item.text}</p>
+            <p className="mt-2 text-base leading-7 text-white/78">{item.text}</p>
           </div>
         ))
       )}
@@ -272,6 +324,46 @@ export function RewriteQueuePanel({
   const visibleFixFirstCount = Math.min(queue.summary.needsAttention, FIX_FIRST_VISIBLE_LIMIT);
   const queuedAfterFixFirst = Math.max(queue.summary.needsAttention - FIX_FIRST_VISIBLE_LIMIT, 0);
 
+  const applySuggestedLanguage = (
+    item: RewriteQueueItem,
+    language: string,
+    candidateInputUsed = false,
+  ) => {
+    if (!item.requirement || !currentResume || !onRequestEdit) return;
+
+    const target = findBulletForRequirement(item.requirement, positioningAssessment, currentResume);
+    if (!target) {
+      setPlacementWarnings((previous) => ({
+        ...previous,
+        [item.id]: 'We could not place this automatically yet. Open a section on the resume first or answer one more question so we can anchor the edit in the right place.',
+      }));
+      return;
+    }
+
+    setPlacementWarnings((previous) => {
+      const next = { ...previous };
+      delete next[item.id];
+      return next;
+    });
+
+    onRequestEdit(
+      target.text,
+      target.section,
+      'custom',
+      `Naturally integrate this coached resume language into the text: "${language}". This addresses the requirement: "${item.requirement}".`,
+      buildEditContext(
+        item.requirement,
+        item.currentEvidence.map((evidence) => evidence.text),
+        language,
+        {
+          origin: 'gap',
+          candidateInputUsed,
+          scoreDomain: item.source === 'benchmark' ? 'benchmark' : 'job_description',
+        },
+      ),
+    );
+  };
+
   const handlePrimaryAction = (item: RewriteQueueItem) => {
     if (item.status === 'already_covered' && item.requirement && item.currentEvidence.some((evidence) => Boolean(evidence.section))) {
       onRequirementClick(item.requirement);
@@ -300,41 +392,17 @@ export function RewriteQueuePanel({
         resolvedLanguage={chatState?.resolvedLanguage ?? null}
         onSendMessage={gapChat.sendMessage}
         onAcceptLanguage={(requirement, language, candidateInputUsed) => {
-          const target = findBulletForRequirement(requirement, positioningAssessment, currentResume);
-          if (!target) {
-            setPlacementWarnings((previous) => ({
-              ...previous,
-              [item.id]: 'We could not place this automatically yet. Open a section on the resume first or answer one more question so we can anchor the edit in the right place.',
-            }));
-            return;
-          }
-
-          setPlacementWarnings((previous) => {
-            const next = { ...previous };
-            delete next[item.id];
-            return next;
-          });
-
-          onRequestEdit(
-            target.text,
-            target.section,
-            'custom',
-            `Naturally integrate this coached resume language into the text: "${language}". This addresses the requirement: "${requirement}".`,
-            buildEditContext(
-              requirement,
-              item.currentEvidence.map((evidence) => evidence.text),
-              language,
-              {
-                origin: 'gap',
-                candidateInputUsed,
-                scoreDomain: item.source === 'benchmark' ? 'benchmark' : 'job_description',
-              },
-            ),
-          );
+          const matchedItem = { ...item, requirement };
+          applySuggestedLanguage(matchedItem, language, candidateInputUsed);
         }}
         context={chatContext}
         isEditing={isEditing}
         onSkip={() => setExpandedItemId(null)}
+        sourceLabel={SOURCE_LABELS[item.source]}
+        sourceExcerpt={item.sourceEvidence[0]?.text ?? null}
+        initialQuestion={nextDetailPrompt(item)}
+        initialSuggestedLanguage={item.suggestedDraft ?? null}
+        promptHint={item.userInstruction}
       />
     );
   };
@@ -349,7 +417,7 @@ export function RewriteQueuePanel({
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-white/88">Requirements to Match</h2>
             <p className="mt-1 text-sm leading-6 text-white/54">
-              We pulled requirements from the job description first and added benchmark signals second. For each one, we show what the role is asking for, what your resume proves today, and how AI can help you improve the match.
+              We pulled requirements from the job description first and added benchmark signals second. For each one, we show the language from the role, the closest line from your resume, what is still missing, and the rewrite we recommend next.
             </p>
           </div>
         </div>
@@ -357,7 +425,7 @@ export function RewriteQueuePanel({
         <div className="support-callout px-4 py-3">
           <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">How to use this</p>
           <p className="mt-2 text-sm leading-6 text-white/74">
-            This is the working view. Start with the first requirement below, compare it with the current resume proof, then use the AI helper to draft a stronger version you can edit and apply inline.
+            Start with the first requirement below. Read what the role is asking for, compare it with what your resume says now, then either use the suggested rewrite or improve it with AI.
           </p>
           <p className="mt-2 text-sm leading-6 text-white/56">
             Job Description items are direct asks from the posting. Benchmark items are executive-level signals strong candidates usually show even when the posting is incomplete. If you want the full analysis report, open it below.
@@ -413,8 +481,10 @@ export function RewriteQueuePanel({
           <div className="room-shell border border-[#afc4ff]/16 bg-[#0f1622] px-4 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">Start with this requirement</p>
-                <p className="mt-2 text-sm font-semibold text-white/86">{nextItem.title}</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">
+                  Start with this requirement from {nextItem.source === 'benchmark' ? 'the benchmark' : 'the job description'}
+                </p>
+                <p className="mt-2 text-lg font-semibold leading-8 text-white/90">{nextItem.title}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
@@ -427,18 +497,16 @@ export function RewriteQueuePanel({
             </div>
 
             <div className="support-callout mt-3 space-y-3 px-3 py-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">1. Why this needs attention</p>
-                <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.userInstruction}</p>
-              </div>
-
+              <RequirementSourcePreview item={nextItem} />
               <CurrentProofPreview item={nextItem} />
-              <SuggestedDraftPreview item={nextItem} />
-
-              <div className="support-callout px-3 py-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">4. Work with AI on this requirement</p>
-                <p className="mt-1 text-sm leading-6 text-white/66">{nextItem.aiPlan}</p>
+              <div className="support-callout px-4 py-3">
+                <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">3. What is still missing</p>
+                <p className="mt-2 text-base leading-7 text-white/74">{missingExplanation(nextItem)}</p>
+                <p className="mt-3 text-sm leading-6 text-white/56">
+                  The one detail we still need from you: {nextDetailPrompt(nextItem)}
+                </p>
               </div>
+              <SuggestedDraftPreview item={nextItem} />
 
               {nextItem.riskNote && (
                 <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
@@ -447,34 +515,23 @@ export function RewriteQueuePanel({
               )}
 
               <div className="flex flex-wrap gap-2">
+                {nextItem.suggestedDraft && (
+                  <button
+                    type="button"
+                    onClick={() => applySuggestedLanguage(nextItem, nextItem.suggestedDraft ?? '')}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.09] px-3 py-2 text-xs font-medium text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/[0.15]"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Use This Rewrite
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handlePrimaryAction(nextItem)}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
                 >
                   <MessagesSquare className="h-3.5 w-3.5" />
-                  {nextItem.suggestedDraft ? 'Review Draft with AI' : 'Draft with AI'}
-                </button>
-                {nextItem.requirement && nextItem.currentEvidence.some((evidence) => Boolean(evidence.section)) && (
-                  <button
-                    type="button"
-                    onClick={() => onRequirementClick(nextItem.requirement!)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
-                  >
-                    <ClipboardCheck className="h-3.5 w-3.5" />
-                    Show Current Proof in Resume
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setExpandedItemId((previous) => previous === nextItem.id ? null : nextItem.id)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
-                >
-                  <ChevronRight
-                    className="h-3.5 w-3.5 transition-transform"
-                    style={{ transform: expandedItemId === nextItem.id ? 'rotate(90deg)' : 'none' }}
-                  />
-                  {expandedItemId === nextItem.id ? 'Hide Details' : 'Show Details'}
+                  {helperToggleLabel(expandedItemId === nextItem.id)}
                 </button>
               </div>
             </div>
@@ -581,63 +638,67 @@ export function RewriteQueuePanel({
                                 </div>
 
                                 <div>
-                                  <p className="text-sm font-semibold leading-6 text-white/88">{item.title}</p>
-                                  <p className="mt-1 text-sm leading-6 text-white/58">{item.whyItMatters}</p>
+                                  <p className="text-base font-semibold leading-7 text-white/88">{item.title}</p>
+                                  <p className="mt-1 text-base leading-7 text-white/62">{item.whyItMatters}</p>
                                 </div>
 
                                 <CurrentProofPreview item={item} />
                                 <SuggestedDraftPreview item={item} />
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={() => setExpandedItemId((previous) => previous === item.id ? null : item.id)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] text-white/56 transition-colors hover:bg-white/[0.06] hover:text-white/78"
-                                aria-expanded={isExpanded}
-                                aria-label={`Toggle details for ${item.title}`}
-                              >
-                                <ChevronRight
-                                  className="h-3.5 w-3.5 transition-transform"
-                                  style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
-                                />
-                                {isExpanded ? 'Hide Details' : 'Show Details'}
-                              </button>
                             </div>
 
                             <div className="flex flex-wrap gap-2 pt-1">
+                              {item.suggestedDraft && item.status !== 'already_covered' && (
+                                <button
+                                  type="button"
+                                  onClick={() => applySuggestedLanguage(item, item.suggestedDraft ?? '')}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.09] px-3 py-2 text-xs font-medium text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/[0.15]"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Use This Rewrite
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handlePrimaryAction(item)}
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-3 py-2 text-xs font-medium text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.14]"
                               >
-                                <MessagesSquare className="h-3.5 w-3.5" />
-                                {item.suggestedDraft ? 'Review Draft with AI' : 'Draft with AI'}
-                              </button>
-
-                              {hasViewableEvidence && item.requirement && (
-                                <button
-                                  type="button"
-                                  onClick={() => onRequirementClick(item.requirement!)}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
-                                >
+                                {item.status === 'already_covered' && hasViewableEvidence ? (
                                   <ClipboardCheck className="h-3.5 w-3.5" />
-                                  Jump to Current Proof
-                                </button>
-                              )}
+                                ) : (
+                                  <MessagesSquare className="h-3.5 w-3.5" />
+                                )}
+                                {primaryActionLabel(item, hasViewableEvidence)}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedItemId((previous) => previous === item.id ? null : item.id)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/64 transition-colors hover:bg-white/[0.06] hover:text-white/82"
+                                aria-expanded={isExpanded}
+                                aria-label={`Toggle more context for ${item.title}`}
+                              >
+                                <ChevronRight
+                                  className="h-3.5 w-3.5 transition-transform"
+                                  style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
+                                />
+                                {contextToggleLabel(isExpanded)}
+                              </button>
                             </div>
 
                             {isExpanded && (
                               <div className="support-callout space-y-3 px-3 py-3">
-                                <div>
-                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">1. Why this needs attention</p>
-                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.whyItMatters}</p>
-                                </div>
+                                <RequirementSourcePreview item={item} />
 
                                 {item.starterQuestion && item.bucket !== 'resolved' && (
-                                  <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-2 text-xs leading-5 text-white/72">
-                                    First question: {item.starterQuestion}
+                                  <div className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-2 text-sm leading-6 text-white/72">
+                                    The one detail we still need from you: {item.starterQuestion}
                                   </div>
                                 )}
+
+                                <div className="support-callout px-4 py-3">
+                                  <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">3. What is still missing</p>
+                                  <p className="mt-2 text-base leading-7 text-white/74">{missingExplanation(item)}</p>
+                                </div>
 
                                 {item.riskNote && (
                                   <div className="rounded-lg border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-3 py-2 text-xs leading-5 text-white/70">
@@ -645,25 +706,11 @@ export function RewriteQueuePanel({
                                   </div>
                                 )}
 
-                                <EvidenceList
-                                  title="2. What your resume shows today"
-                                  items={item.currentEvidence}
-                                  emptyLabel="Nothing on the current resume proves this yet."
-                                />
-
-                                <SuggestedDraftPreview item={item} />
-
-                                <div>
-                                  <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">4. Work with AI on this requirement</p>
-                                  <p className="mt-1 text-sm leading-6 text-white/68">{item.aiPlan}</p>
-                                  <p className="mt-2 text-sm leading-6 text-white/56">{item.userInstruction}</p>
-                                </div>
-
-                                {item.sourceEvidence.length > 0 && (
+                                {item.currentEvidence.length > 1 && (
                                   <EvidenceList
-                                    title={item.source === 'benchmark' ? 'What the benchmark is looking for' : 'What the job description is looking for'}
-                                    items={item.sourceEvidence}
-                                    emptyLabel="No source excerpt is available for this item."
+                                    title="Other related evidence on your resume"
+                                    items={item.currentEvidence.slice(1)}
+                                    emptyLabel="No other related evidence was found on the resume."
                                   />
                                 )}
 
