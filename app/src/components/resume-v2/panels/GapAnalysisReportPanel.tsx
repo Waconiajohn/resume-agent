@@ -5,7 +5,7 @@
  * - Grouped by importance (Must Have → Important → Nice to Have)
  * - Within each group: gaps first, then partial, then strong
  * - Tier-specific colored accents (green/blue/red)
- * - Colored importance pills from shared-badges
+ * - Structured importance markers from shared-badges
  * - Benchmark context inline when available
  * - JD evidence as subtitle under requirement name
  * - Questions toggle for BOTH partial and gap tiers
@@ -316,7 +316,7 @@ function ImportanceGroupHeader({ importance, count }: { importance: string; coun
   return (
     <div className="flex items-center gap-2 px-5 py-3 mt-2" style={{ borderBottom: `1px solid ${style.borderColor}` }}>
       <span
-        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0"
+        className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shrink-0"
         style={style}
         data-testid="importance-pill"
       >
@@ -366,6 +366,21 @@ function RequirementCard({
   const color = tierColor(req.tier);
   const config = TIER_CONFIG[req.tier];
   const canAct = onRequestEdit && currentResume && !isEditing;
+  const resolveEditTarget = useCallback(() => {
+    const mapped = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
+    if (mapped) return mapped;
+
+    const firstExperience = currentResume?.professional_experience[0];
+    const firstBullet = firstExperience?.bullets[0];
+    if (firstExperience && firstBullet) {
+      return {
+        text: firstBullet.text,
+        section: `Professional Experience - ${firstExperience.company}`,
+      };
+    }
+
+    return null;
+  }, [currentResume, positioningAssessment, req.requirement]);
   const hasMapping = req.addressedBy && req.addressedBy.length > 0;
   const statusLabel = req.tier === 'strong'
     ? 'Already Covered'
@@ -375,7 +390,7 @@ function RequirementCard({
 
   const handleApplyLanguage = useCallback(() => {
     if (!canAct || !req.strategy?.positioning) return;
-    const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
+    const target = resolveEditTarget();
     if (!target) return;
     const label = req.tier === 'gap' ? 'safe resume language' : 'positioning';
     onRequestEdit!(
@@ -385,18 +400,18 @@ function RequirementCard({
       `Naturally weave this ${label} into the text: "${req.strategy.positioning}". This addresses the job requirement: "${req.requirement}".`,
       buildEditContext(req.requirement, req.evidence, req.strategy.positioning),
     );
-  }, [canAct, req, positioningAssessment, currentResume, onRequestEdit]);
+  }, [canAct, onRequestEdit, req, resolveEditTarget]);
 
   const handleStrengthen = useCallback(() => {
     if (!canAct) return;
-    const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
+    const target = resolveEditTarget();
     if (!target) return;
     onRequestEdit!(target.text, target.section, 'strengthen', undefined, buildEditContext(req.requirement, req.evidence, req.strategy?.positioning));
-  }, [canAct, req, positioningAssessment, currentResume, onRequestEdit]);
+  }, [canAct, onRequestEdit, req, resolveEditTarget]);
 
   const handleSubmitContext = useCallback(() => {
     if (!canAct || !contextText.trim()) return;
-    const target = findBulletForRequirement(req.requirement, positioningAssessment, currentResume!);
+    const target = resolveEditTarget();
     if (!target) return;
     onRequestEdit!(
       target.text,
@@ -407,7 +422,7 @@ function RequirementCard({
     );
     setContextText('');
     setShowContext(false);
-  }, [canAct, contextText, req, positioningAssessment, currentResume, onRequestEdit]);
+  }, [canAct, contextText, onRequestEdit, req, resolveEditTarget]);
 
   const handleViewInResume = useCallback(() => {
     onRequirementClick(req.requirement);
@@ -572,7 +587,7 @@ function RequirementCard({
             {req.evidence.map((e, i) => (
               <span
                 key={i}
-                className="rounded-full px-2.5 py-0.5 text-xs"
+                className="rounded-md px-2.5 py-1 text-xs"
                 style={{
                   color: REPORT_COLORS.secondary,
                   backgroundColor: 'rgba(181,222,194,0.08)',

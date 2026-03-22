@@ -145,14 +145,14 @@ function RequirementRow({
   // Collapsed responded state for coaching items
   if (hasCoaching && isResponded) {
     const statusConfig = {
-      approve: { dot: <span className="h-2 w-2 rounded-full bg-[#b5dec2] shrink-0" />, label: 'Approved', color: 'text-[#b5dec2]' },
+      approve: { dot: <span className="h-2 w-2 bg-[#b5dec2] shrink-0" />, label: 'Approved', color: 'text-[#b5dec2]' },
       context: { dot: <MessageSquare className="h-3 w-3 text-[#afc4ff] shrink-0" />, label: 'Context added', color: 'text-[#afc4ff]' },
       skip: { dot: <Minus className="h-3 w-3 text-white/30 shrink-0" />, label: 'Skipped', color: 'text-white/35' },
     }[coachingState!.action!];
 
     return (
       <div
-        className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 flex items-center gap-3 transition-all duration-300"
+        className="support-callout px-3 py-2.5 flex items-center gap-3 transition-all duration-300"
         data-coaching-requirement={req.requirement}
       >
         {statusConfig.dot}
@@ -165,7 +165,7 @@ function RequirementRow({
 
   return (
     <div
-      className="rounded-lg border border-white/[0.06] bg-white/[0.02] overflow-hidden transition-all duration-300"
+      className="room-shell overflow-hidden transition-all duration-300"
       data-coaching-requirement={req.requirement}
     >
       {/* Collapsed header */}
@@ -185,13 +185,13 @@ function RequirementRow({
         {classificationIcon(classification)}
         <span className="flex-1 min-w-0 text-sm text-white/80 leading-snug truncate">{req.requirement}</span>
         <span
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase shrink-0"
+          className="inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase shrink-0"
           style={importanceStyle(req.importance)}
         >
           {importanceLabel(req.importance)}
         </span>
         {coaching?.previously_approved && (
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30 shrink-0">
+          <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30 shrink-0">
             <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
             Previously approved
           </span>
@@ -230,7 +230,7 @@ function RequirementRow({
           {coaching?.ai_reasoning && (
             <div className="flex gap-3">
               <div className="shrink-0 mt-0.5 flex flex-col items-center gap-1">
-                <div className="h-7 w-7 rounded-full bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
+                <div className="h-7 w-7 bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
                   <span className="text-[9px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
                 </div>
                 <div className="w-px flex-1 bg-[#afc4ff]/10 min-h-[8px]" />
@@ -331,7 +331,7 @@ function RequirementRow({
                 <button
                   type="button"
                   onClick={handleStrengthen}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
+                  className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Strengthen
@@ -339,7 +339,7 @@ function RequirementRow({
                 <button
                   type="button"
                   onClick={handleAddMetrics}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
+                  className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
                 >
                   <Ruler className="h-3.5 w-3.5" />
                   Add Metrics
@@ -379,7 +379,7 @@ function RequirementRow({
                     }
                   }}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+                    'flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
                     coachingState.showContextInput
                       ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
                       : 'bg-white/[0.04] text-white/60 border-white/[0.08] hover:bg-white/[0.07] hover:text-white/80',
@@ -442,7 +442,7 @@ function RequirementRow({
               <button
                 type="button"
                 onClick={handleApplyToResume}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+                className="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
               >
                 <Lightbulb className="h-3.5 w-3.5" />
                 {classification === 'missing' ? 'Apply Safe Language' : 'Apply to Resume'}
@@ -486,13 +486,13 @@ function SectionGroup({
   const Icon = config.icon;
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
+    <section className="space-y-3">
+      <div className="room-meta-strip">
         <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: config.accent }} />
-        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: config.accent }}>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: config.accent }}>
           {config.label}
         </span>
-        <span className="text-[10px] text-white/30 ml-1">({requirements.length})</span>
+        <span className="text-[10px] text-white/30">({requirements.length})</span>
       </div>
       <div className="space-y-2">
         {requirements.map((req, i) => {
@@ -514,7 +514,7 @@ function SectionGroup({
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -590,18 +590,24 @@ export function UnifiedGapAnalysisCard({
     : 'Gap Analysis';
 
   return (
-    <div className="space-y-6">
+    <div className="room-shell space-y-6 px-5 py-5">
       {/* Section A: Score Header */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-white/90">{title}</h3>
-          <span className="text-2xl font-bold text-white/90">{gapAnalysis.coverage_score}%</span>
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="eyebrow-label">Requirement Coverage</div>
+            <h3 className="text-lg font-semibold tracking-tight text-white/90">{title}</h3>
+          </div>
+          <div className="support-callout min-w-[120px] px-4 py-3 text-right">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40">Coverage</div>
+            <span className="text-3xl font-semibold tracking-tight text-white/90">{gapAnalysis.coverage_score}%</span>
+          </div>
         </div>
         <p className="text-sm text-white/60 mb-3">{gapAnalysis.strength_summary}</p>
 
         {/* Stacked bar */}
         {gapAnalysis.requirements.length > 0 && (
-          <div className="h-2.5 w-full rounded-full bg-white/[0.06] overflow-hidden flex">
+          <div className="h-2.5 w-full overflow-hidden flex bg-white/[0.06]">
             {strong.length > 0 && (
               <div
                 className="h-full bg-[#b5dec2] transition-all duration-700"
@@ -624,7 +630,7 @@ export function UnifiedGapAnalysisCard({
         )}
 
         {/* Legend */}
-        <div className="flex gap-4 text-xs mt-2">
+        <div className="room-meta-strip mt-2 gap-3 text-xs">
           <span className="flex items-center gap-1 text-[#b5dec2]"><CheckCircle2 className="h-3 w-3" /> {strong.length} strong match{strong.length !== 1 ? 'es' : ''}</span>
           <span className="flex items-center gap-1 text-[#afc4ff]"><AlertTriangle className="h-3 w-3" /> {partial.length} to strengthen</span>
           <span className="flex items-center gap-1 text-[#f0b8b8]"><XCircle className="h-3 w-3" /> {missing.length} gap{missing.length !== 1 ? 's' : ''}</span>
@@ -638,9 +644,9 @@ export function UnifiedGapAnalysisCard({
             <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Review Progress</span>
             <span className="text-xs text-white/40">{respondedCount} / {gapCoachingCards!.length} reviewed</span>
           </div>
-          <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+          <div className="h-1 w-full overflow-hidden bg-white/[0.06]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
+              className="h-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
               style={{ width: gapCoachingCards!.length > 0 ? `${(respondedCount / gapCoachingCards!.length) * 100}%` : '0%' }}
             />
           </div>
@@ -691,10 +697,10 @@ export function UnifiedGapAnalysisCard({
 
       {/* Section E: Critical Gaps */}
       {gapAnalysis.critical_gaps.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
+        <div className="space-y-3">
+          <div className="room-meta-strip">
             <Shield className="h-3.5 w-3.5 text-[#f0b8b8] shrink-0" />
-            <span className="text-[10px] font-semibold text-[#f0b8b8] uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-[#f0b8b8] uppercase tracking-[0.16em]">
               Critical Gaps
             </span>
             <span className="text-[10px] text-white/30 ml-1">({gapAnalysis.critical_gaps.length})</span>
@@ -703,7 +709,7 @@ export function UnifiedGapAnalysisCard({
             {gapAnalysis.critical_gaps.map((gap, i) => (
               <div
                 key={i}
-                className="rounded-lg border border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.04] px-3 py-2 text-sm text-white/60"
+                className="support-callout border-[#f0b8b8]/20 bg-[#f0b8b8]/[0.04] px-3 py-2.5 text-sm text-white/60"
               >
                 {gap}
               </div>
@@ -720,7 +726,7 @@ export function UnifiedGapAnalysisCard({
             disabled={!allResponded || disabled}
             onClick={handleContinue}
             className={cn(
-              'w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed',
+              'w-full flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] transition-all disabled:opacity-30 disabled:cursor-not-allowed',
               allResponded && !disabled
                 ? 'bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35'
                 : 'border border-white/[0.06] text-white/30',
@@ -737,7 +743,7 @@ export function UnifiedGapAnalysisCard({
             </p>
           )}
           {allResponded && coachingStates.every(s => s.action === 'skip') && (
-            <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 mt-3">
+            <div className="support-callout mt-3 px-4 py-3">
               <p className="text-sm text-white/60">
                 Your resume will highlight your direct matches — no inferred positioning will be used.
               </p>

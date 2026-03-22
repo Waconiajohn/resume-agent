@@ -91,29 +91,29 @@ export function ResumeWorkshopRoom({
   };
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
-      <GlassCard className="p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
-              Resume Builder
-            </div>
-            <h1 className="mt-2 text-xl font-semibold text-white/90">Your home for tailored resumes</h1>
-            <p className="mt-2 text-sm leading-relaxed text-white/50">
+    <div className="room-shell">
+      <GlassCard className="p-7">
+        <div className="room-header lg:flex-row lg:items-start lg:justify-between">
+          <div className="room-header-copy">
+            <div className="eyebrow-label">Resume Builder</div>
+            <h1 className="room-title">Your home for tailored resumes</h1>
+            <p className="room-subtitle">
               Most work should happen in job workspaces. Open Master Resume or Cover Letter when you need them, then come right back.
             </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 font-medium text-white/68">
-                {tailoredCount} job workspaces
-              </span>
-              <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 font-medium text-white/68">
-                {defaultResume ? `Master resume v${defaultResume.version}` : 'No master resume yet'}
-              </span>
+            <div className="room-meta-strip mt-5">
+              <div className="room-meta-item">
+                Workspaces
+                <strong>{tailoredCount}</strong>
+              </div>
+              <div className="room-meta-item">
+                Master Resume
+                <strong>{defaultResume ? `v${defaultResume.version}` : 'Missing'}</strong>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <GlassButton variant="ghost" onClick={() => setActiveTab('master_resume')}>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <GlassButton variant="secondary" onClick={() => setActiveTab('master_resume')}>
               Open Master Resume
             </GlassButton>
             <GlassButton variant="ghost" onClick={openCoverLetter}>
@@ -128,21 +128,26 @@ export function ResumeWorkshopRoom({
 
       </GlassCard>
 
-      <GlassCard className="p-5">
-        <div className="mb-5 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 text-xs font-medium text-white/62">
-            Job Workspaces
-          </span>
-          {activeTab === 'cover_letter' && (
-            <span className="rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/10 px-3 py-1 text-xs font-medium text-[#d8e2ff]">
-              Cover Letter
-            </span>
-          )}
-          {activeTab === 'master_resume' && (
-            <span className="rounded-full border border-[#b5dec2]/20 bg-[#b5dec2]/10 px-3 py-1 text-xs font-medium text-[#d6f0df]">
-              Master Resume
-            </span>
-          )}
+      <GlassCard className="p-6">
+        <div className="room-frame">
+          <div className="room-meta-strip mb-6">
+            <div className="room-meta-item">
+              Primary View
+              <strong>Job Workspaces</strong>
+            </div>
+            {activeTab === 'cover_letter' && (
+              <div className="room-meta-item">
+                Secondary Flow
+                <strong>Cover Letter</strong>
+              </div>
+            )}
+            {activeTab === 'master_resume' && (
+              <div className="room-meta-item">
+                Secondary Flow
+                <strong>Master Resume</strong>
+              </div>
+            )}
+          </div>
         </div>
 
         <div>
@@ -163,14 +168,14 @@ export function ResumeWorkshopRoom({
 
           {activeTab === 'cover_letter' && (
             <div className="space-y-5">
-              <GlassCard className="p-5">
+              <GlassCard className="p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="max-w-3xl">
-                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+                    <div className="eyebrow-label">
                       Cover Letter
                     </div>
-                    <h2 className="mt-2 text-lg font-semibold text-white/88">Write the cover letter in the same workflow</h2>
-                    <p className="mt-2 text-sm leading-relaxed text-white/54">
+                    <h2 className="mt-2 text-2xl text-white/92">Write the cover letter in the same workflow</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                       Start from your resume, target the current role, and keep the letter tied to the same job workspace.
                     </p>
                   </div>
@@ -195,14 +200,14 @@ export function ResumeWorkshopRoom({
 
           {activeTab === 'master_resume' && (
             <div className="space-y-5">
-              <GlassCard className="p-5">
+              <GlassCard className="p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="max-w-3xl">
-                    <div className="text-[11px] font-medium uppercase tracking-widest text-[#b5dec2]/70">
+                    <div className="eyebrow-label">
                       Master Resume
                     </div>
-                    <h2 className="mt-2 text-lg font-semibold text-white/88">Keep your long-term resume clean, current, and reusable</h2>
-                    <p className="mt-2 text-sm leading-relaxed text-white/54">
+                    <h2 className="mt-2 text-2xl text-white/92">Keep your long-term resume clean, current, and reusable</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                       Use this as the durable base you promote strong edits into after job-specific work proves worth keeping.
                     </p>
                   </div>

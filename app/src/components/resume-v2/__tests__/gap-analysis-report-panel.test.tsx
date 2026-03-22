@@ -235,7 +235,7 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Gap Analysis')).toBeTruthy();
+    expect(screen.getByText('Requirement Coverage')).toBeTruthy();
     expect(screen.getByText(/VP Engineering/)).toBeTruthy();
   });
 
@@ -377,7 +377,7 @@ describe('GapAnalysisReportPanel', () => {
     );
 
     expect(screen.getByText(/Led cross-functional team of 120\+ engineers/)).toBeTruthy();
-    expect(screen.getByText(/Not addressed in your resume/)).toBeTruthy();
+    expect(screen.getByText(/Not yet proven in your resume/)).toBeTruthy();
   });
 
   it('shows "View in Resume" links for addressed requirements', () => {
@@ -415,7 +415,7 @@ describe('GapAnalysisReportPanel', () => {
     expect(mockScrollToBullet).not.toHaveBeenCalled();
   });
 
-  it('shows "Repositioned in" prefix for repositioned items', () => {
+  it('shows "Partially covered in" prefix for repositioned items', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -426,10 +426,10 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    expect(screen.getByText(/Repositioned in/)).toBeTruthy();
+    expect(screen.getByText(/Partially covered in/)).toBeTruthy();
   });
 
-  it('gracefully handles missing positioningAssessment — all cards show "Not addressed"', () => {
+  it('gracefully handles missing positioningAssessment — all cards show "Not yet proven"', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -441,7 +441,7 @@ describe('GapAnalysisReportPanel', () => {
     );
 
     expect(screen.queryAllByTestId('view-in-resume').length).toBe(0);
-    expect(screen.getAllByText(/Not addressed in your resume/).length).toBe(3);
+    expect(screen.getAllByText(/Not yet proven in your resume/).length).toBe(3);
   });
 
   // ─── JD evidence subtitle ──────────────────────────────────────────────────
@@ -556,7 +556,7 @@ describe('GapAnalysisReportPanel', () => {
     expect(applyButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows "Add to Resume" on gap language blocks and "Apply" on non-gap', () => {
+  it('shows "Review Edit" on suggested language blocks for all editable tiers', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -570,24 +570,23 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    // Gap card (Kubernetes) should show "Add to Resume"
+    // Gap card (Kubernetes) should show the current review action
     const gapCard = screen.getAllByTestId('requirement-card').find(
       (c) => c.getAttribute('data-tier') === 'gap',
     );
-    expect(gapCard?.textContent).toContain('Add to Resume');
+    expect(gapCard?.textContent).toContain('Review Edit');
 
-    // Strong card should show "Apply" not "Add to Resume"
+    // Strong card uses the same explicit review action
     const strongCard = screen.getAllByTestId('requirement-card').find(
       (c) => c.getAttribute('data-tier') === 'strong',
     );
     const strongApply = strongCard?.querySelector('[data-testid="action-apply-language"]');
     if (strongApply) {
-      expect(strongApply.textContent).toContain('Apply');
-      expect(strongApply.textContent).not.toContain('Add to Resume');
+      expect(strongApply.textContent).toContain('Review Edit');
     }
   });
 
-  it('shows "If you have this experience" prefix only on gap language blocks', () => {
+  it('shows the safe-language prefix only on gap language blocks', () => {
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -598,17 +597,18 @@ describe('GapAnalysisReportPanel', () => {
       />,
     );
 
-    // Gap card should show the conditional prefix
+    // Gap card should show the current safety prefix
     const gapCard = screen.getAllByTestId('requirement-card').find(
       (c) => c.getAttribute('data-tier') === 'gap',
     );
-    expect(gapCard?.textContent).toContain('If you have this experience');
+    expect(gapCard?.textContent).toContain('Use this only if it is true and you can support it:');
 
-    // Strong card should NOT show it
+    // Strong card should keep the standard suggested wording label
     const strongCard = screen.getAllByTestId('requirement-card').find(
       (c) => c.getAttribute('data-tier') === 'strong',
     );
-    expect(strongCard?.textContent).not.toContain('If you have this experience');
+    expect(strongCard?.textContent).not.toContain('Use this only if it is true and you can support it:');
+    expect(strongCard?.textContent).toContain('Suggested resume wording:');
   });
 
   it('clicking Apply on language block triggers onRequestEdit', () => {
@@ -816,9 +816,11 @@ describe('GapAnalysisReportPanel', () => {
     expect(screen.getByText(/Have you worked with K8s/)).toBeTruthy();
   });
 
-  // ─── Post-Apply card collapse ──────────────────────────────────────────────
+  // ─── Edit actions keep cards in the current interaction model ──────────────
 
-  it('collapses card to "Applied" state after clicking Apply', () => {
+  it('keeps the card expanded after clicking Review Edit', () => {
+    const onRequestEdit = vi.fn();
+
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -826,7 +828,7 @@ describe('GapAnalysisReportPanel', () => {
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
         onRequirementClick={vi.fn()}
-        onRequestEdit={vi.fn()}
+        onRequestEdit={onRequestEdit}
         currentResume={makeResume()}
         isEditing={false}
       />,
@@ -840,12 +842,15 @@ describe('GapAnalysisReportPanel', () => {
     expect(applyBtn).toBeTruthy();
     fireEvent.click(applyBtn);
 
-    // Should now show an "Applied" badge
-    expect(screen.getByTestId('applied-badge')).toBeTruthy();
-    expect(screen.getByTestId('applied-card')).toBeTruthy();
+    expect(onRequestEdit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('applied-badge')).toBeNull();
+    expect(screen.queryByTestId('applied-card')).toBeNull();
+    expect(screen.getAllByTestId('requirement-card').length).toBe(3);
   });
 
-  it('re-expands an applied card when clicked', () => {
+  it('does not replace the card with a collapsed applied state after review actions', () => {
+    const onRequestEdit = vi.fn();
+
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -853,7 +858,7 @@ describe('GapAnalysisReportPanel', () => {
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
         onRequirementClick={vi.fn()}
-        onRequestEdit={vi.fn()}
+        onRequestEdit={onRequestEdit}
         currentResume={makeResume()}
         isEditing={false}
       />,
@@ -866,11 +871,8 @@ describe('GapAnalysisReportPanel', () => {
     const applyBtn = strongCard?.querySelector('[data-testid="action-apply-language"]') as HTMLElement;
     fireEvent.click(applyBtn);
 
-    // Click applied card to re-expand
-    const appliedCard = screen.getByTestId('applied-card');
-    fireEvent.click(appliedCard);
-
-    // Should no longer have applied state, back to full card
+    expect(onRequestEdit).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByTestId('requirement-card').length).toBe(3);
     expect(screen.queryByTestId('applied-card')).toBeNull();
   });
 
@@ -1176,14 +1178,16 @@ describe('GapAnalysisReportPanel', () => {
     );
 
     const report = screen.getByTestId('gap-analysis-report');
-    expect(report.textContent).toContain('Direct Match');
-    expect(report.textContent).toContain('Positioned');
-    expect(report.textContent).toContain('Gap');
+    expect(report.textContent).toContain('Already Covered');
+    expect(report.textContent).toContain('Partially Covered');
+    expect(report.textContent).toContain('Not Addressed');
   });
 
-  // ─── Post-audit: Strengthen triggers Applied state ─────────────────────────
+  // ─── Post-audit: Strengthen triggers edit request ──────────────────────────
 
-  it('Strengthen button triggers Applied state', () => {
+  it('Strengthen button triggers an edit request without collapsing the card', () => {
+    const onRequestEdit = vi.fn();
+
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -1191,7 +1195,7 @@ describe('GapAnalysisReportPanel', () => {
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
         onRequirementClick={vi.fn()}
-        onRequestEdit={vi.fn()}
+        onRequestEdit={onRequestEdit}
         currentResume={makeResume()}
         isEditing={false}
       />,
@@ -1204,12 +1208,16 @@ describe('GapAnalysisReportPanel', () => {
     expect(strengthenBtn).toBeTruthy();
     fireEvent.click(strengthenBtn);
 
-    expect(screen.getByTestId('applied-badge')).toBeTruthy();
+    expect(onRequestEdit).toHaveBeenCalledTimes(1);
+    expect(onRequestEdit.mock.calls[0][2]).toBe('strengthen');
+    expect(screen.queryByTestId('applied-badge')).toBeNull();
   });
 
-  // ─── Post-audit: Add Context submit triggers Applied state ─────────────────
+  // ─── Post-audit: Add Context submit triggers edit request ──────────────────
 
-  it('Add Context submit triggers Applied state', () => {
+  it('Add Context submit triggers an edit request without collapsing the card', () => {
+    const onRequestEdit = vi.fn();
+
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -1217,7 +1225,7 @@ describe('GapAnalysisReportPanel', () => {
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
         onRequirementClick={vi.fn()}
-        onRequestEdit={vi.fn()}
+        onRequestEdit={onRequestEdit}
         currentResume={makeResume()}
         isEditing={false}
       />,
@@ -1233,12 +1241,16 @@ describe('GapAnalysisReportPanel', () => {
     const submitBtn = screen.getByTestId('submit-context');
     fireEvent.click(submitBtn);
 
-    expect(screen.getByTestId('applied-badge')).toBeTruthy();
+    expect(onRequestEdit).toHaveBeenCalledTimes(1);
+    expect(onRequestEdit.mock.calls[0][2]).toBe('custom');
+    expect(screen.queryByTestId('applied-badge')).toBeNull();
   });
 
-  // ─── Post-audit: Multiple cards applied independently ──────────────────────
+  // ─── Post-audit: Multiple cards trigger independent edit requests ──────────
 
-  it('multiple cards can be applied independently', () => {
+  it('multiple cards can trigger independent edit requests', () => {
+    const onRequestEdit = vi.fn();
+
     render(
       <GapAnalysisReportPanel
         jobIntelligence={makeJobIntelligence()}
@@ -1246,7 +1258,7 @@ describe('GapAnalysisReportPanel', () => {
         gapAnalysis={makeGapAnalysis()}
         activeRequirements={[]}
         onRequirementClick={vi.fn()}
-        onRequestEdit={vi.fn()}
+        onRequestEdit={onRequestEdit}
         currentResume={makeResume()}
         isEditing={false}
       />,
@@ -1266,15 +1278,8 @@ describe('GapAnalysisReportPanel', () => {
     const applyBtn2 = partialCard?.querySelector('[data-testid="action-apply-language"]') as HTMLElement;
     fireEvent.click(applyBtn2);
 
-    // Both should show as applied
-    const appliedBadges = screen.getAllByTestId('applied-badge');
-    expect(appliedBadges.length).toBe(2);
-
-    // Re-expand one — the other stays collapsed
-    const appliedCards = screen.getAllByTestId('applied-card');
-    fireEvent.click(appliedCards[0]);
-
-    expect(screen.getAllByTestId('applied-badge').length).toBe(1);
+    expect(onRequestEdit).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('applied-badge')).toBeNull();
   });
 
   // ─── Post-audit: Evidence chips render for strong matches ──────────────────
@@ -1359,17 +1364,17 @@ describe('GapAnalysisReportPanel', () => {
     const strongCard = screen.getAllByTestId('requirement-card').find(
       (c) => c.getAttribute('data-tier') === 'strong',
     );
-    expect(strongCard?.textContent).toContain('Direct Match');
+    expect(strongCard?.textContent).toContain('Already Covered');
 
     const partialCard = screen.getAllByTestId('requirement-card').find(
       (c) => c.getAttribute('data-tier') === 'partial',
     );
-    expect(partialCard?.textContent).toContain('Positioned');
+    expect(partialCard?.textContent).toContain('Partially Covered');
 
     const gapCard = screen.getAllByTestId('requirement-card').find(
       (c) => c.getAttribute('data-tier') === 'gap',
     );
-    expect(gapCard?.textContent).toContain('Gap');
+    expect(gapCard?.textContent).toContain('Not Addressed');
   });
 
   // ─── Post-audit: Keyboard navigation ──────────────────────────────────────

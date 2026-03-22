@@ -130,12 +130,12 @@ export function ChatDrawer({
           ref={openButtonRef}
           type="button"
           onClick={() => setExpanded(true)}
-          className="fixed bottom-4 right-4 z-20 flex h-12 items-center rounded-full border border-white/[0.12] bg-[#0d1117]/90 px-4 shadow-lg backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117]"
+          className="fixed bottom-4 right-4 z-20 flex h-12 items-center rounded-md border border-white/[0.12] bg-[#0d1117]/90 px-4 shadow-[0_24px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all hover:border-white/[0.2] hover:bg-[#0d1117]"
           aria-label={`Open coach – ${statusLabel}`}
         >
           <MessageCircle className="h-[1.125rem] w-[1.125rem] text-white/60" />
-          <span className="text-xs font-medium text-white/70 ml-1.5">Need Help?</span>
-          <span className={cn('absolute right-0.5 top-0.5 h-2 w-2 rounded-full', statusDotColor)} />
+          <span className="ml-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-white/70">Need Help</span>
+          <span className={cn('absolute right-1 top-1 h-2 w-2', statusDotColor)} />
         </button>
       )}
 
@@ -160,8 +160,8 @@ export function ChatDrawer({
           />
           {/* Header bar */}
           <div className="flex h-[36px] shrink-0 items-center gap-2 px-4">
-            <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDotColor)} />
-            <span className="text-xs font-medium text-white/80">Coach</span>
+            <span className={cn('h-2 w-2 shrink-0', statusDotColor)} />
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/80">Coach</span>
             <span className="text-xs text-white/50" aria-live="polite">{statusLabel}</span>
             {isProcessing && <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" />}
             <button

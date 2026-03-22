@@ -27,7 +27,7 @@ export function ToolsPanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
+      <div className="rail-tabs">
         {tools.map((tool) => {
           const Icon = tool.icon;
           return (
@@ -35,17 +35,13 @@ export function ToolsPanel() {
               key={tool.id}
               type="button"
               onClick={() => setActiveTool(tool.id)}
-              className={cn(
-                'flex-1 rounded-xl border p-4 text-left transition-all',
-                activeTool === tool.id
-                  ? 'border-[#98b3ff]/30 bg-[#98b3ff]/[0.06]'
-                  : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]',
-              )}
+              className={cn('rail-tab flex-1 items-start justify-start')}
+              data-active={activeTool === tool.id}
             >
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="mb-1.5 flex items-center gap-2">
                 <Icon
                   size={14}
-                  className={activeTool === tool.id ? 'text-[#98b3ff]' : 'text-white/30'}
+                  className={activeTool === tool.id ? 'text-[var(--accent)]' : 'text-white/30'}
                 />
                 <span className={cn('text-[12px] font-semibold', activeTool === tool.id ? 'text-white/80' : 'text-white/45')}>
                   {tool.label}

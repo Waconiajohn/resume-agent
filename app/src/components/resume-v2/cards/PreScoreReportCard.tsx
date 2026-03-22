@@ -24,7 +24,7 @@ export function PreScoreReportCard({ preScores }: PreScoreReportCardProps) {
 
   return (
     <GlassCard
-      className="p-5 border-l-2 border-l-[#afc4ff]/40 animate-[card-enter_500ms_ease-out_forwards]"
+      className="room-shell p-5 border-l-2 border-l-[#afc4ff]/40 animate-[card-enter_500ms_ease-out_forwards]"
       data-pre-score-report
     >
       {/* ── Header ───────────────────────────────────────────────── */}
@@ -38,9 +38,9 @@ export function PreScoreReportCard({ preScores }: PreScoreReportCardProps) {
       </div>
 
       {/* ── Score + descriptor ───────────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-4">
+      <div className="support-callout flex items-center gap-4 mb-4 px-4 py-4">
         <div
-          className="shrink-0 rounded-xl px-4 py-2.5 text-center"
+          className="shrink-0 rounded-md px-4 py-3 text-center"
           style={{
             backgroundColor: 'rgba(175,196,255,0.08)',
             border: '1px solid rgba(175,196,255,0.18)',
@@ -74,7 +74,7 @@ export function PreScoreReportCard({ preScores }: PreScoreReportCardProps) {
               {preScores.keywords_found.map((kw, i) => (
                 <span
                   key={i}
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
                   style={{
                     color: '#b5dec2',
                     backgroundColor: 'rgba(181,222,194,0.10)',
@@ -100,7 +100,7 @@ export function PreScoreReportCard({ preScores }: PreScoreReportCardProps) {
               {preScores.keywords_missing.map((kw, i) => (
                 <span
                   key={i}
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
                   style={{
                     color: '#f0b8b8',
                     backgroundColor: 'rgba(240,184,184,0.10)',

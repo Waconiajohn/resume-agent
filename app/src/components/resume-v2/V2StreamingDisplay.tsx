@@ -381,18 +381,18 @@ export function V2StreamingDisplay({
       <div ref={containerRef} className="flex-1 overflow-hidden relative flex flex-col">
         {/* Sticky undo/redo bar */}
         {canShowUndoBar && (
-          <div className="flex items-center gap-1 px-4 py-1.5 bg-[#0f141e]/80 backdrop-blur-md border-b border-white/[0.06] shrink-0">
+          <div className="flex items-center gap-2 px-4 py-2 bg-[#0f141e]/85 border-b border-white/[0.06] shrink-0">
             <button
               type="button"
               onClick={onUndo}
               disabled={undoCount === 0}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
+              className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
               title="Undo"
             >
               <Undo2 className="h-3 w-3" />
               <span>Undo</span>
               {undoCount > 0 && (
-                <span className="rounded bg-white/[0.08] px-1 py-0.5 font-mono text-[10px] text-white/40">
+                <span className="rounded-sm bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] text-white/40">
                   {undoCount}
                 </span>
               )}
@@ -401,13 +401,13 @@ export function V2StreamingDisplay({
               type="button"
               onClick={onRedo}
               disabled={redoCount === 0}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
+              className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
               title="Redo"
             >
               <Redo2 className="h-3 w-3" />
               <span>Redo</span>
               {redoCount > 0 && (
-                <span className="rounded bg-white/[0.08] px-1 py-0.5 font-mono text-[10px] text-white/40">
+                <span className="rounded-sm bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] text-white/40">
                   {redoCount}
                 </span>
               )}
@@ -628,18 +628,18 @@ export function V2StreamingDisplay({
       className="flex-1 overflow-y-auto relative"
     >
       {canShowUndoBar && (
-        <div className="sticky top-0 z-10 flex items-center gap-1 px-4 py-1.5 bg-[#0f141e]/80 backdrop-blur-md border-b border-white/[0.06]">
+        <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 bg-[#0f141e]/85 border-b border-white/[0.06]">
           <button
             type="button"
             onClick={onUndo}
             disabled={undoCount === 0}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
+            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
             title="Undo"
           >
             <Undo2 className="h-3 w-3" />
             <span>Undo</span>
             {undoCount > 0 && (
-              <span className="rounded bg-white/[0.08] px-1 py-0.5 font-mono text-[10px] text-white/40">
+              <span className="rounded-sm bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] text-white/40">
                 {undoCount}
               </span>
             )}
@@ -648,13 +648,13 @@ export function V2StreamingDisplay({
             type="button"
             onClick={onRedo}
             disabled={redoCount === 0}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
+            className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-xs text-white/50 hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-30 transition-colors"
             title="Redo"
           >
             <Redo2 className="h-3 w-3" />
             <span>Redo</span>
             {redoCount > 0 && (
-              <span className="rounded bg-white/[0.08] px-1 py-0.5 font-mono text-[10px] text-white/40">
+              <span className="rounded-sm bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] text-white/40">
                 {redoCount}
               </span>
             )}
@@ -767,7 +767,7 @@ export function V2StreamingDisplay({
           <button
             type="button"
             onClick={scrollToBottom}
-            className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-white/[0.12] bg-white/10 backdrop-blur-md px-3.5 py-1.5 text-xs font-medium text-white/70 shadow-lg hover:bg-white/[0.15] hover:text-white/90 transition-colors animate-[pill-appear_200ms_ease-out_forwards]"
+            className="pointer-events-auto flex items-center gap-1.5 rounded-md border border-white/[0.12] bg-white/10 px-3.5 py-2 text-xs font-medium uppercase tracking-[0.1em] text-white/70 shadow-lg hover:bg-white/[0.15] hover:text-white/90 transition-colors animate-[pill-appear_200ms_ease-out_forwards]"
             aria-label="Scroll to new content"
           >
             <ChevronDown className="h-3 w-3" />

@@ -1,5 +1,4 @@
 import { Shield, Zap, ArrowUp, CheckCircle2, Wrench } from 'lucide-react';
-import { GlassCard } from '../../GlassCard';
 import type { VerificationScores, QuickWin } from '@/types/resume-v2';
 import type { LiveScores } from '@/hooks/useLiveScoring';
 import { scoreColor, MiniRingGauge, ImpactDot } from './score-gauges';
@@ -135,7 +134,14 @@ export function KeywordScoreDashboard({
   const showTopSuggestions = keywordsMissing.length === 0 && topSuggestions.length > 0;
 
   return (
-    <GlassCard className="p-5">
+    <div className="room-shell px-5 py-5">
+      <div className="room-meta-strip mb-5">
+        <div className="room-meta-item">
+          <span className="eyebrow-label">Keyword and ATS Review</span>
+          <span className="text-sm text-white/60">Track match quality, missing terms, and the fastest fixes.</span>
+        </div>
+      </div>
+
       {/* ── Row 1: Big gauge + score text ─────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-5">
         {/* Gauge with score overlaid */}
@@ -158,9 +164,9 @@ export function KeywordScoreDashboard({
 
         {/* Score labels */}
         <div className="flex-1 min-w-0 w-full">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="mb-1 flex items-center gap-2">
             <Shield className="h-3.5 w-3.5 text-[#afc4ff]" />
-            <span className="text-sm font-semibold text-white/90">ATS Match Score</span>
+            <span className="text-sm font-semibold uppercase tracking-[0.16em] text-white/74">ATS Match Score</span>
             {isScoring && (
               <span className="text-[10px] text-white/30 italic">rescoring…</span>
             )}
@@ -218,7 +224,7 @@ export function KeywordScoreDashboard({
           )}
 
           {/* Truth + Tone mini ring gauges */}
-          <div className="flex items-center gap-4">
+          <div className="support-callout flex items-center gap-4 px-4 py-3">
             <MiniRingGauge label="Truth" score={pipelineScores.truth} color="#b5dec2" />
             <MiniRingGauge label="Tone" score={pipelineScores.tone} color="#f0d99f" />
           </div>
@@ -230,9 +236,9 @@ export function KeywordScoreDashboard({
         <div className="grid grid-cols-2 gap-3 mb-5 pt-4 border-t border-white/[0.06]">
           {/* Found */}
           <div>
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="mb-2 flex items-center gap-1.5">
               <CheckCircle2 className="h-3 w-3 text-[#b5dec2]" />
-              <span className="text-xs font-medium text-white/60">
+              <span className="eyebrow-label">
                 Found ({keywordsFound.length})
               </span>
             </div>
@@ -255,9 +261,9 @@ export function KeywordScoreDashboard({
 
           {/* Missing */}
           <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="h-3 w-3 rounded-full border border-[#f0b8b8]/50 shrink-0" />
-              <span className="text-xs font-medium text-white/60">
+            <div className="mb-2 flex items-center gap-1.5">
+              <div className="h-3 w-3 shrink-0 border border-[#f0b8b8]/50 bg-[#f0b8b8]/10" />
+              <span className="eyebrow-label">
                 Missing ({keywordsMissing.length})
               </span>
             </div>
@@ -309,9 +315,9 @@ export function KeywordScoreDashboard({
       {/* ── Row 2b: Top suggestions (shown when no missing keywords) ─────────── */}
       {showTopSuggestions && (
         <div className="mb-5 pt-4 border-t border-white/[0.06]">
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="mb-2 flex items-center gap-1.5">
             <Zap className="h-3 w-3 text-[#afc4ff]" />
-            <span className="text-xs font-medium text-white/60">
+            <span className="eyebrow-label">
               Top Suggestions
             </span>
           </div>
@@ -360,9 +366,9 @@ export function KeywordScoreDashboard({
       {/* ── Row 3: Quick Wins ─────────────────────────────────────────────────── */}
       {quickWins.length > 0 && (
         <div className="pt-4 border-t border-white/[0.06]">
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="mb-2 flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5 text-[#f0d99f]" />
-            <span className="text-xs font-medium text-white/60">Quick Wins</span>
+            <span className="eyebrow-label">Quick Wins</span>
           </div>
           <ul className="space-y-1.5">
             {quickWins.map((w, i) => {
@@ -377,7 +383,7 @@ export function KeywordScoreDashboard({
                     <button
                       type="button"
                       onClick={() => onQuickWinAction!(w.description, w.impact)}
-                      className="shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium leading-4 transition-opacity hover:opacity-80 cursor-pointer"
+                      className="shrink-0 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] leading-4 transition-opacity hover:opacity-80 cursor-pointer"
                       style={impactButtonStyle[w.impact]}
                       title="Apply this fix to your resume"
                     >
@@ -391,6 +397,6 @@ export function KeywordScoreDashboard({
           </ul>
         </div>
       )}
-    </GlassCard>
+    </div>
   );
 }

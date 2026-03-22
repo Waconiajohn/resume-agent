@@ -46,20 +46,20 @@ function classificationIcon(c: GapClassification) {
 function importanceBadge(importance: GapCoachingCard['importance']) {
   if (importance === 'must_have') {
     return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-[#f0b8b8]/20 text-[#f0b8b8] border border-[#f0b8b8]/30">
+      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase bg-[#f0b8b8]/20 text-[#f0b8b8] border border-[#f0b8b8]/30">
         Must Have
       </span>
     );
   }
   if (importance === 'important') {
     return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-[#f0d99f]/20 text-[#f0d99f] border border-[#f0d99f]/30">
+      <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase bg-[#f0d99f]/20 text-[#f0d99f] border border-[#f0d99f]/30">
         Important
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-white/10 text-white/60 border border-white/20">
+    <span className="inline-flex items-center border-l-2 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase bg-white/10 text-white/60 border border-white/20">
       Nice to Have
     </span>
   );
@@ -75,7 +75,7 @@ function collapsedStatus(action: GapCoachingAction): {
 } {
   if (action === 'approve') {
     return {
-      dot: <span className="h-2 w-2 rounded-full bg-[#b5dec2] shrink-0" />,
+      dot: <span className="h-2 w-2 bg-[#b5dec2] shrink-0" />,
       label: 'Approved',
       wrapperClass: 'bg-[#b5dec2]/[0.04] border-[#b5dec2]/[0.10]',
       labelClass: 'text-[#b5dec2]',
@@ -116,7 +116,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
     return (
       <div
         className={cn(
-          'rounded-lg border px-3 py-2.5 flex items-center gap-3 transition-all duration-300',
+          'support-callout flex items-center gap-3 rounded-[12px] border px-3 py-2.5 transition-all duration-300',
           wrapperClass,
         )}
         data-coaching-requirement={card.requirement}
@@ -131,7 +131,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
 
   return (
     <div
-      className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden transition-all duration-300"
+      className="shell-panel overflow-hidden transition-all duration-300"
       data-coaching-requirement={card.requirement}
     >
       {/* Header */}
@@ -143,7 +143,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             <div className="flex items-center gap-1.5 flex-wrap">
               {importanceBadge(card.importance)}
               {card.previously_approved && (
-                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30">
+                <span className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] uppercase bg-[#b5dec2]/20 text-[#b5dec2] border border-[#b5dec2]/30">
                   <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />
                   Previously approved
                 </span>
@@ -157,7 +157,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
       <div className="mx-4 mb-3 flex gap-3">
         {/* Avatar */}
         <div className="shrink-0 mt-0.5 flex flex-col items-center gap-1">
-          <div className="h-7 w-7 rounded-full bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
+          <div className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-[#afc4ff]/30 bg-[#afc4ff]/15">
             <span className="text-[9px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
           </div>
           {/* Connector line */}
@@ -175,7 +175,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
               borderRight: '7px solid rgba(175,196,255,0.08)',
             }}
           />
-          <div className="rounded-xl border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3.5 py-3">
+          <div className="support-callout border border-[#afc4ff]/[0.12] bg-[#afc4ff]/[0.05] px-3.5 py-3">
             <div className="text-[9px] font-bold text-[#afc4ff]/50 uppercase tracking-widest mb-1.5">
               AI Coach
             </div>
@@ -186,7 +186,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
 
       {/* Proposed Strategy — gradient left border */}
       <div className="mx-4 mb-3">
-        <div className="relative rounded-lg border border-[#b5dec2]/[0.15] bg-[#b5dec2]/[0.04] pl-4 pr-3 py-2.5 overflow-hidden">
+        <div className="relative overflow-hidden rounded-[12px] border border-[#b5dec2]/[0.15] bg-[#b5dec2]/[0.04] pl-4 pr-3 py-2.5">
           {/* Gradient left border accent */}
           <div className="absolute left-0 inset-y-0 w-[3px] rounded-l-lg bg-gradient-to-b from-[#afc4ff] via-[#b5dec2]/60 to-transparent" />
 
@@ -223,7 +223,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             {card.evidence_found.map((e, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs text-white/60 bg-white/[0.05] border border-white/[0.10] hover:border-white/[0.16] transition-colors"
+                className="inline-flex items-center gap-1 rounded-[10px] px-2.5 py-1 text-xs text-white/60 bg-white/[0.05] border border-white/[0.10] hover:border-white/[0.16] transition-colors"
               >
                 <CheckCircle2 className="h-2.5 w-2.5 text-[#b5dec2]/60 shrink-0" />
                 {e}
@@ -246,7 +246,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           disabled={disabled}
           placeholder="Share any relevant experience, projects, or context that wasn't in your resume…"
           rows={3}
-          className="w-full rounded-lg border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
+          className="w-full rounded-[12px] border border-[#afc4ff]/20 bg-[#afc4ff]/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/25 resize-none focus:outline-none focus:border-[#afc4ff]/40 transition-colors"
           aria-label={`Additional context for: ${card.requirement}`}
         />
       </div>
@@ -258,7 +258,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
           type="button"
           disabled={disabled}
           onClick={() => onChange({ action: 'approve', showContextInput: false })}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label={`Approve strategy for: ${card.requirement}`}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -279,7 +279,7 @@ function SingleCoachingCard({ card, index, state, onChange, disabled }: SingleCa
             }
           }}
           className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+            'flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
             state.showContextInput
               ? 'bg-[#afc4ff]/15 text-[#afc4ff] border-[#afc4ff]/30 hover:bg-[#afc4ff]/25'
               : 'bg-white/[0.04] text-white/60 border-white/[0.08] hover:bg-white/[0.07] hover:text-white/80',
@@ -386,9 +386,9 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-1 w-full overflow-hidden bg-white/[0.06]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
+          className="h-full bg-gradient-to-r from-[#afc4ff] to-[#b5dec2] transition-all duration-500"
           style={{ width: cards.length > 0 ? `${(respondedCount / cards.length) * 100}%` : '0%' }}
         />
       </div>
@@ -414,7 +414,7 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
           disabled={!allResponded || disabled}
           onClick={handleContinue}
           className={cn(
-            'w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed',
+            'w-full flex items-center justify-center gap-2 rounded-[12px] px-4 py-3 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed',
             allResponded && !disabled
               ? 'bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 hover:border-[#afc4ff]/35'
               : 'border border-white/[0.06] text-white/30',
@@ -431,7 +431,7 @@ export function GapCoachingCardList({ cards, onRespond, disabled = false }: GapC
           </p>
         )}
         {allResponded && cardStates.every(s => s.action === 'skip') && (
-          <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 mt-3">
+          <div className="support-callout mt-3 border border-white/[0.08] bg-white/[0.02] px-4 py-3">
             <p className="text-sm text-white/60">
               Your resume will highlight your direct matches — no inferred positioning will be used.
             </p>

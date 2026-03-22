@@ -108,7 +108,7 @@ function HomeGuideCard({
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-white/52">
           {signalSummary.map((item) => (
-            <span key={item} className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1">
+            <span key={item} className="rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 uppercase tracking-[0.08em]">
               {item}
             </span>
           ))}
@@ -122,7 +122,7 @@ function HomeGuideCard({
           <button
             type="button"
             onClick={primaryAction.onClick}
-            className="rounded-xl border border-[#98b3ff]/28 bg-[#98b3ff]/15 px-4 py-2.5 text-sm font-medium text-[#d8e2ff] transition-colors hover:bg-[#98b3ff]/22"
+            className="rounded-md border border-[#98b3ff]/28 bg-[#98b3ff]/15 px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] text-[#d8e2ff] transition-colors hover:bg-[#98b3ff]/22"
           >
             {primaryAction.label}
           </button>

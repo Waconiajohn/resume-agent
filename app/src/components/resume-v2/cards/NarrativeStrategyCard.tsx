@@ -8,14 +8,19 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
     : [];
 
   return (
-    <div className="space-y-4">
+    <div className="room-shell space-y-5">
       <div className="flex items-center gap-2">
-        <Compass className="h-4 w-4 text-[#afc4ff]" />
-        <h3 className="text-sm font-semibold text-white/90">Your Positioning</h3>
+        <div className="rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/10 p-2.5">
+          <Compass className="h-4 w-4 text-[#afc4ff]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow-label">Narrative strategy</p>
+          <h3 className="mt-2 text-sm font-semibold text-white/90">Your Positioning</h3>
+        </div>
       </div>
 
       {/* Branded title */}
-      <div className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] px-4 py-3 text-center">
+      <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] px-4 py-4 text-center">
         <div className="text-lg font-semibold text-white/90">{data.branded_title}</div>
         <div className="mt-1 text-sm text-[#afc4ff]/70">{data.primary_narrative}</div>
       </div>
@@ -23,13 +28,13 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       {/* Supporting themes */}
       <div className="flex flex-wrap gap-1.5">
         {data.supporting_themes.map((theme, i) => (
-          <span key={i} className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/60">{theme}</span>
+          <span key={i} className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-white/60">{theme}</span>
         ))}
       </div>
 
       {/* Why Me story — pull-quote treatment */}
       <div>
-        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">Why You</h4>
+        <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Why You</h4>
         <p className="text-lg leading-relaxed text-white/90 italic border-l-[3px] border-[#afc4ff]/40 pl-4">
           {data.why_me_concise}
         </p>
@@ -42,7 +47,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       </div>
 
       {/* Best line — premium quote box */}
-      <div className="bg-[#b5dec2]/[0.04] border border-[#b5dec2]/15 rounded-lg p-4 relative overflow-hidden">
+      <div className="support-callout bg-[#b5dec2]/[0.04] border border-[#b5dec2]/15 p-4 relative overflow-hidden">
         <div className="absolute top-2 left-3 text-4xl leading-none text-[#b5dec2]/10 font-serif select-none" aria-hidden="true">
           &ldquo;
         </div>
@@ -52,7 +57,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
 
       {/* Narrative Rationale */}
       {data.narrative_angle_rationale && (
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-3 flex gap-3">
+        <div className="support-callout px-4 py-3 flex gap-3">
           <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#f0d99f]/60" />
           <p className="text-xs text-white/60 leading-relaxed">{data.narrative_angle_rationale}</p>
         </div>
@@ -61,12 +66,12 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
       {/* Unique Differentiators — Sparkles chips */}
       {data.unique_differentiators && data.unique_differentiators.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">What Sets You Apart</h4>
+          <h4 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-[0.16em]">What Sets You Apart</h4>
           <div className="flex flex-wrap gap-1.5">
             {data.unique_differentiators.map((diff, i) => (
               <span
                 key={i}
-                className="flex items-center gap-1.5 bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-3 py-1 rounded-full text-xs text-[#afc4ff]/80"
+                className="flex items-center gap-1.5 bg-[#afc4ff]/10 border border-[#afc4ff]/20 px-3 py-1.5 rounded-md text-xs uppercase tracking-[0.08em] text-[#afc4ff]/80"
               >
                 <Sparkles className="h-3 w-3 shrink-0" />
                 {diff}
@@ -96,13 +101,13 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
             <div>
               <div className="flex items-center gap-1.5 mb-2">
                 <Target className="h-3 w-3 text-white/40" />
-                <h5 className="text-xs font-medium text-white/60 uppercase tracking-wider">Competency Themes</h5>
+                <h5 className="text-xs font-medium text-white/60 uppercase tracking-[0.16em]">Competency Themes</h5>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {data.section_guidance.competency_themes.map((theme, i) => (
                   <span
                     key={i}
-                    className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/55"
+                    className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-white/55"
                   >
                     {theme}
                   </span>
@@ -132,7 +137,7 @@ export function NarrativeStrategyCard({ data }: { data: NarrativeStrategy }) {
               <h5 className="mb-2 text-xs font-medium text-white/60 uppercase tracking-wider">Experience Framing</h5>
               <div className="space-y-2.5">
                 {experienceFramingEntries.map(([company, framing], i) => (
-                  <div key={i} className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+                  <div key={i} className="support-callout px-3 py-2.5">
                     <div className="text-xs font-medium text-white/70 mb-1">{company}</div>
                     <div className="text-xs text-white/50 leading-relaxed">{framing}</div>
                   </div>
@@ -174,7 +179,7 @@ function TalkingPoint({ index, point }: { index: number; point: string }) {
 
   return (
     <div className="group flex gap-2.5 items-start">
-      <span className="shrink-0 mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-white/[0.06] text-[10px] font-mono text-white/40">
+      <span className="shrink-0 mt-0.5 flex h-4 w-4 items-center justify-center rounded-md bg-white/[0.06] text-[10px] font-mono text-white/40">
         {index + 1}
       </span>
       <p className="flex-1 text-xs text-white/60 leading-relaxed">{point}</p>

@@ -80,12 +80,12 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
         onClick={() => !isGated && onNavigate(room.id)}
         disabled={isGated}
         className={cn(
-          'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150',
+          'group relative flex w-full items-start gap-3 border-l px-3 py-3 text-left transition-all duration-150',
           isGated
-            ? 'text-white/25 cursor-not-allowed'
+            ? 'cursor-not-allowed border-transparent text-white/25'
             : isActive
-              ? 'bg-white/[0.08] text-white shadow-sm'
-              : 'text-white/50 hover:bg-white/[0.04] hover:text-white/70',
+              ? 'border-[rgba(238,243,248,0.55)] bg-[rgba(255,255,255,0.045)] text-[var(--text-strong)]'
+              : 'border-transparent text-[var(--text-muted)] hover:border-[rgba(238,243,248,0.22)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[var(--text-strong)]',
         )}
         title={
           isGated
@@ -98,27 +98,25 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
         <Icon
           size={20}
           className={cn(
-            'flex-shrink-0 transition-colors',
+            'mt-0.5 flex-shrink-0 transition-colors',
             isGated
               ? 'text-white/15'
               : isActive
-                ? 'text-[#98b3ff]'
-                : 'text-white/40',
+                ? 'text-[var(--accent)]'
+                : 'text-white/40 group-hover:text-white/70',
           )}
         />
         {!collapsed && (
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="text-[13px] font-medium leading-tight truncate">
+              <span className="truncate text-[13px] font-semibold uppercase tracking-[0.08em] leading-tight">
                 {room.label}
               </span>
               {isGated && <Lock size={11} className="text-white/20 flex-shrink-0" />}
             </div>
-            {isActive && !isGated && (
-              <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                {room.description}
-              </div>
-            )}
+            <div className={cn('mt-1 text-[11px] leading-relaxed', isActive && !isGated ? 'text-[var(--text-muted)]' : 'text-[var(--text-soft)]')}>
+              {room.description}
+            </div>
           </div>
         )}
       </button>
@@ -128,7 +126,7 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
   return (
     <aside
       className={cn(
-        'flex flex-col h-full border-r border-white/[0.08] bg-[var(--bg-1)] transition-all duration-200',
+        'flex h-full flex-col border-r border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(16,22,29,0.98),rgba(11,16,22,0.98))] transition-all duration-200',
         collapsed ? 'w-[68px]' : 'w-[260px]',
       )}
     >
@@ -142,17 +140,17 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
         recommendation={coachData?.recommendation}
       />
 
-      <nav className="flex-1 px-2 overflow-y-auto">
+      <nav className="flex-1 overflow-y-auto px-3">
         {ROOM_GROUPS.map((group) => (
           <div key={group.label} className={collapsed ? 'mb-1' : 'mb-4'}>
             {!collapsed && (
-              <div className="px-3 pb-1 pt-2">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-white/45">
+              <div className="px-3 pb-2 pt-3">
+                <span className="eyebrow-label">
                   {group.label}
                 </span>
               </div>
             )}
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {group.rooms.map(renderRoomButton)}
             </div>
           </div>
@@ -160,9 +158,9 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, onOpenCoach, c
 
       </nav>
 
-      <div className="px-3 pb-4 pt-2 border-t border-white/[0.06]">
+      <div className="border-t border-[var(--line-soft)] px-4 pb-5 pt-3">
         {!collapsed && (
-          <div className="text-[11px] text-white/50 text-center">
+          <div className="text-center text-[11px] uppercase tracking-[0.14em] text-[var(--text-soft)]">
             Workspace
           </div>
         )}
@@ -188,20 +186,20 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center gap-2 px-2 pt-4 pb-3">
+      <div className="flex flex-col items-center gap-3 px-2 pb-4 pt-4">
         <button
           type="button"
           onClick={onOpenCoach}
-          className="w-10 h-10 rounded-full bg-indigo-600/30 border border-indigo-400/20 flex items-center justify-center hover:bg-indigo-600/40 transition-colors"
+          className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] text-[var(--text-strong)] transition-colors hover:border-[rgba(238,243,248,0.32)] hover:bg-[rgba(255,255,255,0.08)]"
           aria-label={`Open ${displayName}`}
           title={displayName}
         >
-          <span className="text-xs font-bold text-indigo-300">AI</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">AI</span>
         </button>
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="rounded-lg p-1.5 text-white/40 hover:bg-white/[0.06] hover:text-white/70 transition-colors"
+          className="rounded-[10px] p-1.5 text-[var(--text-soft)] transition-colors hover:bg-white/[0.05] hover:text-[var(--text-strong)]"
           aria-label="Expand sidebar"
           aria-expanded={!collapsed}
         >
@@ -212,26 +210,27 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
   }
 
   return (
-    <div className="px-3 pt-4 pb-3">
+    <div className="border-b border-[var(--line-soft)] px-4 pb-4 pt-4">
       <div className="flex items-center justify-between mb-2">
         <button
           type="button"
           onClick={onOpenCoach}
-          className="flex items-center gap-2.5 min-w-0 hover:opacity-80 transition-opacity"
+          className="flex min-w-0 items-center gap-3 text-left transition-opacity hover:opacity-80"
           aria-label={`Open ${displayName}`}
         >
-          <div className="w-9 h-9 rounded-full bg-indigo-600/30 border border-indigo-400/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-indigo-300">AI</span>
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-strong)]">AI</span>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-white/90 truncate">{displayName}</div>
-            <div className="text-[10px] text-white/40 truncate">{displayPhase}</div>
+            <div className="eyebrow-label">Coach</div>
+            <div className="truncate text-sm font-semibold text-[var(--text-strong)]">{displayName}</div>
+            <div className="truncate text-[11px] text-[var(--text-soft)]">{displayPhase}</div>
           </div>
         </button>
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="rounded-lg p-1.5 text-white/40 hover:bg-white/[0.06] hover:text-white/70 transition-colors flex-shrink-0"
+          className="flex-shrink-0 rounded-[10px] p-1.5 text-[var(--text-soft)] transition-colors hover:bg-white/[0.05] hover:text-[var(--text-strong)]"
           aria-label="Collapse sidebar"
           aria-expanded={!collapsed}
         >
@@ -242,7 +241,7 @@ function CoachBanner({ collapsed, onToggleCollapse, onOpenCoach, firstName, phas
         <button
           type="button"
           onClick={onOpenCoach}
-          className="w-full text-left text-[11px] text-indigo-300/70 hover:text-indigo-300 transition-colors truncate pl-[46px]"
+          className="w-full border-l border-[var(--line-soft)] pl-[58px] text-left text-[11px] leading-relaxed text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)]"
         >
           {recommendation}
         </button>

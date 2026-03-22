@@ -127,35 +127,36 @@ export function GuidedWorkflowCard({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-[#afc4ff]/18 bg-[radial-gradient(circle_at_top_left,rgba(175,196,255,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-4 py-3.5">
+      <div className="shell-panel px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">Current Phase</p>
-            <p className="mt-1 text-sm font-medium text-white/82">{phaseLabel}</p>
+            <p className="eyebrow-label">Current Phase</p>
+            <p className="mt-2 text-base font-semibold text-white/88">{phaseLabel}</p>
           </div>
-          <div className="flex flex-wrap gap-2 text-[11px]">
-              <span className="rounded-full border border-white/[0.08] bg-black/10 px-2.5 py-1 text-white/60">
-                Queue: {queueNeedsAttention} attention / {queuePartials} partial
-              </span>
+          <div className="room-meta-strip text-[11px]">
+              <div className="room-meta-item">
+                Queue
+                <strong>{queueNeedsAttention} attention / {queuePartials} partial</strong>
+              </div>
             {hardGapCount > 0 && (
-              <span className="rounded-full border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[#f0d99f]/85">
-                Hard risks: {hardGapCount}
-              </span>
+              <div className="room-meta-item">
+                Hard Risks
+                <strong>{hardGapCount}</strong>
+              </div>
             )}
-            <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-2.5 py-1 text-[#afc4ff]/85">
-              Coverage: {coverageAddressed}/{coverageTotal}
-            </span>
-            <span className={`rounded-full border px-2.5 py-1 ${
-              isFinalReviewStale || unresolvedCriticalCount > 0
-                ? 'border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] text-[#f0b8b8]/85'
-                : 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] text-[#b5dec2]/85'
-            }`}>
-              {isFinalReviewStale ? 'Final Review out of date' : `Critical concerns: ${unresolvedCriticalCount}`}
-            </span>
+            <div className="room-meta-item">
+              Coverage
+              <strong>{coverageAddressed}/{coverageTotal}</strong>
+            </div>
+            <div className="room-meta-item">
+              Final Review
+              <strong>{isFinalReviewStale ? 'Out of date' : `${unresolvedCriticalCount} critical`}</strong>
+            </div>
             {postReviewPolish?.status === 'running' && (
-              <span className="rounded-full border border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[#f0d99f]/85">
-                Refreshing tone + ATS
-              </span>
+              <div className="room-meta-item">
+                Refresh
+                <strong>Tone + ATS</strong>
+              </div>
             )}
           </div>
         </div>
@@ -192,11 +193,11 @@ function AnalysisSummarySection({
   if (cardCount === 0) return null;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+    <div className="overflow-hidden rounded-[16px] border border-white/[0.06] bg-white/[0.02]">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
         aria-expanded={expanded}
       >
         <ChevronRight
@@ -213,7 +214,7 @@ function AnalysisSummarySection({
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-4 border-t border-white/[0.06]">
+        <div className="space-y-4 border-t border-white/[0.06] px-4 pb-4">
           {jobIntelligence && (
             <div className="pt-4">
               <GlassCard className="p-5"><JobIntelligenceCard data={jobIntelligence} /></GlassCard>
@@ -270,17 +271,17 @@ function ResumeEvidenceStatusCard({
 
   return (
     <div className="grid gap-3 lg:grid-cols-3">
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
+      <div className="support-callout px-4 py-3">
         <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Original Evidence</p>
         <p className="mt-2 text-sm font-medium text-white/82">{originalEvidenceCount} lines from the starting resume</p>
         <p className="mt-1 text-xs leading-5 text-white/48">These are the facts and examples the candidate brought into the session.</p>
       </div>
-      <div className="rounded-xl border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-4 py-3">
+      <div className="support-callout border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-4 py-3">
         <p className="text-[11px] uppercase tracking-[0.18em] text-[#b5dec2]/70">Accepted Tailored Edits</p>
         <p className="mt-2 text-sm font-medium text-white/85">{acceptedTailoredEditCount} AI-assisted changes accepted</p>
         <p className="mt-1 text-xs leading-5 text-white/50">Anything marked New on the resume was added or rewritten during this rewrite flow.</p>
       </div>
-      <div className="rounded-xl border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-4 py-3">
+      <div className="support-callout border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-4 py-3">
         <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/70">Pending Suggestions</p>
         <p className="mt-2 text-sm font-medium text-white/85">{pendingEdit ? '1 suggestion waiting for review' : 'No pending suggestions'}</p>
         <p className="mt-1 text-xs leading-5 text-white/50">Suggestions only affect coverage after the candidate accepts the diff.</p>
@@ -303,7 +304,7 @@ function CompactDisclosure({
   const [expanded, setExpanded] = useState(defaultOpen);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] overflow-hidden">
+    <div className="overflow-hidden rounded-[16px] border border-white/[0.06] bg-white/[0.025]">
       <button
         type="button"
         onClick={() => setExpanded((previous) => !previous)}
@@ -358,7 +359,7 @@ function FinalReadinessSummaryCard({
             This is the final status before export: job fit first, benchmark competitiveness second, then tone and ATS freshness.
           </p>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 text-[11px] ${
+        <span className={`rounded-md border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] ${
           hasFinalReview && !isFinalReviewStale && unresolvedCriticalCount === 0
             ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] text-[#b5dec2]/85'
             : 'border-[#f0d99f]/18 bg-[#f0d99f]/[0.05] text-[#f0d99f]/85'
@@ -578,7 +579,7 @@ function MasterResumePromotionCard({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-medium text-white/82">{item.label}</p>
-                        <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-white/38">
+                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/38">
                           {item.category.replaceAll('_', ' ')}
                         </span>
                       </div>

@@ -205,7 +205,7 @@ export function CareerProfileRoom({
                   The goal is not to race through a form. Answer carefully, watch the reflection update, and confirm the wording before the rest of the workspace reuses it.
                 </p>
               </div>
-              <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-white/45">
+              <div className="rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-white/45">
                 {formatCategory(currentQuestion.category)} · {currentIndex + 1}/{questions.length}
               </div>
             </div>
@@ -370,7 +370,7 @@ export function CareerProfileRoom({
                   <div className="text-2xl font-semibold text-white/88">{summary.readinessPercent}%</div>
                   <div className="text-sm text-white/50">{summary.readinessLabel}</div>
                 </div>
-                <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[11px] text-white/45">
+                <div className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/45">
                   {answeredItems.length} answered
                 </div>
               </div>

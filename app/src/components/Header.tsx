@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, Menu, Sparkles, X } from 'lucide-react';
+import { ArrowUpRight, LogOut, Menu, Sparkles, X } from 'lucide-react';
 import { GlassButton } from './GlassButton';
 import { PipelineProgressBar } from './PipelineProgressBar';
 
@@ -70,45 +70,52 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.1] bg-[linear-gradient(180deg,rgba(15,20,30,0.78),rgba(11,16,24,0.68))] backdrop-blur-2xl">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[#aac2ff]" />
-          <span className="text-sm font-semibold tracking-[0.01em] text-white/90">Resume Agent</span>
+    <header className="sticky top-0 z-50 border-b border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(12,18,24,0.92),rgba(12,18,24,0.84))] backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-6 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-4">
+          <button
+            type="button"
+            onClick={() => onNavigate?.('workspace')}
+            className="group flex items-center gap-3 text-left"
+            aria-label="Go to Workspace home"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-[var(--line-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] text-[var(--accent)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 group-hover:border-[rgba(238,243,248,0.34)] group-hover:bg-[var(--accent-strong)] group-hover:text-[var(--accent-ink)]">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="eyebrow-label">Workspace OS</div>
+              <span className="block truncate text-[15px] font-semibold text-[var(--text-strong)]">Resume Agent</span>
+            </div>
+          </button>
+
+          {email && (
+            <nav className="hidden items-center gap-2 xl:flex">
+              <button
+                onClick={() => onNavigate?.('workspace')}
+                className="border-b border-transparent px-1 pb-1 text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)]"
+              >
+                Workspace
+              </button>
+              <button
+                onClick={() => onNavigate?.('/workspace?room=resume')}
+                className="border-b border-transparent px-1 pb-1 text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
+              >
+                Resume Builder
+              </button>
+            </nav>
+          )}
         </div>
 
-        {/* Desktop nav — hidden below lg */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {email && (
-            <button
-              onClick={() => onNavigate?.('workspace')}
-              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#98b3ff]/80 hover:bg-[#98b3ff]/10 hover:text-[#98b3ff] transition-colors"
-            >
-              Workspace
-            </button>
-          )}
-          {email && (
-            <button
-              onClick={() => onNavigate?.('/workspace?room=resume')}
-              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-            >
-              Resume Builder
-            </button>
-          )}
-        </nav>
-
-        {/* Desktop user controls — hidden below lg */}
         {email && (
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden items-center gap-3 lg:flex">
             {editingName ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={nameFirst}
                   onChange={(e) => setNameFirst(e.target.value)}
                   placeholder="First"
-                  className="w-20 rounded border border-white/[0.15] bg-white/[0.05] px-2 py-1 text-xs text-white/80 outline-none focus:border-white/[0.3]"
+                  className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[rgba(238,243,248,0.36)]"
                   autoFocus
                   onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
                 />
@@ -117,42 +124,39 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                   value={nameLast}
                   onChange={(e) => setNameLast(e.target.value)}
                   placeholder="Last"
-                  className="w-20 rounded border border-white/[0.15] bg-white/[0.05] px-2 py-1 text-xs text-white/80 outline-none focus:border-white/[0.3]"
+                  className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[rgba(238,243,248,0.36)]"
                   onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
                 />
-                <button onClick={() => void saveNameEdit()} disabled={nameSaving || !nameFirst.trim()} className="rounded px-2 py-1 text-xs text-[#afc4ff] hover:bg-white/[0.06] disabled:opacity-50">
+                <button onClick={() => void saveNameEdit()} disabled={nameSaving || !nameFirst.trim()} className="rounded-[10px] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">
                   {nameSaving ? '...' : 'Save'}
                 </button>
-                <button onClick={() => setEditingName(false)} className="rounded px-1.5 py-1 text-xs text-white/40 hover:bg-white/[0.06]">
+                <button onClick={() => setEditingName(false)} className="rounded-[10px] px-2 py-2 text-xs uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-white/[0.06]">
                   Cancel
                 </button>
               </div>
             ) : (
               <button
                 onClick={startEditName}
-                className="text-xs text-white/55 hover:text-white/80 transition-colors"
+                className="flex flex-col items-end text-right"
                 title="Click to edit your name"
               >
-                {displayName || email}
+                <span className="eyebrow-label">Signed in as</span>
+                <span className="text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:text-white">
+                  {displayName || email}
+                </span>
               </button>
             )}
-            <button
-              onClick={() => onNavigate?.('billing')}
-              className="rounded-lg px-2.5 py-1.5 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-              title="Billing & plan"
-              aria-label="Billing"
-            >
+            <GlassButton variant="secondary" size="sm" onClick={() => onNavigate?.('billing')} title="Billing & plan" aria-label="Billing">
               Billing
-            </button>
-            <GlassButton variant="ghost" size="sm" onClick={onSignOut} className="h-8" aria-label="Sign out" title="Sign out">
+            </GlassButton>
+            <GlassButton variant="ghost" size="sm" onClick={onSignOut} aria-label="Sign out" title="Sign out">
               <LogOut className="h-4 w-4" aria-hidden="true" />
             </GlassButton>
           </div>
         )}
 
-        {/* Mobile hamburger — visible below lg */}
         <button
-          className="lg:hidden rounded-lg p-2 text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+          className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[rgba(238,243,248,0.28)] hover:text-[var(--text-strong)] lg:hidden"
           onClick={() => setMenuOpen(true)}
           aria-label="Open menu"
           aria-expanded={menuOpen}
@@ -170,72 +174,62 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
       {/* Mobile menu overlay */}
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" aria-hidden="false">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
+          <div className="absolute inset-0 bg-[rgba(7,10,14,0.66)] backdrop-blur-sm" aria-hidden="true" />
 
-          {/* Slide-in panel */}
           <div
             ref={menuPanelRef}
             role="dialog"
             aria-label="Navigation menu"
-            className="absolute right-0 top-0 h-full w-72 border-l border-white/[0.06] bg-white/[0.03] backdrop-blur-2xl flex flex-col"
+            className="absolute right-0 top-0 flex h-full w-80 flex-col border-l border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(18,25,32,0.98),rgba(11,16,22,0.98))] shadow-[0_30px_90px_-40px_rgba(0,0,0,0.95)]"
             style={{ transform: 'translateX(0)', transition: 'transform 0.2s ease-out' }}
           >
-            {/* Panel header */}
-            <div className="flex items-center justify-between px-4 h-14 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[#aac2ff]" />
-                <span className="text-sm font-semibold tracking-[0.01em] text-white/90">Resume Agent</span>
+            <div className="flex h-16 items-center justify-between border-b border-[var(--line-soft)] px-5">
+              <div>
+                <div className="eyebrow-label">Workspace OS</div>
+                <span className="text-sm font-semibold text-[var(--text-strong)]">Resume Agent</span>
               </div>
               <button
                 onClick={() => setMenuOpen(false)}
-                className="rounded-lg p-2 text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+                className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[rgba(238,243,248,0.28)] hover:text-[var(--text-strong)]"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
-            {/* Nav items */}
-            <nav className="flex flex-col flex-1 px-2 py-3 gap-0.5 overflow-y-auto">
+            <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-5">
               {email && (
                 <button
                   onClick={() => handleNavClick('workspace')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+                  className="flex w-full items-center justify-between border-b border-[var(--line-soft)] px-0 py-3 text-left text-[13px] font-medium uppercase tracking-[0.14em] text-[var(--text-strong)]"
                 >
                   Workspace
+                  <ArrowUpRight className="h-4 w-4 text-[var(--text-soft)]" />
                 </button>
               )}
               {email && (
                 <button
                   onClick={() => handleNavClick('/workspace?room=resume')}
-                  className="w-full rounded-lg px-4 py-3 text-sm text-left text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
+                  className="flex w-full items-center justify-between border-b border-[var(--line-soft)] px-0 py-3 text-left text-[13px] font-medium uppercase tracking-[0.14em] text-[var(--text-muted)]"
                 >
                   Resume Builder
+                  <ArrowUpRight className="h-4 w-4 text-[var(--text-soft)]" />
                 </button>
               )}
             </nav>
 
-            {/* User section at bottom */}
             {email && (
-              <div className="border-t border-white/[0.06] px-4 py-4">
-                <div className="truncate text-xs text-white/55">{email}</div>
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    onClick={() => handleNavClick('billing')}
-                    className="rounded-lg px-3 py-2 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors"
-                    aria-label="Billing"
-                  >
+              <div className="border-t border-[var(--line-soft)] px-5 py-5">
+                <div className="eyebrow-label">Account</div>
+                <div className="mt-1 truncate text-sm text-[var(--text-strong)]">{email}</div>
+                <div className="mt-4 flex items-center gap-2">
+                  <GlassButton variant="secondary" size="sm" onClick={() => handleNavClick('billing')} aria-label="Billing">
                     Billing
-                  </button>
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white/55 hover:bg-white/5 hover:text-white/80 transition-colors shrink-0"
-                    aria-label="Sign out"
-                  >
+                  </GlassButton>
+                  <GlassButton variant="ghost" size="sm" onClick={handleSignOut} aria-label="Sign out">
                     <LogOut className="h-4 w-4" aria-hidden="true" />
                     Sign out
-                  </button>
+                  </GlassButton>
                 </div>
               </div>
             )}

@@ -112,7 +112,7 @@ export function ResumeDocumentCard({
             {coreCompetencies.map((comp, i) => (
               <span
                 key={i}
-                className="rounded border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-white/70"
+                className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-white/66"
               >
                 {comp}
               </span>
@@ -167,7 +167,7 @@ export function ResumeDocumentCard({
                       className={
                         isActive
                           ? 'ring-2 ring-[#afc4ff]/40 rounded-lg bg-[#afc4ff]/[0.04] px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200'
-                          : 'hover:bg-white/[0.06] cursor-pointer rounded px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 focus-visible:outline-none'
+                          : 'hover:bg-white/[0.06] cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 focus-visible:outline-none'
                       }
                     >
                       {a.content}
@@ -266,7 +266,7 @@ export function ResumeDocumentCard({
                             className={
                               isActive
                                 ? 'ring-2 ring-[#afc4ff]/40 rounded-lg bg-[#afc4ff]/[0.04] px-2 py-1 -mx-2 -my-0.5 cursor-pointer transition-all duration-200'
-                                : 'hover:bg-white/[0.06] cursor-pointer rounded px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 focus-visible:outline-none'
+                                : 'hover:bg-white/[0.06] cursor-pointer rounded-md px-2 py-0.5 -mx-2 transition-colors focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 focus-visible:outline-none'
                             }
                           >
                             {bullet.text}
@@ -369,7 +369,7 @@ function InlineEditPanel({
   onRejectEdit,
 }: InlineEditPanelProps) {
   return (
-    <div className="mt-2 rounded-lg border border-[#afc4ff]/20 bg-[#0f141e]/90 backdrop-blur-md p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
+    <div className="support-callout mt-2 border border-[#afc4ff]/20 bg-[#0f141e]/90 p-3 space-y-3 motion-safe:animate-[card-enter_200ms_ease-out_forwards] motion-safe:opacity-0">
       {/* Requirement tags */}
       {requirements.length > 0 && (
         <p className="text-[11px] leading-5 text-white/42">
@@ -385,7 +385,7 @@ function InlineEditPanel({
             type="button"
             onClick={(e) => { e.stopPropagation(); onRequestEdit(bulletText, section, action); }}
             disabled={isEditing}
-            className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white/70 hover:bg-white/[0.08] hover:text-white/90 disabled:opacity-40 transition-colors"
+            className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-white/70 hover:bg-white/[0.08] hover:text-white/90 disabled:opacity-40 transition-colors"
           >
             {action === 'strengthen' ? 'Improve Wording' : action === 'add_metrics' ? 'Add Proof' : 'Rewrite'}
           </button>
@@ -402,21 +402,21 @@ function InlineEditPanel({
 
       {/* Pending edit suggestion — only show if it matches this bullet's text */}
       {pendingEdit && pendingEdit.section === section && pendingEdit.originalText === bulletText && (
-        <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] p-3 space-y-2">
+        <div className="support-callout border border-[#b5dec2]/20 bg-[#b5dec2]/[0.04] p-3 space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-wider text-[#b5dec2]/60">Suggested</p>
           <p className="text-sm text-white/80 leading-relaxed">{pendingEdit.replacement}</p>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onAcceptEdit?.(pendingEdit.replacement); }}
-              className="rounded-lg bg-[#b5dec2]/20 border border-[#b5dec2]/30 px-3 py-1 text-xs font-medium text-[#b5dec2] hover:bg-[#b5dec2]/30 transition-colors"
+              className="rounded-md bg-[#b5dec2]/20 border border-[#b5dec2]/30 px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-[#b5dec2] hover:bg-[#b5dec2]/30 transition-colors"
             >
               Accept
             </button>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRejectEdit?.(); }}
-              className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:bg-white/[0.06] transition-colors"
+              className="rounded-md border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.08em] text-white/50 hover:bg-white/[0.06] transition-colors"
             >
               Cancel
             </button>
@@ -450,7 +450,7 @@ function StrategyTooltip({ requirements }: { requirements: string[] }) {
         type="button"
         onClick={handleClick}
         aria-label={`View gap analysis for: ${requirements[0] ?? 'requirement'}`}
-        className="flex items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 rounded"
+        className="flex items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-[#afc4ff]/60 rounded-md"
       >
         <Lightbulb
           className={`h-3 w-3 transition-colors duration-150 ${
@@ -511,7 +511,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 
 function NewMarker() {
   return (
-    <span className="inline-flex items-center rounded bg-[#b5dec2]/10 px-1 py-0.5 text-[9px] font-semibold text-[#b5dec2]/70 mr-1 align-middle border border-[#b5dec2]/20">
+    <span className="inline-flex items-center rounded-md bg-[#b5dec2]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#b5dec2]/70 mr-1 align-middle border border-[#b5dec2]/20">
       New
     </span>
   );

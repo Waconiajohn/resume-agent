@@ -160,7 +160,7 @@ export function ExportBar({
   return (
     <div className="space-y-2">
       {hasWarnings && (
-        <div className="rounded-xl border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-3">
+        <div className="support-callout border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-4 py-4">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#f0d99f]" />
             <div className="min-w-0 flex-1">
@@ -186,8 +186,7 @@ export function ExportBar({
                 )}
               </div>
               {exportBlocked ? (
-                <button
-                  type="button"
+                <GlassButton
                   onClick={() => {
                     trackProductEvent('export_warning_acknowledged', {
                       unresolved_critical_count: unresolvedCriticalCount,
@@ -196,10 +195,12 @@ export function ExportBar({
                     });
                     onAcknowledgeWarnings?.();
                   }}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#f0d99f]/25 bg-[#f0d99f]/10 px-3 py-2 text-xs font-medium text-[#f0d99f] transition-colors hover:bg-[#f0d99f]/16"
+                  variant="secondary"
+                  size="sm"
+                  className="mt-3"
                 >
                   I understand, enable export
-                </button>
+                </GlassButton>
               ) : (
                 <p className="mt-3 text-xs text-white/50">
                   Warning acknowledged. Export is enabled, but the draft still has open review warnings.
@@ -211,7 +212,7 @@ export function ExportBar({
       )}
 
       {!hasWarnings && (queueNeedsAttentionCount > 0 || queuePartialCount > 0) && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 text-xs leading-5 text-white/58">
+        <div className="support-callout px-4 py-3 text-xs leading-5 text-white/58">
           Export is available, but the queue still has {queueNeedsAttentionCount} needs-attention item{queueNeedsAttentionCount === 1 ? '' : 's'} and {queuePartialCount} partial item{queuePartialCount === 1 ? '' : 's'}.
           {nextQueueItemLabel ? ` If you want to keep improving the draft first, start with "${nextQueueItemLabel}".` : ''}
         </div>

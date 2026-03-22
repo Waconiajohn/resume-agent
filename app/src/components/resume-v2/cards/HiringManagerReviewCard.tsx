@@ -139,7 +139,7 @@ function ToneBadge({
 }) {
   return (
     <span
-      className="inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      className="inline-flex border-l-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
       style={{ color: tone.color, backgroundColor: tone.bg, borderColor: tone.border }}
     >
       {label}
@@ -157,7 +157,7 @@ function AssessmentPill({
   const tone = ASSESSMENT_CONFIG[value];
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+    <div className="support-callout p-3">
       <p className="text-[11px] uppercase tracking-[0.18em] text-white/32">{label}</p>
       <div className="mt-2">
         <ToneBadge label={tone.label} tone={tone} />
@@ -218,11 +218,11 @@ export function HiringManagerReviewCard({
               This stage tells the user what is obvious immediately, what still weakens interview odds,
               and which fixes are worth making now.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/40">
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Recruiter Scan</span>
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Hiring Manager Verdict</span>
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Benchmark Comparison</span>
-              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">Concrete Fixes</span>
+            <div className="room-meta-strip mt-4 text-[11px]">
+              <div className="room-meta-item">Recruiter Scan</div>
+              <div className="room-meta-item">Hiring Manager Verdict</div>
+              <div className="room-meta-item">Benchmark Comparison</div>
+              <div className="room-meta-item">Concrete Fixes</div>
             </div>
             <button
               type="button"
@@ -306,7 +306,7 @@ export function HiringManagerReviewCard({
             title="6-Second Recruiter Scan"
             description={`This is the top-third skim test for ${companyName}. If the strongest signals are not obvious immediately, the candidate is at risk before the deeper review even starts.`}
           />
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+          <div className="shell-panel p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <p className="max-w-3xl text-sm leading-relaxed text-white/68">
                 {result.six_second_scan.reason}
@@ -315,7 +315,7 @@ export function HiringManagerReviewCard({
             </div>
 
             <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
+              <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
                   Signals Seen
                 </p>
@@ -339,7 +339,7 @@ export function HiringManagerReviewCard({
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
+              <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
                   Still Missing
                 </p>
@@ -366,7 +366,7 @@ export function HiringManagerReviewCard({
             title="Hiring Manager Verdict"
             description={`This is the deeper interview-readiness view for the ${roleTitle} role.`}
           />
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+          <div className="shell-panel p-4">
             <p className="text-sm leading-relaxed text-white/70">{result.hiring_manager_verdict.summary}</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <AssessmentPill label="Job Description Fit" value={result.fit_assessment.job_description_fit} />
@@ -386,7 +386,7 @@ export function HiringManagerReviewCard({
             />
             <div className="space-y-3">
               {result.top_wins.map((win, index) => (
-                <div key={`${win.win}-${index}`} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                <div key={`${win.win}-${index}`} className="shell-panel p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-white/84">{win.win}</p>
@@ -399,7 +399,7 @@ export function HiringManagerReviewCard({
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-white/65">{win.why_powerful}</p>
                   {!win.prominent_enough && (
-                    <div className="mt-3 rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
+                    <div className="support-callout mt-3 border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] px-3 py-2">
                       <p className="text-xs text-white/68">{win.repositioning_recommendation}</p>
                     </div>
                   )}
@@ -476,21 +476,21 @@ export function HiringManagerReviewCard({
                         <p className="text-sm leading-relaxed text-white/62">{concern.why_it_hurts}</p>
 
                         {(concern.target_section || concern.related_requirement) && (
-                          <div className="flex flex-wrap gap-2 text-[11px] text-white/42">
+                          <div className="room-meta-strip gap-2 text-[11px] text-white/42">
                             {concern.target_section && (
-                              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
+                              <span className="room-meta-item">
                                 Section: {concern.target_section}
                               </span>
                             )}
                             {concern.related_requirement && (
-                              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
+                              <span className="room-meta-item">
                                 Requirement: {concern.related_requirement}
                               </span>
                             )}
                           </div>
                         )}
 
-                        <div className="rounded-lg border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
+                        <div className="support-callout border border-[#afc4ff]/15 bg-[#afc4ff]/[0.04] p-3">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#afc4ff]">
                             Fix Strategy
                           </p>
@@ -498,7 +498,7 @@ export function HiringManagerReviewCard({
                         </div>
 
                         {concern.suggested_resume_edit && (
-                          <div className="rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
+                          <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-3">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
                               Sample Language
                             </p>
@@ -507,7 +507,7 @@ export function HiringManagerReviewCard({
                         )}
 
                         {concern.clarifying_question && (
-                          <div className="rounded-lg border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
+                          <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.04] p-3">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#f0d99f]">
                               Candidate Question
                             </p>
@@ -516,7 +516,7 @@ export function HiringManagerReviewCard({
                         )}
 
                         {isResolved && (
-                          <div className="rounded-lg border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-white/70">
+                          <div className="support-callout border border-[#b5dec2]/18 bg-[#b5dec2]/[0.05] px-3 py-2 text-xs text-white/70">
                             This concern already has an accepted edit on the resume. If you undo that change, it will show up as unresolved again.
                           </div>
                         )}
@@ -586,7 +586,7 @@ export function HiringManagerReviewCard({
             />
             <div className="space-y-2">
               {result.structure_recommendations.map((recommendation, index) => (
-                <div key={`${recommendation.issue}-${index}`} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                <div key={`${recommendation.issue}-${index}`} className="shell-panel p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm font-medium text-white/80">{recommendation.issue}</p>
                     <ToneBadge
@@ -612,7 +612,7 @@ export function HiringManagerReviewCard({
             description="Benchmark gaps should not override solid job fit, but they do show where the candidate may look less competitive against stronger peers."
           />
           <div className="grid gap-3 lg:grid-cols-3">
-            <div className="rounded-xl border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4">
+            <div className="support-callout border border-[#b5dec2]/15 bg-[#b5dec2]/[0.04] p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b5dec2]">
                 Advantages
               </p>

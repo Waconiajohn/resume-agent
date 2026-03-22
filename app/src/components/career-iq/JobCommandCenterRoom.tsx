@@ -847,33 +847,49 @@ export function JobCommandCenterRoom({
   }, [pipeline.applications, stageFilter, searchText]);
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-white/90">Job Search</h1>
-        <p className="text-[13px] text-white/40">
-          Start in Today for active work. Use Discover when you want new options, and Pipeline when you want the full list.
-        </p>
+    <div className="room-shell">
+      <div className="room-header">
+        <div className="room-header-copy">
+          <div className="eyebrow-label">Job Search</div>
+          <h1 className="room-title">Run the search from one working surface</h1>
+          <p className="room-subtitle">
+            Start in Today for active work. Use Discover when you want new options, and Pipeline when you want the full list.
+          </p>
+        </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="space-y-3 border-b border-white/[0.07] pb-3">
-        <div className="rounded-xl border border-[#98b3ff]/14 bg-[#98b3ff]/[0.05] px-4 py-3">
-          <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-white/84">Today is where daily work happens</div>
-              <div className="mt-1 text-xs leading-relaxed text-white/48">
-                Handle follow-ups and active applications here. Use Discover to find roles and Pipeline to manage the broader list.
-              </div>
-            </div>
-            {activeTab !== 'daily-ops' && (
+      <div className="room-meta-strip">
+        <div className="room-meta-item">
+          Default View
+          <strong>Today</strong>
+        </div>
+        <div className="room-meta-item">
+          Watchlist
+          <strong>{watchlist.companies.length}</strong>
+        </div>
+        <div className="room-meta-item">
+          Pipeline
+          <strong>{pipeline.applications.length}</strong>
+        </div>
+      </div>
+
+      <div className="room-frame">
+        <div className="support-callout">
+          <div className="text-sm font-semibold text-[var(--text-strong)]">Today is where daily work happens</div>
+          <div className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
+          Start in Today for active work. Use Discover when you want new options, and Pipeline when you want the full list.
+          </div>
+          {activeTab !== 'daily-ops' && (
+            <div className="mt-4">
               <GlassButton variant="ghost" onClick={() => setActiveTab('daily-ops')}>
                 Back to Today
               </GlassButton>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-1">
+      </div>
+
+      <div className="rail-tabs">
         {(
           [
             { id: 'daily-ops', label: 'Today', Icon: Clock },
@@ -885,20 +901,13 @@ export function JobCommandCenterRoom({
             key={id}
             type="button"
             onClick={() => setActiveTab(id)}
-            className={cn(
-              'flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors border-b-2 -mb-px',
-              activeTab === id
-                ? 'text-white/90 border-[#98b3ff]'
-                : id === 'daily-ops'
-                  ? 'text-white/55 border-transparent hover:text-white/70'
-                  : 'text-white/30 border-transparent hover:text-white/55',
-            )}
+            className="rail-tab"
+            data-active={activeTab === id}
           >
             <Icon size={14} />
             {label}
           </button>
         ))}
-        </div>
       </div>
 
       {/* Pipeline tab — display:none preserves state */}

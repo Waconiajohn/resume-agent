@@ -40,8 +40,11 @@ vi.mock('lucide-react', () => {
     Redo2: Icon,
     ChevronDown: Icon,
     ChevronRight: Icon,
+    ClipboardCheck: Icon,
     MessageSquare: Icon,
+    MessagesSquare: Icon,
     Sparkles: Icon,
+    Target: Icon,
     TrendingUp: Icon,
     BarChart3: Icon,
     Eye: Icon,
@@ -361,8 +364,8 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
     );
 
     // Action buttons from InlineEditPanel should appear
-    expect(screen.getByRole('button', { name: 'Strengthen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '+ Metrics' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Proof' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rewrite' })).toBeInTheDocument();
   });
 
@@ -383,7 +386,7 @@ describe('ResumeDocumentCard — bullet click shows InlineEditPanel', () => {
     // Index 1 has no requirements and different content; InlineEditPanel renders for it,
     // but the action buttons should still appear (panel is for index 1, not absent).
     // Verify index 0's panel is NOT rendered — meaning only one set of action buttons exists.
-    expect(screen.getAllByRole('button', { name: 'Strengthen' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Improve Wording' })).toHaveLength(1);
   });
 });
 
@@ -453,7 +456,7 @@ describe('ResumeDocumentCard — keyboard accessibility', () => {
 });
 
 describe('InlineEditPanel — action buttons', () => {
-  it('calls onRequestEdit with "strengthen" when Strengthen is clicked', () => {
+  it('calls onRequestEdit with "strengthen" when Improve Wording is clicked', () => {
     const resume = makeResumeDraft();
     const onRequestEdit = vi.fn();
 
@@ -468,7 +471,7 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Strengthen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Improve Wording' }));
 
     expect(onRequestEdit).toHaveBeenCalledOnce();
     expect(onRequestEdit).toHaveBeenCalledWith(
@@ -478,7 +481,7 @@ describe('InlineEditPanel — action buttons', () => {
     );
   });
 
-  it('calls onRequestEdit with "add_metrics" when "+ Metrics" is clicked', () => {
+  it('calls onRequestEdit with "add_metrics" when Add Proof is clicked', () => {
     const resume = makeResumeDraft();
     const onRequestEdit = vi.fn();
 
@@ -493,7 +496,7 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '+ Metrics' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Proof' }));
 
     expect(onRequestEdit).toHaveBeenCalledOnce();
     expect(onRequestEdit).toHaveBeenCalledWith(
@@ -542,8 +545,8 @@ describe('InlineEditPanel — action buttons', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Strengthen' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '+ Metrics' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add Proof' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Rewrite' })).toBeDisabled();
   });
 });
@@ -702,7 +705,7 @@ describe('InlineEditPanel — requirement tags', () => {
 
     // index 0 has addresses_requirements: ['CI/CD experience']
     expect(screen.getByText('CI/CD experience')).toBeInTheDocument();
-    expect(screen.getByText('Addresses:')).toBeInTheDocument();
+    expect(screen.getByText(/This bullet currently supports:/)).toBeInTheDocument();
   });
 
   it('does NOT show requirement tags when addresses_requirements is empty', () => {
@@ -720,7 +723,7 @@ describe('InlineEditPanel — requirement tags', () => {
     );
 
     // index 1 has addresses_requirements: []
-    expect(screen.queryByText('Addresses:')).not.toBeInTheDocument();
+    expect(screen.queryByText(/This bullet currently supports:/)).not.toBeInTheDocument();
   });
 });
 
@@ -729,10 +732,10 @@ describe('InlineEditPanel — requirement tags', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('V2StreamingDisplay — split-screen activation', () => {
-  it('renders split layout (GapAnalysisReportPanel) when hasResume + jobIntelligence + gapAnalysis exist', () => {
+  it('renders the split layout with the rewrite queue when hasResume + jobIntelligence + gapAnalysis exist', () => {
     render(<V2StreamingDisplay {...makeDisplayProps()} />);
 
-    expect(screen.getByTestId('gap-analysis-report')).toBeInTheDocument();
+    expect(screen.getByText('What to Fix Next')).toBeInTheDocument();
   });
 
   it('does NOT render split layout when isRerunning is true', () => {
@@ -786,7 +789,7 @@ describe('V2StreamingDisplay — activeBullet cleared on rerun', () => {
     fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
 
     // InlineEditPanel should now be visible (action buttons rendered)
-    expect(screen.getByRole('button', { name: 'Strengthen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
 
     // Simulate re-run starting: isRerunning becomes true
     // This also switches to streaming layout (split-screen hides), which itself
@@ -840,7 +843,7 @@ describe('V2StreamingDisplay — Escape key behavior', () => {
 
     // Open inline edit panel by clicking a bullet
     fireEvent.click(screen.getByText('Reduced deploy time by 60%'));
-    expect(screen.getByRole('button', { name: 'Strengthen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Improve Wording' })).toBeInTheDocument();
 
     // Press Escape at the window level
     act(() => {

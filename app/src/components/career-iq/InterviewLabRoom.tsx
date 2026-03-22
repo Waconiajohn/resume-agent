@@ -1184,7 +1184,7 @@ export function InterviewLabRoom({
 
   if (viewMode === 'report' && displayedPrepReport) {
     return (
-      <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
+      <div className="room-shell">
         <PrepReport
           company={activeCompany}
           role={activeRole}
@@ -1198,10 +1198,13 @@ export function InterviewLabRoom({
 
   if (viewMode === 'generating') {
     return (
-      <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
-          <p className="text-[13px] text-white/40">Building your interview brief...</p>
+      <div className="room-shell">
+        <div className="room-header">
+          <div className="room-header-copy">
+            <div className="eyebrow-label">Interview Prep</div>
+            <h1 className="room-title">Building your interview brief</h1>
+            <p className="room-subtitle">We’re pulling together the strongest prep signal for this role now.</p>
+          </div>
         </div>
 
         {inputError ? (
@@ -1268,11 +1271,12 @@ export function InterviewLabRoom({
 
   // Default lab view
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">Interview Prep</h1>
-          <p className="text-[13px] text-white/40">
+    <div className="room-shell">
+      <div className="room-header">
+        <div className="room-header-copy">
+          <div className="eyebrow-label">Interview Prep</div>
+          <h1 className="room-title">Prep, practice, and follow-up in one place</h1>
+          <p className="room-subtitle">
             Keep prep, practice, leave-behinds, and follow-up in one place.
           </p>
         </div>
@@ -1294,7 +1298,7 @@ export function InterviewLabRoom({
         </GlassCard>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="rail-tabs">
         {(Object.entries(LAB_SECTION_COPY) as Array<[LabSection, { label: string; description: string }]>).map(([sectionId, section]) => {
           const isActive = activeSection === sectionId;
           return (
@@ -1302,23 +1306,19 @@ export function InterviewLabRoom({
               key={sectionId}
               type="button"
               onClick={() => setActiveSection(sectionId)}
-              className={cn(
-                'rounded-full border px-4 py-2 text-left transition-colors',
-                isActive
-                  ? 'border-[#98b3ff]/22 bg-[#98b3ff]/[0.08]'
-                  : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.05]',
-              )}
+              className="rail-tab"
+              data-active={isActive}
             >
-              <div className="text-sm font-semibold text-white/86">{section.label}</div>
+              <div>{section.label}</div>
             </button>
           );
         })}
       </div>
 
-      <GlassCard className="p-4">
-        <div className="text-sm font-semibold text-white/84">{LAB_SECTION_COPY[activeSection].label}</div>
-        <div className="mt-1 text-sm leading-relaxed text-white/52">{LAB_SECTION_COPY[activeSection].description}</div>
-      </GlassCard>
+      <div className="support-callout">
+        <div className="text-sm font-semibold text-[var(--text-strong)]">{LAB_SECTION_COPY[activeSection].label}</div>
+        <div className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">{LAB_SECTION_COPY[activeSection].description}</div>
+      </div>
 
       {activeSection === 'prep' && (
         <>

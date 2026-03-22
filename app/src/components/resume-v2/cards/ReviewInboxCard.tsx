@@ -14,7 +14,7 @@ function originLabel(pendingEdit: PendingEdit['editContext']): string {
 export function ReviewInboxCard({ pendingEdit }: ReviewInboxCardProps) {
   if (!pendingEdit) {
     return (
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3">
+      <div className="room-shell border border-white/[0.06] bg-white/[0.025] px-4 py-3">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 rounded-lg border border-white/[0.08] bg-white/[0.03] p-2">
             <ClipboardCheck className="h-4 w-4 text-white/55" />
@@ -31,7 +31,7 @@ export function ReviewInboxCard({ pendingEdit }: ReviewInboxCardProps) {
   }
 
   return (
-    <div className="rounded-xl border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-4 py-3">
+    <div className="room-shell border border-[#afc4ff]/18 bg-[#afc4ff]/[0.05] px-4 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] p-2">
           <Sparkles className="h-4 w-4 text-[#afc4ff]" />
@@ -39,10 +39,10 @@ export function ReviewInboxCard({ pendingEdit }: ReviewInboxCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-white/82">Review Inbox</p>
-            <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
+            <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
               {originLabel(pendingEdit.editContext)}
             </span>
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-white/42">
+            <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
               {pendingEdit.action.replaceAll('_', ' ')}
             </span>
           </div>
@@ -64,7 +64,7 @@ export function ReviewInboxCard({ pendingEdit }: ReviewInboxCardProps) {
           )}
 
           {pendingEdit.editContext?.candidateInputUsed && (
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[11px] text-[#f0d99f]">
+            <div className="support-callout mt-3 inline-flex items-center gap-1.5 border border-[#f0d99f]/20 bg-[#f0d99f]/[0.05] px-2.5 py-1 text-[11px] text-[#f0d99f]">
               <Clock3 className="h-3.5 w-3.5" />
               Uses candidate-provided detail
             </div>

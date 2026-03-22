@@ -5,16 +5,16 @@ import { cn } from '@/lib/utils';
 type GlassButtonSize = 'sm' | 'md' | 'lg';
 
 interface GlassButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'ghost';
+  variant?: 'primary' | 'ghost' | 'secondary';
   size?: GlassButtonSize;
   loading?: boolean;
   children: React.ReactNode;
 }
 
 const sizeClasses: Record<GlassButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-xs min-h-[44px]',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-5 py-3 text-base',
+  sm: 'min-h-[42px] px-3.5 py-2 text-[11px] tracking-[0.08em] uppercase',
+  md: 'min-h-[46px] px-4.5 py-2.5 text-[12px] tracking-[0.08em] uppercase',
+  lg: 'min-h-[50px] px-5.5 py-3 text-[12px] tracking-[0.1em] uppercase',
 };
 
 export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(function GlassButton(
@@ -28,12 +28,17 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(funct
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl border font-medium tracking-[0.01em] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:pointer-events-none disabled:border-dashed disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a9beff]/45 active:scale-[0.97] active:duration-75',
+        'group inline-flex items-center justify-center gap-2 rounded-[12px] border font-semibold transition-[transform,background-color,border-color,color,box-shadow] duration-200',
+        'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1218]',
+        'active:translate-y-px',
         sizeClasses[size],
         variant === 'primary' &&
-          'border-[#9eb8ff]/45 bg-[linear-gradient(180deg,rgba(158,184,255,0.2),rgba(158,184,255,0.1))] text-white shadow-[0_10px_28px_-18px_rgba(132,160,255,0.9)] hover:border-[#b2c7ff]/65 hover:bg-[linear-gradient(180deg,rgba(172,196,255,0.26),rgba(158,184,255,0.13))]',
+          'border-[rgba(238,243,248,0.82)] bg-[var(--accent-strong)] text-[var(--accent-ink)] shadow-[0_18px_36px_-24px_rgba(238,243,248,0.52)] hover:border-[rgba(238,243,248,0.36)] hover:bg-transparent hover:text-[var(--text-strong)] hover:shadow-[0_22px_40px_-30px_rgba(0,0,0,0.88)]',
+        variant === 'secondary' &&
+          'border-[var(--line-strong)] bg-[var(--surface-3)] text-[var(--text-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[rgba(238,243,248,0.46)] hover:bg-[var(--accent-strong)] hover:text-[var(--accent-ink)]',
         variant === 'ghost' &&
-          'border-white/[0.1] bg-white/[0.02] text-white/70 hover:border-white/[0.18] hover:bg-white/[0.07] hover:text-white/90',
+          'border-[var(--line-soft)] bg-[rgba(255,255,255,0.02)] text-[var(--text-muted)] hover:border-[rgba(238,243,248,0.38)] hover:bg-[rgba(238,243,248,0.06)] hover:text-[var(--text-strong)]',
         className,
       )}
       {...props}

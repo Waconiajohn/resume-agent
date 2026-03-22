@@ -1238,17 +1238,17 @@ function AnalyticsOverview() {
         {metrics.map((metric) => {
           const Icon = metric.icon;
           return (
-            <div key={metric.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
-              <Icon size={16} className="text-white/30 mx-auto mb-2" />
+            <div key={metric.label} className="support-callout p-4 text-center">
+              <Icon size={16} className="mx-auto mb-2 text-white/30" />
               <div className="text-[22px] font-bold text-white/85 tabular-nums">{metric.value}</div>
-              <div className="text-[11px] text-white/35 mt-0.5">{metric.label}</div>
+              <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/35">{metric.label}</div>
             </div>
           );
         })}
       </div>
 
       {posts.length > 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 flex items-center gap-3">
+        <div className="support-callout px-4 py-3 flex items-center gap-3">
           <Check size={14} className="text-[#b5dec2] flex-shrink-0" />
           <span className="text-[12px] text-white/50">
             Approval rate: <span className="text-white/70 font-medium">{approvalRate}%</span>
@@ -1334,7 +1334,7 @@ function PostLibrary() {
               </p>
             </div>
             <span className={cn(
-              'text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 capitalize',
+              'text-[10px] font-medium px-2.5 py-1 border-l-2 flex-shrink-0 capitalize tracking-[0.14em] uppercase',
               STATUS_COLORS[post.status] ?? 'text-white/40 bg-white/[0.06]',
             )}>
               {post.status}
@@ -1387,12 +1387,12 @@ function PostLibrary() {
 function LibraryWorkspace() {
   return (
     <div className="space-y-4">
-      <GlassCard className="p-5">
-        <div className="text-[11px] font-medium uppercase tracking-widest text-[#98b3ff]/70">
+      <GlassCard className="p-6">
+        <div className="eyebrow-label">
           Library
         </div>
-        <h3 className="mt-2 text-base font-semibold text-white/86">Keep your best LinkedIn work in one place</h3>
-        <p className="mt-2 text-sm leading-relaxed text-white/52">
+        <h3 className="mt-2 text-2xl text-white/92">Keep your best LinkedIn work in one place</h3>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
           Reuse strong posts here, then open the extra checks only when you want them.
         </p>
       </GlassCard>
@@ -1426,7 +1426,7 @@ function KeywordMultiplierNudge() {
       : 'text-red-400 bg-red-400/10 border-red-400/15';
 
   return (
-    <div className={cn('rounded-xl border px-4 py-3 flex items-start gap-3', colorClass)}>
+    <div className={cn('support-callout border px-4 py-3 flex items-start gap-3', colorClass)}>
       <TrendingUp size={15} className="flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium">
@@ -1521,24 +1521,22 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   const utilityTabActive = activeTab === 'calendar' || activeTab === 'library';
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-white/90">LinkedIn</h1>
-          <p className="text-[13px] text-white/40">
+    <div className="room-shell">
+      <div className="room-header lg:flex-row lg:items-start lg:justify-between">
+        <div className="room-header-copy">
+          <div className="eyebrow-label">LinkedIn</div>
+          <h1 className="room-title">Build a stronger profile and publish with intent</h1>
+          <p className="room-subtitle">
             Keep the main work focused on writing and profile strength. Content planning and saved ideas stay quieter in the background.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start gap-3 lg:items-end">
           {optimizer.qualityScore !== null && (
-            <div className={cn(
-              'text-[12px] font-medium px-2.5 py-1 rounded-full',
-              optimizer.qualityScore >= 80 ? 'text-[#b5dec2] bg-[#b5dec2]/10' :
-              optimizer.qualityScore >= 60 ? 'text-[#f0d99f] bg-[#f0d99f]/10' :
-              'text-red-400 bg-red-400/10',
-            )}>
-              Profile Score: {optimizer.qualityScore}%
+            <div className="room-meta-strip">
+              <div className="room-meta-item">
+                Profile Score
+                <strong>{optimizer.qualityScore}%</strong>
+              </div>
             </div>
           )}
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1548,12 +1546,9 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             return (
               <GlassButton
                 key={action.id}
-                variant="ghost"
+                variant={isActive ? 'secondary' : 'ghost'}
                 onClick={() => setActiveTab(action.id)}
-                className={cn(
-                  'flex items-center gap-1.5',
-                  isActive ? 'border-[#98b3ff]/22 bg-[#98b3ff]/[0.08] text-white/82' : undefined,
-                )}
+                className="flex items-center gap-1.5"
               >
                 <Icon size={13} />
                 {action.label}
@@ -1594,9 +1589,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
         <KeywordMultiplierNudge />
       )}
 
-      {/* Tabs */}
-      <div className="space-y-2 border-b border-white/[0.06] pb-2">
-        <div className="flex items-center gap-1">
+      <div className="rail-tabs">
         {primaryTabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -1606,28 +1599,24 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               onClick={() => {
                 setActiveTab(tab.id);
               }}
-              className={cn(
-                'flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors rounded-t-lg border-b-2 -mb-px',
-                activeTab === tab.id
-                  ? 'text-white/85 border-[#98b3ff] bg-[#98b3ff]/[0.04]'
-                  : 'text-white/35 border-transparent hover:text-white/60 hover:bg-white/[0.02]',
-              )}
+              className="rail-tab"
+              data-active={activeTab === tab.id}
             >
               <Icon size={14} className="flex-shrink-0" />
               {tab.label}
             </button>
           );
         })}
-        </div>
-        {utilityTabActive && (
-          <div className="flex items-center gap-2 text-xs text-white/45">
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1">
-              Secondary workspace
-            </span>
-            <span>Use this when you want planning or saved-post support, then go back to the main LinkedIn flow.</span>
-          </div>
-        )}
       </div>
+
+      {utilityTabActive && (
+        <div className="support-callout">
+          <div className="text-sm font-semibold text-[var(--text-strong)]">Secondary workspace</div>
+          <div className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
+            Use this when you want planning or saved-post support, then go back to the main LinkedIn flow.
+          </div>
+        </div>
+      )}
 
       {/* Tab content */}
       <div>

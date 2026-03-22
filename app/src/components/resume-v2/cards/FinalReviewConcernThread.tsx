@@ -91,7 +91,7 @@ interface FinalReviewConcernThreadProps {
 function UserBubble({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[85%] rounded-xl border border-white/[0.10] bg-white/[0.06] px-4 py-2.5">
+      <div className="max-w-[85%] rounded-md border border-white/[0.10] bg-white/[0.06] px-4 py-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
         <p className="text-sm leading-6 text-white/88">{content}</p>
       </div>
     </div>
@@ -116,7 +116,7 @@ function AssistantBubble({
   return (
     <div className="flex justify-start">
       <div className="max-w-[92%] space-y-2">
-        <div className="rounded-xl border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-2.5">
+        <div className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.05] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
           <p className="text-sm leading-6 text-white/76">{message.content}</p>
           {message.currentQuestion && (
             <p className="mt-2 text-xs italic text-[#f0d99f]/85">
@@ -126,8 +126,8 @@ function AssistantBubble({
         </div>
 
         {message.suggestedLanguage && (
-          <div className="rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#b5dec2]">
+          <div className="rounded-md border border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] px-4 py-3">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b5dec2]">
               Suggested Resume Language
             </span>
             <p className="mt-1 text-sm leading-6 text-white/88">&ldquo;{message.suggestedLanguage}&rdquo;</p>
@@ -140,7 +140,7 @@ function AssistantBubble({
                   }
                 }}
                 disabled={disabled}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-1.5 text-xs font-medium text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:cursor-not-allowed disabled:opacity-30"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 {isEditing ? 'Preparing Edit...' : 'Review Edit'}
@@ -150,7 +150,7 @@ function AssistantBubble({
         )}
 
         {!message.suggestedLanguage && message.recommendedNextAction && (
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2">
+          <div className="rounded-md border border-white/[0.06] bg-white/[0.025] px-3 py-2">
             <p className="text-[11px] text-white/42">
               Recommended next step: <span className="text-white/60">{message.recommendedNextAction.replaceAll('_', ' ')}</span>
             </p>
@@ -164,7 +164,7 @@ function AssistantBubble({
 function LoadingDots() {
   return (
     <div className="flex justify-start">
-      <div className="rounded-xl border border-[#afc4ff]/10 bg-[#afc4ff]/[0.05] px-4 py-3">
+      <div className="rounded-md border border-[#afc4ff]/10 bg-[#afc4ff]/[0.05] px-4 py-3">
         <div className="flex items-center gap-1.5" role="status" aria-label="Thinking">
           {[0, 1, 2].map((dot) => (
             <span
@@ -233,7 +233,7 @@ export function FinalReviewConcernThread({
 
   if (resolvedLanguage) {
     return (
-      <div className="mt-2 rounded-lg border border-[#b5dec2]/15 bg-[#b5dec2]/[0.05] px-4 py-3">
+      <div className="support-callout mt-2 border-[#b5dec2]/15 bg-[#b5dec2]/[0.05] px-4 py-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-[#b5dec2]" />
           <span className="text-sm font-medium text-[#b5dec2]">Accepted Final Review edit</span>
@@ -244,7 +244,7 @@ export function FinalReviewConcernThread({
   }
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-[#afc4ff]/12 bg-black/15" data-testid="final-review-thread">
+    <div className="room-shell mt-3 overflow-hidden border-[#afc4ff]/12 bg-black/15" data-testid="final-review-thread">
       {messages.length > 0 && (
         <div className="max-h-[360px] space-y-3 overflow-y-auto px-4 py-3" role="log" aria-live="polite">
           {messages.map((message, index) => (
@@ -272,7 +272,7 @@ export function FinalReviewConcernThread({
             type="button"
             onClick={() => setShowAdvanced((previous) => !previous)}
             disabled={isLoading}
-            className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-2.5 py-1 text-[11px] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
+            className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
           >
             {showAdvanced ? 'Hide More Options' : 'More Options'}
           </button>
@@ -280,7 +280,7 @@ export function FinalReviewConcernThread({
             <button
               type="button"
               onClick={onCloseThread}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 text-[11px] text-white/48 transition-colors hover:bg-white/[0.05] hover:text-white/70"
+              className="rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/48 transition-colors hover:bg-white/[0.05] hover:text-white/70"
             >
               Skip for Now
             </button>
@@ -290,14 +290,14 @@ export function FinalReviewConcernThread({
 
       {!resolvedLanguage && showAdvanced && (
         <div className="space-y-2 px-3 pb-2.5">
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+          <div className="support-callout px-3 py-3">
             <p className="text-[11px] uppercase tracking-[0.08em] text-white/38">More ways to answer</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => sendQuickMessage('Please ask me one targeted follow-up question that would make this resume evidence stronger.')}
                 disabled={isLoading}
-                className="rounded-lg border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-2.5 py-1 text-[11px] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
+                className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.10] disabled:opacity-40"
               >
                 Ask Another Question
               </button>
@@ -305,14 +305,14 @@ export function FinalReviewConcernThread({
                 type="button"
                 onClick={() => sendQuickMessage('Please try another truthful angle for this concern and suggest different resume language.')}
                 disabled={isLoading}
-                className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+                className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
               >
                 Try Another Angle
               </button>
             </div>
           </div>
 
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+          <div className="support-callout px-3 py-3">
             <p className="text-[11px] uppercase tracking-[0.08em] text-white/38">Evidence Shortcuts</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {EVIDENCE_SHORTCUTS.map((shortcut) => (
@@ -321,7 +321,7 @@ export function FinalReviewConcernThread({
                   type="button"
                   onClick={() => sendQuickMessage(shortcut.message)}
                   disabled={isLoading}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/64 transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/64 transition-colors hover:bg-white/[0.06] disabled:opacity-30"
                 >
                   {shortcut.label}
                 </button>
@@ -329,7 +329,7 @@ export function FinalReviewConcernThread({
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#afc4ff]/12 bg-[#afc4ff]/[0.04] px-3 py-2">
+          <div className="support-callout border-[#afc4ff]/12 bg-[#afc4ff]/[0.04] px-3 py-3">
             <p className="text-[11px] uppercase tracking-[0.08em] text-[#afc4ff]/82">Rewrite Variants</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {REWRITE_ANGLE_SHORTCUTS.map((shortcut) => (
@@ -338,7 +338,7 @@ export function FinalReviewConcernThread({
                   type="button"
                   onClick={() => sendQuickMessage(shortcut.message)}
                   disabled={isLoading}
-                  className="rounded-lg border border-[#afc4ff]/12 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[11px] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.12] disabled:opacity-40"
+                  className="rounded-md border border-[#afc4ff]/12 bg-[#afc4ff]/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#afc4ff] transition-colors hover:bg-[#afc4ff]/[0.12] disabled:opacity-40"
                 >
                   {shortcut.label}
                 </button>
@@ -352,7 +352,7 @@ export function FinalReviewConcernThread({
                   type="button"
                   onClick={() => sendQuickMessage(shortcut.message)}
                   disabled={isLoading}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
                 >
                   {shortcut.label}
                 </button>
@@ -366,7 +366,7 @@ export function FinalReviewConcernThread({
                   type="button"
                   onClick={() => sendQuickMessage(shortcut.message)}
                   disabled={isLoading}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+                  className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/68 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
                 >
                   {shortcut.label}
                 </button>
@@ -409,13 +409,13 @@ export function FinalReviewConcernThread({
             : 'Share the next detail you want the AI to use...'}
           rows={1}
           disabled={isLoading}
-          className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-lg border border-white/[0.10] bg-white/[0.04] px-3 py-2 text-sm leading-6 text-white/86 transition-colors focus:outline-none disabled:opacity-50"
+          className="min-h-[36px] max-h-[120px] flex-1 resize-none rounded-md border border-white/[0.10] bg-white/[0.04] px-3 py-2 text-sm leading-6 text-white/86 transition-colors focus:outline-none disabled:opacity-50"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={!inputValue.trim() || isLoading}
-          className="rounded-lg p-2 transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-md border border-[#afc4ff]/16 bg-[#afc4ff]/[0.05] p-2.5 transition-colors hover:bg-[#afc4ff]/[0.10] disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Send message"
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-[#afc4ff]" /> : <Send className="h-4 w-4 text-[#afc4ff]" />}

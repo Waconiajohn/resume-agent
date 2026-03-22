@@ -10,6 +10,7 @@ import { MobileBriefing } from './MobileBriefing';
 import { useMediaQuery } from './useMediaQuery';
 import { useMomentum } from '@/hooks/useMomentum';
 import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
+import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { supabase } from '@/lib/supabase';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
 import type { RealFeedEvent } from './ZoneAgentFeed';
@@ -47,6 +48,26 @@ const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((modul
 const ExecutiveDocumentsRoom = lazy(() => import('./ExecutiveDocumentsRoom').then((module) => ({ default: module.ExecutiveDocumentsRoom })));
 const RoomPlaceholder = lazy(() => import('./RoomPlaceholder').then((module) => ({ default: module.RoomPlaceholder })));
 const CoachDrawer = lazy(() => import('./CoachDrawer').then((module) => ({ default: module.CoachDrawer })));
+
+const ROOM_LABELS: Record<CareerIQRoom, string> = {
+  dashboard: 'Workspace Home',
+  'career-profile': 'Career Profile',
+  resume: 'Resume Builder',
+  linkedin: 'LinkedIn',
+  jobs: 'Job Search',
+  networking: 'Networking',
+  interview: 'Interview Prep',
+  'salary-negotiation': 'Negotiation Prep',
+  'executive-bio': 'Executive Bio',
+  financial: 'Financial',
+  learning: 'Learning',
+  'personal-brand': 'LinkedIn',
+  'ninety-day-plan': 'Interview Prep',
+  'content-calendar': 'LinkedIn',
+  'case-study': 'Case Study',
+  'thank-you-note': 'Interview Prep',
+  'network-intelligence': 'Networking',
+};
 
 interface CoverLetterSession {
   id: string;
@@ -298,6 +319,12 @@ export function CareerIQScreen({
   };
 
   const openCareerProfile = () => handleRoomNavigate('career-profile');
+  const breadcrumbItems = activeRoom === 'dashboard'
+    ? [{ label: 'Workspace' }]
+    : [
+        { label: 'Workspace', onClick: () => handleRoomNavigate('dashboard') },
+        { label: ROOM_LABELS[activeRoom] ?? 'Workspace' },
+      ];
 
   const renderContent = () => {
     if (COMING_SOON_ROOMS.has(activeRoom)) {
@@ -465,17 +492,20 @@ export function CareerIQScreen({
 
     return (
       <div className="flex min-h-screen flex-col pb-20">
-        <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 pb-3 pt-4">
+        <div className="border-b border-[var(--line-soft)] px-4 pb-3 pt-4">
+          <Breadcrumbs items={breadcrumbItems} />
+          <div className="mt-3 flex items-center gap-3">
           <button
             type="button"
             onClick={() => handleRoomNavigate('dashboard')}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-[#98b3ff]"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--accent)]"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Home
           </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -523,6 +553,9 @@ export function CareerIQScreen({
       />
 
       <main className="flex flex-1 flex-col overflow-y-auto">
+        <div className="border-b border-[var(--line-soft)] px-8 py-5">
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
         <Suspense fallback={<RoomSkeleton />}>
           {renderContent()}
         </Suspense>

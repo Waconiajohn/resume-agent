@@ -17,12 +17,12 @@ export interface ScoringReportCardProps {
 function ScoreBar({ value, color }: { value: number; color: string }) {
   return (
     <div
-      className="h-1.5 rounded-full overflow-hidden"
+      className="h-1.5 rounded-md overflow-hidden"
       style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
       role="presentation"
     >
       <div
-        className="h-full rounded-full transition-all duration-700"
+        className="h-full rounded-md transition-all duration-700"
         style={{ width: `${Math.min(100, Math.max(0, value))}%`, backgroundColor: color }}
       />
     </div>
@@ -93,7 +93,7 @@ export function ScoringReportCard({ preScores, assembly }: ScoringReportCardProp
 
       {/* ── Before → After score display ─────────────────────────── */}
       <div
-        className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4"
+        className="support-callout flex items-center gap-3 px-4 py-3 mb-4"
         style={{
           backgroundColor: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.06)',
@@ -130,7 +130,7 @@ export function ScoringReportCard({ preScores, assembly }: ScoringReportCardProp
 
         {/* Delta badge */}
         <span
-          className="ml-auto rounded-full px-2.5 py-1 text-xs font-bold tabular-nums"
+          className="ml-auto rounded-md px-3 py-1.5 text-xs font-bold tabular-nums"
           style={{
             color: delta > 0 ? '#b5dec2' : delta < 0 ? '#f0b8b8' : 'rgba(255,255,255,0.5)',
             backgroundColor: delta > 0 ? 'rgba(181,222,194,0.12)' : delta < 0 ? 'rgba(240,184,184,0.12)' : 'rgba(255,255,255,0.06)',
@@ -149,7 +149,7 @@ export function ScoringReportCard({ preScores, assembly }: ScoringReportCardProp
 
       {/* ── Stat columns ─────────────────────────────────────────── */}
       <div
-        className="flex items-center gap-0 rounded-xl overflow-hidden mb-4"
+        className="room-shell flex items-center gap-0 overflow-hidden mb-4"
         style={{
           border: '1px solid rgba(255,255,255,0.06)',
           backgroundColor: 'rgba(255,255,255,0.02)',

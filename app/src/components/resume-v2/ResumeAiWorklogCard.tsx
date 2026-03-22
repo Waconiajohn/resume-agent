@@ -18,14 +18,14 @@ interface WorklogStep {
 
 function WorklogRow({ step }: { step: WorklogStep }) {
   const tone = step.status === 'done'
-    ? 'border-[#b5dec2]/20 bg-[#b5dec2]/[0.05] text-[#b5dec2]'
+    ? 'border-[#b5dec2]/18 bg-[#b5dec2]/[0.04] text-[#b5dec2]'
     : step.status === 'active'
-      ? 'border-[#afc4ff]/20 bg-[#afc4ff]/[0.05] text-[#afc4ff]'
-      : 'border-white/[0.08] bg-white/[0.02] text-white/42';
+      ? 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.04] text-[#afc4ff]'
+      : 'border-white/[0.08] bg-white/[0.015] text-white/42';
 
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-black/10 px-3.5 py-3">
-      <div className={`mt-0.5 rounded-full border p-1 ${tone}`}>
+    <div className="support-callout flex items-start gap-3 px-4 py-3.5">
+      <div className={`mt-0.5 rounded-lg border p-1.5 ${tone}`}>
         {step.status === 'done' ? (
           <CheckCircle2 className="h-3.5 w-3.5" />
         ) : step.status === 'active' ? (
@@ -113,13 +113,13 @@ export function ResumeAiWorklogCard({
   ];
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[#98b3ff]/18 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.16),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] px-5 py-5">
+    <div className="room-shell space-y-4 border border-[#98b3ff]/14 bg-[radial-gradient(circle_at_top_left,rgba(152,179,255,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[#c9d7ff]/72">AI worklog</p>
+          <p className="eyebrow-label text-[#c9d7ff]/72">AI worklog</p>
           <p className="mt-2 text-base font-semibold text-white/86">What AI Is Doing For You</p>
         </div>
-        <div className="rounded-full border border-white/[0.08] bg-black/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/42">
+        <div className="rounded-md border border-white/[0.08] bg-black/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/42">
           Behind the scenes
         </div>
       </div>
@@ -127,7 +127,7 @@ export function ResumeAiWorklogCard({
         This shows the work happening behind the scenes so you can see why the next step matters.
       </p>
 
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {steps.map((step) => <WorklogRow key={step.label} step={step} />)}
       </div>
     </div>

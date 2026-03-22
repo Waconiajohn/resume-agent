@@ -77,7 +77,7 @@ function GroupHeader({ importance, count }: { importance: Importance; count: num
   return (
     <div className="flex items-center gap-2 mb-2 mt-1">
       <span
-        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0"
+        className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shrink-0"
         style={style}
       >
         {importanceLabel(importance)}
@@ -127,7 +127,7 @@ function StatusLine({
         <span className="text-white/60 italic">&ldquo;{snippet}&rdquo;</span>
         {' '}in{' '}
         <span
-          className="rounded px-1 py-px text-[9px] font-medium not-italic"
+          className="rounded-md px-1.5 py-0.5 text-[9px] font-medium not-italic"
           style={{
             color: 'rgba(255,255,255,0.50)',
             backgroundColor: 'rgba(255,255,255,0.06)',
@@ -169,6 +169,21 @@ function CoachingDrawer({
   const evidence = coaching?.evidence_found ?? gapReq?.evidence ?? [];
   const strategy = gapReq?.strategy;
   const canAct = onRequestEdit && currentResume && !isEditing;
+  const resolveEditTarget = () => {
+    const mapped = findBulletForRequirement(requirement, positioningAssessment, currentResume!);
+    if (mapped) return mapped;
+
+    const firstExperience = currentResume?.professional_experience[0];
+    const firstBullet = firstExperience?.bullets[0];
+    if (firstExperience && firstBullet) {
+      return {
+        text: firstBullet.text,
+        section: `Professional Experience - ${firstExperience.company}`,
+      };
+    }
+
+    return null;
+  };
 
   // Determine classification-based accent color
   const classification = coaching?.classification ?? gapReq?.classification ?? 'missing';
@@ -176,7 +191,7 @@ function CoachingDrawer({
 
   const handleApplyStrategy = () => {
     if (!canAct || !strategy) return;
-    const target = findBulletForRequirement(requirement, positioningAssessment, currentResume!);
+    const target = resolveEditTarget();
     if (!target) return;
     const label = status === 'gap' ? 'safe resume language' : 'positioning';
     onRequestEdit!(
@@ -190,21 +205,21 @@ function CoachingDrawer({
 
   const handleStrengthen = () => {
     if (!canAct) return;
-    const target = findBulletForRequirement(requirement, positioningAssessment, currentResume!);
+    const target = resolveEditTarget();
     if (!target) return;
     onRequestEdit!(target.text, target.section, 'strengthen', undefined, buildEditContext(requirement, evidence, strategy?.positioning));
   };
 
   const handleAddMetrics = () => {
     if (!canAct) return;
-    const target = findBulletForRequirement(requirement, positioningAssessment, currentResume!);
+    const target = resolveEditTarget();
     if (!target) return;
     onRequestEdit!(target.text, target.section, 'add_metrics', undefined, buildEditContext(requirement, evidence, strategy?.positioning));
   };
 
   const handleSubmitContext = () => {
     if (!canAct || !contextText.trim()) return;
-    const target = findBulletForRequirement(requirement, positioningAssessment, currentResume!);
+    const target = resolveEditTarget();
     if (!target) return;
     onRequestEdit!(
       target.text,
@@ -232,7 +247,7 @@ function CoachingDrawer({
             {evidence.map((e, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-white/60 bg-white/[0.05] border border-white/[0.10]"
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] text-white/60 bg-white/[0.05] border border-white/[0.10]"
               >
                 <CheckCircle2 className="h-2.5 w-2.5 text-[#b5dec2]/60 shrink-0" />
                 {e}
@@ -246,7 +261,7 @@ function CoachingDrawer({
       {coaching?.ai_reasoning && (
         <div className="flex gap-2.5">
           <div className="shrink-0 mt-0.5">
-            <div className="h-6 w-6 rounded-full bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
+            <div className="h-6 w-6 rounded-lg bg-[#afc4ff]/15 border border-[#afc4ff]/30 flex items-center justify-center">
               <span className="text-[8px] font-bold text-[#afc4ff] tracking-tight leading-none">AI</span>
             </div>
           </div>
@@ -312,7 +327,7 @@ function CoachingDrawer({
               type="button"
               disabled={!contextText.trim() || isEditing}
               onClick={handleSubmitContext}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               data-testid="submit-context"
             >
               Submit & Rewrite
@@ -336,7 +351,7 @@ function CoachingDrawer({
               <button
                 type="button"
                 onClick={handleStrengthen}
-                className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
                 data-testid="action-strengthen"
               >
                 <CheckCircle2 className="h-3 w-3" />
@@ -345,7 +360,7 @@ function CoachingDrawer({
               <button
                 type="button"
                 onClick={handleAddMetrics}
-                className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#f0d99f]/10 text-[#f0d99f] border border-[#f0d99f]/20 hover:bg-[#f0d99f]/20 transition-colors"
                 data-testid="action-add-metrics"
               >
                 <Ruler className="h-3 w-3" />
@@ -359,7 +374,7 @@ function CoachingDrawer({
               <button
                 type="button"
                 onClick={handleStrengthen}
-                className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#b5dec2]/10 text-[#b5dec2] border border-[#b5dec2]/20 hover:bg-[#b5dec2]/20 transition-colors"
                 data-testid="action-strengthen"
               >
                 <CheckCircle2 className="h-3 w-3" />
@@ -369,7 +384,7 @@ function CoachingDrawer({
                 <button
                   type="button"
                   onClick={handleApplyStrategy}
-                  className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
                   data-testid="action-refine-positioning"
                 >
                   <Lightbulb className="h-3 w-3" />
@@ -383,7 +398,7 @@ function CoachingDrawer({
             <button
               type="button"
               onClick={handleApplyStrategy}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-[#afc4ff]/10 text-[#afc4ff] border border-[#afc4ff]/20 hover:bg-[#afc4ff]/20 transition-colors"
               data-testid="action-apply-strategy"
             >
               <Lightbulb className="h-3 w-3" />
@@ -395,7 +410,7 @@ function CoachingDrawer({
             <button
               type="button"
               onClick={() => setShowContextInput(true)}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-medium bg-white/[0.04] text-white/50 border border-white/[0.08] hover:bg-white/[0.07] hover:text-white/70 transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium bg-white/[0.04] text-white/50 border border-white/[0.08] hover:bg-white/[0.07] hover:text-white/70 transition-colors"
               data-testid="action-add-context"
             >
               <MessageSquare className="h-3 w-3" />
@@ -465,7 +480,7 @@ function RequirementRow({
     <div
       data-requirement-row={requirement}
       className={[
-        'rounded-lg transition-all duration-200 overflow-hidden',
+        'rounded-xl transition-all duration-200 overflow-hidden',
         'border',
         isActive
           ? 'border-[#afc4ff]/40 bg-[#afc4ff]/[0.06]'
@@ -502,7 +517,7 @@ function RequirementRow({
             {requirement}
           </span>
           <span
-            className="rounded-full px-1.5 py-0.5 text-[9px] font-medium shrink-0"
+            className="rounded-md px-1.5 py-0.5 text-[9px] font-medium shrink-0"
             style={importanceStyle(importance)}
           >
             {importanceLabel(importance)}
@@ -804,7 +819,7 @@ export function RequirementsChecklistPanel({
             <section>
               <div className="flex items-center gap-2 mb-2 mt-1">
                 <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shrink-0"
+                  className="rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shrink-0"
                   style={{
                     color: '#f0b8b8',
                     backgroundColor: 'rgba(240,184,184,0.10)',

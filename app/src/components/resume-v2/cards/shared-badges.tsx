@@ -1,6 +1,6 @@
 import { CheckCircle2, Shuffle, X } from 'lucide-react';
 
-// ─── Status badge (filled pill) ────────────────────────────────────────────────
+// ─── Status badge (structured marker) ───────────────────────────────────────
 
 export function StatusBadge({
   status,
@@ -13,11 +13,12 @@ export function StatusBadge({
     case 'strong':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
             color: '#b5dec2',
-            backgroundColor: 'rgba(181,222,194,0.15)',
-            border: '1px solid rgba(181,222,194,0.20)',
+            backgroundColor: 'rgba(181,222,194,0.08)',
+            border: '1px solid rgba(181,222,194,0.18)',
+            borderLeftColor: 'rgba(181,222,194,0.42)',
           }}
         >
           <CheckCircle2 className="h-2.5 w-2.5" aria-hidden="true" />
@@ -27,11 +28,12 @@ export function StatusBadge({
     case 'repositioned':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
             color: '#afc4ff',
-            backgroundColor: 'rgba(175,196,255,0.15)',
-            border: '1px solid rgba(175,196,255,0.20)',
+            backgroundColor: 'rgba(175,196,255,0.08)',
+            border: '1px solid rgba(175,196,255,0.18)',
+            borderLeftColor: 'rgba(175,196,255,0.42)',
           }}
         >
           <Shuffle className="h-2.5 w-2.5" aria-hidden="true" />
@@ -41,11 +43,12 @@ export function StatusBadge({
     case 'gap':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0"
+          className="inline-flex items-center gap-1.5 border-l-2 rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shrink-0"
           style={{
             color: '#f0b8b8',
-            backgroundColor: 'rgba(240,184,184,0.15)',
-            border: '1px solid rgba(240,184,184,0.20)',
+            backgroundColor: 'rgba(240,184,184,0.08)',
+            border: '1px solid rgba(240,184,184,0.18)',
+            borderLeftColor: 'rgba(240,184,184,0.42)',
           }}
         >
           <X className="h-2.5 w-2.5" aria-hidden="true" />

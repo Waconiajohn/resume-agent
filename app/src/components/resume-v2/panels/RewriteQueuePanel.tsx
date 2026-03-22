@@ -105,7 +105,7 @@ function QueueStat({
   detail?: string;
 }) {
   return (
-    <div className={`rounded-xl border px-3 py-3 ${tone}`}>
+    <div className={`support-callout px-3 py-3 ${tone}`}>
       <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">{label}</p>
       <p className="mt-2 text-base font-semibold text-white/86">{value}</p>
       {detail && <p className="mt-1 text-[11px] leading-4 text-white/42">{detail}</p>}
@@ -126,7 +126,7 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
   const isNearbyEvidence = firstEvidence.basis === 'nearby';
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2">
+    <div className="support-callout px-3 py-2">
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">
         {isNearbyEvidence ? 'Nearby proof we can strengthen' : 'Current proof'}
         {firstEvidence.section ? ` · ${firstEvidence.section}` : ''}
@@ -154,16 +154,16 @@ function EvidenceList({
     <div className="space-y-2">
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">{title}</p>
       {items.length === 0 ? (
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm leading-6 text-white/50">
+        <div className="support-callout px-3 py-2 text-sm leading-6 text-white/50">
           {emptyLabel}
         </div>
       ) : (
         items.slice(0, 2).map((item, index) => (
-          <div key={`${item.text}-${index}`} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+          <div key={`${item.text}-${index}`} className="support-callout px-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
               {item.section && <p className="text-[11px] text-white/42">{item.section}</p>}
               {item.basis === 'nearby' && (
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-white/38">
+                <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white/38">
                   Nearby proof
                 </span>
               )}
@@ -299,7 +299,7 @@ export function RewriteQueuePanel({
     <div className="h-full overflow-y-auto bg-[#0b1018]">
       <div className="space-y-4 border-b border-white/[0.06] px-5 py-5">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-xl border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] p-2.5">
+          <div className="mt-0.5 rounded-lg border border-[#afc4ff]/18 bg-[#afc4ff]/[0.07] p-2.5">
             <Target className="h-4 w-4 text-[#afc4ff]" />
           </div>
           <div className="min-w-0">
@@ -322,23 +322,23 @@ export function RewriteQueuePanel({
         </div>
 
         {nextItem && (
-          <div className="rounded-2xl border border-[#afc4ff]/16 bg-[#0f1622] px-4 py-4">
+          <div className="room-shell border border-[#afc4ff]/16 bg-[#0f1622] px-4 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-[#afc4ff]/72">Recommended Next Step</p>
                 <p className="mt-2 text-sm font-semibold text-white/86">{nextItem.title}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
+                <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
                   {SOURCE_LABELS[nextItem.source]}
                 </span>
-                <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
+                <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
                   {CATEGORY_LABELS[nextItem.category]}
                 </span>
               </div>
             </div>
 
-            <div className="mt-3 space-y-3 rounded-xl border border-white/[0.06] bg-black/15 px-3 py-3">
+            <div className="support-callout mt-3 space-y-3 px-3 py-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">Why this matters</p>
                 <p className="mt-1 text-sm leading-6 text-white/68">{nextItem.whyItMatters}</p>
@@ -448,7 +448,7 @@ export function RewriteQueuePanel({
                     return (
                       <div
                         key={item.id}
-                        className={`rounded-2xl border px-4 py-4 transition-colors ${
+                        className={`room-shell border px-4 py-4 transition-colors ${
                           isExpanded
                             ? isPrimary
                               ? 'border-[#afc4ff]/28 bg-[#afc4ff]/[0.06]'
@@ -476,14 +476,14 @@ export function RewriteQueuePanel({
                               <div className="min-w-0 flex-1 space-y-3">
                                 <div className="flex flex-wrap items-center gap-2">
                                   {isPrimary && item.bucket !== 'resolved' && (
-                                    <span className="rounded-full border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
+                                    <span className="rounded-md border border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-[#afc4ff]">
                                       Work this now
                                     </span>
                                   )}
-                                  <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
+                                  <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/42">
                                     {SOURCE_LABELS[item.source]}
                                   </span>
-                                  <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                                  <span className={`rounded-md border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
                                     item.category === 'hard_gap'
                                       ? 'border-[#f0d99f]/18 bg-[#f0d99f]/[0.06] text-[#f0d99f]'
                                       : 'border-[#afc4ff]/18 bg-[#afc4ff]/[0.06] text-[#afc4ff]'
@@ -538,7 +538,7 @@ export function RewriteQueuePanel({
                             </div>
 
                             {isExpanded && (
-                              <div className="space-y-3 rounded-2xl border border-white/[0.06] bg-black/15 px-3 py-3">
+                              <div className="support-callout space-y-3 px-3 py-3">
                                 <div>
                                   <p className="text-[11px] uppercase tracking-[0.16em] text-white/34">What AI is doing</p>
                                   <p className="mt-1 text-sm leading-6 text-white/68">{item.aiPlan}</p>

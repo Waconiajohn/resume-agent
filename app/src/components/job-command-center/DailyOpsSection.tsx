@@ -33,21 +33,16 @@ export function DailyOpsSection({
 
   return (
     <GlassCard className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-2">
         <Clock size={18} className="text-[#98b3ff]" />
         <h3 className="text-[15px] font-semibold text-white/85">Daily Ops</h3>
       </div>
 
-      {/* Quick stats bar */}
-      <div className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 flex-wrap">
-        <StatPill label="Active" value={activeCount} />
-        <div className="h-4 w-px bg-white/[0.06]" />
-        <StatPill label="Interviewing" value={interviewCount} highlight={interviewCount > 0} />
-        <div className="h-4 w-px bg-white/[0.06]" />
-        <StatPill label="Offers" value={offerCount} highlight={offerCount > 0} accent="green" />
-        <div className="h-4 w-px bg-white/[0.06]" />
-        <StatPill label="Due" value={dueActions.length} highlight={dueActions.length > 0} accent="amber" />
+      <div className="grid gap-3 md:grid-cols-4">
+        <StatMetric label="Active" value={activeCount} />
+        <StatMetric label="Interviewing" value={interviewCount} highlight={interviewCount > 0} />
+        <StatMetric label="Offers" value={offerCount} highlight={offerCount > 0} accent="green" />
+        <StatMetric label="Due" value={dueActions.length} highlight={dueActions.length > 0} accent="amber" />
       </div>
 
       {/* Top radar matches */}
@@ -116,10 +111,7 @@ export function DailyOpsSection({
                   : 'text-white/30';
 
               return (
-                <div
-                  key={action.id}
-                  className={cn('rounded-xl border p-3 transition-colors', cls)}
-                >
+                <div key={action.id} className={cn('support-callout border p-3 transition-colors', cls)}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-medium text-white/75">
@@ -154,7 +146,7 @@ export function DailyOpsSection({
 
       {/* Stale applications callout */}
       {staleApplications.length > 0 && (
-        <div className="rounded-xl border border-[#f0d99f]/15 bg-[#f0d99f]/[0.03] p-4">
+        <div className="support-callout border border-[#f0d99f]/15 bg-[#f0d99f]/[0.03] p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={14} className="text-[#f0d99f]/60" />
             <span className="text-[12px] font-semibold text-[#f0d99f]/60">
@@ -178,7 +170,7 @@ export function DailyOpsSection({
   );
 }
 
-function StatPill({
+function StatMetric({
   label,
   value,
   highlight = false,
@@ -198,9 +190,9 @@ function StatPill({
     : 'text-white/70';
 
   return (
-    <div className="flex items-baseline gap-1.5">
-      <span className={cn('text-[15px] font-bold tabular-nums', valueClass)}>{value}</span>
-      <span className="text-[11px] text-white/35">{label}</span>
+    <div className="border-l-2 border-white/[0.08] bg-white/[0.02] px-4 py-3">
+      <div className={cn('text-[18px] font-bold tabular-nums', valueClass)}>{value}</div>
+      <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/35">{label}</div>
     </div>
   );
 }

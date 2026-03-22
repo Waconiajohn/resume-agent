@@ -10,14 +10,15 @@ export function GlassCard({ children, className, hover = false, ...rest }: Glass
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-[18px] border border-white/[0.1] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_44px_-28px_rgba(0,0,0,0.9)]',
-        'before:pointer-events-none before:absolute before:inset-0 before:rounded-[18px] before:ring-1 before:ring-inset before:ring-white/[0.04]',
-        hover && 'transition-all duration-200 hover:border-white/[0.16] hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.035))] hover:shadow-[0_24px_52px_-30px_rgba(0,0,0,0.95)]',
+        'shell-panel',
+        'before:pointer-events-none before:absolute before:inset-0 before:rounded-[20px] before:ring-1 before:ring-inset before:ring-white/[0.03]',
+        'after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-16 after:bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.015))] after:opacity-70',
+        hover &&
+          'transition-[transform,border-color,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:border-[rgba(238,243,248,0.22)] hover:shadow-[0_34px_80px_-46px_rgba(0,0,0,0.95)]',
         className,
       )}
       {...rest}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.18]" />
       {children}
     </div>
   );
