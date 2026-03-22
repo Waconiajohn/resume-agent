@@ -307,6 +307,34 @@ describe('rewrite-queue', () => {
     expect(queue.items[0]?.userInstruction).toContain('leadership bench');
   });
 
+  it('tailors nearby-proof guidance for multi-brand portfolio requirements', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Background in multi-brand portfolio management',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Led marketing organization across 3 product lines at Lakefront Consumer Products.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.userInstruction).toContain('brands, product lines, or categories');
+    expect(queue.items[0]?.userInstruction).toContain('portfolio work');
+  });
+
   it('does not crash when a live gap-analysis requirement omits the evidence array', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [

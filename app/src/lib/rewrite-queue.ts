@@ -294,6 +294,7 @@ function userInstructionForRequirement(args: {
   const asksForCommunicationProof = /\b(communication|executive stakeholder|executive-facing|board|presenting|presentation|influence)\b/.test(normalizedRequirement);
   const asksForFinancialProof = /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalizedRequirement);
   const asksForTalentProof = /\b(talent development|leadership pipeline|bench strength|succession|develop(?:ing)? leaders|high-performing teams?|hiring|hire|coach(?:ing)?|mentor(?:ing)?|promot(?:e|ed|ion)|people development)\b/.test(normalizedRequirement);
+  const asksForPortfolioProof = /\b(multi-brand|portfolio management|portfolio strategy|brand architecture|product lines|brand portfolio|category portfolio)\b/.test(normalizedRequirement);
   const asksForScaleProof = /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(args.requirement);
   const asksForTechnicalProof = /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|industry 4\.0|digital transformation)\b/.test(normalizedRequirement);
 
@@ -324,6 +325,10 @@ function userInstructionForRequirement(args: {
 
     if (asksForTalentProof) {
       return 'Answer with who you hired, developed, or promoted, how you built the leadership bench, and what business result came from it.';
+    }
+
+    if (asksForPortfolioProof) {
+      return 'Answer with the brands, product lines, or categories you managed together, how you coordinated them, and what business outcome came from that portfolio work.';
     }
 
     if (asksForScaleProof) {
