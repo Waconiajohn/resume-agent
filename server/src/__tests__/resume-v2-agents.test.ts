@@ -1091,8 +1091,110 @@ describe('Resume V2 — LLM Agent Unit Tests', () => {
       const result = await runGapAnalysis(input);
 
       expect(result.requirements[0]?.source_evidence).toBe('Develop and track performance metrics');
+      expect(result.requirements[0]?.evidence).toEqual([]);
       expect(result.requirements[0]?.strategy).toBeUndefined();
       expect(result.pending_strategies).toEqual([]);
+    });
+
+    it('deterministic fallback does not surface abstract profile labels as resume evidence', async () => {
+      const deterministicInput: GapAnalysisInput = {
+        candidate: {
+          ...CANDIDATE_OUTPUT,
+          leadership_scope: '',
+          operational_scale: '',
+          career_themes: ['Operational efficiency metrics experience'],
+          quantified_outcomes: [],
+          hidden_accomplishments: [],
+          experience: [
+            {
+              company: 'Acme Startup',
+              title: 'VP Operations',
+              start_date: 'Jan 2020',
+              end_date: 'Present',
+              bullets: ['Improved delivery timelines across sites.'],
+            },
+          ],
+        },
+        benchmark: {
+          ...BENCHMARK_OUTPUT,
+          expected_achievements: [],
+          expected_leadership_scope: 'Scaled operations leader',
+          expected_industry_knowledge: [],
+          expected_technical_skills: [],
+          expected_certifications: [],
+          differentiators: [],
+        },
+        job_intelligence: {
+          ...JOB_INTEL_OUTPUT,
+          core_competencies: [
+            {
+              competency: 'Develop and track performance metrics',
+              importance: 'important',
+              evidence_from_jd: 'Develop and track performance metrics',
+            },
+          ],
+          strategic_responsibilities: [],
+        },
+        career_profile: {
+          version: 'career_profile_v2',
+          source: 'career_profile',
+          generated_at: '2026-03-22T12:00:00Z',
+          targeting: {
+            target_roles: [],
+            target_industries: [],
+            seniority: 'vp',
+            transition_type: '',
+            preferred_company_environments: [],
+          },
+          positioning: {
+            core_strengths: [],
+            proof_themes: [],
+            differentiators: [],
+            adjacent_positioning: ['Operational efficiency metrics experience'],
+            positioning_statement: '',
+            narrative_summary: '',
+            leadership_scope: '',
+            scope_of_responsibility: '',
+          },
+          narrative: {
+            colleagues_came_for_what: '',
+            known_for_what: '',
+            why_not_me: '',
+            story_snippet: '',
+          },
+          preferences: {
+            must_haves: [],
+            constraints: [],
+            compensation_direction: '',
+          },
+          coaching: {
+            financial_segment: '',
+            emotional_state: '',
+            coaching_tone: '',
+            urgency_score: 0,
+            recommended_starting_point: '',
+          },
+          evidence_positioning_statements: [],
+          profile_signals: {
+            clarity: 'yellow',
+            alignment: 'yellow',
+            differentiation: 'yellow',
+          },
+          completeness: {
+            overall_score: 0,
+            dashboard_state: 'refining',
+            sections: [],
+          },
+          profile_summary: 'Operator with adjacent metrics exposure.',
+        },
+      };
+
+      mockLlmChat.mockRejectedValueOnce(new Error('Timed out after 180000ms'));
+
+      const result = await runGapAnalysis(deterministicInput);
+      const requirement = result.requirements.find((item) => item.requirement === 'Develop and track performance metrics');
+
+      expect(requirement?.evidence).toEqual([]);
     });
 
     it('drops instruction-style positioning text that is not a real resume line', async () => {

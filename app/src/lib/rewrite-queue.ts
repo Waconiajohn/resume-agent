@@ -26,7 +26,7 @@ function hasMeaningfulSourceEvidence(text: string | null | undefined): text is s
   if (!trimmed) return false;
   if (/^#+\s*/.test(trimmed)) return false;
   if (/canonical requirement catalog/i.test(trimmed)) return false;
-  if (/^(job description|benchmark|requirement catalog|resume evidence)$/i.test(trimmed)) return false;
+  if (/^(job description|benchmark|jd|requirement catalog|resume evidence|required qualifications?)$/i.test(trimmed)) return false;
   return true;
 }
 
@@ -45,6 +45,30 @@ function looksLikeResumeRewrite(text: string | null | undefined): text is string
   if (wordCount < 5) return false;
 
   return hasStrongVerb || wordCount >= 8;
+}
+
+function looksLikeResumeEvidenceSnippet(text: string | null | undefined, requirement: string): text is string {
+  if (typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (/^#+\s*/.test(trimmed)) return false;
+  if (/^(job description|benchmark|jd|canonical requirement catalog|requirement catalog|resume evidence|required qualifications?|source evidence)$/i.test(trimmed)) {
+    return false;
+  }
+
+  if (normalize(trimmed) === normalize(requirement)) return false;
+
+  const wordCount = trimmed.split(/\s+/).length;
+  const hasStrongVerb = /\b(led|built|developed|tracked|drove|improved|managed|owned|created|launched|delivered|oversaw|designed|implemented|optimized|reduced|increased|grew|guided|ran|used|partnered|presented|executed|standardized|scaled)\b/i.test(trimmed);
+  const hasMetricSignal = /[$%]|\b\d+\b|\b(kpi|kpis|metric|metrics|scorecard|scorecards|dashboard|dashboards|budget|revenue|cost|throughput|latency|uptime)\b/i.test(trimmed);
+  const hasCredentialSignal = /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|aws|azure|gcp|pmp|cpa|rn|pe)\b/i.test(trimmed);
+  const hasIndustrySignal = /\b(financial services|banking|healthcare|insurance|energy|oil|gas|manufacturing|retail|telecom|logistics|transportation|saas|software|fintech|medtech|pharma|public sector|government|education)\b/i.test(trimmed);
+  const looksLikeLabel = /\b(experience|expertise|background|exposure|knowledge|skills?)\b/i.test(trimmed) && wordCount <= 7;
+
+  if (looksLikeLabel) return false;
+  if (wordCount < 3 && !hasStrongVerb && !hasMetricSignal && !hasCredentialSignal && !hasIndustrySignal) return false;
+
+  return true;
 }
 
 function classificationWeight(classification: RequirementGap['classification']): number {
@@ -362,43 +386,43 @@ function userInstructionForRequirement(args: {
     return 'Review the suggested language and accept it only if it is fully accurate and supportable.';
   }
 
+  if (asksForCommunicationProof) {
+    return 'Answer with one concrete executive-facing example: who the audience was, what you communicated, and what outcome it influenced.';
+  }
+
+  if (asksForFinancialProof) {
+    return 'Answer with the financial scope you owned, what decisions were yours, and the business outcome.';
+  }
+
+  if (asksForTalentProof) {
+    return 'Answer with who you hired, developed, or promoted, how you built the leadership bench, and what business result came from it.';
+  }
+
+  if (asksForPortfolioProof) {
+    return 'Answer with the brands, product lines, or categories you managed together, how you coordinated them, and what business outcome came from that portfolio work.';
+  }
+
+  if (asksForPlatformScaleProof) {
+    return 'Answer with the platform scale involved, such as transaction volume, request volume, uptime, latency, or system footprint, and what you architected at that scale.';
+  }
+
+  if (asksForArchitectureDecisionProof) {
+    return 'Answer with one architecture decision: who the stakeholders were, what tradeoff you led, and what outcome came from that decision.';
+  }
+
+  if (asksForMetricsProof) {
+    return 'Answer with the metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.';
+  }
+
+  if (asksForScaleProof) {
+    return 'Answer with the exact scale involved here, such as company size, team size, budget, revenue, or operational footprint.';
+  }
+
+  if (asksForTechnicalProof) {
+    return 'Answer with the exact platform, framework, or technical environment you worked in and what you delivered there.';
+  }
+
   if (args.liveEvidenceCount > 0 || args.inferredEvidenceCount > 0) {
-    if (asksForCommunicationProof) {
-      return 'Answer with one concrete executive-facing example: who the audience was, what you communicated, and what outcome it influenced.';
-    }
-
-    if (asksForFinancialProof) {
-      return 'Answer with the financial scope you owned, what decisions were yours, and the business outcome.';
-    }
-
-    if (asksForTalentProof) {
-      return 'Answer with who you hired, developed, or promoted, how you built the leadership bench, and what business result came from it.';
-    }
-
-    if (asksForPortfolioProof) {
-      return 'Answer with the brands, product lines, or categories you managed together, how you coordinated them, and what business outcome came from that portfolio work.';
-    }
-
-    if (asksForPlatformScaleProof) {
-      return 'Answer with the platform scale involved, such as transaction volume, request volume, uptime, latency, or system footprint, and what you architected at that scale.';
-    }
-
-    if (asksForArchitectureDecisionProof) {
-      return 'Answer with one architecture decision: who the stakeholders were, what tradeoff you led, and what outcome came from that decision.';
-    }
-
-    if (asksForMetricsProof) {
-      return 'Answer with the metrics or scorecards you tracked, how often you reviewed them, and what decision or improvement they drove.';
-    }
-
-    if (asksForScaleProof) {
-      return 'Answer with the exact scale involved here, such as company size, team size, budget, revenue, or operational footprint.';
-    }
-
-    if (asksForTechnicalProof) {
-      return 'Answer with the exact platform, framework, or technical environment you worked in and what you delivered there.';
-    }
-
     return 'Tell us one concrete example so we can turn the related proof into direct evidence for this requirement.';
   }
 
@@ -480,6 +504,7 @@ export function buildRewriteQueue(args: {
       ? requirement.evidence.filter((item): item is string => (
         typeof item === 'string'
         && item.trim().length > 0
+        && looksLikeResumeEvidenceSnippet(item, requirement.requirement)
         && evidenceLooksDirectForRequirement(requirement.requirement, item)
       ))
       : [];

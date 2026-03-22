@@ -310,6 +310,7 @@ describe('rewrite-queue', () => {
 
     expect(queue.items).toHaveLength(1);
     expect(queue.items[0]?.sourceEvidence[0]?.text).toBe('Develop and track performance metrics');
+    expect(queue.items[0]?.currentEvidence).toEqual([]);
     expect(queue.items[0]?.suggestedDraft).toBeUndefined();
     expect(queue.items[0]?.userInstruction).toContain('metrics or scorecards');
     expect(queue.items[0]?.userInstruction).toContain('what decision or improvement they drove');

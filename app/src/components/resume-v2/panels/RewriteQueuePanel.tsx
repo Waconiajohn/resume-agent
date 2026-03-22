@@ -134,6 +134,26 @@ function sourceCardPhrase(source: RewriteQueueItem['source']): string {
   return 'the job description';
 }
 
+function sourceCardSummary(item: RewriteQueueItem): string {
+  const excerpt = item.sourceEvidence[0]?.text?.trim();
+  const requirementText = item.requirement?.trim() ?? '';
+  if (!excerpt) {
+    return 'We do not have a source excerpt saved for this requirement, but it is still part of the current match analysis.';
+  }
+
+  if (requirementText && excerpt.toLowerCase() === requirementText.toLowerCase()) {
+    if (item.source === 'benchmark') {
+      return 'This requirement comes from the benchmark for a stronger candidate in this role.';
+    }
+    if (item.source === 'final_review') {
+      return 'This requirement stayed open after final review and still needs stronger proof.';
+    }
+    return 'This requirement comes directly from the job description.';
+  }
+
+  return excerpt;
+}
+
 function missingExplanation(item: RewriteQueueItem): string {
   if (item.category === 'hard_gap') {
     return 'This may be a real gap. We need to confirm whether you actually have it before the resume should claim it.';
@@ -184,13 +204,11 @@ function PlacementWarning({ message }: { message: string }) {
 }
 
 function RequirementSourcePreview({ item }: { item: RewriteQueueItem }) {
-  const excerpt = item.sourceEvidence[0]?.text;
-
   return (
     <div className="support-callout px-4 py-3">
       <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">{sourceSectionTitle(item.source)}</p>
       <p className="mt-2 text-base leading-7 text-white/82">
-        {excerpt || 'We do not have a source excerpt saved for this requirement, but it is still part of the current match analysis.'}
+        {sourceCardSummary(item)}
       </p>
     </div>
   );
@@ -213,9 +231,11 @@ function CurrentProofPreview({ item }: { item: RewriteQueueItem }) {
 
   return (
     <div className="support-callout px-4 py-3">
-      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">2. From your resume</p>
+      <p className="text-[12px] uppercase tracking-[0.15em] text-white/40">
+        {isNearbyEvidence ? '2. Related proof from your background' : '2. From your resume'}
+      </p>
       <p className="mt-2 text-[12px] uppercase tracking-[0.14em] text-white/38">
-        {firstEvidence.section ? `${firstEvidence.section}` : 'Resume evidence'}
+        {firstEvidence.section ? `${firstEvidence.section}` : isNearbyEvidence ? 'Related background evidence' : 'Resume evidence'}
       </p>
       {isNearbyEvidence && (
         <p className="mt-2 text-sm leading-6 text-white/56">

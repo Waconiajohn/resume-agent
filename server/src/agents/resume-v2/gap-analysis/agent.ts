@@ -124,6 +124,7 @@ RULES:
 - Preserve the source, category, and importance from the canonical requirement catalog exactly as provided.
 - score_domain = 'ats' for job_description requirements. score_domain = 'benchmark' for benchmark requirements.
 - source_evidence must explain where the requirement came from in the JD or benchmark profile.
+- evidence must be an actual excerpt or close paraphrase of concrete resume facts. Never output headings, placeholders, or labels like "resume evidence", "canonical requirement catalog", or "operations metrics experience".
 - Every requirement from the job gets classified (strong/partial/missing).
 - Include benchmark-only requirements too, even when the candidate will never fully close all of them. Those should surface as benchmark alignment opportunities, not ATS blockers.
 - For STRONG matches: provide the evidence. No strategy needed.
@@ -139,6 +140,8 @@ RULES:
 - pending_strategies must contain only { requirement, strategy } objects with fully populated strategy fields. If there are none, return [].
 - evidence: keep evidence arrays compact — use at most 2 short strings per requirement.
 - source_evidence: keep it short and specific, ideally under 12 words.
+- If you do not have a concrete evidence snippet, leave evidence empty instead of inventing one.
+- positioning must be a resume-ready line or bullet fragment, not a label or instruction. Never output phrases like "related metrics expertise" or "use X to strengthen Y".
 - ai_reasoning: REQUIRED for every strategy (both in requirements[*].strategy and pending_strategies[*].strategy). Keep it short: 1-2 coaching sentences, under 45 words total. Mention the best evidence and any math only if it materially helps.
 - interview_questions: REQUIRED for every strategy (partial and missing). Generate EXACTLY 1 targeted question that could surface hidden experience relevant to this gap. The question MUST reference specific roles, companies, or evidence from the candidate's resume — never ask generic questions like "Tell me about your experience with X". Include rationale and looking_for, but keep both concise.
 - coverage_score should reflect overall addressed requirements across the full canonical list. score_breakdown must split that into job_description and benchmark.
@@ -863,6 +866,7 @@ type CanonicalRequirementSeed = {
 type EvidenceEntry = {
   text: string;
   origin: string;
+  supportsDisplayEvidence: boolean;
 };
 
 function buildCanonicalRequirements(input: GapAnalysisInput): CanonicalRequirementSeed[] {
@@ -887,82 +891,84 @@ function buildCanonicalRequirements(input: GapAnalysisInput): CanonicalRequireme
       source: 'job_description' as const,
       category: 'strategic_responsibility' as const,
       importance: 'important' as const,
-      source_evidence: 'Strategic responsibility explicitly present in the job description',
+      source_evidence: responsibility,
     })),
     {
       requirement: input.benchmark.expected_leadership_scope,
       source: 'benchmark' as const,
       category: 'benchmark_leadership' as const,
       importance: 'important' as const,
-      source_evidence: 'Leadership scope expected of the benchmark candidate',
+      source_evidence: input.benchmark.expected_leadership_scope,
     },
     ...expectedAchievements.map((achievement) => ({
       requirement: `${achievement.area}: ${achievement.description}`,
       source: 'benchmark' as const,
       category: 'benchmark_achievement' as const,
       importance: 'important' as const,
-      source_evidence: `Typical metrics: ${achievement.typical_metrics}`,
+      source_evidence: achievement.description,
     })),
     ...expectedTechnicalSkills.map((skill) => ({
       requirement: skill,
       source: 'benchmark' as const,
       category: 'benchmark_skill' as const,
       importance: 'important' as const,
-      source_evidence: 'Benchmark technical skill',
+      source_evidence: skill,
     })),
     ...expectedCertifications.map((certification) => ({
       requirement: certification,
       source: 'benchmark' as const,
       category: 'benchmark_certification' as const,
       importance: 'nice_to_have' as const,
-      source_evidence: 'Benchmark certification expectation',
+      source_evidence: certification,
     })),
     ...expectedIndustryKnowledge.map((knowledge) => ({
       requirement: knowledge,
       source: 'benchmark' as const,
       category: 'benchmark_industry' as const,
       importance: 'important' as const,
-      source_evidence: 'Benchmark industry knowledge',
+      source_evidence: knowledge,
     })),
     ...differentiators.map((differentiator) => ({
       requirement: differentiator,
       source: 'benchmark' as const,
       category: 'benchmark_differentiator' as const,
       importance: 'nice_to_have' as const,
-      source_evidence: 'What the benchmark candidate does better than the field',
+      source_evidence: differentiator,
     })),
   ];
 }
 
 function buildEvidenceCorpus(input: GapAnalysisInput): EvidenceEntry[] {
   const entries: EvidenceEntry[] = [
-    { text: input.candidate.leadership_scope, origin: 'leadership scope' },
-    { text: input.candidate.operational_scale, origin: 'operational scale' },
-    ...(input.candidate.career_themes ?? []).map((theme) => ({ text: theme, origin: 'career theme' })),
-    ...(input.candidate.industry_depth ?? []).map((item) => ({ text: item, origin: 'industry depth' })),
-    ...(input.candidate.hidden_accomplishments ?? []).map((item) => ({ text: item, origin: 'hidden accomplishment' })),
-    ...(input.candidate.technologies ?? []).map((item) => ({ text: item, origin: 'technology' })),
-    ...(input.candidate.certifications ?? []).map((item) => ({ text: item, origin: 'certification' })),
+    { text: input.candidate.leadership_scope, origin: 'leadership scope', supportsDisplayEvidence: false },
+    { text: input.candidate.operational_scale, origin: 'operational scale', supportsDisplayEvidence: false },
+    ...(input.candidate.career_themes ?? []).map((theme) => ({ text: theme, origin: 'career theme', supportsDisplayEvidence: false })),
+    ...(input.candidate.industry_depth ?? []).map((item) => ({ text: item, origin: 'industry depth', supportsDisplayEvidence: true })),
+    ...(input.candidate.hidden_accomplishments ?? []).map((item) => ({ text: item, origin: 'hidden accomplishment', supportsDisplayEvidence: true })),
+    ...(input.candidate.technologies ?? []).map((item) => ({ text: item, origin: 'technology', supportsDisplayEvidence: true })),
+    ...(input.candidate.certifications ?? []).map((item) => ({ text: item, origin: 'certification', supportsDisplayEvidence: true })),
     ...(input.candidate.education ?? []).map((item) => ({
       text: `${item.degree} ${item.institution}${item.year ? ` ${item.year}` : ''}`.trim(),
       origin: 'education',
+      supportsDisplayEvidence: true,
     })),
     ...(input.candidate.quantified_outcomes ?? []).map((item) => ({
       text: `${item.outcome}: ${item.value}`,
       origin: 'quantified outcome',
+      supportsDisplayEvidence: true,
     })),
     ...(input.candidate.experience ?? []).flatMap((experience) => ([
-      { text: `${experience.title} at ${experience.company}`, origin: 'experience header' },
-      ...experience.bullets.map((bullet) => ({ text: bullet, origin: `${experience.company} bullet` })),
+      { text: `${experience.title} at ${experience.company}`, origin: 'experience header', supportsDisplayEvidence: true },
+      ...experience.bullets.map((bullet) => ({ text: bullet, origin: `${experience.company} bullet`, supportsDisplayEvidence: true })),
     ])),
   ];
 
   if (input.career_profile) {
     entries.push(
-      ...input.career_profile.positioning.core_strengths.map((item) => ({ text: item, origin: 'career profile strength' })),
-      ...input.career_profile.positioning.proof_themes.map((item) => ({ text: item, origin: 'career profile proof theme' })),
-      ...input.career_profile.positioning.differentiators.map((item) => ({ text: item, origin: 'career profile differentiator' })),
-      ...input.career_profile.positioning.adjacent_positioning.map((item) => ({ text: item, origin: 'career profile adjacent positioning' })),
+      ...input.career_profile.positioning.core_strengths.map((item) => ({ text: item, origin: 'career profile strength', supportsDisplayEvidence: false })),
+      ...input.career_profile.positioning.proof_themes.map((item) => ({ text: item, origin: 'career profile proof theme', supportsDisplayEvidence: false })),
+      ...input.career_profile.positioning.differentiators.map((item) => ({ text: item, origin: 'career profile differentiator', supportsDisplayEvidence: false })),
+      ...input.career_profile.positioning.adjacent_positioning.map((item) => ({ text: item, origin: 'career profile adjacent positioning', supportsDisplayEvidence: false })),
     );
   }
 
@@ -1023,7 +1029,7 @@ function evaluateRequirement(
   }
 
   const rankedEvidence = rankEvidence(requirementText, corpus);
-  const topEvidence = rankedEvidence.slice(0, 3);
+  const topEvidence = rankedEvidence.filter((item) => item.supportsDisplayEvidence).slice(0, 3);
   const evidence = topEvidence.map((item) => item.text);
   const topScore = topEvidence[0]?.score ?? 0;
   const hasNearEvidence = evidence.length > 0;
@@ -1040,7 +1046,7 @@ function evaluateRequirement(
     return { classification, evidence };
   }
 
-  const adjacentEvidence = evidence[0] ?? input.candidate.leadership_scope ?? input.candidate.operational_scale;
+  const adjacentEvidence = rankedEvidence[0]?.text ?? evidence[0] ?? input.candidate.leadership_scope ?? input.candidate.operational_scale;
   if (!adjacentEvidence) {
     return { classification, evidence };
   }
@@ -1158,7 +1164,11 @@ const STOP_WORDS = new Set([
 function normalizeRequirement(requirement: RequirementGap): RequirementGap {
   const source: RequirementSource = requirement.source === 'benchmark' ? 'benchmark' : 'job_description';
   const evidence = Array.isArray(requirement.evidence)
-    ? requirement.evidence.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, 2)
+    ? requirement.evidence
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => looksLikeCandidateEvidence(item, requirement.requirement))
+      .slice(0, 2)
     : [];
   const strategy = sanitizeGapStrategy(requirement.strategy);
   const sourceEvidence = sanitizeSourceEvidence(requirement.source_evidence, requirement.requirement);
@@ -1195,10 +1205,37 @@ function sanitizeSourceEvidence(sourceEvidence: string | undefined, requirement:
   if (!trimmed) return undefined;
   if (/^#+\s*/.test(trimmed)) return requirement;
   if (/canonical requirement catalog/i.test(trimmed)) return requirement;
-  if (/^(job description|benchmark|requirement catalog|resume evidence|required qualifications?)$/i.test(trimmed)) {
+  if (/^(job description|benchmark|jd|requirement catalog|resume evidence|required qualifications?)$/i.test(trimmed)) {
     return requirement;
   }
   return trimmed;
+}
+
+function looksLikeCandidateEvidence(text: string, requirement: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (/^#+\s*/.test(trimmed)) return false;
+  if (/^(job description|benchmark|jd|canonical requirement catalog|requirement catalog|resume evidence|required qualifications?|source evidence)$/i.test(trimmed)) {
+    return false;
+  }
+
+  const normalizedText = trimmed.toLowerCase();
+  const normalizedRequirement = requirement.trim().toLowerCase();
+  if (normalizedText === normalizedRequirement) return false;
+
+  const wordCount = trimmed.split(/\s+/).length;
+  const hasStrongVerb = /\b(led|built|developed|tracked|drove|improved|managed|owned|created|launched|delivered|oversaw|designed|implemented|optimized|reduced|increased|grew|guided|ran|used|partnered|presented|executed|standardized|scaled)\b/i.test(trimmed);
+  const hasMetricSignal = /[$%]|\b\d+\b|\b(kpi|kpis|metric|metrics|scorecard|scorecards|dashboard|dashboards|budget|revenue|cost|throughput|latency|uptime)\b/i.test(trimmed);
+  const hasCredentialSignal = /\b(bachelor'?s|master'?s|mba|phd|doctorate|degree|certification|certified|license|licensed|licensure|aws|azure|gcp|pmp|cpa|rn|pe)\b/i.test(trimmed);
+  const hasIndustrySignal = /\b(financial services|banking|healthcare|insurance|energy|oil|gas|manufacturing|retail|telecom|logistics|transportation|saas|software|fintech|medtech|pharma|public sector|government|education)\b/i.test(trimmed);
+  const looksLikeLabel = /\b(experience|expertise|background|exposure|knowledge|skills?)\b/i.test(trimmed) && wordCount <= 7;
+  const looksLikeHeading = /^[A-Z][A-Za-z/& -]+$/.test(trimmed) && wordCount <= 5 && !hasCredentialSignal && !hasIndustrySignal;
+
+  if (looksLikeLabel) return false;
+  if (looksLikeHeading && !hasStrongVerb && !hasMetricSignal) return false;
+  if (wordCount < 3 && !hasStrongVerb && !hasMetricSignal && !hasCredentialSignal && !hasIndustrySignal) return false;
+
+  return true;
 }
 
 function looksLikeResumePositioning(text: string): boolean {
