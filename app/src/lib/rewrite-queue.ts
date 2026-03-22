@@ -248,6 +248,70 @@ function bucketForItem(
   return 'needs_attention';
 }
 
+function aiPlanForRequirement(args: {
+  category: RewriteQueueCategory;
+  status: RewriteQueueItem['status'];
+  liveEvidenceCount: number;
+  inferredEvidenceCount: number;
+  hasSuggestedLanguage: boolean;
+}): string {
+  if (args.category === 'hard_gap') {
+    return 'We will confirm whether you truly have this requirement. If you do, we will add proof. If you do not, we will keep it visible as a real risk.';
+  }
+
+  if (args.category === 'benchmark_stretch') {
+    return 'We are checking whether you have adjacent experience that can truthfully strengthen this stretch item without distracting from the core job fit.';
+  }
+
+  if (args.hasSuggestedLanguage) {
+    return 'We already drafted stronger language for this item. The next step is to review it carefully and keep it only if it is exactly true.';
+  }
+
+  if (args.liveEvidenceCount > 0) {
+    return 'We already found proof on the resume. The next move is to sharpen it so the requirement is obvious without stretching the truth.';
+  }
+
+  if (args.inferredEvidenceCount > 0) {
+    return 'We found nearby evidence, but it is still indirect. One focused detail should let us turn it into direct proof.';
+  }
+
+  if (args.status === 'already_covered') {
+    return 'The current draft already carries this requirement. We are keeping it visible so you can confirm the proof is still in the strongest place.';
+  }
+
+  return 'We need one or two better details before this becomes believable resume proof.';
+}
+
+function userInstructionForRequirement(args: {
+  category: RewriteQueueCategory;
+  status: RewriteQueueItem['status'];
+  liveEvidenceCount: number;
+  inferredEvidenceCount: number;
+  hasSuggestedLanguage: boolean;
+}): string {
+  if (args.category === 'hard_gap') {
+    return 'Confirm whether you actually have this requirement. Do not stretch it. If you do not have it, leave it marked as a real risk.';
+  }
+
+  if (args.category === 'benchmark_stretch') {
+    return 'Only work this if it is real and supportable. Core job-description fit comes first.';
+  }
+
+  if (args.status === 'already_covered') {
+    return 'Read the current proof on the resume and make sure it still belongs in the strongest place.';
+  }
+
+  if (args.hasSuggestedLanguage) {
+    return 'Review the suggested language and accept it only if it is fully accurate and supportable.';
+  }
+
+  if (args.liveEvidenceCount > 0 || args.inferredEvidenceCount > 0) {
+    return 'Answer the next question so we can turn the nearby proof into direct, requirement-specific evidence.';
+  }
+
+  return 'Answer the next question so we can find truthful proof before we draft a stronger line.';
+}
+
 function mergeEvidence(left: RequirementGap['evidence'], right: RequirementGap['evidence']): string[] {
   const merged = [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]
     .filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
@@ -375,21 +439,21 @@ export function buildRewriteQueue(args: {
                   : 'Answer one targeted question so we can strengthen the proof already on the page.',
             };
 
-    const aiPlan = category === 'hard_gap'
-      ? 'We will confirm whether you truly have this requirement. If you do, we will add proof. If you do not, we will keep it visible as a real risk.'
-      : category === 'benchmark_stretch'
-        ? 'We are checking whether you have adjacent experience that can truthfully strengthen this stretch item without distracting from the core job fit.'
-        : category === 'quick_win'
-          ? 'We already found nearby evidence or a draft line we can strengthen quickly with one focused question and a cleaner rewrite.'
-          : 'We need one or two better details before this becomes believable resume proof.';
+    const aiPlan = aiPlanForRequirement({
+      category,
+      status,
+      liveEvidenceCount: liveEvidence.length,
+      inferredEvidenceCount: inferredEvidence.length,
+      hasSuggestedLanguage,
+    });
 
-    const userInstruction = category === 'hard_gap'
-      ? 'Confirm whether you actually have this requirement. Do not stretch it. If you do not have it, leave it marked as a real risk.'
-      : category === 'benchmark_stretch'
-        ? 'Only work this if it is real and supportable. Core job-description fit comes first.'
-        : status === 'already_covered'
-          ? 'Read the current proof on the resume and make sure it still belongs in the strongest place.'
-          : 'Answer the next question or review the proposed edit. Accept it only if it is fully accurate and supportable.';
+    const userInstruction = userInstructionForRequirement({
+      category,
+      status,
+      liveEvidenceCount: liveEvidence.length,
+      inferredEvidenceCount: inferredEvidence.length,
+      hasSuggestedLanguage,
+    });
 
     return {
       id: `requirement:${source}:${normalizedRequirement}`,
