@@ -156,15 +156,15 @@ function nextDetailPrompt(item: RewriteQueueItem): string {
 }
 
 function aiActionLabel(item: RewriteQueueItem): string {
-  return item.suggestedDraft ? 'Improve This Rewrite with AI' : 'Build Rewrite with AI';
+  return item.suggestedDraft ? 'Work on This with AI' : 'Let AI Draft It';
 }
 
 function helperToggleLabel(isExpanded: boolean): string {
-  return isExpanded ? 'Hide AI Helper' : 'Improve This Rewrite with AI';
+  return isExpanded ? 'Hide AI Workspace' : 'Work on This with AI';
 }
 
 function contextToggleLabel(isExpanded: boolean): string {
-  return isExpanded ? 'Hide More Context' : 'See More Context';
+  return isExpanded ? 'Hide Why This Needs Work' : 'Why This Needs Work';
 }
 
 function primaryActionLabel(item: RewriteQueueItem, hasViewableEvidence: boolean): string {
@@ -235,7 +235,7 @@ function SuggestedDraftPreview({ item }: { item: RewriteQueueItem }) {
         <>
           <p className="mt-3 text-[17px] leading-8 text-white/86">{item.suggestedDraft}</p>
           <p className="mt-3 text-sm leading-6 text-white/56">
-            This is the rewrite we recommend from what we already know. You can use it as-is or improve it before it goes onto the resume.
+            This is the resume line we recommend from what we already know. Send it to review as-is or improve it first before it goes onto the resume.
           </p>
         </>
       ) : (
@@ -539,7 +539,7 @@ export function RewriteQueuePanel({
                     className="inline-flex items-center gap-1.5 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.09] px-3 py-2 text-xs font-medium text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/[0.15]"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Use This Rewrite
+                    Send to Review
                   </button>
                 )}
                 <button
@@ -692,7 +692,7 @@ export function RewriteQueuePanel({
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#b5dec2]/20 bg-[#b5dec2]/[0.09] px-3 py-2 text-xs font-medium text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/[0.15]"
                                 >
                                   <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Use This Rewrite
+                                  Send to Review
                                 </button>
                               )}
                               <button

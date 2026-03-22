@@ -443,18 +443,18 @@ describe('rewrite queue browser flow', () => {
     expect(screen.getAllByText('2. From your resume').length).toBeGreaterThan(0);
     expect(screen.getAllByText('3. What is still missing').length).toBeGreaterThan(0);
     expect(screen.getAllByText('4. Suggested rewrite for your resume').length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'See More Context' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Why This Needs Work' })).not.toBeInTheDocument();
     expect(
       screen.getAllByText(/Aligned executive, product, and operations stakeholders around weekly priorities to improve execution quality\./i).length,
     ).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Improve This Rewrite with AI' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Work on This with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
     expect(screen.getByLabelText('Edit suggested resume language')).toBeInTheDocument();
     expect(screen.getByText('What we still need from you')).toBeInTheDocument();
     expect(screen.getByText(/The latest AI rewrite is ready below\./i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try a Stronger Rewrite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make the Rewrite Stronger' }));
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',
       expect.stringContaining('Start from this rewrite'),
@@ -504,7 +504,7 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Use This Rewrite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Review' }));
 
     expect(onRequestEdit).not.toHaveBeenCalled();
     expect(screen.getByText(/We could not place this automatically yet/i)).toBeInTheDocument();
@@ -524,11 +524,11 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Improve This Rewrite with AI' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Work on This with AI' }));
     fireEvent.change(screen.getByLabelText('Edit the suggested rewrite'), {
       target: { value: 'Updated rewrite that mentions executive planning cadence and cross-functional scorecards.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Try a Stronger Rewrite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make the Rewrite Stronger' }));
 
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',

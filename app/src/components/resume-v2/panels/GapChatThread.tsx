@@ -127,7 +127,7 @@ function AssistantBubble({ message, onAcceptLanguage, isEditing, requirement, is
                 data-testid="accept-language"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {isEditing ? 'Preparing Edit...' : 'Apply Draft'}
+                {isEditing ? 'Sending to Review...' : 'Send to Review'}
               </button>
             </div>
           </div>
@@ -375,12 +375,12 @@ export function GapChatThread({
             }}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#b5dec2' }}>
-              Suggested rewrite to improve
+              Resume line to review
             </p>
             {initialSuggestedLanguage ? (
               <>
                 <p className="mt-2" style={{ fontSize: 13, lineHeight: 1.55, color: REPORT_COLORS.tertiary }}>
-                  Start here if this already sounds close. You can edit it before you apply it.
+                  Start here if this already sounds close. You can edit it before you send it to review.
                 </p>
                 <textarea
                   value={starterDraftValue}
@@ -404,7 +404,7 @@ export function GapChatThread({
                     }}
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    {isEditing ? 'Preparing Edit...' : 'Use This Rewrite'}
+                    {isEditing ? 'Sending to Review...' : 'Send to Review'}
                   </button>
                 </div>
               </>
@@ -499,7 +499,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.15)',
             }}
             >
-            Show Me What Detail Is Missing
+            What Detail Is Missing?
           </button>
           <button
             type="button"
@@ -512,7 +512,7 @@ export function GapChatThread({
               border: '1px solid rgba(181,222,194,0.20)',
             }}
             >
-            Try a Stronger Rewrite
+            Make the Rewrite Stronger
           </button>
           {messages.length > 0 && (
             <button
@@ -526,7 +526,7 @@ export function GapChatThread({
                 border: '1px solid rgba(255,255,255,0.10)',
               }}
             >
-              Try Another Rewrite
+              Show Another Rewrite
             </button>
           )}
           {onSkip && (

@@ -89,7 +89,7 @@ function AssistantBubble({
                 className="inline-flex items-center gap-1.5 rounded-md border border-[#b5dec2]/25 bg-[#b5dec2]/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[#b5dec2] transition-colors hover:bg-[#b5dec2]/18 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {isEditing ? 'Preparing Edit...' : 'Apply Draft'}
+                {isEditing ? 'Sending to Review...' : 'Send to Review'}
               </button>
             </div>
           </div>
