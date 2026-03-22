@@ -18,19 +18,26 @@ vi.mock('lucide-react', () => {
   const Icon = ({ className }: { className?: string }) => <svg data-testid="icon" className={className} aria-hidden="true" />;
   return {
     AlertCircle: Icon,
+    Briefcase: Icon,
     CheckCircle2: Icon,
+    Check: Icon,
+    ChevronDown: Icon,
     ChevronRight: Icon,
     Clipboard: Icon,
     ClipboardCheck: Icon,
     Clock3: Icon,
+    Compass: Icon,
     Download: Icon,
     FileType2: Icon,
+    Lightbulb: Icon,
     Loader2: Icon,
+    MessageCircle: Icon,
     MessagesSquare: Icon,
     RotateCcw: Icon,
     Send: Icon,
     Sparkles: Icon,
     Target: Icon,
+    User: Icon,
   };
 });
 

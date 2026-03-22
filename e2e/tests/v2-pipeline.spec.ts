@@ -429,8 +429,8 @@ async function submitPipeline(page: Page): Promise<void> {
 async function waitForPipelineCompletion(page: Page): Promise<void> {
   await expect(page.locator('#v2-resume')).not.toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Senior Cloud Architect at TechVision Solutions')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('What AI is doing right now')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Requirements to Match')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('View Full Analysis')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /Run Final Review/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /Download DOCX/i })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /^New Resume$/i })).toBeVisible({ timeout: 15_000 });
@@ -475,6 +475,11 @@ test.describe('Resume Builder session flow', () => {
     await expect(page.getByText('Match: 85%')).toBeVisible();
     await expect(page.getByText('Accuracy: 92%')).toBeVisible();
     await expect(page.getByText('Tone: 88%')).toBeVisible();
+    await expect(page.getByText('View Full Analysis')).toBeVisible();
+    await expect(page.getByText('Kubernetes').first()).toBeHidden();
+
+    await page.getByText('View Full Analysis').click();
+
     await expect(page.getByText('Kubernetes').first()).toBeVisible();
     await expect(page.getByText('Compliance Frameworks').first()).toBeVisible();
     await expect(page.getByText(/Click a bullet to improve the wording/i)).toBeVisible();
@@ -496,7 +501,7 @@ test.describe('Resume Builder session flow', () => {
     await submitPipeline(page);
     await waitForPipelineCompletion(page);
 
-    await expect(page.getByRole('button', { name: /Open AI helper/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Review Draft with AI|Draft with AI/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Show Details/i }).first()).toBeVisible();
     await expect(page.getByText(/Start with the first requirement below/i)).toBeVisible();
   });

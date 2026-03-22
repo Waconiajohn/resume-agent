@@ -11,7 +11,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, Briefcase, Compass, Shield, Undo2, Redo2, ChevronDown } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
-import { GlassButton } from '../GlassButton';
 import type { V2PipelineData, V2Stage, ResumeDraft, JobIntelligence, CandidateIntelligence, BenchmarkCandidate, NarrativeStrategy } from '@/types/resume-v2';
 import type { GapCoachingResponse, PreScores, GapCoachingCard as GapCoachingCardType } from '@/types/resume-v2';
 import type { CoachingThreadSnapshot, FinalReviewChatContext, MasterPromotionItem, PostReviewPolishState } from '@/types/resume-v2';
@@ -98,8 +97,6 @@ interface V2StreamingDisplayProps {
   onToggleMasterPromotionItem?: (itemId: string) => void;
   onSelectAllMasterPromotionItems?: () => void;
   onClearMasterPromotionItems?: () => void;
-  workspaceMode?: 'analysis' | 'workspace';
-  onOpenWorkspace?: () => void;
 }
 
 const STAGE_ORDER: V2Stage[] = ['intake', 'analysis', 'strategy', 'writing', 'verification', 'assembly', 'complete'];
@@ -268,8 +265,6 @@ export function V2StreamingDisplay({
   onToggleMasterPromotionItem,
   onSelectAllMasterPromotionItems,
   onClearMasterPromotionItems,
-  workspaceMode = 'workspace',
-  onOpenWorkspace,
 }: V2StreamingDisplayProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -419,7 +414,7 @@ export function V2StreamingDisplay({
   // A2: Don't show split-screen while re-running (old assembly data persists)
   // C4: benchmarkCandidate not required — left panel degrades gracefully without it
   const canOfferSplitScreen = Boolean(hasResume && !isRerunning && data.jobIntelligence && data.gapAnalysis);
-  const canShowSplitScreen = canOfferSplitScreen && workspaceMode === 'workspace';
+  const canShowSplitScreen = canOfferSplitScreen;
 
   const jobBreakdown = data.gapAnalysis?.score_breakdown?.job_description ?? {
     addressed: 0,
@@ -512,9 +507,11 @@ export function V2StreamingDisplay({
             <div className="h-full overflow-y-auto xl:absolute xl:inset-0">
               <RewriteQueuePanel
                 jobIntelligence={data.jobIntelligence!}
+                candidateIntelligence={data.candidateIntelligence ?? null}
                 positioningAssessment={data.assembly?.positioning_assessment ?? null}
                 gapAnalysis={data.gapAnalysis!}
                 benchmarkCandidate={data.benchmarkCandidate ?? null}
+                narrativeStrategy={data.narrativeStrategy ?? null}
                 currentResume={displayResume}
                 gapCoachingCards={gapCoachingCards}
                 gapChat={gapChat}
@@ -857,42 +854,6 @@ export function V2StreamingDisplay({
                 )}
                 {data.stage === 'strategy' && !isComplete && <StagePendingDots />}
               </div>
-            </section>
-          </>
-        )}
-
-        {canOfferSplitScreen && workspaceMode === 'analysis' && (
-          <>
-            <PhaseDivider label="Next Step" />
-            <section aria-label="Guided editing handoff">
-              <GlassCard className="p-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="eyebrow-label">Ready to start guided editing</p>
-                    <h2 className="text-xl font-semibold text-white/90">Finish reading first, then move into the side-by-side workspace.</h2>
-                    <p className="max-w-3xl text-sm leading-6 text-white/62">
-                      We finished the analysis and built the requirement map. Stay here as long as you want, then open the guided workspace when you are ready to fix the resume one requirement at a time.
-                    </p>
-                  </div>
-
-                  <div className="support-callout px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">What changes in the next step</p>
-                    <div className="mt-3 space-y-2 text-sm leading-6 text-white/68">
-                      <p>You will see each requirement, the current proof on the resume, and a better draft you can edit or apply inline.</p>
-                      <p>The analysis above will stay available until you choose to move on, so nothing disappears while you are still reading it.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <GlassButton type="button" onClick={onOpenWorkspace}>
-                      Open Guided Editing Workspace
-                    </GlassButton>
-                    <p className="text-xs leading-5 text-white/45">
-                      No rush. Keep reading this analysis until you are ready.
-                    </p>
-                  </div>
-                </div>
-              </GlassCard>
             </section>
           </>
         )}

@@ -4,11 +4,13 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  ChevronDown,
   MessagesSquare,
   ShieldAlert,
   Target,
 } from 'lucide-react';
 import type {
+  CandidateIntelligence,
   BenchmarkCandidate,
   CoachingThreadSnapshot,
   FinalReviewChatContext,
@@ -17,6 +19,7 @@ import type {
   GapChatContext,
   GapCoachingCard,
   JobIntelligence,
+  NarrativeStrategy,
   PositioningAssessment,
   ResumeDraft,
   RewriteQueueItem,
@@ -28,12 +31,18 @@ import type { FinalReviewChatHook } from '@/hooks/useFinalReviewChat';
 import { buildEditContext, findBulletForRequirement } from '../utils/coaching-actions';
 import { buildRewriteQueue } from '@/lib/rewrite-queue';
 import { GapChatThread } from './GapChatThread';
+import { JobIntelligenceCard } from '../cards/JobIntelligenceCard';
+import { CandidateIntelligenceCard } from '../cards/CandidateIntelligenceCard';
+import { BenchmarkCandidateCard } from '../cards/BenchmarkCandidateCard';
+import { NarrativeStrategyCard } from '../cards/NarrativeStrategyCard';
 
 interface RewriteQueuePanelProps {
   jobIntelligence: JobIntelligence;
+  candidateIntelligence?: CandidateIntelligence | null;
   positioningAssessment: PositioningAssessment | null;
   gapAnalysis: GapAnalysis;
   benchmarkCandidate?: BenchmarkCandidate | null;
+  narrativeStrategy?: NarrativeStrategy | null;
   currentResume?: ResumeDraft | null;
   gapCoachingCards?: GapCoachingCard[] | null;
   gapChat?: GapChatHook | null;
@@ -211,9 +220,11 @@ function EvidenceList({
 
 export function RewriteQueuePanel({
   jobIntelligence,
+  candidateIntelligence,
   positioningAssessment,
   gapAnalysis,
   benchmarkCandidate,
+  narrativeStrategy,
   currentResume,
   gapCoachingCards,
   gapChat,
@@ -346,12 +357,46 @@ export function RewriteQueuePanel({
         <div className="support-callout px-4 py-3">
           <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">How to use this</p>
           <p className="mt-2 text-sm leading-6 text-white/74">
-            Start with the first requirement below. Review the issue, compare it with the current resume proof, then use the AI helper to draft a stronger version you can edit and apply inline.
+            This is the working view. Start with the first requirement below, compare it with the current resume proof, then use the AI helper to draft a stronger version you can edit and apply inline.
           </p>
           <p className="mt-2 text-sm leading-6 text-white/56">
-            Job Description items are direct asks from the posting. Benchmark items are executive-level signals strong candidates usually show even when the posting is incomplete.
+            Job Description items are direct asks from the posting. Benchmark items are executive-level signals strong candidates usually show even when the posting is incomplete. If you want the full analysis report, open it below.
           </p>
         </div>
+
+        <details className="room-shell px-4 py-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-left">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">Optional background report</p>
+              <p className="mt-1 text-sm font-medium text-white/84">View Full Analysis</p>
+              <p className="mt-1 text-sm leading-6 text-white/54">
+                Open the full role, resume, benchmark, and positioning analysis if you want the deeper report behind this workspace.
+              </p>
+            </div>
+            <ChevronDown className="h-4 w-4 shrink-0 text-white/34" />
+          </summary>
+
+          <div className="mt-4 space-y-4">
+            <JobIntelligenceCard data={jobIntelligence} />
+            {candidateIntelligence && <CandidateIntelligenceCard data={candidateIntelligence} />}
+            {benchmarkCandidate && <BenchmarkCandidateCard data={benchmarkCandidate} />}
+            {narrativeStrategy && <NarrativeStrategyCard data={narrativeStrategy} />}
+
+            {gapAnalysis.critical_gaps.length > 0 && (
+              <div className="support-callout border-[#f0b8b8]/18 bg-[#f0b8b8]/[0.05] px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[#f0b8b8]/78">Potential critical gaps</p>
+                <div className="mt-2 space-y-2 text-sm leading-6 text-white/68">
+                  {gapAnalysis.critical_gaps.map((gap, index) => (
+                    <p key={`${gap}-${index}`}>{gap}</p>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs leading-5 text-white/46">
+                  These are already reflected in the working queue below, so you can address them there instead of reading a separate report first.
+                </p>
+              </div>
+            )}
+          </div>
+        </details>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <QueueStat
