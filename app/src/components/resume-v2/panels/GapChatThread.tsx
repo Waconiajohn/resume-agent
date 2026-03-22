@@ -410,7 +410,7 @@ export function GapChatThread({
               </>
             ) : (
               <p className="mt-2" style={{ fontSize: 15, lineHeight: 1.65, color: REPORT_COLORS.body }}>
-                We still need one concrete detail from you before AI should write the final rewrite.
+                We still need one concrete detail from you before AI should suggest a truthful resume line.
               </p>
             )}
           </div>
@@ -499,7 +499,7 @@ export function GapChatThread({
               border: '1px solid rgba(175,196,255,0.15)',
             }}
             >
-            What Detail Is Missing?
+            Ask What Detail Is Missing
           </button>
           <button
             type="button"
@@ -512,7 +512,7 @@ export function GapChatThread({
               border: '1px solid rgba(181,222,194,0.20)',
             }}
             >
-            Make the Rewrite Stronger
+            Strengthen This Rewrite
           </button>
           {messages.length > 0 && (
             <button
@@ -526,7 +526,7 @@ export function GapChatThread({
                 border: '1px solid rgba(255,255,255,0.10)',
               }}
             >
-              Show Another Rewrite
+              Show Another Option
             </button>
           )}
           {onSkip && (
@@ -540,9 +540,15 @@ export function GapChatThread({
                 border: '1px solid rgba(255,255,255,0.08)',
               }}
             >
-              Skip
+              Skip for Now
             </button>
           )}
+        </div>
+      )}
+
+      {!resolvedLanguage && (
+        <div className="px-4 pb-1 text-xs leading-5 text-white/44">
+          Use a shortcut for a quick nudge, or type one missing detail below and AI will work from that.
         </div>
       )}
 
@@ -569,7 +575,7 @@ export function GapChatThread({
       {/* Turn limit message */}
       {atTurnLimit && (
         <div className="px-4 py-2 text-xs" style={{ color: REPORT_COLORS.tertiary }}>
-          Conversation limit reached. Accept the suggested language or skip this gap.
+          Conversation limit reached. Send the current rewrite to review or skip for now.
         </div>
       )}
 

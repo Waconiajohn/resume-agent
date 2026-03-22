@@ -448,13 +448,13 @@ describe('rewrite queue browser flow', () => {
       screen.getAllByText(/Aligned executive, product, and operations stakeholders around weekly priorities to improve execution quality\./i).length,
     ).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Work on This with AI' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Improve with AI' })[0]);
     expect(screen.getByTestId('gap-chat-thread')).toBeInTheDocument();
     expect(screen.getByLabelText('Edit suggested resume language')).toBeInTheDocument();
     expect(screen.getByText('To make this strong enough')).toBeInTheDocument();
     expect(screen.getByText(/The latest AI rewrite is ready below\./i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Make the Rewrite Stronger' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Strengthen This Rewrite' }));
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',
       expect.stringContaining('Start from this rewrite'),
@@ -524,11 +524,11 @@ describe('rewrite queue browser flow', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Work on This with AI' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Improve with AI' }));
     fireEvent.change(screen.getByLabelText('Edit the suggested rewrite'), {
       target: { value: 'Updated rewrite that mentions executive planning cadence and cross-functional scorecards.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Make the Rewrite Stronger' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Strengthen This Rewrite' }));
 
     expect(onSendMessage).toHaveBeenCalledWith(
       'Executive stakeholder leadership',

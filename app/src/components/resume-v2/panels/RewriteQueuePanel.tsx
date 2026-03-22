@@ -156,11 +156,11 @@ function nextDetailPrompt(item: RewriteQueueItem): string {
 }
 
 function aiActionLabel(item: RewriteQueueItem): string {
-  return item.suggestedDraft ? 'Work on This with AI' : 'Let AI Draft It';
+  return item.suggestedDraft ? 'Improve with AI' : 'Draft with AI';
 }
 
 function helperToggleLabel(isExpanded: boolean): string {
-  return isExpanded ? 'Hide AI Workspace' : 'Work on This with AI';
+  return isExpanded ? 'Hide AI Help' : 'Improve with AI';
 }
 
 function contextToggleLabel(isExpanded: boolean): string {
