@@ -114,8 +114,8 @@ test.describe('workspace guided flows', () => {
 
     await expect(page.getByText(/^Interviewing$/).first()).toBeVisible({ timeout: 8_000 });
     await expect(page.getByRole('button', { name: /Open Interview Prep/i }).first()).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByRole('button', { name: /Open Thank You Note/i }).first()).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByRole('button', { name: /Open 30-60-90 Day Plan/i }).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /Open Thank-You Notes/i }).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('button', { name: /Open 30-60-90 Plan/i }).first()).toBeVisible({ timeout: 8_000 });
 
     await page.getByRole('button', { name: /^Offer$/i }).click();
 
