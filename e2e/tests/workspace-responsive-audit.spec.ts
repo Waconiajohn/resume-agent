@@ -24,19 +24,19 @@ const AUDIT_PAGES = [
     slug: 'linkedin-studio',
     path: '/workspace?room=linkedin',
     readyRole: 'heading',
-    readyText: 'LinkedIn',
+    readyText: 'Build a stronger profile and publish with intent',
   },
   {
     slug: 'job-command-center',
     path: '/workspace?room=jobs',
     readyRole: 'heading',
-    readyText: 'Job Search',
+    readyText: 'Run the search from one working surface',
   },
   {
     slug: 'interview-lab',
     path: '/workspace?room=interview',
     readyRole: 'heading',
-    readyText: 'Interview Prep',
+    readyText: 'Prep, practice, and follow-up in one place',
   },
   {
     slug: 'tools',

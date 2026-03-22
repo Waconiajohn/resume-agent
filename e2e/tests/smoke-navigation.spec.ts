@@ -1583,7 +1583,7 @@ async function mockAllNetworkRequests(page: Page, options: SmokeNetworkOptions =
  */
 async function waitForAuthenticatedShell(page: Page): Promise<void> {
   await Promise.race([
-    page.getByRole('button', { name: /^Workspace$/i }).waitFor({ timeout: 15_000 }),
+    page.getByRole('banner').getByRole('button', { name: 'Workspace', exact: true }).waitFor({ timeout: 15_000 }),
     page.getByRole('button', { name: /Sign out/i }).waitFor({ timeout: 15_000 }),
   ]);
 }
@@ -1707,7 +1707,9 @@ test.describe('Smoke: major page routes', () => {
     await page.goto('/workspace?room=salary-negotiation');
     await waitForAuthenticatedShell(page);
     await expect(page).toHaveURL(/room=interview/, { timeout: 8_000 });
-    await expect(page.getByRole('heading', { name: 'Interview Prep', exact: true }).first()).toBeVisible({ timeout: 8_000 });
+    await expect(
+      page.getByRole('heading', { name: 'Prep, practice, and follow-up in one place' }).first(),
+    ).toBeVisible({ timeout: 8_000 });
     expect(errors).toHaveLength(0);
   });
 
