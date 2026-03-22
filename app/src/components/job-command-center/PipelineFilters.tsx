@@ -47,7 +47,7 @@ export function PipelineFilters({
             type="button"
             onClick={() => onStageFilterChange(key)}
             className={cn(
-              'text-[11px] px-2.5 py-1 rounded-full transition-colors',
+              'rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors',
               activeStageFilter === key
                 ? 'bg-[#98b3ff]/15 text-[#98b3ff] font-medium'
                 : 'text-white/35 hover:text-white/55 hover:bg-white/[0.04]',

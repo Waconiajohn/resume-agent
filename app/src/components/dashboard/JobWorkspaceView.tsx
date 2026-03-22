@@ -78,7 +78,7 @@ export function JobWorkspaceView({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${activeStageBadge.classes}`}>
+          <span className={`inline-flex rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${activeStageBadge.classes}`}>
             {activeStageBadge.label}
           </span>
           {onClose ? (
@@ -108,7 +108,7 @@ export function JobWorkspaceView({
                 type="button"
                 disabled={!application || !onMoveJobStage || active || savingStage === stage}
                 onClick={() => void onMoveJobStage?.(record, stage)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors ${
                   active
                     ? 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]'
                     : 'border-white/[0.08] bg-white/[0.03] text-white/52 hover:bg-white/[0.06] hover:text-white/78'
@@ -250,7 +250,7 @@ export function JobWorkspaceView({
               const stage = isPipelineStage(entry.stage) ? entry.stage : activeStage;
               return (
                 <div key={`${entry.stage}-${entry.at}-${index}`} className="flex items-start gap-3">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-[#98b3ff]/70" />
+                  <div className="mt-1 h-2 w-2 bg-[#98b3ff]/70" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-white/78">{stageLabel(stage)}</div>
                     <div className="mt-1 text-[12px] text-white/42">

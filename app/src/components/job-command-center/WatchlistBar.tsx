@@ -26,7 +26,7 @@ export function WatchlistBar({ companies, onSearchCompany, onManage }: Watchlist
             key={company.id}
             type="button"
             onClick={() => onSearchCompany(company.name)}
-            className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[12px] text-white/55 hover:text-white/80 hover:bg-white/[0.06] hover:border-white/[0.14] transition-all"
+            className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/55 transition-all hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white/80"
           >
             <Building2 size={11} className="flex-shrink-0 text-[#98b3ff]/60" />
             {company.name}
@@ -37,7 +37,7 @@ export function WatchlistBar({ companies, onSearchCompany, onManage }: Watchlist
       <button
         type="button"
         onClick={onManage}
-        className="flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[11px] text-white/35 hover:text-white/55 hover:bg-white/[0.04] transition-all"
+        className="flex items-center gap-1 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35 transition-all hover:bg-white/[0.04] hover:text-white/55"
         title="Manage watchlist"
       >
         <Plus size={12} />

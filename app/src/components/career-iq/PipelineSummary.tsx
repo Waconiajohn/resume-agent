@@ -82,7 +82,7 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
       </div>
 
       {/* Horizontal bar */}
-      <div className="flex gap-0.5 h-3 rounded-full overflow-hidden bg-white/[0.04] mb-3">
+      <div className="mb-3 flex h-3 gap-0.5 overflow-hidden bg-white/[0.04]">
         {STAGES.map((stage) => {
           const count = stageCounts[stage] ?? 0;
           if (count === 0 || totalActive === 0) return null;
@@ -104,7 +104,7 @@ export function PipelineSummary({ onNavigateDashboard }: PipelineSummaryProps) {
           const count = stageCounts[stage] ?? 0;
           return (
             <div key={stage} className="flex items-center gap-1.5">
-              <span className={cn('h-2 w-2 rounded-full', STAGE_COLORS[stage])} />
+              <span className={cn('h-2 w-2', STAGE_COLORS[stage])} />
               <span className="text-[11px] text-white/40">{stage}</span>
               <span className="text-[11px] font-medium text-white/55 tabular-nums">{count}</span>
             </div>

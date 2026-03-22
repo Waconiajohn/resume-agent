@@ -60,7 +60,7 @@ function NetworkBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border border-[#98b3ff]/20 bg-[#98b3ff]/[0.06] px-2 py-0.5 text-[10px] font-medium text-[#98b3ff]/70 flex-shrink-0"
+      className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-[#98b3ff]/20 bg-[#98b3ff]/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#98b3ff]/70"
       title={`${count} network contact${count === 1 ? '' : 's'} at this company`}
     >
       <Users size={9} />
@@ -81,7 +81,7 @@ function ScoreBadge({ score }: { score: number | null | undefined }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums flex-shrink-0',
+        'inline-flex flex-shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] tabular-nums',
         colorClass,
       )}
     >

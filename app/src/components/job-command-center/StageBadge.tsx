@@ -16,7 +16,7 @@ export function StageBadge({ stage }: { stage: PipelineStage }) {
   return (
     <span
       className={cn(
-        'text-[10px] font-medium px-1.5 py-0.5 rounded-full capitalize',
+        'rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]',
         STAGE_COLORS[stage],
       )}
     >
