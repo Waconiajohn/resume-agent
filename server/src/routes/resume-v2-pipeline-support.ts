@@ -1159,7 +1159,7 @@ export function stabilizeFinalReviewResult(
       if (existingMissingSignals.has(normalizeReviewText(requirement))) continue;
       normalized.six_second_scan.important_signals_missing.push({
         signal: requirement,
-        why_it_matters: 'This is a must-have part of the role fit, and the current draft does not yet prove it strongly enough.',
+        why_it_matters: buildMaterialJobFitWhyItMatters(requirement),
       });
     }
 
@@ -1675,6 +1675,44 @@ function softenPreferredQualificationRiskLanguage(signal: string, whyItMatters: 
   }
 
   return whyItMatters.replace(/screen(?:-| )out risk/gi, 'competitive disadvantage');
+}
+
+function buildMaterialJobFitWhyItMatters(requirement: string): string {
+  const normalized = normalizeReviewText(requirement);
+  const hasYearsThreshold = extractYearsThreshold(requirement) !== null
+    || /\b(progressive|seniority|senior|leadership tenure)\b/.test(normalized);
+  const hasDomainSignal = /\b(regulated industr(?:y|ies)|financial services|healthcare|consumer products|cpg|manufacturing|saas|public sector|federal|defense|pharma|medtech|ecommerce|e-commerce|retail)\b/i.test(normalized);
+  const hasLeadershipSignal = /\b(leadership|executive stakeholders?|executive presence|board(?:-level)?|communication|influence|talent development|high-performing teams?|build and lead|cross-functional|mentor|coach|hire|hiring|cmo|coo|cto|cfo|vice president|vp\b|director)\b/i.test(normalized);
+  const hasScaleSignal = extractDollarThreshold(requirement) !== null
+    || /\b(\d+\+\s*(?:person|people|member)|p&l|profit and loss|budget|revenue|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|organization)\b/i.test(normalized);
+  const hasTechnicalSignal = extractFrameworkEvidencePatterns(normalized).length > 0
+    || /\b(service mesh|istio|linkerd|kafka|spark|kubernetes|cloud|architecture|data platform|erp|aws|azure|gcp|microservices)\b/i.test(normalized);
+
+  if (hasYearsThreshold) {
+    return 'This is part of the seniority bar for the role, and the draft does not yet make that threshold obvious.';
+  }
+
+  if (hasLeadershipSignal && hasScaleSignal) {
+    return 'This leadership scope is part of the role fit, and the draft does not yet show direct proof at that scale.';
+  }
+
+  if (hasScaleSignal) {
+    return 'This level of scale is part of the role fit, and the draft does not yet show direct proof at that level.';
+  }
+
+  if (hasDomainSignal) {
+    return 'This domain background is part of the role fit, and the draft does not yet show direct proof of it.';
+  }
+
+  if (hasTechnicalSignal) {
+    return 'This is part of the core technical fit for the role, and the draft does not yet make that proof obvious.';
+  }
+
+  if (hasLeadershipSignal) {
+    return 'This leadership scope is part of the role fit, and the draft does not yet show direct proof of it.';
+  }
+
+  return 'This is central to the role fit, and the draft does not yet make that proof obvious.';
 }
 
 function softenContradictedSummaryClaims(result: FinalReviewResult): string {

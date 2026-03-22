@@ -858,7 +858,10 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.fit_assessment.job_description_fit).toBe('weak');
     expect(stabilized.concerns[0]?.id).toBe('material_job_fit_risk');
     expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Build and lead a 40+ person marketing organization.');
-    expect(stabilized.six_second_scan.important_signals_missing.some((item) => item.signal.includes('40+ person marketing organization'))).toBe(true);
+    const leadershipScaleGap = stabilized.six_second_scan.important_signals_missing.find((item) => item.signal.includes('40+ person marketing organization'));
+    expect(leadershipScaleGap).toBeTruthy();
+    expect(leadershipScaleGap?.why_it_matters).toContain('leadership scope');
+    expect(leadershipScaleGap?.why_it_matters).toContain('direct proof at that scale');
   });
 
   it('softens a single aggregated material job-fit concern when the recruiter still has clear positive signals', () => {
@@ -912,6 +915,9 @@ describe('resume-v2 final review prompts', () => {
     expect(stabilized.concerns[0]?.fix_strategy).toBe('If true, add one concrete example showing Experience architecting for regulated industries (financial services or healthcare).');
     expect(stabilized.fit_assessment.job_description_fit).toBe('moderate');
     expect(stabilized.fit_assessment.clarity_and_credibility).toBe('moderate');
+    const regulatedIndustryGap = stabilized.six_second_scan.important_signals_missing.find((item) => item.signal.includes('regulated industries'));
+    expect(regulatedIndustryGap?.why_it_matters).toContain('domain background');
+    expect(regulatedIndustryGap?.why_it_matters).toContain('direct proof of it');
   });
 
   it('drops material must-have risks when stronger recruiter evidence already proves the financial threshold', () => {
