@@ -66,10 +66,13 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <GlassCard role="dialog" aria-modal="true" aria-label="Saved Resume" className="flex max-h-[90vh] w-full max-w-2xl flex-col p-0 overflow-hidden">
+      <GlassCard role="dialog" aria-modal="true" aria-label="Saved Resume" className="room-shell flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden p-0">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
-          <h2 className="text-sm font-semibold text-white/90">Saved Resume</h2>
+          <div>
+            <div className="eyebrow-label">Saved Asset</div>
+            <h2 className="mt-1 text-sm font-semibold text-white/90">Saved Resume</h2>
+          </div>
           <div className="flex items-center gap-2">
             {resume && (
               <>
@@ -102,7 +105,7 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
           )}
 
           {!loading && error && (
-            <div className="rounded-lg border border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-xs text-[#f0b8b8]/90">
+            <div className="support-callout border-[#f0b8b8]/28 bg-[#f0b8b8]/[0.08] px-4 py-3 text-xs text-[#f0b8b8]/90">
               Failed to load resume: {error}
             </div>
           )}

@@ -52,27 +52,27 @@ export function ProcessStepGuideCard({
   const userDoes = userDoesOverride ?? contract.userDoes;
 
   return (
-    <GlassCard className={`border-l-2 ${toneBorderClass(tone)} bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-4 ${className}`.trim()}>
+    <GlassCard className={`room-shell border-l-2 ${toneBorderClass(tone)} bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-4 ${className}`.trim()}>
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium text-white/88">
           Step {contract.number} · {title}
         </div>
-        <div className="rounded-full border border-white/[0.08] bg-black/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/42">
+        <div className="rounded-md border border-white/[0.08] bg-black/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/42">
           Guided
         </div>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-white/68">{summary}</p>
       <div className={`mt-3 ${compact ? 'space-y-3' : 'grid gap-3 sm:grid-cols-2'}`}>
-        <div className="rounded-2xl border border-white/[0.08] bg-black/10 px-3.5 py-3">
+        <div className="support-callout px-3.5 py-3">
           <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">What AI is doing</div>
           <div className="mt-1.5 text-xs leading-relaxed text-white/72">{systemDoes}</div>
         </div>
-        <div className="rounded-2xl border border-white/[0.08] bg-black/10 px-3.5 py-3">
+        <div className="support-callout px-3.5 py-3">
           <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">What you should do</div>
           <div className="mt-1.5 text-xs leading-relaxed text-white/72">{userDoes}</div>
         </div>
       </div>
-      <p className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-white/56">
+      <p className="support-callout mt-3 px-3 py-2 text-xs leading-relaxed text-white/56">
         Next: {nextOverride ?? contract.next}
       </p>
     </GlassCard>

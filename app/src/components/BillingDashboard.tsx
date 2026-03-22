@@ -122,7 +122,7 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${classes[status] ?? 'border-white/10 bg-white/5 text-white/50'}`}
+      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${classes[status] ?? 'border-white/10 bg-white/5 text-white/50'}`}
     >
       {label[status] ?? status}
     </span>
@@ -273,15 +273,21 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
   return (
     <div className="flex flex-col gap-5 p-1">
       {/* Current plan */}
-      <GlassCard className="p-5">
+      <GlassCard className="space-y-4 p-5">
+        <div className="room-meta-strip">
+          <div className="room-meta-item">
+            <span className="eyebrow-label">Billing</span>
+            <span className="text-sm text-white/60">Plan status, billing controls, and account usage in one place.</span>
+          </div>
+        </div>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/5">
               <CreditCard className="h-5 w-5 text-white/60" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-white">{plan.name}</span>
+                <span className="text-lg font-semibold tracking-tight text-white">{plan.name}</span>
                 <StatusBadge status={subscription?.status ?? 'active'} />
               </div>
               <div className="text-sm text-white/50">{formatPrice(plan.monthly_price_cents)}</div>
@@ -322,10 +328,10 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
       </GlassCard>
 
       {/* Usage this period */}
-      <GlassCard className="p-5">
-        <div className="flex items-center gap-2 text-sm font-medium text-white/80">
+      <GlassCard className="space-y-4 p-5">
+        <div className="room-meta-strip">
           <BarChart2 className="h-4 w-4 text-white/50" />
-          Usage this month
+          <span className="eyebrow-label">Usage this month</span>
         </div>
 
         <div className="mt-4 flex items-end justify-between">
@@ -336,9 +342,9 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
         </div>
 
         {/* Progress bar */}
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div className="mt-3 h-1.5 w-full overflow-hidden bg-white/10">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[#f0b8b8]' : usagePercent >= 70 ? 'bg-[#f0d99f]' : 'bg-[#9eb8ff]'}`}
+            className={`h-full transition-all duration-500 ${usagePercent >= 90 ? 'bg-[#f0b8b8]' : usagePercent >= 70 ? 'bg-[#f0d99f]' : 'bg-[#9eb8ff]'}`}
             style={{ width: `${usagePercent}%` }}
           />
         </div>
@@ -351,7 +357,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
       </GlassCard>
 
       {actionError && (
-        <div className="rounded-xl border border-[#f0b8b8]/30 bg-[#f0b8b8]/10 px-4 py-3 text-sm text-[#f0b8b8]/70">
+        <div className="support-callout border-[#f0b8b8]/30 bg-[#f0b8b8]/10 px-4 py-3 text-sm text-[#f0b8b8]/70">
           {actionError}
         </div>
       )}

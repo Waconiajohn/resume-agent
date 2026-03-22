@@ -260,7 +260,7 @@ export function SessionHistoryTab({
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="truncate text-sm font-semibold text-white/85">{record.company}</div>
-                        <span className="rounded-full border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-2 py-0.5 text-[10px] text-[#c9d7ff]">
+                        <span className="rounded-md border border-[#98b3ff]/16 bg-[#98b3ff]/[0.05] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-[#c9d7ff]">
                           Job workspace
                         </span>
                       </div>
@@ -270,7 +270,7 @@ export function SessionHistoryTab({
                     <div className="text-xs text-white/55">{formatDate(record.createdAt)}</div>
 
                     <div>
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${jobStage.classes}`}>
+                      <span className={`inline-flex rounded-md border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] ${jobStage.classes}`}>
                         {jobStage.label}
                       </span>
                       <div className="mt-2 text-[11px] text-white/40">
@@ -283,7 +283,7 @@ export function SessionHistoryTab({
                         {Object.entries(assetCounts).map(([type, count]) => (
                           <span
                             key={type}
-                            className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/50"
+                            className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-white/50"
                           >
                             {assetBadgeLabel(type)}{count > 1 ? ` (${count})` : ''}
                           </span>
