@@ -9,7 +9,7 @@ test.describe('workspace guided flows', () => {
   test('reopens a saved resume job record and runs Final Review before export acknowledgement', async ({ page }) => {
     await page.goto('/workspace?room=resume', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /Your home for tailored resumes/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Choose the resume tool you need right now/i })).toBeVisible();
     await expect(page.getByText('TechCorp').first()).toBeVisible();
     await expect(page.getByText('VP Operations').first()).toBeVisible();
     await expect(page.getByText('Interviewing').first()).toBeVisible();

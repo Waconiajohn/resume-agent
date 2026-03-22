@@ -78,12 +78,9 @@ async function waitForResumeBuilderReady(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 15_000 });
   await expect(
     page.getByRole('heading', {
-      name: /Your home for tailored resumes/i,
+      name: /Choose the resume tool you need right now/i,
     }),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible({
-    timeout: 5_000,
-  });
 }
 
 async function openResumeBuilder(page: Page): Promise<void> {
@@ -103,14 +100,15 @@ test.describe('Resume Builder Workspace', () => {
   test('resume builder loads with current workspace tabs', async ({ page }) => {
     await openResumeBuilder(page);
 
-    await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Browse Job Workspaces$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Open Master Resume$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Write Cover Letter$/i })).toBeVisible();
-    await expect(page.getByText(/Your home for tailored resumes/i)).toBeVisible();
+    await expect(page.getByText(/Choose the resume tool you need right now/i)).toBeVisible();
   });
 
   test('job workspaces tab shows filters and handles empty or populated state', async ({ page }) => {
     await openResumeBuilder(page);
+    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
 
     await expect(page.getByRole('button', { name: /^All$/i })).toBeVisible({ timeout: 8_000 });
     await expect(page.getByRole('button', { name: /Completed/i })).toBeVisible();
@@ -155,7 +153,7 @@ test.describe('Resume Builder Workspace', () => {
       }),
     ).toBeVisible({ timeout: 8_000 });
     await expect(page.getByText(/keep the letter tied to the same job workspace/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back to Resume Tools/i }).first()).toBeVisible();
   });
 
   test('master resume tab renders current editor surface or empty state', async ({ page }) => {
@@ -170,7 +168,7 @@ test.describe('Resume Builder Workspace', () => {
         return hasEmptyState || hasSummarySection || hasEditButton;
       }, { timeout: 10_000 })
       .toBe(true);
-    await expect(page.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back to Resume Tools/i }).first()).toBeVisible();
   });
 
   test('cover-letter focus route opens the embedded cover-letter tab', async ({ page }) => {

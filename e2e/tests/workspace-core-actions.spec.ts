@@ -142,7 +142,7 @@ test.describe('workspace core room actions', () => {
     await page.getByRole('button', { name: /Resume \+ Letter/i }).first().click();
 
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 5_000 });
-    await expect(page.getByRole('heading', { name: /Your home for tailored resumes/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Choose the resume tool you need right now/i })).toBeVisible();
   });
 
   test('Job Search pipeline add-application dialog opens and submits cleanly', async ({ page }) => {

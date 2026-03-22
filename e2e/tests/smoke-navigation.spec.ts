@@ -1591,7 +1591,7 @@ async function waitForAuthenticatedShell(page: Page): Promise<void> {
 async function assertResumeBuilderVisible(page: Page, timeout = 8_000): Promise<void> {
   await expect(
     page.getByRole('heading', {
-      name: /Your home for tailored resumes/i,
+      name: /Choose the resume tool you need right now/i,
     }),
   ).toBeVisible({ timeout });
 }
@@ -2142,7 +2142,7 @@ test.describe('Smoke: Workspace core rooms', () => {
         name: /Write the cover letter in the same workflow/i,
       }),
     ).toBeVisible({ timeout: 8_000 });
-    await expect(sharedPage.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible({
+    await expect(sharedPage.getByRole('button', { name: /Back to Resume Tools/i }).first()).toBeVisible({
       timeout: 8_000,
     });
   });
@@ -2153,7 +2153,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await sharedPage.getByRole('button', { name: /^Open Master Resume$/i }).click();
 
-    await expect(sharedPage.getByRole('button', { name: /Back to Job Workspaces/i }).first()).toBeVisible({
+    await expect(sharedPage.getByRole('button', { name: /Back to Resume Tools/i }).first()).toBeVisible({
       timeout: 8_000,
     });
     await expect
@@ -2290,7 +2290,7 @@ test.describe('Smoke: Workspace core rooms', () => {
 
     await expect(sharedPage).toHaveURL(/\/workspace\?room=resume/, { timeout: 8_000 });
     await expect(
-      sharedPage.getByRole('heading', { name: /Your home for tailored resumes/i }),
+      sharedPage.getByRole('heading', { name: /Choose the resume tool you need right now/i }),
     ).toBeVisible({ timeout: 8_000 });
   });
 

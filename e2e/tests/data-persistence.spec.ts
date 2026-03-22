@@ -274,9 +274,9 @@ async function mockAllWithData(
 async function openResumeBuilderWorkspace(page: Page): Promise<void> {
   await page.goto('/workspace?room=resume');
   await expect(
-    page.getByRole('heading', { name: /Your home for tailored resumes/i }),
+    page.getByRole('heading', { name: /Choose the resume tool you need right now/i }),
   ).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator('span').filter({ hasText: /^Job Workspaces$/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Browse Job Workspaces$/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Open Master Resume$/i })).toBeVisible();
 }
 
@@ -289,6 +289,7 @@ test.describe('Resume Builder persistence', () => {
   test('Job Workspaces renders all saved tailored resumes', async ({ page }) => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
+    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
     await waitForListSettled(page);
 
     await expect(page.getByText('Acme Corp')).toBeVisible();
@@ -300,6 +301,7 @@ test.describe('Resume Builder persistence', () => {
   test('Completed filter narrows Job Workspaces to finished work', async ({ page }) => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
+    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
     await waitForListSettled(page);
 
     await page.getByRole('button', { name: /^Completed$/i }).click();
@@ -313,6 +315,7 @@ test.describe('Resume Builder persistence', () => {
   test('Needs Review filter narrows Job Workspaces to recovery cases', async ({ page }) => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
+    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
     await waitForListSettled(page);
 
     await page.getByRole('button', { name: /^Needs Review$/i }).click();
@@ -327,6 +330,7 @@ test.describe('Resume Builder persistence', () => {
     const deletes: string[] = [];
     await mockAllWithData(page, { captureDeletes: deletes });
     await openResumeBuilderWorkspace(page);
+    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
     await waitForListSettled(page);
 
     await page.getByRole('button', { name: /Delete Acme Corp Senior Engineer session/i }).click();
