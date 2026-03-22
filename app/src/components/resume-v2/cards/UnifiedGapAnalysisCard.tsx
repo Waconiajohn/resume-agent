@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiHelperHint } from '@/components/shared/AiHelperHint';
+import { evidenceLooksDirectForRequirement } from '@/lib/requirement-evidence';
 import { importanceLabel, importanceStyle } from './shared-badges';
 import type {
   GapAnalysis,
@@ -134,9 +135,10 @@ function RequirementRow({
   const mappedEvidence = currentResume
     ? findBulletForRequirement(req.requirement, positioningAssessment, currentResume)
     : null;
-  const bestEvidence = mappedEvidence?.text ?? req.evidence[0] ?? null;
+  const relevantEvidence = req.evidence.filter((entry) => evidenceLooksDirectForRequirement(req.requirement, entry));
+  const bestEvidence = mappedEvidence?.text ?? relevantEvidence[0] ?? null;
   const bestEvidenceSection = mappedEvidence?.section ?? null;
-  const relatedEvidence = req.evidence.filter((entry) => entry !== bestEvidence).slice(0, 2);
+  const relatedEvidence = relevantEvidence.filter((entry) => entry !== bestEvidence).slice(0, 2);
   const issueText = coaching?.ai_reasoning
     ?? req.source_evidence
     ?? (classification === 'missing'

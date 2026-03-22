@@ -421,6 +421,41 @@ describe('rewrite-queue', () => {
     expect(queue.summary.total).toBe(1);
   });
 
+  it('does not treat unrelated operational bullets as current proof for on-call and travel requirements', () => {
+    const resume = makeResume();
+    resume.professional_experience[0].bullets[0] = {
+      text: 'Reduced operational times by 12 hours using improved equipment selection and operations techniques.',
+      is_new: false,
+      addresses_requirements: ['Ability to work on-call outside standard working hours and travel up to 20% of the time'],
+    };
+
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Ability to work on-call outside standard working hours and travel up to 20% of the time',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Reduced operational times by 12 hours using improved equipment selection and operations techniques.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: resume,
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.currentEvidence).toEqual([]);
+    expect(queue.items[0]?.status).toBe('needs_more_evidence');
+  });
+
   it('dedupes repeated benchmark requirements with the same normalized text', () => {
     const gapAnalysis: GapAnalysis = {
       requirements: [

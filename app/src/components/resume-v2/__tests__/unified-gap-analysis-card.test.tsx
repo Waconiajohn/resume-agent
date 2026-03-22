@@ -208,4 +208,51 @@ describe('UnifiedGapAnalysisCard inventory', () => {
     expect(screen.getAllByText('What still needs to be clearer').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Best evidence on your resume').length).toBeGreaterThan(0);
   });
+
+  it('does not present unrelated operational proof as mapped evidence for availability requirements', () => {
+    const resume = makeResume();
+    resume.professional_experience[0].bullets[0] = {
+      text: 'Reduced operational times by 12 hours using improved equipment selection and operations techniques.',
+      is_new: false,
+      addresses_requirements: ['Ability to work on-call outside standard working hours and travel up to 20% of the time'],
+    };
+
+    const gapAnalysis = makeGapAnalysis();
+    gapAnalysis.requirements = [
+      {
+        requirement: 'Ability to work on-call outside standard working hours and travel up to 20% of the time',
+        source: 'job_description',
+        importance: 'must_have',
+        classification: 'partial',
+        evidence: ['Reduced operational times by 12 hours using improved equipment selection and operations techniques.'],
+      },
+    ];
+
+    const positioningAssessment = makePositioningAssessment();
+    positioningAssessment.requirement_map = [
+      {
+        requirement: 'Ability to work on-call outside standard working hours and travel up to 20% of the time',
+        importance: 'must_have',
+        status: 'repositioned',
+        addressed_by: [
+          {
+            section: 'Professional Experience - Acme',
+            bullet_text: 'Reduced operational times by 12 hours using improved equipment selection and operations techniques.',
+          },
+        ],
+      },
+    ];
+
+    render(
+      <UnifiedGapAnalysisCard
+        gapAnalysis={gapAnalysis}
+        gapCoachingCards={null}
+        onRespondGapCoaching={vi.fn()}
+        currentResume={resume}
+        positioningAssessment={positioningAssessment}
+      />,
+    );
+
+    expect(screen.queryByText(/Reduced operational times by 12 hours/i)).not.toBeInTheDocument();
+  });
 });

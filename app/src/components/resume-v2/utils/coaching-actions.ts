@@ -9,6 +9,7 @@ import type {
   ResumeDraft,
 } from '@/types/resume-v2';
 import type { EditContext } from '@/hooks/useInlineEdit';
+import { evidenceLooksDirectForRequirement } from '@/lib/requirement-evidence';
 
 /** Tokenize a string into lowercase words (strips punctuation) */
 export function tokenize(s: string): string[] {
@@ -53,6 +54,9 @@ export function findBulletForRequirement(
     );
     if (entry?.addressed_by && entry.addressed_by.length > 0) {
       const best = entry.addressed_by[0];
+      if (!evidenceLooksDirectForRequirement(requirement, best.bullet_text)) {
+        return null;
+      }
       return { text: best.bullet_text, section: best.section };
     }
   }
@@ -63,29 +67,37 @@ export function findBulletForRequirement(
   );
 
   if (exactMatch(resume.executive_summary.addresses_requirements)) {
-    return {
-      text: resume.executive_summary.content,
-      section: 'Executive Summary',
-    };
+    if (evidenceLooksDirectForRequirement(requirement, resume.executive_summary.content)) {
+      return {
+        text: resume.executive_summary.content,
+        section: 'Executive Summary',
+      };
+    }
   }
 
   for (const accomplishment of resume.selected_accomplishments) {
     if (exactMatch(accomplishment.addresses_requirements)) {
-      return {
-        text: accomplishment.content,
-        section: 'Selected Accomplishments',
-      };
+      if (evidenceLooksDirectForRequirement(requirement, accomplishment.content)) {
+        return {
+          text: accomplishment.content,
+          section: 'Selected Accomplishments',
+        };
+      }
     }
   }
 
   for (const exp of resume.professional_experience) {
     const section = `Professional Experience - ${exp.company}`;
     if (exactMatch(exp.scope_statement_addresses_requirements)) {
-      return { text: exp.scope_statement, section };
+      if (evidenceLooksDirectForRequirement(requirement, exp.scope_statement)) {
+        return { text: exp.scope_statement, section };
+      }
     }
     for (const bullet of exp.bullets) {
       if (exactMatch(bullet.addresses_requirements)) {
-        return { text: bullet.text, section };
+        if (evidenceLooksDirectForRequirement(requirement, bullet.text)) {
+          return { text: bullet.text, section };
+        }
       }
     }
   }
@@ -119,7 +131,10 @@ export function findBulletForRequirement(
         score: overlapCount / Math.max(reqWords.length, 1),
       };
     })
-    .filter((candidate) => candidate.overlapCount >= 2 || candidate.score >= 0.4)
+    .filter((candidate) => (
+      (candidate.overlapCount >= 2 || candidate.score >= 0.4)
+      && evidenceLooksDirectForRequirement(requirement, candidate.text)
+    ))
     .sort((left, right) => right.score - left.score);
 
   const bestMatch = rankedCandidates[0];

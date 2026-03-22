@@ -14,6 +14,7 @@ import type {
   RewriteQueueSource,
   RewriteQueueSummary,
 } from '@/types/resume-v2';
+import { evidenceLooksDirectForRequirement } from './requirement-evidence';
 
 function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[.,;:!?]+$/, '');
@@ -94,6 +95,7 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
   );
 
   if (matchesRequirement(resume.executive_summary.addresses_requirements)) {
+    if (evidenceLooksDirectForRequirement(requirement, resume.executive_summary.content)) {
       evidence.push({
         text: resume.executive_summary.content,
         source: 'resume',
@@ -101,10 +103,14 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
         isNew: resume.executive_summary.is_new,
         basis: 'mapped',
       });
+    }
   }
 
   for (const accomplishment of resume.selected_accomplishments) {
     if (matchesRequirement(accomplishment.addresses_requirements)) {
+      if (!evidenceLooksDirectForRequirement(requirement, accomplishment.content)) {
+        continue;
+      }
       evidence.push({
         text: accomplishment.content,
         source: 'resume',
@@ -117,6 +123,9 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
 
   for (const experience of resume.professional_experience) {
     if (matchesRequirement(experience.scope_statement_addresses_requirements)) {
+      if (!evidenceLooksDirectForRequirement(requirement, experience.scope_statement)) {
+        continue;
+      }
       evidence.push({
         text: experience.scope_statement,
         source: 'resume',
@@ -128,6 +137,9 @@ function collectResumeEvidenceForRequirement(resume: ResumeDraft | null | undefi
 
     for (const bullet of experience.bullets) {
       if (matchesRequirement(bullet.addresses_requirements)) {
+        if (!evidenceLooksDirectForRequirement(requirement, bullet.text)) {
+          continue;
+        }
         evidence.push({
           text: bullet.text,
           source: 'resume',
@@ -427,7 +439,11 @@ export function buildRewriteQueue(args: {
     const latestAssistant = latestAssistantMessage(args.gapChatSnapshot, requirement.requirement);
     const liveEvidence = collectResumeEvidenceForRequirement(args.currentResume, requirement.requirement);
     const inferredEvidence = Array.isArray(requirement.evidence)
-      ? requirement.evidence.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      ? requirement.evidence.filter((item): item is string => (
+        typeof item === 'string'
+        && item.trim().length > 0
+        && evidenceLooksDirectForRequirement(requirement.requirement, item)
+      ))
       : [];
     const sourceEvidence = sourceEvidenceForRequirement({
       requirement,
