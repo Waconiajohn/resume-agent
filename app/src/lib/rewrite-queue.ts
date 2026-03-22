@@ -283,12 +283,19 @@ function aiPlanForRequirement(args: {
 }
 
 function userInstructionForRequirement(args: {
+  requirement: string;
   category: RewriteQueueCategory;
   status: RewriteQueueItem['status'];
   liveEvidenceCount: number;
   inferredEvidenceCount: number;
   hasSuggestedLanguage: boolean;
 }): string {
+  const normalizedRequirement = normalize(args.requirement);
+  const asksForCommunicationProof = /\b(communication|executive stakeholder|executive-facing|board|presenting|presentation|influence)\b/.test(normalizedRequirement);
+  const asksForFinancialProof = /\b(p&l|budget|revenue|financial|cost optimization|finops|spend)\b/.test(normalizedRequirement);
+  const asksForScaleProof = /(\d+\+|\$|team|teams|organization|organizations|company|companies|global|enterprise|multi-site|multisite|plant|plants|facility|facilities|people|person|scaling|scale)/i.test(args.requirement);
+  const asksForTechnicalProof = /\b(aws|azure|gcp|cloud|soc 2|hipaa|pci|kubernetes|terraform|disaster recovery|chaos engineering|industry 4\.0|digital transformation)\b/.test(normalizedRequirement);
+
   if (args.category === 'hard_gap') {
     return 'Confirm whether you actually have this requirement. Do not stretch it. If you do not have it, leave it marked as a real risk.';
   }
@@ -306,6 +313,22 @@ function userInstructionForRequirement(args: {
   }
 
   if (args.liveEvidenceCount > 0 || args.inferredEvidenceCount > 0) {
+    if (asksForCommunicationProof) {
+      return 'Answer with one concrete executive-facing example: who the audience was, what you communicated, and what outcome it influenced.';
+    }
+
+    if (asksForFinancialProof) {
+      return 'Answer with the financial scope you owned, what decisions were yours, and the business outcome.';
+    }
+
+    if (asksForScaleProof) {
+      return 'Answer with the exact scale involved here, such as company size, team size, budget, revenue, or operational footprint.';
+    }
+
+    if (asksForTechnicalProof) {
+      return 'Answer with the exact platform, framework, or technical environment you worked in and what you delivered there.';
+    }
+
     return 'Answer the next question so we can turn the nearby proof into direct, requirement-specific evidence.';
   }
 
@@ -448,6 +471,7 @@ export function buildRewriteQueue(args: {
     });
 
     const userInstruction = userInstructionForRequirement({
+      requirement: requirement.requirement,
       category,
       status,
       liveEvidenceCount: liveEvidence.length,

@@ -220,6 +220,63 @@ describe('rewrite-queue', () => {
     expect(queue.items).toHaveLength(1);
     expect(queue.items[0]?.currentEvidence[0]?.basis).toBe('nearby');
     expect(queue.items[0]?.currentEvidence[0]?.section).toBeUndefined();
+    expect(queue.items[0]?.userInstruction).toContain('executive-facing example');
+  });
+
+  it('tailors nearby-proof guidance for financial scope requirements', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Experience with P&L responsibility for $100M+ operations',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['$175M combined output across multiple plants.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.userInstruction).toContain('financial scope');
+    expect(queue.items[0]?.userInstruction).toContain('business outcome');
+  });
+
+  it('tailors nearby-proof guidance for team and organization scale requirements', () => {
+    const gapAnalysis: GapAnalysis = {
+      requirements: [
+        {
+          requirement: 'Proven track record of building and scaling marketing organizations (25+ people)',
+          source: 'job_description',
+          importance: 'must_have',
+          classification: 'partial',
+          evidence: ['Led a 28-person marketing organization.'],
+        },
+      ],
+      coverage_score: 0,
+      strength_summary: '',
+      critical_gaps: [],
+      pending_strategies: [],
+    };
+
+    const queue = buildRewriteQueue({
+      jobIntelligence: makeJobIntelligence(),
+      gapAnalysis,
+      currentResume: makeResume(),
+    });
+
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]?.userInstruction).toContain('exact scale involved');
+    expect(queue.items[0]?.userInstruction).toContain('team size');
   });
 
   it('does not crash when a live gap-analysis requirement omits the evidence array', () => {
