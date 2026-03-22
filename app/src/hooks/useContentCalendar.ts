@@ -206,7 +206,9 @@ export function useContentCalendar() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[useContentCalendar] fetchReports error:', message);
+      if (import.meta.env.MODE !== 'test') {
+        console.error('[useContentCalendar] fetchReports error:', message);
+      }
       if (mountedRef.current) {
         setState((prev) => ({ ...prev, reportsLoading: false }));
       }
