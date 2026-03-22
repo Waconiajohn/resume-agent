@@ -1724,6 +1724,11 @@ function buildRecruiterSignalWhyItMatters(signal: string): string {
 function preferredMissingSignalNeedsSpecificity(signal: string, whyItMatters: string): boolean {
   const normalized = normalizeReviewText(whyItMatters);
   return /preferred qualifications? and could be valuable in the role/.test(normalized)
+    || /^the job description mentions .*preferred qualification/.test(normalized)
+    || /^the company is backed by /.test(normalized)
+    || /^this experience is a preferred qualification /.test(normalized)
+    || /^lack of explicit experience /.test(normalized)
+    || /^while the candidate mentions .* they do not explicitly highlight /.test(normalized)
     || (/preferred|nice to have|bonus|plus/.test(normalized) && /role/.test(normalized));
 }
 

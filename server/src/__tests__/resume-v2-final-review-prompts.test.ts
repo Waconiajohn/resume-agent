@@ -2473,4 +2473,160 @@ describe('resume-v2 final review prompts', () => {
       'This would strengthen the fit for this role, but it is still a preferred background signal and more of a competitive disadvantage than a must-have screen.',
     );
   });
+
+  it('rewrites job-description preferred-language into an honest non-screen-out explanation', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [
+          {
+            signal: 'Direct mention of experience in PE-backed manufacturing environments',
+            why_it_matters: 'The job description mentions experience in PE-backed manufacturing environments as a preferred qualification.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible operator with one preferred-background gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toBe(
+      'This would strengthen the fit for this role, but it is still a preferred background signal and more of a competitive disadvantage than a must-have screen.',
+    );
+  });
+
+  it('rewrites company-context preferred-language into an honest non-screen-out explanation', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [
+          {
+            signal: 'Experience in PE-backed environments with focus on growth and value creation',
+            why_it_matters: 'The company is backed by a leading private equity firm and values experience in this area.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible marketing leader with one preferred-background gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toBe(
+      'This would strengthen the fit for this role, but it is still a preferred background signal and more of a competitive disadvantage than a must-have screen.',
+    );
+  });
+
+  it('rewrites lack-of-explicit-experience preferred-language into an honest non-screen-out explanation', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [
+          {
+            signal: 'Specific experience in PE-backed environments',
+            why_it_matters: 'Lack of explicit experience in PE-backed environments may be a concern.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible marketing leader with one preferred-background gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toBe(
+      'This would strengthen the fit for this role, but it is still a preferred background signal and more of a competitive disadvantage than a must-have screen.',
+    );
+  });
+
+  it('rewrites while-the-candidate-mentions preferred-language into an honest non-screen-out explanation', () => {
+    const stabilized = stabilizeFinalReviewResult({
+      six_second_scan: {
+        decision: 'continue_reading',
+        reason: 'Strong first impression.',
+        top_signals_seen: [],
+        important_signals_missing: [
+          {
+            signal: 'Direct experience with Industry 4.0 / smart manufacturing technologies',
+            why_it_matters: 'While the candidate mentions expertise in lean manufacturing and quality management, they do not explicitly highlight experience with Industry 4.0 technologies, which is a key requirement for the role.',
+          },
+        ],
+      },
+      hiring_manager_verdict: {
+        rating: 'possible_interview',
+        summary: 'Credible operator with one preferred-background gap.',
+      },
+      fit_assessment: {
+        job_description_fit: 'moderate',
+        benchmark_alignment: 'moderate',
+        business_impact: 'strong',
+        clarity_and_credibility: 'moderate',
+      },
+      top_wins: [],
+      concerns: [],
+      structure_recommendations: [],
+      benchmark_comparison: {
+        advantages_vs_benchmark: [],
+        gaps_vs_benchmark: [],
+        reframing_opportunities: [],
+      },
+      improvement_summary: [],
+    });
+
+    expect(stabilized.six_second_scan.important_signals_missing[0]?.why_it_matters).toBe(
+      'This would strengthen the fit, but it is still a preferred signal and more of a competitive disadvantage than a must-have screen.',
+    );
+  });
 });
